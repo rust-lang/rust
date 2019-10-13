@@ -48,7 +48,7 @@ fn bench_iter(b: &mut Bencher) {
     let v = &[0; 128];
     let m: LinkedList<_> = v.iter().cloned().collect();
     b.iter(|| {
-        assert!(m.iter().count() == 128);
+        assert_eq!(m.iter().count(), 128);
     })
 }
 #[bench]
@@ -56,7 +56,7 @@ fn bench_iter_mut(b: &mut Bencher) {
     let v = &[0; 128];
     let mut m: LinkedList<_> = v.iter().cloned().collect();
     b.iter(|| {
-        assert!(m.iter_mut().count() == 128);
+        assert_eq!(m.iter_mut().count(), 128);
     })
 }
 #[bench]
@@ -64,7 +64,7 @@ fn bench_iter_rev(b: &mut Bencher) {
     let v = &[0; 128];
     let m: LinkedList<_> = v.iter().cloned().collect();
     b.iter(|| {
-        assert!(m.iter().rev().count() == 128);
+        assert_eq!(m.iter().rev().count(), 128);
     })
 }
 #[bench]
@@ -72,6 +72,6 @@ fn bench_iter_mut_rev(b: &mut Bencher) {
     let v = &[0; 128];
     let mut m: LinkedList<_> = v.iter().cloned().collect();
     b.iter(|| {
-        assert!(m.iter_mut().rev().count() == 128);
+        assert_eq!(m.iter_mut().rev().count(), 128);
     })
 }

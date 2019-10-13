@@ -20,7 +20,7 @@ fn test_minimize1() {
         "rpath2".to_string(),
         "rpath1".to_string()
     ]);
-    assert!(res == [
+    assert_eq!(res, [
         "rpath1",
         "rpath2",
     ]);
@@ -40,7 +40,7 @@ fn test_minimize2() {
         "4a".to_string(),
         "3".to_string()
     ]);
-    assert!(res == [
+    assert_eq!(res, [
         "1a",
         "2",
         "4a",

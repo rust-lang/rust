@@ -3,5 +3,5 @@ fn main() {
         x(1) => x(1) //~ ERROR cannot find tuple struct/variant `x` in this scope
         //~^ ERROR cannot find function `x` in this scope
     };
-    assert!(z == 3);
+    assert_eq!(z, 3);
 }

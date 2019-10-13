@@ -41,6 +41,6 @@ mod tests {
         let expected = r#""\xF0hello,\tworld""#;
         let output = format!("{:?}", Helper(input));
 
-        assert!(output == expected);
+        assert_eq!(output, expected);
     }
 }

@@ -73,7 +73,7 @@ pub fn do_not_run_ignored_tests() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res != TrOk);
+    assert_ne!(res, TrOk);
 }
 
 #[test]
@@ -92,7 +92,7 @@ pub fn ignored_tests_result_in_ignored() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrIgnored);
+    assert_eq!(res, TrIgnored);
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn test_should_panic() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    assert_eq!(res, TrOk);
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn test_should_panic_good_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    assert_eq!(res, TrOk);
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn test_should_panic_bad_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
+    assert_eq!(res, TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn test_should_panic_but_succeeds() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailedMsg("test did not panic as expected".to_string()));
+    assert_eq!(res, TrFailedMsg("test did not panic as expected".to_string()));
 }
 
 fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
@@ -550,7 +550,7 @@ pub fn sort_tests() {
     ];
 
     for (a, b) in expected.iter().zip(filtered) {
-        assert!(*a == b.desc.name.to_string());
+        assert_eq!(*a, b.desc.name.to_string());
     }
 }
 
