@@ -18,11 +18,11 @@
 //!
 //! Each method takes an [`Ordering`] which represents the strength of
 //! the memory barrier for that operation. These orderings are the
-//! same as [LLVM atomic orderings][1]. For more information see the [nomicon][2].
+//! same as the [C++20 atomic orderings][1]. For more information see the [nomicon][2].
 //!
 //! [`Ordering`]: enum.Ordering.html
 //!
-//! [1]: https://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
+//! [1]: https://en.cppreference.com/w/cpp/atomic/memory_order
 //! [2]: ../../../nomicon/atomics.html
 //!
 //! Atomic variables are safe to share between threads (they implement [`Sync`])
@@ -217,8 +217,8 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// operations synchronize other memory while additionally preserving a total order of such
 /// operations across all threads.
 ///
-/// Rust's memory orderings are [the same as
-/// LLVM's](https://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
+/// Rust's memory orderings are [the same as those of
+/// C++20](https://en.cppreference.com/w/cpp/atomic/memory_order).
 ///
 /// For more information see the [nomicon].
 ///
@@ -231,9 +231,9 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     ///
-    /// Corresponds to LLVM's [`Monotonic`] ordering.
+    /// Corresponds to [`memory_order_relaxed`] in C++20.
     ///
-    /// [`Monotonic`]: https://llvm.org/docs/Atomics.html#monotonic
+    /// [`memory_order_relaxed`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Relaxed_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Relaxed,
     /// When coupled with a store, all previous operations become ordered
@@ -246,11 +246,12 @@ pub enum Ordering {
     ///
     /// This ordering is only applicable for operations that can perform a store.
     ///
-    /// Corresponds to LLVM's [`Release`] ordering.
+    /// Corresponds to [`memory_order_release`] in C++20.
     ///
-    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
-    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
-    /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
+    /// [`Release`]: #variant.Release
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Relaxed`]: #variant.Relaxed
+    /// [`memory_order_release`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Release,
     /// When coupled with a load, if the loaded value was written by a store operation with
@@ -263,11 +264,12 @@ pub enum Ordering {
     ///
     /// This ordering is only applicable for operations that can perform a load.
     ///
-    /// Corresponds to LLVM's [`Acquire`] ordering.
+    /// Corresponds to [`memory_order_acquire`] in C++20.
     ///
-    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
-    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
-    /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Release`]: #variant.Release
+    /// [`Relaxed`]: #variant.Relaxed
+    /// [`memory_order_acquire`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
     /// Has the effects of both [`Acquire`] and [`Release`] together:
@@ -275,28 +277,28 @@ pub enum Ordering {
     ///
     /// Notice that in the case of `compare_and_swap`, it is possible that the operation ends up
     /// not performing any store and hence it has just [`Acquire`] ordering. However,
-    /// [`AcqRel`][`AcquireRelease`] will never perform [`Relaxed`] accesses.
+    /// `AcqRel` will never perform [`Relaxed`] accesses.
     ///
     /// This ordering is only applicable for operations that combine both loads and stores.
     ///
-    /// Corresponds to LLVM's [`AcquireRelease`] ordering.
+    /// Corresponds to [`memory_order_acq_rel`] in C++20.
     ///
-    /// [`AcquireRelease`]: https://llvm.org/docs/Atomics.html#acquirerelease
-    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
-    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
-    /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
+    /// [`memory_order_acq_rel`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Release`]: #variant.Release
+    /// [`Relaxed`]: #variant.Relaxed
     #[stable(feature = "rust1", since = "1.0.0")]
     AcqRel,
     /// Like [`Acquire`]/[`Release`]/[`AcqRel`] (for load, store, and load-with-store
     /// operations, respectively) with the additional guarantee that all threads see all
     /// sequentially consistent operations in the same order.
     ///
-    /// Corresponds to LLVM's [`SequentiallyConsistent`] ordering.
+    /// Corresponds to [`memory_order_seq_cst`] in C++20.
     ///
-    /// [`SequentiallyConsistent`]: https://llvm.org/docs/Atomics.html#sequentiallyconsistent
-    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
-    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
-    /// [`AcqRel`]: https://llvm.org/docs/Atomics.html#acquirerelease
+    /// [`memory_order_seq_cst`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Sequentially-consistent_ordering
+    /// [`Acquire`]: #variant.Acquire
+    /// [`Release`]: #variant.Release
+    /// [`AcqRel`]: #variant.AcqRel
     #[stable(feature = "rust1", since = "1.0.0")]
     SeqCst,
 }
