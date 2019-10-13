@@ -2,14 +2,14 @@
 //! of any `'static` type through runtime reflection.
 //!
 //! `Any` itself can be used to get a `TypeId`, and has more features when used
-//! as a trait object. As `&Any` (a borrowed trait object), it has the `is` and
-//! `downcast_ref` methods, to test if the contained value is of a given type,
-//! and to get a reference to the inner value as a type. As `&mut Any`, there
+//! as a trait object. As `&dyn Any` (a borrowed trait object), it has the `is`
+//! and `downcast_ref` methods, to test if the contained value is of a given type,
+//! and to get a reference to the inner value as a type. As `&mut dyn Any`, there
 //! is also the `downcast_mut` method, for getting a mutable reference to the
-//! inner value. `Box<Any>` adds the `downcast` method, which attempts to
+//! inner value. `Box<dyn Any>` adds the `downcast` method, which attempts to
 //! convert to a `Box<T>`. See the [`Box`] documentation for the full details.
 //!
-//! Note that &Any is limited to testing whether a value is of a specified
+//! Note that `&dyn Any` is limited to testing whether a value is of a specified
 //! concrete type, and cannot be used to test whether a type implements a trait.
 //!
 //! [`Box`]: ../../std/boxed/struct.Box.html
