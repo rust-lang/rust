@@ -212,7 +212,10 @@ impl<'a> TokenTreesReader<'a> {
                     .struct_span_err(self.token.span, &msg);
 
                 if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
-                    err.span_label(span, "this block is empty, you might have not meant to close it");
+                    err.span_label(
+                        span,
+                        "this block is empty, you might have not meant to close it"
+                    );
                 }
                 err.span_label(self.token.span, "unexpected close delimiter");
                 Err(err)
