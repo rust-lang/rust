@@ -1,3 +1,4 @@
+use crate::hir::CodegenFnAttrFlags;
 use crate::hir::Unsafety;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
@@ -24,6 +25,14 @@ pub enum InstanceDef<'tcx> {
 
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
     VtableShim(DefId),
+
+    /// `fn()` pointer where the function itself cannot be turned into a pointer.
+    ///
+    /// One example in the compiler today is functions annotated with `#[track_caller]`, which
+    /// must have their implicit caller location argument populated for a call. Because this is a
+    /// required part of the function's ABI but can't be tracked as a property of the function
+    /// pointer, we create a single "caller location" at the site where the function is reified.
+    ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
     /// `DefId` is `FnTrait::call_*`
@@ -123,6 +132,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match *self {
             InstanceDef::Item(def_id) |
             InstanceDef::VtableShim(def_id) |
+            InstanceDef::ReifyShim(def_id) |
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
@@ -177,6 +187,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::Item(_) => Ok(()),
             InstanceDef::VtableShim(_) => {
                 write!(f, " - shim(vtable)")
+            }
+            InstanceDef::ReifyShim(_) => {
+                write!(f, " - shim(reify)")
             }
             InstanceDef::Intrinsic(_) => {
                 write!(f, " - intrinsic")
@@ -288,6 +301,30 @@ impl<'tcx> Instance<'tcx> {
         };
         debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
         result
+    }
+
+    pub fn resolve_for_fn_ptr(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
+        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
+        Instance::resolve(tcx, param_env, def_id, substs).map(|resolved| {
+            let has_track_caller = |def| tcx.codegen_fn_attrs(def).flags
+                .contains(CodegenFnAttrFlags::TRACK_CALLER);
+
+            match resolved.def {
+                InstanceDef::Item(def_id) if has_track_caller(def_id) => {
+                    debug!(" => fn pointer created for function with #[track_caller]");
+                    Instance {
+                        def: InstanceDef::ReifyShim(def_id),
+                        substs,
+                    }
+                },
+                _ => resolved,
+            }
+        })
     }
 
     pub fn resolve_for_vtable(

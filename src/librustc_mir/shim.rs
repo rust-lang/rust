@@ -66,9 +66,12 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 Some(arg_tys)
             )
         }
-        ty::InstanceDef::Virtual(def_id, _) => {
-            // We are generating a call back to our def-id, which the
-            // codegen backend knows to turn to an actual virtual call.
+        // We are generating a call back to our def-id, which the
+        // codegen backend knows to turn to an actual virtual call.
+        ty::InstanceDef::Virtual(def_id, _) |
+        // ...or we are generating a direct call to a function for which indirect calls must be
+        // codegen'd differently than direct ones (example: #[track_caller])
+        ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(
                 tcx,
                 def_id,

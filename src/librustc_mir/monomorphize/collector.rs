@@ -721,10 +721,12 @@ fn visit_fn_use<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     if let ty::FnDef(def_id, substs) = ty.kind {
-        let instance = ty::Instance::resolve(tcx,
-                                             ty::ParamEnv::reveal_all(),
-                                             def_id,
-                                             substs).unwrap();
+        let resolver = if is_direct_call {
+            ty::Instance::resolve
+        } else {
+            ty::Instance::resolve_for_fn_ptr
+        };
+        let instance = resolver(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
@@ -747,6 +749,7 @@ fn visit_instance_use<'tcx>(
             }
         }
         ty::InstanceDef::VtableShim(..) |
+        ty::InstanceDef::ReifyShim(..) |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::DropGlue(_, None) => {
             // don't need to emit shim if we are calling directly.
@@ -773,6 +776,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
         ty::InstanceDef::VtableShim(..) |
+        ty::InstanceDef::ReifyShim(..) |
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::FnPtrShim(..) |

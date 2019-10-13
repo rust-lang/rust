@@ -190,7 +190,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
-                                    callee::resolve_and_get_fn(bx.cx(), def_id, substs))
+                                    callee::resolve_and_get_fn_for_ptr(bx.cx(), def_id, substs))
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.layout.ty)
