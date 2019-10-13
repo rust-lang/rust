@@ -1,6 +1,5 @@
 use rustc_target::abi::call::FnType;
 
-use crate::callee;
 use crate::traits::*;
 
 use rustc::ty::{self, Ty, Instance};
@@ -92,7 +91,14 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 
     let methods = methods.cloned().map(|opt_mth| {
         opt_mth.map_or(nullptr, |(def_id, substs)| {
-            callee::resolve_and_get_fn_for_vtable(cx, def_id, substs)
+            cx.get_fn(
+                ty::Instance::resolve_for_vtable(
+                    cx.tcx(),
+                    ty::ParamEnv::reveal_all(),
+                    def_id,
+                    substs,
+                ).unwrap()
+            )
         })
     });
 

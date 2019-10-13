@@ -41,7 +41,6 @@ pub mod traits;
 pub mod mir;
 pub mod debuginfo;
 pub mod base;
-pub mod callee;
 pub mod glue;
 pub mod meth;
 pub mod mono_item;

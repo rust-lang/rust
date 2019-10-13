@@ -10,7 +10,6 @@ use syntax::source_map::{DUMMY_SP, Span};
 
 use crate::base;
 use crate::MemFlags;
-use crate::callee;
 use crate::common::{self, RealPredicate, IntPredicate};
 
 use crate::traits::*;
@@ -190,7 +189,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
-                                    callee::resolve_and_get_fn_for_ptr(bx.cx(), def_id, substs))
+                                    bx.get_fn(
+                                        ty::Instance::resolve_for_fn_ptr(
+                                            bx.tcx(),
+                                            ty::ParamEnv::reveal_all(),
+                                            def_id,
+                                            substs
+                                        ).unwrap()
+                                    )
+                                )
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.layout.ty)

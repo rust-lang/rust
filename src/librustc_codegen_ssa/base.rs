@@ -36,7 +36,6 @@ use crate::mir::place::PlaceRef;
 use crate::back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
     submit_post_lto_module_to_llvm};
 use crate::{MemFlags, CrateInfo};
-use crate::callee;
 use crate::common::{RealPredicate, TypeKind, IntPredicate};
 use crate::meth;
 use crate::mir;
@@ -455,10 +454,13 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
-            let start_fn = callee::resolve_and_get_fn(
-                cx,
-                start_def_id,
-                cx.tcx().intern_substs(&[main_ret_ty.into()]),
+            let start_fn = cx.get_fn(
+                ty::Instance::resolve(
+                    cx.tcx(),
+                    ty::ParamEnv::reveal_all(),
+                    start_def_id,
+                    cx.tcx().intern_substs(&[main_ret_ty.into()]),
+                ).unwrap()
             );
             (start_fn, vec![bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())),
                             arg_argc, arg_argv])
