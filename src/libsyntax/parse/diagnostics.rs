@@ -2,7 +2,7 @@ use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
-use crate::feature_gate::{feature_err, UnstableFeatures};
+use crate::feature_gate::feature_err;
 use crate::parse::{SeqSep, PResult, Parser, ParseSess};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
@@ -387,14 +387,17 @@ impl<'a> Parser<'a> {
             let next_pos = sm.lookup_char_pos(self.token.span.lo());
             let op_pos = sm.lookup_char_pos(sp.hi());
 
+            let allow_unstable = self.sess.unstable_features.is_nightly_build();
+
             if likely_path {
                 err.span_suggestion(
                     sp,
                     "maybe write a path separator here",
                     "::".to_string(),
-                    match self.sess.unstable_features {
-                        UnstableFeatures::Disallow => Applicability::MachineApplicable,
-                        _ => Applicability::MaybeIncorrect,
+                    if allow_unstable {
+                        Applicability::MaybeIncorrect
+                    } else {
+                        Applicability::MachineApplicable
                     },
                 );
             } else if op_pos.line != next_pos.line && maybe_expected_semicolon {
@@ -404,14 +407,13 @@ impl<'a> Parser<'a> {
                     ";".to_string(),
                     Applicability::MaybeIncorrect,
                 );
-            } else if let UnstableFeatures::Disallow = self.sess.unstable_features {
-                err.span_label(sp, "tried to parse a type due to this");
-            } else {
+            } else if allow_unstable {
                 err.span_label(sp, "tried to parse a type due to this type ascription");
-            }
-            if let UnstableFeatures::Disallow = self.sess.unstable_features {
-                // Give extra information about type ascription only if it's a nightly compiler.
             } else {
+                err.span_label(sp, "tried to parse a type due to this");
+            }
+            if allow_unstable {
+                // Give extra information about type ascription only if it's a nightly compiler.
                 err.note("`#![feature(type_ascription)]` lets you annotate an expression with a \
                           type: `<expr>: <type>`");
                 err.note("for more information, see \
