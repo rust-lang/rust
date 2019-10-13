@@ -21,7 +21,8 @@ declare_lint! {
 declare_lint! {
     pub CONST_ERR,
     Deny,
-    "constant evaluation detected erroneous expression"
+    "constant evaluation detected erroneous expression",
+    report_in_external_macro: true
 }
 
 declare_lint! {
