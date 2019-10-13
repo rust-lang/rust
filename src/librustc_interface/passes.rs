@@ -130,7 +130,7 @@ pub fn configure_and_expand(
     let crate_name = crate_name.to_string();
     let (result, resolver) = BoxedResolver::new(static move || {
         let sess = &*sess;
-        let mut crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
+        let crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
             sess,
@@ -138,7 +138,7 @@ pub fn configure_and_expand(
             krate,
             &crate_name,
             &resolver_arenas,
-            &mut crate_loader,
+            &crate_loader,
             plugin_info,
         );
         let mut resolver = match res {
@@ -319,7 +319,7 @@ fn configure_and_expand_inner<'a>(
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
-    crate_loader: &'a mut CrateLoader<'a>,
+    crate_loader: &'a CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {

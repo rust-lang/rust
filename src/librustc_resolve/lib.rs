@@ -900,7 +900,7 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: &'a mut CrateLoader<'a>,
+    crate_loader: &'a CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
@@ -1070,7 +1070,7 @@ impl<'a> Resolver<'a> {
                cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               crate_loader: &'a mut CrateLoader<'a>,
+               crate_loader: &'a CrateLoader<'a>,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
