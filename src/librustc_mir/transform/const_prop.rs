@@ -434,26 +434,32 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
 
-        // perform any special checking for specific Rvalue types
+        let overflow_check = self.tcx.sess.overflow_checks();
+
+        // Perform any special handling for specific Rvalue types.
+        // Generally, checks here fall into one of two categories:
+        //   1. Additional checking to provide useful lints to the user
+        //        - In this case, we will do some validation and then fall through to the
+        //          end of the function which evals the assignment.
+        //   2. Working around bugs in other parts of the compiler
+        //        - In this case, we'll return `None` from this function to stop evaluation.
         match rvalue {
-            Rvalue::UnaryOp(UnOp::Neg, arg) => {
+            // Additional checking: if overflow checks are disabled (which is usually the case in
+            // release mode), then we need to do additional checking here to give lints to the user
+            // if an overflow would occur.
+            Rvalue::UnaryOp(UnOp::Neg, arg) if !overflow_check => {
                 trace!("checking UnaryOp(op = Neg, arg = {:?})", arg);
-                let overflow_check = self.tcx.sess.overflow_checks();
 
                 self.use_ecx(source_info, |this| {
-                    // We check overflow in debug mode already
-                    // so should only check in release mode.
-                    if !overflow_check {
-                        let ty = arg.ty(&this.local_decls, this.tcx);
+                    let ty = arg.ty(&this.local_decls, this.tcx);
 
-                        if ty.is_integral() {
-                            let arg = this.ecx.eval_operand(arg, None)?;
-                            let prim = this.ecx.read_immediate(arg)?;
-                            // Need to do overflow check here: For actual CTFE, MIR
-                            // generation emits code that does this before calling the op.
-                            if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                throw_panic!(OverflowNeg)
-                            }
+                    if ty.is_integral() {
+                        let arg = this.ecx.eval_operand(arg, None)?;
+                        let prim = this.ecx.read_immediate(arg)?;
+                        // Need to do overflow check here: For actual CTFE, MIR
+                        // generation emits code that does this before calling the op.
+                        if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                            throw_panic!(OverflowNeg)
                         }
                     }
 
@@ -461,6 +467,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 })?;
             }
 
+            // Additional checking: check for overflows on integer binary operations and report
+            // them to the user as lints.
             Rvalue::BinaryOp(op, left, right) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
 
@@ -490,25 +498,34 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         return None;
                     }
                 }
-                self.use_ecx(source_info, |this| {
-                    let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
-                    let (_, overflow, _ty) = this.ecx.overflowing_binary_op(*op, l, r)?;
 
-                    // We check overflow in debug mode already
-                    // so should only check in release mode.
-                    if !this.tcx.sess.overflow_checks() && overflow {
-                        let err = err_panic!(Overflow(*op)).into();
-                        return Err(err);
-                    }
+                // If overflow checking is enabled (like in debug mode by default),
+                // then we'll already catch overflow when we evaluate the `Assert` statement
+                // in MIR. However, if overflow checking is disabled, then there won't be any
+                // `Assert` statement and so we have to do additional checking here.
+                if !overflow_check {
+                    self.use_ecx(source_info, |this| {
+                        let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                        let (_, overflow, _ty) = this.ecx.overflowing_binary_op(*op, l, r)?;
 
-                    Ok(())
-                })?;
+                        if overflow {
+                            let err = err_panic!(Overflow(*op)).into();
+                            return Err(err);
+                        }
+
+                        Ok(())
+                    })?;
+                }
             }
 
+            // Work around: avoid ICE in miri.
+            // FIXME(wesleywiser) we don't currently handle the case where we try to make a ref
+            // from a function argument that hasn't been assigned to in this function. The main
+            // issue is if an arg is a fat-pointer, miri `expects()` to be able to read the value
+            // of that pointer to get size info. However, since this is `ConstProp`, that argument
+            // doesn't actually have a backing value and so this causes an ICE.
             Rvalue::Ref(_, _, Place { base: PlaceBase::Local(local), projection: box [] }) => {
                 trace!("checking Ref({:?})", place);
-                // FIXME(wesleywiser) we don't currently handle the case where we try to make a ref
-                // from a function argument that hasn't been assigned to in this function.
                 let alive =
                     if let LocalValue::Live(_) = self.ecx.frame().locals[*local].value {
                         true
@@ -520,9 +537,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
             }
 
+            // Work around: avoid extra unnecessary locals.
+            // FIXME(wesleywiser): const eval will turn this into a `const Scalar(<ZST>)` that
+            // `SimplifyLocals` doesn't know it can remove.
             Rvalue::Aggregate(_, operands) if operands.len() == 0 => {
-                // FIXME(wesleywiser): const eval will turn this into a `const Scalar(<ZST>)` that
-                // `SimplifyLocals` doesn't know it can remove.
                 return None;
             }
 
