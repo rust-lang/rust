@@ -119,6 +119,15 @@ impl Target {
             hir::ForeignItemKind::Type => Target::ForeignTy,
         }
     }
+
+    fn from_impl_item(impl_item: &hir::ImplItem) -> Target {
+        match impl_item.kind {
+            hir::ImplItemKind::Const(..) => Target::Const,
+            hir::ImplItemKind::Method(..) => Target::Method { body: true },
+            hir::ImplItemKind::TyAlias(..) => Target::TyAlias,
+            hir::ImplItemKind::OpaqueTy(..) => Target::OpaqueTy,
+        }
+    }
 }
 
 struct CheckAttrVisitor<'tcx> {
@@ -360,7 +369,7 @@ impl CheckAttrVisitor<'tcx> {
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
            || (is_simd && is_c)
-           || (int_reprs == 1 && is_c && item.map(|item| is_c_like_enum(item)).unwrap_or(false)) {
+           || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item))) {
             let hint_spans: Vec<_> = hint_spans.collect();
             span_warn!(self.tcx.sess, hint_spans, E0566,
                        "conflicting representation hints");
@@ -449,6 +458,12 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(f_item.hir_id, &f_item.attrs, &f_item.span, target, None);
         intravisit::walk_foreign_item(self, f_item)
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        let target = Target::from_impl_item(impl_item);
+        self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
+        intravisit::walk_impl_item(self, impl_item)
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {

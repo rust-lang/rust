@@ -1,5 +1,5 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/inline-trait-and-foreign-items.rs:12:5
+  --> $DIR/inline-trait-and-foreign-items.rs:26:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     static X: u32;
    |     -------------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/inline-trait-and-foreign-items.rs:15:5
+  --> $DIR/inline-trait-and-foreign-items.rs:29:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     type T;
    |     ------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/inline-trait-and-foreign-items.rs:4:5
+  --> $DIR/inline-trait-and-foreign-items.rs:5:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^
@@ -23,13 +23,43 @@ LL |     const X: u32;
    |     ------------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/inline-trait-and-foreign-items.rs:7:5
+  --> $DIR/inline-trait-and-foreign-items.rs:8:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^
 LL |     type T;
    |     ------- not a function or closure
 
-error: aborting due to 4 previous errors
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:15:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     const X: u32 = 0;
+   |     ----------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:18:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type T = Self;
+   |     -------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:21:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type U = impl Trait;
+   |     -------------------- not a function or closure
+
+error: could not find defining uses
+  --> $DIR/inline-trait-and-foreign-items.rs:22:5
+   |
+LL |     type U = impl Trait;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0518`.
