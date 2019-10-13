@@ -30,7 +30,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     debug_context: FunctionDebugContext<Bx::DIScope>,
 
-    llfn: Bx::FuncId,
+    llfn: Bx::Function,
 
     cx: &'a Bx::CodegenCx,
 
@@ -183,7 +183,7 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
-    llfn: Bx::FuncId,
+    llfn: Bx::Function,
     mir: &'a Body<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
