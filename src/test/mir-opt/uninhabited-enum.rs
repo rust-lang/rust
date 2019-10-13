@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 pub enum Void {}
 
 #[no_mangle]

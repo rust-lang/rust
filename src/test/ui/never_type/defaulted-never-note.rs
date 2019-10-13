@@ -1,7 +1,3 @@
-// We need to opt into the `!` feature in order to trigger the
-// requirement that this is testing.
-#![feature(never_type)]
-
 #![allow(unused)]
 
 trait Deserialize: Sized {

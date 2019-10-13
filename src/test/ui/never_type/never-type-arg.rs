@@ -2,8 +2,6 @@
 
 // check-pass
 
-#![feature(never_type)]
-
 struct Wub;
 
 impl PartialEq<!> for Wub {

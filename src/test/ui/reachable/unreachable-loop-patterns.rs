@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 
 #![allow(unreachable_code)]

@@ -1,5 +1,4 @@
 // run-pass
-#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(slice_patterns)]
 #![allow(unreachable_patterns)]

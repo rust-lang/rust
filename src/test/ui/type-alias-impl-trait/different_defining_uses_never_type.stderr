@@ -4,7 +4,7 @@ error: concrete type differs from previous defining opaque type use
 LL | / fn bar() -> Foo {
 LL | |     panic!()
 LL | | }
-   | |_^ expected `&'static str`, got `()`
+   | |_^ expected `&'static str`, got `!`
    |
 note: previous use here
   --> $DIR/different_defining_uses_never_type.rs:8:1
@@ -20,7 +20,7 @@ error: concrete type differs from previous defining opaque type use
 LL | / fn boo() -> Foo {
 LL | |     loop {}
 LL | | }
-   | |_^ expected `&'static str`, got `()`
+   | |_^ expected `&'static str`, got `!`
    |
 note: previous use here
   --> $DIR/different_defining_uses_never_type.rs:8:1
