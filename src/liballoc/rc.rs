@@ -773,7 +773,7 @@ impl<T: Clone> Rc<T> {
     /// referred to as clone-on-write.
     ///
     /// If there are no other `Rc` pointers to this value, then [`Weak`]
-    /// pointers to this value will be dissassociated.
+    /// pointers to this value will be disassociated.
     ///
     /// See also [`get_mut`], which will fail rather than cloning.
     ///
@@ -799,7 +799,7 @@ impl<T: Clone> Rc<T> {
     /// assert_eq!(*other_data, 12);
     /// ```
     ///
-    /// [`Weak`] pointers will be dissassociated:
+    /// [`Weak`] pointers will be disassociated:
     ///
     /// ```
     /// use std::rc::Rc;

@@ -1513,21 +1513,24 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i >= min_atomic_width && i <= max_atomic_width {
-            let s = i.to_string();
-            ret.insert((
-                sym::target_has_atomic,
-                Some(Symbol::intern(&s)),
-            ));
-            if &s == wordsz {
+            let mut insert_atomic = |s| {
                 ret.insert((
-                    sym::target_has_atomic,
-                    Some(Symbol::intern("ptr")),
+                    sym::target_has_atomic_load_store,
+                    Some(Symbol::intern(s)),
                 ));
+                if atomic_cas {
+                    ret.insert((
+                        sym::target_has_atomic,
+                        Some(Symbol::intern(s))
+                    ));
+                }
+            };
+            let s = i.to_string();
+            insert_atomic(&s);
+            if &s == wordsz {
+              insert_atomic("ptr");
             }
         }
-    }
-    if atomic_cas {
-        ret.insert((sym::target_has_atomic, Some(Symbol::intern("cas"))));
     }
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
