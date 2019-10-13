@@ -10,8 +10,8 @@
 use core::array::LengthAtMost32;
 use core::cmp::{self, Ordering};
 use core::fmt;
-use core::iter::{repeat_with, FromIterator, FusedIterator};
-use core::mem;
+use core::iter::{once, repeat_with, FromIterator, FusedIterator};
+use core::mem::{self, replace};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds, Try};
 use core::ptr::{self, NonNull};
@@ -57,10 +57,87 @@ pub struct VecDeque<T> {
     buf: RawVec<T>,
 }
 
+/// PairSlices pairs up equal length slice parts of two deques
+///
+/// For example, given deques "A" and "B" with the following division into slices:
+///
+/// A: [0 1 2] [3 4 5]
+/// B: [a b] [c d e]
+///
+/// It produces the following sequence of matching slices:
+///
+/// ([0 1], [a b])
+/// ([2], [c])
+/// ([3 4], [d e])
+///
+/// and the uneven remainder of either A or B is skipped.
+struct PairSlices<'a, 'b, T> {
+    a0: &'a mut [T],
+    a1: &'a mut [T],
+    b0: &'b [T],
+    b1: &'b [T],
+}
+
+impl<'a, 'b, T> PairSlices<'a, 'b, T> {
+    fn from(to: &'a mut VecDeque<T>, from: &'b VecDeque<T>) -> Self {
+        let (a0, a1) = to.as_mut_slices();
+        let (b0, b1) = from.as_slices();
+        PairSlices { a0, a1, b0, b1 }
+    }
+
+    fn has_remainder(&self) -> bool {
+        !self.b0.is_empty()
+    }
+
+    fn remainder(self) -> impl Iterator<Item=&'b [T]> {
+        once(self.b0).chain(once(self.b1))
+    }
+}
+
+impl<'a, 'b, T> Iterator for PairSlices<'a, 'b, T>
+{
+    type Item = (&'a mut [T], &'b [T]);
+    fn next(&mut self) -> Option<Self::Item> {
+        // Get next part length
+        let part = cmp::min(self.a0.len(), self.b0.len());
+        if part == 0 {
+            return None;
+        }
+        let (p0, p1) = replace(&mut self.a0, &mut []).split_at_mut(part);
+        let (q0, q1) = self.b0.split_at(part);
+
+        // Move a1 into a0, if it's empty (and b1, b0 the same way).
+        self.a0 = p1;
+        self.b0 = q1;
+        if self.a0.is_empty() {
+            self.a0 = replace(&mut self.a1, &mut []);
+        }
+        if self.b0.is_empty() {
+            self.b0 = replace(&mut self.b1, &[]);
+        }
+        Some((p0, q0))
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for VecDeque<T> {
     fn clone(&self) -> VecDeque<T> {
         self.iter().cloned().collect()
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.truncate(other.len());
+
+        let mut iter = PairSlices::from(self, other);
+        while let Some((dst, src)) = iter.next() {
+            dst.clone_from_slice(&src);
+        }
+
+        if iter.has_remainder() {
+            for remainder in iter.remainder() {
+                self.extend(remainder.iter().cloned());
+            }
+        }
     }
 }
 
@@ -2209,6 +2286,16 @@ impl<'a, T> Iterator for Iter<'a, T> {
         final_res
     }
 
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n >= count(self.tail, self.head, self.ring.len()) {
+            self.tail = self.head;
+            None
+        } else {
+            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
+            self.next()
+        }
+    }
+
     #[inline]
     fn last(mut self) -> Option<&'a T> {
         self.next_back()
@@ -2325,6 +2412,16 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         accum = front.iter_mut().fold(accum, &mut f);
         back.iter_mut().fold(accum, &mut f)
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n >= count(self.tail, self.head, self.ring.len()) {
+            self.tail = self.head;
+            None
+        } else {
+            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
+            self.next()
+        }
     }
 
     #[inline]
