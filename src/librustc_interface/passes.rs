@@ -5,7 +5,7 @@ use crate::proc_macro_decls;
 use log::{info, warn, log_enabled};
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
-use rustc::hir::lowering::{lower_crate, Parser};
+use rustc::hir::lowering::lower_crate;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
@@ -38,12 +38,9 @@ use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
-use syntax::parse::token::Nonterminal;
-use syntax::parse::ParseSess;
-use syntax::tokenstream::TokenStream;
 use syntax::util::node_count::NodeCounter;
 use syntax::symbol::Symbol;
-use syntax_pos::{FileName, Span};
+use syntax_pos::FileName;
 use syntax_ext;
 
 use rustc_serialize::json;
@@ -535,16 +532,6 @@ fn configure_and_expand_inner<'a>(
     Ok((krate, resolver))
 }
 
-fn parser() -> &'static dyn Parser {
-    struct Parse;
-    impl Parser for Parse {
-        fn nt_to_tokenstream(&self, nt: &Nonterminal, sess: &ParseSess, span: Span) -> TokenStream {
-            syntax::parse::nt_to_tokenstream(nt, sess, span)
-        }
-    }
-    &Parse
-}
-
 pub fn lower_to_hir(
     sess: &Session,
     cstore: &CStore,
@@ -554,7 +541,8 @@ pub fn lower_to_hir(
 ) -> Result<hir::map::Forest> {
     // Lower AST to HIR.
     let hir_forest = time(sess, "lowering AST -> HIR", || {
-        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver, parser());
+        let nt_to_tokenstream = syntax::parse::nt_to_tokenstream;
+        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver, nt_to_tokenstream);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
