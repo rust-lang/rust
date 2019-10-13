@@ -11,17 +11,17 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
-use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
+use crate::interpret::eval_nullary_intrinsic;
 
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
-    RawConst, ConstValue,
+    RawConst, ConstValue, Machine,
     InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
@@ -41,24 +41,13 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(crate) fn mk_eval_cx<'mir, 'tcx>(
+fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default())
-}
-
-pub(crate) fn eval_promoted<'mir, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cid: GlobalId<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let span = tcx.def_span(cid.instance.def_id());
-    let mut ecx = mk_eval_cx(tcx, span, param_env);
-    eval_body_using_ecx(&mut ecx, cid, body, param_env)
 }
 
 fn op_to_const<'tcx>(
@@ -74,8 +63,8 @@ fn op_to_const<'tcx>(
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
         layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => match op.layout.ty.sty {
-            ty::Ref(_, inner, _) => match inner.sty {
+        layout::Abi::ScalarPair(..) => match op.layout.ty.kind {
+            ty::Ref(_, inner, _) => match inner.kind {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,
                 _ => false,
@@ -146,9 +135,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
+    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
     let tcx = ecx.tcx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
@@ -174,7 +162,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         ecx,
         cid.instance.def_id(),
         ret,
-        param_env,
     )?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
@@ -182,7 +169,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 }
 
 #[derive(Clone, Debug)]
-enum ConstEvalError {
+pub enum ConstEvalError {
     NeedsRfc(String),
 }
 
@@ -361,7 +348,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         }
         // This is a const fn. Call it.
-        Ok(Some(match ecx.load_mir(instance.def) {
+        Ok(Some(match ecx.load_mir(instance.def, None) {
             Ok(body) => body,
             Err(err) => {
                 if let err_unsup!(NoMirFor(ref path)) = err.kind {
@@ -395,7 +382,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             return Ok(());
         }
         // An intrinsic that we do not support
-        let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
+        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
         Err(
             ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
         )
@@ -415,7 +402,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
         )
@@ -531,13 +518,22 @@ pub fn const_variant_index<'tcx>(
     ecx.read_discriminant(op).unwrap().1
 }
 
-pub fn error_to_const_error<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+/// Turn an interpreter error into something to report to the user.
+/// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
+/// Should be called only if the error is actually going to to be reported!
+pub fn error_to_const_error<'mir, 'tcx, M: Machine<'mir, 'tcx>>(
+    ecx: &InterpCx<'mir, 'tcx, M>,
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace(None);
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
+}
+
+pub fn note_on_undefined_behavior_error() -> &'static str {
+    "The rules on what exactly is undefined behavior aren't clear, \
+     so this check might be overzealous. Please open an issue on the rustc \
+     repository if you believe it should not be considered undefined behavior."
 }
 
 fn validate_and_turn_into_const<'tcx>(
@@ -579,10 +575,7 @@ fn validate_and_turn_into_const<'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
-                );
+                diag.note(note_on_undefined_behavior_error());
                 diag.emit();
                 ErrorHandled::Reported
             }
@@ -595,7 +588,7 @@ pub fn const_eval_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    // see comment in const_eval_provider for what we're doing here
+    // see comment in const_eval_raw_provider for what we're doing here
     if key.param_env.reveal == Reveal::All {
         let mut key = key.clone();
         key.param_env.reveal = Reveal::UserFacing;
@@ -610,6 +603,23 @@ pub fn const_eval_provider<'tcx>(
             other => return other,
         }
     }
+
+    // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
+    // Catch such calls and evaluate them instead of trying to load a constant's MIR.
+    if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
+        let ty = key.value.instance.ty(tcx);
+        let substs = match ty.kind {
+            ty::FnDef(_, substs) => substs,
+            _ => bug!("intrinsic with type {:?}", ty),
+        };
+        return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs)
+            .map_err(|error| {
+                let span = tcx.def_span(def_id);
+                let error = ConstEvalErr { error: error.kind, stacktrace: vec![], span };
+                error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+            })
+    }
+
     tcx.const_eval_raw(key).and_then(|val| {
         validate_and_turn_into_const(tcx, val, key)
     })
@@ -662,15 +672,9 @@ pub fn const_eval_raw_provider<'tcx>(
         Default::default()
     );
 
-    let res = ecx.load_mir(cid.instance.def);
-    res.map(|body| {
-        if let Some(index) = cid.promoted {
-            &body.promoted[index]
-        } else {
-            body
-        }
-    }).and_then(
-        |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
+    let res = ecx.load_mir(cid.instance.def, cid.promoted);
+    res.and_then(
+        |body| eval_body_using_ecx(&mut ecx, cid, body)
     ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.ptr.assert_ptr().alloc_id,

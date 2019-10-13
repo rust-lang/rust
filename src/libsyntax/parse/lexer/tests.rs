@@ -1,44 +1,29 @@
 use super::*;
 
-use crate::ast::CrateConfig;
 use crate::symbol::Symbol;
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::feature_gate::UnstableFeatures;
 use crate::parse::token;
-use crate::diagnostics::plugin::ErrorMap;
 use crate::with_default_globals;
+
+use errors::{Handler, emitter::EmitterWriter};
 use std::io;
 use std::path::PathBuf;
-use syntax_pos::{BytePos, Span, NO_EXPANSION, edition::Edition};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc_data_structures::sync::{Lock, Once};
+use syntax_pos::{BytePos, Span};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
-    let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                        Some(sm.clone()),
-                                                        false,
-                                                        false,
-                                                        false);
-    ParseSess {
-        span_diagnostic: errors::Handler::with_emitter(true, None, Box::new(emitter)),
-        unstable_features: UnstableFeatures::from_environment(),
-        config: CrateConfig::default(),
-        included_mod_stack: Lock::new(Vec::new()),
-        source_map: sm,
-        missing_fragment_specifiers: Lock::new(FxHashSet::default()),
-        raw_identifier_spans: Lock::new(Vec::new()),
-        registered_diagnostics: Lock::new(ErrorMap::new()),
-        buffered_lints: Lock::new(vec![]),
-        edition: Edition::from_session(),
-        ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-        param_attr_spans: Lock::new(Vec::new()),
-        let_chains_spans: Lock::new(Vec::new()),
-        async_closure_spans: Lock::new(Vec::new()),
-        injected_crate_name: Once::new(),
-    }
+    let emitter = EmitterWriter::new(
+        Box::new(io::sink()),
+        Some(sm.clone()),
+        false,
+        false,
+        false,
+        None,
+        false,
+    );
+    ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }
 
-// open a string reader for the given string
+// Creates a string reader for the given string.
 fn setup<'a>(sm: &SourceMap,
                 sess: &'a ParseSess,
                 teststr: String)
@@ -52,26 +37,27 @@ fn t1() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        let mut string_reader = setup(&sm,
-                                    &sh,
-                                    "/* my source file */ fn main() { println!(\"zebra\"); }\n"
-                                        .to_string());
+        let mut string_reader = setup(
+            &sm,
+            &sh,
+            "/* my source file */ fn main() { println!(\"zebra\"); }\n".to_string(),
+        );
         assert_eq!(string_reader.next_token(), token::Comment);
         assert_eq!(string_reader.next_token(), token::Whitespace);
         let tok1 = string_reader.next_token();
         let tok2 = Token::new(
             mk_ident("fn"),
-            Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
+            Span::with_root_ctxt(BytePos(21), BytePos(23)),
         );
         assert_eq!(tok1.kind, tok2.kind);
         assert_eq!(tok1.span, tok2.span);
         assert_eq!(string_reader.next_token(), token::Whitespace);
-        // read another token:
+        // Read another token.
         let tok3 = string_reader.next_token();
         assert_eq!(string_reader.pos.clone(), BytePos(28));
         let tok4 = Token::new(
             mk_ident("main"),
-            Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
+            Span::with_root_ctxt(BytePos(24), BytePos(28)),
         );
         assert_eq!(tok3.kind, tok4.kind);
         assert_eq!(tok3.span, tok4.span);
@@ -81,15 +67,15 @@ fn t1() {
     })
 }
 
-// check that the given reader produces the desired stream
-// of tokens (stop checking after exhausting the expected vec)
+// Checks that the given reader produces the desired stream
+// of tokens (stop checking after exhausting `expected`).
 fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
     for expected_tok in &expected {
         assert_eq!(&string_reader.next_token(), expected_tok);
     }
 }
 
-// make the identifier by looking up the string in the interner
+// Makes the identifier by looking up the string in the interner.
 fn mk_ident(id: &str) -> TokenKind {
     token::Ident(Symbol::intern(id), false)
 }
@@ -99,42 +85,50 @@ fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> TokenKind
 }
 
 #[test]
-fn doublecolonparsing() {
+fn doublecolon_parsing() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a b".to_string()),
-                        vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a b".to_string()),
+            vec![mk_ident("a"), token::Whitespace, mk_ident("b")],
+        );
     })
 }
 
 #[test]
-fn dcparsing_2() {
+fn doublecolon_parsing_2() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a::b".to_string()),
-                        vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a::b".to_string()),
+            vec![mk_ident("a"), token::Colon, token::Colon, mk_ident("b")],
+        );
     })
 }
 
 #[test]
-fn dcparsing_3() {
+fn doublecolon_parsing_3() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a ::b".to_string()),
-                        vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a ::b".to_string()),
+            vec![mk_ident("a"), token::Whitespace, token::Colon, token::Colon, mk_ident("b")],
+        );
     })
 }
 
 #[test]
-fn dcparsing_4() {
+fn doublecolon_parsing_4() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a:: b".to_string()),
-                        vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a:: b".to_string()),
+            vec![mk_ident("a"), token::Colon, token::Colon, token::Whitespace, mk_ident("b")],
+        );
     })
 }
 
@@ -143,8 +137,10 @@ fn character_a() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(),
-                    mk_lit(token::Char, "a", None));
+        assert_eq!(
+            setup(&sm, &sh, "'a'".to_string()).next_token(),
+            mk_lit(token::Char, "a", None),
+        );
     })
 }
 
@@ -153,8 +149,10 @@ fn character_space() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(),
-                    mk_lit(token::Char, " ", None));
+        assert_eq!(
+            setup(&sm, &sh, "' '".to_string()).next_token(),
+            mk_lit(token::Char, " ", None),
+        );
     })
 }
 
@@ -163,8 +161,10 @@ fn character_escaped() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token(),
-                    mk_lit(token::Char, "\\n", None));
+        assert_eq!(
+            setup(&sm, &sh, "'\\n'".to_string()).next_token(),
+            mk_lit(token::Char, "\\n", None),
+        );
     })
 }
 
@@ -173,8 +173,10 @@ fn lifetime_name() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
-                    token::Lifetime(Symbol::intern("'abc")));
+        assert_eq!(
+            setup(&sm, &sh, "'abc".to_string()).next_token(),
+            token::Lifetime(Symbol::intern("'abc")),
+        );
     })
 }
 
@@ -183,8 +185,10 @@ fn raw_string() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
-                    mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
+        assert_eq!(
+            setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
+            mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None),
+        );
     })
 }
 
@@ -195,11 +199,15 @@ fn literal_suffixes() {
         let sh = mk_sess(sm.clone());
         macro_rules! test {
             ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
-                            mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
-                // with a whitespace separator:
-                assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
-                            mk_lit(token::$tok_type, $tok_contents, None));
+                assert_eq!(
+                    setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
+                    mk_lit(token::$tok_type, $tok_contents, Some("suffix")),
+                );
+                // with a whitespace separator
+                assert_eq!(
+                    setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
+                    mk_lit(token::$tok_type, $tok_contents, None),
+                );
             }}
         }
 
@@ -213,12 +221,18 @@ fn literal_suffixes() {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
-        assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token(),
-                    mk_lit(token::Integer, "2", Some("us")));
-        assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
-                    mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-        assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
-                    mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
+        assert_eq!(
+            setup(&sm, &sh, "2us".to_string()).next_token(),
+            mk_lit(token::Integer, "2", Some("us")),
+        );
+        assert_eq!(
+            setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
+            mk_lit(token::StrRaw(3), "raw", Some("suffix")),
+        );
+        assert_eq!(
+            setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
+            mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")),
+        );
     })
 }
 

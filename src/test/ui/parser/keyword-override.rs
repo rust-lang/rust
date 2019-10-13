@@ -1,3 +1,3 @@
 fn main() {
-    let override = (); //~ ERROR expected pattern, found reserved keyword `override`
+    let override = (); //~ ERROR expected identifier, found reserved keyword `override`
 }

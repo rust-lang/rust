@@ -15,6 +15,9 @@ LL |         A::D(_) => (),
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pattern-error-continue.rs:17:9
    |
+LL |     B(isize, isize),
+   |     --------------- tuple variant defined here
+...
 LL |         A::B(_, _, _) => (),
    |         ^^^^^^^^^^^^^ expected 2 fields, found 3
 

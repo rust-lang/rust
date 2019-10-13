@@ -7,16 +7,16 @@ use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::attr;
-use syntax::tokenstream;
+use syntax::tokenstream::TokenStream;
 use syntax::parse::token;
 use syntax_pos::Span;
 
 pub fn expand_cfg(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
-    let sp = sp.apply_mark(cx.current_expansion.id);
+    let sp = cx.with_def_site_ctxt(sp);
 
     match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
@@ -25,7 +25,7 @@ pub fn expand_cfg(
         }
         Err(mut err) => {
             err.emit();
-            DummyResult::expr(sp)
+            DummyResult::any(sp)
         }
     }
 }
@@ -33,7 +33,7 @@ pub fn expand_cfg(
 fn parse_cfg<'a>(
     cx: &mut ExtCtxt<'a>,
     sp: Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
 ) -> Result<ast::MetaItem, DiagnosticBuilder<'a>> {
     let mut p = cx.new_parser_from_tts(tts);
 

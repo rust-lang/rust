@@ -2,8 +2,6 @@
 
 // This test ensures we don't make the suggestion in bodies that aren't `async`.
 
-#![feature(async_await)]
-
 fn take_u32(x: u32) {}
 
 async fn make_u32() -> u32 {

@@ -1,4 +1,3 @@
-#![feature(async_await)]
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]
 

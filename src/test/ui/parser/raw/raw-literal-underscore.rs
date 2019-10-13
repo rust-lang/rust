@@ -1,4 +1,4 @@
 fn main() {
-    let r#_;
+    let r#_: ();
     //~^ ERROR `_` cannot be a raw identifier
 }

@@ -17,12 +17,11 @@ pub struct AddRetag;
 fn is_stable(
     place: PlaceRef<'_, '_>,
 ) -> bool {
-    if let Some(proj) = &place.projection {
-        match proj.elem {
+    place.projection.iter().all(|elem| {
+        match elem {
             // Which place this evaluates to can change with any memory write,
             // so cannot assume this to be stable.
-            ProjectionElem::Deref =>
-                false,
+            ProjectionElem::Deref => false,
             // Array indices are intersting, but MIR building generates a *fresh*
             // temporary for every array access, so the index cannot be changed as
             // a side-effect.
@@ -31,21 +30,14 @@ fn is_stable(
             ProjectionElem::Field { .. } |
             ProjectionElem::ConstantIndex { .. } |
             ProjectionElem::Subslice { .. } |
-            ProjectionElem::Downcast { .. } =>
-                is_stable(PlaceRef {
-                    base: place.base,
-                    projection: &proj.base,
-                }),
+            ProjectionElem::Downcast { .. } => true,
         }
-    } else {
-        true
-    }
+    })
 }
 
-/// Determine whether this type may have a reference in it, recursing below compound types but
-/// not below references.
-fn may_have_reference<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-    match ty.sty {
+/// Determine whether this type may be a reference (or box), and thus needs retagging.
+fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
+    match ty.kind {
         // Primitive types that are not references
         ty::Bool | ty::Char |
         ty::Float(_) | ty::Int(_) | ty::Uint(_) |
@@ -55,22 +47,19 @@ fn may_have_reference<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
         // References
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
-        // Compound types
-        ty::Array(ty, ..) | ty::Slice(ty) =>
-            may_have_reference(ty, tcx),
-        ty::Tuple(tys) =>
-            tys.iter().any(|ty| may_have_reference(ty.expect_ty(), tcx)),
-        ty::Adt(adt, substs) =>
-            adt.variants.iter().any(|v| v.fields.iter().any(|f|
-                may_have_reference(f.ty(tcx, substs), tcx)
-            )),
+        // Compound types are not references
+        ty::Array(..) |
+        ty::Slice(..) |
+        ty::Tuple(..) |
+        ty::Adt(..) =>
+            false,
         // Conservative fallback
         _ => true,
     }
 }
 
-impl MirPass for AddRetag {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for AddRetag {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
@@ -80,7 +69,7 @@ impl MirPass for AddRetag {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
             is_stable(place.as_ref())
-                && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
+                && may_be_reference(place.ty(&*local_decls, tcx).ty)
         };
 
         // PART 1
@@ -100,7 +89,7 @@ impl MirPass for AddRetag {
             basic_blocks[START_BLOCK].statements.splice(0..0,
                 places.into_iter().map(|place| Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::FnEntry, place),
+                    kind: StatementKind::Retag(RetagKind::FnEntry, box(place)),
                 })
             );
         }
@@ -136,7 +125,7 @@ impl MirPass for AddRetag {
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(0, Statement {
                 source_info,
-                kind: StatementKind::Retag(RetagKind::Default, dest_place),
+                kind: StatementKind::Retag(RetagKind::Default, box(dest_place)),
             });
         }
 
@@ -148,11 +137,11 @@ impl MirPass for AddRetag {
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
                     // If we are casting *from* a reference, we may have to retag-as-raw.
-                    StatementKind::Assign(ref place, box Rvalue::Cast(
+                    StatementKind::Assign(box(ref place, Rvalue::Cast(
                         CastKind::Misc,
                         ref src,
                         dest_ty,
-                    )) => {
+                    ))) => {
                         let src_ty = src.ty(&*local_decls, tcx);
                         if src_ty.is_region_ptr() {
                             // The only `Misc` casts on references are those creating raw pointers.
@@ -166,7 +155,7 @@ impl MirPass for AddRetag {
                     // Assignments of reference or ptr type are the ones where we may have
                     // to update tags.  This includes `x = &[mut] ...` and hence
                     // we also retag after taking a reference!
-                    StatementKind::Assign(ref place, box ref rvalue) if needs_retag(place) => {
+                    StatementKind::Assign(box(ref place, ref rvalue)) if needs_retag(place) => {
                         let kind = match rvalue {
                             Rvalue::Ref(_, borrow_kind, _)
                                 if borrow_kind.allows_two_phase_borrow()
@@ -184,7 +173,7 @@ impl MirPass for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(i+1, Statement {
                     source_info,
-                    kind: StatementKind::Retag(retag_kind, place),
+                    kind: StatementKind::Retag(retag_kind, box(place)),
                 });
             }
         }

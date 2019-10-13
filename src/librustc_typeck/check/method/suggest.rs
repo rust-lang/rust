@@ -5,7 +5,7 @@ use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
 use crate::util::nodemap::FxHashSet;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
@@ -26,7 +26,7 @@ use super::probe::Mode;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
-        match ty.sty {
+        match ty.kind {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
             ty::Closure(..) |
@@ -69,12 +69,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'b>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr]>,
-    ) {
+    ) -> Option<DiagnosticBuilder<'_>> {
         let orig_span = span;
         let mut span = span;
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
-            return;
+            return None;
         }
 
         let print_disambiguation_help = |
@@ -232,7 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let mut err = if !actual.references_error() {
                     // Suggest clamping down the type if the method that is being attempted to
-                    // be used exists at all, and the type is an ambiuous numeric type
+                    // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
                     let mut candidates = all_traits(self.tcx)
                         .into_iter()
@@ -258,7 +258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             "f32"
                         };
-                        match expr.node {
+                        match expr.kind {
                             ExprKind::Lit(ref lit) => {
                                 // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
@@ -314,7 +314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
                         err.emit();
-                        return;
+                        return None;
                     } else {
                         span = item_name.span;
                         let mut err = struct_span_err!(
@@ -339,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
                         }
-                        if let ty::RawPtr(_) = &actual.sty {
+                        if let ty::RawPtr(_) = &actual.kind {
                             err.note("try using `<*const T>::as_ref()` to get a reference to the \
                                       type behind the pointer: https://doc.rust-lang.org/std/\
                                       primitive.pointer.html#method.as_ref");
@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let SelfSource::MethodCall(expr) = source {
                     let field_receiver = self
                         .autoderef(span, rcvr_ty)
-                        .find_map(|(ty, _)| match ty.sty {
+                        .find_map(|(ty, _)| match ty.kind {
                             ty::Adt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
                                 self.tcx.find_field_index(item_name, variant).map(|index| {
@@ -425,6 +425,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "private field"
                         };
                         err.span_label(item_name.span, format!("{}, not a method", field_kind));
+                    } else if lev_candidate.is_none() && static_sources.is_empty() {
+                        err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
+                        self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
                     }
                 } else {
                     err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
@@ -443,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, ref path)) =
-                            expr.node
+                            expr.kind
                         {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.ident);
@@ -458,16 +461,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(span, "this is an associated function, not a method");
                 }
                 if static_sources.len() == 1 {
-                    if let SelfSource::MethodCall(expr) = source {
-                        err.span_suggestion(expr.span.to(span),
-                                            "use associated function syntax instead",
-                                            format!("{}::{}",
-                                                    self.ty_to_string(actual),
-                                                    item_name),
-                                            Applicability::MachineApplicable);
+                    let ty_str = if let Some(CandidateSource::ImplSource(
+                        impl_did,
+                    )) = static_sources.get(0) {
+                        // When the "method" is resolved through dereferencing, we really want the
+                        // original type that has the associated function for accurate suggestions.
+                        // (#61411)
+                        let ty = self.impl_self_ty(span, *impl_did).ty;
+                        match (&ty.peel_refs().kind, &actual.peel_refs().kind) {
+                            (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
+                                // Use `actual` as it will have more `substs` filled in.
+                                self.ty_to_value_string(actual.peel_refs())
+                            }
+                            _ => self.ty_to_value_string(ty.peel_refs()),
+                        }
                     } else {
-                        err.help(&format!("try with `{}::{}`",
-                                          self.ty_to_string(actual), item_name));
+                        self.ty_to_value_string(actual.peel_refs())
+                    };
+                    if let SelfSource::MethodCall(expr) = source {
+                        err.span_suggestion(
+                            expr.span.to(span),
+                            "use associated function syntax instead",
+                            format!("{}::{}", ty_str, item_name),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.help(&format!(
+                            "try with `{}::{}`",
+                            ty_str,
+                            item_name,
+                        ));
                     }
 
                     report_candidates(span, &mut err, static_sources);
@@ -515,21 +538,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                if let Some(lev_candidate) = lev_candidate {
+                let mut fallback_span = true;
+                let msg = "remove this method call";
+                if item_name.as_str() == "as_str" && actual.peel_refs().is_str() {
+                    if let SelfSource::MethodCall(expr) = source {
+                        let call_expr = self.tcx.hir().expect_expr(
+                            self.tcx.hir().get_parent_node(expr.hir_id),
+                        );
+                        if let Some(span) = call_expr.span.trim_start(expr.span) {
+                            err.span_suggestion(
+                                span,
+                                msg,
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                            fallback_span = false;
+                        }
+                    }
+                    if fallback_span {
+                        err.span_label(span, msg);
+                    }
+                } else if let Some(lev_candidate) = lev_candidate {
                     let def_kind = lev_candidate.def_kind();
                     err.span_suggestion(
                         span,
                         &format!(
                             "there is {} {} with a similar name",
                             def_kind.article(),
-                            def_kind.descr(),
+                            def_kind.descr(lev_candidate.def_id),
                         ),
                         lev_candidate.ident.to_string(),
                         Applicability::MaybeIncorrect,
                     );
                 }
 
-                err.emit();
+                return Some(err);
             }
 
             MethodError::Ambiguity(sources) => {
@@ -543,28 +586,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.emit();
             }
 
-            MethodError::PrivateMatch(kind, _, out_of_scope_traits) => {
+            MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0624,
-                                               "{} `{}` is private", kind.descr(), item_name);
+                                               "{} `{}` is private", kind.descr(def_id), item_name);
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }
 
-            MethodError::IllegalSizedBound(candidates) => {
+            MethodError::IllegalSizedBound(candidates, needs_mut) => {
                 let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
                 let mut err = self.sess().struct_span_err(span, &msg);
                 if !candidates.is_empty() {
-                    let help = format!("{an}other candidate{s} {were} found in the following \
-                                        trait{s}, perhaps add a `use` for {one_of_them}:",
-                                    an = if candidates.len() == 1 {"an" } else { "" },
-                                    s = if candidates.len() == 1 { "" } else { "s" },
-                                    were = if candidates.len() == 1 { "was" } else { "were" },
-                                    one_of_them = if candidates.len() == 1 {
-                                        "it"
-                                    } else {
-                                        "one_of_them"
-                                    });
+                    let help = format!(
+                        "{an}other candidate{s} {were} found in the following trait{s}, perhaps \
+                         add a `use` for {one_of_them}:",
+                        an = if candidates.len() == 1 {"an" } else { "" },
+                        s = pluralise!(candidates.len()),
+                        were = if candidates.len() == 1 { "was" } else { "were" },
+                        one_of_them = if candidates.len() == 1 {
+                            "it"
+                        } else {
+                            "one_of_them"
+                        },
+                    );
                     self.suggest_use_candidates(&mut err, help, candidates);
+                }
+                if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind {
+                    if needs_mut {
+                        let trait_type = self.tcx.mk_ref(region, ty::TypeAndMut {
+                            ty: t_type,
+                            mutbl: mutability.invert(),
+                        });
+                        err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
+                    }
                 }
                 err.emit();
             }
@@ -572,6 +626,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             MethodError::BadReturnType => {
                 bug!("no return type expectations but got BadReturnType")
             }
+        }
+        None
+    }
+
+    /// Print out the type for use in value namespace.
+    fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
+        match ty.kind {
+            ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did, substs)),
+            _ => self.ty_to_string(ty),
         }
     }
 
@@ -627,26 +690,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_valid_traits(&self,
-                            err: &mut DiagnosticBuilder<'_>,
-                            valid_out_of_scope_traits: Vec<DefId>) -> bool {
+    fn suggest_valid_traits(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        valid_out_of_scope_traits: Vec<DefId>,
+    ) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
             candidates.dedup();
             err.help("items from traits can only be used if the trait is in scope");
-            let msg = format!("the following {traits_are} implemented but not in scope, \
-                               perhaps add a `use` for {one_of_them}:",
-                            traits_are = if candidates.len() == 1 {
-                                "trait is"
-                            } else {
-                                "traits are"
-                            },
-                            one_of_them = if candidates.len() == 1 {
-                                "it"
-                            } else {
-                                "one of them"
-                            });
+            let msg = format!(
+                "the following {traits_are} implemented but not in scope; \
+                 perhaps add a `use` for {one_of_them}:",
+                traits_are = if candidates.len() == 1 {
+                    "trait is"
+                } else {
+                    "traits are"
+                },
+                one_of_them = if candidates.len() == 1 {
+                    "it"
+                } else {
+                    "one of them"
+                },
+            );
 
             self.suggest_use_candidates(err, msg, candidates);
             true
@@ -697,9 +764,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            let param_type = match rcvr_ty.sty {
+            let param_type = match rcvr_ty.kind {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match ty.sty {
+                ty::Ref(_, ty, _) => match ty.kind {
                     ty::Param(param) => Some(param),
                     _ => None,
                 }
@@ -742,18 +809,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.
-                        let mut has_bounds = false;
+                        let mut has_bounds = None;
+                        let mut impl_trait = false;
                         if let Node::GenericParam(ref param) = hir.get(id) {
-                            has_bounds = !param.bounds.is_empty();
+                            let kind = &param.kind;
+                            if let hir::GenericParamKind::Type { synthetic: Some(_), .. } = kind {
+                                // We've found `fn foo(x: impl Trait)` instead of
+                                // `fn foo<T>(x: T)`. We want to suggest the correct
+                                // `fn foo(x: impl Trait + TraitBound)` instead of
+                                // `fn foo<T: TraitBound>(x: T)`. (See #63706.)
+                                impl_trait = true;
+                                has_bounds = param.bounds.get(1);
+                            } else {
+                                has_bounds = param.bounds.get(0);
+                            }
                         }
                         let sp = hir.span(id);
-                        // `sp` only covers `T`, change it so that it covers
-                        // `T:` when appropriate
-                        let sp = if has_bounds {
-                            sp.to(self.tcx
-                                .sess
-                                .source_map()
-                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        // `sp` only covers `T`, change it so that it covers `T:` when appropriate.
+                        let sp = if let Some(first_bound) = has_bounds {
+                            sp.until(first_bound.span())
                         } else {
                             sp
                         };
@@ -765,10 +839,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sp,
                             &msg[..],
                             candidates.iter().map(|t| format!(
-                                "{}: {}{}",
+                                "{}{} {}{}",
                                 param,
+                                if impl_trait { " +" } else { ":" },
                                 self.tcx.def_path_str(t.def_id),
-                                if has_bounds { " +"} else { "" },
+                                if has_bounds.is_some() { " + " } else { "" },
                             )),
                             Applicability::MaybeIncorrect,
                         );
@@ -797,7 +872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             rcvr_ty: Ty<'tcx>,
                             source: SelfSource<'_>) -> bool {
         fn is_local(ty: Ty<'_>) -> bool {
-            match ty.sty {
+            match ty.kind {
                 ty::Adt(def, _) => def.did.is_local(),
                 ty::Foreign(did) => did.is_local(),
 
@@ -877,7 +952,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
-            match i.node {
+            match i.kind {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {
                     let def_id = self.map.local_def_id(i.hir_id);
@@ -981,11 +1056,11 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         // Find a `use` statement.
         for item_id in &module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
-            match item.node {
+            match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
                     // import or other generated ones.
-                    if item.span.ctxt().outer_expn_info().is_none() {
+                    if !item.span.from_expansion() {
                         self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
@@ -995,7 +1070,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
                 hir::ItemKind::ExternCrate(_) => {}
                 // ...but do place them before the first other item.
                 _ => if self.span.map_or(true, |span| item.span < span ) {
-                    if item.span.ctxt().outer_expn_info().is_none() {
+                    if !item.span.from_expansion() {
                         // Don't insert between attributes and an item.
                         if item.attrs.is_empty() {
                             self.span = Some(item.span.shrink_to_lo());

@@ -7,12 +7,30 @@ LL |     yield true;
    = note: for more information, see https://github.com/rust-lang/rust/issues/43122
    = help: add `#![feature(generators)]` to the crate attributes to enable
 
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-generators.rs:8:5
+   |
+LL |     yield;
+   |     ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/43122
+   = help: add `#![feature(generators)]` to the crate attributes to enable
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-generators.rs:9:5
+   |
+LL |     yield 0;
+   |     ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/43122
+   = help: add `#![feature(generators)]` to the crate attributes to enable
+
 error[E0627]: yield statement outside of generator literal
   --> $DIR/feature-gate-generators.rs:2:5
    |
 LL |     yield true;
    |     ^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

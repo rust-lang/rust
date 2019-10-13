@@ -49,7 +49,7 @@ crate fn lit_to_const<'tcx>(
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
         }
         LitKind::FloatUnsuffixed(n) => {
-            let fty = match ty.sty {
+            let fty = match ty.kind {
                 ty::Float(fty) => fty,
                 _ => bug!()
             };

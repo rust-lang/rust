@@ -9,7 +9,7 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::str;
 use crate::sys::memchr;
-use crate::sys::{cvt, unsupported, Void};
+use crate::sys::{unsupported, Void};
 use crate::vec;
 
 #[cfg(not(target_feature = "atomics"))]
@@ -28,16 +28,11 @@ pub fn errno() -> i32 {
 }
 
 pub fn error_string(errno: i32) -> String {
-    extern {
-        fn strerror_r(errnum: libc::c_int, buf: *mut libc::c_char,
-                      buflen: libc::size_t) -> libc::c_int;
-    }
-
     let mut buf = [0 as libc::c_char; 1024];
 
     let p = buf.as_mut_ptr();
     unsafe {
-        if strerror_r(errno as libc::c_int, p, buf.len()) < 0 {
+        if libc::strerror_r(errno as libc::c_int, p, buf.len()) < 0 {
             panic!("strerror_r failure");
         }
         str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
@@ -89,7 +84,6 @@ impl StdError for JoinPathsError {
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
-
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
@@ -181,4 +175,27 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     panic!("unsupported");
+}
+
+#[doc(hidden)]
+pub trait IsMinusOne {
+    fn is_minus_one(&self) -> bool;
+}
+
+macro_rules! impl_is_minus_one {
+    ($($t:ident)*) => ($(impl IsMinusOne for $t {
+        fn is_minus_one(&self) -> bool {
+            *self == -1
+        }
+    })*)
+}
+
+impl_is_minus_one! { i8 i16 i32 i64 isize }
+
+fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+    if t.is_minus_one() {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(t)
+    }
 }

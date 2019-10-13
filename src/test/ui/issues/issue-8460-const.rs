@@ -1,3 +1,5 @@
+// compile-flags: -O
+
 #![deny(const_err)]
 
 use std::{isize, i8, i16, i32, i64};

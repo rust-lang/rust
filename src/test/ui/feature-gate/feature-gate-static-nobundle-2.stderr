@@ -1,4 +1,4 @@
-error[E0658]: kind="static-nobundle" is feature gated
+error[E0658]: kind="static-nobundle" is unstable
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/37403
    = help: add `#![feature(static_nobundle)]` to the crate attributes to enable

@@ -1,6 +1,6 @@
 // edition:2018
-
-#![feature(async_await)]
+// ignore-x86
+// ^ due to stderr output differences
 
 async fn print_dur() {}
 

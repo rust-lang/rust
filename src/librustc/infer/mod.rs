@@ -20,10 +20,10 @@ use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use crate::ty::fold::{TypeFolder, TypeFoldable};
 use crate::ty::relate::RelateResult;
-use crate::ty::subst::{Kind, InternalSubsts, SubstsRef};
+use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, InferConst};
 use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
-use crate::util::nodemap::FxHashMap;
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::Lrc;
@@ -93,6 +93,8 @@ impl SuppressRegionErrors {
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
     pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
+        // FIXME(Centril): Once we actually remove `::Migrate` also make
+        // this always `true` and then proceed to eliminate the dead code.
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -152,6 +154,8 @@ pub struct InferCtxt<'a, 'tcx> {
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+
+    pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
     /// errors that are due to this original failure. Normally, we
@@ -254,7 +258,7 @@ pub struct TypeTrace<'tcx> {
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
     /// Arose from a subtyping relation
-    Subtype(TypeTrace<'tcx>),
+    Subtype(Box<TypeTrace<'tcx>>),
 
     /// Stack-allocated closures cannot outlive innermost loop
     /// or function so as to ensure we only require finite stack
@@ -340,6 +344,10 @@ pub enum SubregionOrigin<'tcx> {
     },
 }
 
+// `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(SubregionOrigin<'_>, 32);
+
 /// Places that type/region parameters can appear.
 #[derive(Clone, Copy, Debug)]
 pub enum ParameterOrigin {
@@ -410,7 +418,19 @@ pub enum NLLRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
-    Existential,
+    Existential {
+        /// If this is true, then this variable was created to represent a lifetime
+        /// bound in a `for` binder. For example, it might have been created to
+        /// represent the lifetime `'a` in a type like `for<'a> fn(&'a u32)`.
+        /// Such variables are created when we are trying to figure out if there
+        /// is any valid instantiation of `'a` that could fit into some scenario.
+        ///
+        /// This is used to inform error reporting: in the case that we are trying to
+        /// determine whether there is any valid instantiation of a `'a` variable that meets
+        /// some constraint C, we want to blame the "source" of that `for` type,
+        /// rather than blaming the source of the constraint C.
+        from_forall: bool
+    },
 }
 
 impl NLLRegionVariableOrigin {
@@ -418,7 +438,7 @@ impl NLLRegionVariableOrigin {
         match self {
             NLLRegionVariableOrigin::FreeRegion => true,
             NLLRegionVariableOrigin::Placeholder(..) => true,
-            NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::Existential{ .. } => false,
         }
     }
 
@@ -532,6 +552,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 selection_cache: Default::default(),
                 evaluation_cache: Default::default(),
                 reported_trait_errors: Default::default(),
+                reported_closure_mismatch: Default::default(),
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),
@@ -610,7 +631,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
-        match ty.sty {
+        match ty.kind {
             ty::Infer(ty::TyVar(vid)) => self.type_variables.borrow().var_diverges(vid),
             _ => false,
         }
@@ -623,7 +644,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
         use crate::ty::error::UnconstrainedNumeric::Neither;
         use crate::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
-        match ty.sty {
+        match ty.kind {
             ty::Infer(ty::IntVar(vid)) => {
                 if self.int_unification_table
                     .borrow_mut()
@@ -793,16 +814,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Executes `f` and commit the bindings.
     pub fn commit_unconditionally<R, F>(&self, f: F) -> R
     where
-        F: FnOnce() -> R,
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
-        debug!("commit()");
+        debug!("commit_unconditionally()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         self.commit_from(snapshot);
         r
     }
 
-    /// Executes `f` and commit the bindings if closure `f` returns `Ok(_)`.
+    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
@@ -822,19 +843,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
-    /// Execute `f` in a snapshot, and commit the bindings it creates.
-    pub fn in_snapshot<T, F>(&self, f: F) -> T
-    where
-        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T,
-    {
-        debug!("in_snapshot()");
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.commit_from(snapshot);
-        r
-    }
-
-    /// Executes `f` then unroll any bindings it creates.
+    /// Execute `f` then unroll any bindings it creates.
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
@@ -1106,7 +1115,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.next_region_var_in_universe(RegionVariableOrigin::NLL(origin), universe)
     }
 
-    pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> Kind<'tcx> {
+    pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
@@ -1298,6 +1307,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Resolve any type variables found in `value` -- but only one
+    /// level.  So, if the variable `?X` is bound to some type
+    /// `Foo<?Y>`, then this would return `Foo<?Y>` (but `?Y` may
+    /// itself be bound to a type).
+    ///
+    /// Useful when you only need to inspect the outermost level of
+    /// the type and don't care about nested types (or perhaps you
+    /// will be resolving them as well, e.g. in a loop).
     pub fn shallow_resolve<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -1321,13 +1338,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
-            return value.clone(); // avoid duplicated subst-folding
+            return value.clone(); // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
     }
 
-    /// Returns first unresolved variable contained in `T`. In the
+    /// Returns the first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
@@ -1456,13 +1473,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
             if !(param_env, ty).has_local_value() {
-                return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
+                return ty.is_copy_modulo_regions(self.tcx, param_env, span);
             }
         }
 
-        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+        let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
 
-        // this can get called from typeck (by euv), and moves_by_default
+        // This can get called from typeck (by euv), and `moves_by_default`
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
@@ -1475,23 +1492,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn closure_kind(
         &self,
         closure_def_id: DefId,
-        closure_substs: ty::ClosureSubsts<'tcx>,
+        closure_substs: SubstsRef<'tcx>,
     ) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
+        let closure_kind_ty = closure_substs.as_closure().kind_ty(closure_def_id, self.tcx);
         let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtain the signature of a closure. For closures, unlike
+    /// Obtains the signature of a closure. For closures, unlike
     /// `tcx.fn_sig(def_id)`, this method will work during the
     /// type-checking of the enclosing function and return the closure
     /// signature in its partially inferred state.
     pub fn closure_sig(
         &self,
         def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyFnSig<'tcx> {
-        let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+        let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
         let closure_sig_ty = self.shallow_resolve(closure_sig_ty);
         closure_sig_ty.fn_sig(self.tcx)
     }
@@ -1558,12 +1575,11 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
         ShallowResolver { infcx }
     }
 
-    // We have this force-inlined variant of `shallow_resolve` for the one
-    // callsite that is extremely hot. All other callsites use the normal
-    // variant.
-    #[inline(always)]
-    pub fn inlined_shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match typ.sty {
+    /// If `typ` is a type variable of some kind, resolve it one level
+    /// (but do not resolve types found in the result). If `typ` is
+    /// not a type variable, just return it unmodified.
+    pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
+        match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
                 // it can be resolved to an int/float variable, which
@@ -1597,6 +1613,43 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
             _ => typ,
         }
     }
+
+    // `resolver.shallow_resolve_changed(ty)` is equivalent to
+    // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
+    // inlined, despite being large, because it has only two call sites that
+    // are extremely hot.
+    #[inline(always)]
+    pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
+        match typ.kind {
+            ty::Infer(ty::TyVar(v)) => {
+                use self::type_variable::TypeVariableValue;
+
+                // See the comment in `shallow_resolve()`.
+                match self.infcx.type_variables.borrow_mut().inlined_probe(v) {
+                    TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
+                    TypeVariableValue::Unknown { .. } => false,
+                }
+            }
+
+            ty::Infer(ty::IntVar(v)) => {
+                match self.infcx.int_unification_table.borrow_mut().inlined_probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            ty::Infer(ty::FloatVar(v)) => {
+                // Not `inlined_probe_value(v)` because this call site is colder.
+                match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
+                    Some(v) => v.to_type(self.infcx.tcx) != typ,
+                    None => false,
+                }
+            }
+
+            _ => false,
+        }
+    }
+
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
@@ -1605,7 +1658,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.inlined_shallow_resolve(ty)
+        self.shallow_resolve(ty)
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {

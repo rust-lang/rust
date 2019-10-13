@@ -2,7 +2,7 @@
 
 fn foo() {
     let (x, y) = (0, 0);
-    x <- y; //~ ERROR expected one of
+    x <- y; //~ ERROR unexpected token: `<-`
 }
 
 fn main() {

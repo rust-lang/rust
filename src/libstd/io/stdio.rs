@@ -201,9 +201,9 @@ pub struct StdinLock<'a> {
 ///
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
-/// locking, see the [`lock() method`][lock].
+/// locking, see the [`Stdin::lock`] method.
 ///
-/// [lock]: struct.Stdin.html#method.lock
+/// [`Stdin::lock`]: struct.Stdin.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -425,9 +425,9 @@ pub struct StdoutLock<'a> {
 ///
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
-/// locking, see the [Stdout::lock] method.
+/// locking, see the [`Stdout::lock`] method.
 ///
-/// [Stdout::lock]: struct.Stdout.html#method.lock
+/// [`Stdout::lock`]: struct.Stdout.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support

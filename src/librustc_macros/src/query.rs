@@ -442,8 +442,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                                          .map(|c| c.is_green())
                                          .unwrap_or(false));
 
-                        let key = RecoverKey::recover(tcx.global_tcx(), self).unwrap();
-                        if queries::#name::cache_on_disk(tcx.global_tcx(), key, None) {
+                        let key = RecoverKey::recover(tcx, self).unwrap();
+                        if queries::#name::cache_on_disk(tcx, key, None) {
                             let _ = tcx.#name(key);
                         }
                     }
@@ -495,7 +495,11 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 dep_node_force_stream.extend(quote! {
                     DepKind::#name => {
                         if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
-                            force_ex!($tcx, #name, key);
+                            $tcx.force_query::<crate::ty::query::queries::#name<'_>>(
+                                key,
+                                DUMMY_SP,
+                                *$dep_node
+                            );
                         } else {
                             return false;
                         }

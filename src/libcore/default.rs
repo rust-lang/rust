@@ -115,6 +115,12 @@ pub trait Default: Sized {
     fn default() -> Self;
 }
 
+/// Derive macro generating an impl of the trait `Default`.
+#[rustc_builtin_macro]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow_internal_unstable(core_intrinsics)]
+pub macro Default($item:item) { /* compiler built-in */ }
+
 macro_rules! default_impl {
     ($t:ty, $v:expr, $doc:tt) => {
         #[stable(feature = "rust1", since = "1.0.0")]

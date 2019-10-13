@@ -1,1 +1,1 @@
-// Test for main function not found.
+//~ ERROR `main` function not found

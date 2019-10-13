@@ -312,7 +312,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        match t.sty {
+        match t.kind {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 self.types.insert(
                     bound_ty.var.as_u32(),
@@ -472,6 +472,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::TupleElem => Some(super::TupleElem),
             super::ProjectionWf(proj) => tcx.lift(&proj).map(super::ProjectionWf),
             super::ItemObligation(def_id) => Some(super::ItemObligation(def_id)),
+            super::BindingObligation(def_id, span) => Some(super::BindingObligation(def_id, span)),
             super::ReferenceOutlivesReferent(ty) => {
                 tcx.lift(&ty).map(super::ReferenceOutlivesReferent)
             }
@@ -484,7 +485,8 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::TupleInitializerSized => Some(super::TupleInitializerSized),
             super::StructInitializerSized => Some(super::StructInitializerSized),
             super::VariableType(id) => Some(super::VariableType(id)),
-            super::ReturnType(id) => Some(super::ReturnType(id)),
+            super::ReturnValue(id) => Some(super::ReturnValue(id)),
+            super::ReturnType => Some(super::ReturnType),
             super::SizedArgumentType => Some(super::SizedArgumentType),
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),
@@ -508,31 +510,33 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 trait_item_def_id,
             }),
             super::ExprAssignable => Some(super::ExprAssignable),
-            super::MatchExpressionArm {
+            super::MatchExpressionArm(box super::MatchExpressionArmCause {
                 arm_span,
                 source,
                 ref prior_arms,
                 last_ty,
                 discrim_hir_id,
-            } => {
+            }) => {
                 tcx.lift(&last_ty).map(|last_ty| {
-                    super::MatchExpressionArm {
+                    super::MatchExpressionArm(box super::MatchExpressionArmCause {
                         arm_span,
                         source,
                         prior_arms: prior_arms.clone(),
                         last_ty,
                         discrim_hir_id,
-                    }
+                    })
                 })
             }
             super::MatchExpressionArmPattern { span, ty } => {
                 tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
             }
-            super::IfExpression { then, outer, semicolon } => Some(super::IfExpression {
-                then,
-                outer,
-                semicolon,
-            }),
+            super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }) => {
+                Some(super::IfExpression(box super::IfExpressionCause {
+                    then,
+                    outer,
+                    semicolon,
+                }))
+            }
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
             super::MainFunctionType => Some(super::MainFunctionType),
             super::StartFunctionType => Some(super::StartFunctionType),
@@ -980,8 +984,7 @@ EnumTypeFoldableImpl! {
         (chalk_engine::DelayedLiteral::Negative)(a),
         (chalk_engine::DelayedLiteral::Positive)(a, b),
     } where
-        C: chalk_engine::context::Context + Clone,
-        C::CanonicalConstrainedSubst: TypeFoldable<'tcx>,
+        C: chalk_engine::context::Context<CanonicalConstrainedSubst: TypeFoldable<'tcx>> + Clone,
 }
 
 EnumTypeFoldableImpl! {
@@ -989,8 +992,7 @@ EnumTypeFoldableImpl! {
         (chalk_engine::Literal::Negative)(a),
         (chalk_engine::Literal::Positive)(a),
     } where
-        C: chalk_engine::context::Context + Clone,
-        C::GoalInEnvironment: Clone + TypeFoldable<'tcx>,
+        C: chalk_engine::context::Context<GoalInEnvironment: Clone + TypeFoldable<'tcx>> + Clone,
 }
 
 CloneTypeFoldableAndLiftImpls! {

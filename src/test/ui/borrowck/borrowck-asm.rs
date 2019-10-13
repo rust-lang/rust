@@ -57,7 +57,7 @@ mod test_cases {
     fn indirect_is_not_init() {
         let x: i32;
         unsafe {
-            asm!("nop" : "=*r"(x)); //~ ERROR use of possibly uninitialized variable
+            asm!("nop" : "=*r"(x)); //~ ERROR use of possibly-uninitialized variable
         }
     }
 

@@ -1,4 +1,4 @@
-error: cannot find macro `inline!` in this scope
+error: cannot find macro `inline` in this scope
   --> $DIR/macro-path-prelude-fail-3.rs:2:5
    |
 LL |     inline!();

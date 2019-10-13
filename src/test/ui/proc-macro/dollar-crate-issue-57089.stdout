@@ -2,40 +2,40 @@ PRINT-BANG INPUT (DISPLAY): struct M ($crate :: S) ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
     Ident {
         ident: "M",
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
                 ident: "$crate",
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
             Ident {
                 ident: "S",
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
         ],
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct A(crate::S);
@@ -43,39 +43,39 @@ PRINT-ATTR RE-COLLECTED (DISPLAY): struct A ($crate :: S) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
     Ident {
         ident: "A",
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Ident {
                 ident: "$crate",
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
             Punct {
                 ch: ':',
                 spacing: Joint,
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
             Ident {
                 ident: "S",
-                span: #2 bytes(LO..HI),
+                span: #3 bytes(LO..HI),
             },
         ],
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #2 bytes(LO..HI),
+        span: #3 bytes(LO..HI),
     },
 ]

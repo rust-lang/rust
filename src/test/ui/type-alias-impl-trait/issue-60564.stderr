@@ -1,7 +1,3 @@
-error[E0601]: `main` function not found in crate `issue_60564`
-   |
-   = note: consider adding a `main` function to `$DIR/issue-60564.rs`
-
 error: type parameter `E` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-60564.rs:20:49
    |
@@ -20,6 +16,5 @@ error: could not find defining uses
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0601`.

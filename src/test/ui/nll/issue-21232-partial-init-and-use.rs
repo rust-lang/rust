@@ -12,8 +12,6 @@
 // tests that are meant to continue failing to compile once
 // rust-lang/rust#54987 is implemented.
 
-#![feature(nll)]
-
 struct S<Y> {
     x: u32,
 
@@ -97,14 +95,14 @@ macro_rules! use_part {
 fn test_0000_local_fully_init_and_use_struct() {
     let s: S<B>;
     s.x = 10; s.y = Box::new(20);
-    //~^ ERROR assign to part of possibly uninitialized variable: `s` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `s` [E0381]
     use_fully!(struct s);
 }
 
 fn test_0001_local_fully_init_and_use_tuple() {
     let t: T;
     t.0 = 10; t.1 = Box::new(20);
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
     use_fully!(tuple t);
 }
 
@@ -125,14 +123,14 @@ fn test_0011_local_fully_reinit_and_use_tuple() {
 fn test_0100_local_partial_init_and_use_struct() {
     let s: S<B>;
     s.x = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `s` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `s` [E0381]
     use_part!(struct s);
 }
 
 fn test_0101_local_partial_init_and_use_tuple() {
     let t: T;
     t.0 = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
     use_part!(tuple t);
 }
 
@@ -153,14 +151,14 @@ fn test_0111_local_partial_reinit_and_use_tuple() {
 fn test_0200_local_void_init_and_use_struct() {
     let s: S<Void>;
     s.x = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `s` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `s` [E0381]
     use_part!(struct s);
 }
 
 fn test_0201_local_void_init_and_use_tuple() {
     let t: Tvoid;
     t.0 = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
     use_part!(tuple t);
 }
 
@@ -176,14 +174,14 @@ fn test_0201_local_void_init_and_use_tuple() {
 fn test_1000_field_fully_init_and_use_struct() {
     let q: Q<S<B>>;
     q.r.f.x = 10; q.r.f.y = Box::new(20);
-    //~^ ERROR assign to part of possibly uninitialized variable: `q` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `q` [E0381]
     use_fully!(struct q.r.f);
 }
 
 fn test_1001_field_fully_init_and_use_tuple() {
     let q: Q<T>;
     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
-    //~^ ERROR assign to part of possibly uninitialized variable: `q` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `q` [E0381]
     use_fully!(tuple q.r.f);
 }
 
@@ -204,14 +202,14 @@ fn test_1011_field_fully_reinit_and_use_tuple() {
 fn test_1100_field_partial_init_and_use_struct() {
     let q: Q<S<B>>;
     q.r.f.x = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `q` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `q` [E0381]
     use_part!(struct q.r.f);
 }
 
 fn test_1101_field_partial_init_and_use_tuple() {
     let q: Q<T>;
     q.r.f.0 = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `q` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `q` [E0381]
     use_part!(tuple q.r.f);
 }
 
@@ -232,14 +230,14 @@ fn test_1111_field_partial_reinit_and_use_tuple() {
 fn test_1200_field_void_init_and_use_struct() {
     let mut q: Q<S<Void>>;
     q.r.f.x = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `q` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `q` [E0381]
     use_part!(struct q.r.f);
 }
 
 fn test_1201_field_void_init_and_use_tuple() {
     let mut q: Q<Tvoid>;
     q.r.f.0 = 10;
-    //~^ ERROR assign to part of possibly uninitialized variable: `q` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `q` [E0381]
     use_part!(tuple q.r.f);
 }
 

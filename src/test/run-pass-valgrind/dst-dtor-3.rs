@@ -1,5 +1,3 @@
-// no-prefer-dynamic
-
 #![feature(unsized_tuple_coercion)]
 
 static mut DROP_RAN: bool = false;

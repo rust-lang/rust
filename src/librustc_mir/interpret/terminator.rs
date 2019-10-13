@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic, Scalar,
+    InterpResult, PointerArithmetic,
     InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
@@ -50,11 +50,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op, to also support pointer values
-                    let const_int = Scalar::from_uint(const_int, discr.layout.size);
-                    let (res, _) = self.binary_op(mir::BinOp::Eq,
+                    let res = self.overflowing_binary_op(mir::BinOp::Eq,
                         discr,
-                        ImmTy::from_scalar(const_int, discr.layout),
-                    )?;
+                        ImmTy::from_uint(const_int, discr.layout),
+                    )?.0;
                     if res.to_bool()? {
                         target_block = targets[index];
                         break;
@@ -76,7 +75,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
 
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match func.layout.ty.sty {
+                let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(func)?.not_undef()?;
@@ -250,9 +249,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                if caller_abi != Abi::RustIntrinsic {
-                    throw_unsup!(FunctionAbiMismatch(caller_abi, Abi::RustIntrinsic))
-                }
                 // The intrinsic itself cannot diverge, so if we got here without a return
                 // place... (can happen e.g., for transmute returning `!`)
                 let dest = match dest {
@@ -267,6 +263,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(())
             }
             ty::InstanceDef::VtableShim(..) |
+            ty::InstanceDef::ReifyShim(..) |
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::DropGlue(..) |
@@ -276,7 +273,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 {
                     let callee_abi = {
                         let instance_ty = instance.ty(*self.tcx);
-                        match instance_ty.sty {
+                        match instance_ty.kind {
                             ty::FnDef(..) =>
                                 instance_ty.fn_sig(*self.tcx).abi(),
                             ty::Closure(..) => Abi::RustCall,
@@ -392,7 +389,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Don't forget to check the return type!
                     if let Some(caller_ret) = dest {
                         let callee_ret = self.eval_place(
-                            &mir::Place::RETURN_PLACE
+                            &mir::Place::return_place()
                         )?;
                         if !Self::check_argument_compat(
                             rust_abi,
@@ -405,9 +402,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                     } else {
                         let local = mir::RETURN_PLACE;
-                        let ty = self.frame().body.local_decls[local].ty;
-                        if !self.tcx.is_ty_uninhabited_from_any_module(ty) {
-                            throw_unsup!(FunctionRetMismatch(self.tcx.types.never, ty))
+                        let callee_layout = self.layout_of_local(self.frame(), local, None)?;
+                        if !callee_layout.abi.is_uninhabited() {
+                            throw_unsup!(FunctionRetMismatch(
+                                self.tcx.types.never, callee_layout.ty
+                            ))
                         }
                     }
                     Ok(())
@@ -481,7 +480,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // implementation fail -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 
-        let (instance, place) = match place.layout.ty.sty {
+        let (instance, place) = match place.layout.ty.kind {
             ty::Dynamic(..) => {
                 // Dropping a trait object.
                 self.unpack_dyn_trait(place)?

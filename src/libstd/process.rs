@@ -422,7 +422,7 @@ impl fmt::Debug for ChildStderr {
 /// // Execute `ls` in the current directory of the program.
 /// list_dir.status().expect("process failed to execute");
 ///
-/// println!("");
+/// println!();
 ///
 /// // Change `ls` to execute in the root directory.
 /// list_dir.current_dir("/");
@@ -935,12 +935,12 @@ impl Stdio {
     ///     .expect("Failed to spawn child process");
     ///
     /// {
-    ///     let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    ///     let stdin = child.stdin.as_mut().expect("Failed to open stdin");
     ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
     /// }
     ///
     /// let output = child.wait_with_output().expect("Failed to read stdout");
-    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
@@ -1595,7 +1595,7 @@ pub fn id() -> u32 {
 
 /// A trait for implementing arbitrary return types in the `main` function.
 ///
-/// The c-main function only supports to return integers as return type.
+/// The C-main function only supports to return integers as return type.
 /// So, every type implementing the `Termination` trait has to be converted
 /// to an integer.
 ///

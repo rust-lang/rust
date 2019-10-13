@@ -1,6 +1,6 @@
 // check that #[allow_fail] is feature-gated
 
-#[allow_fail] //~ ERROR allow_fail attribute is currently unstable
+#[allow_fail] //~ ERROR the `#[allow_fail]` attribute is an experimental feature
 fn ok_to_fail() {
     assert!(false);
 }

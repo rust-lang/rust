@@ -1,0 +1,6 @@
+warning: skipping const checks
+  --> $DIR/const-prop-read-static-in-const.rs:6:18
+   |
+LL | const TEST: u8 = MY_STATIC;
+   |                  ^^^^^^^^^
+

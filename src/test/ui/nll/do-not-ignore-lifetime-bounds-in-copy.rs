@@ -1,7 +1,5 @@
 // Test that the 'static bound from the Copy impl is respected. Regression test for #29149.
 
-#![feature(nll)]
-
 #[derive(Clone)] struct Foo<'a>(&'a u32);
 impl Copy for Foo<'static> {}
 

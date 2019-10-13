@@ -8,12 +8,11 @@ use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceBase, Projection,
-    ProjectionElem, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
-    UserTypeProjection,
+    BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceBase, ProjectionElem, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty};
+use rustc::ty::{self, RegionVid, Ty};
 use rustc::ty::subst::SubstsRef;
 
 pub(super) fn generate_constraints<'cx, 'tcx>(
@@ -90,20 +89,6 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         }
 
         self.super_ty(ty);
-    }
-
-    /// We sometimes have `generator_substs` within an rvalue, or within a
-    /// call. Make them live at the location where they appear.
-    fn visit_generator_substs(&mut self, substs: &GeneratorSubsts<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location);
-        self.super_generator_substs(substs);
-    }
-
-    /// We sometimes have `closure_substs` within an rvalue, or within a
-    /// call. Make them live at the location where they appear.
-    fn visit_closure_substs(&mut self, substs: &ClosureSubsts<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location);
-        self.super_closure_substs(substs);
     }
 
     fn visit_statement(
@@ -229,14 +214,11 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
             match place {
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: None,
+                    projection: box [],
                 } |
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: Some(box Projection {
-                        base: None,
-                        elem: ProjectionElem::Deref,
-                    }),
+                    projection: box [ProjectionElem::Deref],
                 } => {
                     debug!(
                         "Recording `killed` facts for borrows of local={:?} at location={:?}",
@@ -261,7 +243,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
 
                 Place {
                     base: PlaceBase::Local(local),
-                    projection: Some(_),
+                    projection: box [.., _],
                 } => {
                     // Kill conflicting borrows of the innermost local.
                     debug!(

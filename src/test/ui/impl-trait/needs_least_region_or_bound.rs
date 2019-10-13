@@ -1,8 +1,6 @@
-// run-pass
+// check-pass
 
 #![feature(member_constraints)]
-
-use std::fmt::Debug;
 
 trait MultiRegionTrait<'a, 'b> {}
 impl<'a, 'b> MultiRegionTrait<'a, 'b> for (&'a u32, &'b u32) {}

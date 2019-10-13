@@ -847,7 +847,9 @@ pub trait ToHandleMut {
 }
 
 impl<O, H> OwningHandle<O, H>
-    where O: StableAddress, O::Target: ToHandle<Handle = H>, H: Deref,
+where
+    O: StableAddress<Target: ToHandle<Handle = H>>,
+    H: Deref,
 {
     /// Creates a new `OwningHandle` for a type that implements `ToHandle`. For types
     /// that don't implement `ToHandle`, callers may invoke `new_with_fn`, which accepts
@@ -858,7 +860,9 @@ impl<O, H> OwningHandle<O, H>
 }
 
 impl<O, H> OwningHandle<O, H>
-    where O: StableAddress, O::Target: ToHandleMut<HandleMut = H>, H: DerefMut,
+where
+    O: StableAddress<Target: ToHandleMut<HandleMut = H>>,
+    H: DerefMut,
 {
     /// Creates a new mutable `OwningHandle` for a type that implements `ToHandleMut`.
     pub fn new_mut(o: O) -> Self {

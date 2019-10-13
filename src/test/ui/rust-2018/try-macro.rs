@@ -6,6 +6,7 @@
 #![warn(rust_2018_compatibility)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![allow(deprecated)]
 
 fn foo() -> Result<usize, ()> {
     let x: Result<usize, ()> = Ok(22);

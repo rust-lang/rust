@@ -1,3 +1,3 @@
 fn main() {
-    let extern = 0; //~ ERROR expected pattern, found keyword `extern`
+    let extern = 0; //~ ERROR expected identifier, found keyword `extern`
 }

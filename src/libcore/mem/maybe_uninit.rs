@@ -5,14 +5,15 @@ use crate::mem::ManuallyDrop;
 ///
 /// # Initialization invariant
 ///
-/// The compiler, in general, assumes that variables are properly initialized
-/// at their respective type. For example, a variable of reference type must
-/// be aligned and non-NULL. This is an invariant that must *always* be upheld,
-/// even in unsafe code. As a consequence, zero-initializing a variable of reference
-/// type causes instantaneous [undefined behavior][ub], no matter whether that reference
-/// ever gets used to access memory:
+/// The compiler, in general, assumes that a variable is properly initialized
+/// according to the requirements of the variable's type. For example, a variable of
+/// reference type must be aligned and non-NULL. This is an invariant that must
+/// *always* be upheld, even in unsafe code. As a consequence, zero-initializing a
+/// variable of reference type causes instantaneous [undefined behavior][ub],
+/// no matter whether that reference ever gets used to access memory:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
@@ -27,6 +28,7 @@ use crate::mem::ManuallyDrop;
 /// always be `true` or `false`. Hence, creating an uninitialized `bool` is undefined behavior:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -40,6 +42,7 @@ use crate::mem::ManuallyDrop;
 /// which otherwise can hold any *fixed* bit pattern:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -210,7 +213,7 @@ use crate::mem::ManuallyDrop;
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for generators.
-#[cfg_attr(not(bootstrap), lang = "maybe_uninit")]
+#[lang = "maybe_uninit"]
 #[derive(Copy)]
 #[repr(transparent)]
 pub union MaybeUninit<T> {
@@ -309,7 +312,7 @@ impl<T> MaybeUninit<T> {
     /// without dropping it, so be careful not to use this twice unless you want to
     /// skip running the destructor. For your convenience, this also returns a mutable
     /// reference to the (now safely initialized) contents of `self`.
-    #[unstable(feature = "maybe_uninit_extra", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub fn write(&mut self, val: T) -> &mut T {
         unsafe {
@@ -499,7 +502,7 @@ impl<T> MaybeUninit<T> {
     /// // We now created two copies of the same vector, leading to a double-free when
     /// // they both get dropped!
     /// ```
-    #[unstable(feature = "maybe_uninit_extra", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub unsafe fn read(&self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
@@ -513,7 +516,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
-    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
         &*self.value
@@ -529,21 +532,21 @@ impl<T> MaybeUninit<T> {
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
-    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
         &mut *self.value
     }
 
     /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn first_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this as *const [MaybeUninit<T>] as *const T
     }
 
     /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn first_ptr_mut(this: &mut [MaybeUninit<T>]) -> *mut T {
         this as *mut [MaybeUninit<T>] as *mut T

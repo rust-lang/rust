@@ -1,8 +1,12 @@
-error: expected pattern, found keyword `if`
+error: expected identifier, found keyword `if`
   --> $DIR/keyword-if-as-identifier.rs:4:9
    |
 LL |     let if = "foo";
-   |         ^^ expected pattern
+   |         ^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#if = "foo";
+   |         ^^^^
 
 error: aborting due to previous error
 

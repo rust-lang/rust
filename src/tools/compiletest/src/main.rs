@@ -1,6 +1,7 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
 #![feature(vec_remove_item)]
+#![deny(warnings)]
 
 extern crate test;
 
@@ -253,7 +254,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", opts.usage(&message));
-        println!("");
+        println!();
         panic!()
     }
 
@@ -265,7 +266,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
         println!("{}", opts.usage(&message));
-        println!("");
+        println!();
         panic!()
     }
 
@@ -335,7 +336,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
-        target: target,
+        target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
         gdb,
@@ -345,7 +346,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         lldb_native_rust,
         llvm_version: matches.opt_str("llvm-version"),
         system_llvm: matches.opt_present("system-llvm"),
-        android_cross_path: android_cross_path,
+        android_cross_path,
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
         adb_device_status: opt_str2(matches.opt_str("target")).contains("android")

@@ -1638,10 +1638,12 @@ mod pattern {
         }
     }
 
-    fn cmp_search_to_vec<'a, P: Pattern<'a>>(rev: bool, pat: P, haystack: &'a str,
-                                             right: Vec<SearchStep>)
-    where P::Searcher: ReverseSearcher<'a>
-    {
+    fn cmp_search_to_vec<'a>(
+        rev: bool,
+        pat: impl Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        haystack: &'a str,
+        right: Vec<SearchStep>
+    ) {
         let mut searcher = pat.into_searcher(haystack);
         let mut v = vec![];
         loop {

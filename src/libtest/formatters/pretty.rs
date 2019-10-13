@@ -3,6 +3,7 @@ use super::*;
 pub(crate) struct PrettyFormatter<T> {
     out: OutputLocation<T>,
     use_color: bool,
+    time_options: Option<TestTimeOptions>,
 
     /// Number of columns to fill when aligning names
     max_name_len: usize,
@@ -16,12 +17,14 @@ impl<T: Write> PrettyFormatter<T> {
         use_color: bool,
         max_name_len: usize,
         is_multithreaded: bool,
+        time_options: Option<TestTimeOptions>,
     ) -> Self {
         PrettyFormatter {
             out,
             use_color,
             max_name_len,
             is_multithreaded,
+            time_options
         }
     }
 
@@ -46,6 +49,10 @@ impl<T: Write> PrettyFormatter<T> {
         self.write_short_result("FAILED (allowed)", term::color::YELLOW)
     }
 
+    pub fn write_time_failed(&mut self) -> io::Result<()> {
+        self.write_short_result("FAILED (time limit exceeded)", term::color::RED)
+    }
+
     pub fn write_bench(&mut self) -> io::Result<()> {
         self.write_pretty("bench", term::color::CYAN)
     }
@@ -55,8 +62,7 @@ impl<T: Write> PrettyFormatter<T> {
         result: &str,
         color: term::color::Color,
     ) -> io::Result<()> {
-        self.write_pretty(result, color)?;
-        self.write_plain("\n")
+        self.write_pretty(result, color)
     }
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
@@ -84,12 +90,48 @@ impl<T: Write> PrettyFormatter<T> {
         self.out.flush()
     }
 
-    pub fn write_successes(&mut self, state: &ConsoleTestState) -> io::Result<()> {
-        self.write_plain("\nsuccesses:\n")?;
-        let mut successes = Vec::new();
+    fn write_time(
+        &mut self,
+        desc: &TestDesc,
+        exec_time: Option<&TestExecTime>
+    ) -> io::Result<()> {
+        if let (Some(opts), Some(time)) = (self.time_options, exec_time) {
+            let time_str = format!(" <{}>", time);
+
+            let color = if opts.colored {
+                if opts.is_critical(desc, time) {
+                    Some(term::color::RED)
+                } else if opts.is_warn(desc, time) {
+                    Some(term::color::YELLOW)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            match color {
+                Some(color) => self.write_pretty(&time_str, color)?,
+                None => self.write_plain(&time_str)?
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_results(
+        &mut self,
+        inputs: &Vec<(TestDesc, Vec<u8>)>,
+        results_type: &str
+    ) -> io::Result<()> {
+        let results_out_str = format!("\n{}:\n", results_type);
+
+        self.write_plain(&results_out_str)?;
+
+        let mut results = Vec::new();
         let mut stdouts = String::new();
-        for &(ref f, ref stdout) in &state.not_failures {
-            successes.push(f.name.to_string());
+        for &(ref f, ref stdout) in inputs {
+            results.push(f.name.to_string());
             if !stdout.is_empty() {
                 stdouts.push_str(&format!("---- {} stdout ----\n", f.name));
                 let output = String::from_utf8_lossy(stdout);
@@ -102,38 +144,24 @@ impl<T: Write> PrettyFormatter<T> {
             self.write_plain(&stdouts)?;
         }
 
-        self.write_plain("\nsuccesses:\n")?;
-        successes.sort();
-        for name in &successes {
+        self.write_plain(&results_out_str)?;
+        results.sort();
+        for name in &results {
             self.write_plain(&format!("    {}\n", name))?;
         }
         Ok(())
     }
 
-    pub fn write_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
-        self.write_plain("\nfailures:\n")?;
-        let mut failures = Vec::new();
-        let mut fail_out = String::new();
-        for &(ref f, ref stdout) in &state.failures {
-            failures.push(f.name.to_string());
-            if !stdout.is_empty() {
-                fail_out.push_str(&format!("---- {} stdout ----\n", f.name));
-                let output = String::from_utf8_lossy(stdout);
-                fail_out.push_str(&output);
-                fail_out.push_str("\n");
-            }
-        }
-        if !fail_out.is_empty() {
-            self.write_plain("\n")?;
-            self.write_plain(&fail_out)?;
-        }
+    pub fn write_successes(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+        self.write_results(&state.not_failures, "successes")
+    }
 
-        self.write_plain("\nfailures:\n")?;
-        failures.sort();
-        for name in &failures {
-            self.write_plain(&format!("    {}\n", name))?;
-        }
-        Ok(())
+    pub fn write_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+        self.write_results(&state.failures, "failures")
+    }
+
+    pub fn write_time_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+        self.write_results(&state.time_failures, "failures (time limit exceeded)")
     }
 
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -162,21 +190,32 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         Ok(())
     }
 
-    fn write_result(&mut self, desc: &TestDesc, result: &TestResult, _: &[u8]) -> io::Result<()> {
+    fn write_result(
+        &mut self,
+        desc: &TestDesc,
+        result: &TestResult,
+        exec_time: Option<&TestExecTime>,
+        _: &[u8],
+        _: &ConsoleTestState,
+    ) -> io::Result<()> {
         if self.is_multithreaded {
             self.write_test_name(desc)?;
         }
 
         match *result {
-            TrOk => self.write_ok(),
-            TrFailed | TrFailedMsg(_) => self.write_failed(),
-            TrIgnored => self.write_ignored(),
-            TrAllowedFail => self.write_allowed_fail(),
+            TrOk => self.write_ok()?,
+            TrFailed | TrFailedMsg(_) => self.write_failed()?,
+            TrIgnored => self.write_ignored()?,
+            TrAllowedFail => self.write_allowed_fail()?,
             TrBench(ref bs) => {
                 self.write_bench()?;
-                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
+                self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;
             }
+            TrTimedFail => self.write_time_failed()?,
         }
+
+        self.write_time(desc, exec_time)?;
+        self.write_plain("\n")
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -196,7 +235,13 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         }
         let success = state.failed == 0;
         if !success {
-            self.write_failures(state)?;
+            if !state.failures.is_empty() {
+                self.write_failures(state)?;
+            }
+
+            if !state.time_failures.is_empty() {
+                self.write_time_failures(state)?;
+            }
         }
 
         self.write_plain("\ntest result: ")?;

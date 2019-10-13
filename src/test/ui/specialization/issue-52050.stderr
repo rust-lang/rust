@@ -11,7 +11,7 @@ LL |
 LL |   impl IntoPyDictPointer for ()
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
    |
-   = note: upstream crates may add new impl of trait `std::iter::Iterator` for type `()` in future versions
+   = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
 
 error: aborting due to previous error
 

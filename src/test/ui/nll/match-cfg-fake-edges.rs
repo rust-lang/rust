@@ -1,8 +1,6 @@
 // Test that we have enough false edges to avoid exposing the exact matching
 // algorithm in borrow checking.
 
-#![feature(bind_by_move_pattern_guards)]
-
 fn guard_always_precedes_arm(y: i32) {
     let mut x;
     // x should always be initialized, as the only way to reach the arm is
@@ -20,7 +18,7 @@ fn guard_may_be_skipped(y: i32) {
     match y {
         _ if { x = 2; true } => 1,
         _ if {
-            x; //~ ERROR use of possibly uninitialized variable: `x`
+            x; //~ ERROR use of possibly-uninitialized variable: `x`
             false
         } => 2,
         _ => 3,

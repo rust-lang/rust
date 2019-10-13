@@ -7,7 +7,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::util::IntTypeExt;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use crate::util::patch::MirPatch;
 
 use std::convert::TryInto;
@@ -586,10 +586,7 @@ where
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 Place {
                     base: PlaceBase::Local(cur),
-                    projection: Some(Box::new(Projection {
-                        base: None,
-                        elem: ProjectionElem::Deref,
-                    })),
+                    projection: Box::new([ProjectionElem::Deref]),
                 }
              ),
              Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
@@ -789,9 +786,9 @@ where
     /// ADT, both in the success case or if one of the destructors fail.
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, substs) => {
-                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
+                let tys : Vec<_> = substs.as_closure().upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,
@@ -801,11 +798,11 @@ where
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
             ty::Generator(def_id, substs, _) => {
-                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
+                let tys : Vec<_> = substs.as_generator().upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::Tuple(tys) => {
-                let tys: Vec<_> = tys.iter().map(|k| k.expect_ty()).collect();
+            ty::Tuple(..) => {
+                let tys: Vec<_> = ty.tuple_fields().collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Adt(def, substs) => {
@@ -897,7 +894,10 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
+        let free_func = tcx.require_lang_item(
+            lang_items::BoxFreeFnLangItem,
+            Some(self.source_info.span)
+        );
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let field_ty = f.ty(self.tcx(), substs);
@@ -970,7 +970,6 @@ where
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
         Operand::Constant(box Constant {
             span: self.source_info.span,
-            ty: self.tcx().types.usize,
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx(), val.into()),
         })
@@ -979,7 +978,7 @@ where
     fn assign(&self, lhs: &Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement {
             source_info: self.source_info,
-            kind: StatementKind::Assign(lhs.clone(), box rhs)
+            kind: StatementKind::Assign(box(lhs.clone(), rhs))
         }
     }
 }

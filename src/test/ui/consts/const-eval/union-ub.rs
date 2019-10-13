@@ -1,5 +1,6 @@
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 
+#[repr(C)]
 union DummyUnion {
     u8: u8,
     bool: bool,
@@ -14,11 +15,13 @@ enum Enum {
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 union Foo {
     a: bool,
     b: Enum,
 }
 
+#[repr(C)]
 union Bar {
     foo: Foo,
     u8: u8,

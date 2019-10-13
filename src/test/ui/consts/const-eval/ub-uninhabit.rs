@@ -6,6 +6,7 @@ use std::mem;
 #[derive(Copy, Clone)]
 enum Bar {}
 
+#[repr(C)]
 union TransmuteUnion<A: Clone + Copy, B: Clone + Copy> {
     a: A,
     b: B,

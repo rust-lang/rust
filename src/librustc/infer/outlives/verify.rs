@@ -44,7 +44,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     fn type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        match ty.sty {
+        match ty.kind {
             ty::Param(p) => self.param_bound(p),
             ty::Projection(data) => self.projection_bound(data),
             _ => self.recursive_type_bound(ty),
@@ -87,7 +87,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let projection_ty = GenericKind::Projection(projection_ty).to_ty(self.tcx);
         let erased_projection_ty = self.tcx.erase_regions(&projection_ty);
         self.declared_generic_bounds_from_env_with_compare_fn(|ty| {
-            if let ty::Projection(..) = ty.sty {
+            if let ty::Projection(..) = ty.kind {
                 let erased_ty = self.tcx.erase_regions(&ty);
                 erased_ty == erased_projection_ty
             } else {

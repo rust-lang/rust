@@ -228,7 +228,6 @@
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
-#![cfg_attr(not(bootstrap), feature(__rust_unstable_column))]
 #![feature(alloc_error_handler)]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -238,18 +237,18 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
-#![feature(bind_by_move_pattern_guards)]
+#![feature(associated_type_bounds)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
-#![feature(checked_duration_since)]
 #![feature(clamp)]
 #![feature(compiler_builtins_lib)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_raw_ptr_deref)]
+#![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(doc_alias)]
@@ -278,7 +277,6 @@
 #![feature(log_syntax)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
-#![feature(mem_take)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
@@ -306,7 +304,6 @@
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(thread_local)]
-#![feature(todo_macro)]
 #![feature(toowned_clone_into)]
 #![feature(trace_macros)]
 #![feature(try_reserve)]
@@ -325,12 +322,6 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
-
-// Re-export a few macros from core
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, r#try, todo};
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
@@ -458,6 +449,7 @@ pub mod f64;
 #[macro_use]
 pub mod thread;
 pub mod ascii;
+pub mod backtrace;
 pub mod collections;
 pub mod env;
 pub mod error;
@@ -516,33 +508,50 @@ mod std_detect;
 #[cfg(not(test))]
 pub use std_detect::detect;
 
-// Document built-in macros in the crate root for consistency with libcore and existing tradition.
-// FIXME: Attribute and derive macros are not reexported because rustdoc renders them
-// as reexports rather than as macros, and that's not what we want.
-#[cfg(rustdoc)]
+// Re-export macros defined in libcore.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated, deprecated_in_future)]
+pub use core::{
+    // Stable
+    assert_eq,
+    assert_ne,
+    debug_assert_eq,
+    debug_assert_ne,
+    debug_assert,
+    r#try,
+    unimplemented,
+    unreachable,
+    write,
+    writeln,
+    // Unstable
+    todo,
+};
+
+// Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-pub use crate::prelude::v1::{
-    __rust_unstable_column,
-    asm,
+pub use core::{
+    // Stable
     assert,
     cfg,
     column,
     compile_error,
     concat,
-    concat_idents,
     env,
     file,
     format_args,
-    format_args_nl,
-    global_asm,
     include,
     include_bytes,
     include_str,
     line,
-    log_syntax,
     module_path,
     option_env,
     stringify,
+    // Unstable
+    asm,
+    concat_idents,
+    format_args_nl,
+    global_asm,
+    log_syntax,
     trace_macros,
 };
 

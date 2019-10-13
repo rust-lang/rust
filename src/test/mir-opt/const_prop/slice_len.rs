@@ -34,7 +34,7 @@ fn main() {
 //      assert(const true, "index out of bounds: the len is move _7 but the index is _6") -> bb1;
 //  }
 //  bb1: {
-//      _1 = (*_2)[_6];
+//      _1 = const 2u32;
 //      ...
 //      return;
 //  }

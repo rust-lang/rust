@@ -64,14 +64,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("codegen_rvalue: creating ugly alloca");
-                        let scratch = PlaceRef::alloca(&mut bx, operand.layout, "__unsize_temp");
+                        let scratch = PlaceRef::alloca(&mut bx, operand.layout);
                         scratch.storage_live(&mut bx);
                         operand.val.store(&mut bx, scratch);
                         base::coerce_unsized_into(&mut bx, scratch, dest);
                         scratch.storage_dead(&mut bx);
                     }
                     OperandValue::Ref(llref, None, align) => {
-                        let source = PlaceRef::new_sized(llref, operand.layout, align);
+                        let source = PlaceRef::new_sized_aligned(llref, operand.layout, align);
                         base::coerce_unsized_into(&mut bx, source, dest);
                     }
                     OperandValue::Ref(_, Some(_), _) => {
@@ -184,13 +184,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let val = match *kind {
                     mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
-                        match operand.layout.ty.sty {
+                        match operand.layout.ty.kind {
                             ty::FnDef(def_id, substs) => {
                                 if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
-                                    callee::resolve_and_get_fn(bx.cx(), def_id, substs))
+                                    callee::resolve_and_get_fn_for_ptr(bx.cx(), def_id, substs))
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.layout.ty)
@@ -198,10 +198,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
-                        match operand.layout.ty.sty {
+                        match operand.layout.ty.kind {
                             ty::Closure(def_id, substs) => {
                                 let instance = Instance::resolve_closure(
-                                    bx.cx().tcx(), def_id, substs, ty::ClosureKind::FnOnce);
+                                    bx.cx().tcx(),
+                                    def_id,
+                                    substs,
+                                    ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(bx.cx().get_fn(instance))
                             }
                             _ => {
@@ -522,10 +525,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // because codegen_place() panics if Local is operand.
         if let mir::Place {
             base: mir::PlaceBase::Local(index),
-            projection: None,
+            projection: box [],
         } = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
-                if let ty::Array(_, n) = op.layout.ty.sty {
+                if let ty::Array(_, n) = op.layout.ty.kind {
                     let n = n.eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
                     return bx.cx().const_usize(n);
                 }

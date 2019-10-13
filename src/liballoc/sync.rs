@@ -107,10 +107,6 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// // a, b, and foo are all Arcs that point to the same memory location
 /// ```
 ///
-/// The [`Arc::clone(&from)`] syntax is the most idiomatic because it conveys more explicitly
-/// the meaning of the code. In the example above, this syntax makes it easier to see that
-/// this code is creating a new reference rather than copying the whole content of foo.
-///
 /// ## `Deref` behavior
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
@@ -311,6 +307,37 @@ impl<T> Arc<T> {
         Self::from_inner(Box::into_raw_non_null(x))
     }
 
+    /// Constructs a new `Arc` with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut five = Arc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::new::<T>(),
+                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+            ))
+        }
+    }
+
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -361,6 +388,118 @@ impl<T> Arc<T> {
     }
 }
 
+impl<T> Arc<[T]> {
+    /// Constructs a new reference-counted slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Arc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Arc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_slice(len))
+        }
+    }
+}
+
+impl<T> Arc<mem::MaybeUninit<T>> {
+    /// Converts to `Arc<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut five = Arc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Arc<T> {
+        Arc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
+    }
+}
+
+impl<T> Arc<[mem::MaybeUninit<T>]> {
+    /// Converts to `Arc<[T]>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Arc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Arc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Arc<[T]> {
+        Arc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _)
+    }
+}
+
 impl<T: ?Sized> Arc<T> {
     /// Consumes the `Arc`, returning the wrapped pointer.
     ///
@@ -408,7 +547,7 @@ impl<T: ?Sized> Arc<T> {
     ///     let x = Arc::from_raw(x_ptr);
     ///     assert_eq!(&*x, "hello");
     ///
-    ///     // Further calls to `Arc::from_raw(x_ptr)` would be memory unsafe.
+    ///     // Further calls to `Arc::from_raw(x_ptr)` would be memory-unsafe.
     /// }
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
@@ -593,11 +732,11 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T: ?Sized> Arc<T> {
     /// Allocates an `ArcInner<T>` with sufficient space for
-    /// an unsized value where the value has the layout provided.
+    /// a possibly-unsized value where the value has the layout provided.
     ///
     /// The function `mem_to_arcinner` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
-    unsafe fn allocate_for_unsized(
+    unsafe fn allocate_for_layout(
         value_layout: Layout,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>
     ) -> *mut ArcInner<T> {
@@ -625,7 +764,7 @@ impl<T: ?Sized> Arc<T> {
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized value.
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
         // Allocate for the `ArcInner<T>` using the given value.
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::for_value(&*ptr),
             |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>,
         )
@@ -656,7 +795,7 @@ impl<T: ?Sized> Arc<T> {
 impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::array::<T>(len).unwrap(),
             |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
         )
@@ -945,11 +1084,44 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                Some(&mut this.ptr.as_mut().data)
+                Some(Arc::get_mut_unchecked(this))
             }
         } else {
             None
         }
+    }
+
+    /// Returns a mutable reference to the inner value,
+    /// without any check.
+    ///
+    /// See also [`get_mut`], which is safe and does appropriate checks.
+    ///
+    /// [`get_mut`]: struct.Arc.html#method.get_mut
+    ///
+    /// # Safety
+    ///
+    /// Any other `Arc` or [`Weak`] pointers to the same value must not be dereferenced
+    /// for the duration of the returned borrow.
+    /// This is trivially the case if no such pointers exist,
+    /// for example immediately after `Arc::new`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut x = Arc::new(String::new());
+    /// unsafe {
+    ///     Arc::get_mut_unchecked(&mut x).push_str("foo")
+    /// }
+    /// assert_eq!(*x, "foo");
+    /// ```
+    #[inline]
+    #[unstable(feature = "get_mut_unchecked", issue = "63292")]
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+        &mut this.ptr.as_mut().data
     }
 
     /// Determine whether this is the unique reference (including weak refs) to
@@ -1072,11 +1244,9 @@ impl Arc<dyn Any + Send + Sync> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Arc::new(my_string));
-    ///     print_if_string(Arc::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Arc::new(my_string));
+    /// print_if_string(Arc::new(0i8));
     /// ```
     pub fn downcast<T>(self) -> Result<Arc<T>, Self>
     where
@@ -1378,19 +1548,18 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same value (not just values
-    /// that compare as equal).
+    /// Returns `true` if the two `Weak`s point to the same value (not just
+    /// values that compare as equal), or if both don't point to any value
+    /// (because they were created with `Weak::new()`).
     ///
     /// # Notes
     ///
     /// Since this compares pointers it means that `Weak::new()` will equal each
     /// other, even though they don't point to any value.
     ///
-    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_ptr_eq)]
     /// use std::sync::Arc;
     ///
     /// let first_rc = Arc::new(5);
@@ -1408,7 +1577,6 @@ impl<T: ?Sized> Weak<T> {
     /// Comparing `Weak::new`.
     ///
     /// ```
-    /// #![feature(weak_ptr_eq)]
     /// use std::sync::{Arc, Weak};
     ///
     /// let first = Weak::new();
@@ -1420,7 +1588,7 @@ impl<T: ?Sized> Weak<T> {
     /// assert!(!first.ptr_eq(&third));
     /// ```
     #[inline]
-    #[unstable(feature = "weak_ptr_eq", issue = "55981")]
+    #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
         self.ptr.as_ptr() == other.ptr.as_ptr()
     }

@@ -10,7 +10,7 @@
 //
 // See [this comment on GitHub][c] for more details.
 //
-// run-pass
+// check-pass
 //
 // [c]: https://github.com/rust-lang/rust/issues/57639#issuecomment-455685861
 

@@ -1,3 +1,4 @@
+use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::ptr;
 use crate::sys::cvt;
@@ -178,23 +179,22 @@ impl Command {
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
-        if cfg!(not(any(target_os = "l4re"))) {
+        #[cfg(not(target_os = "l4re"))]
+        {
             if let Some(u) = self.get_gid() {
                 cvt(libc::setgid(u as gid_t))?;
             }
             if let Some(u) = self.get_uid() {
+                // When dropping privileges from root, the `setgroups` call
+                // will remove any extraneous groups. If we don't call this,
+                // then even though our uid has dropped, we may still have
+                // groups that enable us to do super-user things. This will
+                // fail if we aren't root, so don't bother checking the
+                // return value, this is just done as an optimistic
+                // privilege dropping function.
                 //FIXME: Redox kernel does not support setgroups yet
-                if cfg!(not(target_os = "redox")) {
-                    // When dropping privileges from root, the `setgroups` call
-                    // will remove any extraneous groups. If we don't call this,
-                    // then even though our uid has dropped, we may still have
-                    // groups that enable us to do super-user things. This will
-                    // fail if we aren't root, so don't bother checking the
-                    // return value, this is just done as an optimistic
-                    // privilege dropping function.
-                    let _ = libc::setgroups(0, ptr::null());
-                }
-
+                #[cfg(not(target_os = "redox"))]
+                let _ = libc::setgroups(0, ptr::null());
                 cvt(libc::setuid(u as uid_t))?;
             }
         }
@@ -203,7 +203,7 @@ impl Command {
         }
 
         // emscripten has no signal support.
-        #[cfg(not(any(target_os = "emscripten")))]
+        #[cfg(not(target_os = "emscripten"))]
         {
             use crate::mem::MaybeUninit;
             // Reset signal handling so the child process starts in a
@@ -214,14 +214,7 @@ impl Command {
             // need to clean things up now to avoid confusing the program
             // we're about to run.
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            if cfg!(target_os = "android") {
-                // Implementing sigemptyset allow us to support older Android
-                // versions. See the comment about Android and sig* functions in
-                // process_common.rs
-                set.as_mut_ptr().write_bytes(0u8, 1);
-            } else {
-                cvt(libc::sigemptyset(set.as_mut_ptr()))?;
-            }
+            cvt(sigemptyset(set.as_mut_ptr()))?;
             cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(),
                                          ptr::null_mut()))?;
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
@@ -363,10 +356,10 @@ impl Command {
             }
 
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(libc::sigemptyset(set.as_mut_ptr()))?;
+            cvt(sigemptyset(set.as_mut_ptr()))?;
             cvt(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(),
                                                  set.as_ptr()))?;
-            cvt(libc::sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
+            cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
             cvt(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(),
                                                     set.as_ptr()))?;
 
@@ -446,6 +439,57 @@ impl Process {
         } else {
             self.status = Some(ExitStatus::new(status));
             Ok(Some(ExitStatus::new(status)))
+        }
+    }
+}
+
+/// Unix exit statuses
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatus(c_int);
+
+impl ExitStatus {
+    pub fn new(status: c_int) -> ExitStatus {
+        ExitStatus(status)
+    }
+
+    fn exited(&self) -> bool {
+        unsafe { libc::WIFEXITED(self.0) }
+    }
+
+    pub fn success(&self) -> bool {
+        self.code() == Some(0)
+    }
+
+    pub fn code(&self) -> Option<i32> {
+        if self.exited() {
+            Some(unsafe { libc::WEXITSTATUS(self.0) })
+        } else {
+            None
+        }
+    }
+
+    pub fn signal(&self) -> Option<i32> {
+        if !self.exited() {
+            Some(unsafe { libc::WTERMSIG(self.0) })
+        } else {
+            None
+        }
+    }
+}
+
+impl From<c_int> for ExitStatus {
+    fn from(a: c_int) -> ExitStatus {
+        ExitStatus(a)
+    }
+}
+
+impl fmt::Display for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(code) = self.code() {
+            write!(f, "exit code: {}", code)
+        } else {
+            let signal = self.signal().unwrap();
+            write!(f, "signal: {}", signal)
         }
     }
 }

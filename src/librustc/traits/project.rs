@@ -15,7 +15,6 @@ use super::util;
 use crate::hir::def_id::DefId;
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::mir::interpret::{GlobalId, ConstValue};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_macros::HashStable;
 use syntax::ast::Ident;
@@ -338,7 +337,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
         // should occur eventually).
 
         let ty = ty.super_fold_with(self);
-        match ty.sty {
+        match ty.kind {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => { // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
@@ -397,40 +396,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
-            let tcx = self.selcx.tcx().global_tcx();
-            let param_env = self.param_env;
-            if !param_env.has_local_value() {
-                if substs.needs_infer() || substs.has_placeholders() {
-                    let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
-                    let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
-                    if let Some(instance) = instance {
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None
-                        };
-                        if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let evaluated = evaluated.subst(tcx, substs);
-                            return evaluated;
-                        }
-                    }
-                } else {
-                    if !substs.has_local_value() {
-                        let instance = ty::Instance::resolve(tcx, param_env, def_id, substs);
-                        if let Some(instance) = instance {
-                            let cid = GlobalId {
-                                instance,
-                                promoted: None
-                            };
-                            if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return evaluated;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        constant
+        constant.eval(self.selcx.tcx(), self.param_env)
     }
 }
 
@@ -955,7 +921,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
     // Check whether the self-type is itself a projection.
-    let (def_id, substs) = match obligation_trait_ref.self_ty().sty {
+    let (def_id, substs) = match obligation_trait_ref.self_ty().kind {
         ty::Projection(ref data) => {
             (data.trait_ref(tcx).def_id, data.substs)
         }
@@ -1233,7 +1199,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
     debug!("confirm_object_candidate(object_ty={:?})",
            object_ty);
-    let data = match object_ty.sty {
+    let data = match object_ty.kind {
         ty::Dynamic(ref data, ..) => data,
         _ => {
             span_bug!(
@@ -1293,7 +1259,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = vtable.substs.poly_sig(vtable.generator_def_id, selcx.tcx());
+    let gen_sig = vtable.substs.as_generator().poly_sig(vtable.generator_def_id, selcx.tcx());
     let Normalized {
         value: gen_sig,
         obligations
@@ -1368,7 +1334,8 @@ fn confirm_closure_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
     let infcx = selcx.infcx();
-    let closure_sig_ty = vtable.substs.closure_sig_ty(vtable.closure_def_id, tcx);
+    let closure_sig_ty = vtable.substs
+        .as_closure().sig_ty(vtable.closure_def_id, tcx);
     let closure_sig = infcx.shallow_resolve(closure_sig_ty).fn_sig(tcx);
     let Normalized {
         value: closure_sig,
@@ -1417,7 +1384,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
                 projection_ty: ty::ProjectionTy::from_ref_and_name(
                     tcx,
                     trait_ref,
-                    Ident::with_empty_ctxt(FN_OUTPUT_NAME),
+                    Ident::with_dummy_span(FN_OUTPUT_NAME),
                 ),
                 ty: ret_type
             }
@@ -1538,8 +1505,8 @@ fn assoc_ty_def(
 
     if let Some(assoc_item) = trait_def
         .ancestors(tcx, impl_def_id)
-        .defs(tcx, assoc_ty_name, ty::AssocKind::Type, trait_def_id)
-        .next() {
+        .leaf_def(tcx, assoc_ty_name, ty::AssocKind::Type) {
+
         assoc_item
     } else {
         // This is saying that neither the trait nor

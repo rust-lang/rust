@@ -1,6 +1,7 @@
 // run-pass
 // aux-build:fn-dyn-aux.rs
 
+#![allow(unused)]
 #![feature(associated_type_bounds)]
 
 extern crate fn_dyn_aux;

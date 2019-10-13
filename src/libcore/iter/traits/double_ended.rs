@@ -69,7 +69,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// Returns the `n`th element from the end of the iterator.
     ///
     /// This is essentially the reversed version of [`nth`]. Although like most indexing
-    /// operations, the count starts from zero, so `nth_back(0)` returns the first value fro
+    /// operations, the count starts from zero, so `nth_back(0)` returns the first value from
     /// the end, `nth_back(1)` the second, and so on.
     ///
     /// Note that all elements between the end and the returned element will be
@@ -219,12 +219,17 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfold", since = "1.27.0")]
-    fn rfold<B, F>(mut self, accum: B, mut f: F) -> B
+    fn rfold<B, F>(mut self, accum: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(accum, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_rfold(accum, ok(f)).unwrap()
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.
@@ -271,15 +276,21 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfind", since = "1.27.0")]
-    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool
     {
-        self.try_rfold((), move |(), x| {
-            if predicate(&x) { LoopState::Break(x) }
-            else { LoopState::Continue(()) }
-        }).break_value()
+        #[inline]
+        fn check<T>(
+            mut predicate: impl FnMut(&T) -> bool,
+        ) -> impl FnMut((), T) -> LoopState<(), T> {
+            move |(), x| {
+                if predicate(&x) { LoopState::Break(x) } else { LoopState::Continue(()) }
+            }
+        }
+
+        self.try_rfold((), check(predicate)).break_value()
     }
 }
 

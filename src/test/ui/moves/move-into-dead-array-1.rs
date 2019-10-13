@@ -11,5 +11,5 @@ fn main() {
 
 fn foo(i: usize) {
     let mut a: [D; 4];
-    a[i] = d();        //~ ERROR use of possibly uninitialized variable: `a`
+    a[i] = d();        //~ ERROR use of possibly-uninitialized variable: `a`
 }

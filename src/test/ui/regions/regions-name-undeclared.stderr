@@ -49,14 +49,14 @@ LL | fn fn_types(a: &'a isize,
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:42:36
    |
-LL |                                   &'b isize,
-   |                                    ^^ undeclared lifetime
+LL | ...                   &'b isize,
+   |                        ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:45:36
    |
-LL |                                   &'b isize)>,
-   |                                    ^^ undeclared lifetime
+LL | ...                   &'b isize)>,
+   |                        ^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:46:17

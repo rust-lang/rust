@@ -12,7 +12,6 @@ use std::hash as std_hash;
 use std::cell::RefCell;
 
 use syntax::ast;
-
 use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
@@ -20,9 +19,9 @@ use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene;
 
-use rustc_data_structures::stable_hasher::{HashStable,
-                                           StableHasher, StableHasherResult,
-                                           ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use smallvec::SmallVec;
 
@@ -32,9 +31,9 @@ fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 }
 
 /// This is the context state available during incr. comp. hashing. It contains
-/// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
-/// a reference to the TyCtxt) and it holds a few caches for speeding up various
-/// things (e.g., each DefId/DefPath is only hashed once).
+/// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
+/// a reference to the `TyCtxt`) and it holds a few caches for speeding up various
+/// things (e.g., each `DefId`/`DefPath` is only hashed once).
 #[derive(Clone)]
 pub struct StableHashingContext<'a> {
     sess: &'a Session,
@@ -46,7 +45,7 @@ pub struct StableHashingContext<'a> {
     node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
-    // CachingSourceMapView, so we initialize it lazily.
+    // `CachingSourceMapView`, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
     caching_source_map: Option<CachingSourceMapView<'a>>,
 }
@@ -57,24 +56,24 @@ pub enum NodeIdHashingMode {
     HashDefPath,
 }
 
-/// The BodyResolver allows to map a BodyId to the corresponding hir::Body.
-/// We could also just store a plain reference to the hir::Crate but we want
+/// The `BodyResolver` allows mapping a `BodyId` to the corresponding `hir::Body`.
+/// We could also just store a plain reference to the `hir::Crate` but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
 struct BodyResolver<'tcx>(&'tcx hir::Crate);
 
 impl<'tcx> BodyResolver<'tcx> {
-    // Return a reference to the hir::Body with the given BodyId.
-    // DOES NOT DO ANY TRACKING, use carefully.
+    /// Returns a reference to the `hir::Body` with the given `BodyId`.
+    /// **Does not do any tracking**; use carefully.
     fn body(self, id: hir::BodyId) -> &'tcx hir::Body {
         self.0.body(id)
     }
 }
 
 impl<'a> StableHashingContext<'a> {
-    // The `krate` here is only used for mapping BodyIds to Bodies.
-    // Don't use it for anything else or you'll run the risk of
-    // leaking data out of the tracking system.
+    /// The `krate` here is only used for mapping `BodyId`s to `Body`s.
+    /// Don't use it for anything else or you'll run the risk of
+    /// leaking data out of the tracking system.
     #[inline]
     pub fn new(sess: &'a Session,
                krate: &'a hir::Crate,
@@ -217,14 +216,10 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
     }
 }
 
-impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {
-}
-
+impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         if hcx.hash_bodies() {
             hcx.body_resolver.body(*self).hash_stable(hcx, hasher);
         }
@@ -233,9 +228,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::HirId {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
@@ -266,9 +259,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
@@ -292,19 +283,16 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Span {
-
-    // Hash a span in a stable way. We can't directly hash the span's BytePos
-    // fields (that would be similar to hashing pointers, since those are just
-    // offsets into the SourceMap). Instead, we hash the (file name, line, column)
-    // triple, which stays the same even if the containing SourceFile has moved
-    // within the SourceMap.
-    // Also note that we are hashing byte offsets for the column, not unicode
-    // codepoint offsets. For the purpose of the hash that's sufficient.
-    // Also, hashing filenames is expensive so we avoid doing it twice when the
-    // span starts and ends in the same file, which is almost always the case.
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
+    /// fields (that would be similar to hashing pointers, since those are just
+    /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
+    /// triple, which stays the same even if the containing `SourceFile` has moved
+    /// within the `SourceMap`.
+    /// Also note that we are hashing byte offsets for the column, not unicode
+    /// codepoint offsets. For the purpose of the hash that's sufficient.
+    /// Also, hashing filenames is expensive so we avoid doing it twice when the
+    /// span starts and ends in the same file, which is almost always the case.
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_EXPANSION: u8 = 0;
@@ -340,7 +328,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         }
 
         std_hash::Hash::hash(&TAG_VALID_SPAN, hasher);
-        // We truncate the stable_id hash and line and col numbers. The chances
+        // We truncate the stable ID hash and line and column numbers. The chances
         // of causing a collision this way should be minimal.
         std_hash::Hash::hash(&(file_lo.name_hash as u64), hasher);
 
@@ -350,7 +338,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         let line_col_len = col | line | len;
         std_hash::Hash::hash(&line_col_len, hasher);
 
-        if span.ctxt == SyntaxContext::empty() {
+        if span.ctxt == SyntaxContext::root() {
             TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(hcx, hasher);
@@ -370,7 +358,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
                 }
 
                 let mut hasher = StableHasher::new();
-                expn_id.expn_info().hash_stable(hcx, &mut hasher);
+                expn_id.expn_data().hash_stable(hcx, &mut hasher);
                 let sub_hash: Fingerprint = hasher.finish();
                 let sub_hash = sub_hash.to_smaller_hash();
                 cache.borrow_mut().insert(expn_id, sub_hash);
@@ -383,24 +371,18 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.open.hash_stable(hcx, hasher);
         self.close.hash_stable(hcx, hasher);
     }
 }
 
-pub fn hash_stable_trait_impls<'a, W>(
+pub fn hash_stable_trait_impls<'a>(
     hcx: &mut StableHashingContext<'a>,
-    hasher: &mut StableHasher<W>,
+    hasher: &mut StableHasher,
     blanket_impls: &[DefId],
     non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
-) where
-    W: StableHasherResult,
-{
+) {
     {
         let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
             .iter()

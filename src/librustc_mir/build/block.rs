@@ -98,7 +98,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     initializer,
                     lint_level
                 } => {
-                    let ignores_expr_result = if let PatternKind::Wild = *pattern.kind {
+                    let ignores_expr_result = if let PatKind::Wild = *pattern.kind {
                         true
                     } else {
                         false

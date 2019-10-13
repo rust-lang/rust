@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -9,7 +9,7 @@ fn bar<F: Fn(&i32) + Clone>(f: F) -> F {
 }
 
 fn foo() -> X {
-    bar(|x| ())
+    bar(|_| ())
 }
 
 fn main() {}

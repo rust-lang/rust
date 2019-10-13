@@ -7,6 +7,7 @@ use hir::def::Res;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::subst::SubstsRef;
 use rustc::{infer, traits};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_target::spec::abi;
@@ -90,7 +91,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // If the callee is a bare function or a closure, then we're all set.
-        match adjusted_ty.sty {
+        match adjusted_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let adjustments = autoderef.adjust_steps(self, Needs::None);
                 self.apply_adjustments(callee_expr, adjustments);
@@ -212,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
+                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                         let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
@@ -247,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir_id = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(hir_id);
         if let (
-            hir::Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, _, _, sp, ..), .. }),
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node) {
             let start = sp.shrink_to_lo();
@@ -263,12 +264,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_builtin_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         callee_ty: Ty<'tcx>,
         arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (fn_sig, def_span) = match callee_ty.sty {
+        let (fn_sig, def_span) = match callee_ty.kind {
             ty::FnDef(def_id, _) => (
                 callee_ty.fn_sig(self.tcx),
                 self.tcx.hir().span_if_local(def_id),
@@ -278,13 +279,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut unit_variant = None;
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
+                        if let hir::ExprKind::Call(ref expr, _) = call_expr.kind {
                             unit_variant = Some(self.tcx.hir().hir_to_pretty_string(expr.hir_id))
                         }
                     }
                 }
 
-                if let hir::ExprKind::Call(ref callee, _) = call_expr.node {
+                if let hir::ExprKind::Call(ref callee, _) = call_expr.kind {
                     let mut err = type_error_struct!(
                         self.tcx.sess,
                         callee.span,
@@ -300,7 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.identify_bad_closure_def_and_call(
                         &mut err,
                         call_expr.hir_id,
-                        &callee.node,
+                        &callee.kind,
                         callee.span,
                     );
 
@@ -318,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let mut inner_callee_path = None;
-                    let def = match callee.node {
+                    let def = match callee.kind {
                         hir::ExprKind::Path(ref qpath) => {
                             self.tables.borrow().qpath_res(qpath, callee.hir_id)
                         }
@@ -337,7 +338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.node {
+                            if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
                                 inner_callee_path = Some(inner_qpath);
                                 self.tables
                                     .borrow()
@@ -351,16 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     err.span_label(call_expr.span, "call expression requires function");
 
-                    let def_span = match def {
-                        Res::Err => None,
-                        Res::Local(id) => {
-                            Some(self.tcx.hir().span(id))
-                        },
-                        _ => def
-                            .opt_def_id()
-                            .and_then(|did| self.tcx.hir().span_if_local(did)),
-                    };
-                    if let Some(span) = def_span {
+                    if let Some(span) = self.tcx.hir().res_span(def) {
                         let label = match (unit_variant, inner_callee_path) {
                             (Some(path), _) => format!("`{}` defined here", path),
                             (_, Some(hir::QPath::Resolved(_, path))) => format!(
@@ -375,8 +367,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.emit();
                 } else {
                     bug!(
-                        "call_expr.node should be an ExprKind::Call, got {:?}",
-                        call_expr.node
+                        "call_expr.kind should be an ExprKind::Call, got {:?}",
+                        call_expr.kind
                     );
                 }
 
@@ -406,27 +398,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .0;
         let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
 
-        let inputs = if fn_sig.c_variadic {
-            if fn_sig.inputs().len() > 1 {
-                &fn_sig.inputs()[..fn_sig.inputs().len() - 1]
-            } else {
-                span_bug!(call_expr.span,
-                          "C-variadic functions are only valid with one or more fixed arguments");
-            }
-        } else {
-            &fn_sig.inputs()[..]
-        };
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(
             call_expr.span,
             expected,
             fn_sig.output(),
-            inputs,
+            fn_sig.inputs(),
         );
         self.check_argument_types(
             call_expr.span,
-            call_expr.span,
-            inputs,
+            call_expr,
+            fn_sig.inputs(),
             &expected_arg_tys[..],
             arg_exprs,
             fn_sig.c_variadic,
@@ -439,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_deferred_closure_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
@@ -458,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             fn_sig.inputs(),
             &expected_arg_tys,
             arg_exprs,
@@ -472,14 +454,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn confirm_overloaded_call(
         &self,
-        call_expr: &hir::Expr,
+        call_expr: &'tcx hir::Expr,
         arg_exprs: &'tcx [hir::Expr],
         expected: Expectation<'tcx>,
         method_callee: MethodCallee<'tcx>,
     ) -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(
             call_expr.span,
-            call_expr.span,
+            call_expr,
             Ok(method_callee),
             arg_exprs,
             TupleArgumentsFlag::TupleArguments,
@@ -499,7 +481,7 @@ pub struct DeferredCallResolution<'tcx> {
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
-    closure_substs: ty::ClosureSubsts<'tcx>,
+    closure_substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {

@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
-#![feature(bind_by_move_pattern_guards)]
 #![feature(rustc_private)]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
@@ -15,9 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
-#![feature(inner_deref)]
 #![feature(never_type)]
-#![feature(mem_take)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
@@ -26,6 +23,7 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
+extern crate rustc_index;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
@@ -33,6 +31,7 @@ extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
+extern crate rustc_lexer;
 extern crate serialize;
 extern crate syntax;
 extern crate syntax_pos;
@@ -44,10 +43,9 @@ use std::default::Default;
 use std::env;
 use std::panic;
 use std::process;
-use std::sync::mpsc::channel;
 
 use rustc::session::{early_warn, early_error};
-use rustc::session::config::{ErrorOutputType, RustcOptGroup};
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
 
 #[macro_use]
 mod externalfiles;
@@ -68,6 +66,7 @@ pub mod html {
     crate mod render;
     crate mod static_files;
     crate mod toc;
+    crate mod sources;
 }
 mod markdown;
 mod passes;
@@ -80,7 +79,6 @@ struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
     renderopts: config::RenderOptions,
-    passes: Vec<String>,
 }
 
 pub fn main() {
@@ -90,7 +88,7 @@ pub fn main() {
         32_000_000 // 32MB on other platforms
     };
     rustc_driver::set_sigpipe_handler();
-    env_logger::init();
+    env_logger::init_from_env("RUSTDOC_LOG");
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
         get_args().map(|args| main_args(&args)).unwrap_or(1)
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
@@ -134,6 +132,7 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("crate-name", |o| {
             o.optopt("", "crate-name", "specify the name of this crate", "NAME")
         }),
+        make_crate_type_option(),
         stable("L", |o| {
             o.optmulti("L", "library-path", "directory to add to crate search path",
                        "DIR")
@@ -241,9 +240,6 @@ fn opts() -> Vec<RustcOptGroup> {
         }),
         unstable("crate-version", |o| {
             o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
-        }),
-        unstable("linker", |o| {
-            o.optopt("", "linker", "linker used for building executable test code", "PATH")
         }),
         unstable("sort-modules-by-appearance", |o| {
             o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
@@ -358,6 +354,28 @@ fn opts() -> Vec<RustcOptGroup> {
                       "show-coverage",
                       "calculate percentage of public items with documentation")
         }),
+        unstable("enable-per-target-ignores", |o| {
+            o.optflag("",
+                      "enable-per-target-ignores",
+                      "parse ignore-foo for ignoring doctests on a per-target basis")
+        }),
+        unstable("runtool", |o| {
+            o.optopt("",
+                     "runtool",
+                     "",
+                     "The tool to run tests with when building for a different target than host")
+        }),
+        unstable("runtool-arg", |o| {
+            o.optmulti("",
+                       "runtool-arg",
+                       "",
+                       "One (of possibly many) arguments to pass to the runtool")
+        }),
+        unstable("test-builder", |o| {
+            o.optflag("",
+                      "test-builder",
+                      "specified the rustc-like binary to use as the test builder")
+        }),
     ]
 }
 
@@ -419,14 +437,13 @@ fn main_options(options: config::Options) -> i32 {
             return rustc_driver::EXIT_SUCCESS;
         }
 
-        let Output { krate, passes, renderinfo, renderopts } = out;
+        let Output { krate, renderinfo, renderopts } = out;
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing, edition) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         match html::render::run(
             krate,
             renderopts,
-            passes.into_iter().collect(),
             renderinfo,
             &diag,
             edition,
@@ -454,12 +471,10 @@ where R: 'static + Send,
     // First, parse the crate and extract all relevant information.
     info!("starting to run rustc");
 
-    let (tx, rx) = channel();
-
-    let result = rustc_driver::report_ices_to_stderr_if_any(move || {
+    let result = rustc_driver::catch_fatal_errors(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
-        let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
+        let (mut krate, renderinfo, renderopts) = core::run_core(options);
 
         info!("finished with rustc");
 
@@ -469,16 +484,15 @@ where R: 'static + Send,
 
         krate.version = crate_version;
 
-        tx.send(f(Output {
-            krate: krate,
-            renderinfo: renderinfo,
+        f(Output {
+            krate,
+            renderinfo,
             renderopts,
-            passes: passes
-        })).unwrap();
+        })
     });
 
     match result {
-        Ok(()) => rx.recv().unwrap(),
+        Ok(output) => output,
         Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
     }
 }

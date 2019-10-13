@@ -1,4 +1,4 @@
-error[E0425]: cannot find function `f` in module `glob_conflict`
+error[E0425]: cannot find function `f` in crate `glob_conflict`
   --> $DIR/glob-conflict-cross-crate.rs:6:20
    |
 LL |     glob_conflict::f();

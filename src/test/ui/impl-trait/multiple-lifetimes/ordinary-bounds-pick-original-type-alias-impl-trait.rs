@@ -1,5 +1,5 @@
 // edition:2018
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // revisions: migrate mir
 //[mir]compile-flags: -Z borrowck=mir
 

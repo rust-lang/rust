@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, TypeAndMut};
+use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::FloatTy;
@@ -34,17 +34,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ReifyFnPointer) => {
                 // The src operand does not matter, just its type
-                match src.layout.ty.sty {
+                match src.layout.ty.kind {
                     ty::FnDef(def_id, substs) => {
+                        // All reifications must be monomorphic, bail out otherwise.
+                        if src.layout.ty.needs_subst() {
+                            throw_inval!(TooGeneric);
+                        }
+
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             bug!("reifying a fn ptr that requires const arguments");
                         }
-                        let instance = ty::Instance::resolve(
+
+                        let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
                             self.param_env,
                             def_id,
                             substs,
                         ).ok_or_else(|| err_inval!(TooGeneric))?;
+
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
@@ -54,7 +61,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::UnsafeFnPointer) => {
                 let src = self.read_immediate(src)?;
-                match dest.layout.ty.sty {
+                match dest.layout.ty.kind {
                     ty::FnPtr(_) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;
@@ -65,9 +72,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
-                match src.layout.ty.sty {
+                match src.layout.ty.kind {
                     ty::Closure(def_id, substs) => {
-                        let substs = self.subst_and_normalize_erasing_regions(substs)?;
+                        // All reifications must be monomorphic, bail out otherwise.
+                        if src.layout.ty.needs_subst() {
+                            throw_inval!(TooGeneric);
+                        }
+
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
@@ -93,7 +104,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, dest_layout.ty);
 
-        match src.layout.ty.sty {
+        match src.layout.ty.kind {
             // Floating point
             Float(FloatTy::F32) =>
                 return Ok(self.cast_from_float(src.to_scalar()?.to_f32()?, dest_layout.ty)?.into()),
@@ -172,7 +183,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
         use rustc::ty::TyKind::*;
-        match dest_layout.ty.sty {
+        match dest_layout.ty.kind {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let v = self.truncate(v, dest_layout);
                 Ok(Scalar::from_uint(v, dest_layout.size))
@@ -210,7 +221,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     where F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>
     {
         use rustc::ty::TyKind::*;
-        match dest_ty.sty {
+        match dest_ty.kind {
             // float -> uint
             Uint(t) => {
                 let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
@@ -240,14 +251,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
-        sty: Ty<'tcx>,
-        dty: Ty<'tcx>,
+        source_ty: Ty<'tcx>,
+        dest_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_erasing_lifetimes(sty, dty, self.param_env);
+            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, dest_ty, self.param_env);
 
-        match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
+        match (&src_pointee_ty.kind, &dest_pointee_ty.kind) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_immediate(src)?.to_scalar_ptr()?;
                 // u64 cast is from usize to u64, which is always good
@@ -283,7 +294,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} into {:?}", src, dest);
-        match (&src.layout.ty.sty, &dest.layout.ty.sty) {
+        match (&src.layout.ty.kind, &dest.layout.ty.kind) {
             (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |
             (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. })) |
             (&ty::RawPtr(TypeAndMut { ty: s, .. }),

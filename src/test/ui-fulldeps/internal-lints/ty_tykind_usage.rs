@@ -8,9 +8,9 @@ use rustc::ty::{self, Ty, TyKind};
 
 #[deny(rustc::usage_of_ty_tykind)]
 fn main() {
-    let sty = TyKind::Bool; //~ ERROR usage of `ty::TyKind::<kind>`
+    let kind = TyKind::Bool; //~ ERROR usage of `ty::TyKind::<kind>`
 
-    match sty {
+    match kind {
         TyKind::Bool => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Char => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Int(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
@@ -41,9 +41,9 @@ fn main() {
         TyKind::Error => (), //~ ERROR usage of `ty::TyKind::<kind>`
     }
 
-    if let ty::Int(int_ty) = sty {}
+    if let ty::Int(int_ty) = kind {}
 
-    if let TyKind::Int(int_ty) = sty {} //~ ERROR usage of `ty::TyKind::<kind>`
+    if let TyKind::Int(int_ty) = kind {} //~ ERROR usage of `ty::TyKind::<kind>`
 
     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {} //~ ERROR usage of `ty::TyKind`
 }

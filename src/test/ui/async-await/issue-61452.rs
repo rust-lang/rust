@@ -1,5 +1,4 @@
 // edition:2018
-#![feature(async_await)]
 
 pub async fn f(x: Option<usize>) {
     x.take();

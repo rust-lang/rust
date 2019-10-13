@@ -2,8 +2,6 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-#![feature(async_await)]
-
 use std::{
     cell::RefCell,
     fmt::Debug,

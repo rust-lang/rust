@@ -4,5 +4,13 @@ error: `derive` may only be applied to structs, enums and unions
 LL | #![derive(Copy)]
    | ^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Copy)]`
 
-error: aborting due to previous error
+error: cannot determine resolution for the derive macro `Copy`
+  --> $DIR/issue-36617.rs:1:11
+   |
+LL | #![derive(Copy)]
+   |           ^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 2 previous errors
 

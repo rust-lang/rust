@@ -4,7 +4,7 @@ error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
 LL | fn bar(_x: Foo) {}
    | ^^^^^^^^^^^^^^^ the trait `issue_3907::Foo` cannot be made into an object
    |
-   = note: method `bar` has no receiver
+   = note: associated function `bar` has no `self` parameter
 
 error: aborting due to previous error
 

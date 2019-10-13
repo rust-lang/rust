@@ -65,11 +65,8 @@ This API is completely unstable and subject to change.
 #![feature(exhaustive_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(never_type)]
-#![feature(inner_deref)]
-#![feature(mem_take)]
 
 #![recursion_limit="256"]
 
@@ -78,9 +75,7 @@ This API is completely unstable and subject to change.
 
 #[macro_use] extern crate rustc;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
-mod error_codes;
+pub mod error_codes;
 
 mod astconv;
 mod check;
@@ -162,10 +157,10 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
-    match main_t.sty {
+    match main_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
+                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         let msg = "`main` function is not allowed to have generic \
@@ -227,10 +222,10 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
-    match start_t.sty {
+    match start_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
+                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(tcx.sess, generics.span, E0132,
@@ -298,7 +293,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
-    tcx.sess.profiler(|p| p.start_activity("type-check crate"));
+    let _prof_timer = tcx.prof.generic_activity("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
@@ -306,7 +301,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
+                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
             }
         });
     })?;
@@ -341,7 +336,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     time(tcx.sess, "item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
         }
     });
 
@@ -349,8 +344,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
-
-    tcx.sess.profiler(|p| p.end_activity("type-check crate"));
 
     if tcx.sess.err_count() == 0 {
         Ok(())
@@ -389,5 +382,3 @@ pub fn hir_trait_to_predicates<'tcx>(
 
     bounds
 }
-
-__build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

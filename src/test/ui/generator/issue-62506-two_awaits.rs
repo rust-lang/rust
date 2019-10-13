@@ -4,7 +4,6 @@
 // check-pass
 // edition:2018
 
-#![feature(async_await)]
 use std::future::Future;
 
 pub trait T {

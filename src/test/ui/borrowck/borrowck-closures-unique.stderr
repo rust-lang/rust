@@ -50,4 +50,5 @@ LL |     let c1 = |y: &'static mut isize| x = y;
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0500`.
+Some errors have detailed explanations: E0500, E0524.
+For more information about an error, try `rustc --explain E0500`.

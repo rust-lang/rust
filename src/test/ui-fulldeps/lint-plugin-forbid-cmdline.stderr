@@ -6,6 +6,14 @@ LL | #[allow(test_lint)]
    |
    = note: `forbid` lint level was set on command line
 
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/lint-plugin-forbid-cmdline.rs:6:1
+   |
+LL | #![plugin(lint_plugin_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 error: item is named 'lintme'
   --> $DIR/lint-plugin-forbid-cmdline.rs:8:1
    |

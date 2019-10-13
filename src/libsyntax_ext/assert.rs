@@ -1,7 +1,6 @@
 use errors::{Applicability, DiagnosticBuilder};
 
 use syntax::ast::{self, *};
-use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
@@ -14,18 +13,20 @@ use syntax_pos::{Span, DUMMY_SP};
 pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: &[TokenTree],
+    tts: TokenStream,
 ) -> Box<dyn MacResult + 'cx> {
     let Assert { cond_expr, custom_message } = match parse_assert(cx, sp, tts) {
         Ok(assert) => assert,
         Err(mut err) => {
             err.emit();
-            return DummyResult::expr(sp);
+            return DummyResult::any(sp);
         }
     };
 
-    let sp = sp.apply_mark(cx.current_expansion.id);
-    let panic_call = Mac_ {
+    // `core::panic` and `std::panic` are different macros, so we use call-site
+    // context to pick up whichever is currently in scope.
+    let sp = cx.with_call_site_ctxt(sp);
+    let panic_call = Mac {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {
             TokenStream::from(TokenTree::token(
@@ -37,6 +38,7 @@ pub fn expand_assert<'cx>(
             ))
         }).into(),
         delim: MacDelimiter::Parenthesis,
+        span: sp,
         prior_type_ascription: None,
     };
     let if_expr = cx.expr_if(
@@ -44,10 +46,7 @@ pub fn expand_assert<'cx>(
         cx.expr(sp, ExprKind::Unary(UnOp::Not, cond_expr)),
         cx.expr(
             sp,
-            ExprKind::Mac(Spanned {
-                span: sp,
-                node: panic_call,
-            }),
+            ExprKind::Mac(panic_call),
         ),
         None,
     );
@@ -62,9 +61,9 @@ struct Assert {
 fn parse_assert<'a>(
     cx: &mut ExtCtxt<'a>,
     sp: Span,
-    tts: &[TokenTree]
+    stream: TokenStream
 ) -> Result<Assert, DiagnosticBuilder<'a>> {
-    let mut parser = cx.new_parser_from_tts(tts);
+    let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {
         let mut err = cx.struct_span_err(sp, "macro requires a boolean expression as an argument");

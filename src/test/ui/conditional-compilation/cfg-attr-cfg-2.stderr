@@ -1,6 +1,9 @@
 error[E0601]: `main` function not found in crate `cfg_attr_cfg_2`
+  --> $DIR/cfg-attr-cfg-2.rs:8:1
    |
-   = note: consider adding a `main` function to `$DIR/cfg-attr-cfg-2.rs`
+LL | / #[cfg_attr(foo, cfg(bar))]
+LL | | fn main() { }
+   | |_____________^ consider adding a `main` function to `$DIR/cfg-attr-cfg-2.rs`
 
 error: aborting due to previous error
 

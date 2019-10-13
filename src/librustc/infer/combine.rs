@@ -30,6 +30,7 @@ use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
 use super::unify_key::{ConstVarValue, ConstVariableValue};
 use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use super::unify_key::replace_if_possible;
 
 use crate::hir::def_id::DefId;
 use crate::mir::interpret::ConstValue;
@@ -69,7 +70,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     {
         let a_is_expected = relation.a_is_expected();
 
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             // Relate integral variables to other types
             (&ty::Infer(ty::IntVar(a_id)), &ty::Infer(ty::IntVar(b_id))) => {
                 self.int_unification_table
@@ -127,6 +128,12 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     where
         R: TypeRelation<'tcx>,
     {
+        debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
+        if a == b { return Ok(a); }
+
+        let a = replace_if_possible(self.const_unification_table.borrow_mut(), a);
+        let b = replace_if_possible(self.const_unification_table.borrow_mut(), b);
+
         let a_is_expected = relation.a_is_expected();
 
         match (a.val, b.val) {
@@ -479,7 +486,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        match t.sty {
+        match t.kind {
             ty::Infer(ty::TyVar(vid)) => {
                 let mut variables = self.infcx.type_variables.borrow_mut();
                 let vid = variables.root_var(vid);

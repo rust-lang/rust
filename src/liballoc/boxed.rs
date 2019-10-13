@@ -29,10 +29,8 @@
 //!     Nil,
 //! }
 //!
-//! fn main() {
-//!     let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
-//!     println!("{:?}", list);
-//! }
+//! let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
+//! println!("{:?}", list);
 //! ```
 //!
 //! This will print `Cons(1, Cons(2, Nil))`.
@@ -91,8 +89,10 @@ use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
 use core::ptr::{self, NonNull, Unique};
+use core::slice;
 use core::task::{Context, Poll};
 
+use crate::alloc::{self, Global, Alloc};
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -121,12 +121,145 @@ impl<T> Box<T> {
         box x
     }
 
+    /// Constructs a new box with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut five = Box::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
+        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let ptr = unsafe {
+            Global.alloc(layout)
+                .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+        };
+        Box(ptr.cast().into())
+    }
+
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
+    }
+}
+
+impl<T> Box<[T]> {
+    /// Constructs a new boxed slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        let ptr = unsafe { alloc::alloc(layout) };
+        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
+        let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
+        Box(Unique::from(slice))
+    }
+}
+
+impl<T> Box<mem::MaybeUninit<T>> {
+    /// Converts to `Box<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut five = Box::<u32>::new_uninit();
+    ///
+    /// let five: Box<u32> = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Box<T> {
+        Box(Box::into_unique(self).cast())
+    }
+}
+
+impl<T> Box<[mem::MaybeUninit<T>]> {
+    /// Converts to `Box<[T]>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the values
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Box<[T]> {
+        Box(Unique::new_unchecked(Box::into_raw(self) as _))
     }
 }
 
@@ -240,14 +373,12 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// #![feature(box_into_raw_non_null)]
     ///
-    /// fn main() {
-    ///     let x = Box::new(5);
-    ///     let ptr = Box::into_raw_non_null(x);
+    /// let x = Box::new(5);
+    /// let ptr = Box::into_raw_non_null(x);
     ///
-    ///     // Clean up the memory by converting the NonNull pointer back
-    ///     // into a Box and letting the Box be dropped.
-    ///     let x = unsafe { Box::from_raw(ptr.as_ptr()) };
-    /// }
+    /// // Clean up the memory by converting the NonNull pointer back
+    /// // into a Box and letting the Box be dropped.
+    /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
     #[inline]
@@ -293,23 +424,19 @@ impl<T: ?Sized> Box<T> {
     /// Simple usage:
     ///
     /// ```
-    /// fn main() {
-    ///     let x = Box::new(41);
-    ///     let static_ref: &'static mut usize = Box::leak(x);
-    ///     *static_ref += 1;
-    ///     assert_eq!(*static_ref, 42);
-    /// }
+    /// let x = Box::new(41);
+    /// let static_ref: &'static mut usize = Box::leak(x);
+    /// *static_ref += 1;
+    /// assert_eq!(*static_ref, 42);
     /// ```
     ///
     /// Unsized data:
     ///
     /// ```
-    /// fn main() {
-    ///     let x = vec![1, 2, 3].into_boxed_slice();
-    ///     let static_ref = Box::leak(x);
-    ///     static_ref[0] = 4;
-    ///     assert_eq!(*static_ref, [4, 2, 3]);
-    /// }
+    /// let x = vec![1, 2, 3].into_boxed_slice();
+    /// let static_ref = Box::leak(x);
+    /// static_ref[0] = 4;
+    /// assert_eq!(*static_ref, [4, 2, 3]);
     /// ```
     #[stable(feature = "box_leak", since = "1.26.0")]
     #[inline]
@@ -645,11 +772,9 @@ impl Box<dyn Any> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Box::new(my_string));
-    ///     print_if_string(Box::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Box::new(my_string));
+    /// print_if_string(Box::new(0i8));
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any>> {
         if self.is::<T>() {
@@ -679,11 +804,9 @@ impl Box<dyn Any + Send> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let my_string = "Hello World".to_string();
-    ///     print_if_string(Box::new(my_string));
-    ///     print_if_string(Box::new(0i8));
-    /// }
+    /// let my_string = "Hello World".to_string();
+    /// print_if_string(Box::new(my_string));
+    /// print_if_string(Box::new(0i8));
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any + Send>> {
         <Box<dyn Any>>::downcast(self).map_err(|s| unsafe {
@@ -748,11 +871,33 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth(n)
     }
+    fn last(self) -> Option<I::Item> {
+        BoxIter::last(self)
+    }
 }
 
+trait BoxIter {
+    type Item;
+    fn last(self) -> Option<Self::Item>;
+}
+
+impl<I: Iterator + ?Sized> BoxIter for Box<I> {
+    type Item = I::Item;
+    default fn last(self) -> Option<I::Item> {
+        #[inline]
+        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+            Some(x)
+        }
+
+        self.fold(None, some)
+    }
+}
+
+/// Specialization for sized `I`s that uses `I`s implementation of `last()`
+/// instead of the default.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator + Sized> Iterator for Box<I> {
-    fn last(self) -> Option<I::Item> where I: Sized {
+impl<I: Iterator> BoxIter for Box<I> {
+    fn last(self) -> Option<I::Item> {
         (*self).last()
     }
 }

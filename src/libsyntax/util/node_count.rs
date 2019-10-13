@@ -93,8 +93,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_poly_trait_ref(self, t, m)
     }
-    fn visit_variant_data(&mut self, s: &VariantData, _: Ident,
-                          _: &Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, s: &VariantData) {
         self.count += 1;
         walk_struct_def(self, s)
     }
@@ -107,9 +106,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_enum_def(self, enum_definition, generics, item_id)
     }
-    fn visit_variant(&mut self, v: &Variant, g: &Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, v: &Variant) {
         self.count += 1;
-        walk_variant(self, v, g, item_id)
+        walk_variant(self, v)
     }
     fn visit_lifetime(&mut self, lifetime: &Lifetime) {
         self.count += 1;

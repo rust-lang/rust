@@ -16,7 +16,7 @@
 
 //[nll]compile-flags: -Z borrowck=mir
 
-pub trait Stream {
+pub trait Stream { //[migrate]~ NOTE trait `Stream` defined here
     type Item;
     fn next(self) -> Option<Self::Item>;
 }
@@ -106,11 +106,14 @@ impl<T> StreamExt for T where for<'a> &'a mut T: Stream { }
 fn main() {
     let source = Repeat(10);
     let map = source.map(|x: &_| x);
-    //[migrate]~^ ERROR implementation of `Stream` is not general enough
+    //[nll]~^ ERROR higher-ranked subtype error
+    //[migrate]~^^ ERROR implementation of `Stream` is not general enough
     //[migrate]~| NOTE  `Stream` would have to be implemented for the type `&'0 mut Map
     //[migrate]~| NOTE  but `Stream` is actually implemented for the type `&'1
+    //[migrate]~| NOTE  implementation of `Stream` is not general enough
     let filter = map.filter(|x: &_| true);
     //[nll]~^ ERROR higher-ranked subtype error
     let count = filter.count(); // Assert that we still have a valid stream.
     //[nll]~^ ERROR higher-ranked subtype error
+
 }

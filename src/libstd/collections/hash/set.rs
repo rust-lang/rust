@@ -1,5 +1,5 @@
 use crate::borrow::Borrow;
-use crate::collections::CollectionAllocErr;
+use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, BuildHasher};
 use crate::iter::{Chain, FromIterator, FusedIterator};
@@ -93,11 +93,9 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 /// use std::collections::HashSet;
 ///
-/// fn main() {
-///     let viking_names: HashSet<&'static str> =
-///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
-///     // use the values stored in the set
-/// }
+/// let viking_names: HashSet<&'static str> =
+///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
+/// // use the values stored in the set
 /// ```
 ///
 /// [`Cell`]: ../../std/cell/struct.Cell.html
@@ -383,7 +381,7 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.map.try_reserve(additional)
     }
 

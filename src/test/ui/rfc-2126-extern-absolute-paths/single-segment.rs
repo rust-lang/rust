@@ -6,6 +6,6 @@ use crate; //~ ERROR crate root imports need to be explicitly named: `use crate 
 use *; //~ ERROR cannot glob-import all possible crates
 
 fn main() {
-    let s = ::xcrate; //~ ERROR expected value, found module `xcrate`
+    let s = ::xcrate; //~ ERROR expected value, found crate `xcrate`
                       //~^ NOTE not a value
 }

@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/issue-49296.rs:18:16
+  --> $DIR/issue-49296.rs:19:16
    |
 LL | const X: u64 = *wat(42);
    | ---------------^^^^^^^^-

@@ -7,10 +7,8 @@
 // edition:2018
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![allow(unused_assignments)]
-#![allow(unused_variables)]
 #![feature(slice_patterns)]
-#![feature(async_await)]
+#![allow(unused)]
 
 use std::{
     cell::{Cell, RefCell},

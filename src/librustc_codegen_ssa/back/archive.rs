@@ -1,9 +1,10 @@
 use rustc::session::Session;
+use syntax::symbol::Symbol;
 
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
+pub fn find_library(name: Symbol, search_paths: &[PathBuf], sess: &Session)
                     -> PathBuf {
     // On Windows, static libraries sometimes show up as libfoo.a and other
     // times show up as foo.lib
@@ -40,7 +41,7 @@ pub trait ArchiveBuilder<'a> {
         lto: bool,
         skip_objects: bool,
     ) -> io::Result<()>;
-    fn add_native_library(&mut self, name: &str);
+    fn add_native_library(&mut self, name: Symbol);
     fn update_symbols(&mut self);
 
     fn build(self);

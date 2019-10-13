@@ -1,6 +1,6 @@
 use super::BackendTypes;
 use crate::mir::operand::OperandRef;
-use rustc::ty::Ty;
+use rustc::ty::{self, Ty};
 use rustc_target::abi::call::FnType;
 use syntax_pos::Span;
 
@@ -10,7 +10,7 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     /// add them to librustc_codegen_llvm/context.rs
     fn codegen_intrinsic_call(
         &mut self,
-        callee_ty: Ty<'tcx>,
+        instance: ty::Instance<'tcx>,
         fn_ty: &FnType<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Self::Value>],
         llresult: Self::Value,
@@ -20,6 +20,7 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
+    fn sideeffect(&mut self);
     /// Trait method used to inject `va_start` on the "spoofed" `VaListImpl` in
     /// Rust defined C-variadic functions.
     fn va_start(&mut self, val: Self::Value) -> Self::Value;

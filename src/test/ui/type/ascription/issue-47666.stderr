@@ -6,6 +6,7 @@ LL |     let _ = Option:Some(vec![0, 1]);
    |                   |     |
    |                   |     expected type
    |                   |     in this macro invocation
+   |                   |     this macro call doesn't expand to a type
    |                   help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`

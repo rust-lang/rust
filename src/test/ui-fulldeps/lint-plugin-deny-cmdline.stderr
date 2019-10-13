@@ -1,5 +1,13 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/lint-plugin-deny-cmdline.rs:6:1
+   |
+LL | #![plugin(lint_plugin_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 error: item is named 'lintme'
-  --> $DIR/lint-plugin-deny-cmdline.rs:8:1
+  --> $DIR/lint-plugin-deny-cmdline.rs:9:1
    |
 LL | fn lintme() { }
    | ^^^^^^^^^^^^^^^

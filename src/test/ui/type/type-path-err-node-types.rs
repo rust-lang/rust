@@ -20,7 +20,7 @@ fn method() {
 }
 
 fn closure() {
-    let _ = |a, b: _| -> _ { 0 }; // OK
+    let _ = |a, b: _| -> _ { 0 }; //~ ERROR type annotations needed
 }
 
 fn main() {}

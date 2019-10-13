@@ -32,7 +32,7 @@ use syntax::source_map::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{arg_to_string, ty_to_string};
+use syntax::print::pprust::{param_to_string, ty_to_string};
 use syntax_pos::*;
 
 use dump_visitor::DumpVisitor;
@@ -129,7 +129,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
         let qualname = format!("::{}",
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
-        match item.node {
+        match item.kind {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
 
@@ -176,7 +176,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
-        match item.node {
+        match item.kind {
             ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
@@ -277,7 +277,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, item.ident.span);
                 let variants_str = def.variants
                     .iter()
-                    .map(|v| v.node.ident.to_string())
+                    .map(|v| v.ident.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{}::{{{}}}", name, variants_str);
@@ -291,7 +291,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: def.variants
                         .iter()
-                        .map(|v| id_from_node_id(v.node.id, self))
+                        .map(|v| id_from_node_id(v.id, self))
                         .collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(&item.attrs),
@@ -300,7 +300,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, ref impls) => {
-                if let ast::TyKind::Path(None, ref path) = typ.node {
+                if let ast::TyKind::Path(None, ref path) = typ.kind {
                     // Common case impl for a struct or something basic.
                     if generated_code(path.span) {
                         return None;
@@ -311,7 +311,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     let impl_id = self.next_impl_id();
                     let span = self.span_from_span(sub_span);
 
-                    let type_data = self.lookup_ref_id(typ.id);
+                    let type_data = self.lookup_def_id(typ.id);
                     type_data.map(|type_data| {
                         Data::RelationData(Relation {
                             kind: RelationKind::Impl {
@@ -321,7 +321,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             from: id_from_def_id(type_data),
                             to: trait_ref
                                 .as_ref()
-                                .and_then(|t| self.lookup_ref_id(t.ref_id))
+                                .and_then(|t| self.lookup_def_id(t.ref_id))
                                 .map(id_from_def_id)
                                 .unwrap_or_else(|| null_id()),
                         },
@@ -395,7 +395,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let (qualname, parent_scope, decl_id, docs, attributes) =
             match self.tcx.impl_of_method(self.tcx.hir().local_def_id_from_node_id(id)) {
                 Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
-                    Some(Node::Item(item)) => match item.node {
+                    Some(Node::Item(item)) => match item.kind {
                         hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
                             qualname.push_str(&self.tcx.hir().hir_to_pretty_string(ty.hir_id));
@@ -494,7 +494,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_trait_ref_data(&self, trait_ref: &ast::TraitRef) -> Option<Ref> {
-        self.lookup_ref_id(trait_ref.ref_id).and_then(|def_id| {
+        self.lookup_def_id(trait_ref.ref_id).and_then(|def_id| {
             let span = trait_ref.path.span;
             if generated_code(span) {
                 return None;
@@ -514,10 +514,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let expr_hir_id = self.tcx.hir().node_to_hir_id(expr.id);
         let hir_node = self.tcx.hir().expect_expr(expr_hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
-        if ty.is_none() || ty.unwrap().sty == ty::Error {
+        if ty.is_none() || ty.unwrap().kind == ty::Error {
             return None;
         }
-        match expr.node {
+        match expr.kind {
             ast::ExprKind::Field(ref sub_ex, ident) => {
                 let sub_ex_hir_id = self.tcx.hir().node_to_hir_id(sub_ex.id);
                 let hir_node = match self.tcx.hir().find(sub_ex_hir_id) {
@@ -531,7 +531,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         return None;
                     }
                 };
-                match self.tables.expr_ty_adjusted(&hir_node).sty {
+                match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         let index = self.tcx.find_field_index(ident, variant).unwrap();
@@ -551,7 +551,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::Struct(ref path, ..) => {
-                match self.tables.expr_ty_adjusted(&hir_node).sty {
+                match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let sub_span = path.segments.last().unwrap().ident.span;
                         filter!(self.span_utils, sub_span);
@@ -611,7 +611,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item {
-                node: hir::ItemKind::Use(ref path, _),
+                kind: hir::ItemKind::Use(ref path, _),
                 ..
             }) |
             Node::Visibility(&Spanned {
@@ -628,37 +628,37 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
 
             Node::Expr(&hir::Expr {
-                node: hir::ExprKind::Struct(ref qpath, ..),
+                kind: hir::ExprKind::Struct(ref qpath, ..),
                 ..
             }) => {
                 self.tables.qpath_res(qpath, hir_id)
             }
 
             Node::Expr(&hir::Expr {
-                node: hir::ExprKind::Path(ref qpath),
+                kind: hir::ExprKind::Path(ref qpath),
                 ..
             }) |
             Node::Pat(&hir::Pat {
-                node: hir::PatKind::Path(ref qpath),
+                kind: hir::PatKind::Path(ref qpath),
                 ..
             }) |
             Node::Pat(&hir::Pat {
-                node: hir::PatKind::Struct(ref qpath, ..),
+                kind: hir::PatKind::Struct(ref qpath, ..),
                 ..
             }) |
             Node::Pat(&hir::Pat {
-                node: hir::PatKind::TupleStruct(ref qpath, ..),
+                kind: hir::PatKind::TupleStruct(ref qpath, ..),
                 ..
             }) |
             Node::Ty(&hir::Ty {
-                node: hir::TyKind::Path(ref qpath),
+                kind: hir::TyKind::Path(ref qpath),
                 ..
             }) => {
                 self.tables.qpath_res(qpath, hir_id)
             }
 
             Node::Binding(&hir::Pat {
-                node: hir::PatKind::Binding(_, canonical_id, ..),
+                kind: hir::PatKind::Binding(_, canonical_id, ..),
                 ..
             }) => Res::Local(canonical_id),
 
@@ -869,7 +869,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         })
     }
 
-    fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
+    fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
             Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
             def => Some(def.def_id()),
@@ -934,7 +934,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push('(');
     sig.push_str(&decl.inputs
         .iter()
-        .map(arg_to_string)
+        .map(param_to_string)
         .collect::<Vec<_>>()
         .join(", "));
     sig.push(')');
@@ -964,7 +964,7 @@ impl<'l> PathCollector<'l> {
 
 impl<'l> Visitor<'l> for PathCollector<'l> {
     fn visit_pat(&mut self, p: &'l ast::Pat) {
-        match p.node {
+        match p.kind {
             PatKind::Struct(ref path, ..) => {
                 self.collected_paths.push((p.id, path));
             }
@@ -1156,7 +1156,7 @@ fn escape(s: String) -> String {
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
 fn generated_code(span: Span) -> bool {
-    span.ctxt() != NO_EXPANSION || span.is_dummy()
+    span.from_expansion() || span.is_dummy()
 }
 
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore

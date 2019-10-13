@@ -1,7 +1,7 @@
 use super::{Item, ImplItem, TraitItem};
 use super::intravisit::Visitor;
 
-/// The "item-like visitor" visitor defines only the top-level methods
+/// The "item-like visitor" defines only the top-level methods
 /// that can be invoked by `Crate::visit_all_item_likes()`. Whether
 /// this trait is the right one to implement will depend on the
 /// overall pattern you need. Here are the three available patterns,
@@ -18,11 +18,11 @@ use super::intravisit::Visitor;
 ///    an item, but don't care about how item-like things are nested
 ///    within one another.
 ///    - Example: Examine each expression to look for its type and do some check or other.
-///    - How: Implement `intravisit::Visitor` and use
-///      `tcx.hir().krate().visit_all_item_likes(visitor.as_deep_visitor())`. Within
-///      your `intravisit::Visitor` impl, implement methods like
-///      `visit_expr()`; don't forget to invoke
-///      `intravisit::walk_visit_expr()` to keep walking the subparts.
+///    - How: Implement `intravisit::Visitor` and override the `nested_visit_map()` method
+///      to return `NestedVisitorMap::OnlyBodies` and use
+///      `tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor())`. Within
+///      your `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget
+///      to invoke `intravisit::walk_expr()` to keep walking the subparts).
 ///    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 ///    - Pro: Integrates well into dependency tracking.
 ///    - Con: Don't get information about nesting between items
@@ -30,10 +30,9 @@ use super::intravisit::Visitor;
 ///    item-like things.
 ///    - Example: Lifetime resolution, which wants to bring lifetimes declared on the
 ///      impl into scope while visiting the impl-items, and then back out again.
-///    - How: Implement `intravisit::Visitor` and override the
-///      `nested_visit_map()` methods to return
-///      `NestedVisitorMap::All`. Walk your crate with
-///      `intravisit::walk_crate()` invoked on `tcx.hir().krate()`.
+///    - How: Implement `intravisit::Visitor` and override the `nested_visit_map()` method
+///      to return `NestedVisitorMap::All`. Walk your crate with `intravisit::walk_crate()`
+///      invoked on `tcx.hir().krate()`.
 ///    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 ///    - Pro: Preserves nesting information
 ///    - Con: Does not integrate well into dependency tracking.
@@ -79,7 +78,7 @@ impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
     }
 }
 
-/// A parallel variant of ItemLikeVisitor
+/// A parallel variant of `ItemLikeVisitor`.
 pub trait ParItemLikeVisitor<'hir> {
     fn visit_item(&self, item: &'hir Item);
     fn visit_trait_item(&self, trait_item: &'hir TraitItem);

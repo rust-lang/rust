@@ -1,5 +1,7 @@
 // check-pass
 
+#![allow(deprecated)]
+
 pub type ParseResult<T> = Result<T, ()>;
 
 pub enum Item<'a> {

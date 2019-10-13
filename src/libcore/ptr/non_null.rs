@@ -125,7 +125,7 @@ impl<T: ?Sized> NonNull<T> {
         &mut *self.as_ptr()
     }
 
-    /// Cast to a pointer of another type
+    /// Casts to a pointer of another type.
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {

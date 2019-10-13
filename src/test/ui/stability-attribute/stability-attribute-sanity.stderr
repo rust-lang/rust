@@ -58,48 +58,54 @@ error[E0542]: missing 'since'
 LL |     #[rustc_deprecated(reason = "a")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0543]: missing 'reason'
+  --> $DIR/stability-attribute-sanity.rs:44:5
+   |
+LL |     #[rustc_deprecated(since = "a")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:45:1
+  --> $DIR/stability-attribute-sanity.rs:49:1
    |
 LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:49:1
+  --> $DIR/stability-attribute-sanity.rs:53:1
    |
 LL | #[unstable(feature = "b", issue = "0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:53:1
+  --> $DIR/stability-attribute-sanity.rs:57:1
    |
 LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0540]: multiple rustc_deprecated attributes
-  --> $DIR/stability-attribute-sanity.rs:61:1
+  --> $DIR/stability-attribute-sanity.rs:65:1
    |
 LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0553]: multiple rustc_const_unstable attributes
-  --> $DIR/stability-attribute-sanity.rs:61:1
+  --> $DIR/stability-attribute-sanity.rs:65:1
    |
 LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Invalid stability or deprecation version found
-  --> $DIR/stability-attribute-sanity.rs:61:1
+  --> $DIR/stability-attribute-sanity.rs:65:1
    |
 LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:66:1
+  --> $DIR/stability-attribute-sanity.rs:70:1
    |
 LL | fn deprecated_without_unstable_or_stable() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 
 For more information about this error, try `rustc --explain E0541`.

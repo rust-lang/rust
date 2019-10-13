@@ -5,8 +5,6 @@
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
 
-///////////////////////////////////////////////////////////////////////////
-
 pub trait TheTrait {
     type TheAssocType;
 }
@@ -18,8 +16,6 @@ pub struct TheType<'b> {
 impl<'b> TheTrait for TheType<'b> {
     type TheAssocType = &'b ();
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 pub struct WithAssoc<T:TheTrait> {
     m: [T; 0]

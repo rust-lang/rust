@@ -4,7 +4,7 @@ error[E0044]: foreign items may not have type parameters
 LL |     fn sqrt<T>(f: T) -> T;
    |     ^^^^^^^^^^^^^^^^^^^^^^ can't have type parameters
    |
-   = help: use specialization instead of type parameters by replacing them with concrete types like `u32`
+   = help: replace the type parameters with concrete types like `u32`
 
 error: aborting due to previous error
 

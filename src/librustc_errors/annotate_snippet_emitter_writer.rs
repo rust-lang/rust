@@ -7,7 +7,7 @@
 
 use syntax_pos::{SourceFile, MultiSpan, Loc};
 use crate::{
-    Level, CodeSuggestion, DiagnosticBuilder, Emitter,
+    Level, CodeSuggestion, Diagnostic, Emitter,
     SourceMapperDyn, SubDiagnostic, DiagnosticId
 };
 use crate::emitter::FileWithAnnotatedLines;
@@ -25,17 +25,21 @@ pub struct AnnotateSnippetEmitterWriter {
     short_message: bool,
     /// If true, will normalize line numbers with `LL` to prevent noise in UI test diffs.
     ui_testing: bool,
+
+    external_macro_backtrace: bool,
 }
 
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
-        let primary_span = db.span.clone();
-        let children = db.children.clone();
-        // FIXME(#59346): Collect suggestions (see emitter.rs)
-        let suggestions: &[_] = &[];
+    fn emit_diagnostic(&mut self, db: &Diagnostic) {
+        let mut children = db.children.clone();
+        let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
 
-        // FIXME(#59346): Add `fix_multispans_in_std_macros` function from emitter.rs
+        self.fix_multispans_in_std_macros(&self.source_map,
+                                          &mut primary_span,
+                                          &mut children,
+                                          &db.level,
+                                          self.external_macro_backtrace);
 
         self.emit_messages_default(&db.level,
                                    db.message(),
@@ -107,7 +111,7 @@ impl<'a>  DiagnosticConverter<'a> {
         annotated_files: Vec<FileWithAnnotatedLines>,
         primary_lo: Loc
     ) -> Vec<Slice> {
-        // FIXME(#59346): Provide a test case where `annotated_files` is > 1
+        // FIXME(#64205): Provide a test case where `annotated_files` is > 1
         annotated_files.iter().flat_map(|annotated_file| {
             annotated_file.lines.iter().map(|line| {
                 let line_source = Self::source_string(annotated_file.file.clone(), &line);
@@ -148,7 +152,7 @@ impl<'a>  DiagnosticConverter<'a> {
     /// Maps `Diagnostic::Level` to `snippet::AnnotationType`
     fn annotation_type_for_level(level: Level) -> AnnotationType {
         match level {
-            Level::Bug | Level::Fatal | Level::PhaseFatal | Level::Error => AnnotationType::Error,
+            Level::Bug | Level::Fatal | Level::Error => AnnotationType::Error,
             Level::Warning => AnnotationType::Warning,
             Level::Note => AnnotationType::Note,
             Level::Help => AnnotationType::Help,
@@ -161,12 +165,14 @@ impl<'a>  DiagnosticConverter<'a> {
 impl AnnotateSnippetEmitterWriter {
     pub fn new(
         source_map: Option<Lrc<SourceMapperDyn>>,
-        short_message: bool
+        short_message: bool,
+        external_macro_backtrace: bool,
     ) -> Self {
         Self {
             source_map,
             short_message,
             ui_testing: false,
+            external_macro_backtrace,
         }
     }
 

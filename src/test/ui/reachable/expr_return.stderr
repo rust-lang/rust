@@ -2,7 +2,10 @@ error: unreachable expression
   --> $DIR/expr_return.rs:10:22
    |
 LL |     let x = {return {return {return;}}};
-   |                      ^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^------^^
+   |                      |       |
+   |                      |       any code following this expression is unreachable
+   |                      unreachable expression
    |
 note: lint level defined here
   --> $DIR/expr_return.rs:4:9

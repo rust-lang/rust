@@ -7,5 +7,5 @@ fn main() {
     } else {
         x = 10;
     }
-    foo(x); //~ ERROR use of possibly uninitialized variable: `x`
+    foo(x); //~ ERROR use of possibly-uninitialized variable: `x`
 }

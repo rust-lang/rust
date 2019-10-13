@@ -412,7 +412,7 @@ mod foo {
 {
   "message": "For more information about this error, try `rustc --explain E0412`.",
   "code": null,
-  "level": "",
+  "level": "failure-note",
   "spans": [],
   "children": [],
   "rendered": "\u001b[0m\u001b[1mFor more information about this error, try `rustc --explain E0412`.\u001b[0m

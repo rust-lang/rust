@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 #![feature(associated_type_bounds)]
 

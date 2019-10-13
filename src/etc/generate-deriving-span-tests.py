@@ -14,6 +14,8 @@ TEST_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../test/ui/derives/'))
 
 TEMPLATE = """\
+// ignore-x86
+// ^ due to stderr output differences
 // This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
 
 {error_deriving}

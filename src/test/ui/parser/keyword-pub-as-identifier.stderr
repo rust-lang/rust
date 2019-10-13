@@ -1,8 +1,12 @@
-error: expected pattern, found keyword `pub`
+error: expected identifier, found keyword `pub`
   --> $DIR/keyword-pub-as-identifier.rs:4:9
    |
 LL |     let pub = "foo";
-   |         ^^^ expected pattern
+   |         ^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#pub = "foo";
+   |         ^^^^^
 
 error: aborting due to previous error
 

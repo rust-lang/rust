@@ -26,7 +26,7 @@ use crate::traits::DomainGoal;
 use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use crate::ty::subst::Kind;
+use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
@@ -93,7 +93,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// we will invoke this method to instantiate `'a` with an
     /// inference variable (though `'b` would be instantiated first,
     /// as a placeholder).
-    fn next_existential_region_var(&mut self) -> ty::Region<'tcx>;
+    fn next_existential_region_var(&mut self, was_placeholder: bool) -> ty::Region<'tcx>;
 
     /// Creates a new region variable representing a
     /// higher-ranked region that is instantiated universally.
@@ -124,7 +124,7 @@ pub trait TypeRelatingDelegate<'tcx> {
 #[derive(Clone, Debug)]
 struct ScopesAndKind<'tcx> {
     scopes: Vec<BoundRegionScope<'tcx>>,
-    kind: Kind<'tcx>,
+    kind: GenericArg<'tcx>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -193,7 +193,7 @@ where
                     let placeholder = ty::PlaceholderRegion { universe, name: br };
                     delegate.next_placeholder_region(placeholder)
                 } else {
-                    delegate.next_existential_region_var()
+                    delegate.next_existential_region_var(true)
                 }
             }
         };
@@ -274,7 +274,7 @@ where
         use crate::traits::WhereClause;
         use syntax_pos::DUMMY_SP;
 
-        match value_ty.sty {
+        match value_ty.kind {
             ty::Projection(other_projection_ty) => {
                 let var = self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
@@ -328,7 +328,7 @@ where
         // This only presently applies to chalk integration, as NLL
         // doesn't permit type variables to appear on both sides (and
         // doesn't use lazy norm).
-        match value_ty.sty {
+        match value_ty.kind {
             ty::Infer(ty::TyVar(value_vid)) => {
                 // Two type variables: just equate them.
                 self.infcx
@@ -548,7 +548,7 @@ where
             b = self.infcx.shallow_resolve(b);
         }
 
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             (_, &ty::Infer(ty::TyVar(vid))) => {
                 if D::forbid_inference_vars() {
                     // Forbid inference variables in the RHS.
@@ -878,7 +878,7 @@ where
 
         debug!("TypeGeneralizer::tys(a={:?})", a);
 
-        match a.sty {
+        match a.kind {
             ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
                 if D::forbid_inference_vars() =>
             {

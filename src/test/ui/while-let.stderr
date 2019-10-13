@@ -1,10 +1,10 @@
 warning: irrefutable while-let pattern
-  --> $DIR/while-let.rs:6:13
+  --> $DIR/while-let.rs:7:13
    |
 LL |               while let $p = $e $b
    |               ^^^^^
 ...
-LL | /     foo!(a, 1, {
+LL | /     foo!(_a, 1, {
 LL | |         println!("irrefutable pattern");
 LL | |     });
    | |_______- in this macro invocation
@@ -12,20 +12,20 @@ LL | |     });
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: irrefutable while-let pattern
-  --> $DIR/while-let.rs:6:13
+  --> $DIR/while-let.rs:7:13
    |
 LL |               while let $p = $e $b
    |               ^^^^^
 ...
-LL | /     bar!(a, 1, {
+LL | /     bar!(_a, 1, {
 LL | |         println!("irrefutable pattern");
 LL | |     });
    | |_______- in this macro invocation
 
 warning: irrefutable while-let pattern
-  --> $DIR/while-let.rs:24:5
+  --> $DIR/while-let.rs:25:5
    |
-LL | /     while let a = 1 {
+LL | /     while let _a = 1 {
 LL | |         println!("irrefutable pattern");
 LL | |         break;
 LL | |     }

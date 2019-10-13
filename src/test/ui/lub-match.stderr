@@ -26,3 +26,4 @@ LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0312`.

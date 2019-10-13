@@ -1,10 +1,7 @@
 // edition:2018
-// run-pass
+// check-pass
 
 // Test that we can use async fns with multiple arbitrary lifetimes.
-
-#![feature(async_await)]
-#![allow(dead_code)]
 
 use std::ops::Add;
 

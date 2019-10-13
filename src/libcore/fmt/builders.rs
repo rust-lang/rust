@@ -98,7 +98,7 @@ pub struct DebugStruct<'a, 'b: 'a> {
     has_fields: bool,
 }
 
-pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>,
+pub(super) fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>,
                                 name: &str)
                                 -> DebugStruct<'a, 'b> {
     let result = fmt.write_str(name);
@@ -251,7 +251,10 @@ pub struct DebugTuple<'a, 'b: 'a> {
     empty_name: bool,
 }
 
-pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> DebugTuple<'a, 'b> {
+pub(super) fn debug_tuple_new<'a, 'b>(
+    fmt: &'a mut fmt::Formatter<'b>,
+    name: &str,
+) -> DebugTuple<'a, 'b> {
     let result = fmt.write_str(name);
     DebugTuple {
         fmt,
@@ -418,7 +421,7 @@ pub struct DebugSet<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
-pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
+pub(super) fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
     let result = fmt.write_str("{");
     DebugSet {
         inner: DebugInner {
@@ -555,7 +558,7 @@ pub struct DebugList<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
-pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
+pub(super) fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
     let result = fmt.write_str("[");
     DebugList {
         inner: DebugInner {
@@ -697,7 +700,7 @@ pub struct DebugMap<'a, 'b: 'a> {
     state: PadAdapterState,
 }
 
-pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
+pub(super) fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
     let result = fmt.write_str("{");
     DebugMap {
         fmt,

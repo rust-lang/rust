@@ -24,15 +24,17 @@ impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Clone, U: Clone + IntoIterator, F: Clone> Clone for FlatMap<I, U, F>
-    where <U as IntoIterator>::IntoIter: Clone
+impl<I: Clone, U, F: Clone> Clone for FlatMap<I, U, F>
+where
+    U: Clone + IntoIterator<IntoIter: Clone>,
 {
     fn clone(&self) -> Self { FlatMap { inner: self.inner.clone() } }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, U: IntoIterator, F> fmt::Debug for FlatMap<I, U, F>
-    where U::IntoIter: fmt::Debug
+impl<I: fmt::Debug, U, F> fmt::Debug for FlatMap<I, U, F>
+where
+    U: IntoIterator<IntoIter: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FlatMap").field("inner", &self.inner).finish()
@@ -68,9 +70,9 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F>
-    where F: FnMut(I::Item) -> U,
-          U: IntoIterator,
-          U::IntoIter: DoubleEndedIterator
+where
+    F: FnMut(I::Item) -> U,
+    U: IntoIterator<IntoIter: DoubleEndedIterator>,
 {
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
@@ -104,12 +106,11 @@ impl<I, U, F> FusedIterator for FlatMap<I, U, F>
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
-pub struct Flatten<I: Iterator>
-where I::Item: IntoIterator {
+pub struct Flatten<I: Iterator<Item: IntoIterator>> {
     inner: FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>,
 }
-impl<I: Iterator> Flatten<I>
-where I::Item: IntoIterator {
+
+impl<I: Iterator<Item: IntoIterator>> Flatten<I> {
     pub(in super::super) fn new(iter: I) -> Flatten<I> {
         Flatten { inner: FlattenCompat::new(iter) }
     }
@@ -117,8 +118,9 @@ where I::Item: IntoIterator {
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 impl<I, U> fmt::Debug for Flatten<I>
-    where I: Iterator + fmt::Debug, U: Iterator + fmt::Debug,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
+where
+    I: fmt::Debug + Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: fmt::Debug + Iterator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Flatten").field("inner", &self.inner).finish()
@@ -127,16 +129,18 @@ impl<I, U> fmt::Debug for Flatten<I>
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 impl<I, U> Clone for Flatten<I>
-    where I: Iterator + Clone, U: Iterator + Clone,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
+where
+    I: Clone + Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Clone + Iterator,
 {
     fn clone(&self) -> Self { Flatten { inner: self.inner.clone() } }
 }
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 impl<I, U> Iterator for Flatten<I>
-    where I: Iterator, U: Iterator,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+where
+    I: Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator,
 {
     type Item = U::Item;
 
@@ -163,8 +167,9 @@ impl<I, U> Iterator for Flatten<I>
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 impl<I, U> DoubleEndedIterator for Flatten<I>
-    where I: DoubleEndedIterator, U: DoubleEndedIterator,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+where
+    I: DoubleEndedIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: DoubleEndedIterator,
 {
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
@@ -186,8 +191,10 @@ impl<I, U> DoubleEndedIterator for Flatten<I>
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 impl<I, U> FusedIterator for Flatten<I>
-    where I: FusedIterator, U: Iterator,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
+where
+    I: FusedIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator,
+{}
 
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
@@ -205,8 +212,9 @@ impl<I, U> FlattenCompat<I, U> {
 }
 
 impl<I, U> Iterator for FlattenCompat<I, U>
-    where I: Iterator, U: Iterator,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+where
+    I: Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator,
 {
     type Item = U::Item;
 
@@ -217,7 +225,7 @@ impl<I, U> Iterator for FlattenCompat<I, U>
                 if let elt@Some(_) = inner.next() { return elt }
             }
             match self.iter.next() {
-                None => return self.backiter.as_mut().and_then(|it| it.next()),
+                None => return self.backiter.as_mut()?.next(),
                 Some(inner) => self.frontiter = Some(inner.into_iter()),
             }
         }
@@ -225,8 +233,8 @@ impl<I, U> Iterator for FlattenCompat<I, U>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
-        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
+        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), U::size_hint);
+        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), U::size_hint);
         let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
             ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
@@ -238,20 +246,25 @@ impl<I, U> Iterator for FlattenCompat<I, U>
     fn try_fold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Ok = Acc>>(
+            frontiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a {
+            move |acc, x| {
+                let mut mid = x.into_iter();
+                let r = mid.try_fold(acc, &mut *fold);
+                *frontiter = Some(mid);
+                r
+            }
+        }
+
         if let Some(ref mut front) = self.frontiter {
             init = front.try_fold(init, &mut fold)?;
         }
         self.frontiter = None;
 
-        {
-            let frontiter = &mut self.frontiter;
-            init = self.iter.try_fold(init, |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_fold(acc, &mut fold);
-                *frontiter = Some(mid);
-                r
-            })?;
-        }
+        init = self.iter.try_fold(init, flatten(&mut self.frontiter, &mut fold))?;
         self.frontiter = None;
 
         if let Some(ref mut back) = self.backiter {
@@ -263,19 +276,27 @@ impl<I, U> Iterator for FlattenCompat<I, U>
     }
 
     #[inline]
-    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, ref mut fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
+        #[inline]
+        fn flatten<U: Iterator, Acc>(
+            fold: &mut impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc + '_ {
+            move |acc, iter| iter.fold(acc, &mut *fold)
+        }
+
         self.frontiter.into_iter()
             .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
-            .fold(init, |acc, iter| iter.fold(acc, &mut fold))
+            .fold(init, flatten(fold))
     }
 }
 
 impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
-    where I: DoubleEndedIterator, U: DoubleEndedIterator,
-          I::Item: IntoIterator<IntoIter = U, Item = U::Item>
+where
+    I: DoubleEndedIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: DoubleEndedIterator,
 {
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> {
@@ -284,7 +305,7 @@ impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
                 if let elt@Some(_) = inner.next_back() { return elt }
             }
             match self.iter.next_back() {
-                None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
+                None => return self.frontiter.as_mut()?.next_back(),
                 next => self.backiter = next.map(IntoIterator::into_iter),
             }
         }
@@ -294,20 +315,27 @@ impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
     fn try_rfold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Ok = Acc>>(
+            backiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a where
+            T::IntoIter: DoubleEndedIterator,
+        {
+            move |acc, x| {
+                let mut mid = x.into_iter();
+                let r = mid.try_rfold(acc, &mut *fold);
+                *backiter = Some(mid);
+                r
+            }
+        }
+
         if let Some(ref mut back) = self.backiter {
             init = back.try_rfold(init, &mut fold)?;
         }
         self.backiter = None;
 
-        {
-            let backiter = &mut self.backiter;
-            init = self.iter.try_rfold(init, |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_rfold(acc, &mut fold);
-                *backiter = Some(mid);
-                r
-            })?;
-        }
+        init = self.iter.try_rfold(init, flatten(&mut self.backiter, &mut fold))?;
         self.backiter = None;
 
         if let Some(ref mut front) = self.frontiter {
@@ -319,12 +347,19 @@ impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, ref mut fold: Fold) -> Acc
         where Fold: FnMut(Acc, Self::Item) -> Acc,
     {
+        #[inline]
+        fn flatten<U: DoubleEndedIterator, Acc>(
+            fold: &mut impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc + '_ {
+            move |acc, iter| iter.rfold(acc, &mut *fold)
+        }
+
         self.frontiter.into_iter()
             .chain(self.iter.map(IntoIterator::into_iter))
             .chain(self.backiter)
-            .rfold(init, |acc, iter| iter.rfold(acc, &mut fold))
+            .rfold(init, flatten(fold))
     }
 }

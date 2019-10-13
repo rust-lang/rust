@@ -468,6 +468,14 @@ pub enum ProcMacro {
 }
 
 impl ProcMacro {
+    pub fn name(&self) -> &'static str {
+        match self {
+            ProcMacro::CustomDerive { trait_name, .. } => trait_name,
+            ProcMacro::Attr { name, .. } => name,
+            ProcMacro::Bang { name, ..} => name
+        }
+    }
+
     pub const fn custom_derive(
         trait_name: &'static str,
         attributes: &'static [&'static str],

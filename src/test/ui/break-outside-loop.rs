@@ -7,8 +7,8 @@ fn cond() -> bool { true }
 fn foo<F>(_: F) where F: FnOnce() {}
 
 fn main() {
-    let pth = break; //~ ERROR: `break` outside of loop
-    if cond() { continue } //~ ERROR: `continue` outside of loop
+    let pth = break; //~ ERROR: `break` outside of a loop
+    if cond() { continue } //~ ERROR: `continue` outside of a loop
 
     while cond() {
         if cond() { break }
@@ -21,5 +21,5 @@ fn main() {
 
     let rs: Foo = Foo{t: pth};
 
-    let unconstrained = break; //~ ERROR: `break` outside of loop
+    let unconstrained = break; //~ ERROR: `break` outside of a loop
 }

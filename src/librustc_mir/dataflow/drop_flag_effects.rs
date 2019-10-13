@@ -10,19 +10,17 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
-    where F: FnMut(&mir::Projection<'tcx>) -> bool
+    where F: FnMut(&mir::PlaceElem<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
-        match move_data.move_paths[child_index].place.projection {
-            Some(ref proj) => {
-                if cond(proj) {
-                    return Some(child_index)
-                }
+        let move_path_children = &move_data.move_paths[child_index];
+        if let Some(elem) = move_path_children.place.projection.last() {
+            if cond(elem) {
+                return Some(child_index)
             }
-            _ => {}
         }
-        next_child = move_data.move_paths[child_index].next_sibling;
+        next_child = move_path_children.next_sibling;
     }
 
     None
@@ -52,7 +50,7 @@ fn place_contents_drop_state_cannot_differ<'tcx>(
     place: &mir::Place<'tcx>,
 ) -> bool {
     let ty = place.ty(body, tcx).ty;
-    match ty.sty {
+    match ty.kind {
         ty::Array(..) => {
             debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
                    place, ty);
@@ -150,9 +148,8 @@ pub(crate) fn on_all_drop_children_bits<'tcx, F>(
         let ty = place.ty(body, tcx).ty;
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
 
-        let gcx = tcx.global_tcx();
         let erased_ty = tcx.erase_regions(&ty);
-        if erased_ty.needs_drop(gcx, ctxt.param_env) {
+        if erased_ty.needs_drop(tcx, ctxt.param_env) {
             each_child(child);
         } else {
             debug!("on_all_drop_children_bits - skipping")

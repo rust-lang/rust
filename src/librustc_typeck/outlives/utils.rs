@@ -1,18 +1,19 @@
 use rustc::ty::outlives::Component;
-use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
 use smallvec::smallvec;
 use std::collections::BTreeSet;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
-pub type RequiredPredicates<'tcx> = BTreeSet<ty::OutlivesPredicate<Kind<'tcx>, ty::Region<'tcx>>>;
+pub type RequiredPredicates<'tcx> =
+    BTreeSet<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
 pub fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    kind: Kind<'tcx>,
+    kind: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
     required_predicates: &mut RequiredPredicates<'tcx>,
 ) {
@@ -23,7 +24,7 @@ pub fn insert_outlives_predicate<'tcx>(
     }
 
     match kind.unpack() {
-        UnpackedKind::Type(ty) => {
+        GenericArgKind::Type(ty) => {
             // `T: 'outlived_region` for some type `T`
             // But T could be a lot of things:
             // e.g., if `T = &'b u32`, then `'b: 'outlived_region` is
@@ -112,14 +113,14 @@ pub fn insert_outlives_predicate<'tcx>(
             }
         }
 
-        UnpackedKind::Lifetime(r) => {
+        GenericArgKind::Lifetime(r) => {
             if !is_free_region(tcx, r) {
                 return;
             }
             required_predicates.insert(ty::OutlivesPredicate(kind, outlived_region));
         }
 
-        UnpackedKind::Const(_) => {
+        GenericArgKind::Const(_) => {
             // Generic consts don't impose any constraints.
         }
     }
@@ -160,9 +161,14 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         // ignore it.  We can't put it on the struct header anyway.
         RegionKind::ReLateBound(..) => false,
 
+        // This can appear in `where Self: ` bounds (#64855):
+        //
+        //     struct Bar<T>(<Self as Foo>::Type) where Self: ;
+        //     struct Baz<'a>(&'a Self) where Self: ;
+        RegionKind::ReEmpty => false,
+
         // These regions don't appear in types from type declarations:
-        RegionKind::ReEmpty
-        | RegionKind::ReErased
+        RegionKind::ReErased
         | RegionKind::ReClosureBound(..)
         | RegionKind::ReScope(..)
         | RegionKind::ReVar(..)

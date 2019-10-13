@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 #![deny(deprecated_in_future)]
 

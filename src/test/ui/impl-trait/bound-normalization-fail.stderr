@@ -7,25 +7,35 @@ LL | #![feature(impl_trait_in_bindings)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as impl_trait::Trait>::Assoc`
-  --> $DIR/bound-normalization-fail.rs:29:32
+  --> $DIR/bound-normalization-fail.rs:28:32
    |
 LL |     fn foo_fail<T: Trait>() -> impl FooLike<Output=T::Assoc> {
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found associated type
    |
    = note: expected type `()`
               found type `<T as impl_trait::Trait>::Assoc`
+   = note: consider constraining the associated type `<T as impl_trait::Trait>::Assoc` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
    = note: the return type of a function must have a statically known size
 
+error: `impl Trait` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
+  --> $DIR/bound-normalization-fail.rs:44:41
+   |
+LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as lifetimes::Trait<'static>>::Assoc`
-  --> $DIR/bound-normalization-fail.rs:46:41
+  --> $DIR/bound-normalization-fail.rs:44:41
    |
 LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found associated type
    |
    = note: expected type `()`
               found type `<T as lifetimes::Trait<'static>>::Assoc`
+   = note: consider constraining the associated type `<T as lifetimes::Trait<'static>>::Assoc` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
    = note: the return type of a function must have a statically known size
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0271`.

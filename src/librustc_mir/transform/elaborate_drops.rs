@@ -14,31 +14,21 @@ use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use std::fmt;
 use syntax_pos::Span;
 
 pub struct ElaborateDrops;
 
-impl MirPass for ElaborateDrops {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for ElaborateDrops {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", src, body.span);
 
         let def_id = src.def_id();
         let param_env = tcx.param_env(src.def_id()).with_reveal_all();
         let move_data = match MoveData::gather_moves(body, tcx) {
             Ok(move_data) => move_data,
-            Err((move_data, _move_errors)) => {
-                // The only way we should be allowing any move_errors
-                // in here is if we are in the migration path for the
-                // NLL-based MIR-borrowck.
-                //
-                // If we are in the migration path, we have already
-                // reported these errors as warnings to the user. So
-                // we will just ignore them here.
-                assert!(tcx.migrate_borrowck());
-                move_data
-            }
+            Err(_) => bug!("No `move_errors` should be allowed in MIR borrowck"),
         };
         let elaborate_patch = {
             let body = &*body;
@@ -236,47 +226,34 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::Field(idx, _), ..
-                } => idx == field,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::Field(idx, _) => *idx == field,
+            _ => false,
         })
     }
 
     fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false}, ..
-                } => offset == index,
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true}, ..
-                } => size - offset == index,
-                _ => false
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false } => {
+                *offset == index
             }
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true } => {
+                size - offset == index
+            }
+            _ => false,
         })
     }
 
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection { elem: ProjectionElem::Deref, .. } => true,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| {
+            *e == ProjectionElem::Deref
         })
     }
 
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::Downcast(_, idx), ..
-                } => idx == variant,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::Downcast(_, idx) => *idx == variant,
+            _ => false
         })
     }
 
@@ -465,7 +442,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(location.clone(), box Rvalue::Use(value.clone())),
+            kind: StatementKind::Assign(box(location.clone(), Rvalue::Use(value.clone()))),
             source_info: terminator.source_info
         };
 
@@ -527,7 +504,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
             span,
-            ty: self.tcx.types.bool,
             user_ty: None,
             literal: ty::Const::from_bool(self.tcx, val),
         })))

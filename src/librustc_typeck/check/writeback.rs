@@ -3,7 +3,6 @@
 // substitutions.
 
 use crate::check::FnCtxt;
-use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -39,8 +38,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
-        for arg in &body.arguments {
-            wbcx.visit_node_id(arg.pat.span, arg.hir_id);
+        for param in &body.params {
+            wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_id) {
@@ -59,6 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
+        wbcx.visit_generator_interior_types();
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
@@ -135,7 +135,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref inner)
             | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
@@ -160,7 +160,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     tables.type_dependent_defs_mut().remove(e.hir_id);
                     tables.node_substs_mut().remove(e.hir_id);
 
-                    match e.node {
+                    match e.kind {
                         hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
                                 let mut adjustments = tables.adjustments_mut();
@@ -187,12 +187,29 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
-        if let hir::ExprKind::Index(ref base, ref index) = e.node {
+        if let hir::ExprKind::Index(ref base, ref index) = e.kind {
             let mut tables = self.fcx.tables.borrow_mut();
 
-            // All valid indexing looks like this; might encounter non-valid indexes at this point
-            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).sty {
-                let index_ty = tables.expr_ty_adjusted(&index);
+            // All valid indexing looks like this; might encounter non-valid indexes at this point.
+            let base_ty = tables.expr_ty_adjusted_opt(&base).map(|t| &t.kind);
+            if base_ty.is_none() {
+                // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
+                // that isn't in the type table. We assume more relevant errors have already been
+                // emitted, so we delay an ICE if none have. (#64638)
+                self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
+            }
+            if let Some(ty::Ref(_, base_ty, _)) = base_ty {
+                let index_ty = tables.expr_ty_adjusted_opt(&index).unwrap_or_else(|| {
+                    // When encountering `return [0][0]` outside of a `fn` body we would attempt
+                    // to access an unexistend index. We assume that more relevant errors will
+                    // already have been emitted, so we only gate on this with an ICE if no
+                    // error has been emitted. (#64638)
+                    self.tcx().sess.delay_span_bug(
+                        e.span,
+                        &format!("bad index {:?} for base: `{:?}`", index, base),
+                    );
+                    self.fcx.tcx.types.err
+                });
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
                 if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
@@ -242,11 +259,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
 
-        match e.node {
+        match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
-                for arg in &body.arguments {
-                    self.visit_node_id(e.span, arg.hir_id);
+                for param in &body.params {
+                    self.visit_node_id(e.span, param.hir_id);
                 }
 
                 self.visit_body(body);
@@ -271,7 +288,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        match p.node {
+        match p.kind {
             hir::PatKind::Binding(..) => {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
@@ -283,7 +300,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             }
             hir::PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.node.hir_id);
+                    self.visit_field_id(field.hir_id);
                 }
             }
             _ => {}
@@ -407,7 +424,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
             for diag in errors_buffer.drain(..) {
-                DiagnosticBuilder::new_diagnostic(self.tcx().sess.diagnostic(), diag).emit();
+                self.tcx().sess.diagnostic().emit_diagnostic(&diag);
             }
         }
     }
@@ -429,6 +446,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .user_provided_sigs
                 .insert(def_id, c_sig.clone());
         }
+    }
+
+    fn visit_generator_interior_types(&mut self) {
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        self.tables.generator_interior_types = fcx_tables.generator_interior_types.clone();
     }
 
     fn visit_opaque_types(&mut self, span: Span) {
@@ -455,7 +478,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             let mut skip_add = false;
 
-            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
+            if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.kind {
                 if def_id == defin_ty_def_id {
                     debug!("Skipping adding concrete definition for opaque type {:?} {:?}",
                            opaque_defn, defin_ty_def_id);

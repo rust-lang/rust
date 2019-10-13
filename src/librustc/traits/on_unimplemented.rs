@@ -9,10 +9,9 @@ use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
-use syntax_pos::symbol::LocalInternedString;
 
 #[derive(Clone, Debug)]
-pub struct OnUnimplementedFormatString(LocalInternedString);
+pub struct OnUnimplementedFormatString(Symbol);
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
@@ -89,19 +88,19 @@ impl<'tcx> OnUnimplementedDirective {
             if item.check_name(sym::message) && message.is_none() {
                 if let Some(message_) = item.value_str() {
                     message = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, message_.as_str(), span)?);
+                        tcx, trait_def_id, message_, span)?);
                     continue;
                 }
             } else if item.check_name(sym::label) && label.is_none() {
                 if let Some(label_) = item.value_str() {
                     label = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, label_.as_str(), span)?);
+                        tcx, trait_def_id, label_, span)?);
                     continue;
                 }
             } else if item.check_name(sym::note) && note.is_none() {
                 if let Some(note_) = item.value_str() {
                     note = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, note_.as_str(), span)?);
+                        tcx, trait_def_id, note_, span)?);
                     continue;
                 }
             } else if item.check_name(sym::on) && is_root &&
@@ -154,7 +153,7 @@ impl<'tcx> OnUnimplementedDirective {
                 message: None,
                 subcommands: vec![],
                 label: Some(OnUnimplementedFormatString::try_parse(
-                    tcx, trait_def_id, value.as_str(), attr.span)?),
+                    tcx, trait_def_id, value, attr.span)?),
                 note: None,
             }))
         } else {
@@ -218,7 +217,7 @@ impl<'tcx> OnUnimplementedFormatString {
     fn try_parse(
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
-        from: LocalInternedString,
+        from: Symbol,
         err_sp: Span,
     ) -> Result<Self, ErrorReported> {
         let result = OnUnimplementedFormatString(from);
@@ -234,7 +233,8 @@ impl<'tcx> OnUnimplementedFormatString {
     ) -> Result<(), ErrorReported> {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0, None, vec![], false);
+        let s = self.0.as_str();
+        let parser = Parser::new(&s, None, vec![], false);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -294,7 +294,8 @@ impl<'tcx> OnUnimplementedFormatString {
         }).collect::<FxHashMap<Symbol, String>>();
         let empty_string = String::new();
 
-        let parser = Parser::new(&self.0, None, vec![], false);
+        let s = self.0.as_str();
+        let parser = Parser::new(&s, None, vec![], false);
         parser.map(|p|
             match p {
                 Piece::String(s) => s,

@@ -88,7 +88,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>, flavor: Fla
 
         for arg in &mut fty.args {
             let attrs = match arg.mode {
-                PassMode::Ignore(_) |
+                PassMode::Ignore |
                 PassMode::Indirect(_, None) => continue,
                 PassMode::Direct(ref mut attrs) => attrs,
                 PassMode::Pair(..) |

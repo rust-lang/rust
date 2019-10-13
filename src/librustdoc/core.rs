@@ -13,26 +13,23 @@ use rustc_interface::interface;
 use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
-use rustc_target::spec::TargetTriple;
 
 use syntax::source_map;
+use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
 use syntax::symbol::sym;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
-use parking_lot::ReentrantMutex;
 
 use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
-use std::sync::Arc;
 use std::rc::Rc;
 
-use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::clean;
-use crate::clean::{Clean, MAX_DEF_ID, AttributesExt};
+use crate::clean::{MAX_DEF_ID, AttributesExt};
 use crate::html::render::RenderInfo;
 
 use crate::passes;
@@ -45,17 +42,15 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
-    pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
-    /// The stack of module NodeIds up till this point
-    pub crate_name: Option<String>,
+    pub resolver: Rc<RefCell<interface::BoxedResolver>>,
     pub cstore: Lrc<CStore>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
-    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, clean::Trait>>>>,
+    pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    pub active_extern_traits: RefCell<Vec<DefId>>,
+    pub active_extern_traits: RefCell<FxHashSet<DefId>>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
@@ -65,14 +60,13 @@ pub struct DocContext<'tcx> {
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
     /// Table `DefId` of const parameter -> substituted const
     pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
-    /// Table DefId of `impl Trait` in argument position -> bounds
-    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
+    /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
+    pub impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
-    pub all_traits: Vec<DefId>,
     pub auto_traits: Vec<DefId>,
 }
 
@@ -83,9 +77,7 @@ impl<'tcx> DocContext<'tcx> {
 
     pub fn enter_resolver<F, R>(&self, f: F) -> R
     where F: FnOnce(&mut resolve::Resolver<'_>) -> R {
-        let resolver = &*self.resolver;
-        let resolver = resolver.as_ref().unwrap();
-        resolver.borrow_mut().access(f)
+        self.resolver.borrow_mut().access(f)
     }
 
     /// Call the closure with the given parameters set as
@@ -167,15 +159,15 @@ impl<'tcx> DocContext<'tcx> {
             self.tcx.hir().as_local_hir_id(def_id)
         }
     }
-}
 
-pub trait DocAccessLevels {
-    fn is_doc_reachable(&self, did: DefId) -> bool;
-}
+    pub fn stability(&self, id: HirId) -> Option<attr::Stability> {
+        self.tcx.hir().opt_local_def_id(id)
+            .and_then(|def_id| self.tcx.lookup_stability(def_id)).cloned()
+    }
 
-impl DocAccessLevels for AccessLevels<DefId> {
-    fn is_doc_reachable(&self, did: DefId) -> bool {
-        self.is_public(did)
+    pub fn deprecation(&self, id: HirId) -> Option<attr::Deprecation> {
+        self.tcx.hir().opt_local_def_id(id)
+            .and_then(|def_id| self.tcx.lookup_deprecation(def_id))
     }
 }
 
@@ -200,6 +192,8 @@ pub fn new_handler(error_format: ErrorOutputType,
                     source_map.map(|cm| cm as _),
                     short,
                     sessopts.debugging_opts.teach,
+                    sessopts.debugging_opts.terminal_width,
+                    false,
                 ).ui_testing(ui_testing)
             )
         },
@@ -212,6 +206,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                     source_map,
                     pretty,
                     json_rendered,
+                    false,
                 ).ui_testing(ui_testing)
             )
         },
@@ -229,16 +224,17 @@ pub fn new_handler(error_format: ErrorOutputType,
     )
 }
 
-pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions, Vec<String>) {
+pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
     // Parse, resolve, and typecheck the given crate.
 
     let RustdocOptions {
         input,
         crate_name,
+        proc_macro_crate,
         error_format,
         libs,
         externs,
-        cfgs,
+        mut cfgs,
         codegen_options,
         debugging_options,
         target,
@@ -253,6 +249,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         render_options,
         ..
     } = options;
+
+    // Add the rustdoc cfg into the doc build.
+    cfgs.push("rustdoc".to_string());
 
     let cpath = Some(input.clone());
     let input = Input::File(input);
@@ -299,12 +298,16 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         }
     }).collect();
 
-    let host_triple = TargetTriple::from_triple(config::host_triple());
+    let crate_types = if proc_macro_crate {
+        vec![config::CrateType::ProcMacro]
+    } else {
+        vec![config::CrateType::Rlib]
+    };
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
         search_paths: libs,
-        crate_types: vec![config::CrateType::Rlib],
+        crate_types,
         lint_opts: if !display_warnings {
             lint_opts
         } else {
@@ -313,7 +316,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         lint_cap: Some(lint_cap.unwrap_or_else(|| lint::Forbid)),
         cg: codegen_options,
         externs,
-        target_triple: target.unwrap_or(host_triple),
+        target_triple: target,
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,
@@ -334,7 +337,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name: crate_name.clone(),
+        crate_name,
         lint_caps,
     };
 
@@ -344,7 +347,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
+        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.borrow().clone();
 
         if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
@@ -370,11 +373,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut renderinfo = RenderInfo::default();
             renderinfo.access_levels = access_levels;
 
-            let all_traits = tcx.all_traits(LOCAL_CRATE).to_vec();
-            let ctxt = DocContext {
+            let mut ctxt = DocContext {
                 tcx,
                 resolver,
-                crate_name,
                 cstore: compiler.cstore().clone(),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
@@ -386,18 +387,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 fake_def_ids: Default::default(),
                 all_fake_def_ids: Default::default(),
                 generated_synthetics: Default::default(),
-                auto_traits: all_traits.iter().cloned().filter(|trait_def_id| {
+                auto_traits: tcx.all_traits(LOCAL_CRATE).iter().cloned().filter(|trait_def_id| {
                     tcx.trait_is_auto(*trait_def_id)
                 }).collect(),
-                all_traits,
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
-            let mut krate = {
-                let mut v = RustdocVisitor::new(&ctxt);
-                v.visit(tcx.hir().krate());
-                v.clean(&ctxt)
-            };
+            let mut krate = clean::krate(&mut ctxt);
 
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
                 let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
@@ -438,8 +434,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         },
                         _ => continue,
                     };
-                    for p in value.as_str().split_whitespace() {
-                        sink.push(p.to_string());
+                    for name in value.as_str().split_whitespace() {
+                        sink.push(name.to_string());
                     }
                 }
 
@@ -450,25 +446,46 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 }
             }
 
-            let mut passes: Vec<String> =
-                passes::defaults(default_passes).iter().map(|p| p.to_string()).collect();
-            passes.extend(manual_passes);
+            let passes = passes::defaults(default_passes).iter().chain(manual_passes.into_iter()
+                .flat_map(|name| {
+                    if let Some(pass) = passes::find_pass(&name) {
+                        Some(pass)
+                    } else {
+                        error!("unknown pass {}, skipping", name);
+                        None
+                    }
+                }));
 
             info!("Executing passes");
 
-            for pass_name in &passes {
-                match passes::find_pass(pass_name).map(|p| p.pass) {
-                    Some(pass) => {
-                        debug!("running pass {}", pass_name);
-                        krate = pass(krate, &ctxt);
-                    }
-                    None => error!("unknown pass {}, skipping", *pass_name),
-                }
+            for pass in passes {
+                debug!("running pass {}", pass.name);
+                krate = (pass.pass)(krate, &ctxt);
             }
 
             ctxt.sess().abort_if_errors();
 
-            (krate, ctxt.renderinfo.into_inner(), render_options, passes)
+            (krate, ctxt.renderinfo.into_inner(), render_options)
         })
     })
+}
+
+/// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter
+/// for `impl Trait` in argument position.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ImplTraitParam {
+    DefId(DefId),
+    ParamIndex(u32),
+}
+
+impl From<DefId> for ImplTraitParam {
+    fn from(did: DefId) -> Self {
+        ImplTraitParam::DefId(did)
+    }
+}
+
+impl From<u32> for ImplTraitParam {
+    fn from(idx: u32) -> Self {
+        ImplTraitParam::ParamIndex(idx)
+    }
 }

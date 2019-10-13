@@ -10,7 +10,7 @@ error[E0599]: no method named `bind` found for type `[&str; 1]` in the current s
   --> $DIR/issue-2149.rs:13:12
    |
 LL |     ["hi"].bind(|x| [x] );
-   |            ^^^^
+   |            ^^^^ method not found in `[&str; 1]`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `bind`, perhaps you need to implement it:

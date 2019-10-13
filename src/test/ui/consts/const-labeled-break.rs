@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 // Using labeled break in a while loop has caused an illegal instruction being
 // generated, and an ICE later.

@@ -81,6 +81,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                 .map(|obligation| FulfillmentError {
                     obligation: obligation.goal.clone(),
                     code: FulfillmentErrorCode::CodeAmbiguity,
+                    points_at_arg_span: false,
                 })
                 .collect();
             Err(errors)
@@ -107,7 +108,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     goal: obligation.goal.predicate,
                 }, &mut orig_values);
 
-                match infcx.tcx.global_tcx().evaluate_goal(canonical_goal) {
+                match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {
                         if response.is_proven() {
                             making_progress = true;
@@ -129,6 +130,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                     code: FulfillmentErrorCode::CodeSelectionError(
                                         SelectionError::Unimplemented
                                     ),
+                                    points_at_arg_span: false,
                                 }),
                             }
                         } else {
@@ -142,6 +144,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                         code: FulfillmentErrorCode::CodeSelectionError(
                             SelectionError::Unimplemented
                         ),
+                        points_at_arg_span: false,
                     })
                 }
             }

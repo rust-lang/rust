@@ -3,7 +3,7 @@ use rustc::mir::*;
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::fmt::Display;
 use std::fmt::Write as _;
 use std::fs;
@@ -227,12 +227,12 @@ pub(crate) fn create_dump_file(
     pass_name: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-) -> io::Result<fs::File> {
+) -> io::Result<io::BufWriter<fs::File>> {
     let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
     if let Some(parent) = file_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::File::create(&file_path)
+    Ok(io::BufWriter::new(fs::File::create(&file_path)?))
 }
 
 /// Write out a human-readable textual representation for the given MIR.
@@ -397,10 +397,9 @@ impl ExtraComments<'tcx> {
 impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let Constant { span, ty, user_ty, literal } = constant;
+        let Constant { span, user_ty, literal } = constant;
         self.push("mir::Constant");
         self.push(&format!("+ span: {:?}", span));
-        self.push(&format!("+ ty: {:?}", ty));
         if let Some(user_ty) = user_ty {
             self.push(&format!("+ user_ty: {:?}", user_ty));
         }

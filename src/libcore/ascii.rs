@@ -14,6 +14,7 @@
 use crate::fmt;
 use crate::ops::Range;
 use crate::iter::FusedIterator;
+use crate::str::from_utf8_unchecked;
 
 /// An iterator over the escaped version of a byte.
 ///
@@ -22,6 +23,7 @@ use crate::iter::FusedIterator;
 ///
 /// [`escape_default`]: fn.escape_default.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone)]
 pub struct EscapeDefault {
     range: Range<usize>,
     data: [u8; 4],
@@ -129,6 +131,13 @@ impl DoubleEndedIterator for EscapeDefault {
 impl ExactSizeIterator for EscapeDefault {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDefault {}
+
+#[stable(feature = "ascii_escape_display", since = "1.39.0")]
+impl fmt::Display for EscapeDefault {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(unsafe { from_utf8_unchecked(&self.data[self.range.clone()]) })
+    }
+}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for EscapeDefault {

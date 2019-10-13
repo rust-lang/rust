@@ -1,22 +1,54 @@
 use crate::os::unix::prelude::*;
 
-use crate::ffi::{OsString, OsStr, CString, CStr};
+use crate::ffi::{OsString, OsStr, CString};
 use crate::fmt;
 use crate::io;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
-use crate::sys::fs::{File, OpenOptions};
+use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys_common::process::{CommandEnv, DefaultEnvKey};
+use crate::sys_common::process::CommandEnv;
 use crate::collections::BTreeMap;
+
+#[cfg(not(target_os = "fuchsia"))]
+use {
+    crate::ffi::CStr,
+    crate::sys::fs::OpenOptions,
+};
 
 use libc::{c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "redox")] {
+    if #[cfg(target_os = "fuchsia")] {
+        // fuchsia doesn't have /dev/null
+    } else if #[cfg(target_os = "redox")] {
         const DEV_NULL: &'static str = "null:\0";
     } else {
         const DEV_NULL: &'static str = "/dev/null\0";
+    }
+}
+
+// Android with api less than 21 define sig* functions inline, so it is not
+// available for dynamic link. Implementing sigemptyset and sigaddset allow us
+// to support older Android version (independent of libc version).
+// The following implementations are based on https://git.io/vSkNf
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "android")] {
+        pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
+            set.write_bytes(0u8, 1);
+            return 0;
+        }
+        #[allow(dead_code)]
+        pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+            use crate::{slice, mem};
+
+            let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
+            let bit = (signum - 1) as usize;
+            raw[bit / 8] |= 1 << (bit % 8);
+            return 0;
+        }
+    } else {
+        pub use libc::{sigemptyset, sigaddset};
     }
 }
 
@@ -45,7 +77,7 @@ pub struct Command {
     program: CString,
     args: Vec<CString>,
     argv: Argv,
-    env: CommandEnv<DefaultEnvKey>,
+    env: CommandEnv,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
@@ -83,6 +115,11 @@ pub enum ChildStdio {
     Inherit,
     Explicit(c_int),
     Owned(FileDesc),
+
+    // On Fuchsia, null stdio is the default, so we simply don't specify
+    // any actions at the time of spawning.
+    #[cfg(target_os = "fuchsia")]
+    Null,
 }
 
 pub enum Stdio {
@@ -177,7 +214,7 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
-    pub fn env_mut(&mut self) -> &mut CommandEnv<DefaultEnvKey> {
+    pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
 
@@ -247,7 +284,7 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<DefaultEnvKey, OsString>, saw_nul: &mut bool) -> CStringArray {
+fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (k, v) in env {
         let mut k: OsString = k.into();
@@ -301,6 +338,7 @@ impl Stdio {
                 Ok((ChildStdio::Owned(theirs.into_fd()), Some(ours)))
             }
 
+            #[cfg(not(target_os = "fuchsia"))]
             Stdio::Null => {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
@@ -310,6 +348,11 @@ impl Stdio {
                 };
                 let fd = File::open_c(&path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
+            }
+
+            #[cfg(target_os = "fuchsia")]
+            Stdio::Null => {
+                Ok((ChildStdio::Null, None))
             }
         }
     }
@@ -333,6 +376,9 @@ impl ChildStdio {
             ChildStdio::Inherit => None,
             ChildStdio::Explicit(fd) => Some(fd),
             ChildStdio::Owned(ref fd) => Some(fd.raw()),
+
+            #[cfg(target_os = "fuchsia")]
+            ChildStdio::Null => None,
         }
     }
 }
@@ -344,57 +390,6 @@ impl fmt::Debug for Command {
             write!(f, " {:?}", arg)?;
         }
         Ok(())
-    }
-}
-
-/// Unix exit statuses
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatus(c_int);
-
-impl ExitStatus {
-    pub fn new(status: c_int) -> ExitStatus {
-        ExitStatus(status)
-    }
-
-    fn exited(&self) -> bool {
-        unsafe { libc::WIFEXITED(self.0) }
-    }
-
-    pub fn success(&self) -> bool {
-        self.code() == Some(0)
-    }
-
-    pub fn code(&self) -> Option<i32> {
-        if self.exited() {
-            Some(unsafe { libc::WEXITSTATUS(self.0) })
-        } else {
-            None
-        }
-    }
-
-    pub fn signal(&self) -> Option<i32> {
-        if !self.exited() {
-            Some(unsafe { libc::WTERMSIG(self.0) })
-        } else {
-            None
-        }
-    }
-}
-
-impl From<c_int> for ExitStatus {
-    fn from(a: c_int) -> ExitStatus {
-        ExitStatus(a)
-    }
-}
-
-impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
-        } else {
-            let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
-        }
     }
 }
 
@@ -427,36 +422,6 @@ mod tests {
                 Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
             }
         }
-    }
-
-    // Android with api less than 21 define sig* functions inline, so it is not
-    // available for dynamic link. Implementing sigemptyset and sigaddset allow us
-    // to support older Android version (independent of libc version).
-    // The following implementations are based on https://git.io/vSkNf
-
-    #[cfg(not(target_os = "android"))]
-    extern {
-        #[cfg_attr(target_os = "netbsd", link_name = "__sigemptyset14")]
-        fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int;
-
-        #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
-        fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int;
-    }
-
-    #[cfg(target_os = "android")]
-    unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
-        set.write_bytes(0u8, 1);
-        return 0;
-    }
-
-    #[cfg(target_os = "android")]
-    unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-        use crate::slice;
-
-        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
-        let bit = (signum - 1) as usize;
-        raw[bit / 8] |= 1 << (bit % 8);
-        return 0;
     }
 
     // See #14232 for more information, but it appears that signal delivery to a

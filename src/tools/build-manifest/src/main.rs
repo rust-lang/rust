@@ -1,3 +1,11 @@
+//! Build a dist manifest, hash and sign everything.
+//! This gets called by `promote-release`
+//! (https://github.com/rust-lang/rust-central-station/tree/master/promote-release)
+//! via `x.py dist hash-and-sign`; the cmdline arguments are set up
+//! by rustbuild (in `src/bootstrap/dist.rs`).
+
+#![deny(warnings)]
+
 use toml;
 use serde::Serialize;
 
@@ -270,6 +278,7 @@ fn main() {
     // Do not ask for a passphrase while manually testing
     let mut passphrase = String::new();
     if should_sign {
+        // `x.py` passes the passphrase via stdin.
         t!(io::stdin().read_to_string(&mut passphrase));
     }
 
@@ -362,6 +371,7 @@ impl Builder {
         }
     }
 
+    /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
     fn digest_and_sign(&mut self) {
         for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
             let filename = file.file_name().unwrap().to_str().unwrap();
@@ -389,6 +399,7 @@ impl Builder {
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
+        package("rustc-dev", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
         package("rust-std", TARGETS);
@@ -416,6 +427,13 @@ impl Builder {
             "rls-preview", "rust-src", "llvm-tools-preview",
             "lldb-preview", "rust-analysis", "miri-preview"
         ]);
+
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users.
+        if self.rust_release == "nightly" {
+            self.extend_profile("default", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+        }
     }
 
     fn add_renames_to(&self, manifest: &mut Manifest) {
@@ -471,6 +489,15 @@ impl Builder {
             components.push(host_component("rust-mingw"));
         }
 
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users,
+        // but ship it as an optional component on the beta and stable channels.
+        if self.rust_release == "nightly" {
+            components.push(host_component("rustc-dev"));
+        } else {
+            extensions.push(host_component("rustc-dev"));
+        }
+
         // Tools are always present in the manifest,
         // but might be marked as unavailable if they weren't built.
         extensions.extend(vec![
@@ -487,6 +514,11 @@ impl Builder {
             TARGETS.iter()
                 .filter(|&&target| target != host)
                 .map(|target| Component::from_str("rust-std", target))
+        );
+        extensions.extend(
+            HOSTS.iter()
+                .filter(|&&target| target != host)
+                .map(|target| Component::from_str("rustc-dev", target))
         );
         extensions.push(Component::from_str("rust-src", "*"));
 
@@ -524,6 +556,14 @@ impl Builder {
         dst.insert(profile_name.to_owned(), pkgs.iter().map(|s| (*s).to_owned()).collect());
     }
 
+    fn extend_profile(&mut self,
+               profile_name: &str,
+               dst: &mut BTreeMap<String, Vec<String>>,
+               pkgs: &[&str]) {
+        dst.get_mut(profile_name).expect("existing profile")
+            .extend(pkgs.iter().map(|s| (*s).to_owned()));
+    }
+
     fn package(&mut self,
                pkgname: &str,
                dst: &mut BTreeMap<String, Package>,
@@ -532,19 +572,20 @@ impl Builder {
             .as_ref()
             .cloned()
             .map(|version| (version, true))
-            .unwrap_or_default();
+            .unwrap_or_default(); // `is_present` defaults to `false` here.
 
-        // miri needs to build std with xargo, which doesn't allow stable/beta:
-        // <https://github.com/japaric/xargo/pull/204#issuecomment-374888868>
+        // Miri is nightly-only; never ship it for other trains.
         if pkgname == "miri-preview" && self.rust_release != "nightly" {
-            is_present = false; // ignore it
+            is_present = false; // Pretend the component is entirely missing.
         }
 
         let targets = targets.iter().map(|name| {
             if is_present {
+                // The component generally exists, but it might still be missing for this target.
                 let filename = self.filename(pkgname, name);
                 let digest = match self.digests.remove(&filename) {
                     Some(digest) => digest,
+                    // This component does not exist for this target -- skip it.
                     None => return (name.to_string(), Target::unavailable()),
                 };
                 let xz_filename = filename.replace(".tar.gz", ".tar.xz");

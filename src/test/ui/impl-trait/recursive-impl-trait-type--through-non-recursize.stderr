@@ -1,0 +1,35 @@
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:7:22
+   |
+LL | fn recursive_id() -> impl Sized {
+   |                      ^^^^^^^^^^ expands to a recursive type
+   |
+   = note: type resolves to itself
+
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:11:23
+   |
+LL | fn recursive_id2() -> impl Sized {
+   |                       ^^^^^^^^^^ expands to a recursive type
+   |
+   = note: type resolves to itself
+
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:17:24
+   |
+LL | fn recursive_wrap() -> impl Sized {
+   |                        ^^^^^^^^^^ expands to a recursive type
+   |
+   = note: expanded type is `((impl Sized,),)`
+
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:21:25
+   |
+LL | fn recursive_wrap2() -> impl Sized {
+   |                         ^^^^^^^^^^ expands to a recursive type
+   |
+   = note: expanded type is `((impl Sized,),)`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0720`.

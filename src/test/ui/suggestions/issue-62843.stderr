@@ -1,8 +1,8 @@
 error[E0277]: expected a `std::ops::FnMut<(char,)>` closure, found `std::string::String`
-  --> $DIR/issue-62843.rs:4:27
+  --> $DIR/issue-62843.rs:4:32
    |
 LL |     println!("{:?}", line.find(pattern));
-   |                           ^^^^ expected an `FnMut<(char,)>` closure, found `std::string::String`
+   |                                ^^^^^^^ expected an `FnMut<(char,)>` closure, found `std::string::String`
    |
    = help: the trait `std::ops::FnMut<(char,)>` is not implemented for `std::string::String`
    = note: borrowing the `std::string::String` might fix the problem

@@ -82,7 +82,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
-            Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
+            Assign(box(ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
 
             SetDiscriminant {
                 ref place,
@@ -132,7 +132,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
     /// type writes its results directly into the memory specified by the place.
-    fn eval_rvalue_into_place(
+    pub fn eval_rvalue_into_place(
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         place: &mir::Place<'tcx>,
@@ -177,7 +177,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, val)?;
-                self.write_scalar(val, dest)?;
+                assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
+                self.write_immediate(*val, dest)?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -240,8 +241,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?;
-                self.write_immediate(val.to_ref(), dest)?;
+                let place = self.force_allocation(src)?;
+                if place.layout.size.bytes() > 0 {
+                    // definitely not a ZST
+                    assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
+                }
+                self.write_immediate(place.to_ref(), dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {
@@ -249,7 +254,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let ty = self.monomorphize(ty)?;
+                let ty = self.subst_from_frame_and_normalize_erasing_regions(ty);
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");

@@ -1,8 +1,6 @@
 // check-pass
 // edition:2018
 
-#![feature(async_await)]
-
 // See issue 60414
 
 trait Trait {

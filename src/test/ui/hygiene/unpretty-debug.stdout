@@ -13,3 +13,13 @@ macro_rules! foo /* 0#0 */ { ($ x : ident) => { y + $ x } }
 fn bar /* 0#0 */() { let x /* 0#0 */ = 1; y /* 0#1 */ + x /* 0#0 */ }
 
 fn y /* 0#0 */() { }
+
+/*
+Expansions:
+0: parent: ExpnId(0), call_site_ctxt: #0, kind: Root
+1: parent: ExpnId(0), call_site_ctxt: #0, kind: Macro(Bang, foo)
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (ExpnId(0), Opaque)
+#1: parent: #0, outer_mark: (ExpnId(1), SemiTransparent)
+*/

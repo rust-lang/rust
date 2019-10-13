@@ -22,7 +22,9 @@ pub trait Bar {
     fn bar(&self) -> i32 { 0 }
 }
 
-impl<T> Bar for T {} // use the provided method
+impl<T> Bar for T {
+    default fn bar(&self) -> i32 { 0 }
+}
 
 impl Bar for i32 {
     fn bar(&self) -> i32 { 1 }

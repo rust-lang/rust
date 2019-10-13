@@ -3,7 +3,7 @@
 //! This currently only contains the definitions and implementations
 //! of most of the lints that `rustc` supports directly, it does not
 //! contain the infrastructure for defining/registering lints. That is
-//! available in `rustc::lint` and `rustc_plugin` respectively.
+//! available in `rustc::lint` and `rustc_driver::plugin` respectively.
 //!
 //! ## Note
 //!
@@ -15,7 +15,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
@@ -24,6 +23,7 @@ extern crate rustc;
 
 mod error_codes;
 mod nonstandard_style;
+mod redundant_semicolon;
 pub mod builtin;
 mod types;
 mod unused;
@@ -55,6 +55,7 @@ use session::Session;
 use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
+use redundant_semicolon::*;
 use nonstandard_style::*;
 use builtin::*;
 use types::*;
@@ -98,6 +99,7 @@ macro_rules! early_lint_passes {
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             IncompleteFeatures: IncompleteFeatures,
+            RedundantSemicolon: RedundantSemicolon,
         ]);
     )
 }
@@ -177,6 +179,7 @@ macro_rules! late_lint_mod_passes {
             UnreachablePub: UnreachablePub,
 
             ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            InvalidValue: InvalidValue,
         ]);
     )
 }
@@ -432,7 +435,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(INDIRECT_STRUCTURAL_MATCH),
             reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
             edition: None,
-        }
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(SOFT_UNSTABLE),
+            reference: "issue #64266 <https://github.com/rust-lang/rust/issues/64266>",
+            edition: None,
+        },
         ]);
 
     // Register renamed and removed lints.

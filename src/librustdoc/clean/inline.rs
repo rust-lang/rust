@@ -14,12 +14,13 @@ use rustc_metadata::cstore::LoadedMacro;
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
 
-use crate::core::{DocContext, DocAccessLevels};
+use crate::core::DocContext;
 use crate::doctree;
 use crate::clean::{
     self,
     GetDefId,
     ToSource,
+    TypeKind
 };
 
 use super::Clean;
@@ -107,15 +108,16 @@ pub fn try_inline(
             record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, did))
         }
-        // FIXME: proc-macros don't propagate attributes or spans across crates, so they look empty
-        Res::Def(DefKind::Macro(MacroKind::Bang), did) => {
+        Res::Def(DefKind::Macro(kind), did) => {
             let mac = build_macro(cx, did, name);
-            if let clean::MacroItem(..) = mac {
-                record_extern_fqn(cx, did, clean::TypeKind::Macro);
-                mac
-            } else {
-                return None;
-            }
+
+            let type_kind = match kind {
+                MacroKind::Bang => TypeKind::Macro,
+                MacroKind::Attr => TypeKind::Attr,
+                MacroKind::Derive => TypeKind::Derive
+            };
+            record_extern_fqn(cx, did, type_kind);
+            mac
         }
         _ => return None,
     };
@@ -129,7 +131,7 @@ pub fn try_inline(
         name: Some(name.clean(cx)),
         attrs,
         inner,
-        visibility: Some(clean::Public),
+        visibility: clean::Public,
         stability: cx.tcx.lookup_stability(did).clean(cx),
         deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
@@ -163,10 +165,7 @@ pub fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind) {
-    let mut crate_name = cx.tcx.crate_name(did.krate).to_string();
-    if did.is_local() {
-        crate_name = cx.crate_name.clone().unwrap_or(crate_name);
-    }
+    let crate_name = cx.tcx.crate_name(did.krate).to_string();
 
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
@@ -218,10 +217,11 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
     } else {
         hir::Constness::NotConst
     };
-
+    let asyncness =  cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
-    let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
-    let decl = (did, sig).clean(cx);
+    let (generics, decl) = clean::enter_impl_trait(cx, || {
+        ((cx.tcx.generics_of(did), &predicates).clean(cx), (did, sig).clean(cx))
+    });
     let (all_types, ret_types) = clean::get_all_types(&generics, &decl, cx);
     clean::Function {
         decl,
@@ -230,7 +230,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
             unsafety: sig.unsafety(),
             abi: sig.abi(),
             constness,
-            asyncness: hir::IsAsync::NotAsync,
+            asyncness,
         },
         all_types,
         ret_types,
@@ -326,14 +326,14 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
-            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(traitref.def_id) {
+            if !cx.renderinfo.borrow().access_levels.is_public(traitref.def_id) {
                 return
             }
         }
     }
 
     let for_ = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
-        match tcx.hir().expect_item(hir_id).node {
+        match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl(.., ref t, _) => {
                 t.clean(cx)
             }
@@ -347,7 +347,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
-            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(did) {
+            if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return
             }
         }
@@ -355,7 +355,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
 
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
-        match tcx.hir().expect_item(hir_id).node {
+        match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => {
                 (
                     item_ids.iter()
@@ -375,7 +375,9 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
                     None
                 }
             }).collect::<Vec<_>>(),
-            (tcx.generics_of(did), &predicates).clean(cx),
+            clean::enter_impl_trait(cx, || {
+                (tcx.generics_of(did), &predicates).clean(cx)
+            }),
         )
     };
     let polarity = tcx.impl_polarity(did);
@@ -416,7 +418,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
         source: tcx.def_span(did).clean(cx),
         name: None,
         attrs,
-        visibility: Some(clean::Inherited),
+        visibility: clean::Inherited,
         stability: tcx.lookup_stability(did).clean(cx),
         deprecation: tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
@@ -479,7 +481,7 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemE
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.cstore.load_macro_untracked(did, cx.sess()) {
         LoadedMacro::MacroDef(def) => {
-            let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.node {
+            let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
                 let tts: Vec<_> = def.stream().into_trees().collect();
                 tts.chunks(4).map(|arm| arm[0].span()).collect()
             } else {
@@ -577,22 +579,18 @@ pub fn record_extern_trait(cx: &DocContext<'_>, did: DefId) {
     }
 
     {
-        let external_traits = cx.external_traits.lock();
-        if external_traits.borrow().contains_key(&did) ||
+        if cx.external_traits.borrow().contains_key(&did) ||
             cx.active_extern_traits.borrow().contains(&did)
         {
             return;
         }
     }
 
-    cx.active_extern_traits.borrow_mut().push(did);
+    cx.active_extern_traits.borrow_mut().insert(did);
 
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
-    {
-        let external_traits = cx.external_traits.lock();
-        external_traits.borrow_mut().insert(did, trait_);
-    }
-    cx.active_extern_traits.borrow_mut().remove_item(&did);
+    cx.external_traits.borrow_mut().insert(did, trait_);
+    cx.active_extern_traits.borrow_mut().remove(&did);
 }

@@ -3,6 +3,7 @@ error[E0005]: refutable pattern in local binding: `A(_)` not covered
    |
 LL | / enum Foo {
 LL | |     A(foo::SecretlyEmpty),
+   | |     - not covered
 LL | |     B(foo::NotSoSecretlyEmpty),
 LL | |     C(NotSoSecretlyEmpty),
 LL | |     D(u32),

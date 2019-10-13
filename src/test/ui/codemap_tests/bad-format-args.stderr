@@ -12,11 +12,11 @@ error: expected token: `,`
 LL |     format!("" 1);
    |                ^ expected `,`
 
-error: expected token: `,`
+error: expected one of `,`, `.`, `?`, or an operator, found `1`
   --> $DIR/bad-format-args.rs:4:19
    |
 LL |     format!("", 1 1);
-   |                   ^ expected `,`
+   |                   ^ expected one of `,`, `.`, `?`, or an operator here
 
 error: aborting due to 3 previous errors
 

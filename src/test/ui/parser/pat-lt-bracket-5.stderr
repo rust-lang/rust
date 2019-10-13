@@ -1,8 +1,8 @@
-error: expected one of `:`, `;`, `=`, or `@`, found `[`
+error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
   --> $DIR/pat-lt-bracket-5.rs:2:10
    |
 LL |     let v[0] = v[1];
-   |          ^ expected one of `:`, `;`, `=`, or `@` here
+   |          ^ expected one of `:`, `;`, `=`, `@`, or `|` here
 
 error: aborting due to previous error
 

@@ -81,6 +81,34 @@ impl<T, E> Poll<Result<T, E>> {
     }
 }
 
+impl<T, E> Poll<Option<Result<T, E>>> {
+    /// Changes the success value of this `Poll` with the closure provided.
+    #[unstable(feature = "poll_map", issue = "63514")]
+    pub fn map_ok<U, F>(self, f: F) -> Poll<Option<Result<U, E>>>
+        where F: FnOnce(T) -> U
+    {
+        match self {
+            Poll::Ready(Some(Ok(t))) => Poll::Ready(Some(Ok(f(t)))),
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+
+    /// Changes the error value of this `Poll` with the closure provided.
+    #[unstable(feature = "poll_map", issue = "63514")]
+    pub fn map_err<U, F>(self, f: F) -> Poll<Option<Result<T, U>>>
+        where F: FnOnce(E) -> U
+    {
+        match self {
+            Poll::Ready(Some(Ok(t))) => Poll::Ready(Some(Ok(t))),
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(f(e)))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<T> From<T> for Poll<T> {
     fn from(t: T) -> Poll<T> {

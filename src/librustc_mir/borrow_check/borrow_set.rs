@@ -8,8 +8,8 @@ use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext
 use rustc::mir::{self, Location, Body, Local};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
+use rustc_index::bit_set::BitSet;
 use std::fmt;
 use std::ops::Index;
 
@@ -317,7 +317,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         // so extract `temp`.
         let temp = if let &mir::Place {
             base: mir::PlaceBase::Local(temp),
-            projection: None,
+            projection: box [],
         } = assigned_place {
             temp
         } else {

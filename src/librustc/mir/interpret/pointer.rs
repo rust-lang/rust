@@ -86,18 +86,17 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
-
-/// Pointer is generic over the type that represents a reference to Allocations,
+/// `Pointer` is generic over the type that represents a reference to `Allocation`s,
 /// thus making it possible for the most convenient representation to be used in
 /// each context.
 ///
-/// Defaults to the index based and loosely coupled AllocId.
+/// Defaults to the index based and loosely coupled `AllocId`.
 ///
 /// Pointer is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
-pub struct Pointer<Tag=(),Id=AllocId> {
+pub struct Pointer<Tag = (), Id = AllocId> {
     pub alloc_id: Id,
     pub offset: Size,
     pub tag: Tag,
@@ -117,7 +116,7 @@ impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
     }
 }
 
-/// Produces a `Pointer` which points to the beginning of the Allocation
+/// Produces a `Pointer` which points to the beginning of the `Allocation`.
 impl From<AllocId> for Pointer {
     #[inline(always)]
     fn from(alloc_id: AllocId) -> Self {
@@ -189,8 +188,11 @@ impl<'tcx, Tag> Pointer<Tag> {
         Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
 
+    /// Test if the pointer is "inbounds" of an allocation of the given size.
+    /// A pointer is "inbounds" even if its offset is equal to the size; this is
+    /// a "one-past-the-end" pointer.
     #[inline(always)]
-    pub fn check_in_alloc(
+    pub fn check_inbounds_alloc(
         self,
         allocation_size: Size,
         msg: CheckInAllocMsg,

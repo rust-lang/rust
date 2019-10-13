@@ -529,7 +529,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
     cvt(unsafe {
-        libc::lstat(p.as_ptr(), &mut stat as *mut _ as *mut _)
+        libc::stat(p.as_ptr(), &mut stat as *mut _ as *mut _)
     })?;
     Ok(FileAttr { stat })
 }

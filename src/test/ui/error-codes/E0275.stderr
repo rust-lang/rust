@@ -1,6 +1,9 @@
 error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
   --> $DIR/E0275.rs:5:1
    |
+LL | trait Foo {}
+   | --------- required by `Foo`
+...
 LL | impl<T> Foo for T where Bar<T>: Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -132,11 +135,6 @@ LL | impl<T> Foo for T where Bar<T>: Foo {}
    = note: required because of the requirements on the impl of `Foo` for `Bar<Bar<Bar<T>>>`
    = note: required because of the requirements on the impl of `Foo` for `Bar<Bar<T>>`
    = note: required because of the requirements on the impl of `Foo` for `Bar<T>`
-note: required by `Foo`
-  --> $DIR/E0275.rs:1:1
-   |
-LL | trait Foo {}
-   | ^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -1,31 +1,31 @@
-error[E0307]: invalid method receiver type: isize
+error[E0307]: invalid `self` parameter type: isize
   --> $DIR/ufcs-explicit-self-bad.rs:8:18
    |
 LL |     fn foo(self: isize, x: isize) -> isize {
    |                  ^^^^^
    |
-   = note: type must be `Self` or a type that dereferences to it
+   = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
-error[E0307]: invalid method receiver type: Bar<isize>
+error[E0307]: invalid `self` parameter type: Bar<isize>
   --> $DIR/ufcs-explicit-self-bad.rs:19:18
    |
 LL |     fn foo(self: Bar<isize>, x: isize) -> isize {
    |                  ^^^^^^^^^^
    |
-   = note: type must be `Self` or a type that dereferences to it
+   = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
-error[E0307]: invalid method receiver type: &Bar<usize>
+error[E0307]: invalid `self` parameter type: &Bar<usize>
   --> $DIR/ufcs-explicit-self-bad.rs:23:18
    |
 LL |     fn bar(self: &Bar<usize>, x: isize) -> isize {
    |                  ^^^^^^^^^^^
    |
-   = note: type must be `Self` or a type that dereferences to it
+   = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
-error[E0308]: mismatched method receiver
+error[E0308]: mismatched `self` parameter type
   --> $DIR/ufcs-explicit-self-bad.rs:37:21
    |
 LL |     fn dummy2(self: &Bar<T>) {}
@@ -44,7 +44,7 @@ note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
    |      ^^
 
-error[E0308]: mismatched method receiver
+error[E0308]: mismatched `self` parameter type
   --> $DIR/ufcs-explicit-self-bad.rs:37:21
    |
 LL |     fn dummy2(self: &Bar<T>) {}
@@ -63,7 +63,7 @@ note: ...does not necessarily outlive the anonymous lifetime #1 defined on the m
 LL |     fn dummy2(self: &Bar<T>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched method receiver
+error[E0308]: mismatched `self` parameter type
   --> $DIR/ufcs-explicit-self-bad.rs:39:21
    |
 LL |     fn dummy3(self: &&Bar<T>) {}
@@ -82,7 +82,7 @@ note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
    |      ^^
 
-error[E0308]: mismatched method receiver
+error[E0308]: mismatched `self` parameter type
   --> $DIR/ufcs-explicit-self-bad.rs:39:21
    |
 LL |     fn dummy3(self: &&Bar<T>) {}
@@ -103,4 +103,5 @@ LL |     fn dummy3(self: &&Bar<T>) {}
 
 error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0307, E0308.
+For more information about an error, try `rustc --explain E0307`.

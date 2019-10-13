@@ -34,7 +34,7 @@ pub fn main() {
     let vs = &vx;
     let vsm = &mut vec![X(Y)];
 
-    // -------- test for duplicate suggestions --------
+    // test for duplicate suggestions
 
     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
     //~^ ERROR cannot move

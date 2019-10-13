@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `s.x`
-  --> $DIR/no-move-across-await-struct.rs:10:5
+  --> $DIR/no-move-across-await-struct.rs:8:5
    |
 LL |     needs_vec(s.x).await;
    |               --- value moved here

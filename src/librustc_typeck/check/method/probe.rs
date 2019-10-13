@@ -419,7 +419,7 @@ fn method_autoderef_steps<'tcx>(
                     from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
                 };
-                if let ty::RawPtr(_) = ty.sty {
+                if let ty::RawPtr(_) = ty.kind {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -428,7 +428,7 @@ fn method_autoderef_steps<'tcx>(
             .collect();
 
         let final_ty = autoderef.maybe_ambiguous_final_ty();
-        let opt_bad_ty = match final_ty.sty {
+        let opt_bad_ty = match final_ty.kind {
             ty::Infer(ty::TyVar(_)) |
             ty::Error => {
                 Some(MethodAutoderefBadTy {
@@ -541,7 +541,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("assemble_probe: self_ty={:?}", self_ty);
         let lang_items = self.tcx.lang_items();
 
-        match self_ty.value.value.sty {
+        match self_ty.value.value.kind {
             ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
                     // Subtle: we can't use `instantiate_query_response` here: using it will
@@ -577,6 +577,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(p);
+            }
+            ty::Bool => {
+                let lang_def_id = lang_items.bool_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Char => {
                 let lang_def_id = lang_items.char_impl();
@@ -731,7 +735,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("assemble_inherent_candidates_from_object(self_ty={:?})",
                self_ty);
 
-        let principal = match self_ty.sty {
+        let principal = match self_ty.kind {
             ty::Dynamic(ref data, ..) => Some(data),
             _ => None
         }.and_then(|data| data.principal()).unwrap_or_else(|| {
@@ -769,7 +773,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .filter_map(|predicate| {
                 match *predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
-                        match trait_predicate.skip_binder().trait_ref.self_ty().sty {
+                        match trait_predicate.skip_binder().trait_ref.self_ty().kind {
                             ty::Param(ref p) if *p == param_ty => {
                                 Some(trait_predicate.to_poly_trait_ref())
                             }
@@ -1069,7 +1073,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::Ref(_, _, mutbl) = step.self_ty.value.value.sty {
+                if let ty::Ref(_, _, mutbl) = step.self_ty.value.value.kind {
                     pick.autoderefs += 1;
                     pick.autoref = Some(mutbl);
                 }

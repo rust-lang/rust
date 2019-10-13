@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 enum DropOption<T> {
     Some(T),
     None,

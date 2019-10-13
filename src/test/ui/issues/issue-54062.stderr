@@ -8,7 +8,7 @@ error[E0599]: no method named `unwrap` found for type `std::sys_common::mutex::M
   --> $DIR/issue-54062.rs:10:37
    |
 LL |     let _ = test.comps.inner.lock().unwrap();
-   |                                     ^^^^^^
+   |                                     ^^^^^^ method not found in `std::sys_common::mutex::MutexGuard<'_>`
 
 error: aborting due to 2 previous errors
 

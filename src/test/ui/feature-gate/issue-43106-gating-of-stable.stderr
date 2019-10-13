@@ -1,40 +1,40 @@
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:7:1
    |
 LL | #![stable()]
    | ^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:10:1
    |
 LL | #[stable()]
    | ^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:13:17
    |
 LL |     mod inner { #![stable()] }
    |                 ^^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:16:5
    |
 LL |     #[stable()] fn f() { }
    |     ^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:19:5
    |
 LL |     #[stable()] struct S;
    |     ^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:22:5
    |
 LL |     #[stable()] type T = S;
    |     ^^^^^^^^^^^
 
-error: stability attributes may not be used outside of the standard library
+error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-stable.rs:25:5
    |
 LL |     #[stable()] impl S { }
@@ -42,3 +42,4 @@ LL |     #[stable()] impl S { }
 
 error: aborting due to 7 previous errors
 
+For more information about this error, try `rustc --explain E0734`.

@@ -5,7 +5,7 @@ LL | struct Bar;
    | ----------- method `foo` not found for this
 ...
 LL |     f1.foo(1usize);
-   |        ^^^
+   |        ^^^ method not found in `Bar`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `foo`, perhaps you need to implement it:

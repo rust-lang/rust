@@ -5,6 +5,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
+
 #![deny(const_err)]
 
 fn black_box<T>(_: T) {
@@ -21,7 +22,7 @@ fn main() {
     let d = 42u8 - (42u8 + 1);
     //~^ ERROR const_err
     let _e = [5u8][1];
-    //~^ ERROR const_err
+    //~^ ERROR index out of bounds
     black_box(a);
     black_box(b);
     black_box(c);

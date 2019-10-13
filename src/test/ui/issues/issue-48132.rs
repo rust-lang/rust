@@ -3,6 +3,8 @@
 
 // run-pass
 
+#![allow(dead_code)]
+
 struct Inner<I, V> {
     iterator: I,
     item: V,

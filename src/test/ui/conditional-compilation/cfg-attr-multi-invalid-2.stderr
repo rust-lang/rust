@@ -1,4 +1,4 @@
-error[E0658]: no_core is experimental
+error[E0658]: the `#[no_core]` attribute is an experimental feature
   --> $DIR/cfg-attr-multi-invalid-2.rs:4:29
    |
 LL | #![cfg_attr(broken, no_std, no_core)]

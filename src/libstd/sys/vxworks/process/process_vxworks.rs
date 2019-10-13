@@ -3,8 +3,8 @@ use libc::{self, c_int, c_char};
 use libc::{RTP_ID};
 use crate::sys;
 use crate::sys::cvt;
-use crate::sys::process::rtp;
 use crate::sys::process::process_common::*;
+use crate::sys_common::thread;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -52,13 +52,12 @@ impl Command {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
-            let ret = rtp::rtpSpawn(
+            let ret = libc::rtpSpawn(
                 self.get_argv()[0],                   // executing program
-                self.get_argv().as_ptr() as *const _, // argv
-                *sys::os::environ() as *const *const c_char,
+                self.get_argv().as_ptr() as *mut *const c_char, // argv
+                *sys::os::environ() as *mut *const c_char,
                 100 as c_int,                         // initial priority
-                0x16000,                                    // initial stack size. 0 defaults
-                                                      // to 0x4000 in 32 bit and 0x8000 in 64 bit
+                thread::min_stack(),                  // initial stack size.
                 0,                                    // options
                 0                                     // task options
             );
@@ -78,7 +77,7 @@ impl Command {
                 libc::close(orig_stderr);
             }
 
-            if ret != rtp::RTP_ID_ERROR {
+            if ret != libc::RTP_ID_ERROR {
                 p.pid = ret;
                 Ok((p, ours))
             } else {

@@ -5,7 +5,7 @@ LL | struct Bar<T: Foo> {
    | ------------------ method `clone` not found for this
 ...
 LL |     Bar::<NotClone> { x: 1 }.clone();
-   |                              ^^^^^
+   |                              ^^^^^ method not found in `Bar<NotClone>`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `Bar<NotClone> : std::clone::Clone`

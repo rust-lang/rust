@@ -57,7 +57,7 @@ function onEachLazy(lazyArray, func, reversed) {
 
 function usableLocalStorage() {
     // Check if the browser supports localStorage at all:
-    if (typeof(Storage) === "undefined") {
+    if (typeof Storage === "undefined") {
         return false;
     }
     // Check if we can access it; this access will fail if the browser
@@ -86,7 +86,7 @@ function getCurrentValue(name) {
     return null;
 }
 
-function switchTheme(styleElem, mainStyleElem, newTheme) {
+function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
     var fullNewTheme = newTheme + resourcesSuffix + ".css";
     var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
@@ -109,8 +109,19 @@ function switchTheme(styleElem, mainStyleElem, newTheme) {
     });
     if (found === true) {
         styleElem.href = newHref;
-        updateLocalStorage("rustdoc-theme", newTheme);
+        // If this new value comes from a system setting or from the previously saved theme, no
+        // need to save it.
+        if (saveTheme === true) {
+            updateLocalStorage("rustdoc-theme", newTheme);
+        }
     }
 }
 
-switchTheme(currentTheme, mainTheme, getCurrentValue("rustdoc-theme") || "light");
+function getSystemValue() {
+    var property = getComputedStyle(document.documentElement).getPropertyValue('content');
+    return property.replace(/[\"\']/g, "");
+}
+
+switchTheme(currentTheme, mainTheme,
+            getCurrentValue("rustdoc-theme") || getSystemValue() || "light",
+            false);

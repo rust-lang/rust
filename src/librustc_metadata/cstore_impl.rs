@@ -10,6 +10,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
+use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def;
 use rustc::hir;
 use rustc::session::{CrateDisambiguator, Session};
@@ -30,13 +31,12 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map;
 use syntax::edition::Edition;
-use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
-use syntax::ext::proc_macro::BangProcMacro;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
-use syntax::symbol::{Symbol, sym};
-use syntax_pos::{Span, NO_EXPANSION, FileName};
-use rustc_data_structures::bit_set::BitSet;
+use syntax::source_map::Spanned;
+use syntax::symbol::Symbol;
+use syntax_pos::{Span, FileName};
+use rustc_index::bit_set::BitSet;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -127,21 +127,15 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
-    optimized_mir => {
-        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
-        });
-
-        let mir = tcx.arena.alloc(mir);
-
-        mir
-    }
+    optimized_mir => { tcx.arena.alloc(cdata.get_optimized_mir(tcx, def_id.index)) }
+    promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
     mir_const_qualif => {
         (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
+    asyncness => { cdata.asyncness(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }
@@ -157,13 +151,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
-    fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
+    fn_arg_names => { cdata.get_fn_param_names(def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    const_is_rvalue_promotable_to_static => {
-        cdata.const_is_rvalue_promotable_to_static(def_id.index)
-    }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
@@ -227,7 +218,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    crate_name => { cdata.name }
+    crate_name => { cdata.root.name }
     item_children => {
         let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
@@ -235,11 +226,12 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
+    diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
         let r = match *cdata.extern_crate.borrow() {
-            Some(extern_crate) if !extern_crate.direct => true,
+            Some(extern_crate) if !extern_crate.is_direct() => true,
             _ => false,
         };
         r
@@ -247,7 +239,30 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    exported_symbols => { Arc::new(cdata.exported_symbols(tcx)) }
+    exported_symbols => {
+        let mut syms = cdata.exported_symbols(tcx);
+
+        // When linked into a dylib crates don't export their generic symbols,
+        // so if that's happening then we can't load upstream monomorphizations
+        // from this crate.
+        let formats = tcx.dependency_formats(LOCAL_CRATE);
+        let remove_generics = formats.iter().any(|(_ty, list)| {
+            match list.get(def_id.krate.as_usize() - 1) {
+                Some(Linkage::IncludedFromDylib) | Some(Linkage::Dynamic) => true,
+                _ => false,
+            }
+        });
+        if remove_generics {
+            syms.retain(|(sym, _threshold)| {
+                match sym {
+                    ExportedSymbol::Generic(..) => false,
+                    _ => return true,
+                }
+            });
+        }
+
+        Arc::new(syms)
+    }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -256,7 +271,11 @@ pub fn provide(providers: &mut Providers<'_>) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         is_dllimport_foreign_item: |tcx, id| {
-            tcx.native_library_kind(id) == Some(NativeLibraryKind::NativeUnknown)
+            match tcx.native_library_kind(id) {
+                Some(NativeLibraryKind::NativeUnknown) |
+                Some(NativeLibraryKind::NativeRawDylib) => true,
+                _ => false,
+            }
         },
         is_statically_included_foreign_item: |tcx, id| {
             match tcx.native_library_kind(id) {
@@ -378,6 +397,11 @@ pub fn provide(providers: &mut Providers<'_>) {
             tcx.arena.alloc(visible_parent_map)
         },
 
+        dependency_formats: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Lrc::new(crate::dependency_format::calculate(tcx))
+        },
+
         ..*providers
     };
 }
@@ -401,8 +425,8 @@ impl cstore::CStore {
         self.get_crate_data(cnum).root.edition
     }
 
-    pub fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
-        self.get_crate_data(def.krate).get_struct_field_names(def.index)
+    pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
+        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }
 
     pub fn ctor_kind_untracked(&self, def: DefId) -> def::CtorKind {
@@ -426,24 +450,16 @@ impl cstore::CStore {
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
-        if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
-        } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
-            let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-            let kind = SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client }));
-            let ext = SyntaxExtension {
-                allow_internal_unstable: Some([sym::proc_macro_def_site][..].into()),
-                ..SyntaxExtension::default(kind, data.root.edition)
-            };
-            return LoadedMacro::ProcMacro(Lrc::new(ext));
+        if data.is_proc_macro_crate() {
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 
         let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.imported_name);
+        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.root.name);
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
-        let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
+        let local_span = Span::with_root_ctxt(source_file.start_pos, source_file.end_pos);
         let (body, mut errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
         emit_unclosed_delims(&mut errors, &sess.diagnostic());
 
@@ -459,11 +475,12 @@ impl cstore::CStore {
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(ast::Item {
-            ident: ast::Ident::from_str(&name.as_str()),
+            // FIXME: cross-crate hygiene
+            ident: ast::Ident::with_dummy_span(name.as_symbol()),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),
-            node: ast::ItemKind::MacroDef(ast::MacroDef {
+            kind: ast::ItemKind::MacroDef(ast::MacroDef {
                 tokens: body.into(),
                 legacy: def.legacy,
             }),
@@ -488,7 +505,7 @@ impl CrateStore for cstore::CStore {
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
-        self.get_crate_data(cnum).name
+        self.get_crate_data(cnum).root.name
     }
 
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {

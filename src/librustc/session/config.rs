@@ -1,36 +1,38 @@
 //! Contains infrastructure for configuring the compiler, including parsing
-//! command line options.
+//! command-line options.
 
-use std::str::FromStr;
-
+use crate::lint;
+use crate::middle::cstore;
 use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
 
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
+
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
-use crate::lint;
-use crate::middle::cstore;
 
 use syntax;
 use syntax::ast::{self, IntTy, UintTy, MetaItemKind};
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
+use syntax::parse::{ParseSess, new_parser_from_source_str};
 use syntax::parse::token;
-use syntax::parse;
 use syntax::symbol::{sym, Symbol};
 use syntax::feature_gate::UnstableFeatures;
-use errors::emitter::HumanReadableErrorType;
+use syntax::source_map::SourceMap;
 
+use errors::emitter::HumanReadableErrorType;
 use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
-use std::collections::{BTreeMap, BTreeSet};
-use std::collections::btree_map::Iter as BTreeMapIter;
-use std::collections::btree_map::Keys as BTreeMapKeysIter;
-use std::collections::btree_map::Values as BTreeMapValuesIter;
 
-use rustc_data_structures::fx::FxHashSet;
-use std::{fmt, str};
+use std::collections::{BTreeMap, BTreeSet};
+use std::collections::btree_map::{
+    Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
+};
+use std::fmt;
+use std::str::{self, FromStr};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 use std::iter::FromIterator;
@@ -241,14 +243,14 @@ pub enum ErrorOutputType {
 }
 
 impl Default for ErrorOutputType {
-    fn default() -> ErrorOutputType {
-        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
+    fn default() -> Self {
+        Self::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
     }
 }
 
-// Use tree-based collections to cheaply get a deterministic Hash implementation.
-// DO NOT switch BTreeMap out for an unsorted container type! That would break
-// dependency tracking for command-line arguments.
+/// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
+/// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
+/// dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
@@ -281,7 +283,7 @@ impl OutputTypes {
         self.0.len()
     }
 
-    // True if any of the output types require codegen or linking.
+    // Returns `true` if any of the output types require codegen or linking.
     pub fn should_codegen(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
@@ -295,9 +297,9 @@ impl OutputTypes {
     }
 }
 
-// Use tree-based collections to cheaply get a deterministic Hash implementation.
-// DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
-// would break dependency tracking for command-line arguments.
+/// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
+/// *Do not* switch `BTreeMap` or `BTreeSet` out for an unsorted container type! That
+/// would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
 pub struct Externs(BTreeMap<String, ExternEntry>);
 
@@ -327,7 +329,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
                               $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
-            bug!("Duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
+            bug!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
 }
@@ -362,7 +364,7 @@ macro_rules! top_level_options {
     );
 }
 
-// The top-level command-line options struct
+// The top-level command-line options struct.
 //
 // For each option, one has to specify how it behaves with regard to the
 // dependency tracking system of incremental compilation. This is done via the
@@ -376,16 +378,16 @@ macro_rules! top_level_options {
 // Incremental compilation is not influenced by this option.
 //
 // If you add a new option to this struct or one of the sub-structs like
-// CodegenOptions, think about how it influences incremental compilation. If in
+// `CodegenOptions`, think about how it influences incremental compilation. If in
 // doubt, specify [TRACKED], which is always "correct" but might lead to
 // unnecessary re-compilation.
 top_level_options!(
     pub struct Options {
         // The crate config requested for the session, which may be combined
-        // with additional crate configurations during the compile process
+        // with additional crate configurations during the compile process.
         crate_types: Vec<CrateType> [TRACKED],
         optimize: OptLevel [TRACKED],
-        // Include the debug_assertions flag into dependency tracking, since it
+        // Include the `debug_assertions` flag in dependency tracking, since it
         // can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
@@ -395,15 +397,15 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
-        maybe_sysroot: Option<PathBuf> [TRACKED],
+        maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
         target_triple: TargetTriple [TRACKED],
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
 
-        // if Some, enable incremental compilation, using the given
-        // directory to store intermediate results
+        // If `Some`, enable incremental compilation, using the given
+        // directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
 
         debugging_opts: DebuggingOptions [TRACKED],
@@ -418,7 +420,7 @@ top_level_options!(
         // written `extern crate name as std`. Defaults to `std`. Used by
         // out-of-tree drivers.
         alt_std_name: Option<String> [TRACKED],
-        // Indicates how the compiler should treat unstable features
+        // Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
 
         // Indicates whether this run of the compiler is actually rustdoc. This
@@ -434,12 +436,12 @@ top_level_options!(
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         cli_forced_thinlto_off: bool [UNTRACKED],
 
-        // Remap source path prefixes in all output (messages, object files, debug, etc)
+        // Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
 
         edition: Edition [TRACKED],
 
-        // Whether or not we're emitting JSON blobs about each artifact produced
+        // `true` if we're emitting JSON blobs about each artifact produced
         // by the compiler.
         json_artifact_notifications: bool [TRACKED],
     }
@@ -468,7 +470,7 @@ pub enum BorrowckMode {
 }
 
 impl BorrowckMode {
-    /// Should we run the MIR-based borrow check, but also fall back
+    /// Returns whether we should run the MIR-based borrow check, but also fall back
     /// on the AST borrow check if the MIR-based one errors.
     pub fn migrate(self) -> bool {
         match self {
@@ -476,23 +478,16 @@ impl BorrowckMode {
             BorrowckMode::Migrate => true,
         }
     }
-
-    /// Should we emit the AST-based borrow checker errors?
-    pub fn use_ast(self) -> bool {
-        match self {
-            BorrowckMode::Mir => false,
-            BorrowckMode::Migrate => false,
-        }
-    }
 }
 
 pub enum Input {
-    /// Loads source from file
+    /// Load source code from a file.
     File(PathBuf),
+    /// Load source code from a string.
     Str {
-        /// String that is shown in place of a filename
+        /// A string that is shown in place of a filename.
         name: FileName,
-        /// Anonymous source string
+        /// An anonymous string containing the source code.
         input: String,
     },
 }
@@ -651,7 +646,7 @@ impl Options {
         FilePathMapping::new(self.remap_path_prefix.clone())
     }
 
-    /// Returns `true` if there will be an output file generated
+    /// Returns `true` if there will be an output file generated.
     pub fn will_create_output_file(&self) -> bool {
         !self.debugging_opts.parse_only && // The file is just being parsed
             !self.debugging_opts.ls // The file is just being queried
@@ -684,7 +679,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, HashStable)]
 pub enum CrateType {
     Executable,
     Dylib,
@@ -709,16 +704,14 @@ impl Passes {
     }
 }
 
-/// Declare a macro that will define all CodegenOptions/DebuggingOptions fields and parsers all
-/// at once. The goal of this macro is to define an interface that can be
-/// programmatically used by the option parser in order to initialize the struct
-/// without hardcoding field names all over the place.
+/// Defines all `CodegenOptions`/`DebuggingOptions` fields and parsers all at once. The goal of this
+/// macro is to define an interface that can be programmatically used by the option parser
+/// to initialize the struct without hardcoding field names all over the place.
 ///
-/// The goal is to invoke this macro once with the correct fields, and then this
-/// macro generates all necessary code. The main gotcha of this macro is the
-/// cgsetters module which is a bunch of generated code to parse an option into
-/// its respective field in the struct. There are a few hand-written parsers for
-/// parsing specific types of values in this module.
+/// The goal is to invoke this macro once with the correct fields, and then this macro generates all
+/// necessary code. The main gotcha of this macro is the `cgsetters` module which is a bunch of
+/// generated code to parse an option into its respective field in the struct. There are a few
+/// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
     ($struct_name:ident, $setter_name:ident, $defaultfn:ident,
      $buildfn:ident, $prefix:expr, $outputname:expr,
@@ -812,6 +805,7 @@ macro_rules! options {
         pub const parse_list: Option<&str> = Some("a space-separated list of strings");
         pub const parse_opt_list: Option<&str> = Some("a space-separated list of strings");
         pub const parse_opt_comma_list: Option<&str> = Some("a comma-separated list of strings");
+        pub const parse_threads: Option<&str> = Some("a number");
         pub const parse_uint: Option<&str> = Some("a number");
         pub const parse_passes: Option<&str> =
             Some("a space-separated list of passes, or `all`");
@@ -952,6 +946,14 @@ macro_rules! options {
                     true
                 },
                 None => false,
+            }
+        }
+
+        fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
+            match v.and_then(|s| s.parse().ok()) {
+                Some(0) => { *slot = ::num_cpus::get(); true },
+                Some(i) => { *slot = i; true },
+                None => false
             }
         }
 
@@ -1258,7 +1260,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "prints the LLVM optimization passes being run"),
     ast_json: bool = (false, parse_bool, [UNTRACKED],
         "print the AST as JSON and halt"),
-    threads: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+    // We default to 1 here since we want to behave like
+    // a sequential compiler for now. This'll likely be adjusted
+    // in the future. Note that -Zthreads=0 is the way to get
+    // the num_cpus behavior.
+    threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
         "print the pre-expansion AST as JSON and halt"),
@@ -1267,14 +1273,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
-        "include loan analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_moves: bool = (false, parse_bool, [UNTRACKED],
-        "include move analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_assigns: bool = (false, parse_bool, [UNTRACKED],
-        "include assignment analysis data in -Z unpretty flowgraph output"),
-    flowgraph_print_all: bool = (false, parse_bool, [UNTRACKED],
-        "include all dataflow analysis data in -Z unpretty flowgraph output"),
     print_region_graph: bool = (false, parse_bool, [UNTRACKED],
         "prints region inference graph. \
          Use with RUST_REGION_GRAPH=help for more info"),
@@ -1292,6 +1290,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "show macro backtraces even for non-local macros"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help"),
+    terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+        "set the current terminal width"),
+    panic_abort_tests: bool = (false, parse_bool, [TRACKED],
+        "support compiling tests with panic=abort"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
         "attempt to recover from parse errors (experimental)"),
     dep_tasks: bool = (false, parse_bool, [UNTRACKED],
@@ -1314,10 +1316,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing"),
-    profile_queries: bool = (false, parse_bool, [UNTRACKED],
-        "trace and profile the queries of the incremental compilation framework"),
-    profile_queries_and_keys: bool = (false, parse_bool, [UNTRACKED],
-        "trace and profile the queries and keys of the incremental compilation framework"),
     no_analysis: bool = (false, parse_bool, [UNTRACKED],
         "parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -1343,7 +1341,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     mir_opt_level: usize = (1, parse_uint, [TRACKED],
         "set the MIR optimization level (0-3, default: 1)"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: yes on LLVM >= 6)"),
+        "emit noalias metadata for mutable references (default: no)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:
@@ -1372,6 +1370,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "describes how to render the `rendered` field of json diagnostics"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the breaks off const evaluation. NOTE: this is unsound"),
+    suppress_const_validation_back_compat_ice: bool = (false, parse_bool, [TRACKED],
+        "silence ICE triggered when the new const validator disagrees with the old"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
@@ -1421,8 +1421,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         valid types are any of the types for `--pretty`, as well as:
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
-        `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-        `flowgraph,unlabelled=<nodeid>` (unlabelled graphviz formatted flowgraph for node),
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`,
         `hir,typed` (HIR with types for each node),
@@ -1469,6 +1467,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "which mangling version to use for symbol names"),
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info"),
+    insert_sideeffect: bool = (false, parse_bool, [TRACKED],
+        "fix undefined behavior when a thread doesn't eventually make progress \
+         (such as entering an empty infinite loop) by inserting llvm.sideeffect"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1537,7 +1538,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     ret
 }
 
-/// Converts the crate cfg! configuration from String to Symbol.
+/// Converts the crate `cfg!` configuration from `String` to `Symbol`.
 /// `rustc_interface::interface::Config` accepts this in the compiler configuration,
 /// but the symbol interner is not yet set up then, so we must convert it later.
 pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> ast::CrateConfig {
@@ -1548,9 +1549,9 @@ pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> ast::CrateCo
 
 pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
-    // some default and generated configuration items
+    // some default and generated configuration items.
     let default_cfg = default_configuration(sess);
-    // If the user wants a test runner, then add the test cfg
+    // If the user wants a test runner, then add the test cfg.
     if sess.opts.test {
         user_cfg.insert((sym::test, None));
     }
@@ -1719,13 +1720,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              static, framework, or dylib (the default).",
             "[KIND=]NAME",
         ),
-        opt::multi_s(
-            "",
-            "crate-type",
-            "Comma separated list of types of crates
-                                    for the compiler to emit",
-            "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
-        ),
+        make_crate_type_option(),
         opt::opt_s(
             "",
             "crate-name",
@@ -1855,13 +1850,22 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     opts
 }
 
-// Convert strings provided as --cfg [cfgspec] into a crate_cfg
+struct NullEmitter;
+
+impl errors::emitter::Emitter for NullEmitter {
+    fn emit_diagnostic(&mut self, _: &errors::Diagnostic) {}
+}
+
+// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     syntax::with_default_globals(move || {
         let cfg = cfgspecs.into_iter().map(|s| {
-            let sess = parse::ParseSess::new(FilePathMapping::empty());
+
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let handler = Handler::with_emitter(false, None, Box::new(NullEmitter));
+            let sess = ParseSess::with_span_handler(handler, cm);
             let filename = FileName::cfg_spec_source_code(&s);
-            let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
+            let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
             macro_rules! error {($reason: expr) => {
                 early_error(ErrorOutputType::default(),
@@ -1873,11 +1877,11 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     if meta_item.path.segments.len() != 1 {
                         error!("argument key must be an identifier");
                     }
-                    match &meta_item.node {
+                    match &meta_item.kind {
                         MetaItemKind::List(..) => {
                             error!(r#"expected `key` or `key="value"`"#);
                         }
-                        MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                             error!("argument value must be a string");
                         }
                         MetaItemKind::NameValue(..) | MetaItemKind::Word => {
@@ -1921,7 +1925,7 @@ pub fn get_cmd_lint_options(matches: &getopts::Matches,
     (lint_opts, describe_lints, lint_cap)
 }
 
-/// Parse the `--color` flag
+/// Parses the `--color` flag.
 pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
     match matches.opt_str("color").as_ref().map(|s| &s[..]) {
         Some("auto") => ColorConfig::Auto,
@@ -1933,7 +1937,7 @@ pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
         Some(arg) => early_error(
             ErrorOutputType::default(),
             &format!(
-                "argument for --color must be auto, \
+                "argument for `--color` must be auto, \
                  always or never (instead was `{}`)",
                 arg
             ),
@@ -1978,16 +1982,16 @@ pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool) 
     (json_rendered(json_color), json_artifact_notifications)
 }
 
-/// Parse the `--error-format` flag
+/// Parses the `--error-format` flag.
 pub fn parse_error_format(
     matches: &getopts::Matches,
     color: ColorConfig,
     json_rendered: HumanReadableErrorType,
 ) -> ErrorOutputType {
-    // We need the opts_present check because the driver will send us Matches
+    // We need the `opts_present` check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
-    // is unstable, it will not be present. We have to use opts_present not
-    // opt_present because the latter will panic.
+    // is unstable, it will not be present. We have to use `opts_present` not
+    // `opt_present` because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
             None |
@@ -2002,7 +2006,7 @@ pub fn parse_error_format(
             Some(arg) => early_error(
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
                 &format!(
-                    "argument for --error-format must be `human`, `json` or \
+                    "argument for `--error-format` must be `human`, `json` or \
                      `short` (instead was `{}`)",
                     arg
                 ),
@@ -2041,7 +2045,7 @@ pub fn build_session_options_and_crate_config(
             early_error(
                 ErrorOutputType::default(),
                 &format!(
-                    "argument for --edition must be one of: \
+                    "argument for `--edition` must be one of: \
                      {}. (instead was `{}`)",
                     EDITION_NAME_LIST,
                     arg
@@ -2055,7 +2059,7 @@ pub fn build_session_options_and_crate_config(
         early_error(
                 ErrorOutputType::default(),
                 &format!(
-                    "Edition {} is unstable and only \
+                    "edition {} is unstable and only \
                      available for nightly builds of rustc.",
                     edition,
                 )
@@ -2079,14 +2083,14 @@ pub fn build_session_options_and_crate_config(
         if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },
-                "--error-format=pretty-json is unstable",
+                "`--error-format=pretty-json` is unstable",
             );
         }
         if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
             error_format {
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },
-                "--error-format=human-annotate-rs is unstable",
+                "`--error-format=human-annotate-rs` is unstable",
             );
         }
     }
@@ -2120,7 +2124,7 @@ pub fn build_session_options_and_crate_config(
     let mut codegen_units = cg.codegen_units;
     let mut disable_thinlto = false;
 
-    // Issue #30063: if user requests llvm-related output to one
+    // Issue #30063: if user requests LLVM-related output to one
     // particular path, disable codegen-units.
     let incompatible: Vec<_> = output_types
         .iter()
@@ -2136,8 +2140,8 @@ pub fn build_session_options_and_crate_config(
                         early_warn(
                             error_format,
                             &format!(
-                                "--emit={} with -o incompatible with \
-                                 -C codegen-units=N for N > 1",
+                                "`--emit={}` with `-o` incompatible with \
+                                 `-C codegen-units=N` for N > 1",
                                 ot
                             ),
                         );
@@ -2154,24 +2158,24 @@ pub fn build_session_options_and_crate_config(
         }
     }
 
-    if debugging_opts.threads == Some(0) {
+    if debugging_opts.threads == 0 {
         early_error(
             error_format,
-            "Value for threads must be a positive nonzero integer",
+            "value for threads must be a positive non-zero integer",
         );
     }
 
-    if debugging_opts.threads.unwrap_or(1) > 1 && debugging_opts.fuel.is_some() {
+    if debugging_opts.threads > 1 && debugging_opts.fuel.is_some() {
         early_error(
             error_format,
-            "Optimization fuel is incompatible with multiple threads",
+            "optimization fuel is incompatible with multiple threads",
         );
     }
 
     if codegen_units == Some(0) {
         early_error(
             error_format,
-            "Value for codegen units must be a positive nonzero integer",
+            "value for codegen units must be a positive non-zero integer",
         );
     }
 
@@ -2418,10 +2422,10 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    // We start out with a Vec<(Option<String>, bool)>>,
-    // and later convert it into a BTreeSet<(Option<String>, bool)>
+    // We start out with a `Vec<(Option<String>, bool)>>`,
+    // and later convert it into a `BTreeSet<(Option<String>, bool)>`
     // This allows to modify entries in-place to set their correct
-    // 'public' value
+    // 'public' value.
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for (arg, private) in matches.opt_strs("extern").into_iter().map(|v| (v, false))
         .chain(matches.opt_strs("extern-private").into_iter().map(|v| (v, true))) {
@@ -2503,6 +2507,16 @@ pub fn build_session_options_and_crate_config(
             json_artifact_notifications,
         },
         cfg,
+    )
+}
+
+pub fn make_crate_type_option() -> RustcOptGroup {
+    opt::multi_s(
+        "",
+        "crate-type",
+        "Comma separated list of types of crates
+                                for the compiler to emit",
+        "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
     )
 }
 
@@ -2610,15 +2624,15 @@ impl fmt::Display for CrateType {
 /// The values of all command-line arguments that are relevant for dependency
 /// tracking are hashed into a single value that determines whether the
 /// incremental compilation cache can be re-used or not. This hashing is done
-/// via the DepTrackingHash trait defined below, since the standard Hash
-/// implementation might not be suitable (e.g., arguments are stored in a Vec,
+/// via the `DepTrackingHash` trait defined below, since the standard `Hash`
+/// implementation might not be suitable (e.g., arguments are stored in a `Vec`,
 /// the hash of which is order dependent, but we might not want the order of
 /// arguments to make a difference for the hash).
 ///
-/// However, since the value provided by Hash::hash often *is* suitable,
+/// However, since the value provided by `Hash::hash` often *is* suitable,
 /// especially for primitive types, there is the
-/// impl_dep_tracking_hash_via_hash!() macro that allows to simply reuse the
-/// Hash implementation for DepTrackingHash. It's important though that
+/// `impl_dep_tracking_hash_via_hash!()` macro that allows to simply reuse the
+/// `Hash` implementation for `DepTrackingHash`. It's important though that
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
@@ -2631,9 +2645,9 @@ mod dep_tracking {
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
                 Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
                 SymbolManglingVersion};
-    use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
+    use syntax::feature_gate::UnstableFeatures;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);

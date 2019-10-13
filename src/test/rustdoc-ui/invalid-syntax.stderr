@@ -179,6 +179,46 @@ LL | | #[doc = "```"]
    |
    = help: mark blocks that do not contain Rust code as text: ```text
 
+warning: Rust code block is empty
+  --> $DIR/invalid-syntax.rs:68:5
+   |
+LL |   /// ```rust
+   |  _____^
+LL | | /// ```
+   | |_______^
+
+warning: Rust code block is empty
+  --> $DIR/invalid-syntax.rs:72:5
+   |
+LL |   /// ```
+   |  _____^
+LL | | ///
+LL | | ///
+LL | | /// ```
+   | |_______^
+help: mark blocks that do not contain Rust code as text
+   |
+LL | /// ```text
+   |     ^^^^^^^
+
+error: unknown start of token: \
+ --> <doctest>:1:1
+  |
+1 | \____/
+  | ^
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:82:9
+   |
+LL | ///     \____/
+   |         ^^^^^^
+
+error: unknown start of token: \
+ --> <rustdoc-highlighting>:1:1
+  |
+1 | \____/
+  | ^
+
 error: unknown start of token: \
  --> <rustdoc-highlighting>:1:1
   |

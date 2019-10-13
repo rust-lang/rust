@@ -1,8 +1,12 @@
-error: expected pattern, found keyword `struct`
+error: expected identifier, found keyword `struct`
   --> $DIR/keyword-struct-as-identifier.rs:4:9
    |
 LL |     let struct = "foo";
-   |         ^^^^^^ expected pattern
+   |         ^^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#struct = "foo";
+   |         ^^^^^^^^
 
 error: aborting due to previous error
 

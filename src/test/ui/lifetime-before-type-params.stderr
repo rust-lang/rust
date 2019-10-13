@@ -22,10 +22,5 @@ error: lifetime parameters must be declared prior to type parameters
 LL | fn fourth<'a, T, 'b, U, 'c, V>() {}
    |          --------^^-----^^---- help: reorder the parameters: lifetimes, then types: `<'a, 'b, 'c, T, U, V>`
 
-error[E0601]: `main` function not found in crate `lifetime_before_type_params`
-   |
-   = note: consider adding a `main` function to `$DIR/lifetime-before-type-params.rs`
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

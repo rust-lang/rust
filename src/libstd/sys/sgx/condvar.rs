@@ -27,8 +27,7 @@ impl Condvar {
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let guard = self.inner.lock();
-        mutex.unlock();
-        WaitQueue::wait(guard);
+        WaitQueue::wait(guard, || mutex.unlock());
         mutex.lock()
     }
 

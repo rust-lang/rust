@@ -4,19 +4,19 @@
 fn main() {
     let mut t: (u64, u64);
     t.0 = 1;
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
     t.1 = 1;
 
     let mut t: (u64, u64);
     t.1 = 1;
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
     t.0 = 1;
 
     let mut t: (u64, u64);
     t.0 = 1;
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
 
     let mut t: (u64,);
     t.0 = 1;
-    //~^ ERROR assign to part of possibly uninitialized variable: `t` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
 }

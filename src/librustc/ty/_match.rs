@@ -59,7 +59,7 @@ impl TypeRelation<'tcx> for Match<'tcx> {
                a, b);
         if a == b { return Ok(a); }
 
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             (_, &ty::Infer(ty::FreshTy(_))) |
             (_, &ty::Infer(ty::FreshIntTy(_))) |
             (_, &ty::Infer(ty::FreshFloatTy(_))) => {

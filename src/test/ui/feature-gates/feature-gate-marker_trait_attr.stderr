@@ -1,4 +1,4 @@
-error[E0658]: marker traits is an experimental feature
+error[E0658]: the `#[marker]` attribute is an experimental feature
   --> $DIR/feature-gate-marker_trait_attr.rs:3:1
    |
 LL | #[marker] trait ExplicitMarker {}

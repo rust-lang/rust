@@ -1,67 +1,67 @@
 error[E0491]: in type `&'a WithAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container.rs:40:13
+  --> $DIR/regions-outlives-projection-container.rs:36:13
    |
 LL |     let _x: &'a WithAssoc<TheType<'b>> = loop { };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime 'a as defined on the function body at 32:15
-  --> $DIR/regions-outlives-projection-container.rs:32:15
+note: the pointer is valid for the lifetime 'a as defined on the function body at 28:15
+  --> $DIR/regions-outlives-projection-container.rs:28:15
    |
 LL | fn with_assoc<'a,'b>() {
    |               ^^
-note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 32:18
-  --> $DIR/regions-outlives-projection-container.rs:32:18
+note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 28:18
+  --> $DIR/regions-outlives-projection-container.rs:28:18
    |
 LL | fn with_assoc<'a,'b>() {
    |                  ^^
 
 error[E0491]: in type `&'a WithoutAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container.rs:58:13
+  --> $DIR/regions-outlives-projection-container.rs:54:13
    |
 LL |     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime 'a as defined on the function body at 54:18
-  --> $DIR/regions-outlives-projection-container.rs:54:18
+note: the pointer is valid for the lifetime 'a as defined on the function body at 50:18
+  --> $DIR/regions-outlives-projection-container.rs:50:18
    |
 LL | fn without_assoc<'a,'b>() {
    |                  ^^
-note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 54:21
-  --> $DIR/regions-outlives-projection-container.rs:54:21
+note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 50:21
+  --> $DIR/regions-outlives-projection-container.rs:50:21
    |
 LL | fn without_assoc<'a,'b>() {
    |                     ^^
 
 error[E0491]: in type `&'a WithAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container.rs:67:12
+  --> $DIR/regions-outlives-projection-container.rs:63:12
    |
 LL |     call::<&'a WithAssoc<TheType<'b>>>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime 'a as defined on the function body at 62:20
-  --> $DIR/regions-outlives-projection-container.rs:62:20
+note: the pointer is valid for the lifetime 'a as defined on the function body at 58:20
+  --> $DIR/regions-outlives-projection-container.rs:58:20
    |
 LL | fn call_with_assoc<'a,'b>() {
    |                    ^^
-note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 62:23
-  --> $DIR/regions-outlives-projection-container.rs:62:23
+note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 58:23
+  --> $DIR/regions-outlives-projection-container.rs:58:23
    |
 LL | fn call_with_assoc<'a,'b>() {
    |                       ^^
 
 error[E0491]: in type `&'a WithoutAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container.rs:74:12
+  --> $DIR/regions-outlives-projection-container.rs:70:12
    |
 LL |     call::<&'a WithoutAssoc<TheType<'b>>>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the pointer is valid for the lifetime 'a as defined on the function body at 71:23
-  --> $DIR/regions-outlives-projection-container.rs:71:23
+note: the pointer is valid for the lifetime 'a as defined on the function body at 67:23
+  --> $DIR/regions-outlives-projection-container.rs:67:23
    |
 LL | fn call_without_assoc<'a,'b>() {
    |                       ^^
-note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 71:26
-  --> $DIR/regions-outlives-projection-container.rs:71:26
+note: but the referenced data is only valid for the lifetime 'b as defined on the function body at 67:26
+  --> $DIR/regions-outlives-projection-container.rs:67:26
    |
 LL | fn call_without_assoc<'a,'b>() {
    |                          ^^

@@ -18,7 +18,7 @@ extend the compiler's behavior with new syntax extensions, lint checks, etc.
 A plugin is a dynamic library crate with a designated *registrar* function that
 registers extensions with `rustc`. Other crates can load these extensions using
 the crate attribute `#![plugin(...)]`.  See the
-`rustc_plugin` documentation for more about the
+`rustc_driver::plugin` documentation for more about the
 mechanics of defining and loading a plugin.
 
 If present, arguments passed as `#![plugin(foo(... args ...))]` are not
@@ -54,15 +54,15 @@ that implements Roman numeral integer literals.
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc;
-extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use syntax::parse::token::{self, Token};
-use syntax::tokenstream::TokenTree;
+use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax_pos::Span;
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 
-fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
+fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: TokenStream)
         -> Box<dyn MacResult + 'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[
@@ -78,7 +78,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         return DummyResult::any(sp);
     }
 
-    let text = match args[0] {
+    let text = match args.into_trees().next().unwrap() {
         TokenTree::Token(Token { kind: token::Ident(s, _), .. }) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
@@ -180,11 +180,11 @@ extern crate syntax;
 // Load rustc as a plugin to get macros
 #[macro_use]
 extern crate rustc;
-extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
                   EarlyLintPassObject, LintArray};
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 use syntax::ast;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");

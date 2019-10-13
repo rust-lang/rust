@@ -90,10 +90,10 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:4:31
    |
 LL |     let val: ! = loop { break break; };
-   |                               ^^^^^ expected (), found !
+   |                               ^^^^^ expected !, found ()
    |
-   = note: expected type `()`
-              found type `!`
+   = note: expected type `!`
+              found type `()`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:11:19
@@ -153,10 +153,13 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:90:9
    |
 LL |         break;
-   |         ^^^^^ expected (), found integer
+   |         ^^^^^
+   |         |
+   |         expected integer, found ()
+   |         help: give it a value of the expected type: `break value`
    |
-   = note: expected type `()`
-              found type `{integer}`
+   = note: expected type `{integer}`
+              found type `()`
 
 error: aborting due to 16 previous errors
 

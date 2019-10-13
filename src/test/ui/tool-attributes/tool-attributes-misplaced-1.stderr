@@ -4,13 +4,13 @@ error: cannot find derive macro `rustfmt` in this scope
 LL | #[derive(rustfmt)]
    |          ^^^^^^^
 
-error: cannot find attribute macro `rustfmt` in this scope
+error: cannot find attribute `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:8:3
    |
 LL | #[rustfmt]
    |   ^^^^^^^
 
-error: cannot find macro `rustfmt!` in this scope
+error: cannot find macro `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:14:5
    |
 LL |     rustfmt!();

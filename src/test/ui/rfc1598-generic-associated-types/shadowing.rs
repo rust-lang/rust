@@ -1,12 +1,9 @@
+#![allow(incomplete_features)]
 #![feature(generic_associated_types)]
 
-//FIXME(#44265): The lifetime shadowing and type parameter shadowing
-// should cause an error. Now it compiles (erroneously) and this will be addressed
-// by a future PR. Then remove the following:
-// build-pass (FIXME(62277): could be check-pass?)
-
 trait Shadow<'a> {
-    type Bar<'a>; // Error: shadowed lifetime
+    //FIXME(#44265): The lifetime parameter shadowing should cause an error.
+    type Bar<'a>;
 }
 
 trait NoShadow<'a> {
@@ -14,11 +11,12 @@ trait NoShadow<'a> {
 }
 
 impl<'a> NoShadow<'a> for &'a u32 {
-    type Bar<'a> = i32; // Error: shadowed lifetime
+    //FIXME(#44265): The lifetime parameter shadowing should cause an error.
+    type Bar<'a> = i32;
 }
 
 trait ShadowT<T> {
-    type Bar<T>; // Error: shadowed type parameter
+    type Bar<T>; //~ ERROR the name `T` is already used
 }
 
 trait NoShadowT<T> {
@@ -26,7 +24,7 @@ trait NoShadowT<T> {
 }
 
 impl<T> NoShadowT<T> for Option<T> {
-    type Bar<T> = i32; // Error: shadowed type parameter
+    type Bar<T> = i32; //~ ERROR the name `T` is already used
 }
 
 fn main() {}

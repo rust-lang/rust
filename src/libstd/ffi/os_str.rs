@@ -97,6 +97,12 @@ pub struct OsString {
 /// [`String`]: ../string/struct.String.html
 /// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `OsStr::from_inner` current implementation relies
+// on `OsStr` being layout-compatible with `Slice`.
+// When attribute privacy is implemented, `OsStr` should be annotated as `#[repr(transparent)]`.
+// Anyway, `OsStr` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct OsStr {
     inner: Slice
 }
@@ -227,7 +233,7 @@ impl OsString {
     /// ```
     /// use std::ffi::OsString;
     ///
-    /// let mut os_string = OsString::with_capacity(10);
+    /// let os_string = OsString::with_capacity(10);
     /// assert!(os_string.capacity() >= 10);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
@@ -610,7 +616,7 @@ impl OsStr {
     /// Note that this does **not** return the number of bytes in the string in
     /// OS string form.
     ///
-    /// The length returned is that of the underlying storage used by `OsStr`;
+    /// The length returned is that of the underlying storage used by `OsStr`.
     /// As discussed in the [`OsString`] introduction, [`OsString`] and `OsStr`
     /// store strings in a form best suited for cheap inter-conversion between
     /// native-platform and Rust string forms, which may differ significantly

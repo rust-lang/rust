@@ -3,13 +3,13 @@ struct S;
 trait Tr {
     fn f() {
         let s = Self {};
-        //~^ ERROR expected struct, variant or union type, found Self
+        //~^ ERROR expected struct, variant or union type, found type parameter
         let z = Self::<u8> {};
-        //~^ ERROR expected struct, variant or union type, found Self
+        //~^ ERROR expected struct, variant or union type, found type parameter
         //~| ERROR type arguments are not allowed for this type
         match s {
             Self { .. } => {}
-            //~^ ERROR expected struct, variant or union type, found Self
+            //~^ ERROR expected struct, variant or union type, found type parameter
         }
     }
 }

@@ -1,4 +1,4 @@
-error[E0658]: no_core is experimental
+error[E0658]: the `#[no_core]` attribute is an experimental feature
   --> $DIR/feature-gate-no_core.rs:3:1
    |
 LL | #![no_core]

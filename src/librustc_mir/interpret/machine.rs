@@ -7,11 +7,12 @@ use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 
 use super::{
     Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
+    Frame, Operand,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -176,13 +177,29 @@ pub trait Machine<'mir, 'tcx>: Sized {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
         right: ImmTy<'tcx, Self::PointerTag>,
-    ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
+    ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool, Ty<'tcx>)>;
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx>;
+
+    /// Called to read the specified `local` from the `frame`.
+    fn access_local(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, Operand<Self::PointerTag>> {
+        frame.locals[local].access()
+    }
+
+    /// Called before a `StaticKind::Static` value is accessed.
+    fn before_access_static(
+        _allocation: &Allocation,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
     /// it contains (in relocations) tagged.  The way we construct allocations is

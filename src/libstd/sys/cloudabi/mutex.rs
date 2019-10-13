@@ -104,10 +104,11 @@ impl ReentrantMutex {
                 },
                 ..mem::zeroed()
             };
-            let mut event: abi::event = mem::uninitialized();
-            let mut nevents: usize = mem::uninitialized();
-            let ret = abi::poll(&subscription, &mut event, 1, &mut nevents);
+            let mut event = MaybeUninit::<abi::event>::uninit();
+            let mut nevents = MaybeUninit::<usize>::uninit();
+            let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire mutex");
+            let event = event.assume_init();
             assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire mutex");
         }
     }

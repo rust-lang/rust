@@ -1,5 +1,4 @@
 #![allow(unused)]
-#![feature(nll)]
 
 // ignore-tidy-linelength
 

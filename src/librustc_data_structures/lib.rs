@@ -23,10 +23,11 @@
 #![feature(core_intrinsics)]
 #![feature(integer_atomics)]
 #![feature(test)]
+#![feature(associated_type_bounds)]
 
 #![cfg_attr(unix, feature(libc))]
 
-#![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
+#![allow(rustc::default_hash_types)]
 
 #[macro_use]
 extern crate log;
@@ -67,13 +68,12 @@ pub mod macros;
 pub mod svh;
 pub mod base_n;
 pub mod binary_search_util;
-pub mod bit_set;
 pub mod box_region;
 pub mod const_cstr;
 pub mod flock;
 pub mod fx;
+pub mod stable_map;
 pub mod graph;
-pub mod indexed_vec;
 pub mod jobserver;
 pub mod obligation_forest;
 pub mod owning_ref;
@@ -83,6 +83,7 @@ pub mod small_c_str;
 pub mod snapshot_map;
 pub use ena::snapshot_vec;
 pub mod sorted_map;
+pub mod stable_set;
 #[macro_use] pub mod stable_hasher;
 pub mod sync;
 pub mod sharded;

@@ -1,8 +1,8 @@
 error: usage of `ty::TyKind::<kind>`
-  --> $DIR/ty_tykind_usage.rs:11:15
+  --> $DIR/ty_tykind_usage.rs:11:16
    |
-LL |     let sty = TyKind::Bool;
-   |               ^^^^^^ help: try using ty::<kind> directly: `ty`
+LL |     let kind = TyKind::Bool;
+   |                ^^^^^^ help: try using ty::<kind> directly: `ty`
    |
 note: lint level defined here
   --> $DIR/ty_tykind_usage.rs:9:8
@@ -181,7 +181,7 @@ LL |         TyKind::Error => (),
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:46:12
    |
-LL |     if let TyKind::Int(int_ty) = sty {}
+LL |     if let TyKind::Int(int_ty) = kind {}
    |            ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind`

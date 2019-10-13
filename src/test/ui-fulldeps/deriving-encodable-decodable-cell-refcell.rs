@@ -7,12 +7,11 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize;
-use serialize as rustc_serialize;
+extern crate serialize as rustc_serialize;
 
 use std::cell::{Cell, RefCell};
-use serialize::{Encodable, Decodable};
-use serialize::json;
+use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::json;
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct A {

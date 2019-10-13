@@ -77,6 +77,7 @@ fn infinity() {
 fn zero() {
     test_literal!(0.0);
     test_literal!(1e-325);
+    #[cfg(not(miri))] // Miri is too slow
     test_literal!(1e-326);
     #[cfg(not(miri))] // Miri is too slow
     test_literal!(1e-500);

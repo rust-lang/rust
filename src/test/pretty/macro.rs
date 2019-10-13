@@ -2,6 +2,6 @@
 
 #![feature(decl_macro)]
 
-macro mac { ($ arg : expr) => { $ arg + $ arg } }
+pub(crate) macro mac { ($ arg : expr) => { $ arg + $ arg } }
 
 fn main() { }

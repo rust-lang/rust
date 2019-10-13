@@ -24,6 +24,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
 use rustc::ich::{ATTR_DIRTY, ATTR_CLEAN};
 use rustc::ty::TyCtxt;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use syntax::symbol::{Symbol, sym};
@@ -71,6 +72,7 @@ const BASE_IMPL: &[&str] = &[
 /// code, i.e., functions+methods
 const BASE_MIR: &[&str] = &[
     label_strs::optimized_mir,
+    label_strs::promoted_mir,
     label_strs::mir_built,
 ];
 
@@ -325,7 +327,7 @@ impl DirtyCleanVisitor<'tcx> {
         let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
-                match item.node {
+                match item.kind {
                     // note: these are in the same order as hir::Item_;
                     // FIXME(michaelwoerister): do commented out ones
 
@@ -389,20 +391,20 @@ impl DirtyCleanVisitor<'tcx> {
                         &format!(
                             "clean/dirty auto-assertions not yet defined \
                              for Node::Item.node={:?}",
-                            item.node
+                            item.kind
                         )
                     ),
                 }
             },
             HirNode::TraitItem(item) => {
-                match item.node {
+                match item.kind {
                     TraitItemKind::Method(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
                     TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
                     TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
                 }
             },
             HirNode::ImplItem(item) => {
-                match item.node {
+                match item.kind {
                     ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                     ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
@@ -472,11 +474,10 @@ impl DirtyCleanVisitor<'tcx> {
     fn assert_dirty(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_dirty({:?})", dep_node);
 
-        let dep_node_index = self.tcx.dep_graph.dep_node_index_of(&dep_node);
-        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(dep_node_index);
+        let current_fingerprint = self.get_fingerprint(&dep_node);
         let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
 
-        if Some(current_fingerprint) == prev_fingerprint {
+        if current_fingerprint == prev_fingerprint {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx.sess.span_err(
                 item_span,
@@ -484,14 +485,28 @@ impl DirtyCleanVisitor<'tcx> {
         }
     }
 
+    fn get_fingerprint(&self, dep_node: &DepNode) -> Option<Fingerprint> {
+        if self.tcx.dep_graph.dep_node_exists(dep_node) {
+            let dep_node_index = self.tcx.dep_graph.dep_node_index_of(dep_node);
+            Some(self.tcx.dep_graph.fingerprint_of(dep_node_index))
+        } else {
+            None
+        }
+    }
+
     fn assert_clean(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_clean({:?})", dep_node);
 
-        let dep_node_index = self.tcx.dep_graph.dep_node_index_of(&dep_node);
-        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(dep_node_index);
+        let current_fingerprint = self.get_fingerprint(&dep_node);
         let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
 
-        if Some(current_fingerprint) != prev_fingerprint {
+        // if the node wasn't previously evaluated and now is (or vice versa),
+        // then the node isn't actually clean or dirty.
+        if (current_fingerprint == None) ^ (prev_fingerprint == None) {
+            return;
+        }
+
+        if current_fingerprint != prev_fingerprint {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx.sess.span_err(
                 item_span,

@@ -17,8 +17,8 @@ pub struct RawConst<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-/// Represents a constant value in Rust. `Scalar` and `ScalarPair` are optimizations that
-/// match the `LocalState` optimizations for easy conversions between `Value` and `ConstValue`.
+/// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
+/// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum ConstValue<'tcx> {
@@ -91,7 +91,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
-pub enum Scalar<Tag=(), Id=AllocId> {
+pub enum Scalar<Tag = (), Id = AllocId> {
     /// The raw bytes of a simple value.
     Raw {
         /// The first `size` bytes of `data` are the value.
@@ -343,14 +343,19 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    #[inline(always)]
+    pub fn check_raw(data: u128, size: u8, target_size: Size) {
+        assert_eq!(target_size.bytes(), size as u64);
+        assert_ne!(size, 0, "you should never look at the bits of a ZST");
+        Scalar::check_data(data, size);
+    }
+
     /// Do not call this method!  Use either `assert_bits` or `force_bits`.
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
-                Scalar::check_data(data, size);
+                Self::check_raw(data, size, target_size);
                 Ok(data)
             }
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
@@ -359,7 +364,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline(always)]
     pub fn assert_bits(self, target_size: Size) -> u128 {
-        self.to_bits(target_size).expect("Expected Raw bits but got a Pointer")
+        self.to_bits(target_size).expect("expected Raw bits but got a Pointer")
     }
 
     /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
@@ -374,7 +379,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline(always)]
     pub fn assert_ptr(self) -> Pointer<Tag> {
-        self.to_ptr().expect("Expected a Pointer but got Raw bits")
+        self.to_ptr().expect("expected a Pointer but got Raw bits")
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
@@ -482,8 +487,8 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, RustcEncodable, RustcDecodable)]
+pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
 }
@@ -530,7 +535,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::from_bytes(0))),
+            ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::ZERO)),
         }
     }
 
@@ -611,3 +616,18 @@ impl_stable_hash_for!(enum crate::mir::interpret::ScalarMaybeUndef {
     Scalar(v),
     Undef
 });
+
+/// Gets the bytes of a constant slice value.
+pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
+    if let ConstValue::Slice { data, start, end } = val {
+        let len = end - start;
+        data.get_bytes(
+            cx,
+            // invent a pointer, only the offset is relevant anyway
+            Pointer::new(AllocId(0), Size::from_bytes(start as u64)),
+            Size::from_bytes(len as u64),
+        ).unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
+    } else {
+        bug!("expected const slice, but found another const value");
+    }
+}

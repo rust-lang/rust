@@ -24,7 +24,7 @@ fn equate_intrinsic_type<'tcx>(
 ) {
     let def_id = tcx.hir().local_def_id(it.hir_id);
 
-    match it.node {
+    match it.kind {
         hir::ForeignItemKind::Fn(..) => {}
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622,
@@ -37,7 +37,7 @@ fn equate_intrinsic_type<'tcx>(
 
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     if i_n_tps != n_tps {
-        let span = match it.node {
+        let span = match it.kind {
             hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
             _ => bug!()
         };
@@ -63,11 +63,11 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns `true` if the given intrinsic is unsafe to call or not.
-pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
+pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
         "size_of" | "min_align_of" | "needs_drop" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
-        "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
+        "wrapping_add" | "wrapping_sub" | "wrapping_mul" |
         "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
         "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" |
@@ -130,7 +130,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
-        let unsafety = intrisic_operation_unsafety(&name[..]);
+        let unsafety = intrinsic_operation_unsafety(&name[..]);
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
             "size_of" |
@@ -145,6 +145,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             "rustc_peek" => (1, vec![param(0)], param(0)),
             "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),
             "init" => (1, Vec::new(), param(0)),
+            "uninit" => (1, Vec::new(), param(0)),
             "forget" => (1, vec![param(0)], tcx.mk_unit()),
             "transmute" => (2, vec![ param(0) ], param(1)),
             "move_val_init" => {
@@ -313,7 +314,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                 (1, vec![param(0), param(0)], param(0)),
             "unchecked_add" | "unchecked_sub" | "unchecked_mul" =>
                 (1, vec![param(0), param(0)], param(0)),
-            "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
+            "wrapping_add" | "wrapping_sub" | "wrapping_mul" =>
                 (1, vec![param(0), param(0)], param(0)),
             "saturating_add" | "saturating_sub" =>
                 (1, vec![param(0), param(0)], param(0)),

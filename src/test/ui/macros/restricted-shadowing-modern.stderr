@@ -1,5 +1,5 @@
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/restricted-shadowing-modern.rs:106:17
+  --> $DIR/restricted-shadowing-modern.rs:104:17
    |
 LL |                 m!();
    |                 ^ ambiguous name
@@ -16,7 +16,7 @@ LL |         macro m() { Right }
 LL | include!();
    | ----------- in this macro invocation
 note: `m` could also refer to the macro defined here
-  --> $DIR/restricted-shadowing-modern.rs:101:9
+  --> $DIR/restricted-shadowing-modern.rs:99:9
    |
 LL |         macro m() {}
    |         ^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL | include!();
    | ----------- in this macro invocation
 
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/restricted-shadowing-modern.rs:149:33
+  --> $DIR/restricted-shadowing-modern.rs:147:33
    |
 LL |             macro gen_invoc() { m!() }
    |                                 ^ ambiguous name
@@ -42,7 +42,7 @@ LL |         macro m() { Right }
 LL | include!();
    | ----------- in this macro invocation
 note: `m` could also refer to the macro defined here
-  --> $DIR/restricted-shadowing-modern.rs:145:9
+  --> $DIR/restricted-shadowing-modern.rs:143:9
    |
 LL |         macro m() {}
    |         ^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL | include!();
    | ----------- in this macro invocation
 
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/restricted-shadowing-modern.rs:158:13
+  --> $DIR/restricted-shadowing-modern.rs:156:13
    |
 LL |             m!();
    |             ^ ambiguous name
@@ -68,7 +68,7 @@ LL |         macro m() { Right }
 LL | include!();
    | ----------- in this macro invocation
 note: `m` could also refer to the macro defined here
-  --> $DIR/restricted-shadowing-modern.rs:155:9
+  --> $DIR/restricted-shadowing-modern.rs:153:9
    |
 LL |         macro m() {}
    |         ^^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL | include!();
    | ----------- in this macro invocation
 
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/restricted-shadowing-modern.rs:174:13
+  --> $DIR/restricted-shadowing-modern.rs:172:13
    |
 LL |             m!();
    |             ^ ambiguous name
@@ -103,7 +103,7 @@ LL | include!();
    | ----------- in this macro invocation
 
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/restricted-shadowing-modern.rs:192:17
+  --> $DIR/restricted-shadowing-modern.rs:190:17
    |
 LL |                 m!();
    |                 ^ ambiguous name
@@ -129,7 +129,7 @@ LL | include!();
    | ----------- in this macro invocation
 
 error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/restricted-shadowing-modern.rs:235:33
+  --> $DIR/restricted-shadowing-modern.rs:233:33
    |
 LL |             macro gen_invoc() { m!() }
    |                                 ^ ambiguous name

@@ -1,8 +1,8 @@
-error[E0416]: identifier `a` is bound more than once in the same pattern
+error[E0415]: identifier `a` is bound more than once in this parameter list
   --> $DIR/shadowing-in-the-same-pattern.rs:3:10
    |
 LL | fn f((a, a): (isize, isize)) {}
-   |          ^ used in a pattern more than once
+   |          ^ used as parameter more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
   --> $DIR/shadowing-in-the-same-pattern.rs:6:13
@@ -12,4 +12,5 @@ LL |     let (a, a) = (1, 1);
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0416`.
+Some errors have detailed explanations: E0415, E0416.
+For more information about an error, try `rustc --explain E0415`.

@@ -3,6 +3,7 @@
 // adapted to use that, and that normalize line can go away
 
 // compile-flags:--test
+// rustc-env:RUST_BACKTRACE=0
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 // failure-status: 101
 

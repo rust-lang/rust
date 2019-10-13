@@ -2,8 +2,6 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-#![feature(async_await)]
-
 async fn move_part_await_return_rest_tuple() -> Vec<usize> {
     let x = (vec![3], vec![4, 4]);
     drop(x.1);

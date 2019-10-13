@@ -31,7 +31,7 @@ impl RWLock {
         if *wguard.lock_var() || !wguard.queue_empty() {
             // Another thread has or is waiting for the write lock, wait
             drop(wguard);
-            WaitQueue::wait(rguard);
+            WaitQueue::wait(rguard, ||{});
             // Another thread has passed the lock to us
         } else {
             // No waiting writers, acquire the read lock
@@ -62,7 +62,7 @@ impl RWLock {
         if *wguard.lock_var() || rguard.lock_var().is_some() {
             // Another thread has the lock, wait
             drop(rguard);
-            WaitQueue::wait(wguard);
+            WaitQueue::wait(wguard, ||{});
             // Another thread has passed the lock to us
         } else {
             // We are just now obtaining the lock
@@ -97,6 +97,7 @@ impl RWLock {
             if let Ok(mut wguard) = WaitQueue::notify_one(wguard) {
                 // A writer was waiting, pass the lock
                 *wguard.lock_var_mut() = true;
+                wguard.drop_after(rguard);
             } else {
                 // No writers were waiting, the lock is released
                 rtassert!(rguard.queue_empty());
@@ -117,21 +118,26 @@ impl RWLock {
         rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
         wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
-        if let Err(mut wguard) = WaitQueue::notify_one(wguard) {
-            // No writers waiting, release the write lock
-            *wguard.lock_var_mut() = false;
-            if let Ok(mut rguard) = WaitQueue::notify_all(rguard) {
-                // One or more readers were waiting, pass the lock to them
-                if let NotifiedTcs::All { count } = rguard.notified_tcs() {
-                    *rguard.lock_var_mut() = Some(count)
+        match WaitQueue::notify_one(wguard) {
+            Err(mut wguard) => {
+                // No writers waiting, release the write lock
+                *wguard.lock_var_mut() = false;
+                if let Ok(mut rguard) = WaitQueue::notify_all(rguard) {
+                    // One or more readers were waiting, pass the lock to them
+                    if let NotifiedTcs::All { count } = rguard.notified_tcs() {
+                        *rguard.lock_var_mut() = Some(count)
+                    } else {
+                        unreachable!() // called notify_all
+                    }
+                    rguard.drop_after(wguard);
                 } else {
-                    unreachable!() // called notify_all
+                    // No readers waiting, the lock is released
                 }
-            } else {
-                // No readers waiting, the lock is released
+            },
+            Ok(wguard) => {
+                // There was a thread waiting for write, just pass the lock
+                wguard.drop_after(rguard);
             }
-        } else {
-            // There was a thread waiting for write, just pass the lock
         }
     }
 

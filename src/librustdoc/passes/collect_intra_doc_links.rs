@@ -4,6 +4,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint as lint;
 use rustc::ty;
+use rustc_resolve::ParentScope;
 use syntax;
 use syntax::ast::{self, Ident};
 use syntax::ext::base::SyntaxExtensionKind;
@@ -61,15 +62,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     {
         let cx = self.cx;
 
-        // In case we're in a module, try to resolve the relative
-        // path.
-        if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
-            // FIXME: `with_scope` requires the `NodeId` of a module.
-            let node_id = cx.tcx.hir().hir_to_node_id(id);
+        // In case we're in a module, try to resolve the relative path.
+        if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
+            let module_id = cx.tcx.hir().hir_to_node_id(module_id);
             let result = cx.enter_resolver(|resolver| {
-                resolver.with_scope(node_id, |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns == ValueNS)
-                })
+                resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
             let result = match result {
                 Ok((_, Res::Err)) => Err(()),
@@ -85,6 +82,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     Res::Def(DefKind::AssocTy, _) => false,
                     Res::Def(DefKind::Variant, _) => return handle_variant(cx, res),
                     // Not a trait item; just return what we found.
+                    Res::PrimTy(..) => return Ok((res, Some(path_str.to_owned()))),
                     _ => return Ok((res, None))
                 };
 
@@ -133,11 +131,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .ok_or(());
             }
 
-            // FIXME: `with_scope` requires the `NodeId` of a module.
-            let node_id = cx.tcx.hir().hir_to_node_id(id);
-            let (_, ty_res) = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path, false)
-            }))?;
+            let (_, ty_res) = cx.enter_resolver(|resolver| {
+                resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
+            })?;
             if let Res::Err = ty_res {
                 return Err(());
             }
@@ -159,7 +155,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         };
                         Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                     } else {
-                        match cx.tcx.type_of(did).sty {
+                        match cx.tcx.type_of(did).kind {
                             ty::Adt(def, _) => {
                                 if let Some(item) = if def.is_enum() {
                                     def.all_fields().find(|item| item.ident.name == item_name)
@@ -241,7 +237,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         });
 
         if parent_node.is_some() {
-            debug!("got parent node for {} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+            debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
         }
 
         let current_item = match item.inner {
@@ -436,7 +432,7 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
     let path = ast::Path::from_ident(Ident::from_str(path_str));
     cx.enter_resolver(|resolver| {
         if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path, None, &resolver.dummy_parent_scope(), false, false
+            &path, None, &ParentScope::module(resolver.graph_root), false, false
         ) {
             if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
                 return Some(res.map_id(|_| panic!("unexpected id")));
@@ -469,7 +465,7 @@ fn resolution_failure(
         }
     };
     let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs);
+    let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
     let mut diag = cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
@@ -521,7 +517,7 @@ fn ambiguity_error(
         }
     };
     let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs);
+    let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
     let mut msg = format!("`{}` is ", path_str);
 
@@ -683,6 +679,7 @@ fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
         "f32" => tcx.lang_items().f32_impl(),
         "f64" => tcx.lang_items().f64_impl(),
         "str" => tcx.lang_items().str_impl(),
+        "bool" => tcx.lang_items().bool_impl(),
         "char" => tcx.lang_items().char_impl(),
         _ => None,
     }

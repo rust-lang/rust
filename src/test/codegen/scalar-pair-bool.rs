@@ -20,24 +20,24 @@ pub fn pair_i32_bool(pair: (i32, bool)) -> (i32, bool) {
     pair
 }
 
-// CHECK: define { i8, i8 } @pair_and_or(i1 zeroext %arg0.0, i1 zeroext %arg0.1)
+// CHECK: define { i8, i8 } @pair_and_or(i1 zeroext %_1.0, i1 zeroext %_1.1)
 #[no_mangle]
 pub fn pair_and_or((a, b): (bool, bool)) -> (bool, bool) {
     // Make sure it can operate directly on the unpacked args
-    // CHECK: and i1 %arg0.0, %arg0.1
-    // CHECK: or i1 %arg0.0, %arg0.1
+    // CHECK: and i1 %_1.0, %_1.1
+    // CHECK: or i1 %_1.0, %_1.1
     (a && b, a || b)
 }
 
-// CHECK: define void @pair_branches(i1 zeroext %arg0.0, i1 zeroext %arg0.1)
+// CHECK: define void @pair_branches(i1 zeroext %_1.0, i1 zeroext %_1.1)
 #[no_mangle]
 pub fn pair_branches((a, b): (bool, bool)) {
     // Make sure it can branch directly on the unpacked bool args
-    // CHECK: br i1 %arg0.0
+    // CHECK: br i1 %_1.0
     if a {
         println!("Hello!");
     }
-    // CHECK: br i1 %arg0.1
+    // CHECK: br i1 %_1.1
     if b {
         println!("Goodbye!");
     }

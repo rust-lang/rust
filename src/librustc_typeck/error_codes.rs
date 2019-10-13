@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 E0023: r##"
 A pattern used to match against an enum variant must provide a sub-pattern for
@@ -212,7 +212,7 @@ match string {
 E0033: r##"
 This error indicates that a pointer to a trait type cannot be implicitly
 dereferenced by a pattern. Every trait defines a type, but because the
-size of trait implementors isn't fixed, this type has no compile-time size.
+size of trait implementers isn't fixed, this type has no compile-time size.
 Therefore, all accesses to trait types must be through pointers. If you
 encounter this error you should try to avoid dereferencing the pointer.
 
@@ -1718,22 +1718,6 @@ Since we know for certain that `Wrapper<u32>` implements `Clone`, there's no
 reason to also specify it in a `where` clause.
 "##,
 
-E0194: r##"
-A type parameter was declared which shadows an existing one. An example of this
-error:
-
-```compile_fail,E0194
-trait Foo<T> {
-    fn do_something(&self) -> T;
-    fn do_something_else<T: Clone>(&self, bar: T);
-}
-```
-
-In this example, the trait `Foo` and the trait method `do_something_else` both
-define a type parameter `T`. This is not allowed: if the method wishes to
-define a type parameter, it must use a different name for it.
-"##,
-
 E0195: r##"
 Your method's lifetime parameters do not match the trait declaration.
 Erroneous code example:
@@ -1889,13 +1873,14 @@ This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
 
-/*
 E0205: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt to implement the `Copy` trait for an enum failed because one of the
 variants does not implement `Copy`. To fix this, you must implement `Copy` for
 the mentioned variant. Note that this may not be possible, as in the example of
 
-```compile_fail,E0205
+```compile_fail,E0204
 enum Foo {
     Bar(Vec<u32>),
     Baz,
@@ -1908,7 +1893,7 @@ This fails because `Vec<T>` does not implement `Copy` for any `T`.
 
 Here's another example that will fail:
 
-```compile_fail,E0205
+```compile_fail,E0204
 #[derive(Copy)]
 enum Foo<'a> {
     Bar(&'a mut bool),
@@ -1919,7 +1904,6 @@ enum Foo<'a> {
 This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
-*/
 
 E0206: r##"
 You can only implement `Copy` for a struct or enum. Both of the following
@@ -2142,8 +2126,9 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/blob/master/text/1023-rebalancing-coherence.md
 "##,
 
-/*
 E0211: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You used a function or type which doesn't fit the requirements for where it was
 used. Erroneous code examples:
 
@@ -2190,7 +2175,7 @@ extern "rust-intrinsic" {
 }
 ```
 
-The second case example is a bit particular : the main function must always
+The second case example is a bit particular: the main function must always
 have this definition:
 
 ```compile_fail
@@ -2222,7 +2207,6 @@ impl Foo {
 }
 ```
 "##,
-     */
 
 E0220: r##"
 You used an associated type which isn't defined in the trait.
@@ -2439,6 +2423,87 @@ struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }
 ```
+"##,
+
+E0307: r##"
+This error indicates that the `self` parameter in a method has an invalid
+"reciever type".
+
+Methods take a special first parameter, of which there are three variants:
+`self`, `&self`, and `&mut self`. These are syntactic sugar for
+`self: Self`, `self: &Self`, and `self: &mut Self` respectively.
+
+```
+# struct Foo;
+trait Trait {
+    fn foo(&self);
+//         ^^^^^ `self` here is a reference to the receiver object
+}
+
+impl Trait for Foo {
+    fn foo(&self) {}
+//         ^^^^^ the receiver type is `&Foo`
+}
+```
+
+The type `Self` acts as an alias to the type of the current trait
+implementer, or "receiver type". Besides the already mentioned `Self`,
+`&Self` and `&mut Self` valid receiver types, the following are also valid:
+`self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>`
+(where P is one of the previous types except `Self`). Note that `Self` can
+also be the underlying implementing type, like `Foo` in the following
+example:
+
+```
+# struct Foo;
+# trait Trait {
+#     fn foo(&self);
+# }
+impl Trait for Foo {
+    fn foo(self: &Foo) {}
+}
+```
+
+E0307 will be emitted by the compiler when using an invalid reciver type,
+like in the following example:
+
+```compile_fail,E0307
+# struct Foo;
+# struct Bar;
+# trait Trait {
+#     fn foo(&self);
+# }
+impl Trait for Foo {
+    fn foo(self: &Bar) {}
+}
+```
+
+The nightly feature [Arbintrary self types][AST] extends the accepted
+set of receiver types to also include any type that can dereference to
+`Self`:
+
+```
+#![feature(arbitrary_self_types)]
+
+struct Foo;
+struct Bar;
+
+// Because you can dereference `Bar` into `Foo`...
+impl std::ops::Deref for Bar {
+    type Target = Foo;
+
+    fn deref(&self) -> &Foo {
+        &Foo
+    }
+}
+
+impl Foo {
+    fn foo(self: Bar) {}
+//         ^^^^^^^^^ ...it can be used as the receiver type
+}
+```
+
+[AST]: https://doc.rust-lang.org/unstable-book/language-features/arbitrary-self-types.html
 "##,
 
 E0321: r##"
@@ -2662,14 +2727,9 @@ impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
 [`CoerceUnsized`]: https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html
 "##,
 
-/*
-// Associated consts can now be accessed through generic type parameters, and
-// this error is no longer emitted.
-//
-// FIXME: consider whether to leave it in the error index, or remove it entirely
-//        as associated consts is not stabilized yet.
-
 E0329: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
@@ -2700,12 +2760,15 @@ trait Foo {
 
 struct MyStruct;
 
+impl Foo for MyStruct {
+    const BAR: f64 = 0f64;
+}
+
 fn get_bar_good() -> f64 {
     <MyStruct as Foo>::BAR
 }
 ```
 "##,
-*/
 
 E0366: r##"
 An attempt was made to implement `Drop` on a concrete specialization of a
@@ -3541,6 +3604,43 @@ match r {
     [a, b] => { // ok!
         println!("a={}, b={}", a, b);
     }
+}
+```
+"##,
+
+E0533: r##"
+An item which isn't a unit struct, a variant, nor a constant has been used as a
+match pattern.
+
+Erroneous code example:
+
+```compile_fail,E0533
+struct Tortoise;
+
+impl Tortoise {
+    fn turtle(&self) -> u32 { 0 }
+}
+
+match 0u32 {
+    Tortoise::turtle => {} // Error!
+    _ => {}
+}
+if let Tortoise::turtle = 0u32 {} // Same error!
+```
+
+If you want to match against a value returned by a method, you need to bind the
+value first:
+
+```
+struct Tortoise;
+
+impl Tortoise {
+    fn turtle(&self) -> u32 { 0 }
+}
+
+match 0u32 {
+    x if x == Tortoise.turtle() => {} // Bound into `x` then we compare it!
+    _ => {}
 }
 ```
 "##,
@@ -4767,7 +4867,6 @@ E0733: r##"
 Recursion in an `async fn` requires boxing. For example, this will not compile:
 
 ```edition2018,compile_fail,E0733
-#![feature(async_await)]
 async fn foo(n: usize) {
     if n > 0 {
         foo(n - 1).await;
@@ -4779,12 +4878,11 @@ To achieve async recursion, the `async fn` needs to be desugared
 such that the `Future` is explicit in the return type:
 
 ```edition2018,compile_fail,E0720
-# #![feature(async_await)]
 use std::future::Future;
-fn foo_desugered(n: usize) -> impl Future<Output = ()> {
+fn foo_desugared(n: usize) -> impl Future<Output = ()> {
     async move {
         if n > 0 {
-            foo_desugered(n - 1).await;
+            foo_desugared(n - 1).await;
         }
     }
 }
@@ -4793,7 +4891,6 @@ fn foo_desugered(n: usize) -> impl Future<Output = ()> {
 Finally, the future is wrapped in a pinned box:
 
 ```edition2018
-# #![feature(async_await)]
 use std::future::Future;
 use std::pin::Pin;
 fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
@@ -4809,9 +4906,75 @@ The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
 
-}  // (end of detailed error messages)
+E0737: r##"
+#[track_caller] requires functions to have the "Rust" ABI for implicitly
+receiving caller location. See [RFC 2091] for details on this and other
+restrictions.
 
-register_diagnostics! {
+Erroneous code example:
+
+```compile_fail,E0737
+#![feature(track_caller)]
+
+#[track_caller]
+extern "C" fn foo() {}
+```
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+E0738: r##"
+#[track_caller] cannot be used in traits yet.  This is due to limitations in the
+compiler which are likely to be temporary. See [RFC 2091] for details on this
+and other restrictions.
+
+Erroneous example with a trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self);
+}
+
+impl Foo for u64 {
+    #[track_caller]
+    fn bar(&self) {}
+}
+```
+
+Erroneous example with a blanket trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    #[track_caller]
+    fn bar(&self) {}
+    fn baz(&self);
+}
+```
+
+Erroneous example with a trait method declaration:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self) {}
+
+    #[track_caller]
+    fn baz(&self);
+}
+```
+
+Note that while the compiler may be able to support the attribute in traits in
+the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
 //  E0068,
@@ -4837,6 +5000,7 @@ register_diagnostics! {
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
+//  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
@@ -4867,17 +5031,16 @@ register_diagnostics! {
 //  E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
-//  E0248, // value used as a type, now reported earlier during resolution as E0412
+//  E0248, // value used as a type, now reported earlier during resolution
+           // as E0412
 //  E0249,
-    E0307, // invalid method `self` type
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
 //  E0558, // replaced with a generic attribute input check
-    E0533, // `{}` does not name a unit variant, unit struct or a constant
-//  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
-    E0564, // only named lifetimes are allowed in `impl Trait`,
+//  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
+//  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
     E0587, // type has conflicting packed and align representation hints
     E0588, // packed type cannot transitively contain a `[repr(align)]` type
@@ -4885,12 +5048,12 @@ register_diagnostics! {
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0627, // yield statement outside of generator literal
-    E0632, // cannot provide explicit type parameters when `impl Trait` is used in
-           // argument position.
+    E0632, // cannot provide explicit type parameters when `impl Trait` is used
+           // in argument position.
     E0634, // type has conflicting packed representaton hints
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
-    E0645, // trait aliases not finished
+//  E0645, // trait aliases not finished
     E0719, // duplicate values for associated type binding
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions

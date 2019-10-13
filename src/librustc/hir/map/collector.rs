@@ -5,7 +5,7 @@ use crate::hir::map::HirEntryMap;
 use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
 use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use crate::session::CrateDisambiguator;
@@ -17,7 +17,7 @@ use syntax_pos::Span;
 use std::iter::repeat;
 
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
@@ -186,7 +186,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum).as_str();
+            let name = cstore.crate_name_untracked(cnum).as_interned_str();
             let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
             (name, disambiguator, hash)
@@ -340,7 +340,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     /// their outer items.
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
-        panic!("visit_nested_xxx must be manually implemented in this visitor")
+        panic!("`visit_nested_xxx` must be manually implemented in this visitor");
     }
 
     fn visit_nested_item(&mut self, item: ItemId) {
@@ -363,11 +363,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.currently_in_body = prev_in_body;
     }
 
-    fn visit_arg(&mut self, arg: &'hir Arg) {
-        let node = Node::Arg(arg);
-        self.insert(arg.pat.span, arg.hir_id, node);
-        self.with_parent(arg.hir_id, |this| {
-            intravisit::walk_arg(this, arg);
+    fn visit_param(&mut self, param: &'hir Param) {
+        let node = Node::Param(param);
+        self.insert(param.pat.span, param.hir_id, node);
+        self.with_parent(param.hir_id, |this| {
+            intravisit::walk_param(this, param);
         });
     }
 
@@ -378,7 +378,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.hir_id, |this| {
-                if let ItemKind::Struct(ref struct_def, _) = i.node {
+                if let ItemKind::Struct(ref struct_def, _) = i.kind {
                     // If this is a tuple or unit-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
                         this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
@@ -427,7 +427,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_pat(&mut self, pat: &'hir Pat) {
-        let node = if let PatKind::Binding(..) = pat.node {
+        let node = if let PatKind::Binding(..) = pat.kind {
             Node::Binding(pat)
         } else {
             Node::Pat(pat)
@@ -544,11 +544,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: HirId) {
-        self.insert(v.span, v.node.id, Node::Variant(v));
-        self.with_parent(v.node.id, |this| {
+        self.insert(v.span, v.id, Node::Variant(v));
+        self.with_parent(v.id, |this| {
             // Register the constructor of this variant.
-            if let Some(ctor_hir_id) = v.node.data.ctor_hir_id() {
-                this.insert(v.span, ctor_hir_id, Node::Ctor(&v.node.data));
+            if let Some(ctor_hir_id) = v.data.ctor_hir_id() {
+                this.insert(v.span, ctor_hir_id, Node::Ctor(&v.data));
             }
             intravisit::walk_variant(this, v, g, item_id);
         });
@@ -602,9 +602,7 @@ impl<'hir, T> HashStable<StableHashingContext<'hir>> for HirItemLike<T>
 where
     T: HashStable<StableHashingContext<'hir>>,
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'hir>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
         hcx.while_hashing_hir_bodies(self.hash_bodies, |hcx| {
             self.item_like.hash_stable(hcx, hasher);
         });

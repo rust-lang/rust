@@ -4,20 +4,20 @@ use rustc::hir::CRATE_HIR_ID;
 use crate::ty::context::TyCtxt;
 use crate::ty::{DefId, DefIdTree};
 
-/// Represents a forest of DefIds closed under the ancestor relation. That is,
-/// if a DefId representing a module is contained in the forest then all
-/// DefIds defined in that module or submodules are also implicitly contained
+/// Represents a forest of `DefId`s closed under the ancestor relation. That is,
+/// if a `DefId` representing a module is contained in the forest then all
+/// `DefId`s defined in that module or submodules are also implicitly contained
 /// in the forest.
 ///
 /// This is used to represent a set of modules in which a type is visibly
 /// uninhabited.
 #[derive(Clone)]
 pub struct DefIdForest {
-    /// The minimal set of DefIds required to represent the whole set.
-    /// If A and B are DefIds in the DefIdForest, and A is a descendant
-    /// of B, then only B will be in root_ids.
-    /// We use a SmallVec here because (for its use for caching inhabitedness)
-    /// its rare that this will contain even two ids.
+    /// The minimal set of `DefId`s required to represent the whole set.
+    /// If A and B are DefIds in the `DefIdForest`, and A is a descendant
+    /// of B, then only B will be in `root_ids`.
+    /// We use a `SmallVec` here because (for its use for caching inhabitedness)
+    /// its rare that this will contain even two IDs.
     root_ids: SmallVec<[DefId; 1]>,
 }
 
@@ -37,7 +37,7 @@ impl<'tcx> DefIdForest {
         DefIdForest::from_id(crate_id)
     }
 
-    /// Creates a forest containing a DefId and all its descendants.
+    /// Creates a forest containing a `DefId` and all its descendants.
     pub fn from_id(id: DefId) -> DefIdForest {
         let mut root_ids = SmallVec::new();
         root_ids.push(id);

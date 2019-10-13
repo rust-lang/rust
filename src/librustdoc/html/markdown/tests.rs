@@ -1,4 +1,4 @@
-use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
+use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap, Ignore};
 use super::plain_summary_line;
 use std::cell::RefCell;
 use syntax::edition::{Edition, DEFAULT_EDITION};
@@ -26,10 +26,10 @@ fn test_unique_id() {
 #[test]
 fn test_lang_string_parse() {
     fn t(s: &str,
-        should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
+        should_panic: bool, no_run: bool, ignore: Ignore, rust: bool, test_harness: bool,
         compile_fail: bool, allow_fail: bool, error_codes: Vec<String>,
-         edition: Option<Edition>) {
-        assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
+        edition: Option<Edition>) {
+        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true), LangString {
             should_panic,
             no_run,
             ignore,
@@ -42,6 +42,7 @@ fn test_lang_string_parse() {
             edition,
         })
     }
+    let ignore_foo = Ignore::Some(vec!("foo".to_string()));
 
     fn v() -> Vec<String> {
         Vec::new()
@@ -50,31 +51,32 @@ fn test_lang_string_parse() {
     // ignore-tidy-linelength
     // marker                | should_panic | no_run | ignore | rust | test_harness
     //                       | compile_fail | allow_fail | error_codes | edition
-    t("",                      false,         false,   false,   true,  false, false, false, v(), None);
-    t("rust",                  false,         false,   false,   true,  false, false, false, v(), None);
-    t("sh",                    false,         false,   false,   false, false, false, false, v(), None);
-    t("ignore",                false,         false,   true,    true,  false, false, false, v(), None);
-    t("should_panic",          true,          false,   false,   true,  false, false, false, v(), None);
-    t("no_run",                false,         true,    false,   true,  false, false, false, v(), None);
-    t("test_harness",          false,         false,   false,   true,  true,  false, false, v(), None);
-    t("compile_fail",          false,         true,    false,   true,  false, true,  false, v(), None);
-    t("allow_fail",            false,         false,   false,   true,  false, false, true,  v(), None);
-    t("{.no_run .example}",    false,         true,    false,   true,  false, false, false, v(), None);
-    t("{.sh .should_panic}",   true,          false,   false,   false, false, false, false, v(), None);
-    t("{.example .rust}",      false,         false,   false,   true,  false, false, false, v(), None);
-    t("{.test_harness .rust}", false,         false,   false,   true,  true,  false, false, v(), None);
-    t("text, no_run",          false,         true,    false,   false, false, false, false, v(), None);
-    t("text,no_run",           false,         true,    false,   false, false, false, false, v(), None);
-    t("edition2015",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2015));
-    t("edition2018",           false,         false,   false,   true,  false, false, false, v(), Some(Edition::Edition2018));
+    t("",                      false,         false,   Ignore::None,   true,  false, false, false, v(), None);
+    t("rust",                  false,         false,   Ignore::None,   true,  false, false, false, v(), None);
+    t("sh",                    false,         false,   Ignore::None,   false, false, false, false, v(), None);
+    t("ignore",                false,         false,   Ignore::All,    true,  false, false, false, v(), None);
+    t("ignore-foo",            false,         false,   ignore_foo,     true,  false, false, false, v(), None);
+    t("should_panic",          true,          false,   Ignore::None,   true,  false, false, false, v(), None);
+    t("no_run",                false,         true,    Ignore::None,   true,  false, false, false, v(), None);
+    t("test_harness",          false,         false,   Ignore::None,   true,  true,  false, false, v(), None);
+    t("compile_fail",          false,         true,    Ignore::None,   true,  false, true,  false, v(), None);
+    t("allow_fail",            false,         false,   Ignore::None,   true,  false, false, true,  v(), None);
+    t("{.no_run .example}",    false,         true,    Ignore::None,   true,  false, false, false, v(), None);
+    t("{.sh .should_panic}",   true,          false,   Ignore::None,   false, false, false, false, v(), None);
+    t("{.example .rust}",      false,         false,   Ignore::None,   true,  false, false, false, v(), None);
+    t("{.test_harness .rust}", false,         false,   Ignore::None,   true,  true,  false, false, v(), None);
+    t("text, no_run",          false,         true,    Ignore::None,   false, false, false, false, v(), None);
+    t("text,no_run",           false,         true,    Ignore::None,   false, false, false, false, v(), None);
+    t("edition2015",           false,         false,   Ignore::None,   true,  false, false, false, v(), Some(Edition::Edition2015));
+    t("edition2018",           false,         false,   Ignore::None,   true,  false, false, false, v(), Some(Edition::Edition2018));
 }
 
 #[test]
 fn test_header() {
     fn t(input: &str, expect: &str) {
         let mut map = IdMap::new();
-        let output = Markdown(input, &[], RefCell::new(&mut map),
-                              ErrorCodes::Yes, DEFAULT_EDITION).to_string();
+        let output = Markdown(
+            input, &[], &mut map, ErrorCodes::Yes, DEFAULT_EDITION, &None).to_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -96,8 +98,8 @@ fn test_header() {
 fn test_header_ids_multiple_blocks() {
     let mut map = IdMap::new();
     fn t(map: &mut IdMap, input: &str, expect: &str) {
-        let output = Markdown(input, &[], RefCell::new(map),
-                              ErrorCodes::Yes, DEFAULT_EDITION).to_string();
+        let output = Markdown(input, &[], map,
+                              ErrorCodes::Yes, DEFAULT_EDITION, &None).to_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -134,8 +136,8 @@ fn test_plain_summary_line() {
 fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
-        let output = MarkdownHtml(input, RefCell::new(&mut idmap),
-                                  ErrorCodes::Yes, DEFAULT_EDITION).to_string();
+        let output = MarkdownHtml(input, &mut idmap,
+                                  ErrorCodes::Yes, DEFAULT_EDITION, &None).to_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 

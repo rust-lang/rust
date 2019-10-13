@@ -1,4 +1,4 @@
-error[E0138]: multiple 'start' functions
+error[E0138]: multiple `start` functions
   --> $DIR/E0138.rs:7:1
    |
 LL | fn foo(argc: isize, argv: *const *const u8) -> isize { 0 }

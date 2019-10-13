@@ -46,14 +46,6 @@ pub enum ItemType {
 }
 
 
-#[derive(Copy, Eq, PartialEq, Clone)]
-pub enum NameSpace {
-    Type,
-    Value,
-    Macro,
-    Keyword,
-}
-
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let inner = match item.inner {
@@ -120,7 +112,7 @@ impl From<clean::TypeKind> for ItemType {
 }
 
 impl ItemType {
-    pub fn css_class(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match *self {
             ItemType::Module          => "mod",
             ItemType::ExternCrate     => "externcrate",
@@ -151,7 +143,7 @@ impl ItemType {
         }
     }
 
-    pub fn name_space(&self) -> NameSpace {
+    pub fn name_space(&self) -> &'static str {
         match *self {
             ItemType::Struct |
             ItemType::Union |
@@ -163,7 +155,7 @@ impl ItemType {
             ItemType::AssocType |
             ItemType::OpaqueTy |
             ItemType::TraitAlias |
-            ItemType::ForeignType => NameSpace::Type,
+            ItemType::ForeignType => NAMESPACE_TYPE,
 
             ItemType::ExternCrate |
             ItemType::Import |
@@ -175,20 +167,20 @@ impl ItemType {
             ItemType::StructField |
             ItemType::Variant |
             ItemType::Constant |
-            ItemType::AssocConst => NameSpace::Value,
+            ItemType::AssocConst => NAMESPACE_VALUE,
 
             ItemType::Macro |
             ItemType::ProcAttribute |
-            ItemType::ProcDerive => NameSpace::Macro,
+            ItemType::ProcDerive => NAMESPACE_MACRO,
 
-            ItemType::Keyword => NameSpace::Keyword,
+            ItemType::Keyword => NAMESPACE_KEYWORD,
         }
     }
 }
 
 impl fmt::Display for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.css_class().fmt(f)
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -196,20 +188,3 @@ pub const NAMESPACE_TYPE: &'static str = "t";
 pub const NAMESPACE_VALUE: &'static str = "v";
 pub const NAMESPACE_MACRO: &'static str = "m";
 pub const NAMESPACE_KEYWORD: &'static str = "k";
-
-impl NameSpace {
-    pub fn to_static_str(&self) -> &'static str {
-        match *self {
-            NameSpace::Type => NAMESPACE_TYPE,
-            NameSpace::Value => NAMESPACE_VALUE,
-            NameSpace::Macro => NAMESPACE_MACRO,
-            NameSpace::Keyword => NAMESPACE_KEYWORD,
-        }
-    }
-}
-
-impl fmt::Display for NameSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.to_static_str().fmt(f)
-    }
-}

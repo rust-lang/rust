@@ -2,8 +2,9 @@
 
 use crate::convert::TryInto;
 use crate::io;
+use crate::i64;
+use crate::mem::MaybeUninit;
 use crate::os::raw::c_char;
-use crate::u64;
 
 use libc::{c_int, c_void, size_t};
 
@@ -14,8 +15,8 @@ pub type zx_status_t = i32;
 
 pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
 
-pub type zx_time_t = u64;
-pub const ZX_TIME_INFINITE : zx_time_t = u64::MAX;
+pub type zx_time_t = i64;
+pub const ZX_TIME_INFINITE : zx_time_t = i64::MAX;
 
 pub type zx_signals_t = u32;
 
@@ -64,29 +65,14 @@ impl Drop for Handle {
     }
 }
 
-// Common ZX_INFO header
-#[derive(Default)]
-#[repr(C)]
-pub struct zx_info_header_t {
-    pub topic: u32,              // identifies the info struct
-    pub avail_topic_size: u16,   // “native” size of the struct
-    pub topic_size: u16,         // size of the returned struct (<=topic_size)
-    pub avail_count: u32,        // number of records the kernel has
-    pub count: u32,              // number of records returned (limited by buffer size)
-}
-
-#[derive(Default)]
-#[repr(C)]
-pub struct zx_record_process_t {
-    pub return_code: c_int,
-}
-
 // Returned for topic ZX_INFO_PROCESS
 #[derive(Default)]
 #[repr(C)]
 pub struct zx_info_process_t {
-    pub hdr: zx_info_header_t,
-    pub rec: zx_record_process_t,
+    pub return_code: i64,
+    pub started: bool,
+    pub exited: bool,
+    pub debugger_attached: bool,
 }
 
 extern {
@@ -120,8 +106,11 @@ pub struct fdio_spawn_action_t {
 extern {
     pub fn fdio_spawn_etc(job: zx_handle_t, flags: u32, path: *const c_char,
                           argv: *const *const c_char, envp: *const *const c_char,
-                          action_count: u64, actions: *const fdio_spawn_action_t,
+                          action_count: size_t, actions: *const fdio_spawn_action_t,
                           process: *mut zx_handle_t, err_msg: *mut c_char) -> zx_status_t;
+
+    pub fn fdio_fd_clone(fd: c_int, out_handle: *mut zx_handle_t) -> zx_status_t;
+    pub fn fdio_fd_create(handle: zx_handle_t, fd: *mut c_int) -> zx_status_t;
 }
 
 // fdio_spawn_etc flags

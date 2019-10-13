@@ -1,3 +1,9 @@
+//! Check the validity invariant of a given value, and tell the user
+//! where in the value it got violated.
+//! In const context, this goes even further and tries to approximate const safety.
+//! That's useful because it means other passes (e.g. promotion) can rely on `const`s
+//! to be const-safe.
+
 use std::fmt::Write;
 use std::ops::RangeInclusive;
 
@@ -11,7 +17,7 @@ use std::hash::Hash;
 
 use super::{
     GlobalAlloc, InterpResult,
-    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
+    Scalar, OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
 macro_rules! throw_validation_failure {
@@ -182,7 +188,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
         layout: TyLayout<'tcx>,
         field: usize,
     ) -> PathElem {
-        match layout.ty.sty {
+        match layout.ty.kind {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let mut name = None;
@@ -194,7 +200,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         if let Some((&var_hir_id, _)) = upvars.get_index(field) {
                             let node = self.ecx.tcx.hir().get(var_hir_id);
                             if let hir::Node::Binding(pat) = node {
-                                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                                if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                                     name = Some(ident.name);
                                 }
                             }
@@ -250,6 +256,47 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
         self.path.truncate(path_len);
         Ok(())
     }
+
+    fn check_wide_ptr_meta(
+        &mut self,
+        meta: Option<Scalar<M::PointerTag>>,
+        pointee: TyLayout<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
+        match tail.kind {
+            ty::Dynamic(..) => {
+                let vtable = meta.unwrap();
+                try_validation!(
+                    self.ecx.memory.check_ptr_access(
+                        vtable,
+                        3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
+                        self.ecx.tcx.data_layout.pointer_align.abi,
+                    ),
+                    "dangling or unaligned vtable pointer in wide pointer or too small vtable",
+                    self.path
+                );
+                try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
+                    "invalid drop fn in vtable", self.path);
+                try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
+                    "invalid size or align in vtable", self.path);
+                // FIXME: More checks for the vtable.
+            }
+            ty::Slice(..) | ty::Str => {
+                let _len = try_validation!(meta.unwrap().to_usize(self.ecx),
+                    "non-integer slice length in wide pointer", self.path);
+                // We do not check that `len * elem_size <= isize::MAX`:
+                // that is only required for references, and there it falls out of the
+                // "dereferencable" check performed by Stacked Borrows.
+            }
+            ty::Foreign(..) => {
+                // Unsized, but not wide.
+            }
+            _ =>
+                bug!("Unexpected unsized type tail: {:?}", tail),
+        }
+
+        Ok(())
+    }
 }
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
@@ -280,7 +327,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.sty {
+        let name = match old_op.layout.ty.kind {
             ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
@@ -315,7 +362,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         let value = self.ecx.read_immediate(value)?;
         // Go over all the primitive types
         let ty = value.layout.ty;
-        match ty.sty {
+        match ty.kind {
             ty::Bool => {
                 let value = value.to_scalar_or_undef();
                 try_validation!(value.to_bool(),
@@ -341,56 +388,34 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             ty::RawPtr(..) => {
+                // Check pointer part.
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: For consistency with integers, we do not
                     // accept undef.
                     let _ptr = try_validation!(value.to_scalar_ptr(),
                         "undefined address in raw pointer", self.path);
-                    let _meta = try_validation!(value.to_meta(),
-                        "uninitialized data in raw fat pointer metadata", self.path);
                 } else {
                     // Remain consistent with `usize`: Accept anything.
                 }
+
+                // Check metadata.
+                let meta = try_validation!(value.to_meta(),
+                    "uninitialized data in wide pointer metadata", self.path);
+                let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
+                if layout.is_unsized() {
+                    self.check_wide_ptr_meta(meta, layout)?;
+                }
             }
             _ if ty.is_box() || ty.is_region_ptr() => {
-                // Handle fat pointers.
+                // Handle wide pointers.
                 // Check metadata early, for better diagnostics
                 let ptr = try_validation!(value.to_scalar_ptr(),
                     "undefined address in pointer", self.path);
                 let meta = try_validation!(value.to_meta(),
-                    "uninitialized data in fat pointer metadata", self.path);
+                    "uninitialized data in wide pointer metadata", self.path);
                 let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
                 if layout.is_unsized() {
-                    let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(layout.ty,
-                                                                          self.ecx.param_env);
-                    match tail.sty {
-                        ty::Dynamic(..) => {
-                            let vtable = meta.unwrap();
-                            try_validation!(
-                                self.ecx.memory.check_ptr_access(
-                                    vtable,
-                                    3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                                    self.ecx.tcx.data_layout.pointer_align.abi,
-                                ),
-                                "dangling or unaligned vtable pointer or too small vtable",
-                                self.path
-                            );
-                            try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
-                                "invalid drop fn in vtable", self.path);
-                            try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
-                                "invalid size or align in vtable", self.path);
-                            // FIXME: More checks for the vtable.
-                        }
-                        ty::Slice(..) | ty::Str => {
-                            try_validation!(meta.unwrap().to_usize(self.ecx),
-                                "non-integer slice length in fat pointer", self.path);
-                        }
-                        ty::Foreign(..) => {
-                            // Unsized, but not fat.
-                        }
-                        _ =>
-                            bug!("Unexpected unsized type tail: {:?}", tail),
-                    }
+                    self.check_wide_ptr_meta(meta, layout)?;
                 }
                 // Make sure this is dereferencable and all.
                 let (size, align) = self.ecx.size_and_align_of(meta, layout)?
@@ -556,7 +581,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         op: OpTy<'tcx, M::PointerTag>,
         fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        match op.layout.ty.sty {
+        match op.layout.ty.kind {
             ty::Str => {
                 let mplace = op.assert_mem_place(); // strings are never immediate
                 try_validation!(self.ecx.read_str(mplace),
@@ -565,7 +590,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             ty::Array(tys, ..) | ty::Slice(tys) if {
                 // This optimization applies only for integer and floating point types
                 // (i.e., types that can hold arbitrary bytes).
-                match tys.sty {
+                match tys.kind {
                     ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
                     _ => false,
                 }

@@ -1,5 +1,4 @@
 use crate::time::Duration;
-use crate::sys::{TimeSysCall, TimeClock};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
@@ -11,7 +10,7 @@ pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(TimeSysCall::perform(TimeClock::Monotonic))
+        panic!("time not implemented on wasm32-unknown-unknown")
     }
 
     pub const fn zero() -> Instant {
@@ -37,7 +36,7 @@ impl Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        SystemTime(TimeSysCall::perform(TimeClock::System))
+        panic!("time not implemented on wasm32-unknown-unknown")
     }
 
     pub fn sub_time(&self, other: &SystemTime)

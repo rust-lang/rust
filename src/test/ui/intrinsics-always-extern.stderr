@@ -1,0 +1,24 @@
+error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
+  --> $DIR/intrinsics-always-extern.rs:4:32
+   |
+LL |     extern "rust-intrinsic" fn foo(&self);
+   |                                ^^^
+
+error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
+  --> $DIR/intrinsics-always-extern.rs:8:43
+   |
+LL |       extern "rust-intrinsic" fn foo(&self) {
+   |  ___________________________________________^
+LL | |     }
+   | |_____^
+
+error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
+  --> $DIR/intrinsics-always-extern.rs:12:36
+   |
+LL |   extern "rust-intrinsic" fn hello() {
+   |  ____________________________________^
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
+

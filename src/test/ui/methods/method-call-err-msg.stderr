@@ -32,7 +32,7 @@ LL | pub struct Foo;
    | --------------- method `take` not found for this
 ...
 LL |      .take()
-   |       ^^^^
+   |       ^^^^ method not found in `Foo`
    |
    = note: the method `take` exists but the following trait bounds were not satisfied:
            `&mut Foo : std::iter::Iterator`

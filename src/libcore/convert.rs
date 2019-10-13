@@ -42,11 +42,11 @@
 
 use crate::fmt;
 
-/// An identity function.
+/// The identity function.
 ///
 /// Two things are important to note about this function:
 ///
-/// - It is not always equivalent to a closure like `|x| x` since the
+/// - It is not always equivalent to a closure like `|x| x`, since the
 ///   closure may coerce `x` into a different type.
 ///
 /// - It moves the input `x` passed to the function.
@@ -56,31 +56,32 @@ use crate::fmt;
 ///
 /// # Examples
 ///
-/// Using `identity` to do nothing among other interesting functions:
+/// Using `identity` to do nothing in a sequence of other, interesting,
+/// functions:
 ///
 /// ```rust
 /// use std::convert::identity;
 ///
 /// fn manipulation(x: u32) -> u32 {
-///     // Let's assume that this function does something interesting.
+///     // Let's pretend that adding one is an interesting function.
 ///     x + 1
 /// }
 ///
 /// let _arr = &[identity, manipulation];
 /// ```
 ///
-/// Using `identity` to get a function that changes nothing in a conditional:
+/// Using `identity` as a "do nothing" base case in a conditional:
 ///
 /// ```rust
 /// use std::convert::identity;
 ///
 /// # let condition = true;
-///
+/// #
 /// # fn manipulation(x: u32) -> u32 { x + 1 }
-///
+/// #
 /// let do_stuff = if condition { manipulation } else { identity };
 ///
-/// // do more interesting stuff..
+/// // Do more interesting stuff...
 ///
 /// let _results = do_stuff(42);
 /// ```
@@ -104,21 +105,16 @@ pub const fn identity<T>(x: T) -> T { x }
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
-/// `AsRef` has the same signature as [`Borrow`], but `Borrow` is different in few aspects:
+/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in few aspects:
 ///
-/// - Unlike `AsRef`, `Borrow` has a blanket impl for any `T`, and can be used to accept either
+/// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
 ///   a reference or a value.
-/// - `Borrow` also requires that `Hash`, `Eq` and `Ord` for borrowed value are
+/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
-///   borrow only a single field of a struct you can implement `AsRef`, but not `Borrow`.
-///
-/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
-///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
 /// # Generic Implementations
 ///
@@ -132,9 +128,16 @@ pub const fn identity<T>(x: T) -> T { x }
 /// converted to the specified type `T`.
 ///
 /// For example: By creating a generic function that takes an `AsRef<str>` we express that we
-/// want to accept all references that can be converted to `&str` as an argument.
-/// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
+/// want to accept all references that can be converted to [`&str`] as an argument.
+/// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Ord`]: ../../std/cmp/trait.Ord.html
+/// [`&str`]: ../../std/primitive.str.html
 /// [`String`]: ../../std/string/struct.String.html
 ///
 /// ```
@@ -513,7 +516,7 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 
 // FIXME (#45742): replace the above impls for &/&mut with the following more general one:
 // // As lifts over Deref
-// impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
+// impl<D: ?Sized + Deref<Target: AsRef<U>>, U: ?Sized> AsRef<U> for D {
 //     fn as_ref(&self) -> &U {
 //         self.deref().as_ref()
 //     }
@@ -530,7 +533,7 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 
 // FIXME (#45742): replace the above impl for &mut with the following more general one:
 // // AsMut lifts over DerefMut
-// impl<D: ?Sized + Deref, U: ?Sized> AsMut<U> for D where D::Target: AsMut<U> {
+// impl<D: ?Sized + Deref<Target: AsMut<U>>, U: ?Sized> AsMut<U> for D {
 //     fn as_mut(&mut self) -> &mut U {
 //         self.deref_mut().as_mut()
 //     }
@@ -551,6 +554,18 @@ impl<T> From<T> for T {
     fn from(t: T) -> T { t }
 }
 
+/// **Stability note:** This impl does not yet exist, but we are
+/// "reserving space" to add it in the future. See
+/// [rust-lang/rust#64715][#64715] for details.
+///
+/// [#64715]: https://github.com/rust-lang/rust/issues/64715
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+#[cfg(not(bootstrap))]
+#[rustc_reservation_impl="permitting this impl would forbid us from adding \
+`impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
+impl<T> From<!> for T {
+    fn from(t: !) -> T { t }
+}
 
 // TryFrom implies TryInto
 #[stable(feature = "try_from", since = "1.34.0")]

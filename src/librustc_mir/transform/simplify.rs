@@ -27,8 +27,8 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
@@ -52,12 +52,12 @@ pub fn simplify_cfg(body: &mut Body<'_>) {
     body.basic_blocks_mut().raw.shrink_to_fit();
 }
 
-impl MirPass for SimplifyCfg {
+impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
         simplify_cfg(body);
     }
@@ -292,8 +292,8 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
 
 pub struct SimplifyLocals;
 
-impl MirPass for SimplifyLocals {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for SimplifyLocals {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()) };
         marker.visit_body(body);
         // Return pointer and arguments are always live

@@ -1,7 +1,6 @@
 use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::vec;
-use crate::sys::ArgsSysCall;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
     // On wasm these should always be null, so there's nothing for us to do here
@@ -11,9 +10,8 @@ pub unsafe fn cleanup() {
 }
 
 pub fn args() -> Args {
-    let v = ArgsSysCall::perform();
     Args {
-        iter: v.into_iter(),
+        iter: Vec::new().into_iter(),
         _dont_send_or_sync_me: PhantomData,
     }
 }

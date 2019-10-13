@@ -17,12 +17,14 @@ LL |     let w = y;
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/polonius-smoke-test.rs:19:13
    |
+LL | pub fn use_while_mut_fr(x: &mut i32) -> &mut i32 {
+   |                            - let's call the lifetime of this reference `'1`
 LL |     let y = &mut *x;
    |             ------- borrow of `*x` occurs here
 LL |     let z = x;
    |             ^ move out of `x` occurs here
 LL |     y
-   |     - borrow later used here
+   |     - returning this value requires that `*x` is borrowed for `'1`
 
 error[E0505]: cannot move out of `s` because it is borrowed
   --> $DIR/polonius-smoke-test.rs:43:5

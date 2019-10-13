@@ -1,6 +1,9 @@
 error[E0423]: expected value, found struct `Empty1`
   --> $DIR/empty-struct-braces-expr.rs:15:14
    |
+LL | struct Empty1 {}
+   | ---------------- `Empty1` defined here
+...
 LL |     let e1 = Empty1;
    |              ^^^^^^
    |              |
@@ -10,6 +13,9 @@ LL |     let e1 = Empty1;
 error[E0423]: expected function, found struct `Empty1`
   --> $DIR/empty-struct-braces-expr.rs:16:14
    |
+LL | struct Empty1 {}
+   | ---------------- `Empty1` defined here
+...
 LL |     let e1 = Empty1();
    |              ^^^^^^
    |              |
@@ -19,12 +25,18 @@ LL |     let e1 = Empty1();
 error[E0423]: expected value, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-expr.rs:17:14
    |
+LL |     Empty3 {}
+   |     --------- `E::Empty3` defined here
+...
 LL |     let e3 = E::Empty3;
    |              ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 
 error[E0423]: expected function, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-expr.rs:18:14
    |
+LL |     Empty3 {}
+   |     --------- `E::Empty3` defined here
+...
 LL |     let e3 = E::Empty3();
    |              ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 

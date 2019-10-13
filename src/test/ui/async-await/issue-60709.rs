@@ -4,9 +4,6 @@
 
 // run-pass
 
-#![feature(async_await)]
-#![allow(unused)]
-
 use std::future::Future;
 use std::task::Poll;
 use std::task::Context;

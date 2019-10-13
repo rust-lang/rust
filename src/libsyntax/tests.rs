@@ -9,7 +9,7 @@ use crate::with_default_globals;
 use errors::emitter::EmitterWriter;
 use errors::Handler;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
+use syntax_pos::{BytePos, Span, MultiSpan};
 
 use std::io;
 use std::io::prelude::*;
@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::{Arc, Mutex};
 
-/// Map string to parser (via tts)
+/// Map string to parser (via tts).
 fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
@@ -32,7 +32,7 @@ crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F)
     x
 }
 
-/// Map a string to tts, using a made-up filename:
+/// Maps a string to tts, using a made-up filename.
 crate fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
     source_file_to_stream(
@@ -42,7 +42,7 @@ crate fn string_to_stream(source_str: String) -> TokenStream {
     ), None).0
 }
 
-/// Parse a string, return a crate.
+/// Parses a string, returns a crate.
 crate fn string_to_crate(source_str : String) -> ast::Crate {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
@@ -63,8 +63,8 @@ crate fn matches_codepattern(a : &str, b : &str) -> bool {
             (None, None) => return true,
             (None, _) => return false,
             (Some(&a), None) => {
-                if is_pattern_whitespace(a) {
-                    break // trailing whitespace check is out of loop for borrowck
+                if rustc_lexer::is_whitespace(a) {
+                    break // Trailing whitespace check is out of loop for borrowck.
                 } else {
                     return false
                 }
@@ -72,12 +72,12 @@ crate fn matches_codepattern(a : &str, b : &str) -> bool {
             (Some(&a), Some(&b)) => (a, b)
         };
 
-        if is_pattern_whitespace(a) && is_pattern_whitespace(b) {
-            // skip whitespace for a and b
+        if rustc_lexer::is_whitespace(a) && rustc_lexer::is_whitespace(b) {
+            // Skip whitespace for `a` and `b`.
             scan_for_non_ws_or_end(&mut a_iter);
             scan_for_non_ws_or_end(&mut b_iter);
-        } else if is_pattern_whitespace(a) {
-            // skip whitespace for a
+        } else if rustc_lexer::is_whitespace(a) {
+            // Skip whitespace for `a`.
             scan_for_non_ws_or_end(&mut a_iter);
         } else if a == b {
             a_iter.next();
@@ -87,22 +87,18 @@ crate fn matches_codepattern(a : &str, b : &str) -> bool {
         }
     }
 
-    // check if a has *only* trailing whitespace
-    a_iter.all(is_pattern_whitespace)
+    // Check if a has *only* trailing whitespace.
+    a_iter.all(rustc_lexer::is_whitespace)
 }
 
-/// Advances the given peekable `Iterator` until it reaches a non-whitespace character
+/// Advances the given peekable `Iterator` until it reaches a non-whitespace character.
 fn scan_for_non_ws_or_end<I: Iterator<Item = char>>(iter: &mut Peekable<I>) {
-    while iter.peek().copied().map(|c| is_pattern_whitespace(c)) == Some(true) {
+    while iter.peek().copied().map(|c| rustc_lexer::is_whitespace(c)) == Some(true) {
         iter.next();
     }
 }
 
-fn is_pattern_whitespace(c: char) -> bool {
-    rustc_lexer::character_properties::is_whitespace(c)
-}
-
-/// Identify a position in the text by the Nth occurrence of a string.
+/// Identifies a position in the text by the n'th occurrence of a string.
 struct Position {
     string: &'static str,
     count: usize,
@@ -144,11 +140,15 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
-        let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }),
-                                        Some(source_map.clone()),
-                                        false,
-                                        false,
-                                        false);
+        let emitter = EmitterWriter::new(
+            Box::new(Shared { data: output.clone() }),
+            Some(source_map.clone()),
+            false,
+            false,
+            false,
+            None,
+            false,
+        );
         let handler = Handler::with_emitter(true, None, Box::new(emitter));
         handler.span_err(msp, "foo");
 
@@ -169,7 +169,7 @@ fn make_span(file_text: &str, start: &Position, end: &Position) -> Span {
     let start = make_pos(file_text, start);
     let end = make_pos(file_text, end) + end.string.len(); // just after matching thing ends
     assert!(start <= end);
-    Span::new(BytePos(start as u32), BytePos(end as u32), NO_EXPANSION)
+    Span::with_root_ctxt(BytePos(start as u32), BytePos(end as u32))
 }
 
 fn make_pos(file_text: &str, pos: &Position) -> usize {

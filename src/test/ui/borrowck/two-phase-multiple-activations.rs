@@ -11,7 +11,7 @@ pub trait FakeRead {
 }
 
 impl FakeRead for Foo {
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+    fn read_to_end(&mut self, _buf: &mut Vec<u8>) -> Result<usize> {
         Ok(4)
     }
 }
@@ -19,5 +19,5 @@ impl FakeRead for Foo {
 fn main() {
     let mut a = Foo {};
     let mut v = Vec::new();
-    a.read_to_end(&mut v);
+    a.read_to_end(&mut v).unwrap();
 }

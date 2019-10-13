@@ -6,6 +6,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.eliminate_frame_pointer = false;
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
+    base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     base.stack_probes = true;
 
     // Clang automatically chooses a more specific target based on

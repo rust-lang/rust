@@ -61,8 +61,9 @@ error[E0038]: the trait `X` cannot be made into an object
    |
 LL | impl dyn X {
    |      ^^^^^ the trait `X` cannot be made into an object
-   |
-   = note: method `xxx` has no receiver
+...
+LL |     fn xxx() { ### }
+   |        --- associated function `xxx` has no `self` parameter
 
 error: aborting due to 9 previous errors
 

@@ -1,14 +1,12 @@
 // check-pass
 // edition:2018
 
-#![feature(async_await)]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_bindings)]
 //~^ WARNING the feature `impl_trait_in_bindings` is incomplete
 
 // See issue 60414
 
-/////////////////////////////////////////////
 // Reduction to `impl Trait`
 
 struct Foo<T>(T);
@@ -32,7 +30,6 @@ mod impl_trait {
     }
 }
 
-/////////////////////////////////////////////
 // Same with lifetimes in the trait
 
 mod lifetimes {
@@ -59,7 +56,6 @@ mod lifetimes {
     }
 }
 
-/////////////////////////////////////////////
 // Reduction using `impl Trait` in bindings
 
 mod impl_trait_in_bindings {
@@ -80,7 +76,6 @@ mod impl_trait_in_bindings {
     }
 }
 
-/////////////////////////////////////////////
 // The same applied to `type Foo = impl Bar`s
 
 mod opaque_types {

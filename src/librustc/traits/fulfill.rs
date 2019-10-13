@@ -68,6 +68,10 @@ pub struct PendingPredicateObligation<'tcx> {
     pub stalled_on: Vec<Ty<'tcx>>,
 }
 
+// `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PendingPredicateObligation<'_>, 136);
+
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
@@ -248,27 +252,49 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     /// This is always inlined, despite its size, because it has a single
     /// callsite and it is called *very* frequently.
     #[inline(always)]
-    fn process_obligation(&mut self,
-                          pending_obligation: &mut Self::Obligation)
-                          -> ProcessResult<Self::Obligation, Self::Error>
-    {
-        // if we were stalled on some unresolved variables, first check
-        // whether any of them have been resolved; if not, don't bother
-        // doing more work yet
-        if !pending_obligation.stalled_on.is_empty() {
-            if pending_obligation.stalled_on.iter().all(|&ty| {
-                // Use the force-inlined variant of shallow_resolve() because this code is hot.
-                let resolved = ShallowResolver::new(self.selcx.infcx()).inlined_shallow_resolve(ty);
-                resolved == ty // nothing changed here
-            }) {
-                debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
-                       self.selcx.infcx()
-                           .resolve_vars_if_possible(&pending_obligation.obligation),
-                       pending_obligation.stalled_on);
-                return ProcessResult::Unchanged;
+    fn process_obligation(
+        &mut self,
+        pending_obligation: &mut Self::Obligation,
+    ) -> ProcessResult<Self::Obligation, Self::Error> {
+        // If we were stalled on some unresolved variables, first check whether
+        // any of them have been resolved; if not, don't bother doing more work
+        // yet.
+        let change = match pending_obligation.stalled_on.len() {
+            // Match arms are in order of frequency, which matters because this
+            // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
+            1 => {
+                let ty = pending_obligation.stalled_on[0];
+                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty)
             }
-            pending_obligation.stalled_on = vec![];
+            0 => {
+                // In this case we haven't changed, but wish to make a change.
+                true
+            }
+            _ => {
+                // This `for` loop was once a call to `all()`, but this lower-level
+                // form was a perf win. See #64545 for details.
+                (|| {
+                    for &ty in &pending_obligation.stalled_on {
+                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(ty) {
+                            return true;
+                        }
+                    }
+                    false
+                })()
+            }
+        };
+
+        if !change {
+            debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
+                   self.selcx.infcx()
+                       .resolve_vars_if_possible(&pending_obligation.obligation),
+                   pending_obligation.stalled_on);
+            return ProcessResult::Unchanged;
         }
+
+        // This part of the code is much colder.
+
+        pending_obligation.stalled_on.truncate(0);
 
         let obligation = &mut pending_obligation.obligation;
 
@@ -277,7 +303,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 self.selcx.infcx().resolve_vars_if_possible(&obligation.predicate);
         }
 
-        debug!("process_obligation: obligation = {:?}", obligation);
+        debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
 
         match obligation.predicate {
             ty::Predicate::Trait(ref data) => {
@@ -425,10 +451,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::WellFormed(ty) => {
-                match ty::wf::obligations(self.selcx.infcx(),
-                                          obligation.param_env,
-                                          obligation.cause.body_id,
-                                          ty, obligation.cause.span) {
+                match ty::wf::obligations(
+                    self.selcx.infcx(),
+                    obligation.param_env,
+                    obligation.cause.body_id,
+                    ty,
+                    obligation.cause.span,
+                ) {
                     None => {
                         pending_obligation.stalled_on = vec![ty];
                         ProcessResult::Unchanged
@@ -466,7 +495,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 } else {
                     if !substs.has_local_value() {
                         let instance = ty::Instance::resolve(
-                            self.selcx.tcx().global_tcx(),
+                            self.selcx.tcx(),
                             obligation.param_env,
                             def_id,
                             substs,
@@ -519,7 +548,7 @@ fn trait_ref_type_vars<'a, 'tcx>(
      .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
-     .filter(|t| match t.sty { ty::Infer(_) => true, _ => false })
+     .filter(|t| match t.kind { ty::Infer(_) => true, _ => false })
      .collect()
 }
 

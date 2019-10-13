@@ -49,7 +49,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")
     };
     match tcx.hir().get(id) {
-        Node::Item(item) => match item.node {
+        Node::Item(item) => match item.kind {
             hir::ItemKind::Enum(..) |
             hir::ItemKind::Struct(..) |
             hir::ItemKind::Union(..) |
@@ -58,19 +58,19 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
             _ => unsupported()
         },
 
-        Node::TraitItem(item) => match item.node {
+        Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Method(..) => {}
 
             _ => unsupported()
         },
 
-        Node::ImplItem(item) => match item.node {
+        Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Method(..) => {}
 
             _ => unsupported()
         },
 
-        Node::ForeignItem(item) => match item.node {
+        Node::ForeignItem(item) => match item.kind {
             hir::ForeignItemKind::Fn(..) => {}
 
             _ => unsupported()

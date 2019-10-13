@@ -1,5 +1,5 @@
 warning: `#[derive]` does nothing on macro invocations
-  --> $DIR/issue-49934.rs:20:5
+  --> $DIR/issue-49934.rs:13:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
@@ -7,10 +7,10 @@ LL |     #[derive(Debug)]
    = note: this may become a hard error in a future release
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:6:8
+  --> $DIR/issue-49934.rs:19:5
    |
-LL | fn foo<#[derive(Debug)] T>() {
-   |        ^^^^^^^^^^^^^^^^
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/issue-49934.rs:4:9
@@ -19,31 +19,19 @@ LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:8:9
-   |
-LL |         #[derive(Debug)]
-   |         ^^^^^^^^^^^^^^^^
-
-warning: unused attribute
-  --> $DIR/issue-49934.rs:26:5
+  --> $DIR/issue-49934.rs:23:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:30:5
-   |
-LL |     #[derive(Debug)]
-   |     ^^^^^^^^^^^^^^^^
-
-warning: unused attribute
-  --> $DIR/issue-49934.rs:34:13
+  --> $DIR/issue-49934.rs:27:13
    |
 LL |     let _ = #[derive(Debug)] "Hello, world!";
    |             ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:39:9
+  --> $DIR/issue-49934.rs:32:9
    |
 LL |         #[derive(Debug)]
    |         ^^^^^^^^^^^^^^^^

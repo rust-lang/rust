@@ -1,5 +1,5 @@
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:9:5
+  --> $DIR/lint-qualification.rs:10:5
    |
 LL |     foo::bar();
    |     ^^^^^^^^

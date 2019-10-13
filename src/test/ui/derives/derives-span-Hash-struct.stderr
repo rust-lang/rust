@@ -1,10 +1,13 @@
 error[E0277]: the trait bound `Error: std::hash::Hash` is not satisfied
-  --> $DIR/derives-span-Hash-struct.rs:8:5
+  --> $DIR/derives-span-Hash-struct.rs:10:5
    |
 LL |     x: Error
    |     ^^^^^^^^ the trait `std::hash::Hash` is not implemented for `Error`
+   | 
+  ::: $SRC_DIR/libcore/hash/mod.rs:LL:COL
    |
-   = note: required by `std::hash::Hash::hash`
+LL |     fn hash<H: Hasher>(&self, state: &mut H);
+   |             - required by this bound in `std::hash::Hash::hash`
 
 error: aborting due to previous error
 

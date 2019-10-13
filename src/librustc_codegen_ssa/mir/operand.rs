@@ -367,7 +367,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, "unsized_tmp", max_align);
+        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, max_align);
         bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.
@@ -384,47 +384,45 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Option<OperandRef<'tcx, Bx::Value>> {
         debug!("maybe_codegen_consume_direct(place_ref={:?})", place_ref);
 
-        place_ref.iterate(|place_base, place_projection| {
-            if let mir::PlaceBase::Local(index) = place_base {
-                match self.locals[*index] {
-                    LocalRef::Operand(Some(mut o)) => {
-                        // Moves out of scalar and scalar pair fields are trivial.
-                        for proj in place_projection {
-                            match proj.elem {
-                                mir::ProjectionElem::Field(ref f, _) => {
-                                    o = o.extract_field(bx, f.index());
-                                }
-                                mir::ProjectionElem::Index(_) |
-                                mir::ProjectionElem::ConstantIndex { .. } => {
-                                    // ZSTs don't require any actual memory access.
-                                    // FIXME(eddyb) deduplicate this with the identical
-                                    // checks in `codegen_consume` and `extract_field`.
-                                    let elem = o.layout.field(bx.cx(), 0);
-                                    if elem.is_zst() {
-                                        o = OperandRef::new_zst(bx, elem);
-                                    } else {
-                                        return None;
-                                    }
-                                }
-                                _ => return None,
+        if let mir::PlaceBase::Local(index) = place_ref.base {
+            match self.locals[*index] {
+                LocalRef::Operand(Some(mut o)) => {
+                    // Moves out of scalar and scalar pair fields are trivial.
+                    for elem in place_ref.projection.iter() {
+                        match elem {
+                            mir::ProjectionElem::Field(ref f, _) => {
+                                o = o.extract_field(bx, f.index());
                             }
+                            mir::ProjectionElem::Index(_) |
+                            mir::ProjectionElem::ConstantIndex { .. } => {
+                                // ZSTs don't require any actual memory access.
+                                // FIXME(eddyb) deduplicate this with the identical
+                                // checks in `codegen_consume` and `extract_field`.
+                                let elem = o.layout.field(bx.cx(), 0);
+                                if elem.is_zst() {
+                                    o = OperandRef::new_zst(bx, elem);
+                                } else {
+                                    return None;
+                                }
+                            }
+                            _ => return None,
                         }
+                    }
 
-                        Some(o)
-                    }
-                    LocalRef::Operand(None) => {
-                        bug!("use of {:?} before def", place_ref);
-                    }
-                    LocalRef::Place(..) | LocalRef::UnsizedPlace(..) => {
-                        // watch out for locals that do not have an
-                        // alloca; they are handled somewhat differently
-                        None
-                    }
+                    Some(o)
                 }
-            } else {
-                None
+                LocalRef::Operand(None) => {
+                    bug!("use of {:?} before def", place_ref);
+                }
+                LocalRef::Place(..) | LocalRef::UnsizedPlace(..) => {
+                    // watch out for locals that do not have an
+                    // alloca; they are handled somewhat differently
+                    None
+                }
             }
-        })
+        } else {
+            None
+        }
     }
 
     pub fn codegen_consume(
@@ -466,7 +464,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let ty = self.monomorphize(&constant.ty);
                 self.eval_mir_constant(constant)
                     .map(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
@@ -481,11 +478,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // the above error (or silence it under some conditions) will not cause UB
                         bx.abort();
                         // We've errored, so we don't have to produce working code.
+                        let ty = self.monomorphize(&constant.literal.ty);
                         let layout = bx.cx().layout_of(ty);
                         bx.load_operand(PlaceRef::new_sized(
                             bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout))),
                             layout,
-                            layout.align.abi,
                         ))
                     })
             }

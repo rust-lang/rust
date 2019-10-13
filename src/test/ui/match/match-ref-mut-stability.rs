@@ -3,8 +3,6 @@
 
 // run-pass
 
-#![feature(bind_by_move_pattern_guards)]
-
 // Test that z always point to the same temporary.
 fn referent_stability() {
     let p;

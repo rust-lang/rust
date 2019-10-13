@@ -1,4 +1,4 @@
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 E0668: r##"
 Malformed inline assembly rejected by LLVM.

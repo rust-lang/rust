@@ -3,8 +3,6 @@
 // check-pass
 // edition:2018
 
-#![feature(async_await)]
-
 async fn make_boxed_object() -> Box<dyn Send> {
     Box::new(()) as _
 }

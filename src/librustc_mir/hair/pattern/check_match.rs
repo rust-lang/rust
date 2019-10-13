@@ -2,14 +2,8 @@ use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 
-use super::{Pattern, PatternContext, PatternError, PatternKind};
+use super::{PatCtxt, PatternError, PatKind};
 
-use rustc::middle::borrowck::SignalledError;
-use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
-use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
-use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::mem_categorization::cmt_;
-use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -19,32 +13,26 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::ptr::P;
-use rustc::hir::{self, Pat, PatKind};
+use rustc::hir::{self, Pat};
 
 use smallvec::smallvec;
 use std::slice;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
-    let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
-        tcx.hir().body_owned_by(id)
-    } else {
-        return SignalledError::NoErrorsSeen;
+crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
+    let body_id = match tcx.hir().as_local_hir_id(def_id) {
+        None => return,
+        Some(id) => tcx.hir().body_owned_by(id),
     };
 
     let mut visitor = MatchVisitor {
         tcx,
-        body_owner: def_id,
         tables: tcx.body_tables(body_id),
-        region_scope_tree: &tcx.region_scope_tree(def_id),
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
-        signalled_error: SignalledError::NoErrorsSeen,
     };
     visitor.visit_body(tcx.hir().body(body_id));
-    visitor.signalled_error
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
@@ -53,15 +41,12 @@ fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBu
 
 struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body_owner: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
-    region_scope_tree: &'a region::ScopeTree,
-    signalled_error: SignalledError,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
@@ -69,7 +54,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
-        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.node {
+        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.kind {
             self.check_match(scrut, arms, source);
         }
     }
@@ -85,21 +70,20 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         });
 
         // Check legality of move bindings and `@` patterns.
-        self.check_patterns(false, slice::from_ref(&loc.pat));
+        self.check_patterns(false, &loc.pat);
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         intravisit::walk_body(self, body);
 
-        for arg in &body.arguments {
-            self.check_irrefutable(&arg.pat, "function argument");
-            self.check_patterns(false, slice::from_ref(&arg.pat));
+        for param in &body.params {
+            self.check_irrefutable(&param.pat, "function argument");
+            self.check_patterns(false, &param.pat);
         }
     }
 }
 
-
-impl<'a, 'tcx> PatternContext<'a, 'tcx> {
+impl PatCtxt<'_, '_> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
@@ -131,12 +115,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
-    fn check_patterns(&mut self, has_guard: bool, pats: &[P<Pat>]) {
-        check_legality_of_move_bindings(self, has_guard, pats);
-        for pat in pats {
-            check_legality_of_bindings_in_at_patterns(self, pat);
-        }
+impl<'tcx> MatchVisitor<'_, 'tcx> {
+    fn check_patterns(&mut self, has_guard: bool, pat: &Pat) {
+        check_legality_of_move_bindings(self, has_guard, pat);
+        check_legality_of_bindings_in_at_patterns(self, pat);
     }
 
     fn check_match(
@@ -147,21 +129,10 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     ) {
         for arm in arms {
             // First, check legality of move bindings.
-            self.check_patterns(arm.guard.is_some(), &arm.pats);
+            self.check_patterns(arm.guard.is_some(), &arm.pat);
 
-            // Second, if there is a guard on each arm, make sure it isn't
-            // assigning or borrowing anything mutably.
-            if let Some(ref guard) = arm.guard {
-                self.signalled_error = SignalledError::SawSomeError;
-                if !self.tcx.features().bind_by_move_pattern_guards {
-                    check_for_mutation_in_guard(self, &guard);
-                }
-            }
-
-            // Third, perform some lints.
-            for pat in &arm.pats {
-                check_for_bindings_named_same_as_variants(self, pat);
-            }
+            // Second, perform some lints.
+            check_for_bindings_named_same_as_variants(self, &arm.pat);
         }
 
         let module = self.tcx.hir().get_module_parent(scrut.hir_id);
@@ -169,10 +140,17 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
-                arm.pats.iter().map(|pat| {
-                    let mut patcx = PatternContext::new(self.tcx,
-                                                        self.param_env.and(self.identity_substs),
-                                                        self.tables);
+                // HACK(or_patterns; Centril | dlrobertson): Remove this and
+                // correctly handle exhaustiveness checking for nested or-patterns.
+                match &arm.pat.kind {
+                    hir::PatKind::Or(pats) => pats,
+                    _ => std::slice::from_ref(&arm.pat),
+                }.iter().map(|pat| {
+                    let mut patcx = PatCtxt::new(
+                        self.tcx,
+                        self.param_env.and(self.identity_substs),
+                        self.tables
+                    );
                     patcx.include_lint_checks();
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
@@ -204,7 +182,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
-                    match pat_ty.sty {
+                    match pat_ty.kind {
                         ty::Never => true,
                         ty::Adt(def, _) => {
                             def_span = self.tcx.hir().span_if_local(def.did);
@@ -267,7 +245,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
         let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
-            let mut patcx = PatternContext::new(self.tcx,
+            let mut patcx = PatCtxt::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
             patcx.include_lint_checks();
@@ -277,52 +255,72 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
-            let wild_pattern = Pattern {
-                ty: pattern_ty,
-                span: DUMMY_SP,
-                kind: box PatternKind::Wild,
-            };
-            let witness = match is_useful(cx, &pats, &[&wild_pattern], ConstructWitness) {
-                UsefulWithWitness(witness) => witness,
-                NotUseful => return,
-                Useful => bug!()
+            let witnesses = match check_not_useful(cx, pattern_ty, &pats) {
+                Ok(_) => return,
+                Err(err) => err,
             };
 
-            let pattern_string = witness[0].single_pattern().to_string();
+            let joined_patterns = joined_uncovered_patterns(&witnesses);
             let mut err = struct_span_err!(
                 self.tcx.sess, pat.span, E0005,
-                "refutable pattern in {}: `{}` not covered",
-                origin, pattern_string
+                "refutable pattern in {}: {} not covered",
+                origin, joined_patterns
             );
-            let label_msg = match pat.node {
-                PatKind::Path(hir::QPath::Resolved(None, ref path))
-                        if path.segments.len() == 1 && path.segments[0].args.is_none() => {
-                    format!("interpreted as {} {} pattern, not new variable",
-                            path.res.article(), path.res.descr())
+            match &pat.kind {
+                hir::PatKind::Path(hir::QPath::Resolved(None, path))
+                    if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+                {
+                    const_not_var(&mut err, cx.tcx, pat, path);
                 }
-                _ => format!("pattern `{}` not covered", pattern_string),
-            };
-            err.span_label(pat.span, label_msg);
-            if let ty::Adt(def, _) = pattern_ty.sty {
-                if let Some(sp) = self.tcx.hir().span_if_local(def.did){
-                    err.span_label(sp, format!("`{}` defined here", pattern_ty));
+                _ => {
+                    err.span_label(
+                        pat.span,
+                        pattern_not_covered_label(&witnesses, &joined_patterns),
+                    );
                 }
             }
+
+            adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
             err.emit();
         });
     }
 }
 
+/// A path pattern was interpreted as a constant, not a new variable.
+/// This caused an irrefutable match failure in e.g. `let`.
+fn const_not_var(err: &mut DiagnosticBuilder<'_>, tcx: TyCtxt<'_>, pat: &Pat, path: &hir::Path) {
+    let descr = path.res.descr();
+    err.span_label(pat.span, format!(
+        "interpreted as {} {} pattern, not a new variable",
+        path.res.article(),
+        descr,
+    ));
+
+    err.span_suggestion(
+        pat.span,
+        "introduce a variable instead",
+        format!("{}_var", path.segments[0].ident).to_lowercase(),
+        // Cannot use `MachineApplicable` as it's not really *always* correct
+        // because there may be such an identifier in scope or the user maybe
+        // really wanted to match against the constant. This is quite unlikely however.
+        Applicability::MaybeIncorrect,
+    );
+
+    if let Some(span) = tcx.hir().res_span(path.res) {
+        err.span_label(span, format!("{} defined here", descr));
+    }
+}
+
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(_, _, ident, None) = p.node {
+        if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                 if bm != ty::BindByValue(hir::MutImmutable) {
                     // Nothing to check.
                     return true;
                 }
                 let pat_ty = cx.tables.pat_ty(p);
-                if let ty::Adt(edef, _) = pat_ty.sty {
+                if let ty::Adt(edef, _) = pat_ty.kind {
                     if edef.is_enum() && edef.variants.iter().any(|variant| {
                         variant.ident == ident && variant.ctor_kind == CtorKind::Const
                     }) {
@@ -350,11 +348,11 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(pat: &Pat) -> bool {
-    match pat.node {
-        PatKind::Binding(.., None) => true,
-        PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
-        PatKind::Ref(ref s, _) => pat_is_catchall(s),
-        PatKind::Tuple(ref v, _) => v.iter().all(|p| {
+    match pat.kind {
+        hir::PatKind::Binding(.., None) => true,
+        hir::PatKind::Binding(.., Some(ref s)) => pat_is_catchall(s),
+        hir::PatKind::Ref(ref s, _) => pat_is_catchall(s),
+        hir::PatKind::Tuple(ref v, _) => v.iter().all(|p| {
             pat_is_catchall(&p)
         }),
         _ => false
@@ -362,9 +360,9 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms<'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    arms: &[(Vec<(&'a Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+fn check_arms<'tcx>(
+    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+    arms: &[(Vec<(&super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
     source: hir::MatchSource,
 ) {
     let mut seen = Matrix::empty();
@@ -445,255 +443,187 @@ fn check_arms<'a, 'tcx>(
     }
 }
 
-fn check_exhaustive<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    scrut_ty: Ty<'tcx>,
-    sp: Span,
-    matrix: &Matrix<'p, 'tcx>,
-) {
-    let wild_pattern = Pattern {
-        ty: scrut_ty,
-        span: DUMMY_SP,
-        kind: box PatternKind::Wild,
-    };
+fn check_not_useful(
+    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+    ty: Ty<'tcx>,
+    matrix: &Matrix<'_, 'tcx>,
+) -> Result<(), Vec<super::Pat<'tcx>>> {
+    let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
     match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
-        UsefulWithWitness(pats) => {
-            let witnesses = if pats.is_empty() {
-                vec![&wild_pattern]
-            } else {
-                pats.iter().map(|w| w.single_pattern()).collect()
-            };
-
-            const LIMIT: usize = 3;
-            let joined_patterns = match witnesses.len() {
-                0 => bug!(),
-                1 => format!("`{}`", witnesses[0]),
-                2..=LIMIT => {
-                    let (tail, head) = witnesses.split_last().unwrap();
-                    let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
-                    format!("`{}` and `{}`", head.join("`, `"), tail)
-                }
-                _ => {
-                    let (head, tail) = witnesses.split_at(LIMIT);
-                    let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
-                    format!("`{}` and {} more", head.join("`, `"), tail.len())
-                }
-            };
-
-            let label_text = match witnesses.len() {
-                1 => format!("pattern {} not covered", joined_patterns),
-                _ => format!("patterns {} not covered", joined_patterns),
-            };
-            let mut err = create_e0004(cx.tcx.sess, sp, format!(
-                "non-exhaustive patterns: {} not covered",
-                joined_patterns,
-            ));
-            err.span_label(sp, label_text);
-            // point at the definition of non-covered enum variants
-            if let ty::Adt(def, _) = scrut_ty.sty {
-                if let Some(sp) = cx.tcx.hir().span_if_local(def.did){
-                    err.span_label(sp, format!("`{}` defined here", scrut_ty));
-                }
-            }
-            let patterns = witnesses.iter().map(|p| (**p).clone()).collect::<Vec<Pattern<'_>>>();
-            if patterns.len() < 4 {
-                for sp in maybe_point_at_variant(cx, scrut_ty, patterns.as_slice()) {
-                    err.span_label(sp, "not covered");
-                }
-            }
-            err.help("ensure that all possible cases are being handled, \
-                      possibly by adding wildcards or more match arms");
-            err.emit();
-        }
-        NotUseful => {
-            // This is good, wildcard pattern isn't reachable
-        }
-        _ => bug!()
+        NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
+        UsefulWithWitness(pats) => Err(if pats.is_empty() {
+            vec![wild_pattern]
+        } else {
+            pats.into_iter().map(|w| w.single_pattern()).collect()
+        }),
+        Useful => bug!(),
     }
 }
 
-fn maybe_point_at_variant(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    ty: Ty<'tcx>,
-    patterns: &[Pattern<'_>],
-) -> Vec<Span> {
+fn check_exhaustive<'tcx>(
+    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+    scrut_ty: Ty<'tcx>,
+    sp: Span,
+    matrix: &Matrix<'_, 'tcx>,
+) {
+    let witnesses = match check_not_useful(cx, scrut_ty, matrix) {
+        Ok(_) => return,
+        Err(err) => err,
+    };
+
+    let joined_patterns = joined_uncovered_patterns(&witnesses);
+    let mut err = create_e0004(
+        cx.tcx.sess, sp,
+        format!("non-exhaustive patterns: {} not covered", joined_patterns),
+    );
+    err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+    adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
+    err.help(
+        "ensure that all possible cases are being handled, \
+        possibly by adding wildcards or more match arms"
+    )
+    .emit();
+}
+
+fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
+    const LIMIT: usize = 3;
+    match witnesses {
+        [] => bug!(),
+        [witness] => format!("`{}`", witness),
+        [head @ .., tail] if head.len() < LIMIT => {
+            let head: Vec<_> = head.iter().map(<_>::to_string).collect();
+            format!("`{}` and `{}`", head.join("`, `"), tail)
+        }
+        _ => {
+            let (head, tail) = witnesses.split_at(LIMIT);
+            let head: Vec<_> = head.iter().map(<_>::to_string).collect();
+            format!("`{}` and {} more", head.join("`, `"), tail.len())
+        }
+    }
+}
+
+fn pattern_not_covered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
+    format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
+}
+
+/// Point at the definition of non-covered `enum` variants.
+fn adt_defined_here(
+    cx: &MatchCheckCtxt<'_, '_>,
+    err: &mut DiagnosticBuilder<'_>,
+    ty: Ty<'_>,
+    witnesses: &[super::Pat<'_>],
+) {
+    let ty = ty.peel_refs();
+    if let ty::Adt(def, _) = ty.kind {
+        if let Some(sp) = cx.tcx.hir().span_if_local(def.did) {
+            err.span_label(sp, format!("`{}` defined here", ty));
+        }
+
+        if witnesses.len() < 4 {
+            for sp in maybe_point_at_variant(ty, &witnesses) {
+                err.span_label(sp, "not covered");
+            }
+        }
+    }
+}
+
+fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> {
     let mut covered = vec![];
-    if let ty::Adt(def, _) = ty.sty {
+    if let ty::Adt(def, _) = ty.kind {
         // Don't point at variants that have already been covered due to other patterns to avoid
-        // visual clutter
+        // visual clutter.
         for pattern in patterns {
-            let pk: &PatternKind<'_> = &pattern.kind;
-            if let PatternKind::Variant { adt_def, variant_index, subpatterns, .. } = pk {
-                if adt_def.did == def.did {
+            use PatKind::{AscribeUserType, Deref, Variant, Or, Leaf};
+            match &*pattern.kind {
+                AscribeUserType { subpattern, .. } | Deref { subpattern } => {
+                    covered.extend(maybe_point_at_variant(ty, slice::from_ref(&subpattern)));
+                }
+                Variant { adt_def, variant_index, subpatterns, .. } if adt_def.did == def.did => {
                     let sp = def.variants[*variant_index].ident.span;
                     if covered.contains(&sp) {
                         continue;
                     }
                     covered.push(sp);
-                    let subpatterns = subpatterns.iter()
+
+                    let pats = subpatterns.iter()
                         .map(|field_pattern| field_pattern.pattern.clone())
-                        .collect::<Vec<_>>();
-                    covered.extend(
-                        maybe_point_at_variant(cx, ty, subpatterns.as_slice()),
-                    );
+                        .collect::<Box<[_]>>();
+                    covered.extend(maybe_point_at_variant(ty, &pats));
                 }
-            }
-            if let PatternKind::Leaf { subpatterns } = pk {
-                let subpatterns = subpatterns.iter()
-                    .map(|field_pattern| field_pattern.pattern.clone())
-                    .collect::<Vec<_>>();
-                covered.extend(maybe_point_at_variant(cx, ty, subpatterns.as_slice()));
+                Leaf { subpatterns } => {
+                    let pats = subpatterns.iter()
+                        .map(|field_pattern| field_pattern.pattern.clone())
+                        .collect::<Box<[_]>>();
+                    covered.extend(maybe_point_at_variant(ty, &pats));
+                }
+                Or { pats } => {
+                    let pats = pats.iter().cloned().collect::<Box<[_]>>();
+                    covered.extend(maybe_point_at_variant(ty, &pats));
+                }
+                _ => {}
             }
         }
     }
     covered
 }
 
-// Legality of move bindings checking
-fn check_legality_of_move_bindings(
-    cx: &mut MatchVisitor<'_, '_>,
-    has_guard: bool,
-    pats: &[P<Pat>],
-) {
+// Check the legality of legality of by-move bindings.
+fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat) {
     let mut by_ref_span = None;
-    for pat in pats {
-        pat.each_binding(|_, hir_id, span, _path| {
-            if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
-                if let ty::BindByReference(..) = bm {
-                    by_ref_span = Some(span);
-                }
-            } else {
-                cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+    pat.each_binding(|_, hir_id, span, _| {
+        if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
+            if let ty::BindByReference(..) = bm {
+                by_ref_span = Some(span);
             }
-        })
-    }
-    let span_vec = &mut Vec::new();
-    let check_move = |
-        cx: &mut MatchVisitor<'_, '_>,
-        p: &Pat,
-        sub: Option<&Pat>,
-        span_vec: &mut Vec<Span>,
-    | {
-        // check legality of moving out of the enum
+        } else {
+            cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+        }
+    });
 
-        // x @ Foo(..) is legal, but x @ Foo(y) isn't.
+    let span_vec = &mut Vec::new();
+    let mut check_move = |p: &Pat, sub: Option<&Pat>| {
+        // Check legality of moving out of the enum.
+        //
+        // `x @ Foo(..)` is legal, but `x @ Foo(y)` isn't.
         if sub.map_or(false, |p| p.contains_bindings()) {
-            struct_span_err!(cx.tcx.sess, p.span, E0007,
-                             "cannot bind by-move with sub-bindings")
+            struct_span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if has_guard {
-            if !cx.tcx.features().bind_by_move_pattern_guards {
-                let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
-                                            "cannot bind by-move into a pattern guard");
-                err.span_label(p.span, "moves value into pattern guard");
-                if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
-                            crate attributes to enable");
-                }
-                err.emit();
-            }
-        } else if let Some(_by_ref_span) = by_ref_span {
+        } else if !has_guard && by_ref_span.is_some() {
             span_vec.push(p.span);
         }
     };
 
-    for pat in pats {
-        pat.walk(|p| {
-            if let PatKind::Binding(_, _, _, ref sub) = p.node {
-                if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                    match bm {
-                        ty::BindByValue(..) => {
-                            let pat_ty = cx.tables.node_type(p.hir_id);
-                            if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                                check_move(cx, p, sub.as_ref().map(|p| &**p), span_vec);
-                            }
-                        }
-                        _ => {}
+    pat.walk(|p| {
+        if let hir::PatKind::Binding(.., sub) = &p.kind {
+            if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
+                if let ty::BindByValue(..) = bm {
+                    let pat_ty = cx.tables.node_type(p.hir_id);
+                    if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
+                        check_move(p, sub.as_deref());
                     }
-                } else {
-                    cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                 }
+            } else {
+                cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
             }
-            true
-        });
-    }
-    if !span_vec.is_empty(){
-        let span = MultiSpan::from_spans(span_vec.clone());
+        }
+        true
+    });
+
+    if !span_vec.is_empty() {
         let mut err = struct_span_err!(
             cx.tcx.sess,
-            span,
+            MultiSpan::from_spans(span_vec.clone()),
             E0009,
             "cannot bind by-move and by-ref in the same pattern",
         );
         if let Some(by_ref_span) = by_ref_span {
             err.span_label(by_ref_span, "both by-ref and by-move used");
         }
-        for span in span_vec.iter(){
+        for span in span_vec.iter() {
             err.span_label(*span, "by-move pattern here");
         }
         err.emit();
-    }
-}
-
-/// Ensures that a pattern guard doesn't borrow by mutable reference or assign.
-//
-// FIXME: this should be done by borrowck.
-fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
-    let mut checker = MutationChecker {
-        cx,
-    };
-    match guard {
-        hir::Guard::If(expr) =>
-            ExprUseVisitor::new(&mut checker,
-                                cx.tcx,
-                                cx.body_owner,
-                                cx.param_env,
-                                cx.region_scope_tree,
-                                cx.tables,
-                                None).walk_expr(expr),
-    };
-}
-
-struct MutationChecker<'a, 'tcx> {
-    cx: &'a MatchVisitor<'a, 'tcx>,
-}
-
-impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: euv::MatchMode) {}
-    fn consume(&mut self, _: hir::HirId, _: Span, _: &cmt_<'_>, _: ConsumeMode) {}
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: ConsumeMode) {}
-    fn borrow(&mut self,
-              _: hir::HirId,
-              span: Span,
-              _: &cmt_<'_>,
-              _: ty::Region<'tcx>,
-              kind:ty:: BorrowKind,
-              _: LoanCause) {
-        match kind {
-            ty::MutBorrow => {
-                let mut err = struct_span_err!(self.cx.tcx.sess, span, E0301,
-                          "cannot mutably borrow in a pattern guard");
-                err.span_label(span, "borrowed mutably in pattern guard");
-                if self.cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
-                              crate attributes to enable");
-                }
-                err.emit();
-            }
-            ty::ImmBorrow | ty::UniqueImmBorrow => {}
-        }
-    }
-    fn decl_without_init(&mut self, _: hir::HirId, _: Span) {}
-    fn mutate(&mut self, _: hir::HirId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
-        match mode {
-            MutateMode::JustWrite | MutateMode::WriteAndRead => {
-                struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
-                    .span_label(span, "assignment in pattern guard")
-                    .emit();
-            }
-            MutateMode::Init => {}
-        }
     }
 }
 
@@ -701,7 +631,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
 /// because of the way rvalues are handled in the borrow check. (See issue
 /// #14587.)
 fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat) {
-    AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
+    AtBindingPatternVisitor { cx, bindings_allowed: true }.visit_pat(pat);
 }
 
 struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
@@ -709,14 +639,14 @@ struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
     bindings_allowed: bool
 }
 
-impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
+impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
         NestedVisitorMap::None
     }
 
     fn visit_pat(&mut self, pat: &Pat) {
-        match pat.node {
-            PatKind::Binding(.., ref subpat) => {
+        match pat.kind {
+            hir::PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {
                     struct_span_err!(self.cx.tcx.sess, pat.span, E0303,
                                      "pattern bindings are not allowed after an `@`")

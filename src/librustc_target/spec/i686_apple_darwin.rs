@@ -5,6 +5,7 @@ pub fn target() -> TargetResult {
     base.cpu = "yonah".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
+    base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     base.stack_probes = true;
     base.eliminate_frame_pointer = false;
 

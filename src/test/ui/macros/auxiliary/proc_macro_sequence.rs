@@ -6,7 +6,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{quote, Span, TokenStream};
+use proc_macro::{quote, Span, TokenStream, TokenTree};
 
 fn assert_same_span(a: Span, b: Span) {
     assert_eq!(a.start(), b.start());
@@ -24,12 +24,22 @@ pub fn make_foo(_: TokenStream) -> TokenStream {
     };
 
     // Check that all spans are equal.
-    let mut span = None;
+    // FIXME: `quote!` gives def-site spans to idents and literals,
+    // but leaves (default) call-site spans on groups and punctuation.
+    let mut span_call = None;
+    let mut span_def = None;
     for tt in result.clone() {
-        match span {
-            None => span = Some(tt.span()),
-            Some(span) => assert_same_span(tt.span(), span),
+        match tt {
+            TokenTree::Ident(..) | TokenTree::Literal(..) => match span_def {
+                None => span_def = Some(tt.span()),
+                Some(span) => assert_same_span(tt.span(), span),
+            }
+            TokenTree::Punct(..) | TokenTree::Group(..) => match span_call {
+                None => span_call = Some(tt.span()),
+                Some(span) => assert_same_span(tt.span(), span),
+            }
         }
+
     }
 
     result

@@ -7,6 +7,9 @@ LL |         C => {}
 error[E0004]: non-exhaustive patterns: `&T` not covered
   --> $DIR/match_ice.rs:15:11
    |
+LL | struct T;
+   | --------- `T` defined here
+...
 LL |     match K {
    |           ^ pattern `&T` not covered
    |

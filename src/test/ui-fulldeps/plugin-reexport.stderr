@@ -1,14 +1,22 @@
 error[E0364]: `mac` is private, and cannot be re-exported
-  --> $DIR/plugin-reexport.rs:8:9
+  --> $DIR/plugin-reexport.rs:9:9
    |
 LL | pub use mac as reexport;
    |         ^^^^^^^^^^^^^^^
    |
 note: consider marking `mac` as `pub` in the imported module
-  --> $DIR/plugin-reexport.rs:8:9
+  --> $DIR/plugin-reexport.rs:9:9
    |
 LL | pub use mac as reexport;
    |         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/plugin-reexport.rs:6:1
+   |
+LL | #![plugin(attr_plugin_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
 
 error: aborting due to previous error
 

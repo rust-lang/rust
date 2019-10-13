@@ -1,4 +1,4 @@
-error[E0658]: compiler plugins are experimental and possibly buggy
+error[E0658]: compiler plugins are deprecated
   --> $DIR/feature-gate-plugin.rs:3:1
    |
 LL | #![plugin(foo)]
@@ -6,6 +6,14 @@ LL | #![plugin(foo)]
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29597
    = help: add `#![feature(plugin)]` to the crate attributes to enable
+
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/feature-gate-plugin.rs:3:1
+   |
+LL | #![plugin(foo)]
+   | ^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
 
 error: aborting due to previous error
 

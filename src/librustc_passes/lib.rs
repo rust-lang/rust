@@ -8,27 +8,32 @@
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(bind_by_move_pattern_guards)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
 
 use rustc::ty::query::Providers;
 
-mod error_codes;
+pub mod error_codes;
 
 pub mod ast_validation;
-pub mod rvalue_promotion;
 pub mod hir_stats;
 pub mod layout_test;
 pub mod loops;
-
-__build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
+pub mod dead;
+pub mod entry;
+mod liveness;
+mod intrinsicck;
 
 pub fn provide(providers: &mut Providers<'_>) {
-    rvalue_promotion::provide(providers);
+    entry::provide(providers);
     loops::provide(providers);
+    liveness::provide(providers);
+    intrinsicck::provide(providers);
 }

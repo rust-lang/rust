@@ -3,7 +3,7 @@
 // edition:2018
 
 trait T {
-    fn foo(i32); //~ expected one of `:` or `@`, found `)`
+    fn foo(i32); //~ expected one of `:`, `@`, or `|`, found `)`
 
     fn bar_with_default_impl(String, String) {}
     //~^ ERROR expected one of `:`

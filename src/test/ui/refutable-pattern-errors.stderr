@@ -1,14 +1,14 @@
 error[E0005]: refutable pattern in function argument: `(_, _)` not covered
-  --> $DIR/refutable-pattern-errors.rs:1:9
+  --> $DIR/refutable-pattern-errors.rs:3:9
    |
 LL | fn func((1, (Some(1), 2..=3)): (isize, (Option<isize>, isize))) { }
    |         ^^^^^^^^^^^^^^^^^^^^^ pattern `(_, _)` not covered
 
-error[E0005]: refutable pattern in local binding: `(std::i32::MIN..=0i32, _)` not covered
-  --> $DIR/refutable-pattern-errors.rs:5:9
+error[E0005]: refutable pattern in local binding: `(std::i32::MIN..=0i32, _)` and `(2i32..=std::i32::MAX, _)` not covered
+  --> $DIR/refutable-pattern-errors.rs:7:9
    |
 LL |     let (1, (Some(1), 2..=3)) = (1, (None, 2));
-   |         ^^^^^^^^^^^^^^^^^^^^^ pattern `(std::i32::MIN..=0i32, _)` not covered
+   |         ^^^^^^^^^^^^^^^^^^^^^ patterns `(std::i32::MIN..=0i32, _)` and `(2i32..=std::i32::MAX, _)` not covered
 
 error: aborting due to 2 previous errors
 

@@ -3,7 +3,7 @@
 
 use super::StringReader;
 use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION, symbol::kw};
+use syntax_pos::{BytePos, Pos, Span, symbol::kw};
 use crate::parse::token;
 
 #[rustfmt::skip] // for line breaks
@@ -343,7 +343,7 @@ crate fn check_for_substitution<'a>(
         None => return None,
     };
 
-    let span = Span::new(pos, pos + Pos::from_usize(ch.len_utf8()), NO_EXPANSION);
+    let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 
     let (ascii_name, token) = match ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) {
         Some((_ascii_char, ascii_name, token)) => (ascii_name, token),
@@ -362,10 +362,9 @@ crate fn check_for_substitution<'a>(
             ascii_char, ascii_name
         );
         err.span_suggestion(
-            Span::new(
+            Span::with_root_ctxt(
                 pos,
                 pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),
-                NO_EXPANSION,
             ),
             &msg,
             format!("\"{}\"", s),

@@ -24,3 +24,5 @@ where
             .map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
     }
 }
+
+fn main() {}

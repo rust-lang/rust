@@ -3,7 +3,6 @@
 // run-pass
 
 #![allow(unused_variables)]
-#![feature(async_await)]
 
 // Test that the drop order for parameters in a fn and async fn matches up. Also test that
 // parameters (used or unused) are not dropped until the async fn completes execution.

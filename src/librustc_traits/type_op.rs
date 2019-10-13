@@ -13,7 +13,7 @@ use rustc::traits::{
     Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt,
 };
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{Kind, Subst, UserSubsts, UserSelfTy};
+use rustc::ty::subst::{GenericArg, Subst, UserSubsts, UserSelfTy};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
@@ -98,7 +98,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         self.infcx.tcx
     }
 
-    fn subst<T>(&self, value: T, substs: &[Kind<'tcx>]) -> T
+    fn subst<T>(&self, value: T, substs: &[GenericArg<'tcx>]) -> T
     where
         T: TypeFoldable<'tcx>,
     {

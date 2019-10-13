@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:262:13
+  --> $DIR/borrowck-describe-lvalue.rs:258:13
    |
 LL |             let y = &mut x;
    |                     ------ first mutable borrow occurs here
@@ -9,7 +9,7 @@ LL |             *y = 1;
    |             ------ first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:272:20
+  --> $DIR/borrowck-describe-lvalue.rs:268:20
    |
 LL |                    let y = &mut x;
    |                            ------ first mutable borrow occurs here
@@ -19,7 +19,7 @@ LL |                    *y = 1;
    |                    ------ first borrow later used here
 
 error: captured variable cannot escape `FnMut` closure body
-  --> $DIR/borrowck-describe-lvalue.rs:270:16
+  --> $DIR/borrowck-describe-lvalue.rs:266:16
    |
 LL |              || {
    |               - inferred to be a `FnMut` closure
@@ -295,7 +295,7 @@ LL |         drop(x);
    |              - mutable borrow later used here
 
 error[E0503]: cannot use `*v` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:240:9
+  --> $DIR/borrowck-describe-lvalue.rs:236:9
    |
 LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
@@ -306,7 +306,7 @@ LL |         drop(x);
    |              - borrow later used here
 
 error[E0503]: cannot use `v[_].y` because it was mutably borrowed
-  --> $DIR/borrowck-describe-lvalue.rs:240:9
+  --> $DIR/borrowck-describe-lvalue.rs:236:9
    |
 LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
@@ -317,7 +317,7 @@ LL |         drop(x);
    |              - borrow later used here
 
 error[E0502]: cannot borrow `v[..].x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:251:24
+  --> $DIR/borrowck-describe-lvalue.rs:247:24
    |
 LL |         let x = &mut v;
    |                 ------ mutable borrow occurs here
@@ -328,7 +328,7 @@ LL |             &[_, F {x: ref xf, ..}] => println!("{}", xf),
 LL |         drop(x);
    |              - mutable borrow later used here
 
-warning[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:210:29
    |
 LL |             let x = &mut block;
@@ -338,13 +338,9 @@ LL |             let p: &'a u8 = &*block.current;
 ...
 LL |             drop(x);
    |                  - mutable borrow later used here
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
-warning[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-describe-lvalue.rs:227:33
+error[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-describe-lvalue.rs:225:33
    |
 LL |             let x = &mut block;
    |                     ---------- mutable borrow occurs here
@@ -353,13 +349,9 @@ LL |             let p : *const u8 = &*(*block).current;
 ...
 LL |             drop(x);
    |                  - mutable borrow later used here
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-describe-lvalue.rs:282:22
+  --> $DIR/borrowck-describe-lvalue.rs:278:22
    |
 LL |                 drop(x);
    |                      - value moved here
@@ -368,7 +360,7 @@ LL |                 drop(x);
    |
    = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
-error: aborting due to 30 previous errors
+error: aborting due to 32 previous errors
 
 Some errors have detailed explanations: E0382, E0499, E0502, E0503.
 For more information about an error, try `rustc --explain E0382`.

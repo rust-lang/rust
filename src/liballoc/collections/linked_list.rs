@@ -276,7 +276,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         LinkedList {
             head: None,
             tail: None,
@@ -1196,6 +1196,19 @@ impl<T: Ord> Ord for LinkedList<T> {
 impl<T: Clone> Clone for LinkedList<T> {
     fn clone(&self) -> Self {
         self.iter().cloned().collect()
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        let mut iter_other = other.iter();
+        if self.len() > other.len() {
+            self.split_off(other.len());
+        }
+        for (elem, elem_other) in self.iter_mut().zip(&mut iter_other) {
+            elem.clone_from(elem_other);
+        }
+        if !iter_other.is_empty() {
+            self.extend(iter_other.cloned());
+        }
     }
 }
 

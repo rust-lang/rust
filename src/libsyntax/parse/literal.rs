@@ -104,7 +104,7 @@ impl LitKind {
 
         Ok(match kind {
             token::Bool => {
-                assert!(symbol == kw::True || symbol == kw::False);
+                assert!(symbol.is_bool_lit());
                 LitKind::Bool(symbol == kw::True)
             }
             token::Byte => return unescape_byte(&symbol.as_str())
@@ -255,19 +255,19 @@ impl LitKind {
 impl Lit {
     /// Converts literal token into an AST literal.
     fn from_lit_token(token: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token, node: LitKind::from_lit_token(token)?, span })
+        Ok(Lit { token, kind: LitKind::from_lit_token(token)?, span })
     }
 
     /// Converts arbitrary token into an AST literal.
     crate fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.kind {
-            token::Ident(name, false) if name == kw::True || name == kw::False =>
+            token::Ident(name, false) if name.is_bool_lit() =>
                 token::Lit::new(token::Bool, name, None),
             token::Literal(lit) =>
                 lit,
             token::Interpolated(ref nt) => {
                 if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
-                    if let ast::ExprKind::Lit(lit) = &expr.node {
+                    if let ast::ExprKind::Lit(lit) = &expr.kind {
                         return Ok(lit.clone());
                     }
                 }
@@ -282,8 +282,8 @@ impl Lit {
     /// Attempts to recover an AST literal from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(node: LitKind, span: Span) -> Lit {
-        Lit { token: node.to_lit_token(), node, span }
+    pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
+        Lit { token: kind.to_lit_token(), kind, span }
     }
 
     /// Losslessly convert an AST literal into a token stream.

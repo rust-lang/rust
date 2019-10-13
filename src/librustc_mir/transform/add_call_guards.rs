@@ -1,6 +1,6 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use crate::transform::{MirPass, MirSource};
 
 #[derive(PartialEq)]
@@ -30,8 +30,8 @@ pub use self::AddCallGuards::*;
  *
  */
 
-impl MirPass for AddCallGuards {
-    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for AddCallGuards {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         self.add_call_guards(body);
     }
 }

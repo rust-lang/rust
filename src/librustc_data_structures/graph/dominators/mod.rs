@@ -4,7 +4,7 @@
 //! Rice Computer Science TS-06-33870
 //! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>
 
-use super::super::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 

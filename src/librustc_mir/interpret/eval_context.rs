@@ -9,12 +9,11 @@ use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
 };
-use rustc::ty::subst::{Subst, SubstsRef};
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::mir::interpret::{
-    ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, truncate, sign_extend,
 };
@@ -291,44 +290,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
     }
 
-    pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
-        &self,
-        substs: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
-                frame.instance.substs,
-                self.param_env,
-                &substs,
-            )),
-            None => if substs.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(substs)
-            },
-        }
-    }
-
-    pub(super) fn resolve(
-        &self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>
-    ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        trace!("resolve: {:?}, {:#?}", def_id, substs);
-        trace!("param_env: {:#?}", self.param_env);
-        let substs = self.subst_and_normalize_erasing_regions(substs)?;
-        trace!("substs: {:#?}", substs);
-        ty::Instance::resolve(
-            *self.tcx,
-            self.param_env,
-            def_id,
-            substs,
-        ).ok_or_else(|| err_inval!(TooGeneric).into())
-    }
-
     pub fn load_mir(
         &self,
         instance: ty::InstanceDef<'tcx>,
+        promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
@@ -338,7 +303,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         {
             throw_inval!(TypeckError)
         }
-        trace!("load mir {:?}", instance);
+        trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
+        if let Some(promoted) = promoted {
+            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+        }
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))
@@ -349,34 +317,34 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    /// Call this on things you got out of the MIR (so it is as generic as the current
+    /// stack frame), to bring it into the proper environment for this interpreter.
+    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        t: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
-            None => if t.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(t)
-            },
-        }
+        value: T,
+    ) -> T {
+        self.tcx.subst_and_normalize_erasing_regions(
+            self.frame().instance.substs,
+            self.param_env,
+            &value,
+        )
     }
 
-    fn monomorphize_with_substs<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
+    pub(super) fn resolve(
         &self,
-        t: T,
+        def_id: DefId,
         substs: SubstsRef<'tcx>
-    ) -> InterpResult<'tcx, T> {
-        // miri doesn't care about lifetimes, and will choke on some crazy ones
-        // let's simply get rid of them
-        let substituted = t.subst(*self.tcx, substs);
-
-        if substituted.needs_subst() {
-            throw_inval!(TooGeneric)
-        }
-
-        Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
+    ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
+        trace!("resolve: {:?}, {:#?}", def_id, substs);
+        trace!("param_env: {:#?}", self.param_env);
+        trace!("substs: {:#?}", substs);
+        ty::Instance::resolve(
+            *self.tcx,
+            self.param_env,
+            def_id,
+            substs,
+        ).ok_or_else(|| err_inval!(TooGeneric).into())
     }
 
     pub fn layout_of_local(
@@ -385,15 +353,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyLayout<'tcx>> {
-        match frame.locals[local].layout.get() {
+        // `const_prop` runs into this with an invalid (empty) frame, so we
+        // have to support that case (mostly by skipping all caching).
+        match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs)?;
+                    let local_ty = self.tcx.subst_and_normalize_erasing_regions(
+                        frame.instance.substs,
+                        self.param_env,
+                        &local_ty,
+                    );
                     self.layout_of(local_ty)
                 })?;
-                // Layouts of locals are requested a lot, so we cache them.
-                frame.locals[local].layout.set(Some(layout));
+                if let Some(state) = frame.locals.get(local) {
+                    // Layouts of locals are requested a lot, so we cache them.
+                    state.layout.set(Some(layout));
+                }
                 Ok(layout)
             }
             Some(layout) => Ok(layout),
@@ -411,7 +387,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
-        match layout.ty.sty {
+        match layout.ty.kind {
             ty::Adt(..) | ty::Tuple(..) => {
                 // First get the size of all statically known fields.
                 // Don't use type_of::sizing_type_of because that expects t to be sized,
@@ -465,27 +441,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Issue #27023: must add any necessary padding to `size`
                 // (to make it a multiple of `align`) before returning it.
-                //
-                // Namely, the returned size should be, in C notation:
-                //
-                //   `size + ((size & (align-1)) ? align : 0)`
-                //
-                // emulated via the semi-standard fast bit trick:
-                //
-                //   `(size + (align-1)) & -align`
+                let size = size.align_to(align);
 
-                Ok(Some((size.align_to(align), align)))
+                // Check if this brought us over the size limit.
+                if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
+                    throw_ub_format!("wide pointer metadata contains invalid information: \
+                        total size is bigger than largest supported object");
+                }
+                Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
                 let vtable = metadata.expect("dyn trait fat ptr must have vtable");
-                // the second entry in the vtable is the dynamic size of the object.
+                // Read size and align from vtable (already checks size).
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
                 let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
                 let elem = layout.field(self, 0)?;
-                Ok(Some((elem.size * len, elem.align.abi)))
+
+                // Make sure the slice is not too big.
+                let size = elem.size.checked_mul(len, &*self.tcx)
+                    .ok_or_else(|| err_ub_format!("invalid slice: \
+                        total size is bigger than largest supported object"))?;
+                Ok(Some((size, elem.align.abi)))
             }
 
             ty::Foreign(_) => {
@@ -692,14 +671,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Our result will later be validated anyway, and there seems no good reason
         // to have to fail early here.  This is also more consistent with
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
-        let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
-            match err {
-                ErrorHandled::Reported =>
-                    err_inval!(ReferencedConstant),
-                ErrorHandled::TooGeneric =>
-                    err_inval!(TooGeneric),
-            }
-        })?;
+        let val = self.tcx.const_eval_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 

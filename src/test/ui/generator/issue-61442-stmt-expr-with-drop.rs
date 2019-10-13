@@ -4,7 +4,7 @@
 // check-pass
 // edition:2018
 
-#![feature(async_await, generators, generator_trait)]
+#![feature(generators, generator_trait)]
 
 use std::ops::Generator;
 

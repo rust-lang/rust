@@ -66,9 +66,9 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
         self.infcx.create_next_universe()
     }
 
-    fn next_existential_region_var(&mut self) -> ty::Region<'tcx> {
+    fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
         if let Some(_) = &mut self.borrowck_context {
-            let origin = NLLRegionVariableOrigin::Existential;
+            let origin = NLLRegionVariableOrigin::Existential { from_forall };
             self.infcx.next_nll_region_var(origin)
         } else {
             self.infcx.tcx.lifetimes.re_erased
@@ -88,7 +88,9 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
         self.infcx
-            .next_nll_region_var_in_universe(NLLRegionVariableOrigin::Existential, universe)
+            .next_nll_region_var_in_universe(NLLRegionVariableOrigin::Existential {
+                from_forall: false
+            }, universe)
     }
 
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {

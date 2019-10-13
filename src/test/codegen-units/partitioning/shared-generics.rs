@@ -1,4 +1,5 @@
 // ignore-tidy-linelength
+// no-prefer-dynamic
 // compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe
 
 #![crate_type="rlib"]

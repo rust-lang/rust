@@ -1,6 +1,5 @@
-// We want to be able to build this crate with a stable compiler, so feature
-// flags should be optional.
-#![cfg_attr(not(feature = "unicode-xid"), feature(unicode_internals))]
+// We want to be able to build this crate with a stable compiler, so no
+// `#![feature]` attributes should be added.
 
 mod cursor;
 pub mod unescape;
@@ -23,9 +22,6 @@ pub enum TokenKind {
     Lifetime { starts_with_number: bool },
     Semi,
     Comma,
-    DotDotDot,
-    DotDotEq,
-    DotDot,
     Dot,
     OpenParen,
     CloseParen,
@@ -37,41 +33,19 @@ pub enum TokenKind {
     Pound,
     Tilde,
     Question,
-    ColonColon,
     Colon,
     Dollar,
-    EqEq,
     Eq,
-    FatArrow,
-    Ne,
     Not,
-    Le,
-    LArrow,
     Lt,
-    ShlEq,
-    Shl,
-    Ge,
     Gt,
-    ShrEq,
-    Shr,
-    RArrow,
     Minus,
-    MinusEq,
     And,
-    AndAnd,
-    AndEq,
     Or,
-    OrOr,
-    OrEq,
-    PlusEq,
     Plus,
-    StarEq,
     Star,
-    SlashEq,
     Slash,
-    CaretEq,
     Caret,
-    PercentEq,
     Percent,
     Unknown,
 }
@@ -128,6 +102,62 @@ pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
+// See [UAX #31](http://unicode.org/reports/tr31) for definitions of these
+// classes.
+
+/// True if `c` is considered a whitespace according to Rust language definition.
+pub fn is_whitespace(c: char) -> bool {
+    // This is Pattern_White_Space.
+    //
+    // Note that this set is stable (ie, it doesn't change with different
+    // Unicode versions), so it's ok to just hard-code the values.
+
+    match c {
+        // Usual ASCII suspects
+        | '\u{0009}' // \t
+        | '\u{000A}' // \n
+        | '\u{000B}' // vertical tab
+        | '\u{000C}' // form feed
+        | '\u{000D}' // \r
+        | '\u{0020}' // space
+
+        // NEXT LINE from latin1
+        | '\u{0085}'
+
+        // Bidi markers
+        | '\u{200E}' // LEFT-TO-RIGHT MARK
+        | '\u{200F}' // RIGHT-TO-LEFT MARK
+
+        // Dedicated whitespace characters from Unicode
+        | '\u{2028}' // LINE SEPARATOR
+        | '\u{2029}' // PARAGRAPH SEPARATOR
+            => true,
+        _ => false,
+    }
+}
+
+/// True if `c` is valid as a first character of an identifier.
+pub fn is_id_start(c: char) -> bool {
+    // This is XID_Start OR '_' (which formally is not a XID_Start).
+    // We also add fast-path for ascii idents
+    ('a' <= c && c <= 'z')
+        || ('A' <= c && c <= 'Z')
+        || c == '_'
+        || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_start(c))
+}
+
+/// True if `c` is valid as a non-first character of an identifier.
+pub fn is_id_continue(c: char) -> bool {
+    // This is exactly XID_Continue.
+    // We also add fast-path for ascii idents
+    ('a' <= c && c <= 'z')
+        || ('A' <= c && c <= 'Z')
+        || ('0' <= c && c <= '9')
+        || c == '_'
+        || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_continue(c))
+}
+
+
 impl Cursor<'_> {
     fn advance_token(&mut self) -> Token {
         let first_char = self.bump().unwrap();
@@ -135,17 +165,11 @@ impl Cursor<'_> {
             '/' => match self.nth_char(0) {
                 '/' => self.line_comment(),
                 '*' => self.block_comment(),
-                _ => {
-                    if self.eat_assign() {
-                        SlashEq
-                    } else {
-                        Slash
-                    }
-                }
+                _ => Slash,
             },
-            c if character_properties::is_whitespace(c) => self.whitespace(),
+            c if is_whitespace(c) => self.whitespace(),
             'r' => match (self.nth_char(0), self.nth_char(1)) {
-                ('#', c1) if character_properties::is_id_start(c1) => self.raw_ident(),
+                ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
                     let (n_hashes, started, terminated) = self.raw_double_quoted_string();
                     let suffix_start = self.len_consumed();
@@ -190,7 +214,7 @@ impl Cursor<'_> {
                 }
                 _ => self.ident(),
             },
-            c if character_properties::is_id_start(c) => self.ident(),
+            c if is_id_start(c) => self.ident(),
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
                 let suffix_start = self.len_consumed();
@@ -199,22 +223,7 @@ impl Cursor<'_> {
             }
             ';' => Semi,
             ',' => Comma,
-            '.' => {
-                if self.nth_char(0) == '.' {
-                    self.bump();
-                    if self.nth_char(0) == '.' {
-                        self.bump();
-                        DotDotDot
-                    } else if self.nth_char(0) == '=' {
-                        self.bump();
-                        DotDotEq
-                    } else {
-                        DotDot
-                    }
-                } else {
-                    Dot
-                }
-            }
+            '.' => Dot,
             '(' => OpenParen,
             ')' => CloseParen,
             '{' => OpenBrace,
@@ -225,112 +234,19 @@ impl Cursor<'_> {
             '#' => Pound,
             '~' => Tilde,
             '?' => Question,
-            ':' => {
-                if self.nth_char(0) == ':' {
-                    self.bump();
-                    ColonColon
-                } else {
-                    Colon
-                }
-            }
+            ':' => Colon,
             '$' => Dollar,
-            '=' => {
-                if self.nth_char(0) == '=' {
-                    self.bump();
-                    EqEq
-                } else if self.nth_char(0) == '>' {
-                    self.bump();
-                    FatArrow
-                } else {
-                    Eq
-                }
-            }
-            '!' => {
-                if self.nth_char(0) == '=' {
-                    self.bump();
-                    Ne
-                } else {
-                    Not
-                }
-            }
-            '<' => match self.nth_char(0) {
-                '=' => {
-                    self.bump();
-                    Le
-                }
-                '<' => {
-                    self.bump();
-                    if self.eat_assign() { ShlEq } else { Shl }
-                }
-                '-' => {
-                    self.bump();
-                    LArrow
-                }
-                _ => Lt,
-            },
-            '>' => match self.nth_char(0) {
-                '=' => {
-                    self.bump();
-                    Ge
-                }
-                '>' => {
-                    self.bump();
-                    if self.eat_assign() { ShrEq } else { Shr }
-                }
-                _ => Gt,
-            },
-            '-' => {
-                if self.nth_char(0) == '>' {
-                    self.bump();
-                    RArrow
-                } else {
-                    if self.eat_assign() { MinusEq } else { Minus }
-                }
-            }
-            '&' => {
-                if self.nth_char(0) == '&' {
-                    self.bump();
-                    AndAnd
-                } else {
-                    if self.eat_assign() { AndEq } else { And }
-                }
-            }
-            '|' => {
-                if self.nth_char(0) == '|' {
-                    self.bump();
-                    OrOr
-                } else {
-                    if self.eat_assign() { OrEq } else { Or }
-                }
-            }
-            '+' => {
-                if self.eat_assign() {
-                    PlusEq
-                } else {
-                    Plus
-                }
-            }
-            '*' => {
-                if self.eat_assign() {
-                    StarEq
-                } else {
-                    Star
-                }
-            }
-            '^' => {
-                if self.eat_assign() {
-                    CaretEq
-                } else {
-                    Caret
-                }
-            }
-            '%' => {
-                if self.eat_assign() {
-                    PercentEq
-                } else {
-                    Percent
-                }
-            }
+            '=' => Eq,
+            '!' => Not,
+            '<' => Lt,
+            '>' => Gt,
+            '-' => Minus,
+            '&' => And,
+            '|' => Or,
+            '+' => Plus,
+            '*' => Star,
+            '^' => Caret,
+            '%' => Percent,
             '\'' => self.lifetime_or_char(),
             '"' => {
                 let terminated = self.double_quoted_string();
@@ -352,7 +268,6 @@ impl Cursor<'_> {
         loop {
             match self.nth_char(0) {
                 '\n' => break,
-                '\r' if self.nth_char(1) == '\n' => break,
                 EOF_CHAR if self.is_eof() => break,
                 _ => {
                     self.bump();
@@ -387,8 +302,8 @@ impl Cursor<'_> {
     }
 
     fn whitespace(&mut self) -> TokenKind {
-        debug_assert!(character_properties::is_whitespace(self.prev()));
-        while character_properties::is_whitespace(self.nth_char(0)) {
+        debug_assert!(is_whitespace(self.prev()));
+        while is_whitespace(self.nth_char(0)) {
             self.bump();
         }
         Whitespace
@@ -398,19 +313,19 @@ impl Cursor<'_> {
         debug_assert!(
             self.prev() == 'r'
                 && self.nth_char(0) == '#'
-                && character_properties::is_id_start(self.nth_char(1))
+                && is_id_start(self.nth_char(1))
         );
         self.bump();
         self.bump();
-        while character_properties::is_id_continue(self.nth_char(0)) {
+        while is_id_continue(self.nth_char(0)) {
             self.bump();
         }
         RawIdent
     }
 
     fn ident(&mut self) -> TokenKind {
-        debug_assert!(character_properties::is_id_start(self.prev()));
-        while character_properties::is_id_continue(self.nth_char(0)) {
+        debug_assert!(is_id_start(self.prev()));
+        while is_id_continue(self.nth_char(0)) {
             self.bump();
         }
         Ident
@@ -455,7 +370,7 @@ impl Cursor<'_> {
             // integer literal followed by field/method access or a range pattern
             // (`0..2` and `12.foo()`)
             '.' if self.nth_char(1) != '.'
-                && !character_properties::is_id_start(self.nth_char(1)) =>
+                && !is_id_start(self.nth_char(1)) =>
             {
                 // might have stuff after the ., and if it does, it needs to start
                 // with a number
@@ -485,7 +400,7 @@ impl Cursor<'_> {
     fn lifetime_or_char(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '\'');
         let mut starts_with_number = false;
-        if (character_properties::is_id_start(self.nth_char(0))
+        if (is_id_start(self.nth_char(0))
             || self.nth_char(0).is_digit(10) && {
                 starts_with_number = true;
                 true
@@ -493,7 +408,7 @@ impl Cursor<'_> {
             && self.nth_char(1) != '\''
         {
             self.bump();
-            while character_properties::is_id_continue(self.nth_char(0)) {
+            while is_id_continue(self.nth_char(0)) {
                 self.bump();
             }
 
@@ -525,7 +440,6 @@ impl Cursor<'_> {
             match self.nth_char(0) {
                 '/' if !first => break,
                 '\n' if self.nth_char(1) != '\'' => break,
-                '\r' if self.nth_char(1) == '\n' => break,
                 EOF_CHAR if self.is_eof() => break,
                 '\'' => {
                     self.bump();
@@ -636,75 +550,13 @@ impl Cursor<'_> {
     }
 
     fn eat_literal_suffix(&mut self) {
-        if !character_properties::is_id_start(self.nth_char(0)) {
+        if !is_id_start(self.nth_char(0)) {
             return;
         }
         self.bump();
 
-        while character_properties::is_id_continue(self.nth_char(0)) {
+        while is_id_continue(self.nth_char(0)) {
             self.bump();
         }
-    }
-
-    fn eat_assign(&mut self) -> bool {
-        if self.nth_char(0) == '=' {
-            self.bump();
-            true
-        } else {
-            false
-        }
-    }
-}
-
-pub mod character_properties {
-    // this is Pattern_White_Space
-    #[cfg(feature = "unicode-xid")]
-    pub fn is_whitespace(c: char) -> bool {
-        match c {
-            '\u{0009}' | '\u{000A}' | '\u{000B}' | '\u{000C}' | '\u{000D}' | '\u{0020}'
-            | '\u{0085}' | '\u{200E}' | '\u{200F}' | '\u{2028}' | '\u{2029}' => true,
-            _ => false,
-        }
-    }
-
-    #[cfg(not(feature = "unicode-xid"))]
-    pub fn is_whitespace(c: char) -> bool {
-        core::unicode::property::Pattern_White_Space(c)
-    }
-
-    // this is XID_Start OR '_' (which formally is not a XID_Start)
-    #[cfg(feature = "unicode-xid")]
-    pub fn is_id_start(c: char) -> bool {
-        ('a' <= c && c <= 'z')
-            || ('A' <= c && c <= 'Z')
-            || c == '_'
-            || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_start(c))
-    }
-
-    #[cfg(not(feature = "unicode-xid"))]
-    pub fn is_id_start(c: char) -> bool {
-        ('a' <= c && c <= 'z')
-            || ('A' <= c && c <= 'Z')
-            || c == '_'
-            || (c > '\x7f' && c.is_xid_start())
-    }
-
-    // this is XID_Continue
-    #[cfg(feature = "unicode-xid")]
-    pub fn is_id_continue(c: char) -> bool {
-        ('a' <= c && c <= 'z')
-            || ('A' <= c && c <= 'Z')
-            || ('0' <= c && c <= '9')
-            || c == '_'
-            || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_continue(c))
-    }
-
-    #[cfg(not(feature = "unicode-xid"))]
-    pub fn is_id_continue(c: char) -> bool {
-        ('a' <= c && c <= 'z')
-            || ('A' <= c && c <= 'Z')
-            || ('0' <= c && c <= '9')
-            || c == '_'
-            || (c > '\x7f' && c.is_xid_continue())
     }
 }

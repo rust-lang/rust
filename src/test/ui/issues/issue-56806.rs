@@ -1,7 +1,6 @@
 pub trait Trait {
     fn dyn_instead_of_self(self: Box<dyn Trait>);
-    //~^ ERROR invalid method receiver type: std::boxed::Box<(dyn Trait + 'static)>
+    //~^ ERROR invalid `self` parameter type
 }
 
-pub fn main() {
-}
+pub fn main() {}

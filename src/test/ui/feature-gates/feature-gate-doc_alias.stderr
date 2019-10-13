@@ -1,4 +1,4 @@
-error[E0658]: `#[doc(alias = "...")]` is experimental
+error[E0658]: `#[doc(alias)]` is experimental
   --> $DIR/feature-gate-doc_alias.rs:1:1
    |
 LL | #[doc(alias = "foo")]

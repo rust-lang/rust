@@ -4,7 +4,7 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
-use rustc::hir::{self, ImplPolarity};
+use rustc::hir;
 use rustc::traits::{
     Clause,
     Clauses,
@@ -295,7 +295,7 @@ fn program_clauses_for_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
 }
 
 fn program_clauses_for_impl(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
-    if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
+    if let ty::ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return List::empty();
     }
 

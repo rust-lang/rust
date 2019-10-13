@@ -2,7 +2,6 @@
 // compile-flags: --cfg something
 
 #![deny(unused_mut)]
-#![feature(param_attrs)]
 
 extern "C" {
     fn ffi(

@@ -1,8 +1,17 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/issue-15778-fail.rs:6:1
+   |
+LL | #![plugin(lint_for_crate)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 error: crate is not marked with #![crate_okay]
   --> $DIR/issue-15778-fail.rs:5:1
    |
 LL | / #![feature(plugin)]
 LL | | #![plugin(lint_for_crate)]
+LL | |
 LL | |
 LL | | pub fn main() { }
    | |_________________^

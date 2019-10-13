@@ -1,0 +1,15 @@
+error: unexpected `(` after qualified path
+  --> $DIR/vec-macro-in-pattern.rs:5:14
+   |
+LL |         Some(vec![_x]) => (),
+   |              ^^^^^^^^
+   |              |
+   |              unexpected `(` after qualified path
+   |              in this macro invocation
+   |              help: use a slice pattern here instead: `[_x]`
+   |
+   = help: for more information, see https://doc.rust-lang.org/edition-guide/rust-2018/slice-patterns.html
+   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+

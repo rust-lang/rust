@@ -1,20 +1,20 @@
-error[E0268]: `continue` outside of loop
+error[E0268]: `continue` outside of a loop
   --> $DIR/closure-array-break-length.rs:2:13
    |
 LL |     |_: [_; continue]| {};
-   |             ^^^^^^^^ cannot break outside of a loop
+   |             ^^^^^^^^ cannot `continue` outside of a loop
 
-error[E0268]: `continue` outside of loop
+error[E0268]: `continue` outside of a loop
   --> $DIR/closure-array-break-length.rs:4:19
    |
 LL |     while |_: [_; continue]| {} {}
-   |                   ^^^^^^^^ cannot break outside of a loop
+   |                   ^^^^^^^^ cannot `continue` outside of a loop
 
-error[E0268]: `break` outside of loop
+error[E0268]: `break` outside of a loop
   --> $DIR/closure-array-break-length.rs:7:19
    |
 LL |     while |_: [_; break]| {} {}
-   |                   ^^^^^ cannot break outside of a loop
+   |                   ^^^^^ cannot `break` outside of a loop
 
 error[E0308]: mismatched types
   --> $DIR/closure-array-break-length.rs:4:11

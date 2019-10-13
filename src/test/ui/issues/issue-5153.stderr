@@ -2,7 +2,7 @@ error[E0599]: no method named `foo` found for type `&dyn Foo` in the current sco
   --> $DIR/issue-5153.rs:10:27
    |
 LL |     (&5isize as &dyn Foo).foo();
-   |                           ^^^
+   |                           ^^^ method not found in `&dyn Foo`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `foo`, perhaps you need to implement it:

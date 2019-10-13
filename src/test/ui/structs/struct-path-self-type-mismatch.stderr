@@ -12,6 +12,8 @@ LL |             inner: u
    |
    = note: expected type `T`
               found type `U`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0308]: mismatched types
   --> $DIR/struct-path-self-type-mismatch.rs:13:9
@@ -27,6 +29,8 @@ LL | |         }
    |
    = note: expected type `Foo<U>`
               found type `Foo<T>`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error: aborting due to 3 previous errors
 

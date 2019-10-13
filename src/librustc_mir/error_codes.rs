@@ -1,4 +1,4 @@
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 
 E0001: r##"
@@ -155,81 +155,6 @@ match x {
 ```
 
 See also the error E0303.
-"##,
-
-E0008: r##"
-Names bound in match arms retain their type in pattern guards. As such, if a
-name is bound by move in a pattern, it should also be moved to wherever it is
-referenced in the pattern guard code. Doing so however would prevent the name
-from being available in the body of the match arm. Consider the following:
-
-```compile_fail,E0008
-match Some("hi".to_string()) {
-    Some(s) if s.len() == 0 => {}, // use s.
-    _ => {},
-}
-```
-
-The variable `s` has type `String`, and its use in the guard is as a variable of
-type `String`. The guard code effectively executes in a separate scope to the
-body of the arm, so the value would be moved into this anonymous scope and
-therefore becomes unavailable in the body of the arm.
-
-The problem above can be solved by using the `ref` keyword.
-
-```
-match Some("hi".to_string()) {
-    Some(ref s) if s.len() == 0 => {},
-    _ => {},
-}
-```
-
-Though this example seems innocuous and easy to solve, the problem becomes clear
-when it encounters functions which consume the value:
-
-```compile_fail,E0008
-struct A{}
-
-impl A {
-    fn consume(self) -> usize {
-        0
-    }
-}
-
-fn main() {
-    let a = Some(A{});
-    match a {
-        Some(y) if y.consume() > 0 => {}
-        _ => {}
-    }
-}
-```
-
-In this situation, even the `ref` keyword cannot solve it, since borrowed
-content cannot be moved. This problem cannot be solved generally. If the value
-can be cloned, here is a not-so-specific solution:
-
-```
-#[derive(Clone)]
-struct A{}
-
-impl A {
-    fn consume(self) -> usize {
-        0
-    }
-}
-
-fn main() {
-    let a = Some(A{});
-    match a{
-        Some(ref y) if y.clone().consume() > 0 => {}
-        _ => {}
-    }
-}
-```
-
-If the value will be consumed in the pattern guard, using its clone will not
-move its ownership, so the code works.
 "##,
 
 E0009: r##"
@@ -475,13 +400,15 @@ for item in xs {
 "##,
 
 E0301: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Mutable borrows are not allowed in pattern guards, because matching cannot have
 side effects. Side effects could alter the matched object or the environment
 on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if mutable
 borrows were allowed:
 
-```compile_fail,E0301
+```compile_fail,E0596
 match Some(()) {
     None => { },
     option if option.take().is_none() => {
@@ -493,13 +420,15 @@ match Some(()) {
 "##,
 
 E0302: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Assignments are not allowed in pattern guards, because matching cannot have
 side effects. Side effects could alter the matched object or the environment
 on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if assignments
 were allowed:
 
-```compile_fail,E0302
+```compile_fail,E0594
 match Some(()) {
     None => { },
     option if { option = None; false } => { },
@@ -748,7 +677,7 @@ It is not allowed to use or capture an uninitialized variable. For example:
 ```compile_fail,E0381
 fn main() {
     let x: i32;
-    let y = x; // error, use of possibly uninitialized variable
+    let y = x; // error, use of possibly-uninitialized variable
 }
 ```
 
@@ -1024,7 +953,7 @@ https://doc.rust-lang.org/std/cell/
 "##,
 
 E0388: r##"
-E0388 was removed and is no longer issued.
+#### Note: this error code is no longer emitted by the compiler.
 "##,
 
 E0389: r##"
@@ -1197,6 +1126,51 @@ static B: &'static NotThreadSafe<usize> = &A; // ok!
 
 Remember this solution is unsafe! You will have to ensure that accesses to the
 cell are synchronized.
+"##,
+
+E0493: r##"
+A type with a `Drop` implementation was destructured when trying to initialize
+a static item.
+
+Erroneous code example:
+
+```compile_fail,E0493
+enum DropType {
+    A,
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {}
+}
+
+struct Foo {
+    field1: DropType,
+}
+
+static FOO: Foo = Foo { ..Foo { field1: DropType::A } }; // error!
+```
+
+The problem here is that if the given type or one of its fields implements the
+`Drop` trait, this `Drop` implementation cannot be called during the static
+type initialization which might cause a memory leak. To prevent this issue,
+you need to instantiate all the static type's fields by hand.
+
+```
+enum DropType {
+    A,
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {}
+}
+
+struct Foo {
+    field1: DropType,
+}
+
+static FOO: Foo = Foo { field1: DropType::A }; // We initialize all fields
+                                               // by hand.
+```
 "##,
 
 E0499: r##"
@@ -1717,7 +1691,14 @@ fn print_fancy_ref(fancy_ref: &FancyNum){
 "##,
 
 E0507: r##"
-You tried to move out of a value which was borrowed. Erroneous code example:
+You tried to move out of a value which was borrowed.
+
+This can also happen when using a type implementing `Fn` or `FnMut`, as neither
+allows moving out of them (they usually represent closures which can be called
+more than once). Much of the text following applies equally well to non-`FnOnce`
+closure bodies.
+
+Erroneous code example:
 
 ```compile_fail,E0507
 use std::cell::RefCell;
@@ -1989,7 +1970,6 @@ When matching on a variable it cannot be mutated in the match guards, as this
 could cause the match to be non-exhaustive:
 
 ```compile_fail,E0510
-#![feature(bind_by_move_pattern_guards)]
 let mut x = Some(0);
 match x {
     None => (),
@@ -2054,6 +2034,69 @@ fn get_integer() -> i32 {
 fn get_owned_iterator() -> IntoIter<i32> {
     let v = vec![1, 2, 3];
     v.into_iter()
+}
+```
+"##,
+
+E0524: r##"
+A variable which requires unique access is being used in more than one closure
+at the same time.
+
+Erroneous code example:
+
+```compile_fail,E0524
+fn set(x: &mut isize) {
+    *x += 4;
+}
+
+fn dragoooon(x: &mut isize) {
+    let mut c1 = || set(x);
+    let mut c2 = || set(x); // error!
+
+    c2();
+    c1();
+}
+```
+
+To solve this issue, multiple solutions are available. First, is it required
+for this variable to be used in more than one closure at a time? If it is the
+case, use reference counted types such as `Rc` (or `Arc` if it runs
+concurrently):
+
+```
+use std::rc::Rc;
+use std::cell::RefCell;
+
+fn set(x: &mut isize) {
+    *x += 4;
+}
+
+fn dragoooon(x: &mut isize) {
+    let x = Rc::new(RefCell::new(x));
+    let y = Rc::clone(&x);
+    let mut c1 = || { let mut x2 = x.borrow_mut(); set(&mut x2); };
+    let mut c2 = || { let mut x2 = y.borrow_mut(); set(&mut x2); }; // ok!
+
+    c2();
+    c1();
+}
+```
+
+If not, just run closures one at a time:
+
+```
+fn set(x: &mut isize) {
+    *x += 4;
+}
+
+fn dragoooon(x: &mut isize) {
+    { // This block isn't necessary since non-lexical lifetimes, it's just to
+      // make it more clear.
+        let mut c1 = || set(&mut *x);
+        c1();
+    } // `c1` has been dropped here so we're free to use `x` again!
+    let mut c2 = || set(&mut *x);
+    c2();
 }
 ```
 "##,
@@ -2448,16 +2491,15 @@ information.
 
 There are some known bugs that trigger this message.
 "##,
-}
 
-register_diagnostics! {
+;
+
+//  E0008, // cannot bind by-move into a pattern guard
 //  E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)
 //  E0385, // {} in an aliasable location
-    E0493, // destructors cannot be evaluated at compile-time
     E0521, // borrowed data escapes outside of closure
-    E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}
 //  E0598, // lifetime of {} is too short to guarantee its contents can be...

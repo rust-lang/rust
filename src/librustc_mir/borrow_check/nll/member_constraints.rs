@@ -2,7 +2,7 @@ use crate::rustc::ty::{self, Ty};
 use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::MemberConstraint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use std::hash::Hash;
 use std::ops::Index;
 use syntax_pos::Span;
@@ -51,7 +51,7 @@ crate struct NllMemberConstraint<'tcx> {
     end_index: usize,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     crate struct NllMemberConstraintIndex {
         DEBUG_FORMAT = "MemberConstraintIndex({})"
     }

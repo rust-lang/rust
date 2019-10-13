@@ -28,14 +28,14 @@ impl WaitTimeoutResult {
     /// once the boolean has been updated and notified.
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     /// use std::time::Duration;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = pair.clone();
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///
     ///     // Let's wait 20 milliseconds before notifying the condvar.

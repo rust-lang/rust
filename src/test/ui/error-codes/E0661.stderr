@@ -4,5 +4,12 @@ error[E0661]: output operand constraint lacks '=' or '+'
 LL |     asm!("nop" : "r"(a));
    |                  ^^^
 
-error: aborting due to previous error
+error[E0282]: type annotations needed
+  --> $DIR/E0661.rs:6:9
+   |
+LL |     let a;
+   |         ^ consider giving `a` a type
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

@@ -25,6 +25,16 @@ macro_rules! arena_types {
             [] adt_def: rustc::ty::AdtDef,
             [] steal_mir: rustc::ty::steal::Steal<rustc::mir::Body<$tcx>>,
             [] mir: rustc::mir::Body<$tcx>,
+            [] steal_promoted: rustc::ty::steal::Steal<
+                rustc_index::vec::IndexVec<
+                    rustc::mir::Promoted,
+                    rustc::mir::Body<$tcx>
+                >
+            >,
+            [] promoted: rustc_index::vec::IndexVec<
+                rustc::mir::Promoted,
+                rustc::mir::Body<$tcx>
+            >,
             [] tables: rustc::ty::TypeckTables<$tcx>,
             [] const_allocs: rustc::mir::interpret::Allocation,
             [] vtable_method: Option<(
@@ -35,7 +45,7 @@ macro_rules! arena_types {
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,
             [] region_scope_tree: rustc::middle::region::ScopeTree,
             [] item_local_set: rustc::util::nodemap::ItemLocalSet,
-            [decode] mir_const_qualif: rustc_data_structures::bit_set::BitSet<rustc::mir::Local>,
+            [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
             [] dropck_outlives:
                 rustc::infer::canonical::Canonical<'tcx,
@@ -76,7 +86,6 @@ macro_rules! arena_types {
                     rustc::infer::canonical::QueryResponse<'tcx, rustc::ty::Ty<'tcx>>
                 >,
             [few] crate_inherent_impls: rustc::ty::CrateInherentImpls,
-            [decode] borrowck: rustc::middle::borrowck::BorrowCheckResult,
             [few] upstream_monomorphizations:
                 rustc::util::nodemap::DefIdMap<
                     rustc_data_structures::fx::FxHashMap<
@@ -84,6 +93,10 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
+            [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
+                syntax::symbol::Symbol,
+                rustc::hir::def_id::DefId,
+            >,
             [few] resolve_lifetimes: rustc::middle::resolve_lifetime::ResolveLifetimes,
             [decode] generic_predicates: rustc::ty::GenericPredicates<'tcx>,
             [few] lint_levels: rustc::lint::LintLevelMap,
@@ -173,7 +186,7 @@ impl<T: Copy> ArenaAllocatable for T {}
 
 unsafe trait ArenaField<'tcx>: Sized {
     /// Returns a specific arena to allocate from.
-    /// If None is returned, the DropArena will be used.
+    /// If `None` is returned, the `DropArena` will be used.
     fn arena<'a>(arena: &'a Arena<'tcx>) -> Option<&'a TypedArena<Self>>;
 }
 

@@ -1,5 +1,4 @@
 use crate::io;
-use crate::sys::{ReadSysCall, WriteSysCall};
 
 pub struct Stdin;
 pub struct Stdout;
@@ -12,8 +11,8 @@ impl Stdin {
 }
 
 impl io::Read for Stdin {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        Ok(ReadSysCall::perform(0, buf))
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        Ok(0)
     }
 }
 
@@ -25,7 +24,6 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        WriteSysCall::perform(1, buf);
         Ok(buf.len())
     }
 
@@ -42,7 +40,6 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        WriteSysCall::perform(2, buf);
         Ok(buf.len())
     }
 
@@ -57,10 +54,6 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
     true
 }
 
-pub fn panic_output() -> Option<impl io::Write> {
-    if cfg!(feature = "wasm_syscall") {
-        Stderr::new().ok()
-    } else {
-        None
-    }
+pub fn panic_output() -> Option<Vec<u8>> {
+    None
 }

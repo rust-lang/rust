@@ -122,7 +122,6 @@ pub struct Config {
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
-    pub wasm_syscall: bool,
 
     // misc
     pub low_priority: bool,
@@ -138,7 +137,7 @@ pub struct Config {
     pub sysconfdir: Option<PathBuf>,
     pub datadir: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
-    pub bindir: Option<PathBuf>,
+    pub bindir: PathBuf,
     pub libdir: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
@@ -318,7 +317,6 @@ struct Rust {
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     codegen_backends_dir: Option<String>,
-    wasm_syscall: Option<bool>,
     lld: Option<bool>,
     lldb: Option<bool>,
     llvm_tools: Option<bool>,
@@ -402,6 +400,7 @@ impl Config {
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
+        config.bindir = "bin".into(); // default
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
@@ -484,7 +483,7 @@ impl Config {
             config.sysconfdir = install.sysconfdir.clone().map(PathBuf::from);
             config.datadir = install.datadir.clone().map(PathBuf::from);
             config.docdir = install.docdir.clone().map(PathBuf::from);
-            config.bindir = install.bindir.clone().map(PathBuf::from);
+            set(&mut config.bindir, install.bindir.clone().map(PathBuf::from));
             config.libdir = install.libdir.clone().map(PathBuf::from);
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
@@ -558,7 +557,6 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
-            set(&mut config.wasm_syscall, rust.wasm_syscall);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);

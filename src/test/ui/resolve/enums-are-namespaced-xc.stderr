@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `A` in module `namespaced_enums`
+error[E0425]: cannot find value `A` in crate `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:5:31
    |
 LL |     let _ = namespaced_enums::A;
@@ -8,7 +8,7 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use namespaced_enums::Foo::A;
    |
 
-error[E0425]: cannot find function `B` in module `namespaced_enums`
+error[E0425]: cannot find function `B` in crate `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:7:31
    |
 LL |     let _ = namespaced_enums::B(10);
@@ -18,7 +18,7 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use namespaced_enums::Foo::B;
    |
 
-error[E0422]: cannot find struct, variant or union type `C` in module `namespaced_enums`
+error[E0422]: cannot find struct, variant or union type `C` in crate `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:9:31
    |
 LL |     let _ = namespaced_enums::C { a: 10 };

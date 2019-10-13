@@ -4,4 +4,5 @@
 fn main() {
     (|| Box::new(*(&[0][..])))();
     //~^ ERROR the size for values of type
+    //~| ERROR the size for values of type
 }

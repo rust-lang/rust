@@ -94,9 +94,9 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_arg(&mut self, arg: &'v hir::Arg) {
-        self.record("Arg", Id::Node(arg.hir_id), arg);
-        hir_visit::walk_arg(self, arg)
+    fn visit_param(&mut self, param: &'v hir::Param) {
+        self.record("Param", Id::Node(param.hir_id), param);
+        hir_visit::walk_param(self, param)
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'v> {
@@ -334,12 +334,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_struct_field(self, s)
     }
 
-    fn visit_variant(&mut self,
-                     v: &'v ast::Variant,
-                     g: &'v ast::Generics,
-                     item_id: NodeId) {
+    fn visit_variant(&mut self, v: &'v ast::Variant) {
         self.record("Variant", Id::None, v);
-        ast_visit::walk_variant(self, v, g, item_id)
+        ast_visit::walk_variant(self, v)
     }
 
     fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {

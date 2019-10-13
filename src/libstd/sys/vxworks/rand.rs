@@ -14,17 +14,24 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 mod imp {
     use libc;
     use crate::io;
-
-    extern "C" {
-        fn randBytes (randBuf: *mut libc::c_uchar,
-                      numOfBytes: libc::c_int) -> libc::c_int;
-    }
+    use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
     pub fn fill_bytes(v: &mut [u8]) {
+        static RNG_INIT: AtomicBool = AtomicBool::new(false);
+        while !RNG_INIT.load(Relaxed) {
+            let ret = unsafe { libc::randSecure() };
+            if ret < 0 {
+                panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
+            } else if ret > 0 {
+                RNG_INIT.store(true, Relaxed);
+                break;
+            }
+            unsafe { libc::usleep(10) };
+        }
         let ret = unsafe {
-            randBytes(v.as_mut_ptr() as *mut libc::c_uchar, v.len() as libc::c_int)
+            libc::randABytes(v.as_mut_ptr() as *mut libc::c_uchar, v.len() as libc::c_int)
         };
-        if ret == -1 {
+        if ret < 0 {
             panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
         }
     }

@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/type-annotations-needed-expr.rs:2:39
+   |
+LL |     let _ = (vec![1,2,3]).into_iter().sum() as f64;
+   |                                       ^^^ cannot infer type for `S`
+   |
+   = note: type must be known at this point
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

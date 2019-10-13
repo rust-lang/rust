@@ -16,7 +16,7 @@ LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-warning[E0716]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/min_const_fn_dyn.rs:12:67
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
@@ -24,12 +24,8 @@ LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
    |                                                                  ||
    |                                                                  |creates a temporary which is freed while still in use
    |                                                                  cast requires that borrow lasts for `'static`
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0716, E0723.
 For more information about an error, try `rustc --explain E0716`.

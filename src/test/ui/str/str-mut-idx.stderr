@@ -1,16 +1,14 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-mut-idx.rs:4:15
    |
+LL | fn bot<T>() -> T { loop {} }
+   |    --- - required by this bound in `bot`
+...
 LL |     s[1..2] = bot();
    |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-note: required by `bot`
-  --> $DIR/str-mut-idx.rs:1:1
-   |
-LL | fn bot<T>() -> T { loop {} }
-   | ^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-mut-idx.rs:4:5
@@ -32,20 +30,20 @@ LL |     s[1usize] = bot();
    = note: required because of the requirements on the impl of `std::ops::Index<usize>` for `str`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
-  --> $DIR/str-mut-idx.rs:9:7
+  --> $DIR/str-mut-idx.rs:9:15
    |
 LL |     s.get_mut(1);
-   |       ^^^^^^^ string indices are ranges of `usize`
+   |               ^ string indices are ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
-  --> $DIR/str-mut-idx.rs:11:7
+  --> $DIR/str-mut-idx.rs:11:25
    |
 LL |     s.get_unchecked_mut(1);
-   |       ^^^^^^^^^^^^^^^^^ string indices are ranges of `usize`
+   |                         ^ string indices are ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`

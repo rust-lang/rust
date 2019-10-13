@@ -14,7 +14,7 @@ LL |         Vec::panic!();
    |         ^^^ ambiguous name
    |
    = note: `Vec` could refer to a struct from prelude
-note: `Vec` could also refer to the extern crate imported here
+note: `Vec` could also refer to the crate imported here
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:5:9
    |
 LL |         extern crate std as Vec;

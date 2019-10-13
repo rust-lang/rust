@@ -368,15 +368,17 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// make a difference in release builds (where a loop that has no side-effects
 /// is easily detected and eliminated), but is often a big win for debug builds.
 ///
-/// Note that `ptr::drop_in_place` already performs this check, so if your workload
-/// can be reduced to some small number of drop_in_place calls, using this is
-/// unnecessary. In particular note that you can drop_in_place a slice, and that
+/// Note that [`drop_in_place`] already performs this check, so if your workload
+/// can be reduced to some small number of [`drop_in_place`] calls, using this is
+/// unnecessary. In particular note that you can [`drop_in_place`] a slice, and that
 /// will do a single needs_drop check for all the values.
 ///
 /// Types like Vec therefore just `drop_in_place(&mut self[..])` without using
-/// needs_drop explicitly. Types like `HashMap`, on the other hand, have to drop
+/// `needs_drop` explicitly. Types like [`HashMap`], on the other hand, have to drop
 /// values one at a time and should use this API.
 ///
+/// [`drop_in_place`]: ../ptr/fn.drop_in_place.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
 ///
 /// # Examples
 ///
@@ -445,15 +447,19 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// *Incorrect* usage of this function: initializing a reference with zero.
 ///
-/// ```no_run
+/// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem;
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub unsafe fn zeroed<T>() -> T {
-    MaybeUninit::zeroed().assume_init()
+    intrinsics::panic_if_uninhabited::<T>();
+    intrinsics::init()
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -477,8 +483,11 @@ pub unsafe fn zeroed<T>() -> T {
 #[inline]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+#[allow(deprecated)]
 pub unsafe fn uninitialized<T>() -> T {
-    MaybeUninit::uninit().assume_init()
+    intrinsics::panic_if_uninhabited::<T>();
+    intrinsics::uninit()
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
@@ -511,8 +520,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
-/// #![feature(mem_take)]
-///
 /// use std::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
@@ -543,8 +550,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// #![feature(mem_take)]
-///
 /// use std::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
@@ -563,7 +568,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 #[inline]
-#[unstable(feature = "mem_take", issue = "61129")]
+#[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
     replace(dest, T::default())
 }
@@ -811,9 +816,9 @@ impl<T> fmt::Debug for Discriminant<T> {
 ///
 /// enum Foo { A(&'static str), B(i32), C(i32) }
 ///
-/// assert!(mem::discriminant(&Foo::A("bar")) == mem::discriminant(&Foo::A("baz")));
-/// assert!(mem::discriminant(&Foo::B(1))     == mem::discriminant(&Foo::B(2)));
-/// assert!(mem::discriminant(&Foo::B(3))     != mem::discriminant(&Foo::C(3)));
+/// assert_eq!(mem::discriminant(&Foo::A("bar")), mem::discriminant(&Foo::A("baz")));
+/// assert_eq!(mem::discriminant(&Foo::B(1)), mem::discriminant(&Foo::B(2)));
+/// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {

@@ -41,6 +41,7 @@ pub mod extdeps;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
+pub mod error_codes_check;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
@@ -53,6 +54,9 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rls",
         "src/tools/rust-installer",
         "src/tools/rustfmt",
+
+        // Filter RLS output directories
+        "target/rls",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

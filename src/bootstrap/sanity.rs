@@ -202,10 +202,6 @@ pub fn check(build: &mut Build) {
                         panic!("couldn't find libc.a in musl dir: {}",
                                root.join("lib").display());
                     }
-                    if fs::metadata(root.join("lib/libunwind.a")).is_err() {
-                        panic!("couldn't find libunwind.a in musl dir: {}",
-                               root.join("lib").display());
-                    }
                 }
                 None => {
                     panic!("when targeting MUSL either the rust.musl-root \

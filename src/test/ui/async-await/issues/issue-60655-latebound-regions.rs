@@ -3,7 +3,6 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
-#![feature(async_await)]
 #![feature(type_alias_impl_trait)]
 
 use std::future::Future;

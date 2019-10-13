@@ -410,7 +410,7 @@ impl<'a> Parser<'a> {
         &self.input[start..self.input.len()]
     }
 
-    /// Parses an Argument structure, or what's contained within braces inside the format string
+    /// Parses an `Argument` structure, or what's contained within braces inside the format string.
     fn argument(&mut self) -> Argument<'a> {
         let pos = self.position();
         let format = self.format();
@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a format specifier at the current position, returning all of the
-    /// relevant information in the FormatSpec struct.
+    /// relevant information in the `FormatSpec` struct.
     fn format(&mut self) -> FormatSpec<'a> {
         let mut spec = FormatSpec {
             fill: None,
@@ -571,7 +571,7 @@ impl<'a> Parser<'a> {
         spec
     }
 
-    /// Parses a Count parameter at the current position. This does not check
+    /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
     fn count(&mut self, start: usize) -> (Count, Option<InnerSpan>) {
@@ -597,12 +597,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a word starting at the current position. A word is considered to
-    /// be an alphabetic character followed by any number of alphanumeric
-    /// characters.
+    /// Parses a word starting at the current position. A word is the same as
+    /// Rust identifier, except that it can't start with `_` character.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.peek() {
-            Some(&(pos, c)) if c.is_xid_start() => {
+            Some(&(pos, c)) if c != '_' && rustc_lexer::is_id_start(c) => {
                 self.cur.next();
                 pos
             }
@@ -611,7 +610,7 @@ impl<'a> Parser<'a> {
             }
         };
         while let Some(&(pos, c)) = self.cur.peek() {
-            if c.is_xid_continue() {
+            if rustc_lexer::is_id_continue(c) {
                 self.cur.next();
             } else {
                 return &self.input[start..pos];

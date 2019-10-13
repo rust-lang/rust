@@ -1,8 +1,0 @@
-error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:4:15
-   |
-LL |         1 | 2 || 3 => (),
-   |               ^^ help: use a single `|` to specify multiple patterns: `|`
-
-error: aborting due to previous error
-

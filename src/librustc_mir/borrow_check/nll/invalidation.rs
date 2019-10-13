@@ -66,7 +66,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
         self.check_activations(location);
 
         match statement.kind {
-            StatementKind::Assign(ref lhs, ref rhs) => {
+            StatementKind::Assign(box(ref lhs, ref rhs)) => {
                 self.consume_rvalue(
                     location,
                     rhs,

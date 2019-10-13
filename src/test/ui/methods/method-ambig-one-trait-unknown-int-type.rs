@@ -15,7 +15,7 @@ impl Foo for Vec<isize> {
 }
 
 // This is very hokey: we have heuristics to suppress messages about
-// type annotations required. But placing these two bits of code into
+// type annotations needed. But placing these two bits of code into
 // distinct functions, in this order, causes us to print out both
 // errors I'd like to see.
 

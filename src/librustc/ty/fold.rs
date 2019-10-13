@@ -39,8 +39,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use crate::util::nodemap::FxHashSet;
 
-/// The TypeFoldable trait is implemented for every type that can be folded.
-/// Basically, every type that has a corresponding method in TypeFolder.
+/// This trait is implemented for every type that can be folded.
+/// Basically, every type that has a corresponding method in `TypeFolder`.
 ///
 /// To implement this conveniently, use the
 /// `BraceStructTypeFoldableImpl` etc macros found in `macros.rs`.
@@ -84,9 +84,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn has_param_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PARAMS)
-    }
-    fn has_self_ty(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_SELF)
     }
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
@@ -475,7 +472,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.sty {
+        match t.kind {
             ty::Bound(debruijn, bound_ty) => {
                 if debruijn == self.current_index {
                     let fld_t = &mut self.fld_t;
@@ -779,7 +776,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.sty {
+        match ty.kind {
             ty::Bound(debruijn, bound_ty) => {
                 if self.amount == 0 || debruijn < self.current_index {
                     ty
@@ -914,13 +911,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 
     fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
-        if let ty::Const {
-            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, _)),
-            ..
-        } = *ct {
-            debruijn >= self.outer_index
-        } else {
-            false
+        // we don't have a `visit_infer_const` callback, so we have to
+        // hook in here to catch this case (annoying...), but
+        // otherwise we do want to remember to visit the rest of the
+        // const, as it has types/regions embedded in a lot of other
+        // places.
+        match ct.val {
+            ConstValue::Infer(ty::InferConst::Canonical(debruijn, _))
+                if debruijn >= self.outer_index => true,
+            _ => ct.super_visit_with(self),
         }
     }
 }
@@ -988,7 +987,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            match t.sty {
+            match t.kind {
                 ty::Projection(..) | ty::Opaque(..) => { return false; }
                 _ => { }
             }

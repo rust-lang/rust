@@ -29,8 +29,8 @@ use crate::util::def_use::DefUseAnalysis;
 
 pub struct CopyPropagation;
 
-impl MirPass for CopyPropagation {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for CopyPropagation {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
@@ -94,11 +94,13 @@ impl MirPass for CopyPropagation {
                     // That use of the source must be an assignment.
                     match statement.kind {
                         StatementKind::Assign(
-                            Place {
-                                base: PlaceBase::Local(local),
-                                projection: None,
-                            },
-                            box Rvalue::Use(ref operand)
+                            box(
+                                Place {
+                                    base: PlaceBase::Local(local),
+                                    projection: box [],
+                                },
+                                Rvalue::Use(ref operand)
+                            )
                         ) if local == dest_local => {
                             let maybe_action = match *operand {
                                 Operand::Copy(ref src_place) |
@@ -148,24 +150,28 @@ fn eliminate_self_assignments(
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match stmt.kind {
                     StatementKind::Assign(
-                        Place {
-                            base: PlaceBase::Local(local),
-                            projection: None,
-                        },
-                        box Rvalue::Use(Operand::Copy(Place {
-                            base: PlaceBase::Local(src_local),
-                            projection: None,
-                        })),
+                        box(
+                            Place {
+                                base: PlaceBase::Local(local),
+                                projection: box [],
+                            },
+                            Rvalue::Use(Operand::Copy(Place {
+                                base: PlaceBase::Local(src_local),
+                                projection: box [],
+                            })),
+                        )
                     ) |
                     StatementKind::Assign(
-                        Place {
-                            base: PlaceBase::Local(local),
-                            projection: None,
-                        },
-                        box Rvalue::Use(Operand::Move(Place {
-                            base: PlaceBase::Local(src_local),
-                            projection: None,
-                        })),
+                        box(
+                            Place {
+                                base: PlaceBase::Local(local),
+                                projection: box [],
+                            },
+                            Rvalue::Use(Operand::Move(Place {
+                                base: PlaceBase::Local(src_local),
+                                projection: box [],
+                            })),
+                        )
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
                         continue;
@@ -194,7 +200,7 @@ impl<'tcx> Action<'tcx> {
         // The source must be a local.
         let src_local = if let Place {
             base: PlaceBase::Local(local),
-            projection: None,
+            projection: box [],
         } = *src_place {
             local
         } else {
@@ -351,11 +357,11 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         match *operand {
             Operand::Copy(Place {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: box [],
             }) |
             Operand::Move(Place {
                 base: PlaceBase::Local(local),
-                projection: None,
+                projection: box [],
             }) if local == self.dest_local => {}
             _ => return,
         }

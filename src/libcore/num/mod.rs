@@ -252,7 +252,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline]
+            #[inline(always)]
             #[rustc_promotable]
             pub const fn min_value() -> Self {
                 !0 ^ ((!0 as $UnsignedT) >> 1) as Self
@@ -271,7 +271,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline]
+            #[inline(always)]
             #[rustc_promotable]
             pub const fn max_value() -> Self {
                 !Self::min_value()
@@ -938,7 +938,9 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
 assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
-"::max_value());",
+"::max_value());
+assert_eq!(", stringify!($SelfT), "::min_value().saturating_add(-1), ", stringify!($SelfT),
+"::min_value());",
 $EndFeature, "
 ```"),
 
@@ -952,7 +954,6 @@ $EndFeature, "
             }
         }
 
-
         doc_comment! {
             concat!("Saturating integer subtraction. Computes `self - rhs`, saturating at the
 numeric bounds instead of overflowing.
@@ -964,7 +965,9 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
 assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
-"::min_value());",
+"::min_value());
+assert_eq!(", stringify!($SelfT), "::max_value().saturating_sub(-1), ", stringify!($SelfT),
+"::max_value());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1112,7 +1115,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+                intrinsics::wrapping_add(self, rhs)
             }
         }
 
@@ -1135,7 +1138,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+                intrinsics::wrapping_sub(self, rhs)
             }
         }
 
@@ -1157,7 +1160,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
-                intrinsics::overflowing_mul(self, rhs)
+                intrinsics::wrapping_mul(self, rhs)
             }
         }
 
@@ -1383,12 +1386,17 @@ $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
-            pub fn wrapping_abs(self) -> Self {
-                if self.is_negative() {
-                    self.wrapping_neg()
-                } else {
-                    self
-                }
+            pub const fn wrapping_abs(self) -> Self {
+                // sign is -1 (all ones) for negative numbers, 0 otherwise.
+                let sign = self >> ($BITS - 1);
+                // For positive self, sign == 0 so the expression is simply
+                // (self ^ 0).wrapping_sub(0) == self == abs(self).
+                //
+                // For negative self, self ^ sign == self ^ all_ones.
+                // But all_ones ^ self == all_ones - self == -1 - self.
+                // So for negative numbers, (self ^ sign).wrapping_sub(sign) is
+                // (-1 - self).wrapping_sub(-1) == -self == abs(self).
+                (self ^ sign).wrapping_sub(sign)
             }
         }
 
@@ -1746,12 +1754,8 @@ $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
-            pub fn overflowing_abs(self) -> (Self, bool) {
-                if self.is_negative() {
-                    self.overflowing_neg()
-                } else {
-                    (self, false)
-                }
+            pub const fn overflowing_abs(self) -> (Self, bool) {
+                (self.wrapping_abs(), self == Self::min_value())
             }
         }
 
@@ -1955,15 +1959,25 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn abs(self) -> Self {
-                if self.is_negative() {
-                    // Note that the #[inline] above means that the overflow
-                    // semantics of this negation depend on the crate we're being
-                    // inlined into.
-                    -self
-                } else {
-                    self
-                }
+            pub const fn abs(self) -> Self {
+                // Note that the #[inline] above means that the overflow
+                // semantics of the subtraction depend on the crate we're being
+                // inlined into.
+
+                // sign is -1 (all ones) for negative numbers, 0 otherwise.
+                let sign = self >> ($BITS - 1);
+                // For positive self, sign == 0 so the expression is simply
+                // (self ^ 0) - 0 == self == abs(self).
+                //
+                // For negative self, self ^ sign == self ^ all_ones.
+                // But all_ones ^ self == all_ones - self == -1 - self.
+                // So for negative numbers, (self ^ sign) - sign is
+                // (-1 - self) - -1 == -self == abs(self).
+                //
+                // The subtraction overflows when self is min_value(), because
+                // (-1 - min_value()) - -1 is max_value() - -1 which overflows.
+                // This is exactly when we want self.abs() to overflow.
+                (self ^ sign) - sign
             }
         }
 
@@ -2086,11 +2100,14 @@ $to_xe_bytes_doc,
 
 ```
 let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();
-assert_eq!(bytes, if cfg!(target_endian = \"big\") {
+assert_eq!(
+    bytes,
+    if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
     } else {
         ", $le_bytes, "
-    });
+    }
+);
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -2182,10 +2199,10 @@ $from_xe_bytes_doc,
 
 ```
 let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {
-        ", $be_bytes, "
-    } else {
-        ", $le_bytes, "
-    });
+    ", $be_bytes, "
+} else {
+    ", $le_bytes, "
+});
 assert_eq!(value, ", $swap_op, ");
 ```
 
@@ -2294,7 +2311,7 @@ Basic usage:
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
-            #[inline]
+            #[inline(always)]
             pub const fn min_value() -> Self { 0 }
         }
 
@@ -2311,7 +2328,7 @@ stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
-            #[inline]
+            #[inline(always)]
             pub const fn max_value() -> Self { !0 }
         }
 
@@ -3031,7 +3048,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+                intrinsics::wrapping_add(self, rhs)
             }
         }
 
@@ -3053,7 +3070,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+                intrinsics::wrapping_sub(self, rhs)
             }
         }
 
@@ -3076,7 +3093,7 @@ $EndFeature, "
                           without modifying the original"]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
-            intrinsics::overflowing_mul(self, rhs)
+            intrinsics::wrapping_mul(self, rhs)
         }
 
         doc_comment! {
@@ -3887,11 +3904,14 @@ $to_xe_bytes_doc,
 
 ```
 let bytes = ", $swap_op, stringify!($SelfT), ".to_ne_bytes();
-assert_eq!(bytes, if cfg!(target_endian = \"big\") {
+assert_eq!(
+    bytes,
+    if cfg!(target_endian = \"big\") {
         ", $be_bytes, "
     } else {
         ", $le_bytes, "
-    });
+    }
+);
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -3983,10 +4003,10 @@ $from_xe_bytes_doc,
 
 ```
 let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"big\") {
-        ", $be_bytes, "
-    } else {
-        ", $le_bytes, "
-    });
+    ", $be_bytes, "
+} else {
+    ", $le_bytes, "
+});
 assert_eq!(value, ", $swap_op, ");
 ```
 

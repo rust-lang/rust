@@ -1597,7 +1597,8 @@ mod tests {
 
     // FIXME: re-enabled openbsd tests once their socket timeout code
     //        no longer has rounding errors.
-    #[cfg_attr(any(target_os = "netbsd", target_os = "openbsd"), ignore)]
+    // VxWorks ignores SO_SNDTIMEO.
+    #[cfg_attr(any(target_os = "netbsd", target_os = "openbsd", target_os = "vxworks"), ignore)]
     #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     #[test]
     fn timeouts() {

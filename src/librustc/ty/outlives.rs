@@ -60,16 +60,16 @@ impl<'tcx> TyCtxt<'tcx> {
         // with `collect()` because of the need to sometimes skip subtrees
         // in the `subtys` iterator (e.g., when encountering a
         // projection).
-        match ty.sty {
+        match ty.kind {
             ty::Closure(def_id, ref substs) => {
-                for upvar_ty in substs.upvar_tys(def_id, *self) {
+                for upvar_ty in substs.as_closure().upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
             }
 
             ty::Generator(def_id, ref substs, _) => {
                 // Same as the closure case
-                for upvar_ty in substs.upvar_tys(def_id, *self) {
+                for upvar_ty in substs.as_generator().upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
 

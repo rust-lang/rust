@@ -1,4 +1,4 @@
 fn main() {
-    let r#self;
+    let r#self: ();
     //~^ ERROR `self` cannot be a raw identifier
 }

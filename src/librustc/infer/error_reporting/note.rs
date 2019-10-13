@@ -138,7 +138,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                           sup: Region<'tcx>)
                                           -> DiagnosticBuilder<'tcx> {
         match origin {
-            infer::Subtype(trace) => {
+            infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err, "", sup, "...");
@@ -450,7 +450,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         // I can't think how to do better than this right now. -nikomatsakis
         match placeholder_origin {
-            infer::Subtype(trace) => {
+            infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsPlaceholderMismatch;
                 self.report_and_explain_type_error(trace, &terr)
             }

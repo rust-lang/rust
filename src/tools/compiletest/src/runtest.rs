@@ -2,6 +2,7 @@
 
 use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
@@ -288,6 +289,11 @@ enum ReadFrom {
     Stdin(String),
 }
 
+enum TestOutput {
+    Compile,
+    Run,
+}
+
 impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
@@ -318,6 +324,14 @@ impl<'test> TestCx<'test> {
 
     fn pass_mode(&self) -> Option<PassMode> {
         self.props.pass_mode(self.config)
+    }
+
+    fn should_run(&self) -> bool {
+        let pass_mode = self.pass_mode();
+        match self.config.mode {
+            Ui => pass_mode == Some(PassMode::Run) || pass_mode == Some(PassMode::RunFail),
+            mode => panic!("unimplemented for mode {:?}", mode),
+        }
     }
 
     fn should_run_successfully(&self) -> bool {
@@ -1528,7 +1542,7 @@ impl<'test> TestCx<'test> {
     fn compile_test(&self) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
         let will_execute = match self.config.mode {
-            Ui => self.should_run_successfully(),
+            Ui => self.should_run(),
             Incremental => self.revision.unwrap().starts_with("r"),
             RunFail | RunPassValgrind | MirOpt |
             DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb => true,
@@ -1551,7 +1565,11 @@ impl<'test> TestCx<'test> {
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                if !self.config.src_base.ends_with("rustdoc-ui") {
+                if !self.config.src_base.ends_with("rustdoc-ui") &&
+                    // Note that we don't call pass_mode() here as we don't want
+                    // to set unused to allow if we've overriden the pass mode
+                    // via command line flags.
+                    self.props.local_pass_mode() != Some(PassMode::Run) {
                     rustc.args(&["-A", "unused"]);
                 }
             }
@@ -1603,11 +1621,7 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags);
 
         if let Some(ref linker) = self.config.linker {
-            rustdoc
-                .arg("--linker")
-                .arg(linker)
-                .arg("-Z")
-                .arg("unstable-options");
+            rustdoc.arg(format!("-Clinker={}", linker));
         }
 
         self.compose_and_run_compiler(rustdoc, None)
@@ -1659,10 +1673,10 @@ impl<'test> TestCx<'test> {
             _ if self.config.target.contains("vxworks") => {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
-                let mut vx_run = Command::new("vx-run");
-                vx_run.args(&[&prog]).args(args).envs(env.clone());
+                let mut wr_run = Command::new("wr-run");
+                wr_run.args(&[&prog]).args(args).envs(env.clone());
                 self.compose_and_run(
-                    vx_run,
+                    wr_run,
                     self.config.run_lib_path.to_str().unwrap(),
                     Some(aux_dir.to_str().unwrap()),
                     None,
@@ -1725,6 +1739,21 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn is_vxworks_pure_static(&self) -> bool {
+        if self.config.target.contains("vxworks") {
+            match env::var("RUST_VXWORKS_TEST_DYLINK") {
+                Ok(s) => s != "1",
+                _ => true
+            }
+        } else {
+            false
+        }
+    }
+
+    fn is_vxworks_pure_dynamic(&self) -> bool {
+        self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
+    }
+
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
 
@@ -1768,6 +1797,7 @@ impl<'test> TestCx<'test> {
                     && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
+                || self.is_vxworks_pure_static()
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
@@ -1999,7 +2029,8 @@ impl<'test> TestCx<'test> {
         }
 
         if !is_rustdoc {
-            if self.config.target == "wasm32-unknown-unknown" {
+            if self.config.target == "wasm32-unknown-unknown"
+                || self.is_vxworks_pure_static() {
                 // rustc.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
                 rustc.args(&["-C", "prefer-dynamic"]);
@@ -2044,7 +2075,8 @@ impl<'test> TestCx<'test> {
         }
 
         // Use dynamic musl for tests because static doesn't allow creating dylibs
-        if self.config.host.contains("musl") {
+        if self.config.host.contains("musl")
+            || self.is_vxworks_pure_dynamic() {
             rustc.arg("-Ctarget-feature=-crt-static");
         }
 
@@ -2569,7 +2601,7 @@ impl<'test> TestCx<'test> {
                     "  actual:   {}",
                     codegen_units_to_str(&actual_item.codegen_units)
                 );
-                println!("");
+                println!();
             }
         }
 
@@ -2934,6 +2966,61 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn load_compare_outputs(&self, proc_res: &ProcRes,
+        output_kind: TestOutput, explicit_format: bool) -> usize {
+
+        let (stderr_kind, stdout_kind) = match output_kind {
+            TestOutput::Compile => (UI_STDERR, UI_STDOUT),
+            TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT)
+        };
+
+        let expected_stderr = self.load_expected_output(stderr_kind);
+        let expected_stdout = self.load_expected_output(stdout_kind);
+
+        let normalized_stdout = match output_kind {
+            TestOutput::Run if self.config.remote_test_client.is_some() => {
+                // When tests are run using the remote-test-client, the string
+                // 'uploaded "$TEST_BUILD_DIR/<test_executable>, waiting for result"'
+                // is printed to stdout by the client and then captured in the ProcRes,
+                // so it needs to be removed when comparing the run-pass test execution output
+                lazy_static! {
+                    static ref REMOTE_TEST_RE: Regex = Regex::new(
+                        "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-]+)+\", waiting for result\n"
+                    ).unwrap();
+                }
+                REMOTE_TEST_RE.replace(
+                    &self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout),
+                    ""
+                ).to_string()
+            }
+            _ => self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout)
+        };
+
+        let stderr = if explicit_format {
+            proc_res.stderr.clone()
+        } else {
+            json::extract_rendered(&proc_res.stderr)
+        };
+
+        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        let mut errors = 0;
+        match output_kind {
+            TestOutput::Compile => {
+                if !self.props.dont_check_compiler_stdout {
+                    errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+                }
+            }
+            TestOutput::Run => {
+                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+            }
+        }
+        errors
+    }
+
     fn run_ui_test(&self) {
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -2946,31 +3033,12 @@ impl<'test> TestCx<'test> {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
-        let expected_stderr = self.load_expected_output(UI_STDERR);
-        let expected_stdout = self.load_expected_output(UI_STDOUT);
         let expected_fixed = self.load_expected_output(UI_FIXED);
-
-        let normalized_stdout =
-            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
-
-        let stderr = if explicit {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
-
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
-
-        let mut errors = 0;
-        if !self.props.dont_check_compiler_stdout {
-            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        }
-        if !self.props.dont_check_compiler_stderr {
-            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
-        }
 
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
+
+        let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
@@ -3047,11 +3115,27 @@ impl<'test> TestCx<'test> {
 
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
 
-        if self.should_run_successfully() {
+        if self.should_run() {
             let proc_res = self.exec_compiled_test();
-
-            if !proc_res.status.success() {
-                self.fatal_proc_rec("test run failed!", &proc_res);
+            let run_output_errors = if self.props.check_run_results {
+                self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
+            } else {
+                0
+            };
+            if run_output_errors > 0 {
+                self.fatal_proc_rec(
+                    &format!("{} errors occured comparing run output.", run_output_errors),
+                    &proc_res,
+                );
+            }
+            if self.should_run_successfully() {
+                if !proc_res.status.success() {
+                    self.fatal_proc_rec("test run failed!", &proc_res);
+                }
+            } else {
+                if proc_res.status.success() {
+                    self.fatal_proc_rec("test run succeeded!", &proc_res);
+                }
             }
         }
 
@@ -3456,7 +3540,7 @@ impl<'test> TestCx<'test> {
                             }
                         }
                     }
-                    println!("");
+                    println!();
                 }
             }
         }

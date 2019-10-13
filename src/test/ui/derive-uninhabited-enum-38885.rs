@@ -5,12 +5,15 @@
 // when deriving Debug on an empty enum
 
 #[derive(Debug)]
-enum Void {} //~ WARN never used
+enum Void {}
 
 #[derive(Debug)]
-enum Foo { //~ WARN never used
+enum Foo {
     Bar(u8),
-    Void(Void),
+    Void(Void), //~ WARN never used
 }
 
-fn main() {}
+fn main() {
+    let x = Foo::Bar(42);
+    println!("{:?}", x);
+}

@@ -15,7 +15,7 @@ use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, D
     DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use rustc::ty::subst::{SubstsRef, UnpackedKind};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
 
 use crate::abi::Abi;
 use crate::common::CodegenCx;
@@ -26,13 +26,13 @@ use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
     VariableKind, FunctionDebugContextData, type_names};
 
 use libc::c_uint;
 use std::cell::RefCell;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
@@ -127,20 +127,20 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         if cx.sess().target.target.options.is_like_osx ||
            cx.sess().target.target.options.is_like_android {
             llvm::LLVMRustAddModuleFlag(cx.llmod,
-                                        "Dwarf Version\0".as_ptr() as *const _,
+                                        "Dwarf Version\0".as_ptr().cast(),
                                         2)
         }
 
         // Indicate that we want CodeView debug information on MSVC
         if cx.sess().target.target.options.is_like_msvc {
             llvm::LLVMRustAddModuleFlag(cx.llmod,
-                                        "CodeView\0".as_ptr() as *const _,
+                                        "CodeView\0".as_ptr().cast(),
                                         1)
         }
 
         // Prevent bitcode readers from deleting the debug info.
         let ptr = "Debug Info Version\0".as_ptr();
-        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr as *const _,
+        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr.cast(),
                                     llvm::LLVMRustDebugMetadataVersion());
     };
 }
@@ -224,8 +224,37 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
-    fn set_value_name(&mut self, value: &'ll Value, name: &str) {
-        let cname = SmallCStr::new(name);
+    fn set_var_name(&mut self, value: &'ll Value, name: impl ToString) {
+        // Avoid wasting time if LLVM value names aren't even enabled.
+        if self.sess().fewer_names() {
+            return;
+        }
+
+        // Only function parameters and instructions are local to a function,
+        // don't change the name of anything else (e.g. globals).
+        let param_or_inst = unsafe {
+            llvm::LLVMIsAArgument(value).is_some() ||
+            llvm::LLVMIsAInstruction(value).is_some()
+        };
+        if !param_or_inst {
+            return;
+        }
+
+        let old_name = unsafe {
+            CStr::from_ptr(llvm::LLVMGetValueName(value))
+        };
+        match old_name.to_str() {
+            Ok("") => {}
+            Ok(_) => {
+                // Avoid replacing the name if it already exists.
+                // While we could combine the names somehow, it'd
+                // get noisy quick, and the usefulness is dubious.
+                return;
+            }
+            Err(_) => return,
+        }
+
+        let cname = CString::new(name.to_string()).unwrap();
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }
@@ -290,7 +319,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let scope_line = span_start(self, span).line;
 
         let function_name = CString::new(name).unwrap();
-        let linkage_name = SmallCStr::new(&linkage_name.as_str());
+        let linkage_name = SmallCStr::new(&linkage_name.name.as_str());
 
         let mut flags = DIFlags::FlagPrototyped;
 
@@ -348,7 +377,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let mut signature = Vec::with_capacity(sig.inputs().len() + 1);
 
             // Return type -- llvm::DIBuilder wants this at index 0
-            signature.push(match sig.output().sty {
+            signature.push(match sig.output().kind {
                 ty::Tuple(ref tys) if tys.is_empty() => None,
                 _ => Some(type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP))
             });
@@ -372,7 +401,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 // This transformed type is wrong, but these function types are
                 // already inaccurate due to ABI adjustments (see #42800).
                 signature.extend(inputs.iter().map(|&t| {
-                    let t = match t.sty {
+                    let t = match t.kind {
                         ty::Array(ct, _)
                             if (ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() => {
                             cx.tcx.mk_imm_ptr(ct)
@@ -388,7 +417,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
 
             if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
-                if let ty::Tuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
+                if let ty::Tuple(args) = sig.inputs()[sig.inputs().len() - 1].kind {
                     signature.extend(
                         args.iter().map(|argument_type| {
                             Some(type_metadata(cx, argument_type.expect_ty(), syntax_pos::DUMMY_SP))
@@ -431,7 +460,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
                 let names = get_parameter_names(cx, generics);
                 substs.iter().zip(names).filter_map(|(kind, name)| {
-                    if let UnpackedKind::Type(ty) = kind.unpack() {
+                    if let GenericArgKind::Type(ty) = kind.unpack() {
                         let actual_type =
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_metadata =
@@ -487,7 +516,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
                     // Only "class" methods are generally understood by LLVM,
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
-                    match impl_self_ty.sty {
+                    match impl_self_ty.kind {
                         ty::Adt(def, ..) if !def.is_box() => {
                             Some(type_metadata(cx, impl_self_ty, syntax_pos::DUMMY_SP))
                         }

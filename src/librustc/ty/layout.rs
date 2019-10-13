@@ -1,5 +1,5 @@
 use crate::session::{self, DataTypeKind};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions, subst::SubstsRef};
 
 use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
@@ -15,17 +15,15 @@ use std::ops::Bound;
 use crate::hir;
 use crate::ich::StableHashingContext;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
-use crate::ty::GeneratorSubsts;
 use crate::ty::subst::Subst;
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_index::bit_set::BitSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::{IndexVec, Idx};
 
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
 use rustc_target::abi::call::{
-    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
+    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, PassMode, Reg, RegKind
 };
 
 pub trait IntegerExt {
@@ -127,6 +125,7 @@ impl IntegerExt for Integer {
 
 pub trait PrimitiveExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
 }
 
 impl PrimitiveExt for Primitive {
@@ -136,6 +135,16 @@ impl PrimitiveExt for Primitive {
             Float(FloatTy::F32) => tcx.types.f32,
             Float(FloatTy::F64) => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
+        }
+    }
+
+    /// Return an *integer* type matching this primitive.
+    /// Useful in particular when dealing with enum discriminants.
+    fn to_int_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match *self {
+            Int(i, signed) => i.to_ty(tcx, signed),
+            Pointer => tcx.types.usize,
+            Float(..) => bug!("floats do not have an int type"),
         }
     }
 }
@@ -273,14 +282,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                              repr: &ReprOptions,
                              kind: StructKind) -> Result<LayoutDetails, LayoutError<'tcx>> {
         let dl = self.data_layout();
-        let packed = repr.packed();
-        if packed && repr.align > 0 {
+        let pack = repr.pack;
+        if pack.is_some() && repr.align.is_some() {
             bug!("struct cannot be packed and aligned");
         }
 
-        let pack = Align::from_bytes(repr.pack as u64).unwrap();
-
-        let mut align = if packed {
+        let mut align = if pack.is_some() {
             dl.i8_align
         } else {
             dl.aggregate_align
@@ -303,7 +310,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             };
             let optimizing = &mut inverse_memory_index[..end];
             let field_align = |f: &TyLayout<'_>| {
-                if packed { f.align.abi.min(pack) } else { f.align.abi }
+                if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
             };
             match kind {
                 StructKind::AlwaysSized |
@@ -334,7 +341,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let mut largest_niche_available = 0;
 
         if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
-            let prefix_align = if packed {
+            let prefix_align = if let Some(pack) = pack {
                 prefix_align.min(pack)
             } else {
                 prefix_align
@@ -355,7 +362,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            let field_align = if packed {
+            let field_align = if let Some(pack) = pack {
                 field.align.min(AbiAndPrefAlign::new(pack))
             } else {
                 field.align
@@ -379,10 +386,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 .ok_or(LayoutError::SizeOverflow(ty))?;
         }
 
-        if repr.align > 0 {
-            let repr_align = repr.align as u64;
-            align = align.max(AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
-            debug!("univariant repr_align: {:?}", repr_align);
+        if let Some(repr_align) = repr.align {
+            align = align.max(AbiAndPrefAlign::new(repr_align));
         }
 
         debug!("univariant min_size: {:?}", offset);
@@ -513,7 +518,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
         debug_assert!(!ty.has_infer_types());
 
-        Ok(match ty.sty {
+        Ok(match ty.kind {
             // Basic scalars.
             ty::Bool => {
                 tcx.intern_layout(LayoutDetails::scalar(self, Scalar {
@@ -566,7 +571,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                let metadata = match unsized_part.sty {
+                let metadata = match unsized_part.kind {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                     }
@@ -665,10 +670,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(unit)
             }
 
-            ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, &substs)?,
+            ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, substs)?,
 
             ty::Closure(def_id, ref substs) => {
-                let tys = substs.upvar_tys(def_id, tcx);
+                let tys = substs.as_closure().upvar_tys(def_id, tcx);
                 univariant(&tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
                     StructKind::AlwaysSized)?
@@ -730,23 +735,18 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                 if def.is_union() {
-                    let packed = def.repr.packed();
-                    if packed && def.repr.align > 0 {
-                        bug!("Union cannot be packed and aligned");
+                    if def.repr.pack.is_some() && def.repr.align.is_some() {
+                        bug!("union cannot be packed and aligned");
                     }
 
-                    let pack = Align::from_bytes(def.repr.pack as u64).unwrap();
-
-                    let mut align = if packed {
+                    let mut align = if def.repr.pack.is_some() {
                         dl.i8_align
                     } else {
                         dl.aggregate_align
                     };
 
-                    if def.repr.align > 0 {
-                        let repr_align = def.repr.align as u64;
-                        align = align.max(
-                            AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
+                    if let Some(repr_align) = def.repr.align {
+                        align = align.max(AbiAndPrefAlign::new(repr_align));
                     }
 
                     let optimize = !def.repr.inhibit_union_abi_opt();
@@ -755,13 +755,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let index = VariantIdx::new(0);
                     for field in &variants[index] {
                         assert!(!field.is_unsized());
-
-                        let field_align = if packed {
-                            field.align.min(AbiAndPrefAlign::new(pack))
-                        } else {
-                            field.align
-                        };
-                        align = align.max(field_align);
+                        align = align.max(field.align);
 
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
@@ -794,6 +788,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
 
                         size = cmp::max(size, field.size);
+                    }
+
+                    if let Some(pack) = def.repr.pack {
+                        align = align.min(AbiAndPrefAlign::new(pack));
                     }
 
                     return Ok(tcx.intern_layout(LayoutDetails {
@@ -1407,12 +1405,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         &self,
         ty: Ty<'tcx>,
         def_id: hir::def_id::DefId,
-        substs: &GeneratorSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
 
-        let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs.substs) };
+        let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs) };
 
         let info = tcx.generator_layout(def_id);
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
@@ -1420,9 +1418,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.prefix_tys(def_id, tcx).count();
+        let discr_index = substs.as_generator().prefix_tys(def_id, tcx).count();
         // FIXME(eddyb) set the correct vaidity range for the discriminant.
-        let discr_layout = self.layout_of(substs.discr_ty(tcx))?;
+        let discr_layout = self.layout_of(substs.as_generator().discr_ty(tcx))?;
         let discr = match &discr_layout.abi {
             Abi::Scalar(s) => s.clone(),
             _ => bug!(),
@@ -1431,7 +1429,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .map(|local| subst_field(info.field_tys[local]))
             .map(|ty| tcx.mk_maybe_uninit(ty))
             .map(|ty| self.layout_of(ty));
-        let prefix_layouts = substs.prefix_tys(def_id, tcx)
+        let prefix_layouts = substs.as_generator().prefix_tys(def_id, tcx)
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(discr_layout)))
             .chain(promoted_layouts)
@@ -1601,7 +1599,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // resulting from the final codegen session.
         if
             layout.ty.has_param_types() ||
-            layout.ty.has_self_ty() ||
             !self.param_env.caller_bounds.is_empty()
         {
             return;
@@ -1619,7 +1616,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                                                    variants);
         };
 
-        let adt_def = match layout.ty.sty {
+        let adt_def = match layout.ty.kind {
             ty::Adt(ref adt_def, _) => {
                 debug!("print-type-size t: `{:?}` process adt", layout.ty);
                 adt_def
@@ -1638,7 +1635,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
 
         let adt_kind = adt_def.adt_kind();
-        let adt_packed = adt_def.repr.packed();
+        let adt_packed = adt_def.repr.pack.is_some();
 
         let build_variant_info = |n: Option<Ident>,
                                   flds: &[ast::Name],
@@ -1760,14 +1757,14 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err) => err
         };
 
-        match ty.sty {
+        match ty.kind {
             ty::Ref(_, pointee, _) |
             ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-                match tail.sty {
+                match tail.kind {
                     ty::Param(_) | ty::Projection(_) => {
-                        debug_assert!(tail.has_param_types() || tail.has_self_ty());
+                        debug_assert!(tail.has_param_types());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
                             tail: tcx.erase_regions(&tail)
@@ -1884,7 +1881,7 @@ impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
 
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.global_tcx()
+        *self
     }
 }
 
@@ -2004,7 +2001,7 @@ impl TyCtxt<'tcx> {
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self.global_tcx(),
+            tcx: self,
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)
@@ -2018,7 +2015,7 @@ impl ty::query::TyCtxtAt<'tcx> {
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self.global_tcx().at(self.span),
+            tcx: self.at(self.span),
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)
@@ -2027,9 +2024,9 @@ impl ty::query::TyCtxtAt<'tcx> {
 
 impl<'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 where
-    C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
-    C::TyLayout: MaybeResult<TyLayout<'tcx>>,
-    C: HasParamEnv<'tcx>,
+    C: LayoutOf<Ty = Ty<'tcx>, TyLayout: MaybeResult<TyLayout<'tcx>>>
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
 {
     fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: VariantIdx) -> TyLayout<'tcx> {
         let details = match this.variants {
@@ -2041,7 +2038,7 @@ where
                     assert_eq!(layout.variants, Variants::Single { index });
                 }
 
-                let fields = match this.ty.sty {
+                let fields = match this.ty.kind {
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
@@ -2079,7 +2076,7 @@ where
             }))
         };
 
-        cx.layout_of(match this.ty.sty {
+        cx.layout_of(match this.ty.kind {
             ty::Bool |
             ty::Char |
             ty::Int(_) |
@@ -2116,7 +2113,7 @@ where
                     }));
                 }
 
-                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).sty {
+                match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind {
                     ty::Slice(_) |
                     ty::Str => tcx.types.usize,
                     ty::Dynamic(_, _) => {
@@ -2149,13 +2146,13 @@ where
 
             // Tuples, generators and closures.
             ty::Closure(def_id, ref substs) => {
-                substs.upvar_tys(def_id, tcx).nth(i).unwrap()
+                substs.as_closure().upvar_tys(def_id, tcx).nth(i).unwrap()
             }
 
             ty::Generator(def_id, ref substs, _) => {
                 match this.variants {
                     Variants::Single { index } => {
-                        substs.state_tys(def_id, tcx)
+                        substs.as_generator().state_tys(def_id, tcx)
                             .nth(index.as_usize()).unwrap()
                             .nth(i).unwrap()
                     }
@@ -2163,7 +2160,7 @@ where
                         if i == discr_index {
                             return discr_layout(discr);
                         }
-                        substs.prefix_tys(def_id, tcx).nth(i).unwrap()
+                        substs.as_generator().prefix_tys(def_id, tcx).nth(i).unwrap()
                     }
                 }
             }
@@ -2203,7 +2200,7 @@ where
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo> {
-        match this.ty.sty {
+        match this.ty.kind {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok()
                     .map(|layout| PointeeInfo {
@@ -2310,7 +2307,7 @@ where
 
                 // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
-                    if let ty::Adt(def, _) = this.ty.sty {
+                    if let ty::Adt(def, _) = this.ty.kind {
                         if def.is_box() && offset.bytes() == 0 {
                             pointee.safe = Some(PointerKind::UniqueOwned);
                         }
@@ -2324,9 +2321,7 @@ where
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Variants {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Variants::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2350,9 +2345,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::DiscriminantKind::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2373,9 +2366,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::FieldPlacement::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2396,19 +2387,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for VariantIdx {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_u32().hash_stable(hcx, hasher)
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Abi {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Abi::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2433,9 +2418,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Abi {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Scalar { value, ref valid_range } = *self;
         value.hash_stable(hcx, hasher);
         valid_range.start().hash_stable(hcx, hasher);
@@ -2477,29 +2460,19 @@ impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
 });
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Size {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2518,7 +2491,7 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self;
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self;
     fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
     fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
     fn new_internal(
@@ -2538,7 +2511,7 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self {
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self {
         let sig = instance.fn_sig(cx.tcx());
         let sig = cx
             .tcx()
@@ -2642,7 +2615,7 @@ where
         let extra_args = if sig.abi == RustCall {
             assert!(!sig.c_variadic && extra_args.is_empty());
 
-            match sig.inputs().last().unwrap().sty {
+            match sig.inputs().last().unwrap().kind {
                 ty::Tuple(tupled_arguments) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     tupled_arguments.iter().map(|k| k.expect_ty()).collect()
@@ -2723,14 +2696,6 @@ where
             }
         };
 
-        // Store the index of the last argument. This is useful for working with
-        // C-compatible variadic arguments.
-        let last_arg_idx = if sig.inputs().is_empty() {
-            None
-        } else {
-            Some(sig.inputs().len() - 1)
-        };
-
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
             let mut arg = mk_arg_type(ty, arg_idx);
@@ -2740,30 +2705,7 @@ where
                 // The same is true for s390x-unknown-linux-gnu
                 // and sparc64-unknown-linux-gnu.
                 if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
-                    arg.mode = PassMode::Ignore(IgnoreMode::Zst);
-                }
-            }
-
-            // If this is a C-variadic function, this is not the return value,
-            // and there is one or more fixed arguments; ensure that the `VaListImpl`
-            // is ignored as an argument.
-            if sig.c_variadic {
-                match (last_arg_idx, arg_idx) {
-                    (Some(last_idx), Some(cur_idx)) if last_idx == cur_idx => {
-                        let va_list_did = match cx.tcx().lang_items().va_list() {
-                            Some(did) => did,
-                            None => bug!("`va_list` lang item required for C-variadic functions"),
-                        };
-                        match ty.sty {
-                            ty::Adt(def, _) if def.did == va_list_did => {
-                                // This is the "spoofed" `VaListImpl`. Set the arguments mode
-                                // so that it will be ignored.
-                                arg.mode = PassMode::Ignore(IgnoreMode::CVarArgs);
-                            }
-                            _ => (),
-                        }
-                    }
-                    _ => {}
+                    arg.mode = PassMode::Ignore;
                 }
             }
 

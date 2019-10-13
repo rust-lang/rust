@@ -15,9 +15,7 @@ fn distinct_variant() {
     // reference.
     let b = match y {
       Foo::Y(_, ref mut b) => b,
-      //~^ WARNING cannot use `y`
-      //~| WARNING this error has been downgraded to a warning
-      //~| WARNING this warning will become a hard error in the future
+      //~^ ERROR cannot use `y`
       Foo::X => panic!()
     };
 

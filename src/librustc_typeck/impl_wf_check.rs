@@ -12,7 +12,7 @@ use crate::constrained_generic_params as cgp;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -54,7 +54,7 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
     for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id_from_node_id(module));
+        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
     }
 }
 
@@ -78,7 +78,7 @@ struct ImplWfCheck<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.node {
+        if let hir::ItemKind::Impl(.., ref impl_item_refs) = item.kind {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx,
                                                 impl_def_id,
@@ -99,6 +99,15 @@ fn enforce_impl_params_are_constrained(
 ) {
     // Every lifetime used in an associated type must be constrained.
     let impl_self_ty = tcx.type_of(impl_def_id);
+    if impl_self_ty.references_error() {
+        // Don't complain about unconstrained type params when self ty isn't known due to errors.
+        // (#36836)
+        tcx.sess.delay_span_bug(
+            tcx.def_span(impl_def_id),
+            "potentially unconstrained type parameters weren't evaluated",
+        );
+        return;
+    }
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
@@ -188,7 +197,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
     let mut seen_value_items = FxHashMap::default();
     for impl_item_ref in impl_item_refs {
         let impl_item = tcx.hir().impl_item(impl_item_ref.id);
-        let seen_items = match impl_item.node {
+        let seen_items = match impl_item.kind {
             hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _                          => &mut seen_value_items,
         };

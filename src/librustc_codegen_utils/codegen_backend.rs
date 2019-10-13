@@ -7,7 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 use std::any::Any;
-use std::sync::mpsc;
 
 use syntax::symbol::Symbol;
 use rustc::session::Session;
@@ -36,7 +35,6 @@ pub trait CodegenBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from `codegen_backend`

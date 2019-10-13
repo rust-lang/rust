@@ -4,8 +4,6 @@
 // function (which takes multiple lifetimes) only returns data from
 // one of them.
 
-#![feature(async_await)]
-
 async fn multiple_named_lifetimes<'a, 'b>(a: &'a u8, _: &'b u8) -> &'a u8 {
     a
 }

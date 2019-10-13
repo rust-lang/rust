@@ -3,14 +3,14 @@ use super::*;
 use crate::ast::Name;
 use crate::with_default_globals;
 use crate::tests::string_to_stream;
-use syntax_pos::{Span, BytePos, NO_EXPANSION};
+use syntax_pos::{Span, BytePos};
 
 fn string_to_ts(string: &str) -> TokenStream {
     string_to_stream(string.to_owned())
 }
 
 fn sp(a: u32, b: u32) -> Span {
-    Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
+    Span::with_root_ctxt(BytePos(a), BytePos(b))
 }
 
 #[test]

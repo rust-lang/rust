@@ -32,7 +32,7 @@ pub fn push_debuginfo_type_name<'tcx>(
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_names = tcx.sess.target.target.options.is_like_msvc;
 
-    match t.sty {
+    match t.kind {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
         ty::Str => output.push_str("str"),
@@ -190,11 +190,17 @@ pub fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(t);
         },
-        ty::Closure(..) => {
-            output.push_str("closure");
+        ty::Closure(def_id, ..) => {
+            output.push_str(&format!(
+                "closure-{}",
+                tcx.def_key(def_id).disambiguated_data.disambiguator
+            ));
         }
-        ty::Generator(..) => {
-            output.push_str("generator");
+        ty::Generator(def_id, ..) => {
+            output.push_str(&format!(
+                "generator-{}",
+                tcx.def_key(def_id).disambiguated_data.disambiguator
+            ));
         }
         ty::Error |
         ty::Infer(_) |

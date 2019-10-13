@@ -1,3 +1,5 @@
+// ignore-x86
+// ^ due to stderr output differences
 use std::thread;
 use std::rc::Rc;
 

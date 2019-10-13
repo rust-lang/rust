@@ -3,7 +3,7 @@ use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
 use rustc::ty::print::{Printer, Print};
-use rustc::ty::subst::{Kind, Subst, UnpackedKind};
+use rustc::ty::subst::{GenericArg, Subst, GenericArgKind};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_target::spec::abi::Abi;
@@ -56,7 +56,7 @@ struct CompressionCaches<'tcx> {
     start_offset: usize,
 
     // The values are start positions in `out`, in bytes.
-    paths: FxHashMap<(DefId, &'tcx [Kind<'tcx>]), usize>,
+    paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
     types: FxHashMap<Ty<'tcx>, usize>,
     consts: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
 }
@@ -198,10 +198,14 @@ impl SymbolMangler<'tcx> {
 
         let lifetimes = regions.into_iter().map(|br| {
             match br {
-                ty::BrAnon(i) => i + 1,
+                ty::BrAnon(i) => {
+                    // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
+                    assert_ne!(i, 0);
+                    i - 1
+                },
                 _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
             }
-        }).max().unwrap_or(0);
+        }).max().map_or(0, |max| max + 1);
 
         self.push_opt_integer_62("G", lifetimes as u64);
         lifetime_depths.end += lifetimes;
@@ -230,7 +234,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     fn print_def_path(
         mut self,
         def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         if let Some(&i) = self.compress.as_ref().and_then(|c| c.paths.get(&(def_id, substs))) {
             return self.print_backref(i);
@@ -252,7 +256,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     fn print_impl_path(
         self,
         impl_def_id: DefId,
-        substs: &'tcx [Kind<'tcx>],
+        substs: &'tcx [GenericArg<'tcx>],
         mut self_ty: Ty<'tcx>,
         mut impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
@@ -297,6 +301,10 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
             ty::ReLateBound(debruijn, ty::BrAnon(i)) => {
+                // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
+                assert_ne!(i, 0);
+                let i = i - 1;
+
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + i;
 
@@ -315,7 +323,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         ty: Ty<'tcx>,
     ) -> Result<Self::Type, Self::Error> {
         // Basic types, never cached (single-character).
-        let basic_type = match ty.sty {
+        let basic_type = match ty.kind {
             ty::Bool => "b",
             ty::Char => "c",
             ty::Str => "e",
@@ -352,7 +360,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ty.sty {
+        match ty.kind {
             // Basic types, handled above.
             ty::Bool | ty::Char | ty::Str |
             ty::Int(_) | ty::Uint(_) | ty::Float(_) |
@@ -406,8 +414,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Opaque(def_id, substs) |
             ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::Closure(def_id, ty::ClosureSubsts { substs }) |
-            ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+            ty::Closure(def_id, substs) |
+            ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
             }
             ty::Foreign(def_id) => {
@@ -503,7 +511,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ct.ty.sty {
+        match ct.ty.kind {
             ty::Uint(_) => {}
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})",
@@ -611,18 +619,18 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                GenericArgKind::Lifetime(r) => *r != ty::ReErased,
                 _ => false,
             }
         });
         let args = args.iter().cloned().filter(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(_) => print_regions,
+                GenericArgKind::Lifetime(_) => print_regions,
                 _ => true,
             }
         });
@@ -635,13 +643,13 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         self = print_prefix(self)?;
         for arg in args {
             match arg.unpack() {
-                UnpackedKind::Lifetime(lt) => {
+                GenericArgKind::Lifetime(lt) => {
                     self = lt.print(self)?;
                 }
-                UnpackedKind::Type(ty) => {
+                GenericArgKind::Type(ty) => {
                     self = ty.print(self)?;
                 }
-                UnpackedKind::Const(c) => {
+                GenericArgKind::Const(c) => {
                     self.push("K");
                     // FIXME(const_generics) implement `ty::print::Print` on `ty::Const`.
                     // self = c.print(self)?;

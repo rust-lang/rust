@@ -8,7 +8,7 @@ use crate::time::Duration;
 
 use crate::sys_common::thread::*;
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
+pub const DEFAULT_MIN_STACK_SIZE: usize = 0x40000; // 256K
 
 pub struct Thread {
     id: libc::pthread_t,
@@ -77,7 +77,7 @@ impl Thread {
     }
 
     pub fn set_name(_name: &CStr) {
-        assert!(false, "FIXME: set_name");
+        // VxWorks does not provide a way to set the task name except at creation time
     }
 
     pub fn sleep(dur: Duration) {

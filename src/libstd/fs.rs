@@ -114,6 +114,9 @@ pub struct Metadata(fs_imp::FileAttr);
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
+/// The order in which this iterator returns entries is platform and filesystem
+/// dependent.
+///
 /// # Errors
 ///
 /// This [`io::Result`] will be an [`Err`] if there's some sort of intermittent
@@ -1956,10 +1959,14 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
-/// and the `FindFirstFile` function on Windows.
+/// and the `FindFirstFile` function on Windows. Advancing the iterator
+/// currently corresponds to `readdir` on Unix and `FindNextFile` on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// The order in which this iterator returns entries is platform and filesystem
+/// dependent.
 ///
 /// # Errors
 ///
@@ -1990,6 +1997,25 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///             }
 ///         }
 ///     }
+///     Ok(())
+/// }
+/// ```
+///
+/// ```rust,no_run
+/// use std::{fs, io};
+///
+/// fn main() -> io::Result<()> {
+///     let mut entries = fs::read_dir(".")?
+///         .map(|res| res.map(|e| e.path()))
+///         .collect::<Result<Vec<_>, io::Error>>()?;
+///
+///     // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+///     // ordering is required the entries should be explicitly sorted.
+///
+///     entries.sort();
+///
+///     // The entries have now been sorted by their path.
+///
 ///     Ok(())
 /// }
 /// ```
@@ -2144,7 +2170,7 @@ mod tests {
     use crate::sys_common::io::test::{TempDir, tmpdir};
     use crate::thread;
 
-    use rand::{rngs::StdRng, FromEntropy, RngCore};
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
 
     #[cfg(windows)]
     use crate::os::windows::fs::{symlink_dir, symlink_file};
@@ -3086,8 +3112,10 @@ mod tests {
 
         #[cfg(windows)]
         let invalid_options = 87; // ERROR_INVALID_PARAMETER
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "vxworks")))]
         let invalid_options = "Invalid argument";
+        #[cfg(target_os = "vxworks")]
+        let invalid_options = "invalid argument";
 
         // Test various combinations of creation modes and access modes.
         //

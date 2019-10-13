@@ -10,7 +10,7 @@ use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc::infer::{self, InferCtxt, SubregionOrigin};
 use rustc::mir::ConstraintCategory;
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
 
@@ -101,13 +101,13 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             });
 
         match k1.unpack() {
-            UnpackedKind::Lifetime(r1) => {
+            GenericArgKind::Lifetime(r1) => {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
                 self.add_outlives(r1_vid, r2_vid);
             }
 
-            UnpackedKind::Type(t1) => {
+            GenericArgKind::Type(t1) => {
                 // we don't actually use this for anything, but
                 // the `TypeOutlives` code needs an origin.
                 let origin = infer::RelateParamBound(DUMMY_SP, t1);
@@ -121,7 +121,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 ).type_must_outlive(origin, t1, r2);
             }
 
-            UnpackedKind::Const(_) => {
+            GenericArgKind::Const(_) => {
                 // Consts cannot outlive one another, so we
                 // don't need to handle any relations here.
             }

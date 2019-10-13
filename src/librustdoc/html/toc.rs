@@ -1,10 +1,7 @@
 //! Table-of-contents creation.
 
-use std::fmt;
-use std::string::String;
-
 /// A (recursive) table of contents
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Toc {
     /// The levels are strictly decreasing, i.e.
     ///
@@ -28,7 +25,7 @@ impl Toc {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct TocEntry {
     level: u32,
     sec_number: String,
@@ -165,25 +162,23 @@ impl TocBuilder {
     }
 }
 
-impl fmt::Debug for Toc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for Toc {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "<ul>")?;
+impl Toc {
+    fn print_inner(&self, v: &mut String) {
+        v.push_str("<ul>");
         for entry in &self.entries {
-            // recursively format this table of contents (the
-            // `{children}` is the key).
-            write!(fmt,
-                   "\n<li><a href=\"#{id}\">{num} {name}</a>{children}</li>",
+            // recursively format this table of contents
+            v.push_str(&format!("\n<li><a href=\"#{id}\">{num} {name}</a>",
                    id = entry.id,
-                   num = entry.sec_number, name = entry.name,
-                   children = entry.children)?
+                   num = entry.sec_number, name = entry.name));
+            entry.children.print_inner(&mut *v);
+            v.push_str("</li>");
         }
-        write!(fmt, "</ul>")
+        v.push_str("</ul>");
+    }
+    crate fn print(&self) -> String {
+        let mut v = String::new();
+        self.print_inner(&mut v);
+        v
     }
 }
 

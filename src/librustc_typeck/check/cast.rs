@@ -40,6 +40,7 @@ use rustc::ty::{self, Ty, TypeFoldable, TypeAndMut};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
+use rustc::ty::error::TypeError;
 use rustc::middle::lang_items;
 use syntax::ast;
 use syntax_pos::Span;
@@ -92,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(Some(PointerKind::Thin));
         }
 
-        Ok(match t.sty {
+        Ok(match t.kind {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, ..) =>
                 Some(PointerKind::Vtable(tty.principal_def_id())),
@@ -191,7 +192,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
-        match cast_ty.sty {
+        match cast_ty.kind {
             ty::Dynamic(..) | ty::Slice(..) => {
                 check.report_cast_to_unsized_type(fcx);
                 Err(ErrorReported)
@@ -338,7 +339,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                          "cast to unsized type: `{}` as `{}`",
                                          fcx.resolve_vars_if_possible(&self.expr_ty),
                                          tstr);
-        match self.expr_ty.sty {
+        match self.expr_ty.kind {
             ty::Ref(_, _, mt) => {
                 let mtstr = match mt {
                     hir::MutMutable => "mut ",
@@ -454,13 +455,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                if let ty::FnDef(..) = self.expr_ty.sty {
+                if let ty::FnDef(..) = self.expr_ty.kind {
                     // Attempt a coercion to a fn pointer type.
                     let f = self.expr_ty.fn_sig(fcx.tcx);
                     let res = fcx.try_coerce(self.expr,
                                              self.expr_ty,
                                              fcx.tcx.mk_fn_ptr(f),
                                              AllowTwoPhase::No);
+                    if let Err(TypeError::IntrinsicCast) = res {
+                        return Err(CastError::IllegalCast);
+                    }
                     if res.is_err() {
                         return Err(CastError::NonScalar);
                     }
@@ -501,7 +505,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (FnPtr, Int(_)) => Ok(CastKind::FnPtrAddrCast),
             (RPtr(p), Int(_)) |
             (RPtr(p), Float) => {
-                match p.ty.sty {
+                match p.ty.kind {
                     ty::Int(_) |
                     ty::Uint(_) |
                     ty::Float(_) => {
@@ -612,7 +616,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // array-ptr-cast.
 
         if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
-            if let ty::Array(ety, _) = m_expr.ty.sty {
+            if let ty::Array(ety, _) = m_expr.ty.kind {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
                 // vector elements instead of the original values.
@@ -649,7 +653,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn type_is_known_to_be_sized_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
+        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         traits::type_known_to_meet_bound_modulo_regions(self, self.param_env, ty, lang_item, span)
     }
 }

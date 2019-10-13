@@ -5,6 +5,8 @@ version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "term"
 path = "lib.rs"
-crate-type = ["dylib", "rlib"]
+
+[dependencies]
+core = { path = "../libcore" }
+std = { path = "../libstd" }

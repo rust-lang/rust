@@ -4,10 +4,9 @@ use syntax_pos::Span;
 
 use crate::hir;
 use crate::hir::def_id::DefId;
-use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, Subst, SubstsRef};
 use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
@@ -512,21 +511,20 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     (impl_trait_ref, impl_obligations)
 }
 
-/// See `super::obligations_for_generics`
-pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
-                                     recursion_depth: usize,
-                                     param_env: ty::ParamEnv<'tcx>,
-                                     generic_bounds: &ty::InstantiatedPredicates<'tcx>)
-                                     -> Vec<PredicateObligation<'tcx>>
-{
-    debug!("predicates_for_generics(generic_bounds={:?})",
-           generic_bounds);
+/// See [`super::obligations_for_generics`].
+pub fn predicates_for_generics<'tcx>(
+    cause: ObligationCause<'tcx>,
+    recursion_depth: usize,
+    param_env: ty::ParamEnv<'tcx>,
+    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
+) -> Vec<PredicateObligation<'tcx>> {
+    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
 
-    generic_bounds.predicates.iter().map(|predicate| {
-        Obligation { cause: cause.clone(),
-                     recursion_depth,
-                     param_env,
-                     predicate: predicate.clone() }
+    generic_bounds.predicates.iter().map(|predicate| Obligation {
+        cause: cause.clone(),
+        recursion_depth,
+        param_env,
+        predicate: predicate.clone(),
     }).collect()
 }
 
@@ -552,7 +550,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                    trait_def_id: DefId,
                                    recursion_depth: usize,
                                    self_ty: Ty<'tcx>,
-                                   params: &[Kind<'tcx>])
+                                   params: &[GenericArg<'tcx>])
         -> PredicateObligation<'tcx>
     {
         let trait_ref = ty::TraitRef {
@@ -562,7 +560,7 @@ impl<'tcx> TyCtxt<'tcx> {
         predicate_for_trait_ref(cause, param_env, trait_ref, recursion_depth)
     }
 
-    /// Cast a trait reference into a reference to one of its super
+    /// Casts a trait reference into a reference to one of its super
     /// traits; returns `None` if `target_trait_def_id` is not a
     /// supertrait.
     pub fn upcast_choices(self,
@@ -571,7 +569,7 @@ impl<'tcx> TyCtxt<'tcx> {
                           -> Vec<ty::PolyTraitRef<'tcx>>
     {
         if source_trait_ref.def_id() == target_trait_def_id {
-            return vec![source_trait_ref]; // shorcut the most common case
+            return vec![source_trait_ref]; // Shortcut the most common case.
         }
 
         supertraits(self, source_trait_ref)
@@ -655,22 +653,21 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.hir().as_local_hir_id(node_item_def_id) {
             Some(hir_id) => {
                 let item = self.hir().expect_item(hir_id);
-                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.node {
+                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.kind {
                     defaultness.is_default()
                 } else {
                     false
                 }
             }
             None => {
-                self.global_tcx()
-                    .impl_defaultness(node_item_def_id)
+                self.impl_defaultness(node_item_def_id)
                     .is_default()
             }
         }
     }
 
-    pub fn impl_item_is_final(self, node_item: &NodeItem<hir::Defaultness>) -> bool {
-        node_item.item.is_final() && !self.impl_is_default(node_item.node.def_id())
+    pub fn impl_item_is_final(self, assoc_item: &ty::AssocItem) -> bool {
+        assoc_item.defaultness.is_final() && !self.impl_is_default(assoc_item.container.id())
     }
 }
 

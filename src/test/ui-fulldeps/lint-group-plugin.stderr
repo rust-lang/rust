@@ -1,3 +1,11 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/lint-group-plugin.rs:6:1
+   |
+LL | #![plugin(lint_group_plugin_test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 warning: item is named 'lintme'
   --> $DIR/lint-group-plugin.rs:9:1
    |

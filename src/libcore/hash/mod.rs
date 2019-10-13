@@ -198,6 +198,18 @@ pub trait Hash {
     }
 }
 
+// Separate module to reexport the macro `Hash` from prelude without the trait `Hash`.
+pub(crate) mod macros {
+    /// Derive macro generating an impl of the trait `Hash`.
+    #[rustc_builtin_macro]
+    #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Hash($item:item) { /* compiler built-in */ }
+}
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(inline)]
+pub use macros::Hash;
+
 /// A trait for hashing an arbitrary stream of bytes.
 ///
 /// Instances of `Hasher` usually represent state that is changed while hashing
@@ -537,8 +549,6 @@ impl<H> PartialEq for BuildHasherDefault<H> {
 
 #[stable(since = "1.29.0", feature = "build_hasher_eq")]
 impl<H> Eq for BuildHasherDefault<H> {}
-
-//////////////////////////////////////////////////////////////////////////////
 
 mod impls {
     use crate::mem;

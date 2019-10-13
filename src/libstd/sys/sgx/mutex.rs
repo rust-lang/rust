@@ -22,7 +22,7 @@ impl Mutex {
         let mut guard = self.inner.lock();
         if *guard.lock_var() {
             // Another thread has the lock, wait
-            WaitQueue::wait(guard)
+            WaitQueue::wait(guard, ||{})
             // Another thread has passed the lock to us
         } else {
             // We are just now obtaining the lock
@@ -83,7 +83,7 @@ impl ReentrantMutex {
         match guard.lock_var().owner {
             Some(tcs) if tcs != thread::current() => {
                 // Another thread has the lock, wait
-                WaitQueue::wait(guard);
+                WaitQueue::wait(guard, ||{});
                 // Another thread has passed the lock to us
             },
             _ => {

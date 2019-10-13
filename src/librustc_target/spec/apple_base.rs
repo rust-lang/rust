@@ -51,3 +51,19 @@ pub fn macos_llvm_target(arch: &str) -> String {
     let (major, minor) = macos_deployment_target();
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
 }
+
+pub fn macos_link_env_remove() -> Vec<String> {
+    let mut env_remove = Vec::with_capacity(2);
+    // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
+    // may occur when we're linking a custom build script while targeting iOS for example.
+    if let Some(sdkroot) = env::var("SDKROOT").ok() {
+        if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("iPhoneSimulator.platform") {
+            env_remove.push("SDKROOT".to_string())
+        }
+    }
+    // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
+    // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
+    // although this is apparently ignored when using the linker at "/usr/bin/ld".
+    env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".to_string());
+    env_remove
+}

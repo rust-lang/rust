@@ -8,7 +8,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
 pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
@@ -35,7 +35,7 @@ struct Collector<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
-        let fm = match it.node {
+        let fm = match it.kind {
             hir::ItemKind::ForeignMod(ref fm) => fm,
             _ => return,
         };
@@ -73,6 +73,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         "static-nobundle" => cstore::NativeStaticNobundle,
                         "dylib" => cstore::NativeUnknown,
                         "framework" => cstore::NativeFramework,
+                        "raw-dylib" => cstore::NativeRawDylib,
                         k => {
                             struct_span_err!(self.tcx.sess, item.span(), E0458,
                                       "unknown kind: `{}`", k)
@@ -132,7 +133,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
 impl Collector<'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLibrary) {
-        if lib.name.as_ref().map(|s| s.as_str().is_empty()).unwrap_or(false) {
+        if lib.name.as_ref().map(|&s| s == kw::Invalid).unwrap_or(false) {
             match span {
                 Some(span) => {
                     struct_span_err!(self.tcx.sess, span, E0454,
@@ -159,7 +160,7 @@ impl Collector<'tcx> {
                                            sym::link_cfg,
                                            span.unwrap(),
                                            GateIssue::Language,
-                                           "is feature gated");
+                                           "is unstable");
         }
         if lib.kind == cstore::NativeStaticNobundle &&
            !self.tcx.features().static_nobundle {
@@ -167,7 +168,15 @@ impl Collector<'tcx> {
                                            sym::static_nobundle,
                                            span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
                                            GateIssue::Language,
-                                           "kind=\"static-nobundle\" is feature gated");
+                                           "kind=\"static-nobundle\" is unstable");
+        }
+        if lib.kind == cstore::NativeRawDylib &&
+           !self.tcx.features().raw_dylib {
+            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                           sym::raw_dylib,
+                                           span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
+                                           GateIssue::Language,
+                                           "kind=\"raw-dylib\" is unstable");
         }
         self.libs.push(lib);
     }

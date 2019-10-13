@@ -1,7 +1,7 @@
 error: `self` cannot be a raw identifier
   --> $DIR/raw-literal-self.rs:2:9
    |
-LL |     let r#self;
+LL |     let r#self: ();
    |         ^^^^^^
 
 error: aborting due to previous error

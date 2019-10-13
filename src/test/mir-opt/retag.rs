@@ -1,3 +1,4 @@
+// ignore-wasm32-bare compiled with panic=abort by default
 // ignore-tidy-linelength
 // compile-flags: -Z mir-emit-retag -Z mir-opt-level=0 -Z span_free_formats
 
@@ -9,6 +10,10 @@ impl Test {
     // Make sure we run the pass on a method, not just on bare functions.
     fn foo<'x>(&self, x: &'x mut i32) -> &'x mut i32 { x }
     fn foo_shr<'x>(&self, x: &'x i32) -> &'x i32 { x }
+}
+
+impl Drop for Test {
+    fn drop(&mut self) {}
 }
 
 fn main() {
@@ -60,10 +65,12 @@ fn main() {
 //     ...
 //     bb0: {
 //         ...
-//         _3 = const Test::foo(move _4, move _6) -> bb1;
+//         _3 = const Test::foo(move _4, move _6) -> [return: bb2, unwind: bb3];
 //     }
 //
-//     bb1: {
+//     ...
+//
+//     bb2: {
 //         Retag(_3);
 //         ...
 //         _9 = move _3;
@@ -80,25 +87,20 @@ fn main() {
 //         _12 = move _13 as *mut i32 (Misc);
 //         Retag([raw] _12);
 //         ...
-//         _16 = move _17(move _18) -> bb2;
+//         _16 = move _17(move _18) -> bb5;
 //     }
 //
-//     bb2: {
+//     bb5: {
 //         Retag(_16);
 //         ...
-//         _20 = const Test::foo_shr(move _21, move _23) -> bb3;
-//     }
-//
-//     bb3: {
-//         ...
-//         return;
+//         _20 = const Test::foo_shr(move _21, move _23) -> [return: bb6, unwind: bb7];
 //     }
 //
 //     ...
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(20), local_id: 72 }], _2: &i32) -> &i32 {
+// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(22), local_id: 72 }], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
 //         Retag([fn entry] _1);
@@ -113,3 +115,17 @@ fn main() {
 //     }
 // }
 // END rustc.main-{{closure}}.EraseRegions.after.mir
+// START rustc.ptr-real_drop_in_place.Test.SimplifyCfg-make_shim.after.mir
+// fn  std::ptr::real_drop_in_place(_1: &mut Test) -> () {
+//     ...
+//     bb0: {
+//         Retag([raw] _1);
+//         _2 = &mut (*_1);
+//         _3 = const <Test as std::ops::Drop>::drop(move _2) -> bb1;
+//     }
+//
+//     bb1: {
+//         return;
+//     }
+// }
+// END rustc.ptr-real_drop_in_place.Test.SimplifyCfg-make_shim.after.mir

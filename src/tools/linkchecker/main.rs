@@ -14,6 +14,8 @@
 //! A few whitelisted exceptions are allowed as there's known bugs in rustdoc,
 //! but this should catch the majority of "broken link" cases.
 
+#![deny(warnings)]
+
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;

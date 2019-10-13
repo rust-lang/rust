@@ -59,7 +59,7 @@ impl LibFeatureCollector<'tcx> {
             attr.check_name(**stab_attr)
         }) {
             let meta_item = attr.meta();
-            if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
+            if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta_item {
                 let mut feature = None;
                 let mut since = None;
                 for meta in metas {

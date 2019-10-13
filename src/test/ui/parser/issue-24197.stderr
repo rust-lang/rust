@@ -1,8 +1,8 @@
-error: expected one of `:`, `;`, `=`, or `@`, found `[`
+error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
   --> $DIR/issue-24197.rs:2:12
    |
 LL |     let buf[0] = 0;
-   |            ^ expected one of `:`, `;`, `=`, or `@` here
+   |            ^ expected one of `:`, `;`, `=`, `@`, or `|` here
 
 error: aborting due to previous error
 

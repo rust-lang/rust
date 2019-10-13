@@ -105,7 +105,7 @@ fn dropck_outlives<'tcx>(
 
                             debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
 
-                            match ty.sty {
+                            match ty.kind {
                                 // All parameters live for the duration of the
                                 // function.
                                 ty::Param(..) => {}
@@ -166,7 +166,7 @@ fn dtorck_constraint_for_ty<'tcx>(
         });
     }
 
-    let result = match ty.sty {
+    let result = match ty.kind {
         ty::Bool
         | ty::Char
         | ty::Int(_)
@@ -193,7 +193,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty.expect_ty()))
             .collect(),
 
-        ty::Closure(def_id, substs) => substs
+        ty::Closure(def_id, substs) => substs.as_closure()
             .upvar_tys(def_id, tcx)
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
@@ -223,7 +223,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             // *do* incorporate the upvars here.
 
             let constraint = DtorckConstraint {
-                outlives: substs.upvar_tys(def_id, tcx).map(|t| t.into()).collect(),
+                outlives: substs.as_generator().upvar_tys(def_id, tcx).map(|t| t.into()).collect(),
                 dtorck_types: vec![],
                 overflows: vec![],
             };

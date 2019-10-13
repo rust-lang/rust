@@ -9,11 +9,11 @@ pub fn main() {
 pub fn foo1() {
     let x: i32;
     loop { x = break; }
-    println!("{}", x); //~ ERROR borrow of possibly uninitialized variable: `x`
+    println!("{}", x); //~ ERROR borrow of possibly-uninitialized variable: `x`
 }
 
 pub fn foo2() {
     let x: i32;
     for _ in 0..10 { x = continue; }
-    println!("{}", x); //~ ERROR borrow of possibly uninitialized variable: `x`
+    println!("{}", x); //~ ERROR borrow of possibly-uninitialized variable: `x`
 }

@@ -1,6 +1,9 @@
 error[E0532]: expected unit struct/variant or constant, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-pat-1.rs:24:9
    |
+LL |     Empty3 {}
+   |     --------- `E::Empty3` defined here
+...
 LL |         E::Empty3 => ()
    |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
 

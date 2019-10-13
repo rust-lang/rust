@@ -49,7 +49,7 @@ struct InherentCollect<'tcx> {
 
 impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let ty = match item.node {
+        let ty = match item.kind {
             hir::ItemKind::Impl(.., None, ref ty, _) => ty,
             _ => return
         };
@@ -57,7 +57,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         let self_ty = self.tcx.type_of(def_id);
         let lang_items = self.tcx.lang_items();
-        match self_ty.sty {
+        match self_ty.kind {
             ty::Adt(def, _) => {
                 self.check_def_id(item, def.did);
             }
@@ -66,6 +66,14 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             }
             ty::Dynamic(ref data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(item, data.principal_def_id().unwrap());
+            }
+            ty::Bool => {
+                self.check_primitive_impl(def_id,
+                                          lang_items.bool_impl(),
+                                          None,
+                                          "bool",
+                                          "bool",
+                                          item.span);
             }
             ty::Char => {
                 self.check_primitive_impl(def_id,

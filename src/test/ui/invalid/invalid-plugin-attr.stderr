@@ -1,3 +1,11 @@
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+  --> $DIR/invalid-plugin-attr.rs:4:1
+   |
+LL | #[plugin(bla)]
+   | ^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[warn(deprecated)]` on by default
+
 error: unused attribute
   --> $DIR/invalid-plugin-attr.rs:4:1
    |

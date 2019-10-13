@@ -68,9 +68,9 @@ impl Cfg {
                 span: cfg.span
             }),
         };
-        match cfg.node {
+        match cfg.kind {
             MetaItemKind::Word => Ok(Cfg::Cfg(name, None)),
-            MetaItemKind::NameValue(ref lit) => match lit.node {
+            MetaItemKind::NameValue(ref lit) => match lit.kind {
                 LitKind::Str(value, _) => Ok(Cfg::Cfg(name, Some(value))),
                 _ => Err(InvalidCfgError {
                     // FIXME: if the main #[cfg] syntax decided to support non-string literals,
@@ -81,10 +81,10 @@ impl Cfg {
             },
             MetaItemKind::List(ref items) => {
                 let mut sub_cfgs = items.iter().map(Cfg::parse_nested);
-                match &*name.as_str() {
-                    "all" => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
-                    "any" => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
-                    "not" => if sub_cfgs.len() == 1 {
+                match name {
+                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
+                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
+                    sym::not => if sub_cfgs.len() == 1 {
                         Ok(!sub_cfgs.next().unwrap()?)
                     } else {
                         Err(InvalidCfgError {

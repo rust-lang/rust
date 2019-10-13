@@ -1,5 +1,3 @@
-// no-prefer-dynamic
-
 #![allow(dead_code)]
 
 // check dtor calling order when casting enums.

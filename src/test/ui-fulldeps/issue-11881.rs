@@ -6,17 +6,16 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize;
-use serialize as rustc_serialize;
+extern crate serialize as rustc_serialize;
 
 use std::io::Cursor;
 use std::io::prelude::*;
 use std::fmt;
 use std::slice;
 
-use serialize::{Encodable, Encoder};
-use serialize::json;
-use serialize::opaque;
+use rustc_serialize::{Encodable, Encoder};
+use rustc_serialize::json;
+use rustc_serialize::opaque;
 
 #[derive(RustcEncodable)]
 struct Foo {

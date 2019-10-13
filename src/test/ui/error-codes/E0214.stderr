@@ -1,11 +1,11 @@
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/E0214.rs:2:15
+  --> $DIR/E0214.rs:2:12
    |
 LL |     let v: Vec(&str) = vec!["foo"];
-   |               ^^^^^^
-   |               |
-   |               only `Fn` traits may use parentheses
-   |               help: use angle brackets instead: `<&str>`
+   |            ^^^^^^^^^
+   |            |
+   |            only `Fn` traits may use parentheses
+   |            help: use angle brackets instead: `Vec<&str>`
 
 error: aborting due to previous error
 

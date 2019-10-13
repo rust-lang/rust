@@ -1,4 +1,4 @@
-use crate::stable_hasher::{StableHasher, StableHasherResult, HashStable};
+use crate::stable_hasher::{StableHasher, HashStable};
 
 /// A vector type optimized for cases where this size is usually 0 (cf. `SmallVector`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
@@ -60,9 +60,7 @@ impl<T> Extend<T> for ThinVec<T> {
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ThinVec<T> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         (**self).hash_stable(hcx, hasher)
     }
 }

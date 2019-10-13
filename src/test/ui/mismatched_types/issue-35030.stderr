@@ -6,6 +6,8 @@ LL |         Some(true)
    |
    = note: expected type `bool` (type parameter)
               found type `bool` (bool)
+   = help: type parameters must be constrained to match other types
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error: aborting due to previous error
 

@@ -1,4 +1,4 @@
-error[E0658]: non exhaustive is an experimental feature
+error[E0658]: the `#[non_exhaustive]` attribute is an experimental feature
   --> $DIR/feature-gate-non_exhaustive.rs:3:1
    |
 LL | #[non_exhaustive]

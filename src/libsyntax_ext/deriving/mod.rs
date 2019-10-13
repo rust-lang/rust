@@ -48,37 +48,13 @@ impl MultiItemModifier for BuiltinDerive {
               meta_item: &MetaItem,
               item: Annotatable)
               -> Vec<Annotatable> {
+        // FIXME: Built-in derives often forget to give spans contexts,
+        // so we are doing it here in a centralized way.
+        let span = ecx.with_def_site_ctxt(span);
         let mut items = Vec::new();
         (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
         items
     }
-}
-
-/// Construct a name for the inner type parameter that can't collide with any type parameters of
-/// the item. This is achieved by starting with a base and then concatenating the names of all
-/// other type parameters.
-// FIXME(aburka): use real hygiene when that becomes possible
-fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
-    let mut typaram = String::from(base);
-    if let Annotatable::Item(ref item) = *item {
-        match item.node {
-            ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
-            ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
-                for param in params {
-                    match param.kind {
-                        ast::GenericParamKind::Type { .. } => {
-                            typaram.push_str(&param.ident.as_str());
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
-            _ => {}
-        }
-    }
-
-    typaram
 }
 
 /// Constructs an expression that calls an intrinsic
@@ -87,7 +63,7 @@ fn call_intrinsic(cx: &ExtCtxt<'_>,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
-    let span = span.with_ctxt(cx.backtrace());
+    let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, Symbol::intern(intrinsic)]);
     let call = cx.expr_call_global(span, path, args);
 

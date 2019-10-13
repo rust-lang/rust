@@ -1,16 +1,26 @@
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{Location, Body};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::mir::{Location, Body, Promoted};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_index::vec::IndexVec;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, 'tcx>, body: &mut Body<'tcx>) {
+pub fn renumber_mir<'tcx>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    body: &mut Body<'tcx>,
+    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
+) {
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
     let mut visitor = NLLVisitor { infcx };
+
+    for body in promoted.iter_mut() {
+        visitor.visit_body(body);
+    }
+
     visitor.visit_body(body);
 }
 
@@ -25,7 +35,7 @@ where
     infcx
         .tcx
         .fold_regions(value, &mut false, |_region, _depth| {
-            let origin = NLLRegionVariableOrigin::Existential;
+            let origin = NLLRegionVariableOrigin::Existential { from_forall: false };
             infcx.next_nll_region_var(origin)
         })
 }
@@ -44,14 +54,6 @@ impl<'a, 'tcx> NLLVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
-    fn visit_body(&mut self, body: &mut Body<'tcx>) {
-        for promoted in body.promoted.iter_mut() {
-            self.visit_body(promoted);
-        }
-
-        self.super_body(body);
-    }
-
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         debug!("visit_ty(ty={:?}, ty_context={:?})", ty, ty_context);
 
@@ -79,31 +81,5 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
 
     fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
         *constant = self.renumber_regions(&*constant);
-    }
-
-    fn visit_generator_substs(&mut self,
-                              substs: &mut GeneratorSubsts<'tcx>,
-                              location: Location) {
-        debug!(
-            "visit_generator_substs(substs={:?}, location={:?})",
-            substs,
-            location,
-        );
-
-        *substs = self.renumber_regions(substs);
-
-        debug!("visit_generator_substs: substs={:?}", substs);
-    }
-
-    fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {
-        debug!(
-            "visit_closure_substs(substs={:?}, location={:?})",
-            substs,
-            location
-        );
-
-        *substs = self.renumber_regions(substs);
-
-        debug!("visit_closure_substs: substs={:?}", substs);
     }
 }

@@ -39,7 +39,7 @@ struct Stripper<'a> {
 impl<'a> DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.attrs.lists(sym::doc).has_word(sym::hidden) {
-            debug!("strip_hidden: stripping {} {:?}", i.type_(), i.name);
+            debug!("strip_hidden: stripping {:?} {:?}", i.type_(), i.name);
             // use a dedicated hidden item for given item type if any
             match i.inner {
                 clean::StructFieldItem(..) | clean::ModuleItem(..) => {

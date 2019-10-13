@@ -2,7 +2,10 @@ error: unexpected close delimiter: `)`
   --> $DIR/invalid-punct-ident-4.rs:6:1
    |
 LL | lexer_failure!();
-   | ^^^^^^^^^^^^^^^^^ unexpected close delimiter
+   | ^^^^^^^^^^^^^^^^^
+   | |
+   | unexpected close delimiter
+   | in this macro invocation
 
 error: proc macro panicked
   --> $DIR/invalid-punct-ident-4.rs:6:1

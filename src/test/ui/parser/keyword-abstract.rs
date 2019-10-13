@@ -1,3 +1,3 @@
 fn main() {
-    let abstract = (); //~ ERROR expected pattern, found reserved keyword `abstract`
+    let abstract = (); //~ ERROR expected identifier, found reserved keyword `abstract`
 }

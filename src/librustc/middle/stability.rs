@@ -199,8 +199,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 let name = attr.name_or_empty();
                 if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
                     attr::mark_used(attr);
-                    self.tcx.sess.span_err(attr.span, "stability attributes may not be used \
-                                                        outside of the standard library");
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        E0734,
+                        "stability attributes may not be used outside of the standard library",
+                    ).emit();
                 }
             }
 
@@ -246,7 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx Item) {
         let orig_in_trait_impl = self.in_trait_impl;
         let mut kind = AnnotationKind::Required;
-        match i.node {
+        match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
@@ -290,10 +294,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.annotate(var.node.id, &var.node.attrs, var.span, AnnotationKind::Required,
+        self.annotate(var.id, &var.attrs, var.span, AnnotationKind::Required,
             |v| {
-                if let Some(ctor_hir_id) = var.node.data.ctor_hir_id() {
-                    v.annotate(ctor_hir_id, &var.node.attrs, var.span, AnnotationKind::Required,
+                if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
+                    v.annotate(ctor_hir_id, &var.attrs, var.span, AnnotationKind::Required,
                                |_| {});
                 }
 
@@ -344,14 +348,14 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item) {
-        match i.node {
+        match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
-            _ => self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant())
+            _ => self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant())
         }
 
         intravisit::walk_item(self, i)
@@ -372,7 +376,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.check_missing_stability(var.node.id, var.span, "variant");
+        self.check_missing_stability(var.id, var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
 
@@ -382,7 +386,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_missing_stability(i.hir_id, i.span, i.node.descriptive_variant());
+        self.check_missing_stability(i.hir_id, i.span, i.kind.descriptive_variant());
         intravisit::walk_foreign_item(self, i);
     }
 
@@ -438,6 +442,7 @@ impl<'tcx> Index<'tcx> {
                     level: attr::StabilityLevel::Unstable {
                         reason: Some(Symbol::intern(reason)),
                         issue: 27812,
+                        is_soft: false,
                     },
                     feature: sym::rustc_private,
                     rustc_depr: None,
@@ -480,7 +485,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn report_unstable(
-    sess: &Session, feature: Symbol, reason: Option<Symbol>, issue: u32, span: Span
+    sess: &Session,
+    feature: Symbol,
+    reason: Option<Symbol>,
+    issue: u32,
+    is_soft: bool,
+    span: Span,
+    soft_handler: impl FnOnce(&'static lint::Lint, Span, &str),
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
@@ -505,7 +516,13 @@ pub fn report_unstable(
     let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
     let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
     if fresh {
-        emit_feature_err(&sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg);
+        if is_soft {
+            soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
+        } else {
+            emit_feature_err(
+                &sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg
+            );
+        }
     }
 }
 
@@ -621,6 +638,7 @@ pub enum EvalResult {
         feature: Symbol,
         reason: Option<Symbol>,
         issue: u32,
+        is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
@@ -720,7 +738,9 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match stability {
-            Some(&Stability { level: attr::Unstable { reason, issue }, feature, .. }) => {
+            Some(&Stability {
+                level: attr::Unstable { reason, issue, is_soft }, feature, ..
+            }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
@@ -744,7 +764,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
-                EvalResult::Deny { feature, reason, issue }
+                EvalResult::Deny { feature, reason, issue, is_soft }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -765,10 +785,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
+        let soft_handler =
+            |lint, span, msg: &_| self.lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg);
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue } =>
-                report_unstable(self.sess, feature, reason, issue, span),
+            EvalResult::Deny { feature, reason, issue, is_soft } =>
+                report_unstable(self.sess, feature, reason, issue, is_soft, span, soft_handler),
             EvalResult::Unmarked => {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
@@ -787,7 +809,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span.is_dummy() { return }

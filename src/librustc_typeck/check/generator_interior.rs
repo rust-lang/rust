@@ -14,7 +14,7 @@ use crate::util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    types: FxHashMap<Ty<'tcx>, usize>,
+    types: FxHashMap<ty::GeneratorInteriorTypeCause<'tcx>, usize>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
     kind: hir::GeneratorKind,
@@ -55,7 +55,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             expr_and_pat_count: 0,
             source: match self.kind { // Guess based on the kind of the current generator.
                 hir::GeneratorKind::Gen => hir::YieldSource::Yield,
-                hir::GeneratorKind::Async => hir::YieldSource::Await,
+                hir::GeneratorKind::Async(_) => hir::YieldSource::Await,
             },
         }));
 
@@ -83,7 +83,12 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             } else {
                 // Map the type to the number of types added before it
                 let entries = self.types.len();
-                self.types.entry(&ty).or_insert(entries);
+                let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
+                self.types.entry(ty::GeneratorInteriorTypeCause {
+                    span: source_span,
+                    ty: &ty,
+                    scope_span
+                }).or_insert(entries);
             }
         } else {
             debug!("no type in expr = {:?}, count = {:?}, span = {:?}",
@@ -118,9 +123,6 @@ pub fn resolve_interior<'a, 'tcx>(
     // Sort types by insertion order
     types.sort_by_key(|t| t.1);
 
-    // Extract type components
-    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| t.0));
-
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
     // lifetimes with existentially-bound lifetimes, which reflect the exact value of the
@@ -130,17 +132,24 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("types in generator {:?}, span = {:?}", type_list, body.value.span);
+    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
     // which means that none of the regions inside relate to any other, even if
     // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
-    let type_list = fcx.tcx.fold_regions(&type_list, &mut false, |_, current_depth| {
+    let types = fcx.tcx.fold_regions(&types, &mut false, |_, current_depth| {
         counter += 1;
         fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
     });
+
+    // Store the generator types and spans into the tables for this generator.
+    let interior_types = types.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
+
+    // Extract type components
+    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
@@ -167,7 +176,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         self.expr_count += 1;
 
-        if let PatKind::Binding(..) = pat.node {
+        if let PatKind::Binding(..) = pat.kind {
             let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.tables.borrow().pat_ty(pat);
             self.record(ty, Some(scope), None, pat.span);
@@ -181,13 +190,34 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-        // Record the unadjusted type
+        // If there are adjustments, then record the final type --
+        // this is the actual value that is being produced.
+        if let Some(adjusted_ty) = self.fcx.tables.borrow().expr_ty_adjusted_opt(expr) {
+            self.record(adjusted_ty, scope, Some(expr), expr.span);
+        }
+
+        // Also record the unadjusted type (which is the only type if
+        // there are no adjustments). The reason for this is that the
+        // unadjusted value is sometimes a "temporary" that would wind
+        // up in a MIR temporary.
+        //
+        // As an example, consider an expression like `vec![].push()`.
+        // Here, the `vec![]` would wind up MIR stored into a
+        // temporary variable `t` which we can borrow to invoke
+        // `<Vec<_>>::push(&mut t)`.
+        //
+        // Note that an expression can have many adjustments, and we
+        // are just ignoring those intermediate types. This is because
+        // those intermediate values are always linearly "consumed" by
+        // the other adjustments, and hence would never be directly
+        // captured in the MIR.
+        //
+        // (Note that this partly relies on the fact that the `Deref`
+        // traits always return references, which means their content
+        // can be reborrowed without needing to spill to a temporary.
+        // If this were not the case, then we could conceivably have
+        // to create intermediate temporaries.)
         let ty = self.fcx.tables.borrow().expr_ty(expr);
         self.record(ty, scope, Some(expr), expr.span);
-
-        // Also include the adjusted types, since these can result in MIR locals
-        for adjustment in self.fcx.tables.borrow().expr_adjustments(expr) {
-            self.record(adjustment.target, scope, Some(expr), expr.span);
-        }
     }
 }

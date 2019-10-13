@@ -22,7 +22,7 @@ mod base {
 
 pub fn foo() {
     let _f: base::Foo = base::HasNew::new();
-    //~^ ERROR type annotations required
+    //~^ ERROR type annotations needed
 }
 
 fn main() { }

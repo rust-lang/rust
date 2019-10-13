@@ -3,9 +3,8 @@ use rustc::traits;
 use rustc::ty::ToPredicate;
 use rustc::ty::subst::Subst;
 use rustc::infer::InferOk;
+use rustc::hir::def_id::LOCAL_CRATE;
 use syntax_pos::DUMMY_SP;
-
-use crate::core::DocAccessLevels;
 
 use super::*;
 
@@ -29,8 +28,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
         debug!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
-        for &trait_def_id in self.cx.all_traits.iter() {
-            if !self.cx.renderinfo.borrow().access_levels.is_doc_reachable(trait_def_id) ||
+        for &trait_def_id in self.cx.tcx.all_traits(LOCAL_CRATE).iter() {
+            if !self.cx.renderinfo.borrow().access_levels.is_public(trait_def_id) ||
                self.cx.generated_synthetics
                       .borrow_mut()
                       .get(&(ty, trait_def_id))
@@ -42,7 +41,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         trait_def_id, impl_def_id);
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let may_apply = self.cx.tcx.infer_ctxt().enter(|infcx| {
-                    match trait_ref.self_ty().sty {
+                    match trait_ref.self_ty().kind {
                         ty::Param(_) => {},
                         _ => return false,
                     }
@@ -100,7 +99,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     source: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                     name: None,
                     attrs: Default::default(),
-                    visibility: None,
+                    visibility: Inherited,
                     def_id: self.cx.next_def_id(impl_def_id.krate),
                     stability: None,
                     deprecation: None,

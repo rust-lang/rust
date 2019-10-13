@@ -152,7 +152,7 @@
         </Upgrade>
 
         <!-- Specifies a single cab file to be embedded in the installer's .msi. -->
-        <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+        <MediaTemplate EmbedCab="yes" CompressionLevel="mszip" />
 
         <!-- Send a WM_SETTINGCHANGE message to tell processes like explorer to update their
              environments so any new command prompts get the updated %PATH% -->

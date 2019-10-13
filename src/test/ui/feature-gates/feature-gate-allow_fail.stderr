@@ -1,4 +1,4 @@
-error[E0658]: allow_fail attribute is currently unstable
+error[E0658]: the `#[allow_fail]` attribute is an experimental feature
   --> $DIR/feature-gate-allow_fail.rs:3:1
    |
 LL | #[allow_fail]

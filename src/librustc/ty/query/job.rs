@@ -334,13 +334,13 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
     let mut hcx = tcx.create_stable_hashing_context();
     queries.iter().min_by_key(|v| {
         let (span, query) = f(v);
-        let mut stable_hasher = StableHasher::<u64>::new();
+        let mut stable_hasher = StableHasher::new();
         query.info.query.hash_stable(&mut hcx, &mut stable_hasher);
         // Prefer entry points which have valid spans for nicer error messages
         // We add an integer to the tuple ensuring that entry points
         // with valid spans are picked first
         let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
-        (span_cmp, stable_hasher.finish())
+        (span_cmp, stable_hasher.finish::<u64>())
     }).unwrap()
 }
 

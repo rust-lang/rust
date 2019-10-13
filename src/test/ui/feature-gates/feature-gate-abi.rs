@@ -10,7 +10,9 @@
 
 // Functions
 extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
+//~^ ERROR intrinsic must be in
 extern "platform-intrinsic" fn f2() {} //~ ERROR platform intrinsics are experimental
+//~^ ERROR intrinsic must be in
 extern "vectorcall" fn f3() {} //~ ERROR vectorcall is experimental and subject to change
 extern "rust-call" fn f4() {} //~ ERROR rust-call ABI is subject to change
 extern "msp430-interrupt" fn f5() {} //~ ERROR msp430-interrupt ABI is experimental
@@ -22,7 +24,9 @@ extern "amdgpu-kernel" fn f9() {} //~ ERROR amdgpu-kernel ABI is experimental an
 // Methods in trait definition
 trait Tr {
     extern "rust-intrinsic" fn m1(); //~ ERROR intrinsics are subject to change
+    //~^ ERROR intrinsic must be in
     extern "platform-intrinsic" fn m2(); //~ ERROR platform intrinsics are experimental
+    //~^ ERROR intrinsic must be in
     extern "vectorcall" fn m3(); //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn m4(); //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5(); //~ ERROR msp430-interrupt ABI is experimental
@@ -31,8 +35,6 @@ trait Tr {
     extern "thiscall" fn m8(); //~ ERROR thiscall is experimental and subject to change
     extern "amdgpu-kernel" fn m9(); //~ ERROR amdgpu-kernel ABI is experimental and subject to change
 
-    extern "rust-intrinsic" fn dm1() {} //~ ERROR intrinsics are subject to change
-    extern "platform-intrinsic" fn dm2() {} //~ ERROR platform intrinsics are experimental
     extern "vectorcall" fn dm3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn dm4() {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn dm5() {} //~ ERROR msp430-interrupt ABI is experimental
@@ -47,7 +49,9 @@ struct S;
 // Methods in trait impl
 impl Tr for S {
     extern "rust-intrinsic" fn m1() {} //~ ERROR intrinsics are subject to change
+    //~^ ERROR intrinsic must be in
     extern "platform-intrinsic" fn m2() {} //~ ERROR platform intrinsics are experimental
+    //~^ ERROR intrinsic must be in
     extern "vectorcall" fn m3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn m4() {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5() {} //~ ERROR msp430-interrupt ABI is experimental
@@ -60,7 +64,9 @@ impl Tr for S {
 // Methods in inherent impl
 impl S {
     extern "rust-intrinsic" fn im1() {} //~ ERROR intrinsics are subject to change
+    //~^ ERROR intrinsic must be in
     extern "platform-intrinsic" fn im2() {} //~ ERROR platform intrinsics are experimental
+    //~^ ERROR intrinsic must be in
     extern "vectorcall" fn im3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn im4() {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn im5() {} //~ ERROR msp430-interrupt ABI is experimental

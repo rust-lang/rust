@@ -4,19 +4,17 @@ error: unexpected generic arguments in path
 LL | m!{ S<u8> }
    |     ^^^^^
 
+error[E0577]: expected module, found struct `S`
+  --> $DIR/visibility-ty-params.rs:6:5
+   |
+LL | m!{ S<u8> }
+   |     ^^^^^ not a module
+
 error: unexpected generic arguments in path
   --> $DIR/visibility-ty-params.rs:10:9
    |
 LL |     m!{ m<> }
    |         ^^^
-
-error[E0577]: expected module, found struct `S`
-  --> $DIR/visibility-ty-params.rs:6:5
-   |
-LL | m!{ S<u8> }
-   |     -^^^^
-   |     |
-   |     help: a module with a similar name exists: `m`
 
 error: aborting due to 3 previous errors
 

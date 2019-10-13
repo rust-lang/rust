@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `v` in pattern guard
-  --> $DIR/rfc-reject-double-move-across-arms.rs:7:36
+  --> $DIR/rfc-reject-double-move-across-arms.rs:5:36
    |
 LL |         VecWrapper::A(v) if { drop(v); false } => 1,
    |                                    ^ move occurs because `v` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait

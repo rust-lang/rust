@@ -122,6 +122,14 @@ impl<T: ?Sized> Unique<T> {
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
+
+    /// Casts to a pointer of another type.
+    #[inline]
+    pub const fn cast<U>(self) -> Unique<U> {
+        unsafe {
+            Unique::new_unchecked(self.as_ptr() as *mut U)
+        }
+    }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]

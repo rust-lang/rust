@@ -4,7 +4,7 @@ fn test(cond: bool) {
         v = 3;
         break;
     }
-    println!("{}", v); //~ ERROR borrow of possibly uninitialized variable: `v`
+    println!("{}", v); //~ ERROR borrow of possibly-uninitialized variable: `v`
 }
 
 fn main() {

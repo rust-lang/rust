@@ -1,14 +1,14 @@
-error[E0381]: borrow of possibly uninitialized variable: `x`
+error[E0381]: borrow of possibly-uninitialized variable: `x`
   --> $DIR/issue-24267-flow-exit.rs:12:20
    |
 LL |     println!("{}", x);
-   |                    ^ use of possibly uninitialized `x`
+   |                    ^ use of possibly-uninitialized `x`
 
-error[E0381]: borrow of possibly uninitialized variable: `x`
+error[E0381]: borrow of possibly-uninitialized variable: `x`
   --> $DIR/issue-24267-flow-exit.rs:18:20
    |
 LL |     println!("{}", x);
-   |                    ^ use of possibly uninitialized `x`
+   |                    ^ use of possibly-uninitialized `x`
 
 error: aborting due to 2 previous errors
 

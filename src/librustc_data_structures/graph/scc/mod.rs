@@ -6,7 +6,7 @@
 use crate::fx::FxHashSet;
 use crate::graph::{DirectedGraph, WithNumNodes, WithNumEdges, WithSuccessors, GraphSuccessors};
 use crate::graph::vec_graph::VecGraph;
-use crate::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use std::ops::Range;
 
 #[cfg(test)]

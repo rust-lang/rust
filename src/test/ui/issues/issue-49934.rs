@@ -1,14 +1,7 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![feature(stmt_expr_attributes)]
 #![warn(unused_attributes)] //~ NOTE lint level defined here
-
-fn foo<#[derive(Debug)] T>() { //~ WARN unused attribute
-    match 0 {
-        #[derive(Debug)] //~ WARN unused attribute
-        _ => (),
-    }
-}
 
 fn main() {
     // fold_stmt (Item)

@@ -1,14 +1,14 @@
-error[E0268]: `break` outside of loop
+error[E0268]: `break` outside of a loop
   --> $DIR/array-break-length.rs:3:17
    |
 LL |         |_: [_; break]| {}
-   |                 ^^^^^ cannot break outside of a loop
+   |                 ^^^^^ cannot `break` outside of a loop
 
-error[E0268]: `continue` outside of loop
+error[E0268]: `continue` outside of a loop
   --> $DIR/array-break-length.rs:8:17
    |
 LL |         |_: [_; continue]| {}
-   |                 ^^^^^^^^ cannot break outside of a loop
+   |                 ^^^^^^^^ cannot `continue` outside of a loop
 
 error[E0308]: mismatched types
   --> $DIR/array-break-length.rs:3:9

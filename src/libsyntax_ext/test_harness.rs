@@ -2,36 +2,35 @@
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};
+use rustc_target::spec::PanicStrategy;
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
 use syntax::ext::base::{ExtCtxt, Resolver};
-use syntax::ext::expand::ExpansionConfig;
-use syntax::ext::hygiene::{ExpnId, MacroKind};
+use syntax::ext::expand::{AstFragment, ExpansionConfig};
 use syntax::feature_gate::Features;
 use syntax::mut_visit::{*, ExpectOne};
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
-use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned};
-use syntax::symbol::{kw, sym, Symbol};
+use syntax::source_map::respan;
+use syntax::symbol::{sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::hygiene::{AstPass, SyntaxContext, Transparency};
 
 use std::{iter, mem};
 
 struct Test {
     span: Span,
-    path: Vec<Ident>,
+    ident: Ident,
 }
 
 struct TestCtxt<'a> {
-    span_diagnostic: &'a errors::Handler,
-    path: Vec<Ident>,
     ext_cx: ExtCtxt<'a>,
+    panic_strategy: PanicStrategy,
+    def_site: Span,
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
     test_runner: Option<ast::Path>,
-    // top-level re-export submodule, filled out after folding is finished
-    toplevel_reexport: Option<Ident>,
 }
 
 // Traverse the crate, collecting all the test functions, eliding any
@@ -43,9 +42,12 @@ pub fn inject(
     krate: &mut ast::Crate,
     span_diagnostic: &errors::Handler,
     features: &Features,
+    panic_strategy: PanicStrategy,
+    platform_panic_strategy: PanicStrategy,
+    enable_panic_abort_tests: bool,
 ) {
-    // Check for #[reexport_test_harness_main = "some_name"] which
-    // creates a `use __test::main as some_name;`. This needs to be
+    // Check for #![reexport_test_harness_main = "some_name"] which gives the
+    // main test function the name `some_name` without hygiene. This needs to be
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
@@ -56,17 +58,28 @@ pub fn inject(
     let test_runner = get_test_runner(span_diagnostic, &krate);
 
     if should_test {
+        let panic_strategy = match (panic_strategy, enable_panic_abort_tests) {
+            (PanicStrategy::Abort, true) =>
+                PanicStrategy::Abort,
+            (PanicStrategy::Abort, false) if panic_strategy == platform_panic_strategy => {
+                // Silently allow compiling with panic=abort on these platforms,
+                // but with old behavior (abort if a test fails).
+                PanicStrategy::Unwind
+            }
+            (PanicStrategy::Abort, false) => {
+                span_diagnostic.err("building tests with panic=abort is not yet supported");
+                PanicStrategy::Unwind
+            }
+            (PanicStrategy::Unwind, _) => PanicStrategy::Unwind,
+        };
         generate_test_harness(sess, resolver, reexport_test_harness_main,
-                              krate, span_diagnostic, features, test_runner)
+                              krate, features, panic_strategy, test_runner)
     }
 }
 
 struct TestHarnessGenerator<'a> {
     cx: TestCtxt<'a>,
-    tests: Vec<Ident>,
-
-    // submodule name, gensym'd identifier for re-exports
-    tested_submods: Vec<(Ident, Ident)>,
+    tests: Vec<Test>,
 }
 
 impl<'a> MutVisitor for TestHarnessGenerator<'a> {
@@ -74,57 +87,50 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         noop_visit_crate(c, self);
 
         // Create a main function to run our tests
-        let test_main = {
-            let unresolved = mk_main(&mut self.cx);
-            self.cx.ext_cx.monotonic_expander().flat_map_item(unresolved).pop().unwrap()
-        };
-
-        c.module.items.push(test_main);
+        c.module.items.push(mk_main(&mut self.cx));
     }
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        let ident = i.ident;
-        if ident.name != kw::Invalid {
-            self.cx.path.push(ident);
-        }
-        debug!("current path: {}", path_name_i(&self.cx.path));
-
         let mut item = i.into_inner();
         if is_test_case(&item) {
             debug!("this is a test item");
 
             let test = Test {
                 span: item.span,
-                path: self.cx.path.clone(),
+                ident: item.ident,
             };
-            self.cx.test_cases.push(test);
-            self.tests.push(item.ident);
+            self.tests.push(test);
         }
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(mut module) = item.node {
+        if let ast::ItemKind::Mod(mut module) = item.kind {
             let tests = mem::take(&mut self.tests);
-            let tested_submods = mem::take(&mut self.tested_submods);
             noop_visit_mod(&mut module, self);
-            let tests = mem::replace(&mut self.tests, tests);
-            let tested_submods = mem::replace(&mut self.tested_submods, tested_submods);
+            let mut tests = mem::replace(&mut self.tests, tests);
 
-            if !tests.is_empty() || !tested_submods.is_empty() {
-                let (it, sym) = mk_reexport_mod(&mut self.cx, item.id, tests, tested_submods);
-                module.items.push(it);
-
-                if !self.cx.path.is_empty() {
-                    self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
+            if !tests.is_empty() {
+                let parent = if item.id == ast::DUMMY_NODE_ID {
+                    ast::CRATE_NODE_ID
                 } else {
-                    debug!("pushing nothing, sym: {:?}", sym);
-                    self.cx.toplevel_reexport = Some(sym);
+                    item.id
+                };
+                // Create an identifier that will hygienically resolve the test
+                // case name, even in another module.
+                let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
+                    module.inner,
+                    AstPass::TestHarness,
+                    &[],
+                    Some(parent),
+                );
+                for test in &mut tests {
+                    // See the comment on `mk_main` for why we're using
+                    // `apply_mark` directly.
+                    test.ident.span = test.ident.span.apply_mark(expn_id, Transparency::Opaque);
                 }
+                self.cx.test_cases.extend(tests);
             }
-            item.node = ast::ItemKind::Mod(module);
-        }
-        if ident.name != kw::Invalid {
-            self.cx.path.pop();
+            item.kind = ast::ItemKind::Mod(module);
         }
         smallvec![P(item)]
     }
@@ -139,6 +145,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 struct EntryPointCleaner {
     // Current depth in the ast
     depth: usize,
+    def_site: Span,
 }
 
 impl MutVisitor for EntryPointCleaner {
@@ -154,9 +161,11 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
-                item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_ident = Ident::with_empty_ctxt(sym::allow);
-                    let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
+                item.map(|ast::Item {id, ident, attrs, kind, vis, span, tokens}| {
+                    let allow_ident = Ident::new(sym::allow, self.def_site);
+                    let dc_nested = attr::mk_nested_word_item(
+                        Ident::from_str_and_span("dead_code", self.def_site),
+                    );
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
 
@@ -169,7 +178,7 @@ impl MutVisitor for EntryPointCleaner {
                             })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
-                        node,
+                        kind,
                         vis,
                         span,
                         tokens,
@@ -187,118 +196,105 @@ impl MutVisitor for EntryPointCleaner {
     }
 }
 
-/// Creates an item (specifically a module) that "pub use"s the tests passed in.
-/// Each tested submodule will contain a similar reexport module that we will export
-/// under the name of the original module. That is, `submod::__test_reexports` is
-/// reexported like so `pub use submod::__test_reexports as submod`.
-fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
-                   parent: ast::NodeId,
-                   tests: Vec<Ident>,
-                   tested_submods: Vec<(Ident, Ident)>)
-                   -> (P<ast::Item>, Ident) {
-    let super_ = Ident::with_empty_ctxt(kw::Super);
-
-    let items = tests.into_iter().map(|r| {
-        cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
-                                  cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
-    }).chain(tested_submods.into_iter().map(|(r, sym)| {
-        let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
-        cx.ext_cx.item_use_simple_(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
-                                   Some(r), path)
-    })).collect();
-
-    let reexport_mod = ast::Mod {
-        inline: true,
-        inner: DUMMY_SP,
-        items,
-    };
-
-    let name = Ident::from_str("__test_reexports").gensym();
-    let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
-    cx.ext_cx.current_expansion.id = cx.ext_cx.resolver.get_module_scope(parent);
-    let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
-        ident: name,
-        attrs: Vec::new(),
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ItemKind::Mod(reexport_mod),
-        vis: dummy_spanned(ast::VisibilityKind::Public),
-        span: DUMMY_SP,
-        tokens: None,
-    })).pop().unwrap();
-
-    (it, name)
-}
-
 /// Crawl over the crate, inserting test reexports and the test main function
 fn generate_test_harness(sess: &ParseSess,
                          resolver: &mut dyn Resolver,
                          reexport_test_harness_main: Option<Symbol>,
                          krate: &mut ast::Crate,
-                         sd: &errors::Handler,
                          features: &Features,
+                         panic_strategy: PanicStrategy,
                          test_runner: Option<ast::Path>) {
-    // Remove the entry points
-    let mut cleaner = EntryPointCleaner { depth: 0 };
-    cleaner.visit_crate(krate);
-
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
 
+    let ext_cx = ExtCtxt::new(sess, econfig, resolver);
+
+    let expn_id = ext_cx.resolver.expansion_for_ast_pass(
+        DUMMY_SP,
+        AstPass::TestHarness,
+        &[sym::main, sym::test, sym::rustc_attrs],
+        None,
+    );
+    let def_site = DUMMY_SP.with_def_site_ctxt(expn_id);
+
+    // Remove the entry points
+    let mut cleaner = EntryPointCleaner { depth: 0, def_site };
+    cleaner.visit_crate(krate);
+
     let cx = TestCtxt {
-        span_diagnostic: sd,
-        ext_cx: ExtCtxt::new(sess, econfig, resolver),
-        path: Vec::new(),
+        ext_cx,
+        panic_strategy,
+        def_site,
         test_cases: Vec::new(),
         reexport_test_harness_main,
-        toplevel_reexport: None,
         test_runner
     };
 
     TestHarnessGenerator {
         cx,
         tests: Vec::new(),
-        tested_submods: Vec::new(),
     }.visit_crate(krate);
 }
 
 /// Creates a function item for use as the main function of a test build.
 /// This function will call the `test_runner` as specified by the crate attribute
+///
+/// By default this expands to
+///
+/// #[main]
+/// pub fn main() {
+///     extern crate test;
+///     test::test_main_static(&[
+///         &test_const1,
+///         &test_const2,
+///         &test_const3,
+///     ]);
+/// }
+///
+/// Most of the Ident have the usual def-site hygiene for the AST pass. The
+/// exception is the `test_const`s. These have a syntax context that has two
+/// opaque marks: one from the expansion of `test` or `test_case`, and one
+/// generated  in `TestHarnessGenerator::flat_map_item`. When resolving this
+/// identifier after failing to find a matching identifier in the root module
+/// we remove the outer mark, and try resolving at its def-site, which will
+/// then resolve to `test_const`.
+///
+/// The expansion here can be controlled by two attributes:
+///
+/// `reexport_test_harness_main` provides a different name for the `main`
+/// function and `test_runner` provides a path that replaces
+/// `test::test_main_static`.
 fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
-    // Writing this out by hand:
-    //        pub fn main() {
-    //            #![main]
-    //            test::test_main_static(&[..tests]);
-    //        }
-    let sp = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
-        ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
-        [sym::main, sym::test, sym::rustc_attrs][..].into(),
-    ));
+    let sp = cx.def_site;
     let ecx = &cx.ext_cx;
-    let test_id = Ident::with_empty_ctxt(sym::test);
+    let test_id = Ident::new(sym::test, sp);
+
+    let runner_name = match cx.panic_strategy {
+        PanicStrategy::Unwind => "test_main_static",
+        PanicStrategy::Abort => "test_main_static_abort",
+    };
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
-        ecx.path(sp, vec![
-            test_id, ecx.ident_of("test_main_static")
-        ]));
+        ecx.path(sp, vec![test_id, ecx.ident_of(runner_name, sp)]));
 
     test_runner.span = sp;
 
     let test_main_path_expr = ecx.expr_path(test_runner);
     let call_test_main = ecx.expr_call(sp, test_main_path_expr,
-                                       vec![mk_tests_slice(cx)]);
+                                       vec![mk_tests_slice(cx, sp)]);
     let call_test_main = ecx.stmt_expr(call_test_main);
 
-    // #![main]
-    let main_meta = ecx.meta_word(sp, sym::main);
-    let main_attr = ecx.attribute(main_meta);
-
-    // extern crate test as test_gensym
+    // extern crate test
     let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,
         test_id,
         vec![],
         ast::ItemKind::ExternCrate(None)
     ));
+
+    // #[main]
+    let main_meta = ecx.meta_word(sp, sym::main);
+    let main_attr = ecx.attribute(main_meta);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
@@ -317,58 +313,37 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {
-        Some(sym) => Ident::new(sym, sp),
-        None => Ident::from_str_and_span("main", sp).gensym(),
+        Some(sym) => Ident::new(sym, sp.with_ctxt(SyntaxContext::root())),
+        None => Ident::new(sym::main, sp),
     };
 
-    P(ast::Item {
+    let main = P(ast::Item {
         ident: main_id,
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
-        node: main,
-        vis: dummy_spanned(ast::VisibilityKind::Public),
+        kind: main,
+        vis: respan(sp, ast::VisibilityKind::Public),
         span: sp,
         tokens: None,
-    })
+    });
 
-}
-
-fn path_name_i(idents: &[Ident]) -> String {
-    let mut path_name = "".to_string();
-    let mut idents_iter = idents.iter().peekable();
-    while let Some(ident) = idents_iter.next() {
-        path_name.push_str(&ident.as_str());
-        if idents_iter.peek().is_some() {
-            path_name.push_str("::")
-        }
-    }
-    path_name
+    // Integrate the new item into existing module structures.
+    let main = AstFragment::Items(smallvec![main]);
+    cx.ext_cx.monotonic_expander().fully_expand_fragment(main).make_items().pop().unwrap()
 }
 
 /// Creates a slice containing every test like so:
-/// &[path::to::test1, path::to::test2]
-fn mk_tests_slice(cx: &TestCtxt<'_>) -> P<ast::Expr> {
+/// &[&test1, &test2]
+fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ref ecx = cx.ext_cx;
 
-    ecx.expr_vec_slice(DUMMY_SP,
+
+    ecx.expr_vec_slice(sp,
         cx.test_cases.iter().map(|test| {
             ecx.expr_addr_of(test.span,
-                ecx.expr_path(ecx.path(test.span, visible_path(cx, &test.path))))
+                ecx.expr_path(ecx.path(test.span, vec![test.ident])))
         }).collect())
-}
-
-/// Creates a path from the top-level __test module to the test via __test_reexports
-fn visible_path(cx: &TestCtxt<'_>, path: &[Ident]) -> Vec<Ident>{
-    let mut visible_path = vec![];
-    match cx.toplevel_reexport {
-        Some(id) => visible_path.push(id),
-        None => {
-            cx.span_diagnostic.bug("expected to find top-level re-export name, but found None");
-        }
-    }
-    visible_path.extend_from_slice(path);
-    visible_path
 }
 
 fn is_test_case(i: &ast::Item) -> bool {

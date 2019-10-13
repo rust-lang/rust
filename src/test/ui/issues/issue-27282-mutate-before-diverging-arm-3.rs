@@ -8,7 +8,7 @@
 // This case is interesting because a borrow of **x is untracked, because **x is
 // immutable. However, for matches we care that **x refers to the same value
 // until we have chosen a match arm.
-#![feature(nll)]
+
 struct ForceFnOnce;
 fn main() {
     let mut x = &mut &Some(&2);

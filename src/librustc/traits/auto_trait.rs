@@ -321,7 +321,7 @@ impl AutoTraitFinder<'tcx> {
                     match vtable {
                         Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
                             // Blame tidy for the weird bracket placement
-                            if infcx.tcx.impl_polarity(*impl_def_id) == hir::ImplPolarity::Negative
+                            if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative
                             {
                                 debug!("evaluate_nested_obligations: Found explicit negative impl\
                                         {:?}, bailing out", impl_def_id);
@@ -601,7 +601,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
-        return match ty.sty {
+        return match ty.kind {
             ty::Param(_) => true,
             ty::Projection(p) => self.is_of_param(p.self_ty()),
             _ => false,
@@ -609,7 +609,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        match p.ty().skip_binder().sty {
+        match p.ty().skip_binder().kind {
             ty::Projection(proj) if proj == p.skip_binder().projection_ty => {
                 true
             },

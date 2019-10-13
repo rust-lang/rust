@@ -1,0 +1,16 @@
+error: any use of this value will cause an error
+  --> $DIR/dangling.rs:8:16
+   |
+LL | / const TEST: () = { unsafe {
+LL | |     let slice: *const [u8] = mem::transmute((1usize, usize::MAX));
+LL | |     let _val = &*slice;
+   | |                ^^^^^^^ invalid slice: total size is bigger than largest supported object
+LL | |
+LL | |
+LL | | } };
+   | |____-
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

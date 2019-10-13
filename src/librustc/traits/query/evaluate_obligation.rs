@@ -1,7 +1,8 @@
 use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;
-use crate::traits::{EvaluationResult, PredicateObligation, SelectionContext,
-             TraitQueryMode, OverflowError};
+use crate::traits::{
+    EvaluationResult, PredicateObligation, SelectionContext, TraitQueryMode, OverflowError,
+};
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
@@ -49,13 +50,13 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.
-        self.tcx.global_tcx().evaluate_obligation(c_pred)
+        self.tcx.evaluate_obligation(c_pred)
     }
 
     // Helper function that canonicalizes and runs the query. If an
     // overflow results, we re-run it in the local context so we can
     // report a nice error.
-    fn evaluate_obligation_no_overflow(
+    crate fn evaluate_obligation_no_overflow(
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> EvaluationResult {

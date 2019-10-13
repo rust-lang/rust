@@ -5,7 +5,7 @@ use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
 fn make_rand_name() -> OsString {
-    let mut rng = thread_rng();
+    let rng = thread_rng();
     let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10)
                                  .collect::<String>());
     let n = OsString::from(n);

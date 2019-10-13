@@ -1,4 +1,4 @@
-error[E0658]: `#[unwind]` is experimental
+error[E0658]: the `#[unwind]` attribute is an experimental feature
   --> $DIR/feature-gate-unwind-attributes.rs:11:5
    |
 LL |     #[unwind(allowed)]

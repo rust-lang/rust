@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of static item `D`
+  --> $DIR/move-error-snippets.rs:16:18
+   |
+LL | | #[macro_use]
+   | |__________________^ move occurs because `D` has type `A`, which does not implement the `Copy` trait
+...
+LL |               aaa!(D);
+   |  __________________^
+...
+LL |   sss!();
+   |   ------- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

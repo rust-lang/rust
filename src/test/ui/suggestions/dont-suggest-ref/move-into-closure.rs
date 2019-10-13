@@ -22,7 +22,7 @@ fn move_into_fn() {
 
     let x = X(Y);
 
-    // -------- move into Fn --------
+    // move into Fn
 
     consume_fn(|| {
         let X(_t) = x;
@@ -89,7 +89,7 @@ fn move_into_fnmut() {
 
     let x = X(Y);
 
-    // -------- move into FnMut --------
+    // move into FnMut
 
     consume_fnmut(|| {
         let X(_t) = x;

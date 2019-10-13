@@ -62,6 +62,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     };
 
     interface::run_compiler(config, |compiler| {
-        compiler.compile().ok();
+        // This runs all the passes prior to linking, too.
+        compiler.link().ok();
     });
 }

@@ -4,11 +4,6 @@ error[E0433]: failed to resolve: partially resolved path in a derive macro
 LL | #[derive(Foo::Anything)]
    |          ^^^^^^^^^^^^^ partially resolved path in a derive macro
 
-error[E0601]: `main` function not found in crate `issue_46101`
-   |
-   = note: consider adding a `main` function to `$DIR/issue-46101.rs`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0433, E0601.
-For more information about an error, try `rustc --explain E0433`.
+For more information about this error, try `rustc --explain E0433`.

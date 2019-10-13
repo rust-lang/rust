@@ -7,7 +7,7 @@
 use crate::lint::{LintPass, LateLintPass, LintArray};
 use crate::middle::stability;
 use crate::session::Session;
-use errors::{Applicability, DiagnosticBuilder};
+use errors::{Applicability, DiagnosticBuilder, pluralise};
 use syntax::ast;
 use syntax::source_map::Span;
 use syntax::symbol::Symbol;
@@ -368,6 +368,12 @@ pub mod parser {
         Allow,
         "possible meta-variable misuse at macro definition"
     }
+
+    declare_lint! {
+        pub INCOMPLETE_INCLUDE,
+        Deny,
+        "trailing content in included file"
+    }
 }
 
 declare_lint! {
@@ -393,6 +399,12 @@ declare_lint! {
     pub MUTABLE_BORROW_RESERVATION_CONFLICT,
     Warn,
     "reservation of a two-phased borrow conflicts with other shared borrows"
+}
+
+declare_lint! {
+    pub SOFT_UNSTABLE,
+    Deny,
+    "a feature gate that doesn't break dependent crates"
 }
 
 declare_lint_pass! {
@@ -460,6 +472,7 @@ declare_lint_pass! {
         NESTED_IMPL_TRAIT,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
+        SOFT_UNSTABLE,
     ]
 }
 
@@ -517,7 +530,7 @@ pub(crate) fn add_elided_lifetime_in_path_suggestion(
     };
     db.span_suggestion(
         replace_span,
-        &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
+        &format!("indicate the anonymous lifetime{}", pluralise!(n)),
         suggestion,
         Applicability::MachineApplicable
     );

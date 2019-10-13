@@ -2,7 +2,7 @@
 
 use rustc::mir::{Local, Location, Body};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use std::mem;
 
 pub struct DefUseAnalysis {

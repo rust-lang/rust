@@ -4,7 +4,7 @@
 // in a runtime panic.
 
 #![feature(never_type)]
-#![allow(deprecated)]
+#![allow(deprecated, invalid_value)]
 
 use std::{mem, panic};
 

@@ -1,8 +1,12 @@
-error: expected pattern, found keyword `return`
+error: expected identifier, found keyword `return`
   --> $DIR/keyword-return-as-identifier.rs:4:9
    |
 LL |     let return = "foo";
-   |         ^^^^^^ expected pattern
+   |         ^^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#return = "foo";
+   |         ^^^^^^^^
 
 error: aborting due to previous error
 

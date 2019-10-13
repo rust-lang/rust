@@ -1,8 +1,6 @@
 // edition:2018
 // run-pass
 
-#![feature(async_await)]
-
 trait Foo { }
 
 impl Foo for () { }

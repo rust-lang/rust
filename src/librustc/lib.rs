@@ -35,7 +35,6 @@
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(inner_deref)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
@@ -45,7 +44,6 @@
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(range_is_empty)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
@@ -60,13 +58,13 @@
 #![feature(crate_visibility_modifier)]
 #![feature(proc_macro_hygiene)]
 #![feature(log_syntax)]
-#![feature(mem_take)]
+#![feature(associated_type_bounds)]
+#![feature(rustc_attrs)]
 
 #![recursion_limit="512"]
 
 #[macro_use] extern crate bitflags;
 extern crate getopts;
-#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate scoped_tls;
 #[cfg(windows)]
 extern crate libc;
@@ -86,8 +84,6 @@ mod tests;
 #[macro_use]
 mod macros;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 pub mod error_codes;
 
 #[macro_use]
@@ -95,7 +91,6 @@ pub mod query;
 
 #[macro_use]
 pub mod arena;
-pub mod cfg;
 pub mod dep_graph;
 pub mod hir;
 pub mod ich;
@@ -103,18 +98,14 @@ pub mod infer;
 pub mod lint;
 
 pub mod middle {
-    pub mod borrowck;
     pub mod expr_use_visitor;
     pub mod cstore;
-    pub mod dead;
     pub mod dependency_format;
-    pub mod entry;
+    pub mod diagnostic_items;
     pub mod exported_symbols;
     pub mod free_region;
-    pub mod intrinsicck;
     pub mod lib_features;
     pub mod lang_items;
-    pub mod liveness;
     pub mod mem_categorization;
     pub mod privacy;
     pub mod reachable;
@@ -140,6 +131,3 @@ pub mod util {
 
 // Allows macros to refer to this crate as `::rustc`
 extern crate self as rustc;
-
-// Build the diagnostics array at the end so that the metadata includes error use sites.
-__build_diagnostic_array! { librustc, DIAGNOSTICS }

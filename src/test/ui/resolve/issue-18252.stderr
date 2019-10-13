@@ -1,6 +1,9 @@
 error[E0423]: expected function, found struct variant `Foo::Variant`
   --> $DIR/issue-18252.rs:6:13
    |
+LL |     Variant { x: usize }
+   |     -------------------- `Foo::Variant` defined here
+...
 LL |     let f = Foo::Variant(42);
    |             ^^^^^^^^^^^^ did you mean `Foo::Variant { /* fields */ }`?
 

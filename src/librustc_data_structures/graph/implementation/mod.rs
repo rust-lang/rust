@@ -20,7 +20,7 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use crate::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use std::fmt::Debug;
 use std::usize;
@@ -303,11 +303,11 @@ pub struct AdjacentEdges<'g, N, E> {
 
 impl<'g, N: Debug, E: Debug> AdjacentEdges<'g, N, E> {
     fn targets(self) -> impl Iterator<Item = NodeIndex> + 'g {
-        self.into_iter().map(|(_, edge)| edge.target)
+        self.map(|(_, edge)| edge.target)
     }
 
     fn sources(self) -> impl Iterator<Item = NodeIndex> + 'g {
-        self.into_iter().map(|(_, edge)| edge.source)
+        self.map(|(_, edge)| edge.source)
     }
 }
 

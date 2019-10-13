@@ -1,7 +1,7 @@
-use errors::{Diagnostic, DiagnosticBuilder};
+use errors::Diagnostic;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, Ordering};
 use std::env;
@@ -9,7 +9,6 @@ use std::hash::Hash;
 use std::collections::hash_map::Entry;
 use std::mem;
 use crate::ty::{self, TyCtxt};
-use crate::util::common::{ProfileQueriesMsg, profq_msg};
 use parking_lot::{Mutex, Condvar};
 
 use crate::ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
@@ -26,7 +25,7 @@ pub struct DepGraph {
     data: Option<Lrc<DepGraphData>>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct DepNodeIndex { .. }
 }
 
@@ -75,9 +74,6 @@ struct DepGraphData {
     previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
 
     dep_node_debug: Lock<FxHashMap<DepNode, String>>,
-
-    // Used for testing, only populated when -Zquery-dep-graph is specified.
-    loaded_from_cache: Lock<FxHashMap<DepNodeIndex, bool>>,
 }
 
 pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Option<Fingerprint>
@@ -104,7 +100,6 @@ impl DepGraph {
                 emitting_diagnostics_cond_var: Condvar::new(),
                 previous: prev_graph,
                 colors: DepNodeColorMap::new(prev_graph_node_count),
-                loaded_from_cache: Default::default(),
             })),
         }
     }
@@ -260,10 +255,6 @@ impl DepGraph {
             //  - we can get an idea of the runtime cost.
             let mut hcx = cx.get_stable_hashing_context();
 
-            if cfg!(debug_assertions) {
-                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
-            };
-
             let result = if no_tcx {
                 task(cx, arg)
             } else {
@@ -277,10 +268,6 @@ impl DepGraph {
                         task(cx, arg)
                     })
                 })
-            };
-
-            if cfg!(debug_assertions) {
-                profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
             let current_fingerprint = hash_result(&mut hcx, &result);
@@ -590,7 +577,7 @@ impl DepGraph {
                 // mark it as green by recursively marking all of its
                 // dependencies green.
                 self.try_mark_previous_green(
-                    tcx.global_tcx(),
+                    tcx,
                     data,
                     prev_index,
                     &dep_node
@@ -819,7 +806,7 @@ impl DepGraph {
             let handle = tcx.sess.diagnostic();
 
             for diagnostic in diagnostics {
-                DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();
+                handle.emit_diagnostic(&diagnostic);
             }
 
             // Mark the node as green now that diagnostics are emitted
@@ -858,6 +845,8 @@ impl DepGraph {
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
     pub fn exec_cache_promotions(&self, tcx: TyCtxt<'_>) {
+        let _prof_timer = tcx.prof.generic_activity("incr_comp_query_cache_promotion");
+
         let data = self.data.as_ref().unwrap();
         for prev_index in data.colors.values.indices() {
             match data.colors.get(prev_index) {
@@ -873,25 +862,6 @@ impl DepGraph {
                 }
             }
         }
-    }
-
-    pub fn mark_loaded_from_cache(&self, dep_node_index: DepNodeIndex, state: bool) {
-        debug!("mark_loaded_from_cache({:?}, {})",
-               self.data.as_ref().unwrap().current.borrow().data[dep_node_index].node,
-               state);
-
-        self.data
-            .as_ref()
-            .unwrap()
-            .loaded_from_cache
-            .borrow_mut()
-            .insert(dep_node_index, state);
-    }
-
-    pub fn was_loaded_from_cache(&self, dep_node: &DepNode) -> Option<bool> {
-        let data = self.data.as_ref().unwrap();
-        let dep_node_index = data.current.borrow().node_to_node_index[dep_node];
-        data.loaded_from_cache.borrow().get(&dep_node_index).cloned()
     }
 }
 

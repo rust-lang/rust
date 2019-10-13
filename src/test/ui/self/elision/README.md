@@ -42,3 +42,34 @@ In each case, we test the following patterns:
 - `self: Box<Pin<XXX>>`
 
 In the non-reference cases, `Pin` causes errors so we substitute `Rc`.
+
+### `async fn`
+
+For each of the tests above we also check that `async fn` behaves as an `fn` would.
+These tests are in files named `*-async.rs`.
+
+Legends:
+- ✓ ⟹ Yes / Pass
+- X ⟹ No
+- α ⟹ lifetime mismatch
+- β ⟹ cannot infer an appropriate lifetime
+- γ ⟹ missing lifetime specifier
+
+| `async` file | Pass? | Conforms to `fn`? | How does it diverge? <br/> `fn` ⟶ `async fn` |
+| --- | --- | --- | --- |
+| `self-async.rs` | ✓ | ✓ | N/A |
+| `struct-async.rs`| ✓ | ✓ | N/A |
+| `alias-async.rs`| ✓ | ✓ | N/A |
+| `assoc-async.rs`| ✓ | ✓ | N/A |
+| `ref-self-async.rs` | X | ✓ | N/A |
+| `ref-mut-self-async.rs` | X | ✓ | N/A |
+| `ref-struct-async.rs` | X | ✓ | N/A |
+| `ref-mut-struct-async.rs` | X | ✓ | N/A |
+| `ref-alias-async.rs` | ✓ | ✓ | N/A |
+| `ref-assoc-async.rs` | ✓ | ✓ | N/A |
+| `ref-mut-alias-async.rs` | ✓ | ✓ | N/A |
+| `lt-self-async.rs` | ✓ | ✓ | N/A
+| `lt-struct-async.rs` | ✓ | ✓ | N/A
+| `lt-alias-async.rs` | ✓ | ✓ | N/A
+| `lt-assoc-async.rs` | ✓ | ✓ | N/A
+| `lt-ref-self-async.rs` | X | ✓ | N/A |

@@ -2,8 +2,6 @@
 
 #![allow(irrefutable_let_patterns)]
 
-use std::ops::Range;
-
 fn main() {
     let x: bool;
     // This should associate as: `(x = (true && false));`.

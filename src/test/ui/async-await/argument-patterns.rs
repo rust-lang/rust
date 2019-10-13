@@ -1,9 +1,7 @@
 // edition:2018
-// run-pass
+// check-pass
 
-#![allow(unused_variables)]
 #![deny(unused_mut)]
-#![feature(async_await)]
 
 type A = Vec<u32>;
 

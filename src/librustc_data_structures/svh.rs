@@ -61,11 +61,7 @@ impl Decodable for Svh {
 
 impl<T> stable_hasher::HashStable<T> for Svh {
     #[inline]
-    fn hash_stable<W: stable_hasher::StableHasherResult>(
-        &self,
-        ctx: &mut T,
-        hasher: &mut stable_hasher::StableHasher<W>
-    ) {
+    fn hash_stable(&self, ctx: &mut T, hasher: &mut stable_hasher::StableHasher) {
         let Svh {
             hash
         } = *self;

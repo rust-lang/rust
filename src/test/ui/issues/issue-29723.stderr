@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `s`
-  --> $DIR/issue-29723.rs:12:13
+  --> $DIR/issue-29723.rs:10:13
    |
 LL |     let s = String::new();
    |         - move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait

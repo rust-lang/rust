@@ -1,9 +1,6 @@
 // `#![derive]` raises errors when it occurs at contexts other than ADT
 // definitions.
 
-#![derive(Debug)]
-//~^ ERROR `derive` may only be applied to structs, enums and unions
-
 #[derive(Debug)]
 //~^ ERROR `derive` may only be applied to structs, enums and unions
 mod derive {

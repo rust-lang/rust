@@ -18,48 +18,48 @@ pub fn boolean(x: bool) -> bool {
   x
 }
 
-// CHECK: @readonly_borrow(i32* noalias readonly align 4 dereferenceable(4) %arg0)
+// CHECK: @readonly_borrow(i32* noalias readonly align 4 dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {
 }
 
-// CHECK: @static_borrow(i32* noalias readonly align 4 dereferenceable(4) %arg0)
+// CHECK: @static_borrow(i32* noalias readonly align 4 dereferenceable(4) %_1)
 // static borrow may be captured
 #[no_mangle]
 pub fn static_borrow(_: &'static i32) {
 }
 
-// CHECK: @named_borrow(i32* noalias readonly align 4 dereferenceable(4) %arg0)
+// CHECK: @named_borrow(i32* noalias readonly align 4 dereferenceable(4) %_1)
 // borrow with named lifetime may be captured
 #[no_mangle]
 pub fn named_borrow<'r>(_: &'r i32) {
 }
 
-// CHECK: @unsafe_borrow(i16* align 2 dereferenceable(2) %arg0)
+// CHECK: @unsafe_borrow(i16* align 2 dereferenceable(2) %_1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(i16* align 2 dereferenceable(2) %arg0)
+// CHECK: @mutable_unsafe_borrow(i16* align 2 dereferenceable(2) %_1)
 // ... unless this is a mutable borrow, those never alias
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* align 4 dereferenceable(4) %arg0)
+// CHECK: @mutable_borrow(i32* align 4 dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
 }
 
-// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32) %arg0)
+// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32) %_1)
 #[no_mangle]
 pub fn indirect_struct(_: S) {
 }
 
-// CHECK: @borrowed_struct(%S* noalias readonly align 4 dereferenceable(32) %arg0)
+// CHECK: @borrowed_struct(%S* noalias readonly align 4 dereferenceable(32) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn borrowed_struct(_: &S) {
@@ -80,36 +80,36 @@ pub fn struct_return() -> S {
 }
 
 // Hack to get the correct size for the length part in slices
-// CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
+// CHECK: @helper([[USIZE:i[0-9]+]] %_1)
 #[no_mangle]
 pub fn helper(_: usize) {
 }
 
-// CHECK: @slice([0 x i8]* noalias nonnull readonly align 1 %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @slice([0 x i8]* noalias nonnull readonly align 1 %_1.0, [[USIZE]] %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice([0 x i8]* nonnull align 1 %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @mutable_slice([0 x i8]* nonnull align 1 %_1.0, [[USIZE]] %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice([0 x i16]* nonnull align 2 %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @unsafe_slice([0 x i16]* nonnull align 2 %_1.0, [[USIZE]] %_1.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
 }
 
-// CHECK: @str([0 x i8]* noalias nonnull readonly align 1 %arg0.0, [[USIZE]] %arg0.1)
+// CHECK: @str([0 x i8]* noalias nonnull readonly align 1 %_1.0, [[USIZE]] %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {
 }
 
-// CHECK: @trait_borrow({}* nonnull align 1 %arg0.0, [3 x [[USIZE]]]* noalias readonly align {{.*}} dereferenceable({{.*}}) %arg0.1)
+// CHECK: @trait_borrow({}* nonnull align 1 %_1.0, [3 x [[USIZE]]]* noalias readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &Drop) {

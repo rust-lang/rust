@@ -10,7 +10,7 @@ error[E0529]: expected an array or slice, found `std::string::String`
 LL |         ['f', 'o', ..] => {}
    |         ^^^^^^^^^^^^^^ pattern cannot match with input type `std::string::String`
 
-error[E0527]: pattern requires 1 elements but array has 3
+error[E0527]: pattern requires 1 element but array has 3
   --> $DIR/match-vec-mismatch.rs:20:9
    |
 LL |         [0] => {},

@@ -1,4 +1,4 @@
-error[E0658]: no_core is experimental
+error[E0658]: the `#[no_core]` attribute is an experimental feature
   --> $DIR/cfg-attr-crate-2.rs:6:21
    |
 LL | #![cfg_attr(broken, no_core)]

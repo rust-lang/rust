@@ -518,7 +518,7 @@ impl Display for Arguments<'_> {
     label="`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`",
 )]
 #[doc(alias = "{:?}")]
-#[lang = "debug_trait"]
+#[rustc_diagnostic_item = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///
@@ -544,6 +544,18 @@ pub trait Debug {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
+
+// Separate module to reexport the macro `Debug` from prelude without the trait `Debug`.
+pub(crate) mod macros {
+    /// Derive macro generating an impl of the trait `Debug`.
+    #[rustc_builtin_macro]
+    #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Debug($item:item) { /* compiler built-in */ }
+}
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(inline)]
+pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
@@ -1520,12 +1532,10 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     assert_eq!(&format!("{:<}", Foo), "left");
-    ///     assert_eq!(&format!("{:>}", Foo), "right");
-    ///     assert_eq!(&format!("{:^}", Foo), "center");
-    ///     assert_eq!(&format!("{}", Foo), "into the void");
-    /// }
+    /// assert_eq!(&format!("{:<}", Foo), "left");
+    /// assert_eq!(&format!("{:>}", Foo), "right");
+    /// assert_eq!(&format!("{:^}", Foo), "center");
+    /// assert_eq!(&format!("{}", Foo), "into the void");
     /// ```
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {

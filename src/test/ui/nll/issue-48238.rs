@@ -1,7 +1,5 @@
 // Regression test for issue #48238
 
-#![feature(nll)]
-
 fn use_val<'a>(val: &'a u8) -> &'a u8 {
     val
 }

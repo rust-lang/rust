@@ -94,7 +94,7 @@ pub fn change_iterable() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, promoted_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_iterable() {
     let mut _x = 0;

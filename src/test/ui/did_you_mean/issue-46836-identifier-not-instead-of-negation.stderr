@@ -28,7 +28,10 @@ error: expected `{`, found `;`
 LL |     if not  // lack of braces is [sic]
    |     -- this `if` statement has a condition, but no block
 LL |         println!("Then when?");
-   |                               ^ expected `{`
+   |                               ^
+   |                               |
+   |                               expected `{`
+   |                               help: try placing this code inside a block: `{ ; }`
 
 error: unexpected `2` after identifier
   --> $DIR/issue-46836-identifier-not-instead-of-negation.rs:26:24

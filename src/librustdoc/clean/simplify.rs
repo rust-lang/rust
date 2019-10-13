@@ -35,7 +35,7 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
                 match ty {
                     clean::Generic(s) => params.entry(s).or_default()
                                                .extend(bounds),
-                    t => tybounds.push((t, ty_bounds(bounds))),
+                    t => tybounds.push((t, bounds)),
                 }
             }
             WP::RegionPredicate { lifetime, bounds } => {
@@ -45,72 +45,30 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
         }
     }
 
-    // Simplify the type parameter bounds on all the generics
-    let mut params = params.into_iter().map(|(k, v)| {
-        (k, ty_bounds(v))
-    }).collect::<BTreeMap<_, _>>();
-
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates
     equalities.retain(|&(ref lhs, ref rhs)| {
-        let (self_, trait_, name) = match *lhs {
-            clean::QPath { ref self_type, ref trait_, ref name } => {
-                (self_type, trait_, name)
-            }
-            _ => return true,
+        let (self_, trait_did, name) = if let Some(p) = lhs.projection() {
+            p
+        } else {
+            return true;
         };
-        let generic = match **self_ {
-            clean::Generic(ref s) => s,
-            _ => return true,
-        };
-        let trait_did = match **trait_ {
-            clean::ResolvedPath { did, .. } => did,
+        let generic = match self_ {
+            clean::Generic(s) => s,
             _ => return true,
         };
         let bounds = match params.get_mut(generic) {
             Some(bound) => bound,
             None => return true,
         };
-        !bounds.iter_mut().any(|b| {
-            let trait_ref = match *b {
-                clean::GenericBound::TraitBound(ref mut tr, _) => tr,
-                clean::GenericBound::Outlives(..) => return false,
-            };
-            let (did, path) = match trait_ref.trait_ {
-                clean::ResolvedPath { did, ref mut path, ..} => (did, path),
-                _ => return false,
-            };
-            // If this QPath's trait `trait_did` is the same as, or a supertrait
-            // of, the bound's trait `did` then we can keep going, otherwise
-            // this is just a plain old equality bound.
-            if !trait_is_same_or_supertrait(cx, did, trait_did) {
-                return false
-            }
-            let last = path.segments.last_mut().expect("segments were empty");
-            match last.args {
-                PP::AngleBracketed { ref mut bindings, .. } => {
-                    bindings.push(clean::TypeBinding {
-                        name: name.clone(),
-                        kind: clean::TypeBindingKind::Equality {
-                            ty: rhs.clone(),
-                        },
-                    });
-                }
-                PP::Parenthesized { ref mut output, .. } => {
-                    assert!(output.is_none());
-                    if *rhs != clean::Type::Tuple(Vec::new()) {
-                        *output = Some(rhs.clone());
-                    }
-                }
-            };
-            true
-        })
+
+        merge_bounds(cx, bounds, trait_did, name, rhs)
     });
 
     // And finally, let's reassemble everything
     let mut clauses = Vec::new();
     clauses.extend(lifetimes.into_iter().map(|(lt, bounds)| {
-        WP::RegionPredicate { lifetime: lt, bounds: bounds }
+        WP::RegionPredicate { lifetime: lt, bounds }
     }));
     clauses.extend(params.into_iter().map(|(k, v)| {
         WP::BoundPredicate {
@@ -119,28 +77,67 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
         }
     }));
     clauses.extend(tybounds.into_iter().map(|(ty, bounds)| {
-        WP::BoundPredicate { ty: ty, bounds: bounds }
+        WP::BoundPredicate { ty, bounds }
     }));
     clauses.extend(equalities.into_iter().map(|(lhs, rhs)| {
-        WP::EqPredicate { lhs: lhs, rhs: rhs }
+        WP::EqPredicate { lhs, rhs }
     }));
     clauses
+}
+
+pub fn merge_bounds(
+    cx: &clean::DocContext<'_>,
+    bounds: &mut Vec<clean::GenericBound>,
+    trait_did: DefId,
+    name: &str,
+    rhs: &clean::Type,
+) -> bool {
+    !bounds.iter_mut().any(|b| {
+        let trait_ref = match *b {
+            clean::GenericBound::TraitBound(ref mut tr, _) => tr,
+            clean::GenericBound::Outlives(..) => return false,
+        };
+        let (did, path) = match trait_ref.trait_ {
+            clean::ResolvedPath { did, ref mut path, ..} => (did, path),
+            _ => return false,
+        };
+        // If this QPath's trait `trait_did` is the same as, or a supertrait
+        // of, the bound's trait `did` then we can keep going, otherwise
+        // this is just a plain old equality bound.
+        if !trait_is_same_or_supertrait(cx, did, trait_did) {
+            return false
+        }
+        let last = path.segments.last_mut().expect("segments were empty");
+        match last.args {
+            PP::AngleBracketed { ref mut bindings, .. } => {
+                bindings.push(clean::TypeBinding {
+                    name: name.to_string(),
+                    kind: clean::TypeBindingKind::Equality {
+                        ty: rhs.clone(),
+                    },
+                });
+            }
+            PP::Parenthesized { ref mut output, .. } => match output {
+                Some(o) => assert_eq!(o, rhs),
+                None => if *rhs != clean::Type::Tuple(Vec::new()) {
+                    *output = Some(rhs.clone());
+                }
+            }
+        };
+        true
+    })
 }
 
 pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericParamDef> {
     for param in &mut params {
         match param.kind {
             clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
-                *bounds = ty_bounds(mem::take(bounds));
+                *bounds = mem::take(bounds);
             }
             _ => panic!("expected only type parameters"),
         }
     }
     params
-}
-
-fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
-    bounds
 }
 
 fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId,
@@ -149,9 +146,11 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId,
         return true
     }
     let predicates = cx.tcx.super_predicates_of(child);
+    debug_assert!(cx.tcx.generics_of(child).has_self);
+    let self_ty = cx.tcx.types.self_param;
     predicates.predicates.iter().filter_map(|(pred, _)| {
         if let ty::Predicate::Trait(ref pred) = *pred {
-            if pred.skip_binder().trait_ref.self_ty().is_self() {
+            if pred.skip_binder().trait_ref.self_ty() == self_ty {
                 Some(pred.def_id())
             } else {
                 None

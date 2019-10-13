@@ -20,12 +20,13 @@ pub fn test() {
     let _s = S;
     // Check that the personality slot alloca gets a lifetime start in each cleanup block, not just
     // in the first one.
+    // CHECK: [[SLOT:%[0-9]+]] = alloca { i8*, i32 }
     // CHECK-LABEL: cleanup:
-    // CHECK: bitcast{{.*}}personalityslot
-    // CHECK-NEXT: call void @llvm.lifetime.start
+    // CHECK: [[BITCAST:%[0-9]+]] = bitcast { i8*, i32 }* [[SLOT]] to i8*
+    // CHECK-NEXT: call void @llvm.lifetime.start.{{.*}}({{.*}}, i8* [[BITCAST]])
     // CHECK-LABEL: cleanup1:
-    // CHECK: bitcast{{.*}}personalityslot
-    // CHECK-NEXT: call void @llvm.lifetime.start
+    // CHECK: [[BITCAST1:%[0-9]+]] = bitcast { i8*, i32 }* [[SLOT]] to i8*
+    // CHECK-NEXT: call void @llvm.lifetime.start.{{.*}}({{.*}}, i8* [[BITCAST1]])
     might_unwind();
     let _t = S;
     might_unwind();

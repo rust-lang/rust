@@ -3,11 +3,10 @@
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_plugin;
 extern crate rustc_driver;
 extern crate syntax;
 
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 use syntax::attr;
 use syntax::ext::base::*;
 use syntax::feature_gate::AttributeType::Whitelisted;

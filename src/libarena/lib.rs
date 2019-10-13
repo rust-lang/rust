@@ -500,7 +500,7 @@ impl DroplessArena {
                 // though it was supposed to give us `len`
                 return slice::from_raw_parts_mut(mem, i);
             }
-            ptr::write(mem.offset(i as isize), value.unwrap());
+            ptr::write(mem.add(i), value.unwrap());
             i += 1;
         }
     }

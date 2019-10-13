@@ -10,20 +10,20 @@ LL |     let _: u8 = s[4];
    = note: required because of the requirements on the impl of `std::ops::Index<{integer}>` for `str`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
-  --> $DIR/str-idx.rs:4:15
+  --> $DIR/str-idx.rs:4:19
    |
 LL |     let _ = s.get(4);
-   |               ^^^ string indices are ranges of `usize`
+   |                   ^ string indices are ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
-  --> $DIR/str-idx.rs:5:15
+  --> $DIR/str-idx.rs:5:29
    |
 LL |     let _ = s.get_unchecked(4);
-   |               ^^^^^^^^^^^^^ string indices are ranges of `usize`
+   |                             ^ string indices are ranges of `usize`
    |
    = help: the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`

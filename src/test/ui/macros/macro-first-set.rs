@@ -25,7 +25,7 @@ macro_rules! foo_26444 {
 }
 
 fn test_26444() {
-    assert_eq!("a , b , c , d , e", foo_26444!(a, b; c; d, e));
+    assert_eq!("a, b, c, d, e", foo_26444!(a, b; c; d, e));
     assert_eq!("f", foo_26444!(; f ;));
 }
 
@@ -251,12 +251,6 @@ test_path!(,);
 test_path!(::std);
 test_path!(std::u8,);
 test_path!(any, super, super::super::self::path, X<Y>::Z<'a, T=U>);
-
-macro_rules! test_meta_block {
-    ($($m:meta)* $b:block) => {};
-}
-
-test_meta_block!(windows {});
 
 macro_rules! test_lifetime {
     (1. $($l:lifetime)* $($b:block)*) => {};

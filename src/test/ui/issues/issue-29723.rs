@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // test for https://github.com/rust-lang/rust/issues/29723
 
 fn main() {

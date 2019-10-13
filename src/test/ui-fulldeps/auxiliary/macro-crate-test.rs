@@ -6,7 +6,6 @@
 
 extern crate syntax;
 extern crate rustc;
-extern crate rustc_plugin;
 extern crate rustc_driver;
 extern crate syntax_pos;
 extern crate proc_macro;

@@ -4,7 +4,7 @@ error[E0659]: `std` is ambiguous (glob import vs any other name from outer scope
 LL |         std::panic!();
    |         ^^^ ambiguous name
    |
-   = note: `std` could refer to a built-in extern crate
+   = note: `std` could refer to a built-in crate
 note: `std` could also refer to the module imported here
   --> $DIR/macro-path-prelude-shadowing.rs:27:9
    |

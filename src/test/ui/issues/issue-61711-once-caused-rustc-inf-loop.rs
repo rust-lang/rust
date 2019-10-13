@@ -5,7 +5,7 @@
 // aux-build:xcrate-issue-61711-b.rs
 // compile-flags:--extern xcrate_issue_61711_b
 
-// run-pass
+// build-pass
 
 fn f<F: Fn(xcrate_issue_61711_b::Struct)>(_: F) { }
 fn main() { }

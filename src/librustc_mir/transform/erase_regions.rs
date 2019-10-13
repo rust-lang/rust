@@ -39,18 +39,12 @@ impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, _: Location) {
         *substs = self.tcx.erase_regions(substs);
     }
-
-    fn visit_statement(&mut self,
-                       statement: &mut Statement<'tcx>,
-                       location: Location) {
-        self.super_statement(statement, location);
-    }
 }
 
 pub struct EraseRegions;
 
-impl MirPass for EraseRegions {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirPass<'tcx> for EraseRegions {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_body(body);
     }
 }

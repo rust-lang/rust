@@ -17,7 +17,6 @@ use crate::traits::query::{
 use std::borrow::Cow;
 use syntax_pos::symbol::InternedString;
 
-
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -95,6 +94,7 @@ rustc_queries! {
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
         query mir_const_qualif(key: DefId) -> (u8, &'tcx BitSet<mir::Local>) {
+            desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
@@ -110,7 +110,11 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_validated(_: DefId) ->
+            (
+                &'tcx Steal<mir::Body<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+            ) {
             no_hash
         }
 
@@ -125,7 +129,17 @@ rustc_queries! {
             }
         }
 
-        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> { }
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let promoted: Option<
+                    rustc_index::vec::IndexVec<
+                        crate::mir::Promoted,
+                        crate::mir::Body<'tcx>
+                    >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
+                promoted.map(|p| &*tcx.arena.alloc(p))
+            }
+        }
     }
 
     TypeChecking {
@@ -231,6 +245,10 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
+        query asyncness(key: DefId) -> hir::IsAsync {
+            desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
+        }
+
         /// Returns `true` if calls to the function may be promoted.
         ///
         /// This is either because the function is e.g., a tuple-struct or tuple-variant
@@ -273,7 +291,7 @@ rustc_queries! {
         query associated_item(_: DefId) -> ty::AssocItem {}
 
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
-        query impl_polarity(_: DefId) -> hir::ImplPolarity {}
+        query impl_polarity(_: DefId) -> ty::ImplPolarity {}
 
         query issue33140_self_ty(_: DefId) -> Option<ty::Ty<'tcx>> {}
     }
@@ -380,10 +398,6 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        query borrowck(key: DefId) -> &'tcx BorrowCheckResult {
-            cache_on_disk_if { key.is_local() }
-        }
-
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
         query mir_borrowck(key: DefId) -> mir::BorrowCheckResult<'tcx> {
@@ -449,19 +463,10 @@ rustc_queries! {
             no_force
             desc { "extract field of const" }
         }
-
-        /// Produces an absolute path representation of the given type. See also the documentation
-        /// on `std::any::type_name`.
-        query type_name(key: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-            eval_always
-            no_force
-            desc { "get absolute path of type" }
-        }
-
     }
 
     TypeChecking {
-        query check_match(key: DefId) -> SignalledError {
+        query check_match(key: DefId) {
             cache_on_disk_if { key.is_local() }
         }
 
@@ -526,19 +531,6 @@ rustc_queries! {
 
     TypeChecking {
         query trait_of_item(_: DefId) -> Option<DefId> {}
-        query const_is_rvalue_promotable_to_static(key: DefId) -> bool {
-            desc { |tcx|
-                "const checking if rvalue is promotable to static `{}`",
-                tcx.def_path_str(key)
-            }
-            cache_on_disk_if { true }
-        }
-        query rvalue_promotable_map(key: DefId) -> &'tcx ItemLocalSet {
-            desc { |tcx|
-                "checking which parts of `{}` are promotable to static",
-                tcx.def_path_str(key)
-            }
-        }
     }
 
     Codegen {
@@ -625,6 +617,12 @@ rustc_queries! {
         query dylib_dependency_formats(_: CrateNum)
                                         -> &'tcx [(CrateNum, LinkagePreference)] {
             desc { "dylib dependency formats of crate" }
+        }
+
+        query dependency_formats(_: CrateNum)
+            -> Lrc<crate::middle::dependency_format::Dependencies>
+        {
+            desc { "get the linkage format of all dependencies" }
         }
     }
 
@@ -790,7 +788,7 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        // Lifetime resolution. See `middle::resolve_lifetimes`.
+        /// Lifetime resolution. See `middle::resolve_lifetimes`.
         query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
@@ -832,13 +830,30 @@ rustc_queries! {
             -> &'tcx [(Symbol, Option<Symbol>)] {
             desc { "calculating the lib features defined in a crate" }
         }
+        /// Returns the lang items defined in another crate by loading it from metadata.
+        // FIXME: It is illegal to pass a `CrateNum` other than `LOCAL_CRATE` here, just get rid
+        // of that argument?
         query get_lang_items(_: CrateNum) -> &'tcx LanguageItems {
             eval_always
             desc { "calculating the lang items map" }
         }
+
+        /// Returns all diagnostic items defined in all crates.
+        query all_diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            eval_always
+            desc { "calculating the diagnostic items map" }
+        }
+
+        /// Returns the lang items defined in another crate by loading it from metadata.
         query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
             desc { "calculating the lang items defined in a crate" }
         }
+
+        /// Returns the diagnostic items defined in a crate.
+        query diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            desc { "calculating the diagnostic items map in a crate" }
+        }
+
         query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
             desc { "calculating the missing lang items in a crate" }
         }

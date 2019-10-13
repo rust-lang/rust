@@ -1,0 +1,15 @@
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/const-if.rs:1:20
+   |
+LL | const _X: i32 = if true { 5 } else { 6 };
+   |                    ^^^^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/const-if.rs:1:17
+   |
+LL | const _X: i32 = if true { 5 } else { 6 };
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0019`.

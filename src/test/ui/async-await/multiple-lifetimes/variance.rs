@@ -4,9 +4,6 @@
 // Test for async fn where the parameters have distinct lifetime
 // parameters that appear in all possible variances.
 
-#![feature(async_await)]
-
-#[allow(dead_code)]
 async fn lotsa_lifetimes<'a, 'b, 'c>(_: fn(&'a u8), _: fn(&'b u8) -> &'b u8, _: fn() -> &'c u8) { }
 
 fn take_any(_: &u8) { }

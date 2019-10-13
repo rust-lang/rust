@@ -1,5 +1,6 @@
 // only-x86_64
 
+#[repr(C)]
 union Nonsense {
     u: usize,
     int_32_ref: &'static i32,

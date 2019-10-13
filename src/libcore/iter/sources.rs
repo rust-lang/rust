@@ -394,7 +394,8 @@ impl<A, F: FnOnce() -> A> Iterator for OnceWith<F> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.gen.take().map(|f| f())
+        let f = self.gen.take()?;
+        Some(f())
     }
 
     #[inline]
@@ -608,10 +609,9 @@ impl<T, F> Iterator for Successors<T, F>
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.next.take().map(|item| {
-            self.next = (self.succ)(&item);
-            item
-        })
+        let item = self.next.take()?;
+        self.next = (self.succ)(&item);
+        Some(item)
     }
 
     #[inline]

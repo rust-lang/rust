@@ -375,6 +375,25 @@ fn test_chunks_exact_mut_nth() {
 }
 
 #[test]
+fn test_chunks_exact_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_exact_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_exact_mut(3);
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_exact_mut(10);
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
 fn test_chunks_exact_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let c = v.chunks_exact_mut(2);
@@ -1149,6 +1168,44 @@ fn test_rotate_right() {
 
     for i in 0..N {
         assert_eq!(a[(i + 42) % N], i);
+    }
+}
+
+#[test]
+#[cfg(not(miri))] // Miri is too slow
+fn brute_force_rotate_test_0() {
+    // In case of edge cases involving multiple algorithms
+    let n = 300;
+    for len in 0..n {
+        for s in 0..len {
+            let mut v = Vec::with_capacity(len);
+            for i in 0..len {
+                v.push(i);
+            }
+            v[..].rotate_right(s);
+            for i in 0..v.len() {
+                assert_eq!(v[i], v.len().wrapping_add(i.wrapping_sub(s)) % v.len());
+            }
+        }
+    }
+}
+
+#[test]
+fn brute_force_rotate_test_1() {
+    // `ptr_rotate` covers so many kinds of pointer usage, that this is just a good test for
+    // pointers in general. This uses a `[usize; 4]` to hit all algorithms without overwhelming miri
+    let n = 30;
+    for len in 0..n {
+        for s in 0..len {
+            let mut v: Vec<[usize; 4]> = Vec::with_capacity(len);
+            for i in 0..len {
+                v.push([i, 0, 0, 0]);
+            }
+            v[..].rotate_right(s);
+            for i in 0..v.len() {
+                assert_eq!(v[i][0], v.len().wrapping_add(i.wrapping_sub(s)) % v.len());
+            }
+        }
     }
 }
 

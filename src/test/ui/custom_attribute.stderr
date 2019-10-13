@@ -1,16 +1,16 @@
-error: cannot find attribute macro `foo` in this scope
+error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:3:3
    |
 LL | #[foo]
    |   ^^^
 
-error: cannot find attribute macro `foo` in this scope
+error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:5:7
    |
 LL |     #[foo]
    |       ^^^
 
-error: cannot find attribute macro `foo` in this scope
+error: cannot find attribute `foo` in this scope
   --> $DIR/custom_attribute.rs:7:7
    |
 LL |     #[foo]

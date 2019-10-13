@@ -141,10 +141,10 @@
 # library and facade crates.
 #compiler-docs = false
 
-# Indicate whether submodules are managed and updated automatically.
+# Indicate whether git submodules are managed and updated automatically.
 #submodules = true
 
-# Update submodules only when the checked out commit in the submodules differs
+# Update git submodules only when the checked out commit in the submodules differs
 # from what is committed in the main rustc repo.
 #fast-submodules = true
 
@@ -184,7 +184,7 @@
 # default.
 #extended = false
 
-# Installs chosen set of extended tools if enables. By default builds all.
+# Installs chosen set of extended tools if enabled. By default builds all.
 # If chosen tool failed to build the installation fails.
 #tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
 
@@ -381,11 +381,6 @@
 
 # This is the name of the directory in which codegen backends will get installed
 #codegen-backends-dir = "codegen-backends"
-
-# Flag indicating whether `libstd` calls an imported function to handle basic IO
-# when targeting WebAssembly. Enable this to debug tests for the `wasm32-unknown-unknown`
-# target, as without this option the test output will not be captured.
-#wasm-syscall = false
 
 # Indicates whether LLD will be compiled and made available in the sysroot for
 # rustc to execute.

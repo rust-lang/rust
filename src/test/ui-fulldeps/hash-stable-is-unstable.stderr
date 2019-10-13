@@ -1,7 +1,3 @@
-error[E0601]: `main` function not found in crate `hash_stable_is_unstable`
-   |
-   = note: consider adding a `main` function to `$DIR/hash-stable-is-unstable.rs`
-
 error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
   --> $DIR/hash-stable-is-unstable.rs:3:1
    |
@@ -47,7 +43,6 @@ LL | #[derive(HashStable)]
    = note: for more information, see https://github.com/rust-lang/rust/issues/27812
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0601, E0658.
-For more information about an error, try `rustc --explain E0601`.
+For more information about this error, try `rustc --explain E0658`.

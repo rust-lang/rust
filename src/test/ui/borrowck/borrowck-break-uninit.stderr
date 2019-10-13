@@ -1,8 +1,8 @@
-error[E0381]: borrow of possibly uninitialized variable: `x`
+error[E0381]: borrow of possibly-uninitialized variable: `x`
   --> $DIR/borrowck-break-uninit.rs:9:20
    |
 LL |     println!("{}", x);
-   |                    ^ use of possibly uninitialized `x`
+   |                    ^ use of possibly-uninitialized `x`
 
 error: aborting due to previous error
 

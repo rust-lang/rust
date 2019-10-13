@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `foo` in pattern guard
-  --> $DIR/issue-27282-move-ref-mut-into-guard.rs:14:19
+  --> $DIR/issue-27282-move-ref-mut-into-guard.rs:9:19
    |
 LL |             if { (|| { let bar = foo; bar.take() })(); false } => {},
    |                   ^^             ---

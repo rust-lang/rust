@@ -7,7 +7,7 @@ use rustc::ty::TyCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Node, Destination};
+use rustc::hir::{self, Node, Destination, GeneratorMovability};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
@@ -16,7 +16,8 @@ use errors::Applicability;
 enum Context {
     Normal,
     Loop(hir::LoopSource),
-    Closure,
+    Closure(Span),
+    AsyncClosure(Span),
     LabeledBlock,
     AnonConst,
 }
@@ -53,13 +54,18 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     }
 
     fn visit_expr(&mut self, e: &'hir hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Loop(ref b, _, source) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure(_, ref function_decl, b, _, _) => {
+            hir::ExprKind::Closure(_, ref function_decl, b, span, movability) => {
+                let cx = if let Some(GeneratorMovability::Static) = movability {
+                    AsyncClosure(span)
+                } else {
+                    Closure(span)
+                };
                 self.visit_fn_decl(&function_decl);
-                self.with_context(Closure, |v| v.visit_nested_body(b));
+                self.with_context(cx, |v| v.visit_nested_body(b));
             }
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
@@ -93,7 +99,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     let loop_kind = if loop_id == hir::DUMMY_HIR_ID {
                         None
                     } else {
-                        Some(match self.hir_map.expect_expr(loop_id).node {
+                        Some(match self.hir_map.expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, _, source) => source,
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),
@@ -164,18 +170,22 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     }
 
     fn require_break_cx(&self, name: &str, span: Span) {
+        let err_inside_of = |article, ty, closure_span| {
+            struct_span_err!(self.sess, span, E0267, "`{}` inside of {} {}", name, article, ty)
+                .span_label(span, format!("cannot `{}` inside of {} {}", name, article, ty))
+                .span_label(closure_span, &format!("enclosing {}", ty))
+                .emit();
+        };
+
         match self.cx {
-            LabeledBlock | Loop(_) => {}
-            Closure => {
-                struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
-                .span_label(span, "cannot break inside of a closure")
-                .emit();
-            }
+            LabeledBlock | Loop(_) => {},
+            Closure(closure_span) => err_inside_of("a", "closure", closure_span),
+            AsyncClosure(closure_span) => err_inside_of("an", "`async` block", closure_span),
             Normal | AnonConst => {
-                struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
-                .span_label(span, "cannot break outside of a loop")
+                struct_span_err!(self.sess, span, E0268, "`{}` outside of a loop", name)
+                .span_label(span, format!("cannot `{}` outside of a loop", name))
                 .emit();
-            }
+            },
         }
     }
 

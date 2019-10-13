@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::mem::size_of;
 use std::{usize, isize};
 use std::vec::{Drain, IntoIter};
-use std::collections::CollectionAllocErr::*;
+use std::collections::TryReserveError::*;
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -1121,11 +1121,11 @@ fn test_try_reserve() {
             } else { panic!("usize::MAX should trigger an overflow!") }
         } else {
             // Check isize::MAX + 1 is an OOM
-            if let Err(AllocErr) = empty_bytes.try_reserve(MAX_CAP + 1) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_CAP + 1) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
 
             // Check usize::MAX is an OOM
-            if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE) {
             } else { panic!("usize::MAX should trigger an OOM!") }
         }
     }
@@ -1145,7 +1145,7 @@ fn test_try_reserve() {
             if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_bytes.try_reserve(MAX_CAP - 9) {
+            if let Err(AllocError { .. }) = ten_bytes.try_reserve(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         // Should always overflow in the add-to-len
@@ -1168,7 +1168,7 @@ fn test_try_reserve() {
             if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
+            if let Err(AllocError { .. }) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         // Should fail in the mul-by-size
@@ -1209,10 +1209,10 @@ fn test_try_reserve_exact() {
             if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_USIZE) {
             } else { panic!("usize::MAX should trigger an overflow!") }
         } else {
-            if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
 
-            if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_USIZE) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve_exact(MAX_USIZE) {
             } else { panic!("usize::MAX should trigger an OOM!") }
         }
     }
@@ -1231,7 +1231,7 @@ fn test_try_reserve_exact() {
             if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
+            if let Err(AllocError { .. }) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_USIZE) {
@@ -1252,7 +1252,7 @@ fn test_try_reserve_exact() {
             if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
+            if let Err(AllocError { .. }) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_USIZE - 20) {
@@ -1280,4 +1280,52 @@ fn test_stable_push_pop() {
     v.remove(1);
     v.pop().unwrap();
     assert_eq!(*v0, 13);
+}
+
+// https://github.com/rust-lang/rust/pull/49496 introduced specialization based on:
+//
+// ```
+// unsafe impl<T: ?Sized> IsZero for *mut T {
+//     fn is_zero(&self) -> bool {
+//         (*self).is_null()
+//     }
+// }
+// ```
+//
+// … to call `RawVec::with_capacity_zeroed` for creating `Vec<*mut T>`,
+// which is incorrect for fat pointers since `<*mut T>::is_null` only looks at the data component.
+// That is, a fat pointer can be “null” without being made entirely of zero bits.
+#[test]
+fn vec_macro_repeating_null_raw_fat_pointer() {
+    let raw_dyn = &mut (|| ()) as &mut dyn Fn() as *mut dyn Fn();
+    let vtable = dbg!(ptr_metadata(raw_dyn));
+    let null_raw_dyn = ptr_from_raw_parts(std::ptr::null_mut(), vtable);
+    assert!(null_raw_dyn.is_null());
+
+    let vec = vec![null_raw_dyn; 1];
+    dbg!(ptr_metadata(vec[0]));
+    assert!(vec[0] == null_raw_dyn);
+
+    // Polyfill for https://github.com/rust-lang/rfcs/pull/2580
+
+    fn ptr_metadata(ptr: *mut dyn Fn()) -> *mut () {
+        unsafe {
+            std::mem::transmute::<*mut dyn Fn(), DynRepr>(ptr).vtable
+        }
+    }
+
+    fn ptr_from_raw_parts(data: *mut (), vtable: *mut()) -> *mut dyn Fn() {
+        unsafe {
+            std::mem::transmute::<DynRepr, *mut dyn Fn()>(DynRepr {
+                data,
+                vtable
+            })
+        }
+    }
+
+    #[repr(C)]
+    struct DynRepr {
+        data: *mut (),
+        vtable: *mut (),
+    }
 }

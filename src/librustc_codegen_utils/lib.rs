@@ -10,7 +10,6 @@
 #![feature(core_intrinsics)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(in_band_lifetimes)]
 
 #![recursion_limit="256"]

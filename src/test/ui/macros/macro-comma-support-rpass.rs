@@ -15,6 +15,7 @@
 
 #![cfg_attr(core, no_std)]
 
+#![allow(deprecated)] // for deprecated `try!()` macro
 #![feature(concat_idents)]
 
 #[cfg(std)] use std::fmt;

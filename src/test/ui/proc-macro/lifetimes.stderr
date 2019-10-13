@@ -1,8 +1,8 @@
 error: expected type, found `'`
-  --> $DIR/lifetimes.rs:9:10
+  --> $DIR/lifetimes.rs:7:10
    |
 LL | type A = single_quote_alone!();
-   |          ^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^ this macro call doesn't expand to a type
 
 error: aborting due to previous error
 

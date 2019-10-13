@@ -1,0 +1,15 @@
+error: `extern` block uses type `A`, which is not FFI-safe
+  --> $DIR/opaque-ty-ffi-unsafe.rs:12:17
+   |
+LL |     pub fn a(_: A);
+   |                 ^ not FFI-safe
+   |
+note: lint level defined here
+  --> $DIR/opaque-ty-ffi-unsafe.rs:3:9
+   |
+LL | #![deny(improper_ctypes)]
+   |         ^^^^^^^^^^^^^^^
+   = note: opaque types have no C equivalent
+
+error: aborting due to previous error
+

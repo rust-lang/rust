@@ -1,8 +1,8 @@
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/unboxed-closure-sugar-used-on-struct-1.rs:8:19
+  --> $DIR/unboxed-closure-sugar-used-on-struct-1.rs:8:16
    |
 LL |     let x: Box<Bar()> = panic!();
-   |                   ^^ only `Fn` traits may use parentheses
+   |                ^^^^^ only `Fn` traits may use parentheses
 
 error[E0107]: wrong number of type arguments: expected 1, found 0
   --> $DIR/unboxed-closure-sugar-used-on-struct-1.rs:8:16

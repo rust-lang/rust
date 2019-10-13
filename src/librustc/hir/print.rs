@@ -33,7 +33,7 @@ pub enum Nested {
     TraitItem(hir::TraitItemId),
     ImplItem(hir::ImplItemId),
     Body(hir::BodyId),
-    BodyArgPat(hir::BodyId, usize)
+    BodyParamPat(hir::BodyId, usize)
 }
 
 pub trait PpAnn {
@@ -62,7 +62,7 @@ impl PpAnn for hir::Crate {
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyArgPat(id, i) => state.print_pat(&self.body(id).arguments[i].pat)
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat)
         }
     }
 }
@@ -286,7 +286,7 @@ impl<'a> State<'a> {
     pub fn print_type(&mut self, ty: &hir::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
-        match ty.node {
+        match ty.kind {
             hir::TyKind::Slice(ref ty) => {
                 self.s.word("[");
                 self.print_type(&ty);
@@ -318,7 +318,7 @@ impl<'a> State<'a> {
             }
             hir::TyKind::BareFn(ref f) => {
                 self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &f.generic_params,
-                                 &f.arg_names[..]);
+                                 &f.param_names[..]);
             }
             hir::TyKind::Def(..) => {},
             hir::TyKind::Path(ref qpath) => {
@@ -361,9 +361,6 @@ impl<'a> State<'a> {
                 self.s.word("/*ERROR*/");
                 self.pclose();
             }
-            hir::TyKind::CVarArgs(_) => {
-                self.s.word("...");
-            }
         }
         self.end()
     }
@@ -372,7 +369,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
-        match item.node {
+        match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("");
                 self.print_fn(decl,
@@ -474,7 +471,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
-        match item.node {
+        match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
                 self.head(visibility_qualified(&item.vis, "extern crate"));
                 if let Some(orig_name) = orig_name {
@@ -737,7 +734,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.node.attrs);
+            self.print_outer_attributes(&v.attrs);
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
@@ -829,8 +826,8 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant) {
         self.head("");
         let generics = hir::Generics::empty();
-        self.print_struct(&v.node.data, &generics, v.node.ident.name, v.span, false);
-        if let Some(ref d) = v.node.disr_expr {
+        self.print_struct(&v.data, &generics, v.ident.name, v.span, false);
+        if let Some(ref d) = v.disr_expr {
             self.s.space();
             self.word_space("=");
             self.print_anon_const(d);
@@ -858,7 +855,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
-        match ti.node {
+        match ti.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 let vis = Spanned { span: syntax_pos::DUMMY_SP,
                                     node: hir::VisibilityKind::Inherited };
@@ -896,7 +893,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&ii.attrs);
         self.print_defaultness(ii.defaultness);
 
-        match ii.node {
+        match ii.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis);
             }
@@ -944,7 +941,7 @@ impl<'a> State<'a> {
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) {
         self.maybe_print_comment(st.span.lo());
-        match st.node {
+        match st.kind {
             hir::StmtKind::Local(ref loc) => {
                 self.print_local(loc.init.as_deref(), |this| this.print_local_decl(&loc));
             }
@@ -961,7 +958,7 @@ impl<'a> State<'a> {
                 self.s.word(";");
             }
         }
-        if stmt_ends_with_semi(&st.node) {
+        if stmt_ends_with_semi(&st.kind) {
             self.s.word(";");
         }
         self.maybe_print_trailing_comment(st.span, None)
@@ -1035,7 +1032,7 @@ impl<'a> State<'a> {
     /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
     pub fn print_expr_as_cond(&mut self, expr: &hir::Expr) {
-        let needs_par = match expr.node {
+        let needs_par = match expr.kind {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             hir::ExprKind::Closure(..) |
@@ -1119,11 +1116,10 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) {
-        let prec =
-            match func.node {
-                hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-                _ => parser::PREC_POSTFIX,
-            };
+        let prec = match func.kind {
+            hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
+            _ => parser::PREC_POSTFIX,
+        };
 
         self.print_expr_maybe_paren(func, prec);
         self.print_call_post(args)
@@ -1161,7 +1157,7 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
-        let left_prec = match (&lhs.node, op.node) {
+        let left_prec = match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -1200,7 +1196,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&expr.attrs);
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::Box(ref expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
@@ -1290,14 +1286,14 @@ impl<'a> State<'a> {
             hir::ExprKind::Closure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause);
 
-                self.print_closure_args(&decl, body);
+                self.print_closure_params(&decl, body);
                 self.s.space();
 
-                // this is a bare expression
+                // This is a bare expression.
                 self.ann.nested(self, Nested::Body(body));
                 self.end(); // need to close a box
 
-                // a box will be closed by print_expr, but we didn't want an overall
+                // A box will be closed by `print_expr`, but we didn't want an overall
                 // wrapper so we closed the corresponding opening. so create an
                 // empty box to satisfy the close.
                 self.ibox(0);
@@ -1307,9 +1303,9 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                // containing cbox, will be closed by print-block at }
+                // containing cbox, will be closed by print-block at `}`
                 self.cbox(INDENT_UNIT);
-                // head-box, will be closed by print-block after {
+                // head-box, will be closed by print-block after `{`
                 self.ibox(0);
                 self.print_block(&blk);
             }
@@ -1457,7 +1453,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) {
-        self.print_ident(ast::Ident::with_empty_ctxt(name))
+        self.print_ident(ast::Ident::with_dummy_span(name))
     }
 
     pub fn print_for_decl(&mut self, loc: &hir::Local, coll: &hir::Expr) {
@@ -1618,7 +1614,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Pat(pat));
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
-        match pat.node {
+        match pat.kind {
             PatKind::Wild => self.s.word("_"),
             PatKind::Binding(binding_mode, _, ident, ref sub) => {
                 match binding_mode {
@@ -1670,14 +1666,14 @@ impl<'a> State<'a> {
                                    &fields[..],
                                    |s, f| {
                                        s.cbox(INDENT_UNIT);
-                                       if !f.node.is_shorthand {
-                                           s.print_ident(f.node.ident);
+                                       if !f.is_shorthand {
+                                           s.print_ident(f.ident);
                                            s.word_nbsp(":");
                                        }
-                                       s.print_pat(&f.node.pat);
+                                       s.print_pat(&f.pat);
                                        s.end()
                                    },
-                                   |f| f.node.pat.span);
+                                   |f| f.pat.span);
                 if etc {
                     if !fields.is_empty() {
                         self.word_space(",");
@@ -1686,6 +1682,9 @@ impl<'a> State<'a> {
                 }
                 self.s.space();
                 self.s.word("}");
+            }
+            PatKind::Or(ref pats) => {
+                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(&p));
             }
             PatKind::Tuple(ref elts, ddpos) => {
                 self.popen();
@@ -1708,7 +1707,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Box(ref inner) => {
-                let is_range_inner = match inner.node {
+                let is_range_inner = match inner.kind {
                     PatKind::Range(..) => true,
                     _ => false,
                 };
@@ -1722,7 +1721,7 @@ impl<'a> State<'a> {
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
-                let is_range_inner = match inner.node {
+                let is_range_inner = match inner.kind {
                     PatKind::Range(..) => true,
                     _ => false,
                 };
@@ -1755,8 +1754,8 @@ impl<'a> State<'a> {
                     if !before.is_empty() {
                         self.word_space(",");
                     }
-                    if let PatKind::Wild = p.node {
-                        // Print nothing
+                    if let PatKind::Wild = p.kind {
+                        // Print nothing.
                     } else {
                         self.print_pat(&p);
                     }
@@ -1772,7 +1771,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    pub fn print_arg(&mut self, arg: &hir::Arg) {
+    pub fn print_param(&mut self, arg: &hir::Param) {
         self.print_outer_attributes(&arg.attrs);
         self.print_pat(&arg.pat);
     }
@@ -1787,16 +1786,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
         self.print_outer_attributes(&arm.attrs);
-        let mut first = true;
-        for p in &arm.pats {
-            if first {
-                first = false;
-            } else {
-                self.s.space();
-                self.word_space("|");
-            }
-            self.print_pat(&p);
-        }
+        self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref g) = arm.guard {
             match g {
@@ -1809,7 +1799,7 @@ impl<'a> State<'a> {
         }
         self.word_space("=>");
 
-        match arm.body.node {
+        match arm.body.kind {
             hir::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
@@ -1861,7 +1851,7 @@ impl<'a> State<'a> {
                 s.s.word(":");
                 s.s.space();
             } else if let Some(body_id) = body_id {
-                s.ann.nested(s, Nested::BodyArgPat(body_id, i));
+                s.ann.nested(s, Nested::BodyParamPat(body_id, i));
                 s.s.word(":");
                 s.s.space();
             }
@@ -1878,17 +1868,17 @@ impl<'a> State<'a> {
         self.print_where_clause(&generics.where_clause)
     }
 
-    fn print_closure_args(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) {
+    fn print_closure_params(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) {
         self.s.word("|");
         let mut i = 0;
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(INDENT_UNIT);
 
-            s.ann.nested(s, Nested::BodyArgPat(body_id, i));
+            s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
-            if let hir::TyKind::Infer = ty.node {
-                // Print nothing
+            if let hir::TyKind::Infer = ty.kind {
+                // Print nothing.
             } else {
                 s.s.word(":");
                 s.s.space();
@@ -2218,7 +2208,6 @@ impl<'a> State<'a> {
     }
 }
 
-// Dup'ed from parse::classify, but adapted for the HIR.
 /// Does this expression require a semicolon to be treated
 /// as a statement? The negation of this: 'can this expression
 /// be used as a statement without a semicolon' -- is used
@@ -2226,8 +2215,10 @@ impl<'a> State<'a> {
 ///     if true {...} else {...}
 ///      |x| 5
 /// isn't parsed as (if true {...} else {...} | x) | 5
+//
+// Duplicated from `parse::classify`, but adapted for the HIR.
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
-    match e.node {
+    match e.kind {
         hir::ExprKind::Match(..) |
         hir::ExprKind::Block(..) |
         hir::ExprKind::Loop(..) => false,
@@ -2235,7 +2226,7 @@ fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
     }
 }
 
-/// this statement requires a semicolon after it.
+/// This statement requires a semicolon after it.
 /// note that in one case (stmt_semi), we've already
 /// seen the semicolon, and thus don't need another.
 fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
@@ -2274,17 +2265,17 @@ fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
     }
 }
 
-/// Expressions that syntactically contain an "exterior" struct literal i.e., not surrounded by any
+/// Expressions that syntactically contain an "exterior" struct literal, i.e., not surrounded by any
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
-    match value.node {
+    match value.kind {
         hir::ExprKind::Struct(..) => true,
 
         hir::ExprKind::Assign(ref lhs, ref rhs) |
         hir::ExprKind::AssignOp(_, ref lhs, ref rhs) |
         hir::ExprKind::Binary(_, ref lhs, ref rhs) => {
-            // X { y: 1 } + X { y: 2 }
+            // `X { y: 1 } + X { y: 2 }`
             contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
         }
         hir::ExprKind::Unary(_, ref x) |
@@ -2292,12 +2283,12 @@ fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
         hir::ExprKind::Type(ref x, _) |
         hir::ExprKind::Field(ref x, _) |
         hir::ExprKind::Index(ref x, _) => {
-            // &X { y: 1 }, X { y: 1 }.y
+            // `&X { y: 1 }, X { y: 1 }.y`
             contains_exterior_struct_lit(&x)
         }
 
         hir::ExprKind::MethodCall(.., ref exprs) => {
-            // X { y: 1 }.bar(...)
+            // `X { y: 1 }.bar(...)`
             contains_exterior_struct_lit(&exprs[0])
         }
 

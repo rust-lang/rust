@@ -1,3 +1,3 @@
 fn main() {
-    let final = (); //~ ERROR expected pattern, found reserved keyword `final`
+    let final = (); //~ ERROR expected identifier, found reserved keyword `final`
 }

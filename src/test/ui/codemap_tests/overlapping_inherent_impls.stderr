@@ -25,7 +25,7 @@ LL |     fn baz(&self) {}
 LL |     fn baz(&self) {}
    |     ---------------- other definition for `baz`
    |
-   = note: upstream crates may add new impl of trait `std::marker::Copy` for type `std::vec::Vec<_>` in future versions
+   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::vec::Vec<_>` in future versions
 
 error: aborting due to 3 previous errors
 

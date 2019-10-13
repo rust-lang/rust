@@ -8,7 +8,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, ClosureSubsts, Const, GeneratorSubsts, Instance, Ty, TyCtxt};
+use rustc::ty::{self, Const, Instance, Ty, TyCtxt};
 use rustc::{bug, hir};
 use std::fmt::Write;
 use std::iter;
@@ -34,7 +34,7 @@ impl DefPathBasedNames<'tcx> {
     // When being used for codegen purposes, `debug` should be set to `false`
     // in order to catch unexpected types that should never end up in a type name.
     pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String, debug: bool) {
-        match t.sty {
+        match t.kind {
             ty::Bool => output.push_str("bool"),
             ty::Char => output.push_str("char"),
             ty::Str => output.push_str("str"),
@@ -154,8 +154,8 @@ impl DefPathBasedNames<'tcx> {
                     self.push_type_name(sig.output(), output, debug);
                 }
             }
-            ty::Generator(def_id, GeneratorSubsts { ref substs }, _)
-            | ty::Closure(def_id, ClosureSubsts { ref substs }) => {
+            ty::Generator(def_id,  substs, _)
+            | ty::Closure(def_id, substs) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = substs.truncate_to(self.tcx, generics);

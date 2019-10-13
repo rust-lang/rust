@@ -13,8 +13,3 @@ pub mod derived_property {
 pub mod conversions {
     pub use crate::unicode::tables::conversions::{to_lower, to_upper};
 }
-
-// For use in libsyntax
-pub mod property {
-    pub use crate::unicode::tables::property::Pattern_White_Space;
-}

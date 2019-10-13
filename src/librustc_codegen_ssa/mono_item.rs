@@ -30,7 +30,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             }
             MonoItem::GlobalAsm(hir_id) => {
                 let item = cx.tcx().hir().expect_item(hir_id);
-                if let hir::ItemKind::GlobalAsm(ref ga) = item.node {
+                if let hir::ItemKind::GlobalAsm(ref ga) = item.kind {
                     cx.codegen_global_asm(ga);
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
@@ -58,7 +58,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                self.to_raw_string(),
                cx.codegen_unit().name());
 
-        let symbol_name = self.symbol_name(cx.tcx()).as_str();
+        let symbol_name = self.symbol_name(cx.tcx()).name.as_str();
 
         debug!("symbol {}", &symbol_name);
 

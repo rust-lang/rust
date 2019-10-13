@@ -17,7 +17,7 @@ use rustc::traits::{
     InEnvironment,
 };
 use rustc::ty::{self, Ty, TyCtxt, InferConst};
-use rustc::ty::subst::Kind;
+use rustc::ty::subst::GenericArg;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
@@ -151,7 +151,7 @@ impl AnswerSubstitutor<'cx, 'tcx> {
     fn unify_free_answer_var(
         &mut self,
         answer_var: ty::BoundVar,
-        pending: Kind<'tcx>
+        pending: GenericArg<'tcx>
     ) -> RelateResult<'tcx, ()> {
         let answer_param = &self.answer_subst.var_values[answer_var];
         let pending = &ty::fold::shift_out_vars(
@@ -212,7 +212,7 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         let b = self.infcx.shallow_resolve(b);
         debug!("AnswerSubstitutor::tys(a = {:?}, b = {:?})", a, b);
 
-        if let &ty::Bound(debruijn, bound_ty) = &a.sty {
+        if let &ty::Bound(debruijn, bound_ty) = &a.kind {
             // Free bound var
             if debruijn == self.binder_index {
                 self.unify_free_answer_var(bound_ty.var, b.into())?;
@@ -220,7 +220,7 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
             }
         }
 
-        match (&a.sty, &b.sty) {
+        match (&a.kind, &b.kind) {
             (&ty::Bound(a_debruijn, a_bound), &ty::Bound(b_debruijn, b_bound)) => {
                 assert_eq!(a_debruijn, b_debruijn);
                 assert_eq!(a_bound.var, b_bound.var);

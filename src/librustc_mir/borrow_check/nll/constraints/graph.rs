@@ -4,7 +4,7 @@ use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConst
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use syntax_pos::DUMMY_SP;
 
 /// The construct graph organizes the constraints by their end-points.

@@ -69,7 +69,7 @@ pub fn walk_shallow(ty: Ty<'_>) -> smallvec::IntoIter<TypeWalkerArray<'_>> {
 // natural order one would expect (basically, the order of the
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
-    match parent_ty.sty {
+    match parent_ty.kind {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
         ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
         ty::Placeholder(..) | ty::Bound(..) | ty::Foreign(..) => {
@@ -110,17 +110,15 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Adt(_, substs) | ty::Opaque(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::Closure(_, ref substs) => {
-            stack.extend(substs.substs.types().rev());
-        }
-        ty::Generator(_, ref substs, _) => {
-            stack.extend(substs.substs.types().rev());
+        ty::Closure(_, ref substs)
+        | ty::Generator(_, ref substs, _) => {
+            stack.extend(substs.types().rev());
         }
         ty::GeneratorWitness(ts) => {
             stack.extend(ts.skip_binder().iter().cloned().rev());
         }
-        ty::Tuple(ts) => {
-            stack.extend(ts.iter().map(|k| k.expect_ty()).rev());
+        ty::Tuple(..) => {
+            stack.extend(parent_ty.tuple_fields().rev());
         }
         ty::FnDef(_, substs) => {
             stack.extend(substs.types().rev());
