@@ -54,8 +54,9 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                             "`{}` is not defined in the current crate{}",
                             ty,
                             match &ty.kind {
-                                ty::Slice(_) => " because slices are always considered foreign",
-                                ty::Array(..) => " because arrays are always considered foreign",
+                                ty::Slice(_) => " because slices are always foreign",
+                                ty::Array(..) => " because arrays are always foreign",
+                                ty::Tuple(..) => " because tuples are always foreign",
                                 _ => "",
                             },
                         );
