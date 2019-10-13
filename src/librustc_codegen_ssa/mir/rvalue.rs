@@ -189,7 +189,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
-                                    bx.get_fn(
+                                    bx.get_fn_addr(
                                         ty::Instance::resolve_for_fn_ptr(
                                             bx.tcx(),
                                             ty::ParamEnv::reveal_all(),
@@ -212,7 +212,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     substs,
                                     ty::ClosureKind::FnOnce);
-                                OperandValue::Immediate(bx.cx().get_fn(instance))
+                                OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.layout.ty)
@@ -495,7 +495,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let r = bx.cx().get_fn(instance);
+                let r = bx.cx().get_fn_addr(instance);
                 let call = bx.call(r, &[llsize, llalign], None);
                 let val = bx.pointercast(call, llty_ptr);
 

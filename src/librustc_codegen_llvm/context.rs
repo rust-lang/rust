@@ -326,11 +326,11 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.vtables
     }
 
-    fn instances(&self) -> &RefCell<FxHashMap<Instance<'tcx>, &'ll Value>> {
-        &self.instances
+    fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
+        get_fn(self, instance)
     }
 
-    fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
+    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
         get_fn(self, instance)
     }
 
@@ -361,7 +361,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
-                self.get_fn(
+                self.get_fn_addr(
                     ty::Instance::resolve(
                         tcx,
                         ty::ParamEnv::reveal_all(),
@@ -396,7 +396,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let tcx = self.tcx;
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
-            let llfn = self.get_fn(
+            let llfn = self.get_fn_addr(
                 ty::Instance::resolve(
                     tcx,
                     ty::ParamEnv::reveal_all(),

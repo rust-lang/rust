@@ -91,7 +91,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 
     let methods = methods.cloned().map(|opt_mth| {
         opt_mth.map_or(nullptr, |(def_id, substs)| {
-            cx.get_fn(
+            cx.get_fn_addr(
                 ty::Instance::resolve_for_vtable(
                     cx.tcx(),
                     ty::ParamEnv::reveal_all(),
@@ -108,7 +108,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     // `get_vtable` in rust_mir/interpret/traits.rs
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
-        cx.get_fn(Instance::resolve_drop_in_place(cx.tcx(), ty)),
+        cx.get_fn_addr(Instance::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(layout.size.bytes()),
         cx.const_usize(layout.align.abi.bytes())
     ].iter().cloned().chain(methods).collect();

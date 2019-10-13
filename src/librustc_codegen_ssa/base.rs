@@ -376,8 +376,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let sig = instance.fn_sig(cx.tcx());
     let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
-    let lldecl = cx.instances().borrow().get(&instance).cloned().unwrap_or_else(||
-        bug!("Instance `{:?}` not already declared", instance));
+    let lldecl = cx.get_fn(instance);
 
     let mir = cx.tcx().instance_mir(instance.def);
     mir::codegen_mir::<Bx>(cx, lldecl, &mir, instance, sig);
@@ -399,7 +398,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         return;
     }
 
-    let main_llfn = cx.get_fn(instance);
+    let main_llfn = cx.get_fn_addr(instance);
 
     let et = cx.tcx().entry_fn(LOCAL_CRATE).map(|e| e.1);
     match et {
@@ -454,7 +453,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
-            let start_fn = cx.get_fn(
+            let start_fn = cx.get_fn_addr(
                 ty::Instance::resolve(
                     cx.tcx(),
                     ty::ParamEnv::reveal_all(),
