@@ -443,7 +443,6 @@ impl<'a> Builder<'a> {
                 dist::Rustc,
                 dist::DebuggerScripts,
                 dist::Std,
-                dist::RustcDev,
                 dist::Analysis,
                 dist::Src,
                 dist::PlainSourceTarball,
