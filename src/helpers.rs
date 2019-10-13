@@ -345,4 +345,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
+
+    /// Sets the last error variable
+    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let errno_ptr = this.machine.last_error.unwrap();
+        this.memory.get_mut(errno_ptr.alloc_id)?.write_scalar(
+            tcx,
+            errno_ptr,
+            scalar.into(),
+            Size::from_bits(32),
+        )
+    }
+
+    /// Gets the last error variable
+    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let errno_ptr = this.machine.last_error.unwrap();
+        this.memory
+            .get(errno_ptr.alloc_id)?
+            .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
+            .not_undef()
+    }
+
+    /// Sets the last error variable using a `std::io::Error`. It fails if the error cannot be
+    /// transformed to a raw os error succesfully
+    fn set_last_error_from_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
+        self.eval_context_mut().set_last_error(Scalar::from_int(
+            e.raw_os_error().ok_or_else(|| {
+                err_unsup_format!("The {} error cannot be transformed into a raw os error", e)
+            })?,
+            Size::from_bits(32),
+        ))
+    }
 }

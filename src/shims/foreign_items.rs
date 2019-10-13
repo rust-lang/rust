@@ -977,34 +977,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         return Ok(None);
     }
-
-    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let errno_ptr = this.machine.last_error.unwrap();
-        // We allocated this during machine initialziation so the bounds are fine.
-        this.memory.get_mut(errno_ptr.alloc_id)?.write_scalar(
-            &*this.tcx,
-            errno_ptr,
-            scalar.into(),
-            Size::from_bits(32),
-        )
-    }
-
-    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
-        let this = self.eval_context_mut();
-        let errno_ptr = this.machine.last_error.unwrap();
-        this.memory
-            .get(errno_ptr.alloc_id)?
-            .read_scalar(&*this.tcx, errno_ptr, Size::from_bits(32))?
-            .not_undef()
-    }
-
-    fn consume_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
-        self.eval_context_mut().set_last_error(Scalar::from_int(
-            e.raw_os_error().unwrap(),
-            Size::from_bits(32),
-        ))
-    }
 }
 
 // Shims the linux 'getrandom()' syscall.
