@@ -11,6 +11,13 @@ LL | | }
 ...
 LL |       let Helper::U(u) = Helper::T(t, []);
    |           ^^^^^^^^^^^^ pattern `T(_, _)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let Helper::U(u) = Helper::T(t, []) { /* */ }
+   |
 
 error[E0381]: use of possibly-uninitialized variable: `u`
   --> $DIR/empty-never-array.rs:12:5
