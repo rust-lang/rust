@@ -7,15 +7,10 @@ use crate::*;
 
 // Returns the time elapsed between now and the unix epoch as a `Duration` and the sign of the time
 // interval
-fn get_time() -> (Duration, i128) {
-    let mut sign = 1;
-    let duration = SystemTime::now()
+fn get_time<'tcx>() -> InterpResult<'tcx, Duration> {
+    SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_else(|e| {
-            sign = -1;
-            e.duration()
-        });
-    (duration, sign)
+        .map_err(|_| err_unsup_format!("Time went backwards").into())
 }
 
 fn int_to_immty_checked<'tcx>(
@@ -59,13 +54,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let tp = this.force_ptr(this.read_scalar(tp_op)?.not_undef()?)?;
 
-        let (duration, sign) = get_time();
-        let tv_sec = sign * (duration.as_secs() as i128);
-        let mut tv_nsec = duration.subsec_nanos() as i128;
-        // If the number of seconds is zero, we need to put the sign into the second's fraction.
-        if tv_sec == 0 && sign < 0 {
-            tv_nsec *= sign;
-        }
+        let duration = get_time()?;
+        let tv_sec = duration.as_secs() as i128;
+        let tv_nsec = duration.subsec_nanos() as i128;
 
         let imms = [
             int_to_immty_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
@@ -97,13 +88,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let tv = this.force_ptr(this.read_scalar(tv_op)?.not_undef()?)?;
 
-        let (duration, sign) = get_time();
-        let tv_sec = sign * (duration.as_secs() as i128);
-        let mut tv_usec = duration.subsec_micros() as i128;
-        // If the number of seconds is zero, we need to put the sign into the second's fraction.
-        if tv_sec == 0 && sign < 0 {
-            tv_usec *= sign;
-        }
+        let duration = get_time()?;
+        let tv_sec = duration.as_secs() as i128;
+        let tv_usec = duration.subsec_micros() as i128;
 
         let imms = [
             int_to_immty_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
