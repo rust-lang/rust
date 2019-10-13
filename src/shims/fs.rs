@@ -9,7 +9,6 @@ use crate::*;
 
 pub struct FileHandle {
     file: File,
-    flag: i32,
 }
 
 pub struct FileHandler {
@@ -79,13 +78,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let o_cloexec = this.eval_libc_i32("O_CLOEXEC")?;
         if flag & o_cloexec != 0 {
-            // This flag is a noop for now because `std` already sets it.
+            // We do not need to do anything for this flag because `std` already sets it.
+            // (Technically we do not support *not* setting this flag, but we ignore that.)
             mirror |= o_cloexec;
         }
         // If `flag` is not equal to `mirror`, there is an unsupported option enabled in `flag`,
         // then we throw an error.
         if flag != mirror {
-            throw_unsup_format!("unsupported flags {:#x}", flag);
+            throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
         let path_bytes = this
@@ -97,7 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file, flag });
+            fh.handles.insert(fh.low, FileHandle { file });
             fh.low
         });
 
@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         cmd_op: OpTy<'tcx, Tag>,
-        _arg_op: Option<OpTy<'tcx, Tag>>,
+        _arg1_op: Option<OpTy<'tcx, Tag>>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -120,7 +120,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
         // We only support getting the flags for a descriptor
         if cmd == this.eval_libc_i32("F_GETFD")? {
-            this.get_handle_and(fd, |handle| Ok(handle.flag))
+            // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
+            // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
+            // always sets this flag when opening a file. However we still need to check that the
+            // file itself is open.
+            this.get_handle_and(fd, |_| Ok(0))?;
+            this.eval_libc_i32("FD_CLOEXEC")
         } else {
             throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }
