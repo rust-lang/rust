@@ -94,11 +94,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let path_bytes = this
+        let bytes = this
             .memory
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
-        let path = std::str::from_utf8(path_bytes)
-            .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
+        let path: std::path::PathBuf = helpers::bytes_to_os_string(bytes.to_vec())?.into();
 
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;

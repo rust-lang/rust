@@ -1,4 +1,5 @@
 use std::mem;
+use std::ffi::OsString;
 
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
@@ -345,3 +346,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 }
+
+
+pub fn bytes_to_os_string<'tcx>(bytes: Vec<u8>) -> InterpResult<'tcx, OsString> {
+        if cfg!(unix) {
+            Ok(std::os::unix::ffi::OsStringExt::from_vec(bytes))
+        } else {
+            std::str::from_utf8(&bytes)
+                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes).into())
+                .map(OsString::from)
+        }
+    }
+
+pub fn os_string_to_bytes<'tcx>(os_string: OsString) -> InterpResult<'tcx, Vec<u8>> {
+        if cfg!(unix) {
+            Ok(std::os::unix::ffi::OsStringExt::into_vec(os_string))
+        } else {
+            os_string
+                .into_string()
+                .map_err(|os_string| err_unsup_format!("{:?} is not a valid utf-8 string", os_string).into())
+                .map(|s| s.into_bytes())
+        }
+    }
