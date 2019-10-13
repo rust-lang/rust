@@ -16,7 +16,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl !Send for dyn Marker2 {}
    | ^^^^^^^^^^^^^^^-----------
    | |              |
-   | |              `(dyn Marker2 + 'static)` is not defined in the current crate
+   | |              `dyn Marker2` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

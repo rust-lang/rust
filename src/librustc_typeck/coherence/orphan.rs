@@ -42,11 +42,28 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                          arbitrary types"
                     );
                     err.span_label(sp, "impl doesn't use only types from inside the current crate");
-                    for (ty, i) in &tys {
-                        let msg = format!("`{}` is not defined in the current crate", ty);
-                        if *i == 0 {
+                    for (ty, is_target_ty) in &tys {
+                        // FIXME: We want to remove the type arguments from the displayed type.
+                        //        The reverse of `resolve_vars_if_possible`.
+                        let mut ty = *ty;
+                        self.tcx.infer_ctxt().enter(|infcx| {
+                            // Remove the lifetimes unnecessary for this error.
+                            ty = infcx.freshen(ty);
+                        });
+                        let msg = format!(
+                            "`{}` is not defined in the current crate{}",
+                            ty,
+                            match &ty.kind {
+                                ty::Slice(_) => " because slices are always considered foreign",
+                                ty::Array(..) => " because arrays are always considered foreign",
+                                _ => "",
+                            },
+                        );
+                        if *is_target_ty {
+                            // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                             err.span_label(impl_ty.span, &msg);
                         } else {
+                            // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
                             err.span_label(tr.path.span, &msg);
                         }
                     }

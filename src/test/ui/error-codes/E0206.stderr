@@ -16,7 +16,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl Copy for Foo { }
    | ^^^^^^^^^^^^^^---
    | |             |
-   | |             `[u8; _]` is not defined in the current crate
+   | |             `[u8; _]` is not defined in the current crate because arrays are always considered foreign
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
