@@ -270,23 +270,12 @@ pub fn from_fn_attrs(
         // optimize based on this!
         false
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that
+        // If a specific #[unwind] attribute is present, use that.
         true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind
+        // Special attribute for allocator functions, which can't unwind.
         false
-    } else if let Some(_) = id {
-        // rust-lang/rust#64655, rust-lang/rust#63909: to minimize
-        // risk associated with changing cases where nounwind
-        // attribute is attached, this code is deliberately mimicking
-        // old control flow based on whether `id` is `Some` or `None`.
-        //
-        // However, in the long term we should either:
-        // - fold this into final else (i.e. stop inspecting `id`)
-        // - or, adopt Rust PR #63909.
-        //
-        // see also Rust RFC 2753.
-
+    } else {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         if sig.abi == Abi::Rust || sig.abi == Abi::RustCall {
             // Any Rust method (or `extern "Rust" fn` or `extern
@@ -312,15 +301,6 @@ pub fn from_fn_attrs(
             // In either case, we mark item as explicitly nounwind.
             false
         }
-    } else {
-        // assume this can possibly unwind, avoiding the application of a
-        // `nounwind` attribute below.
-        //
-        // (But: See comments in previous branch. Specifically, it is
-        // unclear whether there is real value in the assumption this
-        // can unwind. The conservatism here may just be papering over
-        // a real problem by making some UB a bit harder to hit.)
-        true
     });
 
     // Always annotate functions with the target-cpu they are compiled for.
