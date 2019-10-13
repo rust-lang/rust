@@ -183,8 +183,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let errno_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Static.into());
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
-    let errno_ptr = ecx.check_mplace_access(errno_place.into(), Some(Size::from_bits(32)))?;
-    ecx.machine.last_error = errno_ptr;
+    ecx.machine.last_error = Some(errno_place);
 
     Ok(ecx)
 }

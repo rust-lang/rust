@@ -349,25 +349,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Sets the last error variable
     fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
-        let errno_ptr = this.machine.last_error.unwrap();
-        this.memory.get_mut(errno_ptr.alloc_id)?.write_scalar(
-            tcx,
-            errno_ptr,
-            scalar.into(),
-            Size::from_bits(32),
-        )
+        let errno_place = this.machine.last_error.unwrap();
+        this.write_scalar(scalar, errno_place.into())
     }
 
     /// Gets the last error variable
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
-        let errno_ptr = this.machine.last_error.unwrap();
-        this.memory
-            .get(errno_ptr.alloc_id)?
-            .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
-            .not_undef()
+        let errno_place = this.machine.last_error.unwrap();
+        this.read_scalar(errno_place.into())?.not_undef()
     }
 
     /// Sets the last error variable using a `std::io::Error`. It fails if the error cannot be
