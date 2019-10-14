@@ -247,8 +247,12 @@ macro_rules! make_mir_visitor {
                 &mut self,
                 body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>
             ) {
+                macro_rules! body {
+                    (mut) => (body_cache.body_mut());
+                    () => (body_cache.body());
+                }
                 let span = body_cache.body().span;
-                if let Some(yield_ty) = &$($mutability)? body_cache.body().yield_ty {
+                if let Some(yield_ty) = &$($mutability)? body!($($mutability)?).yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
                         span,
                         scope: OUTERMOST_SOURCE_SCOPE,
@@ -266,7 +270,7 @@ macro_rules! make_mir_visitor {
                     self.visit_basic_block_data(bb, data);
                 }
 
-                let body = body_cache.body();
+                let body = body!($($mutability)?);
                 for scope in &$($mutability)? body.source_scopes {
                     self.visit_source_scope_data(scope);
                 }

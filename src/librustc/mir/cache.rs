@@ -132,7 +132,7 @@ impl<'a, 'tcx> BodyCache<&'a Body<'tcx>> {
     }
 
     #[inline]
-    pub fn body(&self) -> &Body<'tcx> {
+    pub fn body(&self) -> &'a Body<'tcx> {
         self.body
     }
 
@@ -149,7 +149,8 @@ impl<'a, 'tcx> BodyCache<&'a Body<'tcx>> {
 
 impl<'a, 'tcx> Deref for BodyCache<&'a Body<'tcx>> {
     type Target = Body<'tcx>;
-    fn deref(&self) -> &Body<'tcx> {
+
+    fn deref(&self) -> &Self::Target {
         self.body
     }
 }
@@ -209,7 +210,12 @@ impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for BodyCache<&'a Body<'tcx>> {
 
 impl<'a, 'tcx> BodyCache<&'a mut Body<'tcx>> {
     #[inline]
-    pub fn body(&mut self) -> &mut Body<'tcx> {
+    pub fn body(&self) -> &Body<'tcx> {
+        self.body
+    }
+
+    #[inline]
+    pub fn body_mut(&mut self) -> &mut Body<'tcx> {
         self.body
     }
 
@@ -227,7 +233,7 @@ impl<'a, 'tcx> BodyCache<&'a mut Body<'tcx>> {
 impl<'a, 'tcx> Deref for BodyCache<&'a mut Body<'tcx>> {
     type Target = Body<'tcx>;
 
-    fn deref(&self) -> &Body<'tcx> {
+    fn deref(&self) -> &Self::Target {
         self.body
     }
 }

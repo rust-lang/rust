@@ -4,7 +4,7 @@
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc::mir::{self, BasicBlock, Body, BodyCache, Location, TerminatorKind};
+use rustc::mir::{self, Body, BodyCache, Location, TerminatorKind};
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext, NonUseContext,
 };
@@ -20,8 +20,7 @@ pub fn non_ssa_locals<'b, 'a: 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &mut FunctionCx<'a, 'tcx, Bx>,
     mir: &'b mut BodyCache<&'a Body<'tcx>>,
 ) -> BitSet<mir::Local> {
-    let dominators = mir.dominators();
-    let mut analyzer = LocalAnalyzer::new(fx, mir, dominators);
+    let mut analyzer = LocalAnalyzer::new(fx, mir);
 
     analyzer.visit_body(mir);
 
@@ -68,13 +67,15 @@ struct LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     first_assignment: IndexVec<mir::Local, Location>,
 }
 
-impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>, mir: &'b Body<'tcx>, dominators: Dominators<BasicBlock>) -> Self {
+impl<'mir, 'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx> {
+    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>, mir: &'c mut BodyCache<&'b Body<'tcx>>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(mir.basic_blocks().len()).start_location();
+        let dominators = mir.dominators();
+        let body = mir.body();
         let mut analyzer = LocalAnalyzer {
             fx,
-            mir,
+            mir: body,
             dominators,
             non_ssa_locals: BitSet::new_empty(mir.local_decls.len()),
             first_assignment: IndexVec::from_elem(invalid_location, &mir.local_decls)
