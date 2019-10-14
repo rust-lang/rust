@@ -541,7 +541,8 @@ pub fn lower_to_hir(
 ) -> Result<hir::map::Forest> {
     // Lower AST to HIR.
     let hir_forest = time(sess, "lowering AST -> HIR", || {
-        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver);
+        let nt_to_tokenstream = syntax::parse::nt_to_tokenstream;
+        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver, nt_to_tokenstream);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
