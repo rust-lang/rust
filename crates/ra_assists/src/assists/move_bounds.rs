@@ -18,7 +18,7 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
     }
 
     let parent = type_param_list.syntax().parent()?;
-    if parent.children_with_tokens().find(|it| it.kind() == WHERE_CLAUSE).is_some() {
+    if parent.children_with_tokens().any(|it| it.kind() == WHERE_CLAUSE) {
         return None;
     }
 
