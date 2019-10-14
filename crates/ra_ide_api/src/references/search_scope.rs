@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{DefWithBody, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{AstNode, TextRange};
@@ -7,21 +9,21 @@ use crate::db::RootDatabase;
 use super::{NameDefinition, NameKind};
 
 pub(crate) struct SearchScope {
-    pub scope: Vec<(FileId, Option<TextRange>)>,
+    pub files: Vec<(FileId, Option<TextRange>)>,
 }
 
 impl NameDefinition {
-    pub fn scope(&self, db: &RootDatabase) -> SearchScope {
+    pub(crate) fn scope(&self, db: &RootDatabase) -> SearchScope {
         let module_src = self.container.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 
-        if let NameKind::Pat((def, _)) = self.item {
+        if let NameKind::Pat((def, _)) = self.kind {
             let range = match def {
                 DefWithBody::Function(f) => f.source(db).ast.syntax().text_range(),
                 DefWithBody::Const(c) => c.source(db).ast.syntax().text_range(),
                 DefWithBody::Static(s) => s.source(db).ast.syntax().text_range(),
             };
-            return SearchScope { scope: vec![(file_id, Some(range))] };
+            return SearchScope { files: vec![(file_id, Some(range))] };
         }
 
         if let Some(ref vis) = self.visibility {
@@ -30,7 +32,7 @@ impl NameDefinition {
             let mut files = source_root.walk().map(|id| (id.into(), None)).collect::<Vec<_>>();
 
             if vis.syntax().to_string().as_str() == "pub(crate)" {
-                return SearchScope { scope: files };
+                return SearchScope { files };
             }
             if vis.syntax().to_string().as_str() == "pub" {
                 let krate = self.container.krate(db).unwrap();
@@ -47,7 +49,7 @@ impl NameDefinition {
                     }
                 }
 
-                return SearchScope { scope: files };
+                return SearchScope { files };
             }
             // FIXME: "pub(super)", "pub(in path)"
         }
@@ -56,6 +58,6 @@ impl NameDefinition {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };
-        SearchScope { scope: vec![(file_id, range)] }
+        SearchScope { files: vec![(file_id, range)] }
     }
 }

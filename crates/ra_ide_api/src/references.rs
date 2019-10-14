@@ -5,6 +5,7 @@ mod name_definition;
 mod rename;
 mod search_scope;
 
+use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode, TextUnit};
 
@@ -61,7 +62,7 @@ pub(crate) fn find_all_refs(
     let syntax = parse.tree().syntax().clone();
     let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position)?;
 
-    let declaration = match def.item {
+    let declaration = match def.kind {
         NameKind::Macro(mac) => NavigationTarget::from_macro_def(db, mac),
         NameKind::Field(field) => NavigationTarget::from_field(db, field),
         NameKind::AssocItem(assoc) => NavigationTarget::from_assoc_item(db, assoc),
@@ -98,7 +99,7 @@ fn find_name<'a>(
 
 fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> Vec<FileRange> {
     let pat = name.as_str();
-    let scope = def.scope(db).scope;
+    let scope = def.scope(db).files;
     let mut refs = vec![];
 
     let is_match = |file_id: FileId, name_ref: &ast::NameRef| -> bool {
@@ -112,12 +113,14 @@ fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> V
 
     for (file_id, text_range) in scope {
         let text = db.file_text(file_id);
-        let parse = SourceFile::parse(&text);
-        let syntax = parse.tree().syntax().clone();
+        let parse = Lazy::new(|| SourceFile::parse(&text));
 
         for (idx, _) in text.match_indices(pat) {
             let offset = TextUnit::from_usize(idx);
-            if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, offset) {
+
+            if let Some(name_ref) =
+                find_node_at_offset::<ast::NameRef>(parse.tree().syntax(), offset)
+            {
                 let range = name_ref.syntax().text_range();
 
                 if let Some(text_range) = text_range {

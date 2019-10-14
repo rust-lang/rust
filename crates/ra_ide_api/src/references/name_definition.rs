@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{
     db::AstDatabase, Adt, AssocItem, DefWithBody, FromSource, HasSource, HirFileId, MacroDef,
     Module, ModuleDef, StructField, Ty, VariantDef,
@@ -22,7 +24,7 @@ pub enum NameKind {
 pub(crate) struct NameDefinition {
     pub visibility: Option<ast::Visibility>,
     pub container: Module,
-    pub item: NameKind,
+    pub kind: NameKind,
 }
 
 pub(super) fn from_pat(
@@ -50,9 +52,9 @@ pub(super) fn from_pat(
             }
         }
     })?;
-    let item = NameKind::Pat((def, pat));
+    let kind = NameKind::Pat((def, pat));
     let container = def.module(db);
-    Some(NameDefinition { item, container, visibility: None })
+    Some(NameDefinition { kind, container, visibility: None })
 }
 
 pub(super) fn from_assoc_item(db: &RootDatabase, item: AssocItem) -> NameDefinition {
@@ -62,19 +64,19 @@ pub(super) fn from_assoc_item(db: &RootDatabase, item: AssocItem) -> NameDefinit
         AssocItem::Const(c) => c.source(db).ast.visibility(),
         AssocItem::TypeAlias(a) => a.source(db).ast.visibility(),
     };
-    let item = NameKind::AssocItem(item);
-    NameDefinition { item, container, visibility }
+    let kind = NameKind::AssocItem(item);
+    NameDefinition { kind, container, visibility }
 }
 
 pub(super) fn from_struct_field(db: &RootDatabase, field: StructField) -> NameDefinition {
-    let item = NameKind::Field(field);
+    let kind = NameKind::Field(field);
     let parent = field.parent_def(db);
     let container = parent.module(db);
     let visibility = match parent {
         VariantDef::Struct(s) => s.source(db).ast.visibility(),
         VariantDef::EnumVariant(e) => e.source(db).ast.parent_enum().visibility(),
     };
-    NameDefinition { item, container, visibility }
+    NameDefinition { kind, container, visibility }
 }
 
 pub(super) fn from_module_def(
@@ -82,7 +84,7 @@ pub(super) fn from_module_def(
     def: ModuleDef,
     module: Option<Module>,
 ) -> NameDefinition {
-    let item = NameKind::Def(def);
+    let kind = NameKind::Def(def);
     let (container, visibility) = match def {
         ModuleDef::Module(it) => {
             let container = it.parent(db).or_else(|| Some(it)).unwrap();
@@ -104,5 +106,5 @@ pub(super) fn from_module_def(
         ModuleDef::Adt(Adt::Enum(it)) => (it.module(db), it.source(db).ast.visibility()),
         ModuleDef::BuiltinType(..) => (module.unwrap(), None),
     };
-    NameDefinition { item, container, visibility }
+    NameDefinition { kind, container, visibility }
 }

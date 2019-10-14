@@ -54,7 +54,7 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.item);
+    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
     match name_kind {
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
         Some(Field(field)) => return Exact(NavigationTarget::from_field(db, field)),

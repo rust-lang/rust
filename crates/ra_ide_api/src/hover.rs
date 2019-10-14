@@ -100,8 +100,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         let mut no_fallback = false;
-        let name_kind =
-            classify_name_ref(db, position.file_id, &name_ref).and_then(|d| Some(d.item));
+        let name_kind = classify_name_ref(db, position.file_id, &name_ref).map(|d| d.kind);
         match name_kind {
             Some(Macro(it)) => {
                 let src = it.source(db);

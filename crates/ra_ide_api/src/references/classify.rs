@@ -1,3 +1,5 @@
+//! FIXME: write short doc here
+
 use hir::{Either, FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
 use ra_db::FileId;
 use ra_syntax::{ast, match_ast, AstNode, AstPtr};
@@ -102,8 +104,9 @@ pub(crate) fn classify_name_ref(
     let analyzer = SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
-        let func = analyzer.resolve_method_call(&method_call)?;
-        return Some(from_assoc_item(db, func.into()));
+        if let Some(func) = analyzer.resolve_method_call(&method_call) {
+            return Some(from_assoc_item(db, func.into()));
+        }
     }
 
     if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
@@ -128,15 +131,10 @@ pub(crate) fn classify_name_ref(
     let container = Module::from_definition(db, Source { file_id, ast })?;
     let visibility = None;
 
-    if let Some(macro_call) =
-        parent.parent().and_then(|node| node.parent()).and_then(ast::MacroCall::cast)
-    {
+    if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
         if let Some(macro_def) = analyzer.resolve_macro_call(db, &macro_call) {
-            return Some(NameDefinition {
-                item: NameKind::Macro(macro_def),
-                container,
-                visibility,
-            });
+            let kind = NameKind::Macro(macro_def);
+            return Some(NameDefinition { kind, container, visibility });
         }
     }
 
@@ -147,23 +145,23 @@ pub(crate) fn classify_name_ref(
         AssocItem(item) => Some(from_assoc_item(db, item)),
         LocalBinding(Either::A(pat)) => from_pat(db, file_id, pat),
         LocalBinding(Either::B(par)) => {
-            let item = NameKind::SelfParam(par);
-            Some(NameDefinition { item, container, visibility })
+            let kind = NameKind::SelfParam(par);
+            Some(NameDefinition { kind, container, visibility })
         }
         GenericParam(par) => {
             // FIXME: get generic param def
-            let item = NameKind::GenericParam(par);
-            Some(NameDefinition { item, container, visibility })
+            let kind = NameKind::GenericParam(par);
+            Some(NameDefinition { kind, container, visibility })
         }
         Macro(def) => {
-            let item = NameKind::Macro(def);
-            Some(NameDefinition { item, container, visibility })
+            let kind = NameKind::Macro(def);
+            Some(NameDefinition { kind, container, visibility })
         }
         SelfType(impl_block) => {
             let ty = impl_block.target_ty(db);
-            let item = NameKind::SelfType(ty);
+            let kind = NameKind::SelfType(ty);
             let container = impl_block.module();
-            Some(NameDefinition { item, container, visibility })
+            Some(NameDefinition { kind, container, visibility })
         }
     }
 }
