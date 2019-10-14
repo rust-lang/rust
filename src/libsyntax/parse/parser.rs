@@ -1273,7 +1273,7 @@ impl<'a> Parser<'a> {
             // This can happen due to a bad interaction of two unrelated recovery mechanisms with
             // mismatched delimiters *and* recovery lookahead on the likely typo `pub ident(`
             // (#62881).
-            return Ok((ret?, TokenStream::new(vec![])));
+            return Ok((ret?, TokenStream::default()));
         } else {
             &mut self.token_cursor.stack[prev].last_token
         };
@@ -1288,7 +1288,7 @@ impl<'a> Parser<'a> {
                 // This can happen due to a bad interaction of two unrelated recovery mechanisms
                 // with mismatched delimiters *and* recovery lookahead on the likely typo
                 // `pub ident(` (#62895, different but similar to the case above).
-                return Ok((ret?, TokenStream::new(vec![])));
+                return Ok((ret?, TokenStream::default()));
             }
         };
 

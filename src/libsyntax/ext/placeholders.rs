@@ -15,7 +15,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: TokenStream::empty().into(),
+            tts: TokenStream::default().into(),
             delim: ast::MacDelimiter::Brace,
             span: DUMMY_SP,
             prior_type_ascription: None,
@@ -32,12 +32,12 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         attrs: ThinVec::new(),
         kind: ast::ExprKind::Mac(mac_placeholder()),
     });
-    let ty = P(ast::Ty {
+    let ty = || P(ast::Ty {
         id,
         kind: ast::TyKind::Mac(mac_placeholder()),
         span,
     });
-    let pat = P(ast::Pat {
+    let pat = || P(ast::Pat {
         id,
         kind: ast::PatKind::Mac(mac_placeholder()),
         span,
@@ -83,7 +83,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
                 body: expr_placeholder(),
                 guard: None,
                 id,
-                pat,
+                pat: pat(),
                 span,
                 is_placeholder: true,
             }
@@ -105,7 +105,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
                 id,
                 ident,
                 is_shorthand: false,
-                pat,
+                pat: pat(),
                 span,
                 is_placeholder: true,
             }
@@ -124,9 +124,9 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             ast::Param {
                 attrs: Default::default(),
                 id,
-                pat,
+                pat: pat(),
                 span,
-                ty,
+                ty: ty(),
                 is_placeholder: true,
             }
         ]),
@@ -136,7 +136,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
                 id,
                 ident: None,
                 span,
-                ty,
+                ty: ty(),
                 vis,
                 is_placeholder: true,
             }
