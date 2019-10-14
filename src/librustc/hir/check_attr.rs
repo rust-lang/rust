@@ -278,7 +278,7 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[target_feature]` attribute on `item` is valid. Returns `true` if valid.
     fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Fn => true,
+            Target::Fn | Target::Method { body: true } => true,
             _ => {
                 self.tcx.sess
                     .struct_span_err(attr.span, "attribute should be applied to a function")
