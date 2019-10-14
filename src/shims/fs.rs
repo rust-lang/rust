@@ -43,15 +43,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let mut options = OpenOptions::new();
 
-        // The first two bits of the flag correspond to the access mode of the file in linux. This
-        // is done this way because `O_RDONLY` is zero in several platforms.
+        let o_rdonly = this.eval_libc_i32("O_RDONLY")?;
+        let o_wronly = this.eval_libc_i32("O_WRONLY")?;
+        let o_rdwr = this.eval_libc_i32("O_RDWR")?;
+        // The first two bits of the flag correspond to the access mode in linux, macOS and
+        // windows. We need to check that in fact the access mode flags for the current platform
+        // only use these two bits, otherwise we are in an unsupported platform and should error.
+        if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
+            throw_unsup_format!("Access mode flags on this platform are unsupported");
+        }
+        // Now we check the access mode
         let access_mode = flag & 0b11;
 
-        if access_mode == this.eval_libc_i32("O_RDONLY")? {
+        if access_mode == o_rdonly {
             options.read(true);
-        } else if access_mode == this.eval_libc_i32("O_WRONLY")? {
+        } else if access_mode == o_wronly {
             options.write(true);
-        } else if access_mode == this.eval_libc_i32("O_RDWR")? {
+        } else if access_mode == o_rdwr {
             options.read(true).write(true);
         } else {
             throw_unsup_format!("Unsupported access mode {:#x}", access_mode);
@@ -124,8 +132,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
             // always sets this flag when opening a file. However we still need to check that the
             // file itself is open.
-            this.get_handle_and(fd, |_| Ok(0))?;
-            this.eval_libc_i32("FD_CLOEXEC")
+            let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
+            this.get_handle_and(fd, |_| Ok(fd_cloexec))
         } else {
             throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }
