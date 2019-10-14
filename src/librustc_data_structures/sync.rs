@@ -23,29 +23,6 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use crate::owning_ref::{Erased, OwningRef};
 
-pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
-    where A: FnOnce() -> RA,
-          B: FnOnce() -> RB
-{
-    (oper_a(), oper_b())
-}
-
-pub struct SerialScope;
-
-impl SerialScope {
-    pub fn spawn<F>(&self, f: F)
-        where F: FnOnce(&SerialScope)
-    {
-        f(self)
-    }
-}
-
-pub fn serial_scope<F, R>(f: F) -> R
-    where F: FnOnce(&SerialScope) -> R
-{
-    f(&SerialScope)
-}
-
 pub use std::sync::atomic::Ordering::SeqCst;
 pub use std::sync::atomic::Ordering;
 
@@ -62,6 +39,29 @@ cfg_if! {
             ($v:expr) => {
                 $v.erase_owner()
             }
+        }
+
+        pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
+            where A: FnOnce() -> RA,
+                  B: FnOnce() -> RB
+        {
+            (oper_a(), oper_b())
+        }
+
+        pub struct SerialScope;
+
+        impl SerialScope {
+            pub fn spawn<F>(&self, f: F)
+                where F: FnOnce(&SerialScope)
+            {
+                f(self)
+            }
+        }
+
+        pub fn serial_scope<F, R>(f: F) -> R
+            where F: FnOnce(&SerialScope) -> R
+        {
+            f(&SerialScope)
         }
 
         use std::ops::Add;
