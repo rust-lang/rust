@@ -5,7 +5,7 @@ pub(crate) mod docs;
 
 use std::sync::Arc;
 
-use ra_db::{CrateId, Edition, FileId, SourceRootId};
+use ra_db::{CrateId, Edition, FileId};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
@@ -76,10 +76,8 @@ impl Crate {
         crate_graph.edition(self.crate_id)
     }
 
-    // FIXME: should this be in source_binder?
-    pub fn source_root_crates(db: &impl DefDatabase, source_root: SourceRootId) -> Vec<Crate> {
-        let crate_ids = db.source_root_crates(source_root);
-        crate_ids.iter().map(|&crate_id| Crate { crate_id }).collect()
+    pub fn all(db: &impl DefDatabase) -> Vec<Crate> {
+        db.crate_graph().iter().map(|crate_id| Crate { crate_id }).collect()
     }
 }
 

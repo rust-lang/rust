@@ -22,16 +22,29 @@ pub fn run(
     let mut num_crates = 0;
     let mut visited_modules = HashSet::new();
     let mut visit_queue = Vec::new();
-    for (source_root_id, project_root) in roots {
-        if project_root.is_member() {
-            for krate in Crate::source_root_crates(db, source_root_id) {
-                num_crates += 1;
-                let module =
-                    krate.root_module(db).expect("crate in source root without root module");
-                visit_queue.push(module);
-            }
+
+    let members = roots
+        .into_iter()
+        .filter_map(
+            |(source_root_id, project_root)| {
+                if project_root.is_member() {
+                    Some(source_root_id)
+                } else {
+                    None
+                }
+            },
+        )
+        .collect::<HashSet<_>>();
+
+    for krate in Crate::all(db) {
+        let module = krate.root_module(db).expect("crate without root module");
+        let file_id = module.definition_source(db).file_id;
+        if members.contains(&db.file_source_root(file_id.original_file(db))) {
+            num_crates += 1;
+            visit_queue.push(module);
         }
     }
+
     println!("Crates in this dir: {}", num_crates);
     let mut num_decls = 0;
     let mut funcs = Vec::new();
