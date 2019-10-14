@@ -17,8 +17,8 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, type_ref::Mutability, Adt, Crate, DefWithBody, GenericParams,
-    HasGenericParams, Name, Trait, TypeAlias,
+    db::HirDatabase, expr::ExprId, type_ref::Mutability, util::make_mut_slice, Adt, Crate,
+    DefWithBody, GenericParams, HasGenericParams, Name, Trait, TypeAlias,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -308,12 +308,9 @@ impl Substs {
     }
 
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        // Without an Arc::make_mut_slice, we can't avoid the clone here:
-        let mut v: Vec<_> = self.0.iter().cloned().collect();
-        for t in &mut v {
+        for t in make_mut_slice(&mut self.0) {
             t.walk_mut(f);
         }
-        self.0 = v.into();
     }
 
     pub fn as_single(&self) -> &Ty {
@@ -330,8 +327,7 @@ impl Substs {
                 .params_including_parent()
                 .into_iter()
                 .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
-                .collect::<Vec<_>>()
-                .into(),
+                .collect(),
         )
     }
 
@@ -342,8 +338,7 @@ impl Substs {
                 .params_including_parent()
                 .into_iter()
                 .map(|p| Ty::Bound(p.idx))
-                .collect::<Vec<_>>()
-                .into(),
+                .collect(),
         )
     }
 
@@ -541,12 +536,9 @@ impl TypeWalk for FnSig {
     }
 
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        // Without an Arc::make_mut_slice, we can't avoid the clone here:
-        let mut v: Vec<_> = self.params_and_return.iter().cloned().collect();
-        for t in &mut v {
+        for t in make_mut_slice(&mut self.params_and_return) {
             t.walk_mut(f);
         }
-        self.params_and_return = v.into();
     }
 }
 
@@ -756,11 +748,9 @@ impl TypeWalk for Ty {
                 p_ty.parameters.walk_mut(f);
             }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                let mut v: Vec<_> = predicates.iter().cloned().collect();
-                for p in &mut v {
+                for p in make_mut_slice(predicates) {
                     p.walk_mut(f);
                 }
-                *predicates = v.into();
             }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }

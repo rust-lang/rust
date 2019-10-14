@@ -51,6 +51,7 @@ mod lang_item;
 mod generics;
 mod resolve;
 pub mod diagnostics;
+mod util;
 
 mod code_model;
 
