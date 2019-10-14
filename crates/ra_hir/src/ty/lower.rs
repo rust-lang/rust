@@ -31,11 +31,11 @@ impl Ty {
         match type_ref {
             TypeRef::Never => Ty::simple(TypeCtor::Never),
             TypeRef::Tuple(inner) => {
-                let inner_tys =
-                    inner.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
+                let inner_tys: Arc<[Ty]> =
+                    inner.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect();
                 Ty::apply(
                     TypeCtor::Tuple { cardinality: inner_tys.len() as u16 },
-                    Substs(inner_tys.into()),
+                    Substs(inner_tys),
                 )
             }
             TypeRef::Path(path) => Ty::from_hir_path(db, resolver, path),
@@ -57,9 +57,7 @@ impl Ty {
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params) => {
-                let inner_tys =
-                    params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
-                let sig = Substs(inner_tys.into());
+                let sig = Substs(params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect());
                 Ty::apply(TypeCtor::FnPtr { num_args: sig.len() as u16 - 1 }, sig)
             }
             TypeRef::DynTrait(bounds) => {
@@ -69,8 +67,8 @@ impl Ty {
                     .flat_map(|b| {
                         GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone())
                     })
-                    .collect::<Vec<_>>();
-                Ty::Dyn(predicates.into())
+                    .collect();
+                Ty::Dyn(predicates)
             }
             TypeRef::ImplTrait(bounds) => {
                 let self_ty = Ty::Bound(0);
@@ -79,8 +77,8 @@ impl Ty {
                     .flat_map(|b| {
                         GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone())
                     })
-                    .collect::<Vec<_>>();
-                Ty::Opaque(predicates.into())
+                    .collect();
+                Ty::Opaque(predicates)
             }
             TypeRef::Error => Ty::Unknown,
         }
@@ -557,13 +555,12 @@ pub(crate) fn generic_predicates_for_param_query(
     param_idx: u32,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let predicates = resolver
+    resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
         .filter(|pred| Ty::from_hir_only_param(db, &resolver, &pred.type_ref) == Some(param_idx))
         .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
-        .collect::<Vec<_>>();
-    predicates.into()
+        .collect()
 }
 
 pub(crate) fn trait_env(
@@ -584,11 +581,10 @@ pub(crate) fn generic_predicates_query(
     def: GenericDef,
 ) -> Arc<[GenericPredicate]> {
     let resolver = def.resolver(db);
-    let predicates = resolver
+    resolver
         .where_predicates_in_scope()
         .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
-        .collect::<Vec<_>>();
-    predicates.into()
+        .collect()
 }
 
 /// Resolve the default type params from generics
@@ -602,9 +598,9 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> 
         .map(|p| {
             p.default.as_ref().map_or(Ty::Unknown, |path| Ty::from_hir_path(db, &resolver, path))
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    Substs(defaults.into())
+    Substs(defaults)
 }
 
 fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {

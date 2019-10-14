@@ -89,7 +89,7 @@ pub(crate) fn impls_for_trait_query(
     }
     let crate_impl_blocks = db.impls_in_crate(krate);
     impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_));
-    impls.into_iter().collect::<Vec<_>>().into()
+    impls.into_iter().collect()
 }
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:

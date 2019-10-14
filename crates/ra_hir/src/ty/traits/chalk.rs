@@ -126,8 +126,7 @@ impl ToChalk for Substs {
                 chalk_ir::Parameter(chalk_ir::ParameterKind::Ty(ty)) => from_chalk(db, ty),
                 chalk_ir::Parameter(chalk_ir::ParameterKind::Lifetime(_)) => unimplemented!(),
             })
-            .collect::<Vec<_>>()
-            .into();
+            .collect();
         Substs(tys)
     }
 }

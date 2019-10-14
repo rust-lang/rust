@@ -329,8 +329,7 @@ impl Substs {
                 .params_including_parent()
                 .into_iter()
                 .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
-                .collect::<Vec<_>>()
-                .into(),
+                .collect(),
         )
     }
 
@@ -341,8 +340,7 @@ impl Substs {
                 .params_including_parent()
                 .into_iter()
                 .map(|p| Ty::Bound(p.idx))
-                .collect::<Vec<_>>()
-                .into(),
+                .collect(),
         )
     }
 
