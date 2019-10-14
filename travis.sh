@@ -12,13 +12,13 @@ export RUSTC_EXTRA_FLAGS="-D warnings"
 
 # Prepare
 echo "Build and install miri"
-./miri build --all-targets
-./miri install
+./miri build --all-targets --locked
+./miri install # implicitly locked
 echo
 
 # Test
 function run_tests {
-    ./miri test
+    ./miri test --locked
     # "miri test" has built the sysroot for us, now this should pass without
     # any interactive questions.
     test-cargo-miri/run-test.py
