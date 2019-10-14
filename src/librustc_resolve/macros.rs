@@ -108,15 +108,11 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
-    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
-    fn visit_ast_fragment_with_placeholders(
-        &mut self, expansion: ExpnId, fragment: &AstFragment, extra_placeholders: &[NodeId]
-    ) {
+    fn visit_ast_fragment_with_placeholders(&mut self, expansion: ExpnId, fragment: &AstFragment) {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let output_legacy_scope =
-            self.build_reduced_graph(fragment, extra_placeholders, parent_scope);
+        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
 
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
