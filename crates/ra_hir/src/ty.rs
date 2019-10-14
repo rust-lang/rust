@@ -17,8 +17,8 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, type_ref::Mutability, Adt, Crate, DefWithBody, GenericParams,
-    HasGenericParams, Name, Trait, TypeAlias,
+    db::HirDatabase, expr::ExprId, type_ref::Mutability, util::make_mut_arc_slice, Adt, Crate,
+    DefWithBody, GenericParams, HasGenericParams, Name, Trait, TypeAlias,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -308,12 +308,11 @@ impl Substs {
     }
 
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        // Without an Arc::make_mut_slice, we can't avoid the clone here:
-        let mut v: Vec<_> = self.0.iter().cloned().collect();
-        for t in &mut v {
-            t.walk_mut(f);
-        }
-        self.0 = v.into();
+        make_mut_arc_slice(&mut self.0, |s| {
+            for t in s {
+                t.walk_mut(f);
+            }
+        });
     }
 
     pub fn as_single(&self) -> &Ty {
@@ -541,12 +540,11 @@ impl TypeWalk for FnSig {
     }
 
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        // Without an Arc::make_mut_slice, we can't avoid the clone here:
-        let mut v: Vec<_> = self.params_and_return.iter().cloned().collect();
-        for t in &mut v {
-            t.walk_mut(f);
-        }
-        self.params_and_return = v.into();
+        make_mut_arc_slice(&mut self.params_and_return, |s| {
+            for t in s {
+                t.walk_mut(f);
+            }
+        });
     }
 }
 
@@ -756,11 +754,11 @@ impl TypeWalk for Ty {
                 p_ty.parameters.walk_mut(f);
             }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                let mut v: Vec<_> = predicates.iter().cloned().collect();
-                for p in &mut v {
-                    p.walk_mut(f);
-                }
-                *predicates = v.into();
+                make_mut_arc_slice(predicates, |s| {
+                    for p in s {
+                        p.walk_mut(f);
+                    }
+                });
             }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }

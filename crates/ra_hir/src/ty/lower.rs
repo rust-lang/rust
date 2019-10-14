@@ -392,10 +392,9 @@ impl TraitRef {
     ) -> Self {
         let mut substs = TraitRef::substs_from_path(db, resolver, segment, resolved);
         if let Some(self_ty) = explicit_self_ty {
-            // FIXME this could be nicer
-            let mut substs_vec = substs.0.to_vec();
-            substs_vec[0] = self_ty;
-            substs.0 = substs_vec.into();
+            crate::util::make_mut_arc_slice(&mut substs.0, |substs| {
+                substs[0] = self_ty;
+            });
         }
         TraitRef { trait_: resolved, substs }
     }
