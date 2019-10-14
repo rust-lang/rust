@@ -541,9 +541,10 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::default(),
             MetaItemKind::NameValue(ref lit) => {
-                let mut vec = vec![TokenTree::token(token::Eq, span).into()];
-                lit.tokens().append_to_tree_and_joint_vec(&mut vec);
-                TokenStream::new(vec)
+                TokenStream::new(vec![
+                    TokenTree::token(token::Eq, span).into(),
+                    lit.token_tree().into(),
+                ])
             }
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
@@ -606,7 +607,7 @@ impl NestedMetaItem {
     fn tokens(&self) -> TokenStream {
         match *self {
             NestedMetaItem::MetaItem(ref item) => item.tokens(),
-            NestedMetaItem::Literal(ref lit) => lit.tokens(),
+            NestedMetaItem::Literal(ref lit) => lit.token_tree().into(),
         }
     }
 
