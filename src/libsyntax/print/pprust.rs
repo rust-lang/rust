@@ -2381,7 +2381,8 @@ impl<'a> State<'a> {
                 }
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
-                    self.s.word("@");
+                    self.s.space();
+                    self.s.word_space("@");
                     self.print_pat(p);
                 }
             }
