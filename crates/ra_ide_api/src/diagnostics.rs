@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
-use ra_db::SourceDatabase;
+use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{
     algo,

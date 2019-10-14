@@ -5,10 +5,10 @@ use std::{panic, sync::Arc};
 use parking_lot::Mutex;
 use ra_cfg::CfgOptions;
 use ra_db::{
-    salsa, CrateGraph, CrateId, Edition, FileId, FilePosition, SourceDatabase, SourceRoot,
-    SourceRootId,
+    salsa, CrateGraph, CrateId, Edition, FileId, FileLoader, FileLoaderDelegate, FilePosition,
+    SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
-use relative_path::RelativePathBuf;
+use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
@@ -17,6 +17,7 @@ use crate::{db, debug::HirDebugHelper, diagnostics::DiagnosticSink};
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 #[salsa::database(
+    ra_db::SourceDatabaseExtStorage,
     ra_db::SourceDatabaseStorage,
     db::InternDatabaseStorage,
     db::AstDatabaseStorage,
@@ -33,6 +34,22 @@ pub struct MockDatabase {
 }
 
 impl panic::RefUnwindSafe for MockDatabase {}
+
+impl FileLoader for MockDatabase {
+    fn file_text(&self, file_id: FileId) -> Arc<String> {
+        FileLoaderDelegate(self).file_text(file_id)
+    }
+    fn resolve_relative_path(
+        &self,
+        anchor: FileId,
+        relative_path: &RelativePath,
+    ) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_relative_path(anchor, relative_path)
+    }
+    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+        FileLoaderDelegate(self).relevant_crates(file_id)
+    }
+}
 
 impl HirDebugHelper for MockDatabase {
     fn crate_name(&self, krate: CrateId) -> Option<String> {

@@ -189,14 +189,14 @@ impl Module {
             ModuleSource::SourceFile(_) => None,
         };
 
-        let source_root_id = db.file_source_root(src.file_id.original_file(db));
-        db.source_root_crates(source_root_id).iter().map(|&crate_id| Crate { crate_id }).find_map(
-            |krate| {
+        db.relevant_crates(src.file_id.original_file(db))
+            .iter()
+            .map(|&crate_id| Crate { crate_id })
+            .find_map(|krate| {
                 let def_map = db.crate_def_map(krate);
                 let module_id = def_map.find_module_by_source(src.file_id, decl_id)?;
                 Some(Module { krate, module_id })
-            },
-        )
+            })
     }
 }
 

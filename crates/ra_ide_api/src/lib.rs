@@ -52,7 +52,7 @@ use std::sync::Arc;
 use ra_cfg::CfgOptions;
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    CheckCanceled, SourceDatabase,
+    CheckCanceled, FileLoader, SourceDatabase,
 };
 use ra_syntax::{SourceFile, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
@@ -289,10 +289,14 @@ impl AnalysisHost {
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, ra_prof::Bytes)> {
         self.db.per_query_memory_usage()
     }
-    pub fn raw_database(&self) -> &(impl hir::db::HirDatabase + salsa::Database) {
+    pub fn raw_database(
+        &self,
+    ) -> &(impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
         &self.db
     }
-    pub fn raw_database_mut(&mut self) -> &mut (impl hir::db::HirDatabase + salsa::Database) {
+    pub fn raw_database_mut(
+        &mut self,
+    ) -> &mut (impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
         &mut self.db
     }
 }

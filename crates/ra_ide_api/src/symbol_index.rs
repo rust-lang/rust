@@ -29,7 +29,7 @@ use std::{
 use fst::{self, Streamer};
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    SourceDatabase, SourceRootId,
+    SourceDatabaseExt, SourceRootId,
 };
 use ra_syntax::{
     ast::{self, NameOwner},

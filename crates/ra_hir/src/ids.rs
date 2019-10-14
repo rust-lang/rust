@@ -85,11 +85,7 @@ impl HirFileId {
                 // Note:
                 // The final goal we would like to make all parse_macro success,
                 // such that the following log will not call anyway.
-                log::warn!(
-                    "fail on macro_parse: (reason: {}) {}",
-                    err,
-                    macro_call_id.debug_dump(db)
-                );
+                log::warn!("fail on macro_parse: (reason: {})", err,);
             })
             .ok()?;
         match macro_file.macro_file_kind {
@@ -364,35 +360,6 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
     }
     fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::TypeAliasDef> {
         db.lookup_intern_type_alias(self)
-    }
-}
-
-impl MacroCallId {
-    pub fn debug_dump(self, db: &impl AstDatabase) -> String {
-        let loc = self.loc(db);
-        let node = loc.ast_id.to_node(db);
-        let syntax_str = {
-            let mut res = String::new();
-            node.syntax().text().for_each_chunk(|chunk| {
-                if !res.is_empty() {
-                    res.push(' ')
-                }
-                res.push_str(chunk)
-            });
-            res
-        };
-
-        // dump the file name
-        let file_id: HirFileId = self.loc(db).ast_id.file_id();
-        let original = file_id.original_file(db);
-        let macro_rules = db.macro_def(loc.def);
-
-        format!(
-            "macro call [file: {:?}] : {}\nhas rules: {}",
-            db.file_relative_path(original),
-            syntax_str,
-            macro_rules.is_some()
-        )
     }
 }
 

@@ -2,7 +2,7 @@ use super::*;
 
 use std::sync::Arc;
 
-use ra_db::SourceDatabase;
+use ra_db::{SourceDatabase, SourceDatabaseExt};
 
 fn check_def_map_is_not_recomputed(initial: &str, file_change: &str) {
     let (mut db, pos) = MockDatabase::with_position(initial);

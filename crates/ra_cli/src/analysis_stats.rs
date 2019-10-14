@@ -2,7 +2,7 @@
 
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
-use ra_db::SourceDatabase;
+use ra_db::SourceDatabaseExt;
 use ra_hir::{AssocItem, Crate, HasBodySource, HasSource, HirDisplay, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
