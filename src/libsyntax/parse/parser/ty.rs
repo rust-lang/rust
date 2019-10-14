@@ -1,4 +1,5 @@
 use super::{Parser, PResult, PathStyle, PrevTokenKind, TokenType};
+use super::item::ParamCfg;
 
 use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
 use crate::ptr::P;
@@ -281,7 +282,7 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         let abi = self.parse_extern_abi()?;
         self.expect_keyword(kw::Fn)?;
-        let cfg = super::ParamCfg {
+        let cfg = ParamCfg {
             is_self_allowed: false,
             allow_c_variadic: true,
             is_name_required: |_| false,

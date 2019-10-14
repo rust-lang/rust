@@ -49,7 +49,7 @@ LL | |         if false { return ay; }
 LL | |         return z;
 LL | |     }));
    | |_____^
-note: ...but the borrowed content is only valid for the lifetime 'x as defined on the function body at 3:11
+note: ...but the borrowed content is only valid for the lifetime `'x` as defined on the function body at 3:11
   --> $DIR/regions-nested-fns.rs:3:11
    |
 LL | fn nested<'x>(x: &'x isize) {

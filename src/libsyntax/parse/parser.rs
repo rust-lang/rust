@@ -9,20 +9,19 @@ mod path;
 pub use path::PathStyle;
 mod stmt;
 mod generics;
+use super::diagnostics::Error;
 
 use crate::ast::{
-    self, DUMMY_NODE_ID, AttrStyle, Attribute, BindingMode, CrateSugar, Ident,
-    IsAsync, MacDelimiter, Mutability, Param, StrStyle, SelfKind, TyKind, Visibility,
-    VisibilityKind, Unsafety,
+    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
+    IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
 use crate::parse::{ParseSess, PResult, Directory, DirectoryOwnership, SeqSep, literal, token};
-use crate::parse::diagnostics::{Error, dummy_arg};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::{Token, TokenKind, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
-use crate::source_map::{self, respan};
+use crate::source_map::respan;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::ThinVec;
@@ -54,17 +53,6 @@ crate enum SemiColonMode {
 crate enum BlockMode {
     Break,
     Ignore,
-}
-
-/// The parsing configuration used to parse a parameter list (see `parse_fn_params`).
-struct ParamCfg {
-    /// Is `self` is allowed as the first parameter?
-    is_self_allowed: bool,
-    /// Is `...` allowed as the tail of the parameter list?
-    allow_c_variadic: bool,
-    /// `is_name_required` decides if, per-parameter,
-    /// the parameter must have a pattern or just a type.
-    is_name_required: fn(&token::Token) -> bool,
 }
 
 /// Like `maybe_whole_expr`, but for things other than expressions.
@@ -1105,271 +1093,6 @@ impl<'a> Parser<'a> {
         res
     }
 
-    /// Parses the parameter list of a function, including the `(` and `)` delimiters.
-    fn parse_fn_params(&mut self, mut cfg: ParamCfg) -> PResult<'a, Vec<Param>> {
-        let sp = self.token.span;
-        let is_trait_item = cfg.is_self_allowed;
-        let mut c_variadic = false;
-        // Parse the arguments, starting out with `self` being possibly allowed...
-        let (params, _) = self.parse_paren_comma_seq(|p| {
-            let param = p.parse_param_general(&cfg, is_trait_item);
-            // ...now that we've parsed the first argument, `self` is no longer allowed.
-            cfg.is_self_allowed = false;
-
-            match param {
-                Ok(param) => Ok(
-                    if let TyKind::CVarArgs = param.ty.kind {
-                        c_variadic = true;
-                        if p.token != token::CloseDelim(token::Paren) {
-                            p.span_err(
-                                p.token.span,
-                                "`...` must be the last argument of a C-variadic function",
-                            );
-                            // FIXME(eddyb) this should probably still push `CVarArgs`.
-                            // Maybe AST validation/HIR lowering should emit the above error?
-                            None
-                        } else {
-                            Some(param)
-                        }
-                    } else {
-                        Some(param)
-                    }
-                ),
-                Err(mut e) => {
-                    e.emit();
-                    let lo = p.prev_span;
-                    // Skip every token until next possible arg or end.
-                    p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                    // Create a placeholder argument for proper arg count (issue #34264).
-                    let span = lo.to(p.prev_span);
-                    Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
-                }
-            }
-        })?;
-
-        let mut params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
-
-        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
-        self.deduplicate_recovered_params_names(&mut params);
-
-        if c_variadic && params.len() <= 1 {
-            self.span_err(
-                sp,
-                "C-variadic function must be declared with at least one named argument",
-            );
-        }
-
-        Ok(params)
-    }
-
-    /// Skips unexpected attributes and doc comments in this position and emits an appropriate
-    /// error.
-    /// This version of parse param doesn't necessarily require identifier names.
-    fn parse_param_general(&mut self, cfg: &ParamCfg, is_trait_item: bool) -> PResult<'a, Param> {
-        let lo = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-
-        // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
-        if let Some(mut param) = self.parse_self_param()? {
-            param.attrs = attrs.into();
-            return if cfg.is_self_allowed {
-                Ok(param)
-            } else {
-                self.recover_bad_self_param(param, is_trait_item)
-            };
-        }
-
-        let is_name_required = match self.token.kind {
-            token::DotDotDot => false,
-            _ => (cfg.is_name_required)(&self.token),
-        };
-        let (pat, ty) = if is_name_required || self.is_named_param() {
-            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
-
-            let pat = self.parse_fn_param_pat()?;
-            if let Err(mut err) = self.expect(&token::Colon) {
-                return if let Some(ident) = self.parameter_without_type(
-                    &mut err,
-                    pat,
-                    is_name_required,
-                    cfg.is_self_allowed,
-                    is_trait_item,
-                ) {
-                    err.emit();
-                    Ok(dummy_arg(ident))
-                } else {
-                    Err(err)
-                };
-            }
-
-            self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_common(true, true, cfg.allow_c_variadic)?)
-        } else {
-            debug!("parse_param_general ident_to_pat");
-            let parser_snapshot_before_ty = self.clone();
-            self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_common(true, true, cfg.allow_c_variadic);
-            if ty.is_ok() && self.token != token::Comma &&
-               self.token != token::CloseDelim(token::Paren) {
-                // This wasn't actually a type, but a pattern looking like a type,
-                // so we are going to rollback and re-parse for recovery.
-                ty = self.unexpected();
-            }
-            match ty {
-                Ok(ty) => {
-                    let ident = Ident::new(kw::Invalid, self.prev_span);
-                    let bm = BindingMode::ByValue(Mutability::Immutable);
-                    let pat = self.mk_pat_ident(ty.span, bm, ident);
-                    (pat, ty)
-                }
-                // If this is a C-variadic argument and we hit an error, return the error.
-                Err(err) if self.token == token::DotDotDot => return Err(err),
-                // Recover from attempting to parse the argument as a type without pattern.
-                Err(mut err) => {
-                    err.cancel();
-                    mem::replace(self, parser_snapshot_before_ty);
-                    self.recover_arg_parse()?
-                }
-            }
-        };
-
-        let span = lo.to(self.token.span);
-
-        Ok(Param {
-            attrs: attrs.into(),
-            id: ast::DUMMY_NODE_ID,
-            is_placeholder: false,
-            pat,
-            span,
-            ty,
-        })
-    }
-
-    /// Returns the parsed optional self parameter and whether a self shortcut was used.
-    ///
-    /// See `parse_self_param_with_attrs` to collect attributes.
-    fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
-        // Extract an identifier *after* having confirmed that the token is one.
-        let expect_self_ident = |this: &mut Self| {
-            match this.token.kind {
-                // Preserve hygienic context.
-                token::Ident(name, _) => {
-                    let span = this.token.span;
-                    this.bump();
-                    Ident::new(name, span)
-                }
-                _ => unreachable!(),
-            }
-        };
-        // Is `self` `n` tokens ahead?
-        let is_isolated_self = |this: &Self, n| {
-            this.is_keyword_ahead(n, &[kw::SelfLower])
-            && this.look_ahead(n + 1, |t| t != &token::ModSep)
-        };
-        // Is `mut self` `n` tokens ahead?
-        let is_isolated_mut_self = |this: &Self, n| {
-            this.is_keyword_ahead(n, &[kw::Mut])
-            && is_isolated_self(this, n + 1)
-        };
-        // Parse `self` or `self: TYPE`. We already know the current token is `self`.
-        let parse_self_possibly_typed = |this: &mut Self, m| {
-            let eself_ident = expect_self_ident(this);
-            let eself_hi = this.prev_span;
-            let eself = if this.eat(&token::Colon) {
-                SelfKind::Explicit(this.parse_ty()?, m)
-            } else {
-                SelfKind::Value(m)
-            };
-            Ok((eself, eself_ident, eself_hi))
-        };
-        // Recover for the grammar `*self`, `*const self`, and `*mut self`.
-        let recover_self_ptr = |this: &mut Self| {
-            let msg = "cannot pass `self` by raw pointer";
-            let span = this.token.span;
-            this.struct_span_err(span, msg)
-                .span_label(span, msg)
-                .emit();
-
-            Ok((SelfKind::Value(Mutability::Immutable), expect_self_ident(this), this.prev_span))
-        };
-
-        // Parse optional `self` parameter of a method.
-        // Only a limited set of initial token sequences is considered `self` parameters; anything
-        // else is parsed as a normal function parameter list, so some lookahead is required.
-        let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.token.kind {
-            token::BinOp(token::And) => {
-                let eself = if is_isolated_self(self, 1) {
-                    // `&self`
-                    self.bump();
-                    SelfKind::Region(None, Mutability::Immutable)
-                } else if is_isolated_mut_self(self, 1) {
-                    // `&mut self`
-                    self.bump();
-                    self.bump();
-                    SelfKind::Region(None, Mutability::Mutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_self(self, 2) {
-                    // `&'lt self`
-                    self.bump();
-                    let lt = self.expect_lifetime();
-                    SelfKind::Region(Some(lt), Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_lifetime()) && is_isolated_mut_self(self, 2) {
-                    // `&'lt mut self`
-                    self.bump();
-                    let lt = self.expect_lifetime();
-                    self.bump();
-                    SelfKind::Region(Some(lt), Mutability::Mutable)
-                } else {
-                    // `&not_self`
-                    return Ok(None);
-                };
-                (eself, expect_self_ident(self), self.prev_span)
-            }
-            // `*self`
-            token::BinOp(token::Star) if is_isolated_self(self, 1) => {
-                self.bump();
-                recover_self_ptr(self)?
-            }
-            // `*mut self` and `*const self`
-            token::BinOp(token::Star) if
-                self.look_ahead(1, |t| t.is_mutability())
-                && is_isolated_self(self, 2) =>
-            {
-                self.bump();
-                self.bump();
-                recover_self_ptr(self)?
-            }
-            // `self` and `self: TYPE`
-            token::Ident(..) if is_isolated_self(self, 0) => {
-                parse_self_possibly_typed(self, Mutability::Immutable)?
-            }
-            // `mut self` and `mut self: TYPE`
-            token::Ident(..) if is_isolated_mut_self(self, 0) => {
-                self.bump();
-                parse_self_possibly_typed(self, Mutability::Mutable)?
-            }
-            _ => return Ok(None),
-        };
-
-        let eself = source_map::respan(eself_lo.to(eself_hi), eself);
-        Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
-    }
-
-    fn is_named_param(&self) -> bool {
-        let offset = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
-                _ => 0,
-            }
-            token::BinOp(token::And) | token::AndAnd => 1,
-            _ if self.token.is_keyword(kw::Mut) => 1,
-            _ => 0,
-        };
-
-        self.look_ahead(offset, |t| t.is_ident()) &&
-        self.look_ahead(offset + 1, |t| t == &token::Colon)
-    }
-
     fn is_crate_vis(&self) -> bool {
         self.token.is_keyword(kw::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
@@ -1454,12 +1177,14 @@ impl<'a> Parser<'a> {
 `pub(super)`: visible only in the current module's parent
 `pub(in path::to::module)`: visible only on the specified path"##;
 
+        let path_str = pprust::path_to_string(&path);
+
         struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
             .help(suggestion)
             .span_suggestion(
                 path.span,
-                &format!("make this visible only to module `{}` with `in`", path),
-                format!("in {}", path),
+                &format!("make this visible only to module `{}` with `in`", path_str),
+                format!("in {}", path_str),
                 Applicability::MachineApplicable,
             )
             .emit();

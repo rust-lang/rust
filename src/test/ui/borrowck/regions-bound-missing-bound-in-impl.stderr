@@ -24,12 +24,12 @@ LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d
    |
    = note: expected type `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'d>)`
               found type `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'d>)`
-note: the lifetime 'c as defined on the method body at 27:24...
+note: the lifetime `'c` as defined on the method body at 27:24...
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |                        ^^
-note: ...does not necessarily outlive the lifetime 'c as defined on the method body at 27:24
+note: ...does not necessarily outlive the lifetime `'c` as defined on the method body at 27:24
   --> $DIR/regions-bound-missing-bound-in-impl.rs:27:24
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {

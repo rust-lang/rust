@@ -17,7 +17,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |         self.foo();
    |         ^^^^
-note: but, the lifetime must be valid for the lifetime 'a as defined on the trait at 4:11...
+note: but, the lifetime must be valid for the lifetime `'a` as defined on the trait at 4:11...
   --> $DIR/issue-17758.rs:4:11
    |
 LL | trait Foo<'a> {

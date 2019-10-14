@@ -2,6 +2,7 @@ use crate::ast;
 use crate::ext::base::ExtCtxt;
 use crate::parse::{self, token, ParseSess};
 use crate::parse::lexer::comments;
+use crate::print::pprust;
 use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 
 use errors::Diagnostic;
@@ -174,7 +175,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             Interpolated(nt) => {
-                let stream = nt.to_tokenstream(sess, span);
+                let stream = parse::nt_to_tokenstream(&nt, sess, span);
                 TokenTree::Group(Group {
                     delimiter: Delimiter::None,
                     stream,
@@ -407,7 +408,7 @@ impl server::TokenStream for Rustc<'_> {
         )
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
-        stream.to_string()
+        pprust::tts_to_string(stream.clone())
     }
     fn from_token_tree(
         &mut self,

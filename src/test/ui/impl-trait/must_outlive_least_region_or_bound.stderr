@@ -24,12 +24,12 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                                |
    |                                this return type evaluates to the `'static` lifetime...
    |
-note: ...can't outlive the lifetime 'a as defined on the function body at 6:13
+note: ...can't outlive the lifetime `'a` as defined on the function body at 6:13
   --> $DIR/must_outlive_least_region_or_bound.rs:6:13
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             ^^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the function body at 6:13
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime `'a` as defined on the function body at 6:13
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                ^^^^^^^^^^^^^^
@@ -42,12 +42,12 @@ LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                                  |
    |                                  this return type evaluates to the `'static` lifetime...
    |
-note: ...can't outlive the lifetime 'a as defined on the function body at 12:15
+note: ...can't outlive the lifetime `'a` as defined on the function body at 12:15
   --> $DIR/must_outlive_least_region_or_bound.rs:12:15
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |               ^^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the function body at 12:15
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime `'a` as defined on the function body at 12:15
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static + 'a { x }
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

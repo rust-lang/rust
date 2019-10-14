@@ -6,7 +6,7 @@ LL |     fn get_ctxt(&self) -> &'a Ctxt {
    |
    = note: expected type `fn(&HasCtxt<'a>) -> &Ctxt`
               found type `fn(&HasCtxt<'a>) -> &'a Ctxt`
-note: the lifetime 'a as defined on the impl at 12:6...
+note: the lifetime `'a` as defined on the impl at 12:6...
   --> $DIR/regions-trait-1.rs:12:6
    |
 LL | impl<'a> GetCtxt for HasCtxt<'a> {

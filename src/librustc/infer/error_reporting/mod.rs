@@ -200,7 +200,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 {
                     sp = param.span;
                 }
-                (format!("the lifetime {} as defined on", br.name), sp)
+                (format!("the lifetime `{}` as defined on", br.name), sp)
             }
             ty::ReFree(ty::FreeRegion {
                 bound_region: ty::BoundRegion::BrNamed(_, name),
@@ -213,7 +213,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 {
                     sp = param.span;
                 }
-                (format!("the lifetime {} as defined on", name), sp)
+                (format!("the lifetime `{}` as defined on", name), sp)
             }
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
@@ -221,7 +221,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     self.hir().span(node),
                 ),
                 _ => (
-                    format!("the lifetime {} as defined on", region),
+                    format!("the lifetime `{}` as defined on", region),
                     cm.def_span(self.hir().span(node)),
                 ),
             },

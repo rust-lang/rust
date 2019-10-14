@@ -856,7 +856,7 @@ impl<'a> Parser<'a> {
                 // This is a best-effort recovery.
                 path.span,
                 "try",
-                format!("<{}>::{}", ty_str, path),
+                format!("<{}>::{}", ty_str, pprust::path_to_string(&path)),
                 Applicability::MaybeIncorrect,
             )
             .emit();
