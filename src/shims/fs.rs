@@ -36,9 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`open` not available when isolation is enabled")
-        }
+        this.check_no_isolation("open")?;
 
         let flag = this.read_scalar(flag_op)?.to_i32()?;
 
@@ -91,9 +89,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`fcntl` not available when isolation is enabled")
-        }
+        this.check_no_isolation("fcntl")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
@@ -126,9 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn close(&mut self, fd_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`close` not available when isolation is enabled")
-        }
+        this.check_no_isolation("close")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
@@ -145,9 +139,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`read` not available when isolation is enabled")
-        }
+        this.check_no_isolation("read")?;
 
         let tcx = &{ this.tcx.tcx };
 
@@ -182,9 +174,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`write` not available when isolation is enabled")
-        }
+        this.check_no_isolation("write")?;
 
         let tcx = &{ this.tcx.tcx };
 
@@ -210,9 +200,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn unlink( &mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`write` not available when isolation is enabled")
-        }
+        this.check_no_isolation("unlink")?;
 
         let path_bytes = this
             .memory()

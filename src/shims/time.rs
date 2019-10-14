@@ -41,9 +41,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`clock_gettime` not available when isolation is enabled")
-        }
+        this.check_no_isolation("clock_gettime")?;
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
         if clk_id != this.eval_libc_i32("CLOCK_REALTIME")? {
@@ -75,9 +73,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`gettimeofday` not available when isolation is enabled")
-        }
+        this.check_no_isolation("gettimeofday")?;
         // Using tz is obsolete and should always be null
         let tz = this.read_scalar(tz_op)?.not_undef()?;
         if !this.is_null(tz)? {

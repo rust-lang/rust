@@ -336,7 +336,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             )?;
             offset += imm.layout.size;
         }
+        Ok(())
+    }
 
+    /// Helper function used inside the shims of foreign functions to check that isolation is
+    /// disabled. It returns an error using the `name` of the foreign function if this is not the
+    /// case.
+    fn check_no_isolation(&mut self, name: &str) -> InterpResult<'tcx> {
+        if !self.eval_context_mut().machine.communicate {
+            throw_unsup_format!("`{}` not available when isolation is enabled. Pass the flag `-Zmiri-disable-isolation` to disable it.", name)
+        }
         Ok(())
     }
 }
