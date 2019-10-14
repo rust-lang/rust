@@ -1953,4 +1953,5 @@ struct Foo<X = Box<Self>> {
 //  E0470, removed
     E0577,
     E0578,
+    E0740,
 }
