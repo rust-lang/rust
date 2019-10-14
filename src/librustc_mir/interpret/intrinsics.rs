@@ -70,7 +70,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             let n = match name {
                 "pref_align_of" => layout.pref_pos.align.pref.bytes(),
                 "min_align_of" => layout.pref_pos.align.abi.bytes(),
-                "size_of" => layout.pref_pos.size.bytes(),
+                "size_of" => layout.pref_pos.stride().bytes(),
                 _ => bug!(),
             };
             ty::Const::from_usize(tcx, n)
