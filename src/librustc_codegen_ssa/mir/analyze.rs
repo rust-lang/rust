@@ -17,7 +17,7 @@ use super::FunctionCx;
 use crate::traits::*;
 
 pub fn non_ssa_locals<'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &mut FunctionCx<'a, 'b, 'tcx, Bx>,
+    fx: &FunctionCx<'a, 'b, 'tcx, Bx>,
     mir: &'c mut BodyCache<&'b Body<'tcx>>,
 ) -> BitSet<mir::Local> {
     let mut analyzer = LocalAnalyzer::new(fx, mir);

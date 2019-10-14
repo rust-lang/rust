@@ -174,7 +174,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir),
     };
 
-    let memory_locals = analyze::non_ssa_locals(&mut fx, &mut mir);
+    let memory_locals = analyze::non_ssa_locals(&fx, &mut mir);
 
     // Allocate variable and temp allocas
     fx.locals = {
