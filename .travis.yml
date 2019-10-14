@@ -91,7 +91,7 @@ matrix:
     - os: osx
     - os: windows
 
-script:
+before_script:
   - |
     if [ "$TRAVIS_BRANCH" == "auto" ] || [ "$TRAVIS_BRANCH" == "try" ]; then
       pr=$(echo $TRAVIS_COMMIT_MESSAGE | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
@@ -109,11 +109,14 @@ script:
   - |
     rm rust-toolchain
     ./setup-toolchain.sh
+  - |
     if [ "$TRAVIS_OS_NAME" == "windows" ]; then
       export PATH=$PATH:$(rustc --print sysroot)/bin
     else
       export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
     fi
+
+script:
   - |
     if [ -z ${INTEGRATION} ]; then
       travis_wait 30 ./ci/base-tests.sh && sleep 5
