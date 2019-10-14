@@ -2,7 +2,7 @@ error: method `Foo_Method` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:7:8
    |
 LL |     fn Foo_Method() {}
-   |        ^^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `foo_method`
+   |        ^^^^^^^^^^ help: convert the identifier to snake case: `foo_method`
    |
 note: lint level defined here
   --> $DIR/lint-non-snake-case-functions.rs:1:9
@@ -32,7 +32,7 @@ error: trait method `ABC` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:22:8
    |
 LL |     fn ABC();
-   |        ^^^ help: convert the identifier to snake case (notice the capitalization): `abc`
+   |        ^^^ help: convert the identifier to snake case: `abc`
 
 error: trait method `a_b_C` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:25:8

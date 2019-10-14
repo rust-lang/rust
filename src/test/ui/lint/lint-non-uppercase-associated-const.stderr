@@ -2,7 +2,7 @@ error: associated constant `not_upper` should have an upper case name
   --> $DIR/lint-non-uppercase-associated-const.rs:7:11
    |
 LL |     const not_upper: bool = true;
-   |           ^^^^^^^^^ help: convert the identifier to upper case (notice the capitalization): `NOT_UPPER`
+   |           ^^^^^^^^^ help: convert the identifier to upper case: `NOT_UPPER`
    |
 note: lint level defined here
   --> $DIR/lint-non-uppercase-associated-const.rs:1:9

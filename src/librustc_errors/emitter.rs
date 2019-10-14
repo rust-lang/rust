@@ -2064,9 +2064,9 @@ pub fn is_case_difference(sm: &dyn SourceMapper, suggested: &str, sp: Span) -> b
     // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
     let found = sm.span_to_snippet(sp).unwrap();
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
-    // There are ASCII chars that are confusable (above) and differ in capitalization:
-    let confusable = found.chars().zip(suggested.chars()).any(|(f, s)| {
-        (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)) && f != s
+    // All the chars that differ in capitalization are confusable (above):
+    let confusable = found.chars().zip(suggested.chars()).filter(|(f, s)| f != s).all(|(f, s)| {
+        (ascii_confusables.contains(&f) || ascii_confusables.contains(&s))
     });
     confusable && found.to_lowercase() == suggested.to_lowercase()
             // FIXME: We sometimes suggest the same thing we already have, which is a

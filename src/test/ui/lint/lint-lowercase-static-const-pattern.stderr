@@ -20,7 +20,7 @@ error: constant in pattern `not_okay` should have an upper case name
   --> $DIR/lint-lowercase-static-const-pattern.rs:40:13
    |
 LL |         (0, not_okay) => 0,
-   |             ^^^^^^^^ help: convert the identifier to upper case (notice the capitalization): `NOT_OKAY`
+   |             ^^^^^^^^ help: convert the identifier to upper case: `NOT_OKAY`
 
 error: aborting due to 3 previous errors
 
