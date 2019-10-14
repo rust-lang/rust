@@ -271,10 +271,6 @@ impl TokenStream {
         }
     }
 
-    pub fn append_to_tree_and_joint_vec(self, vec: &mut Vec<TreeAndJoint>) {
-        vec.extend(self.0.iter().cloned());
-    }
-
     pub fn trees(&self) -> Cursor {
         self.clone().into_trees()
     }
