@@ -10,7 +10,7 @@ use crate::utils::span_help_and_lint;
 declare_clippy_lint! {
     /// **What it does:** Checks methods that contain a `self` argument but don't use it
     ///
-    /// **Why is this bad?** It may be clearer to define the method as a static function instead
+    /// **Why is this bad?** It may be clearer to define the method as an associated function instead
     /// of an instance method if it doesn't require `self`.
     ///
     /// **Known problems:** None.
@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                                 UNUSED_SELF,
                                 self_param.span,
                                 "unused `self` argument",
-                                "consider refactoring to a static method or function",
+                                "consider refactoring to a associated function",
                             )
                         }
                     }
