@@ -421,18 +421,18 @@ impl<'a> Parser<'a> {
                 .span_label(rhs.span, "binding on the right, should be to the left")
                 .span_suggestion(sp, "switch the order", pprust::pat_to_string(&rhs), applicability)
                 .emit();
-
-            rhs.span = sp;
-            return Ok(rhs);
+        } else {
+            // The special case above doesn't apply so we may have e.g. `A(x) @ B(y)`.
+            rhs.kind = PatKind::Wild;
+            self.struct_span_err(sp, "left-hand side of `@` must be a binding pattern")
+                .span_label(lhs.span, "interpreted as a pattern, not a binding")
+                .span_label(rhs.span, "also a pattern")
+                .note("bindings are `x`, `mut x`, `ref x`, and `ref mut x`")
+                .emit();
         }
 
-        // The special case above doesn't apply so we may have e.g. `A(x) @ B(y)`.
-        let mut err = self.struct_span_err(sp, "left-hand side of `@` must be a binding pattern");
-        err.span_label(lhs.span, "interpreted as a pattern, not a binding")
-            .span_label(rhs.span, "also a pattern")
-            .note("bindings are `x`, `mut x`, `ref x`, and `ref mut x`");
-        // FIXME(Centril): Introduce `PatKind::Err` and use that instead.
-        Err(err)
+        rhs.span = sp;
+        Ok(rhs)
     }
 
     /// Ban a range pattern if it has an ambiguous interpretation.
