@@ -6,7 +6,7 @@ use crate::ty::{
     Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
     TypeWalk,
 };
-use crate::util::make_mut_arc_slice;
+use crate::util::make_mut_slice;
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
@@ -76,11 +76,9 @@ where
     }
 
     fn do_canonicalize_trait_ref(&mut self, mut trait_ref: TraitRef) -> TraitRef {
-        make_mut_arc_slice(&mut trait_ref.substs.0, |tys| {
-            for ty in tys {
-                *ty = self.do_canonicalize_ty(ty.clone());
-            }
-        });
+        for ty in make_mut_slice(&mut trait_ref.substs.0) {
+            *ty = self.do_canonicalize_ty(ty.clone());
+        }
         trait_ref
     }
 
@@ -92,11 +90,9 @@ where
     }
 
     fn do_canonicalize_projection_ty(&mut self, mut projection_ty: ProjectionTy) -> ProjectionTy {
-        make_mut_arc_slice(&mut projection_ty.parameters.0, |params| {
-            for ty in params {
-                *ty = self.do_canonicalize_ty(ty.clone());
-            }
-        });
+        for ty in make_mut_slice(&mut projection_ty.parameters.0) {
+            *ty = self.do_canonicalize_ty(ty.clone());
+        }
         projection_ty
     }
 

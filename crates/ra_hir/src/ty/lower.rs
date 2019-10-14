@@ -22,7 +22,7 @@ use crate::{
     resolve::{Resolver, TypeNs},
     ty::Adt,
     type_ref::{TypeBound, TypeRef},
-    util::make_mut_arc_slice,
+    util::make_mut_slice,
     BuiltinType, Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField,
     Trait, TypeAlias, Union,
 };
@@ -391,9 +391,7 @@ impl TraitRef {
     ) -> Self {
         let mut substs = TraitRef::substs_from_path(db, resolver, segment, resolved);
         if let Some(self_ty) = explicit_self_ty {
-            make_mut_arc_slice(&mut substs.0, |substs| {
-                substs[0] = self_ty;
-            });
+            make_mut_slice(&mut substs.0)[0] = self_ty;
         }
         TraitRef { trait_: resolved, substs }
     }

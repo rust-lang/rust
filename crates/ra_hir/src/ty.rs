@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, type_ref::Mutability, util::make_mut_arc_slice, Adt, Crate,
+    db::HirDatabase, expr::ExprId, type_ref::Mutability, util::make_mut_slice, Adt, Crate,
     DefWithBody, GenericParams, HasGenericParams, Name, Trait, TypeAlias,
 };
 use display::{HirDisplay, HirFormatter};
@@ -308,11 +308,9 @@ impl Substs {
     }
 
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        make_mut_arc_slice(&mut self.0, |s| {
-            for t in s {
-                t.walk_mut(f);
-            }
-        });
+        for t in make_mut_slice(&mut self.0) {
+            t.walk_mut(f);
+        }
     }
 
     pub fn as_single(&self) -> &Ty {
@@ -538,11 +536,9 @@ impl TypeWalk for FnSig {
     }
 
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        make_mut_arc_slice(&mut self.params_and_return, |s| {
-            for t in s {
-                t.walk_mut(f);
-            }
-        });
+        for t in make_mut_slice(&mut self.params_and_return) {
+            t.walk_mut(f);
+        }
     }
 }
 
@@ -752,11 +748,9 @@ impl TypeWalk for Ty {
                 p_ty.parameters.walk_mut(f);
             }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                make_mut_arc_slice(predicates, |s| {
-                    for p in s {
-                        p.walk_mut(f);
-                    }
-                });
+                for p in make_mut_slice(predicates) {
+                    p.walk_mut(f);
+                }
             }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
