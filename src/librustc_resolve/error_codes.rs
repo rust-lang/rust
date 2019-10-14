@@ -1918,4 +1918,5 @@ struct Foo<X = Box<Self>> {
     E0576,
     E0577,
     E0578,
+    E0740,
 }
