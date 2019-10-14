@@ -2,7 +2,7 @@
 // compile-flags: -Zmiri-disable-isolation
 
 use std::fs::{File, remove_file};
-use std::io::{Read, Write};
+use std::io::{Read, Write, ErrorKind};
 
 fn main() {
     let path = std::env::temp_dir().join("miri_test_fs.txt");
@@ -23,8 +23,10 @@ fn main() {
     assert_eq!(bytes, contents.as_slice());
     // Removing file should succeed
     remove_file(&path).unwrap();
-    // Opening non-existing file should fail
-    assert!(File::open(&path).is_err());
-    // Removing non-existing file should fail
-    assert!(remove_file(&path).is_err());
+
+    // The two following tests also check that the `__errno_location()` shim is working properly.
+    // Opening a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
+    // Removing a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
 }
