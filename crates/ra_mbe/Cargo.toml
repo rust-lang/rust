@@ -8,7 +8,6 @@ authors = ["rust-analyzer developers"]
 ra_syntax = { path = "../ra_syntax" }
 ra_parser = { path = "../ra_parser" }
 tt = { path = "../ra_tt", package = "ra_tt" }
-itertools = "0.8.0"
 rustc-hash = "1.0.0"
 smallvec = "0.6.9"
 log = "0.4.5"
