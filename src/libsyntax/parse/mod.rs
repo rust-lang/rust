@@ -5,6 +5,7 @@ use crate::parse::parser::{Parser, emit_unclosed_delims};
 use crate::parse::token::{Nonterminal, TokenKind};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
+use crate::sess::ParseSess;
 
 use errors::{FatalError, Level, Diagnostic, DiagnosticBuilder};
 #[cfg(target_arch = "x86_64")]
@@ -26,8 +27,6 @@ pub mod parser;
 pub mod attr;
 pub mod lexer;
 pub mod token;
-mod sess;
-pub use sess::ParseSess;
 
 crate mod classify;
 crate mod diagnostics;

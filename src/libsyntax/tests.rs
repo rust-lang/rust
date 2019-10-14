@@ -1,7 +1,8 @@
 use crate::{ast, panictry};
-use crate::parse::{ParseSess, PResult, source_file_to_stream};
+use crate::parse::{PResult, source_file_to_stream};
 use crate::parse::new_parser_from_source_str;
 use crate::parse::parser::Parser;
+use crate::sess::ParseSess;
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::tokenstream::TokenStream;
 use crate::with_default_globals;
