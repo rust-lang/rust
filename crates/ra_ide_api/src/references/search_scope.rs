@@ -8,12 +8,8 @@ use crate::db::RootDatabase;
 
 use super::{NameDefinition, NameKind};
 
-pub(crate) struct SearchScope {
-    pub files: Vec<(FileId, Option<TextRange>)>,
-}
-
 impl NameDefinition {
-    pub(crate) fn scope(&self, db: &RootDatabase) -> SearchScope {
+    pub(crate) fn search_scope(&self, db: &RootDatabase) -> Vec<(FileId, Option<TextRange>)> {
         let module_src = self.container.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 
@@ -23,7 +19,7 @@ impl NameDefinition {
                 DefWithBody::Const(c) => c.source(db).ast.syntax().text_range(),
                 DefWithBody::Static(s) => s.source(db).ast.syntax().text_range(),
             };
-            return SearchScope { files: vec![(file_id, Some(range))] };
+            return vec![(file_id, Some(range))];
         }
 
         if let Some(ref vis) = self.visibility {
@@ -32,7 +28,7 @@ impl NameDefinition {
             let mut files = source_root.walk().map(|id| (id.into(), None)).collect::<Vec<_>>();
 
             if vis.syntax().to_string().as_str() == "pub(crate)" {
-                return SearchScope { files };
+                return files;
             }
             if vis.syntax().to_string().as_str() == "pub" {
                 let krate = self.container.krate(db).unwrap();
@@ -49,7 +45,7 @@ impl NameDefinition {
                     }
                 }
 
-                return SearchScope { files };
+                return files;
             }
             // FIXME: "pub(super)", "pub(in path)"
         }
@@ -58,6 +54,6 @@ impl NameDefinition {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };
-        SearchScope { files: vec![(file_id, range)] }
+        vec![(file_id, range)]
     }
 }

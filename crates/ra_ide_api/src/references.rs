@@ -99,7 +99,7 @@ fn find_name<'a>(
 
 fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> Vec<FileRange> {
     let pat = name.as_str();
-    let scope = def.scope(db).files;
+    let scope = def.search_scope(db);
     let mut refs = vec![];
 
     let is_match = |file_id: FileId, name_ref: &ast::NameRef| -> bool {
