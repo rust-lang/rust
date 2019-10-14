@@ -1,6 +1,8 @@
 #!/bin/bash
 # Set up the appropriate rustc toolchain
 
+set -e
+
 cd "$(dirname "$0")" || exit
 
 if ! command -v rustup-toolchain-install-master > /dev/null; then
