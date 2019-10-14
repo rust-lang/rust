@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{Either, ModuleSource};
-use ra_db::SourceDatabase;
+use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode};
 use relative_path::{RelativePath, RelativePathBuf};
 

@@ -8,7 +8,7 @@ use std::{
 
 use ra_db::{
     salsa::{Database, Durability},
-    FileId, SourceDatabase,
+    FileId, SourceDatabaseExt,
 };
 use ra_ide_api::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 

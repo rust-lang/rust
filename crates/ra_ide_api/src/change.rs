@@ -4,7 +4,7 @@ use std::{fmt, sync::Arc, time};
 
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
-    CrateGraph, CrateId, FileId, SourceDatabase, SourceRoot, SourceRootId,
+    CrateGraph, CrateId, FileId, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use ra_syntax::SourceFile;

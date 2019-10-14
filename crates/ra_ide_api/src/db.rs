@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use ra_db::{
     salsa::{self, Database, Durability},
-    Canceled, CheckCanceled, CrateId, FileId, SourceDatabase, SourceRootId,
+    Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
+    SourceDatabaseExt, SourceRootId,
 };
+use relative_path::RelativePath;
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -15,6 +17,7 @@ use crate::{
 
 #[salsa::database(
     ra_db::SourceDatabaseStorage,
+    ra_db::SourceDatabaseExtStorage,
     LineIndexDatabaseStorage,
     symbol_index::SymbolsDatabaseStorage,
     hir::db::InternDatabaseStorage,
@@ -29,6 +32,22 @@ pub(crate) struct RootDatabase {
     pub(crate) debug_data: Arc<DebugData>,
     pub(crate) last_gc: crate::wasm_shims::Instant,
     pub(crate) last_gc_check: crate::wasm_shims::Instant,
+}
+
+impl FileLoader for RootDatabase {
+    fn file_text(&self, file_id: FileId) -> Arc<String> {
+        FileLoaderDelegate(self).file_text(file_id)
+    }
+    fn resolve_relative_path(
+        &self,
+        anchor: FileId,
+        relative_path: &RelativePath,
+    ) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_relative_path(anchor, relative_path)
+    }
+    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+        FileLoaderDelegate(self).relevant_crates(file_id)
+    }
 }
 
 impl hir::debug::HirDebugHelper for RootDatabase {
