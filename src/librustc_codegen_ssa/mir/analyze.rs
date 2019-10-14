@@ -245,7 +245,7 @@ impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         if let Some(index) = place.as_local() {
             self.assign(index, location);
             let decl_span = self.fx.mir.local_decls[index].source_info.span;
-            if !self.fx.rvalue_creates_operand(rvalue, decl_span, self.fx.mir) {
+            if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
                 self.not_ssa(index);
             }
         } else {

@@ -178,7 +178,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Allocate variable and temp allocas
     fx.locals = {
-        let args = arg_local_refs(&mut bx, &fx, &mir, &memory_locals);
+        let args = arg_local_refs(&mut bx, &fx, &memory_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -232,7 +232,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        fx.codegen_block(bb, &mir);
+        fx.codegen_block(bb);
     }
 
     // Remove blocks that haven't been visited, or have no
@@ -321,16 +321,15 @@ fn create_funclets<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn arg_local_refs<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'b, 'tcx, Bx>,
-    mir: &Body<'tcx>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
-    mir.args_iter().enumerate().map(|(arg_index, local)| {
-        let arg_decl = &mir.local_decls[local];
+    fx.mir.args_iter().enumerate().map(|(arg_index, local)| {
+        let arg_decl = &fx.mir.local_decls[local];
 
-        if Some(local) == mir.spread_arg {
+        if Some(local) == fx.mir.spread_arg {
             // This argument (e.g., the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple

@@ -7,7 +7,7 @@ use crate::glue;
 use crate::traits::*;
 
 use rustc::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
-use rustc::mir::{self, Body};
+use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, Size};
 
@@ -428,13 +428,12 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
     pub fn codegen_consume(
         &mut self,
-        mir: &Body<'tcx>,
         bx: &mut Bx,
         place_ref: &mir::PlaceRef<'_, 'tcx>
     ) -> OperandRef<'tcx, Bx::Value> {
         debug!("codegen_consume(place_ref={:?})", place_ref);
 
-        let ty = self.monomorphized_place_ty(place_ref, mir);
+        let ty = self.monomorphized_place_ty(place_ref);
         let layout = bx.cx().layout_of(ty);
 
         // ZSTs don't require any actual memory access.
@@ -448,13 +447,12 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
         // for most places, to consume them we just load them
         // out from their home
-        let place = self.codegen_place(mir, bx, place_ref);
+        let place = self.codegen_place(bx, place_ref);
         bx.load_operand(place)
     }
 
     pub fn codegen_operand(
         &mut self,
-        mir: &Body<'tcx>,
         bx: &mut Bx,
         operand: &mir::Operand<'tcx>
     ) -> OperandRef<'tcx, Bx::Value> {
@@ -463,7 +461,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
         match *operand {
             mir::Operand::Copy(ref place) |
             mir::Operand::Move(ref place) => {
-                self.codegen_consume(mir, bx, &place.as_ref())
+                self.codegen_consume(bx, &place.as_ref())
             }
 
             mir::Operand::Constant(ref constant) => {

@@ -1,4 +1,4 @@
-use rustc::mir::{self, Body};
+use rustc::mir;
 
 use crate::traits::BuilderMethods;
 use super::FunctionCx;
@@ -11,25 +11,24 @@ use rustc_error_codes::*;
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
     pub fn codegen_statement(
         &mut self,
-        mir: &Body<'tcx>,
         mut bx: Bx,
         statement: &mir::Statement<'tcx>
     ) -> Bx {
         debug!("codegen_statement(statement={:?})", statement);
 
-        self.set_debug_loc(&mut bx, statement.source_info, mir);
+        self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box(ref place, ref rvalue)) => {
                 if let Some(index) = place.as_local() {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => {
-                            self.codegen_rvalue(mir, bx, cg_dest, rvalue)
+                            self.codegen_rvalue(bx, cg_dest, rvalue)
                         }
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
-                            self.codegen_rvalue_unsized(mir, bx, cg_indirect_dest, rvalue)
+                            self.codegen_rvalue_unsized(bx, cg_indirect_dest, rvalue)
                         }
                         LocalRef::Operand(None) => {
-                            let (mut bx, operand) = self.codegen_rvalue_operand(mir, bx, rvalue);
+                            let (mut bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
                             self.locals[index] = LocalRef::Operand(Some(operand));
                             self.debug_introduce_local(&mut bx, index);
                             bx
@@ -43,16 +42,16 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
                             // If the type is zero-sized, it's already been set here,
                             // but we still need to make sure we codegen the operand
-                            self.codegen_rvalue_operand(mir, bx, rvalue).0
+                            self.codegen_rvalue_operand(bx, rvalue).0
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(mir, &mut bx, &place.as_ref());
-                    self.codegen_rvalue(mir, bx, cg_dest, rvalue)
+                    let cg_dest = self.codegen_place(&mut bx, &place.as_ref());
+                    self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant{box ref place, variant_index} => {
-                self.codegen_place(mir, &mut bx, &place.as_ref())
+                self.codegen_place(&mut bx, &place.as_ref())
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
@@ -74,12 +73,12 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
             mir::StatementKind::InlineAsm(ref asm) => {
                 let outputs = asm.outputs.iter().map(|output| {
-                    self.codegen_place(mir, &mut bx, &output.as_ref())
+                    self.codegen_place(&mut bx, &output.as_ref())
                 }).collect();
 
                 let input_vals = asm.inputs.iter()
                     .fold(Vec::with_capacity(asm.inputs.len()), |mut acc, (span, input)| {
-                        let op = self.codegen_operand(mir, &mut bx, input);
+                        let op = self.codegen_operand(&mut bx, input);
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                         } else {

@@ -10,7 +10,7 @@ use crate::traits::*;
 use rustc::ty::{self, Ty, adjustment::{PointerCast}, Instance};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
-use rustc::mir::{self, Body};
+use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
 use syntax::symbol::sym;
@@ -21,7 +21,6 @@ use std::{u128, i128};
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,
-        mir: &Body<'tcx>,
         mut bx: Bx,
         dest: PlaceRef<'tcx, Bx::Value>,
         rvalue: &mir::Rvalue<'tcx>
@@ -31,7 +30,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
         match *rvalue {
            mir::Rvalue::Use(ref operand) => {
-               let cg_operand = self.codegen_operand(mir, &mut bx, operand);
+               let cg_operand = self.codegen_operand(&mut bx, operand);
                // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
                // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
                cg_operand.val.store(&mut bx, dest);
@@ -44,7 +43,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
                     // Into-coerce of a thin pointer to a fat pointer -- just
                     // use the operand path.
-                    let (mut bx, temp) = self.codegen_rvalue_operand(mir, bx, rvalue);
+                    let (mut bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
                     temp.val.store(&mut bx, dest);
                     return bx;
                 }
@@ -53,7 +52,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
                 // this to be eliminated by MIR building, but
                 // `CoerceUnsized` can be passed by a where-clause,
                 // so the (generic) MIR may not be able to expand it.
-                let operand = self.codegen_operand(mir, &mut bx, source);
+                let operand = self.codegen_operand(&mut bx, source);
                 match operand.val {
                     OperandValue::Pair(..) |
                     OperandValue::Immediate(_) => {
@@ -82,7 +81,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             mir::Rvalue::Repeat(ref elem, count) => {
-                let cg_elem = self.codegen_operand(mir, &mut bx, elem);
+                let cg_elem = self.codegen_operand(&mut bx, elem);
 
                 // Do not generate the loop for zero-sized elements or empty arrays.
                 if dest.layout.is_zst() {
@@ -125,7 +124,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
                     _ => (dest, None)
                 };
                 for (i, operand) in operands.iter().enumerate() {
-                    let op = self.codegen_operand(mir, &mut bx, operand);
+                    let op = self.codegen_operand(&mut bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
@@ -137,8 +136,8 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP, mir));
-                let (mut bx, temp) = self.codegen_rvalue_operand(mir, bx, rvalue);
+                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
+                let (mut bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(&mut bx, dest);
                 bx
             }
@@ -147,7 +146,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
     pub fn codegen_rvalue_unsized(
         &mut self,
-        mir: &Body<'tcx>,
         mut bx: Bx,
         indirect_dest: PlaceRef<'tcx, Bx::Value>,
         rvalue: &mir::Rvalue<'tcx>,
@@ -157,7 +155,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
-                let cg_operand = self.codegen_operand(mir, &mut bx, operand);
+                let cg_operand = self.codegen_operand(&mut bx, operand);
                 cg_operand.val.store_unsized(&mut bx, indirect_dest);
                 bx
             }
@@ -168,19 +166,18 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
     pub fn codegen_rvalue_operand(
         &mut self,
-        mir: &Body<'tcx>,
         mut bx: Bx,
         rvalue: &mir::Rvalue<'tcx>
     ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
         assert!(
-            self.rvalue_creates_operand(rvalue, DUMMY_SP, mir),
+            self.rvalue_creates_operand(rvalue, DUMMY_SP),
             "cannot codegen {:?} to operand",
             rvalue,
         );
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
-                let operand = self.codegen_operand(mir, &mut bx, source);
+                let operand = self.codegen_operand(&mut bx, source);
                 debug!("cast operand is {:?}", operand);
                 let cast = bx.cx().layout_of(self.monomorphize(&mir_cast_ty));
 
@@ -373,7 +370,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             mir::Rvalue::Ref(_, bk, ref place) => {
-                let cg_place = self.codegen_place(mir, &mut bx, &place.as_ref());
+                let cg_place = self.codegen_place(&mut bx, &place.as_ref());
 
                 let ty = cg_place.layout.ty;
 
@@ -394,7 +391,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             mir::Rvalue::Len(ref place) => {
-                let size = self.evaluate_array_len(mir, &mut bx, place);
+                let size = self.evaluate_array_len(&mut bx, place);
                 let operand = OperandRef {
                     val: OperandValue::Immediate(size),
                     layout: bx.cx().layout_of(bx.tcx().types.usize),
@@ -403,8 +400,8 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
-                let lhs = self.codegen_operand(mir, &mut bx, lhs);
-                let rhs = self.codegen_operand(mir, &mut bx, rhs);
+                let lhs = self.codegen_operand(&mut bx, lhs);
+                let rhs = self.codegen_operand(&mut bx, rhs);
                 let llresult = match (lhs.val, rhs.val) {
                     (OperandValue::Pair(lhs_addr, lhs_extra),
                      OperandValue::Pair(rhs_addr, rhs_extra)) => {
@@ -429,8 +426,8 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
                 (bx, operand)
             }
             mir::Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
-                let lhs = self.codegen_operand(mir, &mut bx, lhs);
-                let rhs = self.codegen_operand(mir, &mut bx, rhs);
+                let lhs = self.codegen_operand(&mut bx, lhs);
+                let rhs = self.codegen_operand(&mut bx, rhs);
                 let result = self.codegen_scalar_checked_binop(&mut bx, op,
                                                              lhs.immediate(), rhs.immediate(),
                                                              lhs.layout.ty);
@@ -445,7 +442,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             mir::Rvalue::UnaryOp(op, ref operand) => {
-                let operand = self.codegen_operand(mir, &mut bx, operand);
+                let operand = self.codegen_operand(&mut bx, operand);
                 let lloperand = operand.immediate();
                 let is_float = operand.layout.ty.is_floating_point();
                 let llval = match op {
@@ -463,8 +460,8 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
 
             mir::Rvalue::Discriminant(ref place) => {
-                let discr_ty = rvalue.ty(mir, bx.tcx());
-                let discr =  self.codegen_place(mir, &mut bx, &place.as_ref())
+                let discr_ty = rvalue.ty(self.mir, bx.tcx());
+                let discr =  self.codegen_place(&mut bx, &place.as_ref())
                     .codegen_get_discr(&mut bx, discr_ty);
                 (bx, OperandRef {
                     val: OperandValue::Immediate(discr),
@@ -509,14 +506,14 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
                 (bx, operand)
             }
             mir::Rvalue::Use(ref operand) => {
-                let operand = self.codegen_operand(mir, &mut bx, operand);
+                let operand = self.codegen_operand(&mut bx, operand);
                 (bx, operand)
             }
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(mir, self.cx.tcx());
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let operand = OperandRef::new_zst(
                     &mut bx,
                     self.cx.layout_of(self.monomorphize(&ty)),
@@ -528,7 +525,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
 
     fn evaluate_array_len(
         &mut self,
-        mir: &Body<'tcx>,
         bx: &mut Bx,
         place: &mir::Place<'tcx>,
     ) -> Bx::Value {
@@ -543,7 +539,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
             }
         }
         // use common size calculation for non zero-sized types
-        let cg_value = self.codegen_place(mir, bx, &place.as_ref());
+        let cg_value = self.codegen_place(bx, &place.as_ref());
         cg_value.len(bx.cx())
     }
 
@@ -704,7 +700,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
         &self,
         rvalue: &mir::Rvalue<'tcx>,
         span: Span,
-        mir: &Body<'tcx>
     ) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
@@ -719,7 +714,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(mir, self.cx.tcx());
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
                 self.cx.spanned_layout_of(ty, span).is_zst()
             }
