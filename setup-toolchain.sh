@@ -11,5 +11,5 @@ if ! command -v rustup-toolchain-install-master > /dev/null; then
     --debug
 fi
 
-rustup-toolchain-install-master -f -n master -c rustc-dev
+rustup-toolchain-install-master -f -n master
 rustup override set master
