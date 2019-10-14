@@ -3,4 +3,3 @@ target
 tex/*/out
 *.dot
 *.rs.bk
-Cargo.lock

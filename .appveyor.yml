@@ -36,7 +36,7 @@ install:
 build_script:
     - set RUSTFLAGS=-C debug-assertions
     # Build and install miri
-    - cargo build --release --all-features --all-targets
+    - cargo build --release --all-features --all-targets --locked
     - cargo install --all-features --force --path . --locked --offline
     # Get ourselves a MIR-full libstd, and use it henceforth
     - cargo miri setup
@@ -46,7 +46,7 @@ test_script:
     - set RUST_TEST_NOCAPTURE=1
     - set RUST_BACKTRACE=1
     # Test miri
-    - cargo test --release --all-features
+    - cargo test --release --all-features --locked
     # Test cargo integration
     - cd test-cargo-miri
     - '"C:\msys64\mingw64\bin\python3.exe" run-test.py'
