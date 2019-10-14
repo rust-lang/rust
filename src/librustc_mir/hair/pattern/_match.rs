@@ -363,10 +363,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.0.len()
     }
 
-    fn head<'a, 'p2>(&'a self) -> &'p2 Pat<'tcx>
-    where
-        'p: 'p2,
-    {
+    fn head<'a>(&'a self) -> &'p Pat<'tcx> {
         self.0[0]
     }
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
@@ -374,15 +371,15 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize<'a, 'p2>(
+    fn specialize<'a, 'q>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
-    ) -> SmallVec<[PatStack<'p2, 'tcx>; 1]>
+        ctor_wild_subpatterns: &[&'q Pat<'tcx>],
+    ) -> SmallVec<[PatStack<'q, 'tcx>; 1]>
     where
-        'a: 'p2,
-        'p: 'p2,
+        'a: 'q,
+        'p: 'q,
     {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
         let result = new_heads
@@ -426,29 +423,25 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     /// Iterate over the first component of each row
     // Can't return impl Iterator because of hidden lifetime capture.
-    fn heads<'a, 'p2>(
+    fn heads<'a>(
         &'a self,
     ) -> iter::Map<
         std::slice::Iter<'a, PatStack<'p, 'tcx>>,
-        impl FnMut(&'a PatStack<'p, 'tcx>) -> &'p2 Pat<'tcx>,
-    >
-    where
-        'p: 'p2,
-        'a: 'p2,
-    {
+        impl FnMut(&'a PatStack<'p, 'tcx>) -> &'p Pat<'tcx>,
+    > {
         self.0.iter().map(|r| r.head())
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize<'a, 'p2>(
+    fn specialize<'a, 'q>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &[&'p2 Pat<'tcx>],
-    ) -> Matrix<'p2, 'tcx>
+        ctor_wild_subpatterns: &[&'q Pat<'tcx>],
+    ) -> Matrix<'q, 'tcx>
     where
-        'a: 'p2,
-        'p: 'p2,
+        'a: 'q,
+        'p: 'q,
     {
         Matrix(
             self.0
@@ -2013,9 +2006,9 @@ fn patterns_for_variant<'p, 'tcx>(
 ///
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize_one_pattern<'p, 'a: 'p, 'p2: 'p, 'tcx>(
+fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     cx: &MatchCheckCtxt<'a, 'tcx>,
-    mut pat: &'p2 Pat<'tcx>,
+    mut pat: &'q Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> SmallVec<[PatStack<'p, 'tcx>; 1]> {
