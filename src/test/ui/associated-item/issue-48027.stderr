@@ -1,0 +1,21 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/issue-48027.rs:6:6
+   |
+LL |     const X: usize;
+   |           - the trait cannot contain associated consts like `X`
+...
+LL | impl dyn Bar {}
+   |      ^^^^^^^ the trait `Bar` cannot be made into an object
+
+error[E0283]: type annotations needed: cannot resolve `_: Bar`
+  --> $DIR/issue-48027.rs:3:32
+   |
+LL |     const X: usize;
+   |     --------------- required by `Bar::X`
+LL |     fn return_n(&self) -> [u8; Bar::X];
+   |                                ^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0283.
+For more information about an error, try `rustc --explain E0038`.
