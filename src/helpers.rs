@@ -318,27 +318,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     // Writes several `ImmTy`s contiguosly into memory. This is useful when you have to pack
     // different values into a struct.
-    fn write_immediates(
+    fn write_packed_immediates(
         &mut self,
-        ptr: &Pointer<Tag>,
+        place: &MPlaceTy<'tcx, Tag>,
         imms: &[ImmTy<'tcx, Tag>],
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let tcx = &{ this.tcx.tcx };
 
-        let allocation = this.memory_mut().get_mut(ptr.alloc_id)?;
         let mut offset = Size::from_bytes(0);
 
-        for imm in imms {
-            let size = imm.layout.size;
-            allocation.write_scalar(
-                tcx,
-                ptr.offset(offset, tcx)?,
-                imm.to_scalar()?.into(),
-                size,
+        for &imm in imms {
+            this.write_immediate_to_mplace(
+                *imm,
+                place.offset(offset, None, imm.layout, tcx)?,
             )?;
-            offset += size;
+            offset += imm.layout.size;
         }
 
         Ok(())

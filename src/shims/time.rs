@@ -10,7 +10,7 @@ use crate::*;
 fn get_time<'tcx>() -> InterpResult<'tcx, Duration> {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|_| err_unsup_format!("Time went backwards").into())
+        .map_err(|_| err_unsup_format!("Times before the Unix epoch are not supported").into())
 }
 
 fn int_to_immty_checked<'tcx>(
@@ -52,7 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        let tp = this.force_ptr(this.read_scalar(tp_op)?.not_undef()?)?;
+        let tp = this.deref_operand(tp_op)?;
 
         let duration = get_time()?;
         let tv_sec = duration.as_secs() as i128;
@@ -63,11 +63,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             int_to_immty_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
         ];
 
-        this.write_immediates(&tp, &imms)?;
+        this.write_packed_immediates(&tp, &imms)?;
 
         Ok(0)
     }
-    // Foreign function used by generic unix
+    // Foreign function used by generic unix (in particular macOS)
     fn gettimeofday(
         &mut self,
         tv_op: OpTy<'tcx, Tag>,
@@ -86,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        let tv = this.force_ptr(this.read_scalar(tv_op)?.not_undef()?)?;
+        let tv = this.deref_operand(tv_op)?;
 
         let duration = get_time()?;
         let tv_sec = duration.as_secs() as i128;
@@ -97,7 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             int_to_immty_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
         ];
 
-        this.write_immediates(&tv, &imms)?;
+        this.write_packed_immediates(&tv, &imms)?;
 
         Ok(0)
     }
