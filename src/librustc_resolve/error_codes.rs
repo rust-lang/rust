@@ -1933,6 +1933,44 @@ struct Foo<X = Box<Self>> {
 ```
 "##,
 
+E0741: r##"
+Visibility is restricted to a module which isn't an ancestor of the current
+item.
+
+Erroneous code example:
+
+```compile_fail,E0741,edition2018
+pub mod Sea {}
+
+pub (in crate::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+To fix this error, we need to move the `Shark` struct inside the `Sea` module:
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark; // ok!
+}
+
+fn main() {}
+```
+
+Of course, you can do it as long as the module you're referring to is an
+ancestor:
+
+```edition2018
+pub mod Earth {
+    pub mod Sea {
+        pub (in crate::Earth) struct Shark; // ok!
+    }
+}
+
+fn main() {}
+```
+"##,
+
 ;
 //  E0153, unused error code
 //  E0157, unused error code
@@ -1953,5 +1991,4 @@ struct Foo<X = Box<Self>> {
 //  E0470, removed
     E0577,
     E0578,
-    E0740,
 }
