@@ -4,11 +4,11 @@ error: pattern on wrong side of `@`
 LL |         Some(x) @ y => {}
    |         -------^^^-
    |         |         |
-   |         |         binding on the right, should be to the left
-   |         pattern on the left, should be to the right
+   |         |         binding on the right, should be on the left
+   |         pattern on the left, should be on the right
    |         help: switch the order: `y@Some(x)`
 
-error: left-hand side of `@` must be a binding pattern
+error: left-hand side of `@` must be a binding
   --> $DIR/intersection-patterns.rs:23:9
    |
 LL |         Some(x) @ Some(y) => {}
@@ -25,8 +25,8 @@ error: pattern on wrong side of `@`
 LL |         1 ..= 5 @ e => {}
    |         -------^^^-
    |         |         |
-   |         |         binding on the right, should be to the left
-   |         pattern on the left, should be to the right
+   |         |         binding on the right, should be on the left
+   |         pattern on the left, should be on the right
    |         help: switch the order: `e@1 ..=5`
 
 error: aborting due to 3 previous errors

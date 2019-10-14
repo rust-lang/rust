@@ -417,14 +417,14 @@ impl<'a> Parser<'a> {
             *sub = Some(lhs);
 
             self.struct_span_err(sp, "pattern on wrong side of `@`")
-                .span_label(lhs_span, "pattern on the left, should be to the right")
-                .span_label(rhs.span, "binding on the right, should be to the left")
+                .span_label(lhs_span, "pattern on the left, should be on the right")
+                .span_label(rhs.span, "binding on the right, should be on the left")
                 .span_suggestion(sp, "switch the order", pprust::pat_to_string(&rhs), applicability)
                 .emit();
         } else {
             // The special case above doesn't apply so we may have e.g. `A(x) @ B(y)`.
             rhs.kind = PatKind::Wild;
-            self.struct_span_err(sp, "left-hand side of `@` must be a binding pattern")
+            self.struct_span_err(sp, "left-hand side of `@` must be a binding")
                 .span_label(lhs.span, "interpreted as a pattern, not a binding")
                 .span_label(rhs.span, "also a pattern")
                 .note("bindings are `x`, `mut x`, `ref x`, and `ref mut x`")

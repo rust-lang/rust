@@ -12,8 +12,8 @@ fn main() {
     match s {
         Some(x) @ y => {}
         //~^ ERROR pattern on wrong side of `@`
-        //~| pattern on the left, should be to the right
-        //~| binding on the right, should be to the left
+        //~| pattern on the left, should be on the right
+        //~| binding on the right, should be on the left
         //~| HELP switch the order
         //~| SUGGESTION y@Some(x)
         _ => {}
@@ -21,7 +21,7 @@ fn main() {
 
     match s {
         Some(x) @ Some(y) => {}
-        //~^ ERROR left-hand side of `@` must be a binding pattern
+        //~^ ERROR left-hand side of `@` must be a binding
         //~| interpreted as a pattern, not a binding
         //~| also a pattern
         //~| NOTE bindings are `x`, `mut x`, `ref x`, and `ref mut x`
@@ -31,8 +31,8 @@ fn main() {
     match 2 {
         1 ..= 5 @ e => {}
         //~^ ERROR pattern on wrong side of `@`
-        //~| pattern on the left, should be to the right
-        //~| binding on the right, should be to the left
+        //~| pattern on the left, should be on the right
+        //~| binding on the right, should be on the left
         //~| HELP switch the order
         //~| SUGGESTION e@1 ..=5
         _ => {}
