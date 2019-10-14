@@ -3,7 +3,7 @@
 // over time, but this test used to exhibit some pretty bogus messages
 // that were not remotely helpful.
 
-// error-pattern:the lifetime 'a
+// error-pattern:the lifetime `'a`
 // error-pattern:the static lifetime
 
 struct Invariant<'a>(Option<&'a mut &'a mut ()>);

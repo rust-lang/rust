@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime for borrow expression due to 
 LL |     box B(&*v) as Box<dyn X>
    |           ^^^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 9:6...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 9:6...
   --> $DIR/regions-close-object-into-object-2.rs:9:6
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {

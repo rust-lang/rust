@@ -11,7 +11,7 @@ LL | /     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 {
 LL | |         x
 LL | |     }
    | |_____^
-note: ...but the lifetime must also be valid for the lifetime 'a as defined on the method body at 9:32...
+note: ...but the lifetime must also be valid for the lifetime `'a` as defined on the method body at 9:32...
   --> $DIR/mismatched_trait_impl.rs:9:32
    |
 LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 {

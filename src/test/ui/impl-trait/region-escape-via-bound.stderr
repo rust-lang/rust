@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn foo(x: Cell<&'x u32>) -> impl Trait<'y>
    |                             ^^^^^^^^^^^^^^
    |
-note: hidden type `std::cell::Cell<&'x u32>` captures the lifetime 'x as defined on the function body at 17:7
+note: hidden type `std::cell::Cell<&'x u32>` captures the lifetime `'x` as defined on the function body at 17:7
   --> $DIR/region-escape-via-bound.rs:17:7
    |
 LL | where 'x: 'y
