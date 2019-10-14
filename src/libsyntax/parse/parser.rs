@@ -1177,12 +1177,14 @@ impl<'a> Parser<'a> {
 `pub(super)`: visible only in the current module's parent
 `pub(in path::to::module)`: visible only on the specified path"##;
 
+        let path_str = pprust::path_to_string(&path);
+
         struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
             .help(suggestion)
             .span_suggestion(
                 path.span,
-                &format!("make this visible only to module `{}` with `in`", path),
-                format!("in {}", path),
+                &format!("make this visible only to module `{}` with `in`", path_str),
+                format!("in {}", path_str),
                 Applicability::MachineApplicable,
             )
             .emit();

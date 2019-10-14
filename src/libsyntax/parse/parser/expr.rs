@@ -552,8 +552,11 @@ impl<'a> Parser<'a> {
 
                         // Report non-fatal diagnostics, keep `x as usize` as an expression
                         // in AST and continue parsing.
-                        let msg = format!("`<` is interpreted as a start of generic \
-                                           arguments for `{}`, not a {}", path, op_noun);
+                        let msg = format!(
+                            "`<` is interpreted as a start of generic arguments for `{}`, not a {}",
+                            pprust::path_to_string(&path),
+                            op_noun,
+                        );
                         let span_after_type = parser_snapshot_after_type.token.span;
                         let expr = mk_expr(self, P(Ty {
                             span: path.span,

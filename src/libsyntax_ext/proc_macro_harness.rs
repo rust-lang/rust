@@ -7,6 +7,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::expand::{AstFragment, ExpansionConfig};
 use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::parse::ParseSess;
+use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
@@ -248,13 +249,20 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
+                    let path_str = pprust::path_to_string(&attr.path);
                     let msg = if attr.path.segments[0].ident.name ==
                                  prev_attr.path.segments[0].ident.name {
-                        format!("only one `#[{}]` attribute is allowed on any given function",
-                                attr.path)
+                        format!(
+                            "only one `#[{}]` attribute is allowed on any given function",
+                            path_str,
+                        )
                     } else {
-                        format!("`#[{}]` and `#[{}]` attributes cannot both be applied \
-                                to the same function", attr.path, prev_attr.path)
+                        format!(
+                            "`#[{}]` and `#[{}]` attributes cannot both be applied
+                            to the same function",
+                            path_str,
+                            pprust::path_to_string(&prev_attr.path),
+                        )
                     };
 
                     self.handler.struct_span_err(attr.span, &msg)
@@ -280,8 +288,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         };
 
         if !is_fn {
-            let msg = format!("the `#[{}]` attribute may only be used on bare functions",
-                              attr.path);
+            let msg = format!(
+                "the `#[{}]` attribute may only be used on bare functions",
+                pprust::path_to_string(&attr.path),
+            );
 
             self.handler.span_err(attr.span, &msg);
             return;
@@ -292,8 +302,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         }
 
         if !self.is_proc_macro_crate {
-            let msg = format!("the `#[{}]` attribute is only usable with crates of the \
-                              `proc-macro` crate type", attr.path);
+            let msg = format!(
+                "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
+                pprust::path_to_string(&attr.path),
+            );
 
             self.handler.span_err(attr.span, &msg);
             return;
