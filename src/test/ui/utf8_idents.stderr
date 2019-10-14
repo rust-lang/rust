@@ -38,7 +38,7 @@ warning: type parameter `γ` should have an upper camel case name
   --> $DIR/utf8_idents.rs:3:5
    |
 LL |     γ
-   |     ^ help: convert the identifier to upper camel case (notice the capitalization): `Γ`
+   |     ^ help: convert the identifier to upper camel case: `Γ`
    |
    = note: `#[warn(non_camel_case_types)]` on by default
 

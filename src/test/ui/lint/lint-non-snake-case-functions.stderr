@@ -26,7 +26,7 @@ error: method `render_HTML` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:17:8
    |
 LL |     fn render_HTML() {}
-   |        ^^^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `render_html`
+   |        ^^^^^^^^^^^ help: convert the identifier to snake case: `render_html`
 
 error: trait method `ABC` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:22:8

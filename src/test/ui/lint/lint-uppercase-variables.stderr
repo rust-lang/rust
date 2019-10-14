@@ -39,7 +39,7 @@ error: variable `Test` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:18:9
    |
 LL |     let Test: usize = 0;
-   |         ^^^^ help: convert the identifier to snake case (notice the capitalization): `test`
+   |         ^^^^ help: convert the identifier to snake case: `test`
 
 error: variable `Foo` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:22:9

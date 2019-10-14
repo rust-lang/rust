@@ -38,7 +38,7 @@ error: variant `bar` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:22:5
    |
 LL |     bar
-   |     ^^^ help: convert the identifier to upper camel case (notice the capitalization): `Bar`
+   |     ^^^ help: convert the identifier to upper camel case: `Bar`
 
 error: trait `foo6` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:25:7
@@ -50,7 +50,7 @@ error: type parameter `ty` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:29:6
    |
 LL | fn f<ty>(_: ty) {}
-   |      ^^ help: convert the identifier to upper camel case (notice the capitalization): `Ty`
+   |      ^^ help: convert the identifier to upper camel case: `Ty`
 
 error: aborting due to 8 previous errors
 

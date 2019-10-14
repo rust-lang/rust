@@ -13,7 +13,7 @@ use syntax_pos::{SourceFile, Span, MultiSpan};
 
 use crate::{
     Level, CodeSuggestion, Diagnostic, SubDiagnostic,
-    SuggestionStyle, SourceMapperDyn, DiagnosticId,
+    SuggestionStyle, SourceMapper, SourceMapperDyn, DiagnosticId,
 };
 use crate::Level::Error;
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
@@ -239,11 +239,11 @@ pub trait Emitter {
                     format!(
                         "help: {}{}: `{}`",
                         sugg.msg,
-                        if self.source_map().as_ref().map(|sm| substitution.to_lowercase() == sm
-                            .span_to_snippet(sugg.substitutions[0].parts[0].span)
-                            .unwrap()
-                            .to_lowercase()).unwrap_or(false)
-                        {
+                        if self.source_map().map(|sm| is_case_difference(
+                            &**sm,
+                            substitution,
+                            sugg.substitutions[0].parts[0].span,
+                        )).unwrap_or(false) {
                             " (notice the capitalization)"
                         } else {
                             ""
@@ -2057,4 +2057,19 @@ impl<'a> Drop for WritableDst<'a> {
             _ => {}
         }
     }
+}
+
+/// Whether the original and suggested code are visually similar enough to warrant extra wording.
+pub fn is_case_difference(sm: &dyn SourceMapper, suggested: &str, sp: Span) -> bool {
+    // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
+    let found = sm.span_to_snippet(sp).unwrap();
+    let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
+    // There are ASCII chars that are confusable (above) and differ in capitalization:
+    let confusable = found.chars().zip(suggested.chars()).any(|(f, s)| {
+        (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)) && f != s
+    });
+    confusable && found.to_lowercase() == suggested.to_lowercase()
+            // FIXME: We sometimes suggest the same thing we already have, which is a
+            //        bug, but be defensive against that here.
+            && found != suggested
 }

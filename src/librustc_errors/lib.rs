@@ -13,7 +13,7 @@ pub use emitter::ColorConfig;
 
 use Level::*;
 
-use emitter::{Emitter, EmitterWriter};
+use emitter::{Emitter, EmitterWriter, is_case_difference};
 use registry::Registry;
 
 use rustc_data_structures::sync::{self, Lrc, Lock};
@@ -239,8 +239,7 @@ impl CodeSuggestion {
                 prev_hi = cm.lookup_char_pos(part.span.hi());
                 prev_line = fm.get_line(prev_hi.line - 1);
             }
-            let only_capitalization = buf.clone().to_lowercase()
-                == cm.span_to_snippet(bounding_span).unwrap().to_lowercase();
+            let only_capitalization = is_case_difference(cm, &buf, bounding_span);
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
                 push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
@@ -250,7 +249,6 @@ impl CodeSuggestion {
                 buf.pop();
             }
             (buf, substitution.parts, only_capitalization)
-            
         }).collect()
     }
 }

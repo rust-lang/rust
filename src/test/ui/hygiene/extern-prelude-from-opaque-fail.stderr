@@ -5,7 +5,7 @@ LL |     use my_core;
    |         ^^^^^^^
    |         |
    |         no `my_core` in the root
-   |         help: a similar name exists in the module (notice the capitalization): `my_core`
+   |         help: a similar name exists in the module: `my_core`
 
 error[E0432]: unresolved import `my_core`
   --> $DIR/extern-prelude-from-opaque-fail.rs:7:13
