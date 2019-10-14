@@ -5,9 +5,8 @@ trait Trait {
 }
 
 impl Trait for u64 {
-    #[track_caller]
+    #[track_caller] //~ ERROR: `#[track_caller]` may not be used on trait methods
     fn unwrap(&self) {}
-    //~^^ ERROR: `#[track_caller]` is not supported in traits yet.
 }
 
 fn main() {}

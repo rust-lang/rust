@@ -206,27 +206,37 @@ impl CheckAttrVisitor<'tcx> {
         span: &Span,
         target: Target,
     ) -> bool {
-        if target != Target::Fn {
-            struct_span_err!(
-                self.tcx.sess,
-                *attr_span,
-                E0739,
-                "attribute should be applied to function"
-            )
-            .span_label(*span, "not a function")
-            .emit();
-            false
-        } else if attr::contains_name(attrs, sym::naked) {
-            struct_span_err!(
-                self.tcx.sess,
-                *attr_span,
-                E0736,
-                "cannot use `#[track_caller]` with `#[naked]`",
-            )
-            .emit();
-            false
-        } else {
-            true
+        match target {
+            Target::Fn if attr::contains_name(attrs, sym::naked) => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    *attr_span,
+                    E0736,
+                    "cannot use `#[track_caller]` with `#[naked]`",
+                ).emit();
+                false
+            }
+            Target::Fn => true,
+            Target::Method { .. } => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    *attr_span,
+                    E0738,
+                    "`#[track_caller]` may not be used on trait methods",
+                ).emit();
+                false
+            }
+            _ => {
+                struct_span_err!(
+                    self.tcx.sess,
+                    *attr_span,
+                    E0739,
+                    "attribute should be applied to function"
+                )
+                .span_label(*span, "not a function")
+                .emit();
+                false
+            }
         }
     }
 
