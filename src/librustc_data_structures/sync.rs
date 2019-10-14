@@ -1,6 +1,6 @@
 //! This module defines types which are thread safe if cfg!(parallel_compiler) is true.
 //!
-//! `Lrc` is an alias of either Rc or Arc.
+//! `Lrc` is an alias of `Arc` if cfg!(parallel_compiler) is true, `Rc` otherwise.
 //!
 //! `Lock` is a mutex.
 //! It internally uses `parking_lot::Mutex` if cfg!(parallel_compiler) is true,
@@ -12,7 +12,7 @@
 //!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_compiler) is false.
 //!
-//! `MTRef` is a immutable reference if cfg!(parallel_compiler), and an mutable reference otherwise.
+//! `MTRef` is an immutable reference if cfg!(parallel_compiler), and a mutable reference otherwise.
 //!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_compiler).
