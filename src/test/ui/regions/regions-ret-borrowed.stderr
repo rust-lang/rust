@@ -12,7 +12,7 @@ LL |     with(|o| o)
    = note: ...so that the expression is assignable:
            expected &isize
               found &isize
-note: but, the lifetime must be valid for the lifetime 'a as defined on the function body at 12:14...
+note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 12:14...
   --> $DIR/regions-ret-borrowed.rs:12:14
    |
 LL | fn return_it<'a>() -> &'a isize {

@@ -38,7 +38,7 @@ note: the anonymous lifetime #1 defined on the method body at 37:5...
    |
 LL |     fn dummy2(self: &Bar<T>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 35:6
+note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 35:6
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
@@ -52,7 +52,7 @@ LL |     fn dummy2(self: &Bar<T>) {}
    |
    = note: expected type `&'a Bar<T>`
               found type `&Bar<T>`
-note: the lifetime 'a as defined on the impl at 35:6...
+note: the lifetime `'a` as defined on the impl at 35:6...
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
@@ -76,7 +76,7 @@ note: the anonymous lifetime #2 defined on the method body at 39:5...
    |
 LL |     fn dummy3(self: &&Bar<T>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 35:6
+note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 35:6
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {
@@ -90,7 +90,7 @@ LL |     fn dummy3(self: &&Bar<T>) {}
    |
    = note: expected type `&'a Bar<T>`
               found type `&Bar<T>`
-note: the lifetime 'a as defined on the impl at 35:6...
+note: the lifetime `'a` as defined on the impl at 35:6...
   --> $DIR/ufcs-explicit-self-bad.rs:35:6
    |
 LL | impl<'a, T> SomeTrait for &'a Bar<T> {

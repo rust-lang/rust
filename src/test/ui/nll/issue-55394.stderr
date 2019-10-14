@@ -16,7 +16,7 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |         Foo { bar }
    |               ^^^
-note: but, the lifetime must be valid for the lifetime '_ as defined on the impl at 7:10...
+note: but, the lifetime must be valid for the lifetime `'_` as defined on the impl at 7:10...
   --> $DIR/issue-55394.rs:7:10
    |
 LL | impl Foo<'_> {

@@ -14,7 +14,7 @@ LL |   pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<
 LL | |     ap
 LL | | }
    | |_^
-note: ...does not necessarily outlive the lifetime 'f as defined on the function body at 7:37
+note: ...does not necessarily outlive the lifetime `'f` as defined on the function body at 7:37
   --> $DIR/variadic-ffi-4.rs:7:37
    |
 LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
