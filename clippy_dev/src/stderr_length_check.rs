@@ -42,6 +42,7 @@ fn stderr_files() -> impl Iterator<Item = walkdir::DirEntry> {
         .filter(|f| f.path().extension() == Some(OsStr::new("stderr")))
 }
 
+#[must_use]
 fn count_linenumbers(filepath: &str) -> usize {
     if let Ok(mut file) = File::open(filepath) {
         let mut content = String::new();

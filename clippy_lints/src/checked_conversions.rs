@@ -160,6 +160,7 @@ impl<'a> Conversion<'a> {
 
 impl ConversionType {
     /// Creates a conversion type if the type is allowed & conversion is valid
+    #[must_use]
     fn try_new(from: &str, to: &str) -> Option<Self> {
         if UINTS.contains(&from) {
             Some(Self::FromUnsigned)

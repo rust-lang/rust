@@ -93,6 +93,7 @@ fn check_known_consts(cx: &LateContext<'_, '_>, e: &Expr, s: symbol::Symbol, mod
 /// Returns `false` if the number of significant figures in `value` are
 /// less than `min_digits`; otherwise, returns true if `value` is equal
 /// to `constant`, rounded to the number of digits present in `value`.
+#[must_use]
 fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
     if value.len() <= min_digits {
         false

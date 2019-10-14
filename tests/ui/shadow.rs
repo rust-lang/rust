@@ -16,6 +16,7 @@ fn id<T>(x: T) -> T {
     x
 }
 
+#[must_use]
 fn first(x: (isize, isize)) -> isize {
     x.0
 }

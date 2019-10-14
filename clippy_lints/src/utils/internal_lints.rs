@@ -239,6 +239,7 @@ pub struct CompilerLintFunctions {
 }
 
 impl CompilerLintFunctions {
+    #[must_use]
     pub fn new() -> Self {
         let mut map = FxHashMap::default();
         map.insert("span_lint", "utils::span_lint");

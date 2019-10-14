@@ -121,6 +121,7 @@ fn is_arith_expr(expr: &Expr) -> bool {
     }
 }
 
+#[must_use]
 fn is_bit_op(op: BinOpKind) -> bool {
     use syntax::ast::BinOpKind::*;
     match op {
@@ -129,6 +130,7 @@ fn is_bit_op(op: BinOpKind) -> bool {
     }
 }
 
+#[must_use]
 fn is_arith_op(op: BinOpKind) -> bool {
     use syntax::ast::BinOpKind::*;
     match op {

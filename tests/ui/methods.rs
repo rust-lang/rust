@@ -4,16 +4,17 @@
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
-    unused,
-    clippy::print_stdout,
+    clippy::default_trait_access,
+    clippy::missing_docs_in_private_items,
     clippy::non_ascii_literal,
     clippy::new_without_default,
-    clippy::missing_docs_in_private_items,
     clippy::needless_pass_by_value,
-    clippy::default_trait_access,
+    clippy::print_stdout,
+    clippy::must_use_candidate,
     clippy::use_self,
     clippy::useless_format,
-    clippy::wrong_self_convention
+    clippy::wrong_self_convention,
+    unused
 )]
 
 #[macro_use]

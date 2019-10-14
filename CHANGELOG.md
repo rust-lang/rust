@@ -976,6 +976,7 @@ Released 2018-09-13
 [`diverging_sub_expression`]: https://rust-lang.github.io/rust-clippy/master/index.html#diverging_sub_expression
 [`doc_markdown`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 [`double_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons
+[`double_must_use`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_must_use
 [`double_neg`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_neg
 [`double_parens`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_parens
 [`drop_bounds`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_bounds
@@ -1095,6 +1096,8 @@ Released 2018-09-13
 [`modulo_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#modulo_one
 [`multiple_crate_versions`]: https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
 [`multiple_inherent_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#multiple_inherent_impl
+[`must_use_candidate`]: https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+[`must_use_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#must_use_unit
 [`mut_from_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#mut_from_ref
 [`mut_mut`]: https://rust-lang.github.io/rust-clippy/master/index.html#mut_mut
 [`mut_range_bound`]: https://rust-lang.github.io/rust-clippy/master/index.html#mut_range_bound

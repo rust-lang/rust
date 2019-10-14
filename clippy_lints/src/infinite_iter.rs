@@ -67,6 +67,7 @@ enum Finiteness {
 use self::Finiteness::{Finite, Infinite, MaybeInfinite};
 
 impl Finiteness {
+    #[must_use]
     fn and(self, b: Self) -> Self {
         match (self, b) {
             (Finite, _) | (_, Finite) => Finite,
@@ -75,6 +76,7 @@ impl Finiteness {
         }
     }
 
+    #[must_use]
     fn or(self, b: Self) -> Self {
         match (self, b) {
             (Infinite, _) | (_, Infinite) => Infinite,
@@ -85,6 +87,7 @@ impl Finiteness {
 }
 
 impl From<bool> for Finiteness {
+    #[must_use]
     fn from(b: bool) -> Self {
         if b {
             Infinite

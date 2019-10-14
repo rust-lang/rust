@@ -1372,6 +1372,7 @@ pub struct TypeComplexity {
 }
 
 impl TypeComplexity {
+    #[must_use]
     pub fn new(threshold: u64) -> Self {
         Self { threshold }
     }
@@ -1780,6 +1781,7 @@ enum FullInt {
 
 impl FullInt {
     #[allow(clippy::cast_sign_loss)]
+    #[must_use]
     fn cmp_s_u(s: i128, u: u128) -> Ordering {
         if s < 0 {
             Ordering::Less
@@ -1792,12 +1794,14 @@ impl FullInt {
 }
 
 impl PartialEq for FullInt {
+    #[must_use]
     fn eq(&self, other: &Self) -> bool {
         self.partial_cmp(other).expect("partial_cmp only returns Some(_)") == Ordering::Equal
     }
 }
 
 impl PartialOrd for FullInt {
+    #[must_use]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(match (self, other) {
             (&Self::S(s), &Self::S(o)) => s.cmp(&o),
@@ -1808,6 +1812,7 @@ impl PartialOrd for FullInt {
     }
 }
 impl Ord for FullInt {
+    #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other)
             .expect("partial_cmp for FullInt can never return None")

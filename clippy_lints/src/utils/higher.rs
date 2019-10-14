@@ -10,6 +10,7 @@ use rustc::{hir, ty};
 use syntax::ast;
 
 /// Converts a hir binary operator to the corresponding `ast` type.
+#[must_use]
 pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
     match op {
         hir::BinOpKind::Eq => ast::BinOpKind::Eq,

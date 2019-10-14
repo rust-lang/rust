@@ -405,6 +405,7 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 ///
 /// NOTE: when there is no closing brace in `s`, `s` is _not_ preserved, i.e.,
 /// an empty string will be returned in that case.
+#[must_use]
 pub fn erode_from_back(s: &str) -> String {
     let mut ret = String::from(s);
     while ret.pop().map_or(false, |c| c != '}') {}
@@ -435,6 +436,7 @@ pub fn erode_from_back(s: &str) -> String {
 ///             inside_a_block();
 ///         }
 /// ```
+#[must_use]
 pub fn erode_from_front(s: &str) -> String {
     s.chars()
         .skip_while(|c| c.is_whitespace())
@@ -447,6 +449,7 @@ pub fn erode_from_front(s: &str) -> String {
 /// tries to get the contents of the block. If there is no closing brace
 /// present,
 /// an empty string is returned.
+#[must_use]
 pub fn erode_block(s: &str) -> String {
     erode_from_back(&erode_from_front(s))
 }

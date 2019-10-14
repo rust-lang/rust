@@ -100,6 +100,7 @@ pub struct BitMask {
 }
 
 impl BitMask {
+    #[must_use]
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
         Self {
             verbose_bit_mask_threshold,
@@ -150,6 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
     }
 }
 
+#[must_use]
 fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     match cmp {
         BinOpKind::Eq => BinOpKind::Eq,

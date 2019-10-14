@@ -417,6 +417,7 @@ enum Associativity {
 /// Chained `as` and explicit `:` type coercion never need inner parenthesis so
 /// they are considered
 /// associative.
+#[must_use]
 fn associativity(op: &AssocOp) -> Associativity {
     use syntax::util::parser::AssocOp::*;
 
