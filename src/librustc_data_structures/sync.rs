@@ -41,29 +41,6 @@ cfg_if! {
             }
         }
 
-        pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
-            where A: FnOnce() -> RA,
-                  B: FnOnce() -> RB
-        {
-            (oper_a(), oper_b())
-        }
-
-        pub struct SerialScope;
-
-        impl SerialScope {
-            pub fn spawn<F>(&self, f: F)
-                where F: FnOnce(&SerialScope)
-            {
-                f(self)
-            }
-        }
-
-        pub fn serial_scope<F, R>(f: F) -> R
-            where F: FnOnce(&SerialScope) -> R
-        {
-            f(&SerialScope)
-        }
-
         use std::ops::Add;
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
@@ -176,8 +153,28 @@ cfg_if! {
         pub type AtomicU32 = Atomic<u32>;
         pub type AtomicU64 = Atomic<u64>;
 
-        pub use self::serial_join as join;
-        pub use self::serial_scope as scope;
+        pub fn join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
+            where A: FnOnce() -> RA,
+                  B: FnOnce() -> RB
+        {
+            (oper_a(), oper_b())
+        }
+
+        pub struct SerialScope;
+
+        impl SerialScope {
+            pub fn spawn<F>(&self, f: F)
+                where F: FnOnce(&SerialScope)
+            {
+                f(self)
+            }
+        }
+
+        pub fn scope<F, R>(f: F) -> R
+            where F: FnOnce(&SerialScope) -> R
+        {
+            f(&SerialScope)
+        }
 
         #[macro_export]
         macro_rules! parallel {
