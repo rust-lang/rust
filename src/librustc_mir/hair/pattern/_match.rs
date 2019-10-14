@@ -239,6 +239,7 @@ use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable};
 
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
+use rustc::util::captures::Captures;
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -250,7 +251,7 @@ use smallvec::{smallvec, SmallVec};
 use std::cmp::{self, max, min, Ordering};
 use std::convert::TryInto;
 use std::fmt;
-use std::iter::{self, FromIterator, IntoIterator};
+use std::iter::{FromIterator, IntoIterator};
 use std::ops::RangeInclusive;
 use std::u128;
 
@@ -422,13 +423,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Iterate over the first component of each row
-    // Can't return impl Iterator because of hidden lifetime capture.
-    fn heads<'a>(
-        &'a self,
-    ) -> iter::Map<
-        std::slice::Iter<'a, PatStack<'p, 'tcx>>,
-        impl FnMut(&'a PatStack<'p, 'tcx>) -> &'p Pat<'tcx>,
-    > {
+    fn heads<'a>(&'a self) -> impl Iterator<Item = &'a Pat<'tcx>> + Captures<'p> {
         self.0.iter().map(|r| r.head())
     }
 
@@ -1642,12 +1637,6 @@ struct MissingConstructors<'tcx> {
     used_ctors: Vec<Constructor<'tcx>>,
 }
 
-type MissingConstructorsIter<'a, 'tcx, F> = std::iter::FlatMap<
-    std::slice::Iter<'a, Constructor<'tcx>>,
-    SmallVec<[Constructor<'tcx>; 1]>,
-    F,
->;
-
 impl<'tcx> MissingConstructors<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
@@ -1667,14 +1656,7 @@ impl<'tcx> MissingConstructors<'tcx> {
     }
 
     /// Iterate over all_ctors \ used_ctors
-    // Can't use impl Iterator because of lifetime shenanigans
-    fn iter<'a>(
-        &'a self,
-    ) -> MissingConstructorsIter<
-        'a,
-        'tcx,
-        impl FnMut(&'a Constructor<'tcx>) -> SmallVec<[Constructor<'tcx>; 1]>,
-    > {
+    fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
         self.all_ctors.iter().flat_map(move |req_ctor| {
             req_ctor.clone().subtract_meta_constructor(self.tcx, self.param_env, &self.used_ctors)
         })
