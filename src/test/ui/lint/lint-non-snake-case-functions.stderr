@@ -2,7 +2,7 @@ error: method `Foo_Method` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:7:8
    |
 LL |     fn Foo_Method() {}
-   |        ^^^^^^^^^^ help: convert the identifier to snake case: `foo_method`
+   |        ^^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `foo_method`
    |
 note: lint level defined here
   --> $DIR/lint-non-snake-case-functions.rs:1:9
@@ -26,19 +26,19 @@ error: method `render_HTML` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:17:8
    |
 LL |     fn render_HTML() {}
-   |        ^^^^^^^^^^^ help: convert the identifier to snake case: `render_html`
+   |        ^^^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `render_html`
 
 error: trait method `ABC` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:22:8
    |
 LL |     fn ABC();
-   |        ^^^ help: convert the identifier to snake case: `abc`
+   |        ^^^ help: convert the identifier to snake case (notice the capitalization): `abc`
 
 error: trait method `a_b_C` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:25:8
    |
 LL |     fn a_b_C(&self) {}
-   |        ^^^^^ help: convert the identifier to snake case: `a_b_c`
+   |        ^^^^^ help: convert the identifier to snake case (notice the capitalization): `a_b_c`
 
 error: trait method `something__else` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:28:8
@@ -50,13 +50,13 @@ error: function `Cookie` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:38:4
    |
 LL | fn Cookie() {}
-   |    ^^^^^^ help: convert the identifier to snake case: `cookie`
+   |    ^^^^^^ help: convert the identifier to snake case (notice the capitalization): `cookie`
 
 error: function `bi_S_Cuit` should have a snake case name
   --> $DIR/lint-non-snake-case-functions.rs:41:8
    |
 LL | pub fn bi_S_Cuit() {}
-   |        ^^^^^^^^^ help: convert the identifier to snake case: `bi_s_cuit`
+   |        ^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `bi_s_cuit`
 
 error: aborting due to 9 previous errors
 

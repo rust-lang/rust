@@ -8,7 +8,7 @@ LL |         handle: Handle
    |                 ^^^^^^
    |                 |
    |                 did you mean `Handle { /* fields */ }`?
-   |                 help: a local variable with a similar name exists: `handle`
+   |                 help: a local variable with a similar name exists (notice the capitalization): `handle`
 
 error: aborting due to previous error
 

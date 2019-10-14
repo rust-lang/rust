@@ -41,7 +41,7 @@ error: static variable `bad` should have an upper case name
   --> $DIR/lint-group-nonstandard-style.rs:14:16
    |
 LL |         static bad: isize = 1;
-   |                ^^^ help: convert the identifier to upper case: `BAD`
+   |                ^^^ help: convert the identifier to upper case (notice the capitalization): `BAD`
    |
 note: lint level defined here
   --> $DIR/lint-group-nonstandard-style.rs:10:14

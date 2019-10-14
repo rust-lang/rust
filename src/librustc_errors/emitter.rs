@@ -192,6 +192,8 @@ pub trait Emitter {
         true
     }
 
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>>;
+
     /// Formats the substitutions of the primary_span
     ///
     /// The are a lot of conditions to this method, but in short:
@@ -204,7 +206,7 @@ pub trait Emitter {
     ///   we return the original `primary_span` and the original suggestions.
     fn primary_span_formatted<'a>(
         &mut self,
-        db: &'a Diagnostic
+        db: &'a Diagnostic,
     ) -> (MultiSpan, &'a [CodeSuggestion]) {
         let mut primary_span = db.span.clone();
         if let Some((sugg, rest)) = db.suggestions.split_first() {
@@ -234,7 +236,20 @@ pub trait Emitter {
                     format!("help: {}", sugg.msg)
                 } else {
                     // Show the default suggestion text with the substitution
-                    format!("help: {}: `{}`", sugg.msg, substitution)
+                    format!(
+                        "help: {}{}: `{}`",
+                        sugg.msg,
+                        if self.source_map().as_ref().map(|sm| substitution.to_lowercase() == sm
+                            .span_to_snippet(sugg.substitutions[0].parts[0].span)
+                            .unwrap()
+                            .to_lowercase()).unwrap_or(false)
+                        {
+                            " (notice the capitalization)"
+                        } else {
+                            ""
+                        },
+                        substitution,
+                    )
                 };
                 primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
 
@@ -382,6 +397,10 @@ pub trait Emitter {
 }
 
 impl Emitter for EmitterWriter {
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+        self.sm.as_ref()
+    }
+
     fn emit_diagnostic(&mut self, db: &Diagnostic) {
         let mut children = db.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
@@ -1461,7 +1480,9 @@ impl EmitterWriter {
         let suggestions = suggestion.splice_lines(&**sm);
 
         let mut row_num = 2;
-        for &(ref complete, ref parts) in suggestions.iter().take(MAX_SUGGESTIONS) {
+        let mut notice_capitalization = false;
+        for (complete, parts, only_capitalization) in suggestions.iter().take(MAX_SUGGESTIONS) {
+            notice_capitalization |= only_capitalization;
             // Only show underline if the suggestion spans a single line and doesn't cover the
             // entirety of the code output. If you have multiple replacements in the same line
             // of code, show the underline.
@@ -1552,7 +1573,10 @@ impl EmitterWriter {
         }
         if suggestions.len() > MAX_SUGGESTIONS {
             let msg = format!("and {} other candidates", suggestions.len() - MAX_SUGGESTIONS);
-            buffer.puts(row_num, 0, &msg, Style::NoStyle);
+            buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
+        } else if notice_capitalization {
+            let msg = "notice the capitalization difference";
+            buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         }
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
         Ok(())

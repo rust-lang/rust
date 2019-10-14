@@ -12,7 +12,7 @@
 use crate::source_map::{SourceMap, FilePathMapping};
 
 use errors::registry::Registry;
-use errors::{SubDiagnostic, CodeSuggestion, SourceMapper};
+use errors::{SubDiagnostic, CodeSuggestion, SourceMapper, SourceMapperDyn};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, HumanReadableErrorType};
 
@@ -111,6 +111,10 @@ impl Emitter for JsonEmitter {
         if let Err(e) = result {
             panic!("failed to print notification: {:?}", e);
         }
+    }
+
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+        Some(&self.sm)
     }
 
     fn should_show_explain(&self) -> bool {

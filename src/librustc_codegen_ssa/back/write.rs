@@ -22,7 +22,8 @@ use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
 use rustc::util::profiling::SelfProfilerRef;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Handler, Level, FatalError, DiagnosticId, SourceMapperDyn};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
@@ -1680,6 +1681,9 @@ impl Emitter for SharedEmitter {
             })));
         }
         drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
+    }
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+        None
     }
 }
 
