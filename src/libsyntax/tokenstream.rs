@@ -14,7 +14,6 @@
 //! ownership of the original.
 
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
-use crate::print::pprust;
 
 use syntax_pos::{BytePos, Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
@@ -23,7 +22,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
 
-use std::{fmt, iter, mem};
+use std::{iter, mem};
 
 #[cfg(test)]
 mod tests;
@@ -504,12 +503,6 @@ impl Cursor {
             None => None,
             Some(ref stream) => stream[self.index ..].get(n).map(|(tree, _)| tree.clone()),
         }
-    }
-}
-
-impl fmt::Display for TokenStream {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&pprust::tts_to_string(self.clone()))
     }
 }
 

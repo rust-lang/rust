@@ -174,7 +174,8 @@ fn generic_extension<'cx>(
     rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
     if cx.trace_macros() {
-        trace_macros_note(cx, sp, format!("expanding `{}! {{ {} }}`", name, arg));
+        let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(arg.clone()));
+        trace_macros_note(cx, sp, msg);
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -212,7 +213,8 @@ fn generic_extension<'cx>(
                 }
 
                 if cx.trace_macros() {
-                    trace_macros_note(cx, sp, format!("to `{}`", tts));
+                    let msg = format!("to `{}`", pprust::tts_to_string(tts.clone()));
+                    trace_macros_note(cx, sp, msg);
                 }
 
                 let directory = Directory {

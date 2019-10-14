@@ -13,6 +13,7 @@ use crate::mut_visit::*;
 use crate::parse::{DirectoryOwnership, PResult, ParseSess};
 use crate::parse::token;
 use crate::parse::parser::Parser;
+use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::{sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
@@ -388,7 +389,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             "`derive` may only be applied to structs, enums and unions");
                         if let ast::AttrStyle::Inner = attr.style {
                             let trait_list = derives.iter()
-                                .map(|t| t.to_string()).collect::<Vec<_>>();
+                                .map(|t| pprust::path_to_string(t))
+                                .collect::<Vec<_>>();
                             let suggestion = format!("#[derive({})]", trait_list.join(", "));
                             err.span_suggestion(
                                 span, "try an outer attribute", suggestion,
@@ -587,8 +589,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
-                        let msg = format!("non-{kind} macro in {kind} position: {path}",
-                                          kind = fragment_kind.name(), path = mac.path);
+                        let msg = format!(
+                            "non-{kind} macro in {kind} position: {path}",
+                            kind = fragment_kind.name(),
+                            path = pprust::path_to_string(&mac.path),
+                        );
                         self.cx.span_err(span, &msg);
                         self.cx.trace_macros_diag();
                         fragment_kind.dummy(span)
@@ -878,7 +883,7 @@ impl<'a> Parser<'a> {
             err.span_label(span, "caused by the macro expansion here");
             let msg = format!(
                 "the usage of `{}!` is likely invalid in {} context",
-                macro_path,
+                pprust::path_to_string(&macro_path),
                 kind_name,
             );
             err.note(&msg);

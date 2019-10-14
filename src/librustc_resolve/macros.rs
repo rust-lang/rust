@@ -21,6 +21,7 @@ use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax::ext::compile_declarative_macro;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
+use syntax::print::pprust;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -324,7 +325,8 @@ impl<'a> Resolver<'a> {
 
         Ok(if ext.macro_kind() != kind {
             let expected = kind.descr_expected();
-            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
+            let path_str = pprust::path_to_string(path);
+            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
             self.session.struct_span_err(path.span, &msg)
                         .span_label(path.span, format!("not {} {}", kind.article(), expected))
                         .emit();
@@ -805,14 +807,16 @@ impl<'a> Resolver<'a> {
                 }
             }
             if let Some(depr) = &stability.rustc_depr {
-                let (message, lint) = stability::rustc_deprecation_message(depr, &path.to_string());
+                let path = pprust::path_to_string(path);
+                let (message, lint) = stability::rustc_deprecation_message(depr, &path);
                 stability::early_report_deprecation(
                     self.session, &message, depr.suggestion, lint, span
                 );
             }
         }
         if let Some(depr) = &ext.deprecation {
-            let (message, lint) = stability::deprecation_message(depr, &path.to_string());
+            let path = pprust::path_to_string(&path);
+            let (message, lint) = stability::deprecation_message(depr, &path);
             stability::early_report_deprecation(self.session, &message, None, lint, span);
         }
     }
