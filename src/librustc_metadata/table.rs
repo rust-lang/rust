@@ -23,7 +23,13 @@ crate trait FixedSizeEncoding: Default {
     // FIXME(eddyb) make these generic functions, or at least defaults here.
     // (same problem as above, needs `[u8; Self::BYTE_LEN]`)
     // For now, a macro (`fixed_size_encoding_byte_len_and_defaults`) is used.
+
+    /// Read a `Self` value (encoded as `Self::BYTE_LEN` bytes),
+    /// from `&b[i * Self::BYTE_LEN..]`, returning `None` if `i`
+    /// is not in bounds, or `Some(Self::from_bytes(...))` otherwise.
     fn maybe_read_from_bytes_at(b: &[u8], i: usize) -> Option<Self>;
+    /// Write a `Self` value (encoded as `Self::BYTE_LEN` bytes),
+    /// at `&mut b[i * Self::BYTE_LEN..]`, using `Self::write_to_bytes`.
     fn write_to_bytes_at(self, b: &mut [u8], i: usize);
 }
 
@@ -112,8 +118,11 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
     }
 }
 
-/// Random-access table, similar to `Vec<Option<T>>`, but without requiring
-/// encoding or decoding all the values eagerly and in-order.
+/// Random-access table (i.e. offeringconstant-time `get`/`set`), similar to
+/// `Vec<Option<T>>`, but without requiring encoding or decoding all the values
+/// eagerly and in-order.
+/// A total of `(max_idx + 1) * <Option<T> as FixedSizeEncoding>::BYTE_LEN` bytes
+/// are used for a table, where `max_idx` is the largest index passed to `set`.
 // FIXME(eddyb) replace `Vec` with `[_]` here, such that `Box<Table<T>>` would be used
 // when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
 // (not sure if that is possible given that the `Vec` is being resized now)
@@ -135,10 +144,16 @@ impl<T> Default for Table<T> where Option<T>: FixedSizeEncoding {
 
 impl<T> Table<T> where Option<T>: FixedSizeEncoding {
     crate fn set(&mut self, i: usize, value: T) {
+        // FIXME(eddyb) investigate more compact encodings for sparse tables.
+        // On the PR @michaelwoerister mentioned:
+        // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
+        // > trick (i.e. divide things into buckets of 32 or 64 items and then
+        // > store bit-masks of which item in each bucket is actually serialized).
         let needed = (i + 1) * <Option<T>>::BYTE_LEN;
         if self.bytes.len() < needed {
             self.bytes.resize(needed, 0);
         }
+
         Some(value).write_to_bytes_at(&mut self.bytes, i);
     }
 
@@ -170,12 +185,13 @@ impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
     ) -> Option<T> {
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
-        let bytes = &metadata.raw_bytes()[self.position.get()..][..self.meta];
+        let start = self.position.get();
+        let bytes = &metadata.raw_bytes()[start..start + self.meta];
         <Option<T>>::maybe_read_from_bytes_at(bytes, i)?
     }
 }
 
-/// Per-definition table, similar to `Table` but keyed on `DefIndex`.
+/// Like a `Table` but using `DefIndex` instead of `usize` as keys.
 // FIXME(eddyb) replace by making `Table` behave like `IndexVec`,
 // and by using `newtype_index!` to define `DefIndex`.
 crate struct PerDefTable<T>(Table<T>) where Option<T>: FixedSizeEncoding;
