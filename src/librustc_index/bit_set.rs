@@ -168,11 +168,7 @@ impl<T: Idx> BitSet<T> {
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter {
-            cur: None,
-            iter: self.words.iter().enumerate(),
-            marker: PhantomData,
-        }
+        BitIter::new(&self.words)
     }
 
     /// Duplicates the set as a hybrid set.
@@ -294,6 +290,17 @@ pub struct BitIter<'a, T: Idx> {
     cur: Option<(Word, usize)>,
     iter: iter::Enumerate<slice::Iter<'a, Word>>,
     marker: PhantomData<T>
+}
+
+impl<'a, T: Idx> BitIter<'a, T> {
+    #[inline]
+    fn new(words: &'a [Word]) -> BitIter<'a, T> {
+        BitIter {
+            cur: None,
+            iter: words.iter().enumerate(),
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
@@ -851,11 +858,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn iter(&self, row: R) -> BitIter<'_, C> {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
-        BitIter {
-            cur: None,
-            iter: self.words[start..end].iter().enumerate(),
-            marker: PhantomData,
-        }
+        BitIter::new(&self.words[start..end])
     }
 
     /// Returns the number of elements in `row`.
