@@ -70,7 +70,8 @@ use syntax::print::pprust;
 use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, Nonterminal, Token};
+use syntax::parse::ParseSess;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 
@@ -85,6 +86,11 @@ pub struct LoweringContext<'a> {
     cstore: &'a dyn CrateStore,
 
     resolver: &'a mut dyn Resolver,
+
+    /// HACK(Centril): there is a cyclic dependency between the parser and lowering
+    /// if we don't have this function pointer. To avoid that dependency so that
+    /// librustc is independent of the parser, we use dynamic dispatch here.
+    nt_to_tokenstream: NtToTokenstream,
 
     /// The items being lowered are collected here.
     items: BTreeMap<hir::HirId, hir::Item>,
@@ -180,6 +186,8 @@ pub trait Resolver {
     fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool;
 }
 
+type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
+
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
 /// and if so, what meaning it has.
 #[derive(Debug)]
@@ -236,6 +244,7 @@ pub fn lower_crate(
     dep_graph: &DepGraph,
     krate: &Crate,
     resolver: &mut dyn Resolver,
+    nt_to_tokenstream: NtToTokenstream,
 ) -> hir::Crate {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
@@ -249,6 +258,7 @@ pub fn lower_crate(
         sess,
         cstore,
         resolver,
+        nt_to_tokenstream,
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
@@ -1022,7 +1032,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
             token::Interpolated(nt) => {
-                let tts = nt.to_tokenstream(&self.sess.parse_sess, token.span);
+                let tts = (self.nt_to_tokenstream)(&nt, &self.sess.parse_sess, token.span);
                 self.lower_token_stream(tts)
             }
             _ => TokenTree::Token(token).into(),

@@ -4,10 +4,9 @@ use crate::ast::{self, CrateConfig, NodeId};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
-use crate::parse::parser::Parser;
-use crate::parse::parser::emit_unclosed_delims;
-use crate::parse::token::TokenKind;
-use crate::tokenstream::{TokenStream, TokenTree};
+use crate::parse::parser::{Parser, emit_unclosed_delims};
+use crate::parse::token::{Nonterminal, TokenKind};
+use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
 use crate::symbol::Symbol;
 
@@ -23,6 +22,8 @@ use syntax_pos::hygiene::ExpnId;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str;
+
+use log::info;
 
 #[cfg(test)]
 mod tests;
@@ -406,4 +407,133 @@ impl SeqSep {
             trailing_sep_allowed: false,
         }
     }
+}
+
+// NOTE(Centril): The following probably shouldn't be here but it acknowledges the
+// fact that architecturally, we are using parsing (read on below to understand why).
+
+pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> TokenStream {
+    // A `Nonterminal` is often a parsed AST item. At this point we now
+    // need to convert the parsed AST to an actual token stream, e.g.
+    // un-parse it basically.
+    //
+    // Unfortunately there's not really a great way to do that in a
+    // guaranteed lossless fashion right now. The fallback here is to just
+    // stringify the AST node and reparse it, but this loses all span
+    // information.
+    //
+    // As a result, some AST nodes are annotated with the token stream they
+    // came from. Here we attempt to extract these lossless token streams
+    // before we fall back to the stringification.
+    let tokens = match *nt {
+        Nonterminal::NtItem(ref item) => {
+            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+        }
+        Nonterminal::NtTraitItem(ref item) => {
+            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+        }
+        Nonterminal::NtImplItem(ref item) => {
+            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+        }
+        Nonterminal::NtIdent(ident, is_raw) => {
+            Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
+        }
+        Nonterminal::NtLifetime(ident) => {
+            Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
+        }
+        Nonterminal::NtTT(ref tt) => {
+            Some(tt.clone().into())
+        }
+        _ => None,
+    };
+
+    // FIXME(#43081): Avoid this pretty-print + reparse hack
+    let source = pprust::nonterminal_to_string(nt);
+    let filename = FileName::macro_expansion_source_code(&source);
+    let tokens_for_real = parse_stream_from_source_str(filename, source, sess, Some(span));
+
+    // During early phases of the compiler the AST could get modified
+    // directly (e.g., attributes added or removed) and the internal cache
+    // of tokens my not be invalidated or updated. Consequently if the
+    // "lossless" token stream disagrees with our actual stringification
+    // (which has historically been much more battle-tested) then we go
+    // with the lossy stream anyway (losing span information).
+    //
+    // Note that the comparison isn't `==` here to avoid comparing spans,
+    // but it *also* is a "probable" equality which is a pretty weird
+    // definition. We mostly want to catch actual changes to the AST
+    // like a `#[cfg]` being processed or some weird `macro_rules!`
+    // expansion.
+    //
+    // What we *don't* want to catch is the fact that a user-defined
+    // literal like `0xf` is stringified as `15`, causing the cached token
+    // stream to not be literal `==` token-wise (ignoring spans) to the
+    // token stream we got from stringification.
+    //
+    // Instead the "probably equal" check here is "does each token
+    // recursively have the same discriminant?" We basically don't look at
+    // the token values here and assume that such fine grained token stream
+    // modifications, including adding/removing typically non-semantic
+    // tokens such as extra braces and commas, don't happen.
+    if let Some(tokens) = tokens {
+        if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
+            return tokens
+        }
+        info!("cached tokens found, but they're not \"probably equal\", \
+                going with stringified version");
+    }
+    return tokens_for_real
+}
+
+fn prepend_attrs(
+    sess: &ParseSess,
+    attrs: &[ast::Attribute],
+    tokens: Option<&tokenstream::TokenStream>,
+    span: syntax_pos::Span
+) -> Option<tokenstream::TokenStream> {
+    let tokens = tokens?;
+    if attrs.len() == 0 {
+        return Some(tokens.clone())
+    }
+    let mut builder = tokenstream::TokenStreamBuilder::new();
+    for attr in attrs {
+        assert_eq!(attr.style, ast::AttrStyle::Outer,
+                   "inner attributes should prevent cached tokens from existing");
+
+        let source = pprust::attribute_to_string(attr);
+        let macro_filename = FileName::macro_expansion_source_code(&source);
+        if attr.is_sugared_doc {
+            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
+            builder.push(stream);
+            continue
+        }
+
+        // synthesize # [ $path $tokens ] manually here
+        let mut brackets = tokenstream::TokenStreamBuilder::new();
+
+        // For simple paths, push the identifier directly
+        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
+            let ident = attr.path.segments[0].ident;
+            let token = token::Ident(ident.name, ident.as_str().starts_with("r#"));
+            brackets.push(tokenstream::TokenTree::token(token, ident.span));
+
+        // ... and for more complicated paths, fall back to a reparse hack that
+        // should eventually be removed.
+        } else {
+            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
+            brackets.push(stream);
+        }
+
+        brackets.push(attr.tokens.clone());
+
+        // The span we list here for `#` and for `[ ... ]` are both wrong in
+        // that it encompasses more than each token, but it hopefully is "good
+        // enough" for now at least.
+        builder.push(tokenstream::TokenTree::token(token::Pound, attr.span));
+        let delim_span = tokenstream::DelimSpan::from_single(attr.span);
+        builder.push(tokenstream::TokenTree::Delimited(
+            delim_span, token::DelimToken::Bracket, brackets.build().into()));
+    }
+    builder.push(tokens.clone());
+    Some(builder.build())
 }
