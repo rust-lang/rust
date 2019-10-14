@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
+#![feature(core_intrinsics)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
@@ -11,6 +12,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
+#![feature(stmt_expr_attributes)]
 
 #![recursion_limit="256"]
 
