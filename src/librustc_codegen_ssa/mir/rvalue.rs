@@ -18,7 +18,7 @@ use syntax::source_map::{DUMMY_SP, Span};
 
 use std::{u128, i128};
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,
         mir: &Body<'tcx>,
@@ -699,7 +699,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
     pub fn rvalue_creates_operand(
         &self,
         rvalue: &mir::Rvalue<'tcx>,

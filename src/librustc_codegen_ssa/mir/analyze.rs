@@ -16,9 +16,9 @@ use syntax_pos::DUMMY_SP;
 use super::FunctionCx;
 use crate::traits::*;
 
-pub fn non_ssa_locals<'b, 'a: 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &mut FunctionCx<'a, 'tcx, Bx>,
-    mir: &'b mut BodyCache<&'a Body<'tcx>>,
+pub fn non_ssa_locals<'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    fx: &mut FunctionCx<'a, 'b, 'tcx, Bx>,
+    mir: &'c mut BodyCache<&'b Body<'tcx>>,
 ) -> BitSet<mir::Local> {
     let mut analyzer = LocalAnalyzer::new(fx, mir);
 
@@ -58,8 +58,7 @@ pub fn non_ssa_locals<'b, 'a: 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 struct LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    fx: &'mir FunctionCx<'a, 'tcx, Bx>,
-    mir: &'b Body<'tcx>,
+    fx: &'mir FunctionCx<'a, 'b, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -68,14 +67,12 @@ struct LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 }
 
 impl<'mir, 'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>, mir: &'c mut BodyCache<&'b Body<'tcx>>) -> Self {
+    fn new(fx: &'mir FunctionCx<'a, 'b, 'tcx, Bx>, mir: &'c mut BodyCache<&'b Body<'tcx>>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(mir.basic_blocks().len()).start_location();
         let dominators = mir.dominators();
-        let body = mir.body();
         let mut analyzer = LocalAnalyzer {
             fx,
-            mir: body,
             dominators,
             non_ssa_locals: BitSet::new_empty(mir.local_decls.len()),
             first_assignment: IndexVec::from_elem(invalid_location, &mir.local_decls)
@@ -91,7 +88,7 @@ impl<'mir, 'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, '
 
     fn first_assignment(&self, local: mir::Local) -> Option<Location> {
         let location = self.first_assignment[local];
-        if location.block.index() < self.mir.basic_blocks().len() {
+        if location.block.index() < self.fx.mir.basic_blocks().len() {
             Some(location)
         } else {
             None
@@ -134,7 +131,7 @@ impl<'mir, 'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, '
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.base, proj_base, self.mir, cx.tcx());
+                    mir::Place::ty_from(place_ref.base, proj_base, self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -143,7 +140,7 @@ impl<'mir, 'a, 'b, 'c, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, '
                     .ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 let span = if let mir::PlaceBase::Local(index) = place_ref.base {
-                    self.mir.local_decls[*index].source_info.span
+                    self.fx.mir.local_decls[*index].source_info.span
                 } else {
                     DUMMY_SP
                 };
@@ -247,8 +244,8 @@ impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
         if let Some(index) = place.as_local() {
             self.assign(index, location);
-            let decl_span = self.mir.local_decls[index].source_info.span;
-            if !self.fx.rvalue_creates_operand(rvalue, decl_span, self.mir) {
+            let decl_span = self.fx.mir.local_decls[index].source_info.span;
+            if !self.fx.rvalue_creates_operand(rvalue, decl_span, self.fx.mir) {
                 self.not_ssa(index);
             }
         } else {
@@ -352,7 +349,7 @@ impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = self.mir.local_decls[local].ty;
+                let ty = self.fx.mir.local_decls[local].ty;
                 let ty = self.fx.monomorphize(&ty);
 
                 // Only need the place if we're actually dropping it.

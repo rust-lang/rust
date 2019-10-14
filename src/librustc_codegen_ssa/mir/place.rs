@@ -435,7 +435,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         mir: &Body<'tcx>,
