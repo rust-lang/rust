@@ -13,7 +13,7 @@ LL | use std::collections::hash_map::Drain;
    |
 LL | use std::collections::hash_set::Drain;
    |
-and 3 other candidates
+     and 3 other candidates
 
 error: aborting due to previous error
 

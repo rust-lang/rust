@@ -970,6 +970,9 @@ impl SourceMapper for SourceMap {
     fn span_to_string(&self, sp: Span) -> String {
         self.span_to_string(sp)
     }
+    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        self.span_to_snippet(sp)
+    }
     fn span_to_filename(&self, sp: Span) -> FileName {
         self.span_to_filename(sp)
     }

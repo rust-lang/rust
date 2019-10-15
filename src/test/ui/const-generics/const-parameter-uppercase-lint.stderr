@@ -10,7 +10,7 @@ error: const parameter `x` should have an upper case name
   --> $DIR/const-parameter-uppercase-lint.rs:6:15
    |
 LL | fn noop<const x: u32>() {
-   |               ^ help: convert the identifier to upper case: `X`
+   |               ^ help: convert the identifier to upper case (notice the capitalization): `X`
    |
 note: lint level defined here
   --> $DIR/const-parameter-uppercase-lint.rs:4:9

@@ -395,7 +395,7 @@ mod foo {
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
 \u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0muse std::collections::hash_map::Iter;\u001b[0m
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
-\u001b[0mand 8 other candidates\u001b[0m
+\u001b[0m     and 8 other candidates\u001b[0m
 
 "
 }

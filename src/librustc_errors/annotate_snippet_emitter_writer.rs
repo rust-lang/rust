@@ -49,6 +49,10 @@ impl Emitter for AnnotateSnippetEmitterWriter {
                                    &suggestions);
     }
 
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+        self.source_map.as_ref()
+    }
+
     fn should_show_explain(&self) -> bool {
         !self.short_message
     }
