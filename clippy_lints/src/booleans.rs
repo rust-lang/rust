@@ -255,7 +255,10 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<String> {
                 .iter()
                 .cloned()
                 .flat_map(|(a, b)| vec![(a, b), (b, a)])
-                .find(|&(a, _)| a == path.ident.name.as_str())
+                .find(|&(a, _)| {
+                    let path: &str = &path.ident.name.as_str();
+                    a == path
+                })
                 .and_then(|(_, neg_method)| Some(format!("{}.{}()", snippet_opt(cx, args[0].span)?, neg_method)))
         },
         _ => None,
