@@ -6,7 +6,7 @@ authors = ["rust-analyzer developers"]
 
 [dependencies]
 salsa = "0.13.0"
-relative-path = "0.4.0"
+relative-path = "1.0.0"
 rustc-hash = "1.0"
 
 ra_syntax = { path = "../ra_syntax" }
