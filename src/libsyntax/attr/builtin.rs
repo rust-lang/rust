@@ -4,8 +4,8 @@ use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::ext::base::ExtCtxt;
 use crate::feature_gate::{Features, GatedCfg};
-use crate::parse::ParseSess;
 use crate::print::pprust;
+use crate::sess::ParseSess;
 
 use errors::{Applicability, Handler};
 use syntax_pos::hygiene::Transparency;

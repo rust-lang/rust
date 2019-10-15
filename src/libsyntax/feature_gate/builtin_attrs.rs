@@ -9,8 +9,8 @@ use super::active::Features;
 
 use crate::ast;
 use crate::attr::AttributeTemplate;
+use crate::sess::ParseSess;
 use crate::symbol::{Symbol, sym};
-use crate::parse::ParseSess;
 
 use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;

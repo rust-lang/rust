@@ -9,7 +9,7 @@ use std::ops;
 
 use syntax::symbol::{Symbol, sym};
 use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, LitKind};
-use syntax::parse::ParseSess;
+use syntax::sess::ParseSess;
 use syntax::feature_gate::Features;
 
 use syntax_pos::Span;

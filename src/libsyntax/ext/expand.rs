@@ -15,6 +15,7 @@ use crate::parse::token;
 use crate::parse::parser::Parser;
 use crate::print::pprust;
 use crate::ptr::P;
+use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::visit::Visitor;

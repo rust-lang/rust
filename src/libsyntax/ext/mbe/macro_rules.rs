@@ -14,8 +14,9 @@ use crate::feature_gate::Features;
 use crate::parse::parser::Parser;
 use crate::parse::token::TokenKind::*;
 use crate::parse::token::{self, NtTT, Token};
-use crate::parse::{Directory, ParseSess};
+use crate::parse::Directory;
 use crate::print::pprust;
+use crate::sess::ParseSess;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
