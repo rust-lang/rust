@@ -190,8 +190,8 @@ use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
+use syntax::sess::ParseSess;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax::parse::ParseSess;
 use syntax_pos::{Span};
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};

@@ -28,7 +28,7 @@ use syntax::ext::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
-use syntax::parse::{self, ParseSess};
+use syntax::sess::ParseSess;
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
@@ -1159,7 +1159,7 @@ fn build_session_(
     );
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
-    let parse_sess = parse::ParseSess::with_span_handler(
+    let parse_sess = ParseSess::with_span_handler(
         span_diagnostic,
         source_map,
     );

@@ -67,11 +67,11 @@ use syntax::errors;
 use syntax::ext::base::SpecialDerives;
 use syntax::ext::hygiene::ExpnId;
 use syntax::print::pprust;
-use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
-use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Nonterminal, Token};
-use syntax::parse::ParseSess;
+use syntax::sess::ParseSess;
+use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
 

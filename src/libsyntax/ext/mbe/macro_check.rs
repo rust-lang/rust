@@ -109,7 +109,7 @@ use crate::early_buffered_lints::BufferedEarlyLintId;
 use crate::ext::mbe::{KleeneToken, TokenTree};
 use crate::parse::token::TokenKind;
 use crate::parse::token::{DelimToken, Token};
-use crate::parse::ParseSess;
+use crate::sess::ParseSess;
 use crate::symbol::{kw, sym};
 
 use rustc_data_structures::fx::FxHashMap;

@@ -10,8 +10,9 @@ use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
 use crate::mut_visit::*;
-use crate::parse::{token, ParseSess};
+use crate::parse::token;
 use crate::ptr::P;
+use crate::sess::ParseSess;
 use crate::symbol::sym;
 use crate::util::map_in_place::MapInPlace;
 

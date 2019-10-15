@@ -3,8 +3,8 @@ use syntax::edition::Edition;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::ext::hygiene::AstPass;
 use syntax::ext::base::{ExtCtxt, Resolver};
-use syntax::parse::ParseSess;
 use syntax::ptr::P;
+use syntax::sess::ParseSess;
 use syntax::symbol::{Ident, Symbol, kw, sym};
 use syntax_pos::DUMMY_SP;
 

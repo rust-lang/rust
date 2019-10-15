@@ -76,10 +76,11 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::ast::{Ident, Name};
 use crate::ext::mbe::{self, TokenTree};
-use crate::parse::{Directory, ParseSess, PResult};
+use crate::parse::{Directory, PResult};
 use crate::parse::parser::{Parser, PathStyle};
 use crate::parse::token::{self, DocComment, Nonterminal, Token};
 use crate::print::pprust;
+use crate::sess::ParseSess;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream};
 
