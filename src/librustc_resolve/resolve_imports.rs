@@ -7,7 +7,7 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use crate::{Resolver, ResolutionError, Segment, ModuleKind};
+use crate::{Resolver, ResolutionError, BindingKey, Segment, ModuleKind};
 use crate::{names_to_string, module_to_string};
 use crate::diagnostics::Suggestion;
 
@@ -235,7 +235,8 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        let resolution = self.resolution(module, ident, ns)
+        let key = self.new_key(ident, ns);
+        let resolution = self.resolution(module, key)
             .try_borrow_mut()
             .map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
@@ -447,17 +448,16 @@ impl<'a> Resolver<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    pub fn try_define(
+    crate fn try_define(
         &mut self,
         module: Module<'a>,
-        ident: Ident,
-        ns: Namespace,
+        key: BindingKey,
         binding: &'a NameBinding<'a>,
     ) -> Result<(), &'a NameBinding<'a>> {
         let res = binding.res();
-        self.check_reserved_macro_name(ident, res);
+        self.check_reserved_macro_name(key.ident, res);
         self.set_binding_parent_module(binding, module);
-        self.update_resolution(module, ident, ns, |this, resolution| {
+        self.update_resolution(module, key, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if res == Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
@@ -479,8 +479,9 @@ impl<'a> Resolver<'a> {
                         } else {
                             (binding, old_binding)
                         };
-                        if glob_binding.res() != nonglob_binding.res() &&
-                           ns == MacroNS && nonglob_binding.expansion != ExpnId::root() {
+                        if glob_binding.res() != nonglob_binding.res()
+                            && key.ns == MacroNS && nonglob_binding.expansion != ExpnId::root()
+                        {
                             resolution.binding = Some(this.ambiguity(
                                 AmbiguityKind::GlobVsExpanded,
                                 nonglob_binding,
@@ -499,9 +500,9 @@ impl<'a> Resolver<'a> {
                                 DUPLICATE_MACRO_EXPORTS,
                                 CRATE_NODE_ID,
                                 binding.span,
-                                &format!("a macro named `{}` has already been exported", ident),
+                                &format!("a macro named `{}` has already been exported", key.ident),
                                 BuiltinLintDiagnostics::DuplicatedMacroExports(
-                                    ident, old_binding.span, binding.span));
+                                    key.ident, old_binding.span, binding.span));
 
                             resolution.binding = Some(binding);
                         } else {
@@ -531,9 +532,9 @@ impl<'a> Resolver<'a> {
     // Use `f` to mutate the resolution of the name in the module.
     // If the resolution becomes a success, define it in the module's glob importers.
     fn update_resolution<T, F>(
-        &mut self, module: Module<'a>,
-        ident: Ident,
-        ns: Namespace,
+        &mut self,
+        module: Module<'a>,
+        key: BindingKey,
         f: F,
     ) -> T
         where F: FnOnce(&mut Resolver<'a>, &mut NameResolution<'a>) -> T
@@ -541,7 +542,7 @@ impl<'a> Resolver<'a> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t) = {
-            let resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
+            let resolution = &mut *self.resolution(module, key).borrow_mut();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);
@@ -558,7 +559,7 @@ impl<'a> Resolver<'a> {
 
         // Define `binding` in `module`s glob importers.
         for directive in module.glob_importers.borrow_mut().iter() {
-            let mut ident = ident.modern();
+            let mut ident = key.ident;
             let scope = match ident.span.reverse_glob_adjust(module.expansion, directive.span) {
                 Some(Some(def)) => self.macro_def_scope(def),
                 Some(None) => directive.parent_scope.module,
@@ -566,7 +567,8 @@ impl<'a> Resolver<'a> {
             };
             if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, directive);
-                let _ = self.try_define(directive.parent_scope.module, ident, ns, imported_binding);
+                let key = BindingKey { ident, ..key };
+                let _ = self.try_define(directive.parent_scope.module, key, imported_binding);
             }
         }
 
@@ -580,7 +582,8 @@ impl<'a> Resolver<'a> {
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, directive);
             self.per_ns(|this, ns| {
-                let _ = this.try_define(directive.parent_scope.module, target, ns, dummy_binding);
+                let key = this.new_key(target, ns);
+                let _ = this.try_define(directive.parent_scope.module, key, dummy_binding);
                 // Consider erroneous imports used to avoid duplicate diagnostics.
                 this.record_use(target, ns, dummy_binding, false);
             });
@@ -820,8 +823,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             let parent = directive.parent_scope.module;
             match source_bindings[ns].get() {
                 Err(Undetermined) => indeterminate = true,
+                // Don't update the resolution, because it was never added.
+                Err(Determined) if target.name == kw::Underscore => {}
                 Err(Determined) => {
-                    this.update_resolution(parent, target, ns, |_, resolution| {
+                    let key = this.new_key(target, ns);
+                    this.update_resolution(parent, key, |_, resolution| {
                         resolution.single_imports.remove(&PtrKey(directive));
                     });
                 }
@@ -1052,7 +1058,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     _ => None,
                 };
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
-                let names = resolutions.filter_map(|(&(ref i, _), resolution)| {
+                let names = resolutions.filter_map(|(BindingKey { ident: i, .. }, resolution)| {
                     if *i == ident { return None; } // Never suggest the same name
                     match *resolution.borrow() {
                         NameResolution { binding: Some(name_binding), .. } => {
@@ -1301,19 +1307,18 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
-        let bindings = self.r.resolutions(module).borrow().iter().filter_map(|(ident, resolution)| {
-            resolution.borrow().binding().map(|binding| (*ident, binding))
+        let bindings = self.r.resolutions(module).borrow().iter().filter_map(|(key, resolution)| {
+            resolution.borrow().binding().map(|binding| (*key, binding))
         }).collect::<Vec<_>>();
-        for ((mut ident, ns), binding) in bindings {
-            let scope = match ident.span.reverse_glob_adjust(module.expansion, directive.span) {
+        for (mut key, binding) in bindings {
+            let scope = match key.ident.span.reverse_glob_adjust(module.expansion, directive.span) {
                 Some(Some(def)) => self.r.macro_def_scope(def),
                 Some(None) => directive.parent_scope.module,
                 None => continue,
             };
             if self.r.is_accessible_from(binding.pseudo_vis(), scope) {
                 let imported_binding = self.r.import(binding, directive);
-                let _ =
-                    self.r.try_define(directive.parent_scope.module, ident, ns, imported_binding);
+                let _ = self.r.try_define(directive.parent_scope.module, key, imported_binding);
             }
         }
 
@@ -1329,29 +1334,23 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
 
-        for (&(ident, ns), resolution) in self.r.resolutions(module).borrow().iter() {
-            let resolution = &mut *resolution.borrow_mut();
-            let binding = match resolution.binding {
-                Some(binding) => binding,
-                None => continue,
-            };
-
+        module.for_each_child(self.r, |this, ident, ns, binding| {
             // Filter away ambiguous imports and anything that has def-site
             // hygiene.
             // FIXME: Implement actual cross-crate hygiene.
             let is_good_import = binding.is_import() && !binding.is_ambiguity()
-                && !ident.span.modern().from_expansion();
+                && !ident.span.from_expansion();
             if is_good_import || binding.is_macro_def() {
                 let res = binding.res();
                 if res != Res::Err {
                     if let Some(def_id) = res.opt_def_id() {
                         if !def_id.is_local() {
-                            self.r.cstore.export_macros_untracked(def_id.krate);
+                            this.cstore.export_macros_untracked(def_id.krate);
                         }
                     }
                     reexports.push(Export {
-                        ident: ident.modern(),
-                        res: res,
+                        ident,
+                        res,
                         span: binding.span,
                         vis: binding.vis,
                     });
@@ -1360,7 +1359,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {
                 if ns == TypeNS && orig_binding.is_variant() &&
-                    !orig_binding.vis.is_at_least(binding.vis, &*self) {
+                    !orig_binding.vis.is_at_least(binding.vis, &*this) {
                         let msg = match directive.subclass {
                             ImportDirectiveSubclass::SingleImport { .. } => {
                                 format!("variant `{}` is private and cannot be re-exported",
@@ -1372,33 +1371,34 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 let error_id = (DiagnosticMessageId::ErrorId(0), // no code?!
                                                 Some(binding.span),
                                                 msg.clone());
-                                let fresh = self.r.session.one_time_diagnostics
+                                let fresh = this.session.one_time_diagnostics
                                     .borrow_mut().insert(error_id);
                                 if !fresh {
-                                    continue;
+                                    return;
                                 }
                                 msg
                             },
                             ref s @ _ => bug!("unexpected import subclass {:?}", s)
                         };
-                        let mut err = self.r.session.struct_span_err(binding.span, &msg);
+                        let mut err = this.session.struct_span_err(binding.span, &msg);
 
                         let imported_module = match directive.imported_module.get() {
                             Some(ModuleOrUniformRoot::Module(module)) => module,
                             _ => bug!("module should exist"),
                         };
                         let parent_module = imported_module.parent.expect("parent should exist");
-                        let resolutions = self.r.resolutions(parent_module).borrow();
+                        let resolutions = this.resolutions(parent_module).borrow();
                         let enum_path_segment_index = directive.module_path.len() - 1;
                         let enum_ident = directive.module_path[enum_path_segment_index].ident;
 
-                        let enum_resolution = resolutions.get(&(enum_ident, TypeNS))
+                        let key = this.new_key(enum_ident, TypeNS);
+                        let enum_resolution = resolutions.get(&key)
                             .expect("resolution should exist");
                         let enum_span = enum_resolution.borrow()
                             .binding.expect("binding should exist")
                             .span;
-                        let enum_def_span = self.r.session.source_map().def_span(enum_span);
-                        let enum_def_snippet = self.r.session.source_map()
+                        let enum_def_span = this.session.source_map().def_span(enum_span);
+                        let enum_def_snippet = this.session.source_map()
                             .span_to_snippet(enum_def_span).expect("snippet should exist");
                         // potentially need to strip extant `crate`/`pub(path)` for suggestion
                         let after_vis_index = enum_def_snippet.find("enum")
@@ -1406,7 +1406,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         let suggestion = format!("pub {}",
                                                  &enum_def_snippet[after_vis_index..]);
 
-                        self.r.session
+                        this.session
                             .diag_span_suggestion_once(&mut err,
                                                        DiagnosticMessageId::ErrorId(0),
                                                        enum_def_span,
@@ -1415,7 +1415,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         err.emit();
                 }
             }
-        }
+        });
 
         if reexports.len() > 0 {
             if let Some(def_id) = module.def_id() {
