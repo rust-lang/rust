@@ -551,7 +551,7 @@ impl MetaItem {
 impl MetaItemKind {
     pub fn tokens(&self, span: Span) -> TokenStream {
         match *self {
-            MetaItemKind::Word => TokenStream::empty(),
+            MetaItemKind::Word => TokenStream::default(),
             MetaItemKind::NameValue(ref lit) => {
                 let mut vec = vec![TokenTree::token(token::Eq, span).into()];
                 lit.tokens().append_to_tree_and_joint_vec(&mut vec);
