@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{DefWithBody, HasSource, ModuleSource};
-use ra_db::{FileId, SourceDatabase};
+use ra_db::{FileId, SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{AstNode, TextRange};
 
 use crate::db::RootDatabase;

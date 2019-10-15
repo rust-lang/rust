@@ -751,6 +751,7 @@ pub fn handle_document_highlight(
 
     Ok(Some(
         refs.into_iter()
+            .filter(|r| r.file_id == file_id)
             .map(|r| DocumentHighlight { range: r.range.conv_with(&line_index), kind: None })
             .collect(),
     ))
