@@ -19,7 +19,6 @@ use syntax_pos::{BytePos, Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
 
 use std::{iter, mem};
@@ -136,7 +135,7 @@ impl TokenTree {
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, RustcEncodable, RustcDecodable)]
 pub struct TokenStream(pub Lrc<Vec<TreeAndJoint>>);
 
 pub type TreeAndJoint = (TokenTree, IsJoint);
@@ -145,7 +144,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TokenStream, 8);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum IsJoint {
     Joint,
     NonJoint
@@ -457,18 +456,6 @@ impl Cursor {
 
     pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
         self.stream.0[self.index ..].get(n).map(|(tree, _)| tree.clone())
-    }
-}
-
-impl Encodable for TokenStream {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
-        self.trees().collect::<Vec<_>>().encode(encoder)
-    }
-}
-
-impl Decodable for TokenStream {
-    fn decode<D: Decoder>(decoder: &mut D) -> Result<TokenStream, D::Error> {
-        Vec::<TokenTree>::decode(decoder).map(|vec| vec.into_iter().collect())
     }
 }
 
