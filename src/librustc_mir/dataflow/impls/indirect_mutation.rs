@@ -104,25 +104,16 @@ impl<'tcx> TransferFunction<'_, '_, 'tcx> {
         kind: mir::BorrowKind,
         borrowed_place: &mir::Place<'tcx>,
     ) -> bool {
-        let borrowed_ty = borrowed_place.ty(self.body, self.tcx).ty;
-
-        // Zero-sized types cannot be mutated, since there is nothing inside to mutate.
-        //
-        // FIXME: For now, we only exempt arrays of length zero. We need to carefully
-        // consider the effects before extending this to all ZSTs.
-        if let ty::Array(_, len) = borrowed_ty.kind {
-            if len.try_eval_usize(self.tcx, self.param_env) == Some(0) {
-                return false;
-            }
-        }
-
         match kind {
             mir::BorrowKind::Mut { .. } => true,
 
             | mir::BorrowKind::Shared
             | mir::BorrowKind::Shallow
             | mir::BorrowKind::Unique
-            => !borrowed_ty.is_freeze(self.tcx, self.param_env, DUMMY_SP),
+            => !borrowed_place
+                .ty(self.body, self.tcx)
+                .ty
+                .is_freeze(self.tcx, self.param_env, DUMMY_SP),
         }
     }
 }
