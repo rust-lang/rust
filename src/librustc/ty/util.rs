@@ -1096,6 +1096,9 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
+        // Zero-length arrays never contain anything to drop.
+        ty::Array(_, len) if len.try_eval_usize(tcx, param_env) == Some(0) => false,
+
         // Structural recursion.
         ty::Array(ty, _) | ty::Slice(ty) => needs_drop(ty),
 
