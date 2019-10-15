@@ -7,7 +7,7 @@ LL |     drop(x);
    |     ^^^^^^^^ unreachable statement
    |
 note: lint level defined here
-  --> $DIR/never-assign-dead-code.rs:5:9
+  --> $DIR/never-assign-dead-code.rs:6:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
@@ -29,7 +29,7 @@ LL |     let x: ! = panic!("aah");
    |         ^ help: consider prefixing with an underscore: `_x`
    |
 note: lint level defined here
-  --> $DIR/never-assign-dead-code.rs:5:9
+  --> $DIR/never-assign-dead-code.rs:6:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^

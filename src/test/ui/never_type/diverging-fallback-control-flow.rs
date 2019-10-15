@@ -4,6 +4,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
+
 // Test various cases where we permit an unconstrained variable
 // to fallback based on control-flow.
 //

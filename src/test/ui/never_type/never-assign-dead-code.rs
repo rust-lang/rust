@@ -1,9 +1,9 @@
 // Test that an assignment of type ! makes the rest of the block dead code.
 
-#![feature(never_type)]
-// build-pass (FIXME(62277): could be check-pass?)
-#![warn(unused)]
+// check-pass
 
+#![feature(never_type)]
+#![warn(unused)]
 
 fn main() {
     let x: ! = panic!("aah"); //~ WARN unused
