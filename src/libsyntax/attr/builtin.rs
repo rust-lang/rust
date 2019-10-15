@@ -24,9 +24,9 @@ enum AttrError {
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
 #[derive(Clone, Copy)]
 pub struct AttributeTemplate {
-    crate word: bool,
-    crate list: Option<&'static str>,
-    crate name_value_str: Option<&'static str>,
+    pub word: bool,
+    pub list: Option<&'static str>,
+    pub name_value_str: Option<&'static str>,
 }
 
 impl AttributeTemplate {

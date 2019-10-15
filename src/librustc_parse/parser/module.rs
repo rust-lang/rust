@@ -2,11 +2,12 @@ use super::Parser;
 use super::item::ItemInfo;
 use super::diagnostics::Error;
 
-use crate::attr;
-use crate::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
-use crate::parse::{new_sub_parser_from_file, DirectoryOwnership};
-use crate::token::{self, TokenKind};
-use crate::source_map::{SourceMap, Span, DUMMY_SP, FileName};
+use crate::{new_sub_parser_from_file, DirectoryOwnership};
+
+use syntax::attr;
+use syntax::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
+use syntax::token::{self, TokenKind};
+use syntax::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 
 use syntax_pos::symbol::sym;
 use errors::PResult;

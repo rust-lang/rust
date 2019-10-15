@@ -6,7 +6,7 @@ use std::iter::once;
 use rustc_lexer::unescape::{EscapeError, Mode};
 use syntax_pos::{Span, BytePos};
 
-use crate::errors::{Handler, Applicability};
+use syntax::errors::{Handler, Applicability};
 
 pub(crate) fn emit_unescape_error(
     handler: &Handler,

@@ -29,6 +29,7 @@ extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_interface;
 extern crate rustc_metadata;
+extern crate rustc_parse;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate rustc_lexer;

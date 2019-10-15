@@ -6,11 +6,12 @@
 
 extern crate syntax;
 extern crate syntax_expand;
+extern crate rustc_parse;
 
+use rustc_parse::new_parser_from_file;
 use std::path::Path;
 use syntax::sess::ParseSess;
 use syntax::source_map::FilePathMapping;
-use syntax::parse::new_parser_from_file;
 use syntax_expand::config::process_configure_mod;
 
 #[path = "mod_dir_simple/test.rs"]

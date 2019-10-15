@@ -107,14 +107,14 @@ impl fmt::Display for Lit {
 
 impl LitKind {
     /// An English article for the literal token kind.
-    crate fn article(self) -> &'static str {
+    pub fn article(self) -> &'static str {
         match self {
             Integer | Err => "an",
             _ => "a",
         }
     }
 
-    crate fn descr(self) -> &'static str {
+    pub fn descr(self) -> &'static str {
         match self {
             Bool => panic!("literal token contains `Lit::Bool`"),
             Byte => "byte",
@@ -141,12 +141,12 @@ impl Lit {
     }
 }
 
-pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
+pub fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
     token_can_begin_expr(&ident_token)
 }
 
-pub(crate) fn token_can_begin_expr(ident_token: &Token) -> bool {
+pub fn token_can_begin_expr(ident_token: &Token) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     match ident_token.kind {
@@ -276,7 +276,7 @@ impl TokenKind {
 
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
-    crate fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
+    pub fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
         match *self {
             Comma => Some(vec![Dot, Lt, Semi]),
             Semi => Some(vec![Colon, Comma]),
@@ -291,7 +291,7 @@ impl Token {
     }
 
     /// Some token that will be thrown away later.
-    crate fn dummy() -> Self {
+    pub fn dummy() -> Self {
         Token::new(TokenKind::Whitespace, DUMMY_SP)
     }
 
@@ -305,7 +305,7 @@ impl Token {
         mem::replace(self, Token::dummy())
     }
 
-    crate fn is_op(&self) -> bool {
+    pub fn is_op(&self) -> bool {
         match self.kind {
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
             Ident(..) | Lifetime(..) | Interpolated(..) |
@@ -314,7 +314,7 @@ impl Token {
         }
     }
 
-    crate fn is_like_plus(&self) -> bool {
+    pub fn is_like_plus(&self) -> bool {
         match self.kind {
             BinOp(Plus) | BinOpEq(Plus) => true,
             _ => false,
@@ -377,7 +377,7 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of a const param.
-    crate fn can_begin_const_arg(&self) -> bool {
+    pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenDelim(Brace) => true,
             Interpolated(ref nt) => match **nt {
@@ -389,7 +389,7 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of a generic bound.
-    crate fn can_begin_bound(&self) -> bool {
+    pub fn can_begin_bound(&self) -> bool {
         self.is_path_start() || self.is_lifetime() || self.is_keyword(kw::For) ||
         self == &Question || self == &OpenDelim(Paren)
     }
@@ -446,13 +446,13 @@ impl Token {
     }
 
     /// Returns `true` if the token is a lifetime.
-    crate fn is_lifetime(&self) -> bool {
+    pub fn is_lifetime(&self) -> bool {
         self.lifetime().is_some()
     }
 
     /// Returns `true` if the token is a identifier whose name is the given
     /// string slice.
-    crate fn is_ident_named(&self, name: Symbol) -> bool {
+    pub fn is_ident_named(&self, name: Symbol) -> bool {
         self.ident().map_or(false, |(ident, _)| ident.name == name)
     }
 
@@ -469,7 +469,7 @@ impl Token {
     /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
-    crate fn is_whole_expr(&self) -> bool {
+    pub fn is_whole_expr(&self) -> bool {
         if let Interpolated(ref nt) = self.kind {
             if let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt {
                 return true;
@@ -480,16 +480,16 @@ impl Token {
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
-    crate fn is_mutability(&self) -> bool {
+    pub fn is_mutability(&self) -> bool {
         self.is_keyword(kw::Mut) ||
         self.is_keyword(kw::Const)
     }
 
-    crate fn is_qpath_start(&self) -> bool {
+    pub fn is_qpath_start(&self) -> bool {
         self == &Lt || self == &BinOp(Shl)
     }
 
-    crate fn is_path_start(&self) -> bool {
+    pub fn is_path_start(&self) -> bool {
         self == &ModSep || self.is_qpath_start() || self.is_path() ||
         self.is_path_segment_keyword() || self.is_ident() && !self.is_reserved_ident()
     }
@@ -499,23 +499,23 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
-    crate fn is_path_segment_keyword(&self) -> bool {
+    pub fn is_path_segment_keyword(&self) -> bool {
         self.is_non_raw_ident_where(ast::Ident::is_path_segment_keyword)
     }
 
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
-    crate fn is_special_ident(&self) -> bool {
+    pub fn is_special_ident(&self) -> bool {
         self.is_non_raw_ident_where(ast::Ident::is_special)
     }
 
     /// Returns `true` if the token is a keyword used in the language.
-    crate fn is_used_keyword(&self) -> bool {
+    pub fn is_used_keyword(&self) -> bool {
         self.is_non_raw_ident_where(ast::Ident::is_used_keyword)
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
-    crate fn is_unused_keyword(&self) -> bool {
+    pub fn is_unused_keyword(&self) -> bool {
         self.is_non_raw_ident_where(ast::Ident::is_unused_keyword)
     }
 
@@ -525,7 +525,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is the identifier `true` or `false`.
-    crate fn is_bool_lit(&self) -> bool {
+    pub fn is_bool_lit(&self) -> bool {
         self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
     }
 
@@ -537,7 +537,7 @@ impl Token {
         }
     }
 
-    crate fn glue(&self, joint: &Token) -> Option<Token> {
+    pub fn glue(&self, joint: &Token) -> Option<Token> {
         let kind = match self.kind {
             Eq => match joint.kind {
                 Eq => EqEq,

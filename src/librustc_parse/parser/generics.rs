@@ -1,9 +1,8 @@
 use super::Parser;
 
-use crate::ast::{self, WhereClause, GenericParam, GenericParamKind, GenericBounds, Attribute};
-use crate::token;
-use crate::source_map::DUMMY_SP;
-
+use syntax::ast::{self, WhereClause, GenericParam, GenericParamKind, GenericBounds, Attribute};
+use syntax::token;
+use syntax::source_map::DUMMY_SP;
 use syntax_pos::symbol::{kw, sym};
 
 use errors::PResult;

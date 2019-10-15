@@ -69,7 +69,7 @@ pub enum Fixity {
 
 impl AssocOp {
     /// Creates a new AssocOP from a token
-    crate fn from_token(t: &Token) -> Option<AssocOp> {
+    pub fn from_token(t: &Token) -> Option<AssocOp> {
         use AssocOp::*;
         match t.kind {
             token::BinOpEq(k) => Some(AssignOp(k)),
@@ -358,7 +358,7 @@ impl ExprPrecedence {
 }
 
 /// In `let p = e`, operators with precedence `<=` this one requires parenthesis in `e`.
-crate fn prec_let_scrutinee_needs_par() -> usize {
+pub fn prec_let_scrutinee_needs_par() -> usize {
     AssocOp::LAnd.precedence()
 }
 

@@ -13,6 +13,7 @@ log = "0.4"
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_parse = { path = "../librustc_parse" }
 serde_json = "1"
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }

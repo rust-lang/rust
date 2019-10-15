@@ -7,15 +7,15 @@
 // or type checking or some other kind of complex analysis.
 
 use std::mem;
-use syntax::print::pprust;
 use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_parse::validate_attr;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
 use syntax::feature_gate::is_builtin_attr;
-use syntax::parse::validate_attr;
+use syntax::print::pprust;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};

@@ -1,18 +1,18 @@
 use crate::config::process_configure_mod;
 
 use rustc_data_structures::sync::Lrc;
+use rustc_parse::lexer::StringReader;
 use syntax::token::{self, Token, TokenKind};
 use syntax::sess::ParseSess;
 use syntax::source_map::{SourceMap, FilePathMapping};
 use syntax::util::comments::is_doc_comment;
 use syntax::with_default_globals;
-use syntax::parse::lexer::StringReader;
 use syntax_pos::symbol::Symbol;
+use syntax_pos::{BytePos, Span};
 
 use errors::{Handler, emitter::EmitterWriter};
 use std::io;
 use std::path::PathBuf;
-use syntax_pos::{BytePos, Span};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
     let emitter = EmitterWriter::new(

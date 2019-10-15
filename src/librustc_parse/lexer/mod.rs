@@ -1,7 +1,7 @@
-use crate::token::{self, Token, TokenKind};
-use crate::sess::ParseSess;
-use crate::symbol::{sym, Symbol};
-use crate::util::comments;
+use syntax::token::{self, Token, TokenKind};
+use syntax::sess::ParseSess;
+use syntax::symbol::{sym, Symbol};
+use syntax::util::comments;
 
 use errors::{FatalError, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span};

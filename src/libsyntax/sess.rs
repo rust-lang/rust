@@ -71,14 +71,14 @@ impl GatedSpans {
 /// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: Handler,
-    crate unstable_features: UnstableFeatures,
+    pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub edition: Edition,
     pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// Used to determine and report recursive module inclusions.
-    pub(super) included_mod_stack: Lock<Vec<PathBuf>>,
+    pub included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the

@@ -1,5 +1,5 @@
 use errors::Applicability;
-use syntax::parse::lexer::{StringReader as Lexer};
+use rustc_parse::lexer::{StringReader as Lexer};
 use syntax::token;
 use syntax::sess::ParseSess;
 use syntax::source_map::FilePathMapping;

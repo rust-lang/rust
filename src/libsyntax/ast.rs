@@ -537,7 +537,7 @@ pub struct Pat {
 impl Pat {
     /// Attempt reparsing the pattern as a type.
     /// This is intended for use by diagnostics.
-    pub(super) fn to_ty(&self) -> Option<P<Ty>> {
+    pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
@@ -1031,7 +1031,7 @@ impl Expr {
         }
     }
 
-    fn to_bound(&self) -> Option<GenericBound> {
+    pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
                 PolyTraitRef::new(Vec::new(), path.clone(), self.span),
@@ -1042,7 +1042,7 @@ impl Expr {
     }
 
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
-    pub(super) fn to_ty(&self) -> Option<P<Ty>> {
+    pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
             // Trivial conversions.
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),

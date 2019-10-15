@@ -1,6 +1,7 @@
 use crate::config::process_configure_mod;
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 
+use rustc_parse::new_parser_from_source_str;
 use syntax::ast::{self, Name, PatKind};
 use syntax::attr::first_attr_value_str_by_name;
 use syntax::sess::ParseSess;
@@ -12,7 +13,6 @@ use syntax::symbol::{kw, sym};
 use syntax::tokenstream::{DelimSpan, TokenTree, TokenStream};
 use syntax::visit;
 use syntax::with_default_globals;
-use syntax::parse::new_parser_from_source_str;
 use syntax_pos::{Span, BytePos, Pos, FileName};
 use errors::PResult;
 

@@ -399,7 +399,8 @@ pub fn make_test(s: &str,
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
-        use crate::syntax::{parse, sess::ParseSess, source_map::FilePathMapping};
+        use crate::syntax::{sess::ParseSess, source_map::FilePathMapping};
+        use rustc_parse::maybe_new_parser_from_source_str;
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
@@ -418,7 +419,7 @@ pub fn make_test(s: &str,
         let mut found_extern_crate = cratename.is_none();
         let mut found_macro = false;
 
-        let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
             Ok(p) => p,
             Err(errs) => {
                 for mut err in errs {

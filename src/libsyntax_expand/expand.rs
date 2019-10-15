@@ -6,15 +6,15 @@ use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::config::StripUnconfigured;
 use crate::configure;
 
+use rustc_parse::DirectoryOwnership;
+use rustc_parse::parser::Parser;
+use rustc_parse::validate_attr;
 use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
 use syntax::ast::{MacStmtStyle, StmtKind, ItemKind};
 use syntax::attr::{self, HasAttrs};
 use syntax::source_map::respan;
 use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use syntax::mut_visit::*;
-use syntax::parse::DirectoryOwnership;
-use syntax::parse::parser::Parser;
-use syntax::parse::validate_attr;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;

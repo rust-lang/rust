@@ -1,14 +1,13 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use crate::ast::{self, Attribute, AttrKind, Ident, MetaItem};
-use crate::attr::{AttributeTemplate, mk_name_value_item_str};
-use crate::sess::ParseSess;
-use crate::feature_gate::BUILTIN_ATTRIBUTE_MAP;
-use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::token;
-use crate::tokenstream::TokenTree;
-
 use errors::{PResult, Applicability};
+use syntax::ast::{self, Attribute, AttrKind, Ident, MetaItem};
+use syntax::attr::{AttributeTemplate, mk_name_value_item_str};
+use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax::feature_gate::BUILTIN_ATTRIBUTE_MAP;
+use syntax::token;
+use syntax::tokenstream::TokenTree;
+use syntax::sess::ParseSess;
 use syntax_pos::{Symbol, sym};
 
 pub fn check_meta(sess: &ParseSess, attr: &Attribute) {

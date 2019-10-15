@@ -277,7 +277,7 @@ impl MetaItem {
 }
 
 impl AttrItem {
-    crate fn meta(&self, span: Span) -> Option<MetaItem> {
+    pub fn meta(&self, span: Span) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             path: self.path.clone(),

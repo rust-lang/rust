@@ -26,8 +26,6 @@ pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 
-pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
-
 #[macro_export]
 macro_rules! unwrap_or {
     ($opt:expr, $default:expr) => {
@@ -82,10 +80,10 @@ pub mod diagnostics {
 pub mod error_codes;
 
 pub mod util {
-    crate mod classify;
+    pub mod classify;
     pub mod comments;
     pub mod lev_distance;
-    crate mod literal;
+    pub mod literal;
     pub mod node_count;
     pub mod parser;
     pub mod map_in_place;
@@ -100,7 +98,6 @@ pub mod source_map;
 pub mod entry;
 pub mod feature_gate;
 pub mod mut_visit;
-pub mod parse;
 pub mod ptr;
 pub mod show_span;
 pub use syntax_pos::edition;

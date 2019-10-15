@@ -3,9 +3,9 @@ use syntax_pos::Span;
 
 use super::{StringReader, UnmatchedBrace};
 
-use crate::print::pprust::token_to_string;
-use crate::token::{self, Token};
-use crate::tokenstream::{DelimSpan, IsJoint::{self, *}, TokenStream, TokenTree, TreeAndJoint};
+use syntax::print::pprust::token_to_string;
+use syntax::token::{self, Token};
+use syntax::tokenstream::{DelimSpan, IsJoint::{self, *}, TokenStream, TokenTree, TreeAndJoint};
 
 use errors::PResult;
 

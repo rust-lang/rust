@@ -1,14 +1,16 @@
 use super::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType, SeqSep, Parser};
-use crate::ast::{
+
+use syntax::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::token::{self, TokenKind, token_can_begin_expr};
-use crate::print::pprust;
-use crate::ptr::P;
-use crate::symbol::{kw, sym};
-use crate::ThinVec;
-use crate::util::parser::AssocOp;
+use syntax::token::{self, TokenKind, token_can_begin_expr};
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::symbol::{kw, sym};
+use syntax::ThinVec;
+use syntax::util::parser::AssocOp;
+use syntax::struct_span_err;
 
 use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
 use rustc_data_structures::fx::FxHashSet;

@@ -1,13 +1,13 @@
-use syntax_expand::panictry;
-use syntax_expand::base::{self, *};
+use rustc_parse::{self, DirectoryOwnership, new_sub_parser_from_file, parser::Parser};
 use syntax::ast;
-use syntax::parse::{self, DirectoryOwnership};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax_expand::panictry;
+use syntax_expand::base::{self, *};
 
 use smallvec::SmallVec;
 use syntax_pos::{self, Pos, Span};
@@ -85,10 +85,10 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         },
     };
     let directory_ownership = DirectoryOwnership::Owned { relative: None };
-    let p = parse::new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
+    let p = new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
 
     struct ExpandResult<'a> {
-        p: parse::parser::Parser<'a>,
+        p: Parser<'a>,
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {

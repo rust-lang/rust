@@ -1,15 +1,15 @@
 use crate::expand::{self, AstFragment, Invocation};
 
+use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
 use syntax::ast::{self, NodeId, Attribute, Name, PatKind};
 use syntax::attr::{self, HasAttrs, Stability, Deprecation};
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::mut_visit::{self, MutVisitor};
-use syntax::parse::{self, parser, DirectoryOwnership};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Ident, Symbol};
-use syntax::{ThinVec, MACRO_ARGUMENTS};
+use syntax::ThinVec;
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
@@ -18,9 +18,9 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
 use syntax_pos::hygiene::{AstPass, ExpnId, ExpnData, ExpnKind};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
+
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -922,7 +922,7 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
+        rustc_parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a ParseSess { self.parse_sess }

@@ -7,9 +7,13 @@
 
 extern crate syntax;
 extern crate syntax_expand;
+extern crate rustc_parse;
 extern crate rustc_errors;
 
 use rustc_errors::PResult;
+use rustc_parse::parser::attr::*;
+use rustc_parse::new_parser_from_source_str;
+use rustc_parse::parser::Parser;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
@@ -17,9 +21,6 @@ use syntax::sess::ParseSess;
 use syntax::source_map::{FilePathMapping, FileName};
 use syntax::ptr::P;
 use syntax::print::pprust;
-use syntax::parse::parser::attr::*;
-use syntax::parse::new_parser_from_source_str;
-use syntax::parse::parser::Parser;
 use syntax::token;
 use syntax_expand::config::process_configure_mod;
 use std::fmt;

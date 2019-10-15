@@ -1,3 +1,4 @@
+use rustc_parse::validate_attr;
 use syntax::attr::HasAttrs;
 use syntax::feature_gate::{
     feature_err,
@@ -10,11 +11,10 @@ use syntax::attr;
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax::mut_visit::*;
-use syntax::parse::{self, validate_attr};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
-use syntax::symbol::sym;
 use syntax::util::map_in_place::MapInPlace;
+use syntax_pos::symbol::sym;
 
 use errors::Applicability;
 use smallvec::SmallVec;
@@ -113,7 +113,7 @@ impl<'a> StripUnconfigured<'a> {
             return vec![];
         }
 
-        let res = parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
+        let res = rustc_parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
         let (cfg_predicate, expanded_attrs) = match res {
             Ok(result) => result,
             Err(mut e) => {

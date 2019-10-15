@@ -2,23 +2,24 @@ use super::{Parser, PathStyle};
 use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
-use crate::ptr::P;
-use crate::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
-use crate::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
-use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
-use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
-use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
-use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
-use crate::parse::token;
-use crate::tokenstream::{TokenTree, TokenStream};
-use crate::symbol::{kw, sym};
-use crate::source_map::{self, respan, Span};
-use crate::ThinVec;
+
+use syntax::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
+use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
+use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
+use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
+use syntax::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
+use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
+use syntax::ptr::P;
+use syntax::ThinVec;
+use syntax::token;
+use syntax::tokenstream::{TokenTree, TokenStream};
+use syntax::source_map::{self, respan, Span};
+use syntax_pos::BytePos;
+use syntax_pos::symbol::{kw, sym};
 
 use log::debug;
 use std::mem;
 use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
-use syntax_pos::BytePos;
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]

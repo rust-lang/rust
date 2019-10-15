@@ -1,10 +1,10 @@
 use crate::config::process_configure_mod;
+use rustc_parse::{source_file_to_stream, new_parser_from_source_str, parser::Parser};
 use syntax::ast;
 use syntax::tokenstream::TokenStream;
 use syntax::sess::ParseSess;
 use syntax::source_map::{SourceMap, FilePathMapping};
 use syntax::with_default_globals;
-use syntax::parse::{source_file_to_stream, new_parser_from_source_str, parser::Parser};
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use errors::emitter::EmitterWriter;

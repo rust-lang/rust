@@ -2,24 +2,23 @@ use super::{Parser, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
+use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use crate::ast::{
+use syntax::ast::{
     self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
     Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind,
     FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
 };
-use crate::maybe_recover_from_interpolated_ty_qpath;
-use crate::token::{self, Token, TokenKind};
-use crate::print::pprust;
-use crate::ptr::P;
-use crate::source_map::{self, Span};
-use crate::util::classify;
-use crate::util::literal::LitError;
-use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
-
-use errors::{PResult, Applicability};
+use syntax::token::{self, Token, TokenKind};
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::source_map::{self, Span};
+use syntax::util::classify;
+use syntax::util::literal::LitError;
+use syntax::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 use syntax_pos::symbol::{kw, sym};
 use syntax_pos::Symbol;
+use errors::{PResult, Applicability};
 use std::mem;
 use rustc_data_structures::thin_vec::ThinVec;
 
