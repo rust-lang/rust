@@ -1,7 +1,13 @@
 // aux-build:option_helpers.rs
 // compile-flags: --edition 2018
 
-#![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::option_unwrap_used,
+    clippy::option_expect_used,
+    clippy::result_expect_used
+)]
 #![allow(
     clippy::blacklisted_name,
     clippy::default_trait_access,

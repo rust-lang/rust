@@ -76,7 +76,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `unreachable!`.
     ///
-    /// **Why is this bad?** This macro can cause cause code to panics
+    /// **Why is this bad?** This macro can cause code to panic
     ///
     /// **Known problems:** None.
     ///
