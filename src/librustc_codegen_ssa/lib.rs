@@ -22,9 +22,9 @@
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use rustc::dep_graph::WorkProduct;
-use rustc::session::config::{OutputFilenames, OutputType};
+use rustc::session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc::middle::lang_items::LangItem;
 use rustc::hir::def_id::CrateNum;
 use rustc::ty::query::Providers;
@@ -61,6 +61,7 @@ pub struct ModuleCodegen<M> {
 
 pub const METADATA_FILENAME: &str = "rust.metadata.bin";
 pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
+
 
 impl<M> ModuleCodegen<M> {
     pub fn into_compiled_module(self,
@@ -165,4 +166,23 @@ pub fn provide(providers: &mut Providers<'_>) {
 pub fn provide_extern(providers: &mut Providers<'_>) {
     crate::back::symbol_export::provide_extern(providers);
     crate::base::provide_both(providers);
+}
+
+/// Checks if the given filename ends with the `.rcgu.o` extension that `rustc`
+/// uses for the object files it generates.
+pub fn looks_like_rust_object_file(filename: &str) -> bool {
+    let path = Path::new(filename);
+    let ext = path.extension().and_then(|s| s.to_str());
+    if ext != Some(OutputType::Object.extension()) {
+        // The file name does not end with ".o", so it can't be an object file.
+        return false
+    }
+
+    // Strip the ".o" at the end
+    let ext2 = path.file_stem()
+        .and_then(|s| Path::new(s).extension())
+        .and_then(|s| s.to_str());
+
+    // Check if the "inner" extension
+    ext2 == Some(RUST_CGU_EXT)
 }
