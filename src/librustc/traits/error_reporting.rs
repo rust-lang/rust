@@ -977,20 +977,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let mut suggest_restriction = |generics: &hir::Generics, msg| {
-            err.span_suggestion(
-                generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
-                &format!("consider further restricting {}", msg),
-                format!(
-                    "{} {} ",
-                    if !generics.where_clause.predicates.is_empty() {
-                        ","
-                    } else {
-                        " where"
-                    },
-                    trait_ref.to_predicate(),
-                ),
-                Applicability::MachineApplicable,
-            );
+            let span = generics.where_clause.span_for_predicates_or_empty_place();
+            if !span.from_expansion() && span.desugaring_kind().is_none() {
+                err.span_suggestion(
+                    generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
+                    &format!("consider further restricting {}", msg),
+                    format!(
+                        "{} {} ",
+                        if !generics.where_clause.predicates.is_empty() {
+                            ","
+                        } else {
+                            " where"
+                        },
+                        trait_ref.to_predicate(),
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            }
         };
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
