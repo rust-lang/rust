@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 324] = [
+pub const ALL_LINTS: [Lint; 325] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2085,6 +2085,13 @@ pub const ALL_LINTS: [Lint; 324] = [
         desc: "unused labels",
         deprecation: None,
         module: "unused_label",
+    },
+    Lint {
+        name: "unused_self",
+        group: "pedantic",
+        desc: "methods that contain a `self` argument but don\'t use it",
+        deprecation: None,
+        module: "unused_self",
     },
     Lint {
         name: "unused_unit",

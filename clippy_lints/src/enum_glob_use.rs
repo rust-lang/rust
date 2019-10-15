@@ -32,20 +32,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
         let map = cx.tcx.hir();
         // only check top level `use` statements
         for item in &m.item_ids {
-            self.lint_item(cx, map.expect_item(item.id));
+            lint_item(cx, map.expect_item(item.id));
         }
     }
 }
 
-impl EnumGlobUse {
-    fn lint_item(self, cx: &LateContext<'_, '_>, item: &Item) {
-        if item.vis.node.is_pub() {
-            return; // re-exports are fine
-        }
-        if let ItemKind::Use(ref path, UseKind::Glob) = item.kind {
-            if let Res::Def(DefKind::Enum, _) = path.res {
-                span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
-            }
+fn lint_item(cx: &LateContext<'_, '_>, item: &Item) {
+    if item.vis.node.is_pub() {
+        return; // re-exports are fine
+    }
+    if let ItemKind::Use(ref path, UseKind::Glob) = item.kind {
+        if let Res::Def(DefKind::Enum, _) = path.res {
+            span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
         }
     }
 }

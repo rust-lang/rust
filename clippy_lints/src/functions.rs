@@ -222,7 +222,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
         }
 
-        self.check_raw_ptr(cx, unsafety, decl, body, hir_id);
+        Self::check_raw_ptr(cx, unsafety, decl, body, hir_id);
         self.check_line_number(cx, span, body);
     }
 
@@ -282,7 +282,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             }
             if let hir::TraitMethod::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
-                self.check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
+                Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
                 if attr.is_none() && cx.access_levels.is_exported(item.hir_id) {
                     check_must_use_candidate(
@@ -368,7 +368,6 @@ impl<'a, 'tcx> Functions {
     }
 
     fn check_raw_ptr(
-        self,
         cx: &LateContext<'a, 'tcx>,
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl,

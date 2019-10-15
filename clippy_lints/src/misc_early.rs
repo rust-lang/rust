@@ -437,7 +437,7 @@ impl EarlyLintPass for MiscEarlyLints {
                     );
                 }
             },
-            ExprKind::Lit(ref lit) => self.check_lit(cx, lit),
+            ExprKind::Lit(ref lit) => Self::check_lit(cx, lit),
             _ => (),
         }
     }
@@ -469,7 +469,7 @@ impl EarlyLintPass for MiscEarlyLints {
 }
 
 impl MiscEarlyLints {
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
         // We test if first character in snippet is a number, because the snippet could be an expansion
         // from a built-in macro like `line!()` or a proc-macro like `#[wasm_bindgen]`.
         // Note that this check also covers special case that `line!()` is eagerly expanded by compiler.
