@@ -777,7 +777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 "items from traits can only be used if the trait is implemented and in scope"
             });
-            let mut msg = format!(
+            let message = |action| format!(
                 "the following {traits_define} an item `{name}`, perhaps you need to {action} \
                  {one_of_them}:",
                 traits_define = if candidates.len() == 1 {
@@ -785,11 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     "traits define"
                 },
-                action = if let Some(param) = param_type {
-                    format!("restrict type parameter `{}` with", param)
-                } else {
-                    "implement".to_string()
-                },
+                action = action,
                 one_of_them = if candidates.len() == 1 {
                     "it"
                 } else {
@@ -809,50 +805,81 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.
-                        let mut has_bounds = None;
-                        let mut impl_trait = false;
-                        if let Node::GenericParam(ref param) = hir.get(id) {
-                            let kind = &param.kind;
-                            if let hir::GenericParamKind::Type { synthetic: Some(_), .. } = kind {
-                                // We've found `fn foo(x: impl Trait)` instead of
-                                // `fn foo<T>(x: T)`. We want to suggest the correct
-                                // `fn foo(x: impl Trait + TraitBound)` instead of
-                                // `fn foo<T: TraitBound>(x: T)`. (See #63706.)
-                                impl_trait = true;
-                                has_bounds = param.bounds.get(1);
-                            } else {
-                                has_bounds = param.bounds.get(0);
+                        match hir.get(id) {
+                            Node::GenericParam(ref param) => {
+                                let mut impl_trait = false;
+                                let has_bounds = if let hir::GenericParamKind::Type {
+                                    synthetic: Some(_), ..
+                                } = &param.kind {
+                                    // We've found `fn foo(x: impl Trait)` instead of
+                                    // `fn foo<T>(x: T)`. We want to suggest the correct
+                                    // `fn foo(x: impl Trait + TraitBound)` instead of
+                                    // `fn foo<T: TraitBound>(x: T)`. (#63706)
+                                    impl_trait = true;
+                                    param.bounds.get(1)
+                                } else {
+                                    param.bounds.get(0)
+                                };
+                                let sp = hir.span(id);
+                                let sp = if let Some(first_bound) = has_bounds {
+                                    // `sp` only covers `T`, change it so that it covers
+                                    // `T:` when appropriate
+                                    sp.until(first_bound.span())
+                                } else {
+                                    sp
+                                };
+                                // FIXME: contrast `t.def_id` against `param.bounds` to not suggest
+                                // traits already there. That can happen when the cause is that
+                                // we're in a const scope or associated function used as a method.
+                                err.span_suggestions(
+                                    sp,
+                                    &message(format!(
+                                        "restrict type parameter `{}` with",
+                                        param.name.ident().as_str(),
+                                    )),
+                                    candidates.iter().map(|t| format!(
+                                        "{}{} {}{}",
+                                        param.name.ident().as_str(),
+                                        if impl_trait { " +" } else { ":" },
+                                        self.tcx.def_path_str(t.def_id),
+                                        if has_bounds.is_some() { " + "} else { "" },
+                                    )),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                suggested = true;
                             }
+                            Node::Item(hir::Item {
+                                kind: hir::ItemKind::Trait(.., bounds, _), ident, ..
+                            }) => {
+                                let (sp, sep, article) = if bounds.is_empty() {
+                                    (ident.span.shrink_to_hi(), ":", "a")
+                                } else {
+                                    (bounds.last().unwrap().span().shrink_to_hi(), " +", "another")
+                                };
+                                err.span_suggestions(
+                                    sp,
+                                    &message(format!("add {} supertrait for", article)),
+                                    candidates.iter().map(|t| format!(
+                                        "{} {}",
+                                        sep,
+                                        self.tcx.def_path_str(t.def_id),
+                                    )),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                suggested = true;
+                            }
+                            _ => {}
                         }
-                        let sp = hir.span(id);
-                        // `sp` only covers `T`, change it so that it covers `T:` when appropriate.
-                        let sp = if let Some(first_bound) = has_bounds {
-                            sp.until(first_bound.span())
-                        } else {
-                            sp
-                        };
-
-                        // FIXME: contrast `t.def_id` against `param.bounds` to not suggest traits
-                        // already there. That can happen when the cause is that we're in a const
-                        // scope or associated function used as a method.
-                        err.span_suggestions(
-                            sp,
-                            &msg[..],
-                            candidates.iter().map(|t| format!(
-                                "{}{} {}{}",
-                                param,
-                                if impl_trait { " +" } else { ":" },
-                                self.tcx.def_path_str(t.def_id),
-                                if has_bounds.is_some() { " + " } else { "" },
-                            )),
-                            Applicability::MaybeIncorrect,
-                        );
-                        suggested = true;
                     }
                 };
             }
 
             if !suggested {
+                let mut msg = message(if let Some(param) = param_type {
+                    format!("restrict type parameter `{}` with", param)
+                } else {
+                    "implement".to_string()
+                });
                 for (i, trait_info) in candidates.iter().enumerate() {
                     msg.push_str(&format!(
                         "\ncandidate #{}: `{}`",
