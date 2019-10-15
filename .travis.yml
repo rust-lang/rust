@@ -91,7 +91,7 @@ matrix:
     - os: osx
     - os: windows
 
-script:
+before_script:
   - |
     if [ "$TRAVIS_BRANCH" == "auto" ] || [ "$TRAVIS_BRANCH" == "try" ]; then
       pr=$(echo $TRAVIS_COMMIT_MESSAGE | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
@@ -107,13 +107,16 @@ script:
       fi
     fi
   - |
-      rm rust-toolchain
-      ./setup-toolchain.sh
-      if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-        export PATH=$PATH:$(rustc --print sysroot)/bin
-      else
-        export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
-      fi
+    rm rust-toolchain
+    ./setup-toolchain.sh
+  - |
+    if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+      export PATH=$PATH:$(rustc --print sysroot)/bin
+    else
+      export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
+    fi
+
+script:
   - |
     if [ -z ${INTEGRATION} ]; then
       travis_wait 30 ./ci/base-tests.sh && sleep 5
@@ -121,14 +124,14 @@ script:
       ./ci/integration-tests.sh && sleep 5
     fi
 
-after_success: |
-  #!/bin/bash
-  if [ "$TRAVIS_OS_NAME" == "linux" ]; then
-    set -ex
-    if [ -z ${INTEGRATION} ]; then
-      ./.github/deploy.sh
-    else
-      echo "Not deploying, because we're in an integration test run"
+after_success:
+  - |
+    if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      set -e
+      if [ -z ${INTEGRATION} ]; then
+        ./.github/deploy.sh
+      else
+        echo "Not deploying, because we're in an integration test run"
+      fi
+      set +e
     fi
-    set +e
-  fi
