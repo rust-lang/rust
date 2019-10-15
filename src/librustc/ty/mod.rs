@@ -701,6 +701,13 @@ impl<T> Deref for List<T> {
     type Target = [T];
     #[inline(always)]
     fn deref(&self) -> &[T] {
+        self.as_ref()
+    }
+}
+
+impl<T> AsRef<[T]> for List<T> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[T] {
         unsafe {
             slice::from_raw_parts(self.data.as_ptr(), self.len)
         }
