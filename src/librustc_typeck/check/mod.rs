@@ -2269,7 +2269,7 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
 
 fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &QPath) {
     span_err!(tcx.sess, span, E0533,
-              "expected unit struct/variant or constant, found {} `{}`",
+              "expected unit struct, unit variant or constant, found {} `{}`",
               res.descr(),
               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
 }

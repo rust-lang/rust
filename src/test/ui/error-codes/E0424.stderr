@@ -7,7 +7,7 @@ LL | |         self.bar();
 LL | |     }
    | |_____- this function doesn't have a `self` parameter
 
-error[E0424]: expected unit struct/variant or constant, found module `self`
+error[E0424]: expected unit struct, unit variant or constant, found module `self`
   --> $DIR/E0424.rs:12:9
    |
 LL | / fn main () {

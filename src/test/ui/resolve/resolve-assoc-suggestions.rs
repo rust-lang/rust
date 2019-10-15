@@ -16,21 +16,21 @@ impl Tr for S {
         let _: field;
         //~^ ERROR cannot find type `field`
         let field(..);
-        //~^ ERROR cannot find tuple struct/variant `field`
+        //~^ ERROR cannot find tuple struct or tuple variant `field`
         field;
         //~^ ERROR cannot find value `field`
 
         let _: Type;
         //~^ ERROR cannot find type `Type`
         let Type(..);
-        //~^ ERROR cannot find tuple struct/variant `Type`
+        //~^ ERROR cannot find tuple struct or tuple variant `Type`
         Type;
         //~^ ERROR cannot find value `Type`
 
         let _: method;
         //~^ ERROR cannot find type `method`
         let method(..);
-        //~^ ERROR cannot find tuple struct/variant `method`
+        //~^ ERROR cannot find tuple struct or tuple variant `method`
         method;
         //~^ ERROR cannot find value `method`
     }

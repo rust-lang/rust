@@ -1,4 +1,4 @@
-error[E0423]: expected function, found enum `Option`
+error[E0423]: expected function, tuple struct or tuple variant, found enum `Option`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:19:13
    |
 LL |     let x = Option(1);
@@ -11,7 +11,7 @@ LL |     let x = std::option::Option::None(1);
 LL |     let x = std::option::Option::Some(1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0532]: expected tuple struct/variant, found enum `Option`
+error[E0532]: expected tuple struct or tuple variant, found enum `Option`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:21:12
    |
 LL |     if let Option(_) = x {
@@ -24,7 +24,7 @@ LL |     if let std::option::Option::None(_) = x {
 LL |     if let std::option::Option::Some(_) = x {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0532]: expected tuple struct/variant, found enum `Example`
+error[E0532]: expected tuple struct or tuple variant, found enum `Example`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:27:12
    |
 LL |     if let Example(_) = y {
@@ -37,13 +37,13 @@ LL |     if let Example::Ex(_) = y {
 LL |     if let Example::NotEx(_) = y {
    |            ^^^^^^^^^^^^^^
 
-error[E0423]: expected function, found enum `Void`
+error[E0423]: expected function, tuple struct or tuple variant, found enum `Void`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:31:13
    |
 LL |     let y = Void();
    |             ^^^^
 
-error[E0423]: expected function, found enum `ManyVariants`
+error[E0423]: expected function, tuple struct or tuple variant, found enum `ManyVariants`
   --> $DIR/issue-43871-enum-instead-of-variant.rs:33:13
    |
 LL |     let z = ManyVariants();

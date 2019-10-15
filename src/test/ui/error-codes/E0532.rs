@@ -3,7 +3,7 @@ fn main() {
 
     match SomeStruct(value) {
         StructConst1(_) => { },
-        //~^ ERROR expected tuple struct/variant, found constant `StructConst1`
+        //~^ ERROR expected tuple struct or tuple variant, found constant `StructConst1`
         _ => { },
     }
 

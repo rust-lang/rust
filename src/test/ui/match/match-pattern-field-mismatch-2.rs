@@ -10,7 +10,7 @@ fn main() {
           Color::Rgb(_, _, _) => { }
           Color::Cmyk(_, _, _, _) => { }
           Color::NoColor(_) => { }
-          //~^ ERROR expected tuple struct/variant, found unit variant `Color::NoColor`
+          //~^ ERROR expected tuple struct or tuple variant, found unit variant `Color::NoColor`
         }
     }
 }

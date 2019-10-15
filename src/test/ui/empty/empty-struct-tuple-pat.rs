@@ -27,11 +27,11 @@ fn main() {
 
     match e4 {
         E::Empty4 => ()
-        //~^ ERROR expected unit struct/variant or constant, found tuple variant `E::Empty4`
+        //~^ ERROR expected unit struct, unit variant or constant, found tuple variant `E::Empty4`
     }
     match xe5 {
         XE::XEmpty5 => (),
-        //~^ ERROR expected unit struct/variant or constant, found tuple variant `XE::XEmpty5`
+        //~^ ERROR expected unit struct, unit variant or constant, found tuple variant `XE::XEmpty5`
         _ => {},
     }
 }

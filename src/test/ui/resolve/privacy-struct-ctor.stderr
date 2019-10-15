@@ -1,6 +1,9 @@
 error[E0423]: expected value, found struct `Z`
   --> $DIR/privacy-struct-ctor.rs:20:9
    |
+LL |     pub struct S(u8);
+   |     ----------------- similarly named tuple struct `S` defined here
+...
 LL |         Z;
    |         ^
    |         |

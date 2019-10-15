@@ -60,7 +60,7 @@ error: cannot find macro `Self` in this scope
 LL |         Self!() => (),
    |         ^^^^
 
-error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
+error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
   --> $DIR/self_type_keyword.rs:16:13
    |
 LL |         mut Self => (),

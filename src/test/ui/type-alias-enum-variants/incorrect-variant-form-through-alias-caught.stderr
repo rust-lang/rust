@@ -1,16 +1,16 @@
-error[E0533]: expected unit struct/variant or constant, found struct variant `<Alias>::Braced`
+error[E0533]: expected unit struct, unit variant or constant, found struct variant `<Alias>::Braced`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:10:5
    |
 LL |     Alias::Braced;
    |     ^^^^^^^^^^^^^
 
-error[E0533]: expected unit struct/variant or constant, found struct variant `<Alias>::Braced`
+error[E0533]: expected unit struct, unit variant or constant, found struct variant `<Alias>::Braced`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:12:9
    |
 LL |     let Alias::Braced = panic!();
    |         ^^^^^^^^^^^^^
 
-error[E0164]: expected tuple struct/variant, found struct variant `<Alias>::Braced`
+error[E0164]: expected tuple struct or tuple variant, found struct variant `<Alias>::Braced`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:14:9
    |
 LL |     let Alias::Braced(..) = panic!();
@@ -32,7 +32,7 @@ help: `<Alias>::Unit` is a unit variant, you need to write it without the parent
 LL |     <Alias>::Unit;
    |     ^^^^^^^^^^^^^
 
-error[E0164]: expected tuple struct/variant, found unit variant `<Alias>::Unit`
+error[E0164]: expected tuple struct or tuple variant, found unit variant `<Alias>::Unit`
   --> $DIR/incorrect-variant-form-through-alias-caught.rs:19:9
    |
 LL |     let Alias::Unit() = panic!();

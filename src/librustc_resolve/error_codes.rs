@@ -974,7 +974,7 @@ function:
 struct Foo { a: bool };
 
 let f = Foo();
-// error: expected function, found `Foo`
+// error: expected function, tuple struct or tuple variant, found `Foo`
 // `Foo` is a struct name, but this expression uses it like a function name
 ```
 
@@ -992,7 +992,8 @@ yield this error:
 
 ```compile_fail,E0423
 println("");
-// error: expected function, found macro `println`
+// error: expected function, tuple struct or tuple variant,
+// found macro `println`
 // did you mean `println!(...)`? (notice the trailing `!`)
 ```
 
@@ -1592,7 +1593,7 @@ enum State {
 
 fn print_on_failure(state: &State) {
     match *state {
-        // error: expected unit struct/variant or constant, found tuple
+        // error: expected unit struct, unit variant or constant, found tuple
         //        variant `State::Failed`
         State::Failed => println!("Failed"),
         _ => ()

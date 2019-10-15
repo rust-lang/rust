@@ -17,13 +17,13 @@ pub mod foo1 {
 fn test_single1() {
     use foo1::Bar;
 
-    Bar(); //~ ERROR expected function, found trait `Bar`
+    Bar(); //~ ERROR expected function, tuple struct or tuple variant, found trait `Bar`
 }
 
 fn test_list1() {
     use foo1::{Bar,Baz};
 
-    Bar(); //~ ERROR expected function, found trait `Bar`
+    Bar(); //~ ERROR expected function, tuple struct or tuple variant, found trait `Bar`
 }
 
 // private type, public value

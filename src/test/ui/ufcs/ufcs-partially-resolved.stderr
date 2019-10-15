@@ -13,6 +13,9 @@ LL |     <u8 as E::Y>::NN;
 error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:19:24
    |
+LL |     type Y = u16;
+   |     ------------- similarly named associated type `Y` defined here
+...
 LL |     let _: <u8 as Tr>::N;
    |                        ^ help: an associated type with a similar name exists: `Y`
 
@@ -31,6 +34,9 @@ LL |     let _: <u8 as A>::N;
 error[E0576]: cannot find method or associated constant `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:22:17
    |
+LL |     fn Y() {}
+   |     --------- similarly named method `Y` defined here
+...
 LL |     <u8 as Tr>::N;
    |                 ^ help: a method with a similar name exists: `Y`
 
@@ -61,6 +67,9 @@ LL |     <u8 as E>::Y;
 error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:30:24
    |
+LL |     type Y = u16;
+   |     ------------- similarly named associated type `Y` defined here
+...
 LL |     let _: <u8 as Tr>::N::NN;
    |                        ^ help: an associated type with a similar name exists: `Y`
 
@@ -79,6 +88,9 @@ LL |     let _: <u8 as A>::N::NN;
 error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:33:17
    |
+LL |     type Y = u16;
+   |     ------------- similarly named associated type `Y` defined here
+...
 LL |     <u8 as Tr>::N::NN;
    |                 ^ help: an associated type with a similar name exists: `Y`
 
@@ -157,6 +169,9 @@ LL |     <u8 as Tr::Y>::NN;
 error[E0575]: expected associated type, found method `Dr::Z`
   --> $DIR/ufcs-partially-resolved.rs:52:12
    |
+LL |     type X = u16;
+   |     ------------- similarly named associated type `X` defined here
+...
 LL |     let _: <u8 as Dr>::Z;
    |            ^^^^^^^^^^^^-
    |                        |
@@ -165,6 +180,9 @@ LL |     let _: <u8 as Dr>::Z;
 error[E0575]: expected method or associated constant, found associated type `Dr::X`
   --> $DIR/ufcs-partially-resolved.rs:53:5
    |
+LL |     fn Z() {}
+   |     --------- similarly named method `Z` defined here
+...
 LL |     <u8 as Dr>::X;
    |     ^^^^^^^^^^^^-
    |                 |
@@ -175,6 +193,9 @@ LL |     <u8 as Dr>::X;
 error[E0575]: expected associated type, found method `Dr::Z`
   --> $DIR/ufcs-partially-resolved.rs:54:12
    |
+LL |     type X = u16;
+   |     ------------- similarly named associated type `X` defined here
+...
 LL |     let _: <u8 as Dr>::Z::N;
    |            ^^^^^^^^^^^^-^^^
    |                        |
