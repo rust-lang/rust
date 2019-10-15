@@ -3291,10 +3291,14 @@ impl<'a> LoweringContext<'a> {
                 let id = self.sess.next_node_id();
                 self.new_named_lifetime(id, span, hir::LifetimeName::Error)
             }
-            // This is the normal case.
-            AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
-
-            AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
+            // `PassThrough` is the normal case.
+            // `new_error_lifetime`, which would usually be used in the case of `ReportError`,
+            // is unsuitable here, as these can occur from missing lifetime parameters in a
+            // `PathSegment`, for which there is no associated `'_` or `&T` with no explicit
+            // lifetime. Instead, we simply create an implicit lifetime, which will be checked
+            // later, at which point a suitable error will be emitted.
+          | AnonymousLifetimeMode::PassThrough
+          | AnonymousLifetimeMode::ReportError => self.new_implicit_lifetime(span),
         }
     }
 
