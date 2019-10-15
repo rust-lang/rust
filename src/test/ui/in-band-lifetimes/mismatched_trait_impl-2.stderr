@@ -3,10 +3,14 @@ error: `impl` item signature doesn't match `trait` item signature
    |
 LL |     fn deref(&self) -> &dyn Trait {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found fn(&Struct) -> &dyn Trait
+   | 
+  ::: $SRC_DIR/libcore/ops/deref.rs:LL:COL
    |
-   = note: expected: fn(&Struct) -> &(dyn Trait + 'static)
-              found: fn(&Struct) -> &dyn Trait
+LL |     fn deref(&self) -> &Self::Target;
+   |     --------------------------------- expected fn(&Struct) -> &(dyn Trait + 'static)
+   |
+   = note: expected `fn(&Struct) -> &(dyn Trait + 'static)`
+              found `fn(&Struct) -> &dyn Trait`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

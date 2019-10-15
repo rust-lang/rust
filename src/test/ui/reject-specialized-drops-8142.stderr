@@ -95,10 +95,10 @@ error: `impl` item signature doesn't match `trait` item signature
 LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found W<'_, '_>
    |
-   = note: expected: W<'l1, 'l2>
-              found: W<'_, '_>
+   = note: expected `W<'l1, 'l2>`
+              found `W<'_, '_>`
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0308, E0366, E0367, E0495.
+Some errors have detailed explanations: E0308, E0366, E0367.
 For more information about an error, try `rustc --explain E0308`.
