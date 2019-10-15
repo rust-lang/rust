@@ -1,7 +1,8 @@
 // run-pass
-// Test that we can call static methods on ! both directly and when it appears in a generic
 
 #![feature(never_type)]
+
+// Test that we can call static methods on ! both directly and when it appears in a generic
 
 trait StringifyType {
     fn stringify_type() -> &'static str;
