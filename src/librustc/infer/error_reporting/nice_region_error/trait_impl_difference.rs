@@ -26,21 +26,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         if let (
                             ValuePairs::Types(sub_expected_found),
                             ValuePairs::Types(sup_expected_found),
-                        ) = (&sub_trace.values, &sup_trace.values) {
+                            CompareImplMethodObligation { trait_item_def_id, .. },
+                        ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code) {
                             if sup_expected_found == sub_expected_found {
-                                let sp = var_origin.span();
-                                let impl_sp = if let CompareImplMethodObligation {
-                                    trait_item_def_id, ..
-                                } = &sub_trace.cause.code {
-                                    Some(self.tcx().def_span(*trait_item_def_id))
-                                } else {
-                                    None
-                                };
                                 self.emit_err(
-                                    sp,
+                                    var_origin.span(),
                                     sub_expected_found.expected,
                                     sub_expected_found.found,
-                                    impl_sp,
+                                    self.tcx().def_span(*trait_item_def_id),
                                 );
                                 return Some(ErrorReported);
                             }
@@ -53,16 +46,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         None
     }
 
-    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, impl_sp: Option<Span>) {
+    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, impl_sp: Span) {
         let mut err = self.tcx().sess.struct_span_err(
             sp,
             "`impl` item signature doesn't match `trait` item signature",
         );
         err.note(&format!("expected `{:?}`\n   found `{:?}`", expected, found));
         err.span_label(sp, &format!("found {:?}", found));
-        if let Some(span) = impl_sp {
-            err.span_label(span, &format!("expected {:?}", expected));
-        }
+        err.span_label(impl_sp, &format!("expected {:?}", expected));
         err.emit();
     }
 }
