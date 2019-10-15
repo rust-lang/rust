@@ -214,14 +214,14 @@ where
 {
     /// Visits (potentially in parallel) the values representing the difference,
     /// i.e. the values that are in `self` but not in `other`.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_difference<'a>(&'a self, other: &'a Self) -> ParDifference<'a, T, S> {
         ParDifference { a: self, b: other }
     }
 
     /// Visits (potentially in parallel) the values representing the symmetric
     /// difference, i.e. the values that are in `self` or in `other` but not in both.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_symmetric_difference<'a>(
         &'a self,
         other: &'a Self,
@@ -231,14 +231,14 @@ where
 
     /// Visits (potentially in parallel) the values representing the
     /// intersection, i.e. the values that are both in `self` and `other`.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_intersection<'a>(&'a self, other: &'a Self) -> ParIntersection<'a, T, S> {
         ParIntersection { a: self, b: other }
     }
 
     /// Visits (potentially in parallel) the values representing the union,
     /// i.e. all the values in `self` or `other`, without duplicates.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_union<'a>(&'a self, other: &'a Self) -> ParUnion<'a, T, S> {
         ParUnion { a: self, b: other }
     }
@@ -287,7 +287,7 @@ where
 {
     /// Consumes (potentially in parallel) all values in an arbitrary order,
     /// while preserving the set's allocated memory for reuse.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_drain(&mut self) -> ParDrain<'_, T, S> {
         ParDrain { set: self }
     }
@@ -297,7 +297,7 @@ impl<T: Send, S: Send> IntoParallelIterator for HashSet<T, S> {
     type Item = T;
     type Iter = IntoParIter<T, S>;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         IntoParIter { set: self }
     }
@@ -307,7 +307,7 @@ impl<'a, T: Sync, S: Sync> IntoParallelIterator for &'a HashSet<T, S> {
     type Item = &'a T;
     type Iter = ParIter<'a, T, S>;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         ParIter { set: self }
     }

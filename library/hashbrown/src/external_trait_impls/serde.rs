@@ -4,7 +4,7 @@ mod size_hint {
     /// This presumably exists to prevent denial of service attacks.
     ///
     /// Original discussion: https://github.com/serde-rs/serde/issues/1114.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub(super) fn cautious(hint: Option<usize>) -> usize {
         cmp::min(hint.unwrap_or(0), 4096)
     }
@@ -27,7 +27,7 @@ mod map {
         V: Serialize,
         H: BuildHasher,
     {
-        #[inline]
+        #[cfg_attr(feature = "inline-more", inline)]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -62,7 +62,7 @@ mod map {
                     formatter.write_str("a map")
                 }
 
-                #[inline]
+                #[cfg_attr(feature = "inline-more", inline)]
                 fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
                 where
                     A: MapAccess<'de>,
@@ -104,7 +104,7 @@ mod set {
         T: Serialize + Eq + Hash,
         H: BuildHasher,
     {
-        #[inline]
+        #[cfg_attr(feature = "inline-more", inline)]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -137,7 +137,7 @@ mod set {
                     formatter.write_str("a sequence")
                 }
 
-                #[inline]
+                #[cfg_attr(feature = "inline-more", inline)]
                 fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
                 where
                     A: SeqAccess<'de>,
@@ -178,7 +178,7 @@ mod set {
                     formatter.write_str("a sequence")
                 }
 
-                #[inline]
+                #[cfg_attr(feature = "inline-more", inline)]
                 fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
                 where
                     A: SeqAccess<'de>,

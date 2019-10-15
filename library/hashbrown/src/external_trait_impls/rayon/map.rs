@@ -22,7 +22,7 @@ pub struct ParIter<'a, K, V, S> {
 impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParIter<'a, K, V, S> {
     type Item = (&'a K, &'a V);
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -39,7 +39,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParIter<'a, K, V, S> {
 }
 
 impl<K, V, S> Clone for ParIter<'_, K, V, S> {
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         ParIter { map: self.map }
     }
@@ -65,7 +65,7 @@ pub struct ParKeys<'a, K, V, S> {
 impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParKeys<'a, K, V, S> {
     type Item = &'a K;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -79,7 +79,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParKeys<'a, K, V, S> {
 }
 
 impl<K, V, S> Clone for ParKeys<'_, K, V, S> {
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         ParKeys { map: self.map }
     }
@@ -105,7 +105,7 @@ pub struct ParValues<'a, K, V, S> {
 impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParValues<'a, K, V, S> {
     type Item = &'a V;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -119,7 +119,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParValues<'a, K, V, S> 
 }
 
 impl<K, V, S> Clone for ParValues<'_, K, V, S> {
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         ParValues { map: self.map }
     }
@@ -147,7 +147,7 @@ pub struct ParIterMut<'a, K, V, S> {
 impl<'a, K: Send + Sync, V: Send, S: Send> ParallelIterator for ParIterMut<'a, K, V, S> {
     type Item = (&'a K, &'a mut V);
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -185,7 +185,7 @@ pub struct ParValuesMut<'a, K, V, S> {
 impl<'a, K: Send, V: Send, S: Send> ParallelIterator for ParValuesMut<'a, K, V, S> {
     type Item = &'a mut V;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -220,7 +220,7 @@ pub struct IntoParIter<K, V, S> {
 impl<K: Send, V: Send, S: Send> ParallelIterator for IntoParIter<K, V, S> {
     type Item = (K, V);
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -249,7 +249,7 @@ pub struct ParDrain<'a, K, V, S> {
 impl<K: Send, V: Send, S: Send> ParallelIterator for ParDrain<'_, K, V, S> {
     type Item = (K, V);
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
     where
         C: UnindexedConsumer<Self::Item>,
@@ -268,13 +268,13 @@ impl<K: fmt::Debug + Eq + Hash, V: fmt::Debug, S: BuildHasher> fmt::Debug
 
 impl<K: Sync, V: Sync, S: Sync> HashMap<K, V, S> {
     /// Visits (potentially in parallel) immutably borrowed keys in an arbitrary order.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_keys(&self) -> ParKeys<'_, K, V, S> {
         ParKeys { map: self }
     }
 
     /// Visits (potentially in parallel) immutably borrowed values in an arbitrary order.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_values(&self) -> ParValues<'_, K, V, S> {
         ParValues { map: self }
     }
@@ -282,14 +282,14 @@ impl<K: Sync, V: Sync, S: Sync> HashMap<K, V, S> {
 
 impl<K: Send, V: Send, S: Send> HashMap<K, V, S> {
     /// Visits (potentially in parallel) mutably borrowed values in an arbitrary order.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_values_mut(&mut self) -> ParValuesMut<'_, K, V, S> {
         ParValuesMut { map: self }
     }
 
     /// Consumes (potentially in parallel) all values in an arbitrary order,
     /// while preserving the map's allocated memory for reuse.
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_drain(&mut self) -> ParDrain<'_, K, V, S> {
         ParDrain { map: self }
     }
@@ -317,7 +317,7 @@ impl<K: Send, V: Send, S: Send> IntoParallelIterator for HashMap<K, V, S> {
     type Item = (K, V);
     type Iter = IntoParIter<K, V, S>;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         IntoParIter { map: self }
     }
@@ -327,7 +327,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> IntoParallelIterator for &'a HashMap<K, V, S
     type Item = (&'a K, &'a V);
     type Iter = ParIter<'a, K, V, S>;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         ParIter { map: self }
     }
@@ -337,7 +337,7 @@ impl<'a, K: Send + Sync, V: Send, S: Send> IntoParallelIterator for &'a mut Hash
     type Item = (&'a K, &'a mut V);
     type Iter = ParIterMut<'a, K, V, S>;
 
-    #[inline]
+    #[cfg_attr(feature = "inline-more", inline)]
     fn into_par_iter(self) -> Self::Iter {
         ParIterMut { map: self }
     }
