@@ -18,7 +18,7 @@ an extended set of examples in the [`chalk/src/test/wf.rs`][wf_test] submodule.
 The new-style WF checking has not been implemented in rustc yet.
 
 [wf]: https://github.com/rust-lang/chalk/blob/master/chalk-solve/src/wf.rs
-[wf_test]: https://github.com/rust-lang/chalk/blob/master/src/test/wf.rs
+[wf_test]: https://github.com/rust-lang/chalk/blob/master/src/test/wf_lowering.rs
 
 We give here a complete reference of the generated goals for each Rust
 declaration.
