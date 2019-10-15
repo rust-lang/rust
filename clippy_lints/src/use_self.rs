@@ -10,7 +10,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::kw;
 
-use crate::utils::span_lint_and_sugg;
+use crate::utils::{differing_macro_contexts, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unnecessary repetition of structure name when a
@@ -56,6 +56,11 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path, last_segment: Optio
 
     // Path segments only include actual path, no methods or fields.
     let last_path_span = last_segment.ident.span;
+
+    if differing_macro_contexts(path.span, last_path_span) {
+        return;
+    }
+
     // Only take path up to the end of last_path_span.
     let span = path.span.with_hi(last_path_span.hi());
 
