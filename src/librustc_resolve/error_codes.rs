@@ -1611,6 +1611,56 @@ fn print_on_failure(state: &State) {
 ```
 "##,
 
+E0574: r##"
+Something other than a struct, variant or union has been used when one was
+expected.
+
+Erroneous code example:
+
+```compile_fail,E0574
+mod Mordor {}
+
+let sauron = Mordor { x: () }; // error!
+
+enum Jak {
+    Daxter { i: isize },
+}
+
+let eco = Jak::Daxter { i: 1 };
+match eco {
+    Jak { i } => {} // error!
+}
+```
+
+In all these errors, a type was expected. For example, in the first error,
+we tried to instantiate the `Mordor` module, which is impossible. If you want
+to instantiate a type inside a module, you can do it as follow:
+
+```
+mod Mordor {
+    pub struct TheRing {
+        pub x: usize,
+    }
+}
+
+let sauron = Mordor::TheRing { x: 1 }; // ok!
+```
+
+In the second error, we tried to bind the `Jak` enum directly, which is not
+possible: you can only bind one of its variants. To do so:
+
+```
+enum Jak {
+    Daxter { i: isize },
+}
+
+let eco = Jak::Daxter { i: 1 };
+match eco {
+    Jak::Daxter { i } => {} // ok!
+}
+```
+"##,
+
 E0603: r##"
 A private item was used outside its scope.
 
@@ -1739,7 +1789,6 @@ struct Foo<X = Box<Self>> {
 //  E0467, removed
 //  E0470, removed
     E0573,
-    E0574,
     E0575,
     E0576,
     E0577,
