@@ -31,19 +31,19 @@ pub struct AnnotateSnippetEmitterWriter {
 
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
-    fn emit_diagnostic(&mut self, db: &Diagnostic) {
-        let mut children = db.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
+    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+        let mut children = diag.children.clone();
+        let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
         self.fix_multispans_in_std_macros(&self.source_map,
                                           &mut primary_span,
                                           &mut children,
-                                          &db.level,
+                                          &diag.level,
                                           self.external_macro_backtrace);
 
-        self.emit_messages_default(&db.level,
-                                   db.message(),
-                                   &db.code,
+        self.emit_messages_default(&diag.level,
+                                   diag.message(),
+                                   &diag.code,
                                    &primary_span,
                                    &children,
                                    &suggestions);

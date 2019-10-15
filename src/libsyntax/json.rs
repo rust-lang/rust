@@ -89,8 +89,8 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, db: &errors::Diagnostic) {
-        let data = Diagnostic::from_errors_diagnostic(db, self);
+    fn emit_diagnostic(&mut self, diag: &errors::Diagnostic) {
+        let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
@@ -209,10 +209,10 @@ struct ArtifactNotification<'a> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(db: &errors::Diagnostic,
+    fn from_errors_diagnostic(diag: &errors::Diagnostic,
                                je: &JsonEmitter)
                                -> Diagnostic {
-        let sugg = db.suggestions.iter().map(|sugg| {
+        let sugg = diag.suggestions.iter().map(|sugg| {
             Diagnostic {
                 message: sugg.msg.clone(),
                 code: None,
@@ -241,30 +241,30 @@ impl Diagnostic {
         let output = buf.clone();
         je.json_rendered.new_emitter(
             Box::new(buf), Some(je.sm.clone()), false, None, je.external_macro_backtrace
-        ).ui_testing(je.ui_testing).emit_diagnostic(db);
+        ).ui_testing(je.ui_testing).emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
         Diagnostic {
-            message: db.message(),
-            code: DiagnosticCode::map_opt_string(db.code.clone(), je),
-            level: db.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&db.span, je),
-            children: db.children.iter().map(|c| {
+            message: diag.message(),
+            code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
+            level: diag.level.to_str(),
+            spans: DiagnosticSpan::from_multispan(&diag.span, je),
+            children: diag.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).chain(sugg).collect(),
             rendered: Some(output),
         }
     }
 
-    fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_sub_diagnostic(diag: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
         Diagnostic {
-            message: db.message(),
+            message: diag.message(),
             code: None,
-            level: db.level.to_str(),
-            spans: db.render_span.as_ref()
+            level: diag.level.to_str(),
+            spans: diag.render_span.as_ref()
                      .map(|sp| DiagnosticSpan::from_multispan(sp, je))
-                     .unwrap_or_else(|| DiagnosticSpan::from_multispan(&db.span, je)),
+                     .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, je)),
             children: vec![],
             rendered: None,
         }
