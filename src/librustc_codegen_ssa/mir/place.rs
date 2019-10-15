@@ -394,8 +394,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Statically compute the offset if we can, otherwise just use the element size,
         // as this will yield the lowest alignment.
         let layout = self.layout.field(bx, 0);
-        let offset = if bx.is_const_integral(llindex) {
-            layout.size.checked_mul(bx.const_to_uint(llindex), bx).unwrap_or(layout.size)
+        let offset = if let Some(llindex) = bx.const_to_opt_uint(llindex) {
+            layout.size.checked_mul(llindex, bx).unwrap_or(layout.size)
         } else {
             layout.size
         };

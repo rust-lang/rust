@@ -791,10 +791,13 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     cstore::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);
+    rustc_codegen_utils::provide(providers);
+    rustc_codegen_ssa::provide(providers);
 }
 
 pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     cstore::provide_extern(providers);
+    rustc_codegen_ssa::provide_extern(providers);
 }
 
 declare_box_region_type!(

@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
 use rustc::ty::{Ty, TyCtxt};
+use rustc::session::Session;
 use syntax_pos::Span;
 
 use rustc::hir::def_id::DefId;
@@ -199,4 +200,8 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
+}
+
+pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
+    span_err!(a, b, E0511, "{}", c);
 }

@@ -38,7 +38,7 @@ extern crate rustc_fs_util;
 extern crate rustc_driver as _;
 
 #[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
@@ -63,8 +63,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-
-mod error_codes;
 
 mod back {
     pub mod archive;
@@ -258,10 +256,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn diagnostics(&self) -> &[(&'static str, &'static str)] {
-        &error_codes::DIAGNOSTICS
-    }
-
     fn target_features(&self, sess: &Session) -> Vec<Symbol> {
         target_features(sess)
     }
@@ -271,15 +265,10 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut ty::query::Providers<'_>) {
-        rustc_codegen_utils::symbol_names::provide(providers);
-        rustc_codegen_ssa::back::symbol_export::provide(providers);
-        rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers<'_>) {
-        rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
-        rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide_extern(providers);
     }
 

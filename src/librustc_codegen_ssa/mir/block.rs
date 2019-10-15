@@ -358,7 +358,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
             }
             _ => {
-                (bx.get_fn(drop_fn),
+                (bx.get_fn_addr(drop_fn),
                  FnType::of_instance(&bx, drop_fn))
             }
         };
@@ -460,7 +460,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
         let fn_ty = FnType::of_instance(&bx, instance);
-        let llfn = bx.get_fn(instance);
+        let llfn = bx.get_fn_addr(instance);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
@@ -576,7 +576,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
                 let fn_ty = FnType::of_instance(&bx, instance);
-                let llfn = bx.get_fn(instance);
+                let llfn = bx.get_fn_addr(instance);
 
                 if let Some((_, target)) = destination.as_ref() {
                     helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
@@ -793,7 +793,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ptr = match (llfn, instance) {
             (Some(llfn), _) => llfn,
-            (None, Some(instance)) => bx.get_fn(instance),
+            (None, Some(instance)) => bx.get_fn_addr(instance),
             _ => span_bug!(span, "no llfn for call"),
         };
 
