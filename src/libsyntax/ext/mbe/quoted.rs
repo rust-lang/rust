@@ -2,8 +2,8 @@ use crate::ast;
 use crate::ext::mbe::macro_parser;
 use crate::ext::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
 use crate::parse::token::{self, Token};
-use crate::parse::ParseSess;
 use crate::print::pprust;
+use crate::sess::ParseSess;
 use crate::symbol::kw;
 use crate::tokenstream;
 

@@ -1,14 +1,10 @@
 //! Code related to parsing literals.
 
 use crate::ast::{self, Lit, LitKind};
-use crate::parse::parser::Parser;
-use crate::parse::PResult;
-use crate::parse::token::{self, Token, TokenKind};
-use crate::print::pprust;
+use crate::parse::token::{self, Token};
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
 
-use errors::{Applicability, Handler};
 use log::debug;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
@@ -26,72 +22,6 @@ crate enum LitError {
     InvalidFloatSuffix,
     NonDecimalFloat(u32),
     IntTooLarge,
-}
-
-impl LitError {
-    fn report(&self, diag: &Handler, lit: token::Lit, span: Span) {
-        let token::Lit { kind, suffix, .. } = lit;
-        match *self {
-            // `NotLiteral` is not an error by itself, so we don't report
-            // it and give the parser opportunity to try something else.
-            LitError::NotLiteral => {}
-            // `LexerError` *is* an error, but it was already reported
-            // by lexer, so here we don't report it the second time.
-            LitError::LexerError => {}
-            LitError::InvalidSuffix => {
-                expect_no_suffix(
-                    diag, span, &format!("{} {} literal", kind.article(), kind.descr()), suffix
-                );
-            }
-            LitError::InvalidIntSuffix => {
-                let suf = suffix.expect("suffix error with no suffix").as_str();
-                if looks_like_width_suffix(&['i', 'u'], &suf) {
-                    // If it looks like a width, try to be helpful.
-                    let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
-                    diag.struct_span_err(span, &msg)
-                        .help("valid widths are 8, 16, 32, 64 and 128")
-                        .emit();
-                } else {
-                    let msg = format!("invalid suffix `{}` for integer literal", suf);
-                    diag.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
-                        .help("the suffix must be one of the integral types (`u32`, `isize`, etc)")
-                        .emit();
-                }
-            }
-            LitError::InvalidFloatSuffix => {
-                let suf = suffix.expect("suffix error with no suffix").as_str();
-                if looks_like_width_suffix(&['f'], &suf) {
-                    // If it looks like a width, try to be helpful.
-                    let msg = format!("invalid width `{}` for float literal", &suf[1..]);
-                    diag.struct_span_err(span, &msg)
-                        .help("valid widths are 32 and 64")
-                        .emit();
-                } else {
-                    let msg = format!("invalid suffix `{}` for float literal", suf);
-                    diag.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
-                        .help("valid suffixes are `f32` and `f64`")
-                        .emit();
-                }
-            }
-            LitError::NonDecimalFloat(base) => {
-                let descr = match base {
-                    16 => "hexadecimal",
-                    8 => "octal",
-                    2 => "binary",
-                    _ => unreachable!(),
-                };
-                diag.struct_span_err(span, &format!("{} float literal is not supported", descr))
-                    .span_label(span, "not supported")
-                    .emit();
-            }
-            LitError::IntTooLarge => {
-                diag.struct_span_err(span, "integer literal is too large")
-                    .emit();
-            }
-        }
-    }
 }
 
 impl LitKind {
@@ -204,7 +134,7 @@ impl LitKind {
         let (kind, symbol, suffix) = match *self {
             LitKind::Str(symbol, ast::StrStyle::Cooked) => {
                 // Don't re-intern unless the escaped string is different.
-                let s = &symbol.as_str();
+                let s: &str = &symbol.as_str();
                 let escaped = s.escape_default().to_string();
                 let symbol = if escaped == *s { symbol } else { Symbol::intern(&escaped) };
                 (token::Str, symbol, None)
@@ -254,7 +184,7 @@ impl LitKind {
 
 impl Lit {
     /// Converts literal token into an AST literal.
-    fn from_lit_token(token: token::Lit, span: Span) -> Result<Lit, LitError> {
+    crate fn from_lit_token(token: token::Lit, span: Span) -> Result<Lit, LitError> {
         Ok(Lit { token, kind: LitKind::from_lit_token(token)?, span })
     }
 
@@ -294,99 +224,6 @@ impl Lit {
         };
         TokenTree::token(token, self.span).into()
     }
-}
-
-impl<'a> Parser<'a> {
-    /// Matches `lit = true | false | token_lit`.
-    crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
-        let mut recovered = None;
-        if self.token == token::Dot {
-            // Attempt to recover `.4` as `0.4`.
-            recovered = self.look_ahead(1, |next_token| {
-                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
-                        = next_token.kind {
-                    if self.token.span.hi() == next_token.span.lo() {
-                        let s = String::from("0.") + &symbol.as_str();
-                        let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some(Token::new(kind, self.token.span.to(next_token.span)));
-                    }
-                }
-                None
-            });
-            if let Some(token) = &recovered {
-                self.bump();
-                self.diagnostic()
-                    .struct_span_err(token.span, "float literals must have an integer part")
-                    .span_suggestion(
-                        token.span,
-                        "must have an integer part",
-                        pprust::token_to_string(token),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-            }
-        }
-
-        let token = recovered.as_ref().unwrap_or(&self.token);
-        match Lit::from_token(token) {
-            Ok(lit) => {
-                self.bump();
-                Ok(lit)
-            }
-            Err(LitError::NotLiteral) => {
-                let msg = format!("unexpected token: {}", self.this_token_descr());
-                Err(self.span_fatal(token.span, &msg))
-            }
-            Err(err) => {
-                let (lit, span) = (token.expect_lit(), token.span);
-                self.bump();
-                err.report(&self.sess.span_diagnostic, lit, span);
-                // Pack possible quotes and prefixes from the original literal into
-                // the error literal's symbol so they can be pretty-printed faithfully.
-                let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
-                let symbol = Symbol::intern(&suffixless_lit.to_string());
-                let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
-            }
-        }
-    }
-}
-
-crate fn expect_no_suffix(diag: &Handler, sp: Span, kind: &str, suffix: Option<Symbol>) {
-    if let Some(suf) = suffix {
-        let mut err = if kind == "a tuple index" &&
-                         [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suf) {
-            // #59553: warn instead of reject out of hand to allow the fix to percolate
-            // through the ecosystem when people fix their macros
-            let mut err = diag.struct_span_warn(
-                sp,
-                &format!("suffixes on {} are invalid", kind),
-            );
-            err.note(&format!(
-                "`{}` is *temporarily* accepted on tuple index fields as it was \
-                    incorrectly accepted on stable for a few releases",
-                suf,
-            ));
-            err.help(
-                "on proc macros, you'll want to use `syn::Index::from` or \
-                    `proc_macro::Literal::*_unsuffixed` for code that will desugar \
-                    to tuple field access",
-            );
-            err.note(
-                "for more context, see https://github.com/rust-lang/rust/issues/60210",
-            );
-            err
-        } else {
-            diag.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
-        };
-        err.span_label(sp, format!("invalid suffix `{}`", suf));
-        err.emit();
-    }
-}
-
-// Checks if `s` looks like i32 or u1234 etc.
-fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-    s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
 }
 
 fn strip_underscores(symbol: Symbol) -> Symbol {

@@ -1,8 +1,9 @@
 use crate::ast;
 use crate::ext::base::ExtCtxt;
-use crate::parse::{self, token, ParseSess};
+use crate::parse::{self, token};
 use crate::parse::lexer::comments;
 use crate::print::pprust;
+use crate::sess::ParseSess;
 use crate::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 
 use errors::Diagnostic;

@@ -1,10 +1,10 @@
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::source_map::{SourceMap, Spanned};
-use syntax::parse::ParseSess;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self, Comments, PrintState};
+use syntax::sess::ParseSess;
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};

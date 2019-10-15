@@ -5,9 +5,10 @@ use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::ExpnId;
 use crate::mut_visit::{self, MutVisitor};
-use crate::parse::{self, parser, ParseSess, DirectoryOwnership};
+use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
 use crate::ptr::P;
+use crate::sess::ParseSess;
 use crate::symbol::{kw, sym, Ident, Symbol};
 use crate::{ThinVec, MACRO_ARGUMENTS};
 use crate::tokenstream::{self, TokenStream};
@@ -892,7 +893,7 @@ pub struct ExpansionData {
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
-    pub parse_sess: &'a parse::ParseSess,
+    pub parse_sess: &'a ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
@@ -901,7 +902,7 @@ pub struct ExtCtxt<'a> {
 }
 
 impl<'a> ExtCtxt<'a> {
-    pub fn new(parse_sess: &'a parse::ParseSess,
+    pub fn new(parse_sess: &'a ParseSess,
                ecfg: expand::ExpansionConfig<'a>,
                resolver: &'a mut dyn Resolver)
                -> ExtCtxt<'a> {
@@ -935,7 +936,7 @@ impl<'a> ExtCtxt<'a> {
         parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
-    pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
+    pub fn parse_sess(&self) -> &'a ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site

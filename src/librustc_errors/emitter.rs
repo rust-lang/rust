@@ -180,7 +180,7 @@ const ANONYMIZED_LINE_NUM: &str = "LL";
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, db: &Diagnostic);
+    fn emit_diagnostic(&mut self, diag: &Diagnostic);
 
     /// Emit a notification that an artifact has been output.
     /// This is currently only supported for the JSON format,
@@ -206,10 +206,10 @@ pub trait Emitter {
     ///   we return the original `primary_span` and the original suggestions.
     fn primary_span_formatted<'a>(
         &mut self,
-        db: &'a Diagnostic,
+        diag: &'a Diagnostic,
     ) -> (MultiSpan, &'a [CodeSuggestion]) {
-        let mut primary_span = db.span.clone();
-        if let Some((sugg, rest)) = db.suggestions.split_first() {
+        let mut primary_span = diag.span.clone();
+        if let Some((sugg, rest)) = diag.suggestions.split_first() {
             if rest.is_empty() &&
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -260,10 +260,10 @@ pub trait Emitter {
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                (primary_span, &db.suggestions)
+                (primary_span, &diag.suggestions)
             }
         } else {
-            (primary_span, &db.suggestions)
+            (primary_span, &diag.suggestions)
         }
     }
 
@@ -401,19 +401,19 @@ impl Emitter for EmitterWriter {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, db: &Diagnostic) {
-        let mut children = db.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
+    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+        let mut children = diag.children.clone();
+        let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
         self.fix_multispans_in_std_macros(&self.sm,
                                           &mut primary_span,
                                           &mut children,
-                                          &db.level,
+                                          &diag.level,
                                           self.external_macro_backtrace);
 
-        self.emit_messages_default(&db.level,
-                                   &db.styled_message(),
-                                   &db.code,
+        self.emit_messages_default(&diag.level,
+                                   &diag.styled_message(),
+                                   &diag.code,
                                    &primary_span,
                                    &children,
                                    &suggestions);

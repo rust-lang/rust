@@ -1667,13 +1667,13 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, db: &rustc_errors::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msg: db.message(),
-            code: db.code.clone(),
-            lvl: db.level,
+            msg: diag.message(),
+            code: diag.code.clone(),
+            lvl: diag.level,
         })));
-        for child in &db.children {
+        for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
                 msg: child.message(),
                 code: None,

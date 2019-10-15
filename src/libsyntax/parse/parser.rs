@@ -15,12 +15,13 @@ use crate::ast::{
     self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
-use crate::parse::{ParseSess, PResult, Directory, DirectoryOwnership, SeqSep, literal, token};
+use crate::parse::{PResult, Directory, DirectoryOwnership, SeqSep};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use crate::parse::token::{Token, TokenKind, DelimToken};
+use crate::parse::token::{self, Token, TokenKind, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
+use crate::sess::ParseSess;
 use crate::source_map::respan;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
@@ -635,10 +636,6 @@ impl<'a> Parser<'a> {
             }
             _ => self.unexpected()
         }
-    }
-
-    fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
-        literal::expect_no_suffix(&self.sess.span_diagnostic, sp, kind, suffix)
     }
 
     /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
@@ -1366,7 +1363,7 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MaybeIncorrect,
         ).span_suggestion(
-            self.sess.source_map.next_point(self.prev_span),
+            self.sess.source_map().next_point(self.prev_span),
             "add a semicolon",
             ';'.to_string(),
             Applicability::MaybeIncorrect,

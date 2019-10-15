@@ -5,14 +5,14 @@ use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
 use crate::ast::{
     self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
-    PatKind, RangeEnd,
+    PatKind, RangeEnd, VariantData,
 };
 use crate::attr::{self, check_builtin_attribute};
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
-use crate::parse::{token, ParseSess};
-use crate::parse::parser::Parser;
+use crate::parse::token;
+use crate::sess::ParseSess;
 use crate::symbol::{Symbol, sym};
 use crate::tokenstream::TokenTree;
 
@@ -246,6 +246,51 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::System => {}
         }
     }
+
+    fn maybe_report_invalid_custom_discriminants(&self, variants: &[ast::Variant]) {
+        let has_fields = variants.iter().any(|variant| match variant.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => true,
+            VariantData::Unit(..) => false,
+        });
+
+        let discriminant_spans = variants.iter().filter(|variant| match variant.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => false,
+            VariantData::Unit(..) => true,
+        })
+        .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
+        .collect::<Vec<_>>();
+
+        if !discriminant_spans.is_empty() && has_fields {
+            let mut err = feature_err(
+                self.parse_sess,
+                sym::arbitrary_enum_discriminant,
+                discriminant_spans.clone(),
+                crate::feature_gate::GateIssue::Language,
+                "custom discriminant values are not allowed in enums with tuple or struct variants",
+            );
+            for sp in discriminant_spans {
+                err.span_label(sp, "disallowed custom discriminant");
+            }
+            for variant in variants.iter() {
+                match &variant.data {
+                    VariantData::Struct(..) => {
+                        err.span_label(
+                            variant.span,
+                            "struct variant defined here",
+                        );
+                    }
+                    VariantData::Tuple(..) => {
+                        err.span_label(
+                            variant.span,
+                            "tuple variant defined here",
+                        );
+                    }
+                    VariantData::Unit(..) => {}
+                }
+            }
+            err.emit();
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -353,7 +398,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
                 let has_feature = self.features.arbitrary_enum_discriminant;
                 if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
-                    Parser::maybe_report_invalid_custom_discriminants(self.parse_sess, &variants);
+                    self.maybe_report_invalid_custom_discriminants(&variants);
                 }
             }
 
@@ -769,7 +814,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             if let Some(allowed) = allow_features.as_ref() {
-                if allowed.iter().find(|f| *f == name.as_str()).is_none() {
+                if allowed.iter().find(|&f| f == &name.as_str() as &str).is_none() {
                     span_err!(span_handler, mi.span(), E0725,
                               "the feature `{}` is not in the list of allowed features",
                               name);
