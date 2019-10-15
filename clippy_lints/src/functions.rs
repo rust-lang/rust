@@ -462,9 +462,12 @@ fn check_must_use_candidate<'a, 'tcx>(
 }
 
 fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
-    attrs
-        .iter()
-        .find(|attr| attr.ident().map_or(false, |ident| "must_use" == &ident.as_str()))
+    attrs.iter().find(|attr| {
+        attr.ident().map_or(false, |ident| {
+            let ident: &str = &ident.as_str();
+            "must_use" == ident
+        })
+    })
 }
 
 fn returns_unit(decl: &hir::FnDecl) -> bool {
