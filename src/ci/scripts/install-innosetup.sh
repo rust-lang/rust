@@ -12,7 +12,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
     curl.exe -o is-install.exe "${MIRRORS_BASE}/2017-08-22-is.exe"
-    is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+    cmd.exe //c "is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
 
     ciCommandAddPath "C:\\Program Files (x86)\\Inno Setup 5"
 fi
