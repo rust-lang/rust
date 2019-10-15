@@ -94,7 +94,8 @@ impl<'a> Resolver<'a> {
         where T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
-        if let Err(old_binding) = self.try_define(parent, ident, ns, binding) {
+        let key = self.new_key(ident, ns);
+        if let Err(old_binding) = self.try_define(parent, key, binding) {
             self.report_conflict(parent, ident, ns, old_binding, &binding);
         }
     }
@@ -349,9 +350,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
         self.r.indeterminate_imports.push(directive);
         match directive.subclass {
+            // Don't add unresolved underscore imports to modules
+            SingleImport { target: Ident { name: kw::Underscore, .. }, .. } => {}
             SingleImport { target, type_ns_only, .. } => {
                 self.r.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                    let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
+                    let key = this.new_key(target, ns);
+                    let mut resolution = this.resolution(current_module, key).borrow_mut();
                     resolution.add_single_import(directive);
                 });
             }
@@ -407,7 +411,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
-                let mut ident = use_tree.ident().gensym_if_underscore();
+                let mut ident = use_tree.ident();
                 let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
@@ -585,7 +589,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent_scope = &self.parent_scope;
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
-        let ident = item.ident.gensym_if_underscore();
+        let ident = item.ident;
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
 
@@ -851,10 +855,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<NodeId>) {
         let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
-        // FIXME: We shouldn't create the gensym here, it should come from metadata,
-        // but metadata cannot encode gensyms currently, so we create it here.
-        // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
-        let ident = ident.gensym_if_underscore();
         let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
         // Record primary definitions.
         match res {

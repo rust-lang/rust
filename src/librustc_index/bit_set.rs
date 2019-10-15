@@ -168,11 +168,7 @@ impl<T: Idx> BitSet<T> {
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter {
-            cur: None,
-            iter: self.words.iter().enumerate(),
-            marker: PhantomData,
-        }
+        BitIter::new(&self.words)
     }
 
     /// Duplicates the set as a hybrid set.
@@ -291,26 +287,55 @@ impl<T: Idx> ToString for BitSet<T> {
 }
 
 pub struct BitIter<'a, T: Idx> {
-    cur: Option<(Word, usize)>,
-    iter: iter::Enumerate<slice::Iter<'a, Word>>,
+    /// A copy of the current word, but with any already-visited bits cleared.
+    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
+    /// is reduced to 0, we move onto the next word.
+    word: Word,
+
+    /// The offset (measured in bits) of the current word.
+    offset: usize,
+
+    /// Underlying iterator over the words.
+    iter: slice::Iter<'a, Word>,
+
     marker: PhantomData<T>
+}
+
+impl<'a, T: Idx> BitIter<'a, T> {
+    #[inline]
+    fn new(words: &'a [Word]) -> BitIter<'a, T> {
+        // We initialize `word` and `offset` to degenerate values. On the first
+        // call to `next()` we will fall through to getting the first word from
+        // `iter`, which sets `word` to the first word (if there is one) and
+        // `offset` to 0. Doing it this way saves us from having to maintain
+        // additional state about whether we have started.
+        BitIter {
+            word: 0,
+            offset: std::usize::MAX - (WORD_BITS - 1),
+            iter: words.iter(),
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
         loop {
-            if let Some((ref mut word, offset)) = self.cur {
-                let bit_pos = word.trailing_zeros() as usize;
-                if bit_pos != WORD_BITS {
-                    let bit = 1 << bit_pos;
-                    *word ^= bit;
-                    return Some(T::new(bit_pos + offset))
-                }
+            if self.word != 0 {
+                // Get the position of the next set bit in the current word,
+                // then clear the bit.
+                let bit_pos = self.word.trailing_zeros() as usize;
+                let bit = 1 << bit_pos;
+                self.word ^= bit;
+                return Some(T::new(bit_pos + self.offset))
             }
 
-            let (i, word) = self.iter.next()?;
-            self.cur = Some((*word, WORD_BITS * i));
+            // Move onto the next word. `wrapping_add()` is needed to handle
+            // the degenerate initial value given to `offset` in `new()`.
+            let word = self.iter.next()?;
+            self.word = *word;
+            self.offset = self.offset.wrapping_add(WORD_BITS);
         }
     }
 }
@@ -851,11 +876,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn iter(&self, row: R) -> BitIter<'_, C> {
         assert!(row.index() < self.num_rows);
         let (start, end) = self.range(row);
-        BitIter {
-            cur: None,
-            iter: self.words[start..end].iter().enumerate(),
-            marker: PhantomData,
-        }
+        BitIter::new(&self.words[start..end])
     }
 
     /// Returns the number of elements in `row`.

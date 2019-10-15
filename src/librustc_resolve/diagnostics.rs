@@ -80,11 +80,11 @@ impl<'a> Resolver<'a> {
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
-        for (&(ident, _), resolution) in self.resolutions(module).borrow().iter() {
+        for (key, resolution) in self.resolutions(module).borrow().iter() {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
                 if filter_fn(res) {
-                    names.push(TypoSuggestion::from_res(ident.name, res));
+                    names.push(TypoSuggestion::from_res(key.ident.name, res));
                 }
             }
         }
@@ -849,7 +849,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         let resolutions = self.r.resolutions(crate_module).borrow();
-        let resolution = resolutions.get(&(ident, MacroNS))?;
+        let resolution = resolutions.get(&self.r.new_key(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();

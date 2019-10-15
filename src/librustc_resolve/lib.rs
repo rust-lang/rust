@@ -432,7 +432,22 @@ impl ModuleKind {
     }
 }
 
-type Resolutions<'a> = RefCell<FxIndexMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
+/// A key that identifies a binding in a given `Module`.
+///
+/// Multiple bindings in the same module can have the same key (in a valid
+/// program) if all but one of them come from glob imports.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+struct BindingKey {
+    /// The identifier for the binding, aways the `modern` version of the
+    /// identifier.
+    ident: Ident,
+    ns: Namespace,
+    /// 0 if ident is not `_`, otherwise a value that's unique to the specific
+    /// `_` in the expanded AST that introduced this binding.
+    disambiguator: u32,
+}
+
+type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
 pub struct ModuleData<'a> {
@@ -492,8 +507,8 @@ impl<'a> ModuleData<'a> {
     fn for_each_child<R, F>(&'a self, resolver: &mut R, mut f: F)
         where R: AsMut<Resolver<'a>>, F: FnMut(&mut R, Ident, Namespace, &'a NameBinding<'a>)
     {
-        for (&(ident, ns), name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            name_resolution.borrow().binding.map(|binding| f(resolver, ident, ns, binding));
+        for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
+            name_resolution.borrow().binding.map(|binding| f(resolver, key.ident, key.ns, binding));
         }
     }
 
@@ -882,6 +897,7 @@ pub struct Resolver<'a> {
     module_map: FxHashMap<DefId, Module<'a>>,
     extern_module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
+    underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
     pub glob_map: GlobMap,
@@ -1160,6 +1176,7 @@ impl<'a> Resolver<'a> {
             extern_crate_map: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
+            underscore_disambiguator: 0,
             empty_module,
             module_map,
             block_map: Default::default(),
@@ -1284,6 +1301,17 @@ impl<'a> Resolver<'a> {
         self.arenas.alloc_module(module)
     }
 
+    fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
+        let ident = ident.modern();
+        let disambiguator = if ident.name == kw::Underscore {
+            self.underscore_disambiguator += 1;
+            self.underscore_disambiguator
+        } else {
+            0
+        };
+        BindingKey { ident, ns, disambiguator }
+    }
+
     fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
@@ -1292,9 +1320,9 @@ impl<'a> Resolver<'a> {
         &module.lazy_resolutions
     }
 
-    fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
+    fn resolution(&mut self, module: Module<'a>, key: BindingKey)
                   -> &'a RefCell<NameResolution<'a>> {
-        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
+        *self.resolutions(module).borrow_mut().entry(key)
                .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 

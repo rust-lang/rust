@@ -1,17 +1,17 @@
 error: unreachable pattern
-  --> $DIR/unreachable-loop-patterns.rs:20:9
+  --> $DIR/unreachable-loop-patterns.rs:18:9
    |
 LL |     for _ in unimplemented!() as Void {}
    |         ^
    |
 note: lint level defined here
-  --> $DIR/unreachable-loop-patterns.rs:7:9
+  --> $DIR/unreachable-loop-patterns.rs:5:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/unreachable-loop-patterns.rs:20:14
+  --> $DIR/unreachable-loop-patterns.rs:18:14
    |
 LL |     for _ in unimplemented!() as Void {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^

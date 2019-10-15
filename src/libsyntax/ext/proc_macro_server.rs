@@ -334,8 +334,7 @@ impl Ident {
         if !Self::is_valid(&string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
-        // Get rid of gensyms to conservatively check rawness on the string contents only.
-        if is_raw && !sym.as_interned_str().as_symbol().can_be_raw() {
+        if is_raw && !sym.can_be_raw() {
             panic!("`{}` cannot be a raw identifier", string);
         }
         Ident { sym, is_raw, span }

@@ -1483,7 +1483,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         }
 
         // Replace any anonymous late-bound regions with named
-        // variants, using gensym'd identifiers, so that we can
+        // variants, using new unique identifiers, so that we can
         // clearly differentiate between named and unnamed regions in
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
