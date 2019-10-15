@@ -10,14 +10,14 @@ use crate::ext::mbe::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
-use crate::parse::{DirectoryOwnership, PResult, ParseSess};
+use crate::parse::{DirectoryOwnership, PResult};
 use crate::parse::token;
 use crate::parse::parser::Parser;
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::{sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
-use crate::visit::{self, Visitor};
+use crate::visit::Visitor;
 use crate::util::map_in_place::MapInPlace;
 
 use errors::{Applicability, FatalError};
@@ -577,10 +577,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
                     let tok_result = expander.expand(self.cx, span, mac.stream());
-                    let result =
-                        self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span);
-                    self.gate_proc_macro_expansion(span, &result);
-                    result
+                    self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let prev = self.cx.current_expansion.prior_type_ascription;
@@ -624,10 +621,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     })), DUMMY_SP).into();
                     let input = self.extract_proc_macro_attr_input(attr.item.tokens, span);
                     let tok_result = expander.expand(self.cx, span, input, item_tok);
-                    let res =
-                        self.parse_ast_fragment(tok_result, fragment_kind, &attr.item.path, span);
-                    self.gate_proc_macro_expansion(span, &res);
-                    res
+                    self.parse_ast_fragment(tok_result, fragment_kind, &attr.item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match attr.parse_meta(self.cx.parse_sess) {
@@ -716,41 +710,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             GateIssue::Language,
             &format!("custom attributes cannot be applied to {}", kind),
         );
-    }
-
-    fn gate_proc_macro_expansion(&self, span: Span, fragment: &AstFragment) {
-        if self.cx.ecfg.proc_macro_hygiene() {
-            return
-        }
-
-        fragment.visit_with(&mut DisallowMacros {
-            span,
-            parse_sess: self.cx.parse_sess,
-        });
-
-        struct DisallowMacros<'a> {
-            span: Span,
-            parse_sess: &'a ParseSess,
-        }
-
-        impl<'ast, 'a> Visitor<'ast> for DisallowMacros<'a> {
-            fn visit_item(&mut self, i: &'ast ast::Item) {
-                if let ast::ItemKind::MacroDef(_) = i.kind {
-                    emit_feature_err(
-                        self.parse_sess,
-                        sym::proc_macro_hygiene,
-                        self.span,
-                        GateIssue::Language,
-                        "procedural macros cannot expand to macro definitions",
-                    );
-                }
-                visit::walk_item(self, i);
-            }
-
-            fn visit_mac(&mut self, _mac: &'ast ast::Mac) {
-                // ...
-            }
-        }
     }
 
     fn gate_proc_macro_expansion_kind(&self, span: Span, kind: AstFragmentKind) {
