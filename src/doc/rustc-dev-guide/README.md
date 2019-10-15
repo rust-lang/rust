@@ -72,7 +72,8 @@ To make a PR, the following steps are useful.
 git submodule update --remote src/doc/rustc-guide
 git add -u
 git commit -m "Update rustc-guide"
-./x.py test -i --stage 1 src/doc/rustc-guide # This is optional and should succeed anyway
+# Note that you can use -i, which is short for --incremental, in the following command
+./x.py test --incremental --stage 1 src/doc/rustc-guide # This is optional and should succeed anyway
 # Open a PR in rust-lang/rust
 ```
 
