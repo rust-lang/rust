@@ -47,20 +47,6 @@ pub enum MonoItem<'tcx> {
 }
 
 impl<'tcx> MonoItem<'tcx> {
-    pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
-        match *self {
-            MonoItem::Fn(instance) => {
-                // Estimate the size of a function based on how many statements
-                // it contains.
-                tcx.instance_def_size_estimate(instance.def)
-            },
-            // Conservatively estimate the size of a static declaration
-            // or assembly to be 1.
-            MonoItem::Static(_) |
-            MonoItem::GlobalAsm(_) => 1,
-        }
-    }
-
     pub fn is_generic_fn(&self) -> bool {
         match *self {
             MonoItem::Fn(ref instance) => {
@@ -248,7 +234,7 @@ pub struct CodegenUnit<'tcx> {
     /// as well as the crate name and disambiguator.
     name: InternedString,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
-    size_estimate: Option<usize>,
+    size_estimate: usize,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -298,7 +284,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         CodegenUnit {
             name: name,
             items: Default::default(),
-            size_estimate: None,
+            size_estimate: 0,
         }
     }
 
@@ -330,21 +316,17 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size(&mut self, tcx: TyCtxt<'tcx>) {
-        // Estimate the size of a codegen unit as (approximately) the number of MIR
-        // statements it corresponds to.
-        self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
-    }
-
     pub fn size_estimate(&self) -> usize {
-        // Should only be called if `estimate_size` has previously been called.
-        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
+        self.size_estimate
     }
 
-    pub fn modify_size_estimate(&mut self, delta: usize) {
-        assert!(self.size_estimate.is_some());
-        if let Some(size_estimate) = self.size_estimate {
-            self.size_estimate = Some(size_estimate + delta);
+    pub fn add_item(
+            &mut self,
+            item: MonoItem<'tcx>,
+            linkage: (Linkage, Visibility),
+            item_size: usize ) {
+        if self.items.insert(item, linkage).is_none() {
+            self.size_estimate += item_size;
         }
     }
 
