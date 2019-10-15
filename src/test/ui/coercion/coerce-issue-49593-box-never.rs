@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![feature(never_type)]
 #![allow(unreachable_code)]

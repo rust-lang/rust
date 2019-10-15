@@ -1,4 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
+
 #![allow(dead_code)]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
