@@ -55,7 +55,7 @@ LL |     let z = ManyVariants::Three();
    |             ^^^^^^^^^^^^^^^^^^^
 LL |     let z = ManyVariants::Four();
    |             ^^^^^^^^^^^^^^^^^^
-and 6 other candidates
+     and 6 other candidates
 
 error: aborting due to 5 previous errors
 

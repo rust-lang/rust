@@ -20,7 +20,7 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         &self,
         instance: Instance<'tcx>,
         sig: ty::FnSig<'tcx>,
-        llfn: Self::Value,
+        llfn: Self::Function,
         mir: &mir::Body<'_>,
     ) -> FunctionDebugContext<Self::DIScope>;
 

@@ -5,7 +5,7 @@ use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
-use rustc::hir::GenericParamKind;
+use rustc::hir::{GenericParamKind, AnonConst};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_index::vec::IndexVec;
@@ -42,9 +42,9 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
-pub struct EncodeContext<'tcx> {
+struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
-    pub tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
 
     entries_index: Index<'tcx>,
 
@@ -313,11 +313,12 @@ impl<'tcx> EncodeContext<'tcx> {
     /// the `Entry` (which may point to other encoded information)
     /// and will then record the `Lazy<Entry>` for use in the index.
     // FIXME(eddyb) remove this.
-    pub fn record<DATA>(&mut self,
-                        id: DefId,
-                        op: impl FnOnce(&mut Self, DATA) -> Entry<'tcx>,
-                        data: DATA)
-    {
+    fn record<DATA>(
+        &mut self,
+        id: DefId,
+        op: impl FnOnce(&mut Self, DATA) -> Entry<'tcx>,
+        data: DATA,
+    ) {
         assert!(id.is_local());
 
         let entry = op(self, data);
@@ -1711,6 +1712,11 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         intravisit::walk_expr(self, ex);
         self.encode_info_for_expr(ex);
     }
+    fn visit_anon_const(&mut self, c: &'tcx AnonConst) {
+        intravisit::walk_anon_const(self, c);
+        let def_id = self.tcx.hir().local_def_id(c.hir_id);
+        self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
+    }
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         intravisit::walk_item(self, item);
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
@@ -1728,24 +1734,9 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
                           EncodeContext::encode_info_for_foreign_item,
                           (def_id, ni));
     }
-    fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
-                     g: &'tcx hir::Generics,
-                     id: hir::HirId) {
-        intravisit::walk_variant(self, v, g, id);
-
-        if let Some(ref discr) = v.disr_expr {
-            let def_id = self.tcx.hir().local_def_id(discr.hir_id);
-            self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
-        }
-    }
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
-    }
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        intravisit::walk_ty(self, ty);
-        self.encode_info_for_ty(ty);
     }
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
@@ -1781,16 +1772,6 @@ impl EncodeContext<'tcx> {
                     self.record(def_id, EncodeContext::encode_info_for_const_param, def_id);
                 }
             }
-        }
-    }
-
-    fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
-        match ty.kind {
-            hir::TyKind::Array(_, ref length) => {
-                let def_id = self.tcx.hir().local_def_id(length.hir_id);
-                self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
-            }
-            _ => {}
         }
     }
 
@@ -1920,7 +1901,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+crate fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
@@ -1962,7 +1943,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     EncodedMetadata { raw_data: result }
 }
 
-pub fn get_repr_options(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
+fn get_repr_options(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.kind {
         ty::Adt(ref def, _) => return def.repr,

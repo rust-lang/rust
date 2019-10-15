@@ -130,7 +130,7 @@ pub fn configure_and_expand(
     let crate_name = crate_name.to_string();
     let (result, resolver) = BoxedResolver::new(static move || {
         let sess = &*sess;
-        let mut crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
+        let crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
             sess,
@@ -138,7 +138,7 @@ pub fn configure_and_expand(
             krate,
             &crate_name,
             &resolver_arenas,
-            &mut crate_loader,
+            &crate_loader,
             plugin_info,
         );
         let mut resolver = match res {
@@ -169,6 +169,7 @@ impl ExpansionResult {
         ExpansionResult {
             defs: Steal::new(resolver.definitions),
             resolutions: Steal::new(Resolutions {
+                extern_crate_map: resolver.extern_crate_map,
                 export_map: resolver.export_map,
                 trait_map: resolver.trait_map,
                 glob_map: resolver.glob_map,
@@ -187,6 +188,7 @@ impl ExpansionResult {
         ExpansionResult {
             defs: Steal::new(resolver.definitions.clone()),
             resolutions: Steal::new(Resolutions {
+                extern_crate_map: resolver.extern_crate_map.clone(),
                 export_map: resolver.export_map.clone(),
                 trait_map: resolver.trait_map.clone(),
                 glob_map: resolver.glob_map.clone(),
@@ -319,7 +321,7 @@ fn configure_and_expand_inner<'a>(
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
-    crate_loader: &'a mut CrateLoader<'a>,
+    crate_loader: &'a CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {
@@ -663,16 +665,15 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
         if sess.binary_dep_depinfo() {
             for cnum in compiler.cstore.crates_untracked() {
-                let metadata = compiler.cstore.crate_data_as_rc_any(cnum);
-                let metadata = metadata.downcast_ref::<cstore::CrateMetadata>().unwrap();
-                if let Some((path, _)) = &metadata.source.dylib {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                let source = compiler.cstore.crate_source_untracked(cnum);
+                if let Some((path, _)) = source.dylib {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
-                if let Some((path, _)) = &metadata.source.rlib {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                if let Some((path, _)) = source.rlib {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
-                if let Some((path, _)) = &metadata.source.rmeta {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                if let Some((path, _)) = source.rmeta {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
             }
         }
@@ -790,10 +791,13 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     cstore::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);
+    rustc_codegen_utils::provide(providers);
+    rustc_codegen_ssa::provide(providers);
 }
 
 pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     cstore::provide_extern(providers);
+    rustc_codegen_ssa::provide_extern(providers);
 }
 
 declare_box_region_type!(

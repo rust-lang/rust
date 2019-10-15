@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/const-argument-cross-crate-mismatch.rs:6:41
+   |
+LL |     let _ = const_generic_lib::function(const_generic_lib::Struct([0u8, 1u8]));
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `3usize`, found `2usize`
+   |
+   = note: expected type `const_generic_lib::Struct<3usize>`
+              found type `const_generic_lib::Struct<_: usize>`
+
+error[E0308]: mismatched types
+  --> $DIR/const-argument-cross-crate-mismatch.rs:8:39
+   |
+LL |     let _: const_generic_lib::Alias = const_generic_lib::Struct([0u8, 1u8, 2u8]);
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `2usize`, found `3usize`
+   |
+   = note: expected type `const_generic_lib::Struct<2usize>`
+              found type `const_generic_lib::Struct<_: usize>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

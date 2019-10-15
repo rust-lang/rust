@@ -84,7 +84,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 {
     fn new_block<'b>(
         cx: &'a Self::CodegenCx,
-        llfn: Self::Value,
+        llfn: Self::Function,
         name: &'b str
     ) -> Self;
     /* ... */

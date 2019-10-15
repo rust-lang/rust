@@ -80,250 +80,6 @@
 //! arguments which have names. Like with positional parameters, it is not
 //! valid to provide named parameters that are unused by the format string.
 //!
-//! ## Argument types
-//!
-//! Each argument's type is dictated by the format string.
-//! There are various parameters which require a particular type, however.
-//! An example is the `{:.*}` syntax, which sets the number of decimal places
-//! in floating-point types:
-//!
-//! ```
-//! let formatted_number = format!("{:.*}", 2, 1.234567);
-//!
-//! assert_eq!("1.23", formatted_number)
-//! ```
-//!
-//! If this syntax is used, then the number of characters to print precedes the
-//! actual object being formatted, and the number of characters must have the
-//! type [`usize`].
-//!
-//! ## Formatting traits
-//!
-//! When requesting that an argument be formatted with a particular type, you
-//! are actually requesting that an argument ascribes to a particular trait.
-//! This allows multiple actual types to be formatted via `{:x}` (like [`i8`] as
-//! well as [`isize`]). The current mapping of types to traits is:
-//!
-//! * *nothing* ⇒ [`Display`]
-//! * `?` ⇒ [`Debug`]
-//! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
-//! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
-//! * `o` ⇒ [`Octal`](trait.Octal.html)
-//! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
-//! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
-//! * `p` ⇒ [`Pointer`](trait.Pointer.html)
-//! * `b` ⇒ [`Binary`]
-//! * `e` ⇒ [`LowerExp`](trait.LowerExp.html)
-//! * `E` ⇒ [`UpperExp`](trait.UpperExp.html)
-//!
-//! What this means is that any type of argument which implements the
-//! [`fmt::Binary`][`Binary`] trait can then be formatted with `{:b}`. Implementations
-//! are provided for these traits for a number of primitive types by the
-//! standard library as well. If no format is specified (as in `{}` or `{:6}`),
-//! then the format trait used is the [`Display`] trait.
-//!
-//! When implementing a format trait for your own type, you will have to
-//! implement a method of the signature:
-//!
-//! ```
-//! # #![allow(dead_code)]
-//! # use std::fmt;
-//! # struct Foo; // our custom type
-//! # impl fmt::Display for Foo {
-//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//! # write!(f, "testing, testing")
-//! # } }
-//! ```
-//!
-//! Your type will be passed as `self` by-reference, and then the function
-//! should emit output into the `f.buf` stream. It is up to each format trait
-//! implementation to correctly adhere to the requested formatting parameters.
-//! The values of these parameters will be listed in the fields of the
-//! [`Formatter`] struct. In order to help with this, the [`Formatter`] struct also
-//! provides some helper methods.
-//!
-//! Additionally, the return value of this function is [`fmt::Result`] which is a
-//! type alias of [`Result`]`<(), `[`std::fmt::Error`]`>`. Formatting implementations
-//! should ensure that they propagate errors from the [`Formatter`][`Formatter`] (e.g., when
-//! calling [`write!`]). However, they should never return errors spuriously. That
-//! is, a formatting implementation must and may only return an error if the
-//! passed-in [`Formatter`] returns an error. This is because, contrary to what
-//! the function signature might suggest, string formatting is an infallible
-//! operation. This function only returns a result because writing to the
-//! underlying stream might fail and it must provide a way to propagate the fact
-//! that an error has occurred back up the stack.
-//!
-//! An example of implementing the formatting traits would look
-//! like:
-//!
-//! ```
-//! use std::fmt;
-//!
-//! #[derive(Debug)]
-//! struct Vector2D {
-//!     x: isize,
-//!     y: isize,
-//! }
-//!
-//! impl fmt::Display for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//!         // The `f` value implements the `Write` trait, which is what the
-//!         // write! macro is expecting. Note that this formatting ignores the
-//!         // various flags provided to format strings.
-//!         write!(f, "({}, {})", self.x, self.y)
-//!     }
-//! }
-//!
-//! // Different traits allow different forms of output of a type. The meaning
-//! // of this format is to print the magnitude of a vector.
-//! impl fmt::Binary for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//!         let magnitude = (self.x * self.x + self.y * self.y) as f64;
-//!         let magnitude = magnitude.sqrt();
-//!
-//!         // Respect the formatting flags by using the helper method
-//!         // `pad_integral` on the Formatter object. See the method
-//!         // documentation for details, and the function `pad` can be used
-//!         // to pad strings.
-//!         let decimals = f.precision().unwrap_or(3);
-//!         let string = format!("{:.*}", decimals, magnitude);
-//!         f.pad_integral(true, "", &string)
-//!     }
-//! }
-//!
-//! fn main() {
-//!     let myvector = Vector2D { x: 3, y: 4 };
-//!
-//!     println!("{}", myvector);       // => "(3, 4)"
-//!     println!("{:?}", myvector);     // => "Vector2D {x: 3, y:4}"
-//!     println!("{:10.3b}", myvector); // => "     5.000"
-//! }
-//! ```
-//!
-//! ### `fmt::Display` vs `fmt::Debug`
-//!
-//! These two formatting traits have distinct purposes:
-//!
-//! - [`fmt::Display`][`Display`] implementations assert that the type can be faithfully
-//!   represented as a UTF-8 string at all times. It is **not** expected that
-//!   all types implement the [`Display`] trait.
-//! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types.
-//!   Output will typically represent the internal state as faithfully as possible.
-//!   The purpose of the [`Debug`] trait is to facilitate debugging Rust code. In
-//!   most cases, using `#[derive(Debug)]` is sufficient and recommended.
-//!
-//! Some examples of the output from both traits:
-//!
-//! ```
-//! assert_eq!(format!("{} {:?}", 3, 4), "3 4");
-//! assert_eq!(format!("{} {:?}", 'a', 'b'), "a 'b'");
-//! assert_eq!(format!("{} {:?}", "foo\n", "bar\n"), "foo\n \"bar\\n\"");
-//! ```
-//!
-//! ## Related macros
-//!
-//! There are a number of related macros in the [`format!`] family. The ones that
-//! are currently implemented are:
-//!
-//! ```ignore (only-for-syntax-highlight)
-//! format!      // described above
-//! write!       // first argument is a &mut io::Write, the destination
-//! writeln!     // same as write but appends a newline
-//! print!       // the format string is printed to the standard output
-//! println!     // same as print but appends a newline
-//! eprint!      // the format string is printed to the standard error
-//! eprintln!    // same as eprint but appends a newline
-//! format_args! // described below.
-//! ```
-//!
-//! ### `write!`
-//!
-//! This and [`writeln!`] are two macros which are used to emit the format string
-//! to a specified stream. This is used to prevent intermediate allocations of
-//! format strings and instead directly write the output. Under the hood, this
-//! function is actually invoking the [`write_fmt`] function defined on the
-//! [`std::io::Write`] trait. Example usage is:
-//!
-//! ```
-//! # #![allow(unused_must_use)]
-//! use std::io::Write;
-//! let mut w = Vec::new();
-//! write!(&mut w, "Hello {}!", "world");
-//! ```
-//!
-//! ### `print!`
-//!
-//! This and [`println!`] emit their output to stdout. Similarly to the [`write!`]
-//! macro, the goal of these macros is to avoid intermediate allocations when
-//! printing output. Example usage is:
-//!
-//! ```
-//! print!("Hello {}!", "world");
-//! println!("I have a newline {}", "character at the end");
-//! ```
-//! ### `eprint!`
-//!
-//! The [`eprint!`] and [`eprintln!`] macros are identical to
-//! [`print!`] and [`println!`], respectively, except they emit their
-//! output to stderr.
-//!
-//! ### `format_args!`
-//!
-//! This is a curious macro which is used to safely pass around
-//! an opaque object describing the format string. This object
-//! does not require any heap allocations to create, and it only
-//! references information on the stack. Under the hood, all of
-//! the related macros are implemented in terms of this. First
-//! off, some example usage is:
-//!
-//! ```
-//! # #![allow(unused_must_use)]
-//! use std::fmt;
-//! use std::io::{self, Write};
-//!
-//! let mut some_writer = io::stdout();
-//! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
-//!
-//! fn my_fmt_fn(args: fmt::Arguments) {
-//!     write!(&mut io::stdout(), "{}", args);
-//! }
-//! my_fmt_fn(format_args!(", or a {} too", "function"));
-//! ```
-//!
-//! The result of the [`format_args!`] macro is a value of type [`fmt::Arguments`].
-//! This structure can then be passed to the [`write`] and [`format`] functions
-//! inside this module in order to process the format string.
-//! The goal of this macro is to even further prevent intermediate allocations
-//! when dealing formatting strings.
-//!
-//! For example, a logging library could use the standard formatting syntax, but
-//! it would internally pass around this structure until it has been determined
-//! where output should go to.
-//!
-//! # Syntax
-//!
-//! The syntax for the formatting language used is drawn from other languages,
-//! so it should not be too alien. Arguments are formatted with Python-like
-//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
-//! `%`. The actual grammar for the formatting syntax is:
-//!
-//! ```text
-//! format_string := <text> [ maybe-format <text> ] *
-//! maybe-format := '{' '{' | '}' '}' | <format>
-//! format := '{' [ argument ] [ ':' format_spec ] '}'
-//! argument := integer | identifier
-//!
-//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
-//! fill := character
-//! align := '<' | '^' | '>'
-//! sign := '+' | '-'
-//! width := count
-//! precision := count | '*'
-//! type := identifier | '?' | ''
-//! count := parameter | integer
-//! parameter := argument '$'
-//! ```
-//!
 //! # Formatting Parameters
 //!
 //! Each argument being formatted can be transformed by a number of formatting
@@ -478,6 +234,234 @@
 //! The literal characters `{` and `}` may be included in a string by preceding
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
+//!
+//! # Syntax
+//!
+//! To summarize, you can find the full grammar of format strings.
+//! The syntax for the formatting language used is drawn from other languages,
+//! so it should not be too alien. Arguments are formatted with Python-like
+//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
+//! `%`. The actual grammar for the formatting syntax is:
+//!
+//! ```text
+//! format_string := <text> [ maybe-format <text> ] *
+//! maybe-format := '{' '{' | '}' '}' | <format>
+//! format := '{' [ argument ] [ ':' format_spec ] '}'
+//! argument := integer | identifier
+//!
+//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
+//! fill := character
+//! align := '<' | '^' | '>'
+//! sign := '+' | '-'
+//! width := count
+//! precision := count | '*'
+//! type := identifier | '?' | ''
+//! count := parameter | integer
+//! parameter := argument '$'
+//! ```
+//!
+//! # Formatting traits
+//!
+//! When requesting that an argument be formatted with a particular type, you
+//! are actually requesting that an argument ascribes to a particular trait.
+//! This allows multiple actual types to be formatted via `{:x}` (like [`i8`] as
+//! well as [`isize`]). The current mapping of types to traits is:
+//!
+//! * *nothing* ⇒ [`Display`]
+//! * `?` ⇒ [`Debug`]
+//! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
+//! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
+//! * `o` ⇒ [`Octal`](trait.Octal.html)
+//! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
+//! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
+//! * `p` ⇒ [`Pointer`](trait.Pointer.html)
+//! * `b` ⇒ [`Binary`]
+//! * `e` ⇒ [`LowerExp`](trait.LowerExp.html)
+//! * `E` ⇒ [`UpperExp`](trait.UpperExp.html)
+//!
+//! What this means is that any type of argument which implements the
+//! [`fmt::Binary`][`Binary`] trait can then be formatted with `{:b}`. Implementations
+//! are provided for these traits for a number of primitive types by the
+//! standard library as well. If no format is specified (as in `{}` or `{:6}`),
+//! then the format trait used is the [`Display`] trait.
+//!
+//! When implementing a format trait for your own type, you will have to
+//! implement a method of the signature:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! # use std::fmt;
+//! # struct Foo; // our custom type
+//! # impl fmt::Display for Foo {
+//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//! # write!(f, "testing, testing")
+//! # } }
+//! ```
+//!
+//! Your type will be passed as `self` by-reference, and then the function
+//! should emit output into the `f.buf` stream. It is up to each format trait
+//! implementation to correctly adhere to the requested formatting parameters.
+//! The values of these parameters will be listed in the fields of the
+//! [`Formatter`] struct. In order to help with this, the [`Formatter`] struct also
+//! provides some helper methods.
+//!
+//! Additionally, the return value of this function is [`fmt::Result`] which is a
+//! type alias of [`Result`]`<(), `[`std::fmt::Error`]`>`. Formatting implementations
+//! should ensure that they propagate errors from the [`Formatter`][`Formatter`] (e.g., when
+//! calling [`write!`]). However, they should never return errors spuriously. That
+//! is, a formatting implementation must and may only return an error if the
+//! passed-in [`Formatter`] returns an error. This is because, contrary to what
+//! the function signature might suggest, string formatting is an infallible
+//! operation. This function only returns a result because writing to the
+//! underlying stream might fail and it must provide a way to propagate the fact
+//! that an error has occurred back up the stack.
+//!
+//! An example of implementing the formatting traits would look
+//! like:
+//!
+//! ```
+//! use std::fmt;
+//!
+//! #[derive(Debug)]
+//! struct Vector2D {
+//!     x: isize,
+//!     y: isize,
+//! }
+//!
+//! impl fmt::Display for Vector2D {
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//!         // The `f` value implements the `Write` trait, which is what the
+//!         // write! macro is expecting. Note that this formatting ignores the
+//!         // various flags provided to format strings.
+//!         write!(f, "({}, {})", self.x, self.y)
+//!     }
+//! }
+//!
+//! // Different traits allow different forms of output of a type. The meaning
+//! // of this format is to print the magnitude of a vector.
+//! impl fmt::Binary for Vector2D {
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//!         let magnitude = (self.x * self.x + self.y * self.y) as f64;
+//!         let magnitude = magnitude.sqrt();
+//!
+//!         // Respect the formatting flags by using the helper method
+//!         // `pad_integral` on the Formatter object. See the method
+//!         // documentation for details, and the function `pad` can be used
+//!         // to pad strings.
+//!         let decimals = f.precision().unwrap_or(3);
+//!         let string = format!("{:.*}", decimals, magnitude);
+//!         f.pad_integral(true, "", &string)
+//!     }
+//! }
+//!
+//! fn main() {
+//!     let myvector = Vector2D { x: 3, y: 4 };
+//!
+//!     println!("{}", myvector);       // => "(3, 4)"
+//!     println!("{:?}", myvector);     // => "Vector2D {x: 3, y:4}"
+//!     println!("{:10.3b}", myvector); // => "     5.000"
+//! }
+//! ```
+//!
+//! ### `fmt::Display` vs `fmt::Debug`
+//!
+//! These two formatting traits have distinct purposes:
+//!
+//! - [`fmt::Display`][`Display`] implementations assert that the type can be faithfully
+//!   represented as a UTF-8 string at all times. It is **not** expected that
+//!   all types implement the [`Display`] trait.
+//! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types.
+//!   Output will typically represent the internal state as faithfully as possible.
+//!   The purpose of the [`Debug`] trait is to facilitate debugging Rust code. In
+//!   most cases, using `#[derive(Debug)]` is sufficient and recommended.
+//!
+//! Some examples of the output from both traits:
+//!
+//! ```
+//! assert_eq!(format!("{} {:?}", 3, 4), "3 4");
+//! assert_eq!(format!("{} {:?}", 'a', 'b'), "a 'b'");
+//! assert_eq!(format!("{} {:?}", "foo\n", "bar\n"), "foo\n \"bar\\n\"");
+//! ```
+//!
+//! # Related macros
+//!
+//! There are a number of related macros in the [`format!`] family. The ones that
+//! are currently implemented are:
+//!
+//! ```ignore (only-for-syntax-highlight)
+//! format!      // described above
+//! write!       // first argument is a &mut io::Write, the destination
+//! writeln!     // same as write but appends a newline
+//! print!       // the format string is printed to the standard output
+//! println!     // same as print but appends a newline
+//! eprint!      // the format string is printed to the standard error
+//! eprintln!    // same as eprint but appends a newline
+//! format_args! // described below.
+//! ```
+//!
+//! ### `write!`
+//!
+//! This and [`writeln!`] are two macros which are used to emit the format string
+//! to a specified stream. This is used to prevent intermediate allocations of
+//! format strings and instead directly write the output. Under the hood, this
+//! function is actually invoking the [`write_fmt`] function defined on the
+//! [`std::io::Write`] trait. Example usage is:
+//!
+//! ```
+//! # #![allow(unused_must_use)]
+//! use std::io::Write;
+//! let mut w = Vec::new();
+//! write!(&mut w, "Hello {}!", "world");
+//! ```
+//!
+//! ### `print!`
+//!
+//! This and [`println!`] emit their output to stdout. Similarly to the [`write!`]
+//! macro, the goal of these macros is to avoid intermediate allocations when
+//! printing output. Example usage is:
+//!
+//! ```
+//! print!("Hello {}!", "world");
+//! println!("I have a newline {}", "character at the end");
+//! ```
+//! ### `eprint!`
+//!
+//! The [`eprint!`] and [`eprintln!`] macros are identical to
+//! [`print!`] and [`println!`], respectively, except they emit their
+//! output to stderr.
+//!
+//! ### `format_args!`
+//!
+//! This is a curious macro which is used to safely pass around
+//! an opaque object describing the format string. This object
+//! does not require any heap allocations to create, and it only
+//! references information on the stack. Under the hood, all of
+//! the related macros are implemented in terms of this. First
+//! off, some example usage is:
+//!
+//! ```
+//! # #![allow(unused_must_use)]
+//! use std::fmt;
+//! use std::io::{self, Write};
+//!
+//! let mut some_writer = io::stdout();
+//! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
+//!
+//! fn my_fmt_fn(args: fmt::Arguments) {
+//!     write!(&mut io::stdout(), "{}", args);
+//! }
+//! my_fmt_fn(format_args!(", or a {} too", "function"));
+//! ```
+//!
+//! The result of the [`format_args!`] macro is a value of type [`fmt::Arguments`].
+//! This structure can then be passed to the [`write`] and [`format`] functions
+//! inside this module in order to process the format string.
+//! The goal of this macro is to even further prevent intermediate allocations
+//! when dealing formatting strings.
+//!
+//! For example, a logging library could use the standard formatting syntax, but
+//! it would internally pass around this structure until it has been determined
+//! where output should go to.
 //!
 //! [`usize`]: ../../std/primitive.usize.html
 //! [`isize`]: ../../std/primitive.isize.html

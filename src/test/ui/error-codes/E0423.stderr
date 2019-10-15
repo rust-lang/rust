@@ -34,7 +34,7 @@ LL |     let f = Foo();
    |             ^^^
    |             |
    |             did you mean `Foo { /* fields */ }`?
-   |             help: a function with a similar name exists: `foo`
+   |             help: a function with a similar name exists (notice the capitalization): `foo`
 
 error[E0423]: expected value, found struct `T`
   --> $DIR/E0423.rs:14:8

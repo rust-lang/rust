@@ -304,7 +304,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        self.iterate_until_fixed_point("Expansion", |constraint| {
+        self.iterate_until_fixed_point(|constraint| {
             debug!("expansion: constraint={:?}", constraint);
             let (a_region, b_vid, b_data, retain) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
@@ -360,11 +360,19 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         match *b_data {
             VarValue::Value(cur_region) => {
                 // Identical scopes can show up quite often, if the fixed point
-                // iteration converges slowly, skip them
+                // iteration converges slowly. Skip them. This is purely an
+                // optimization.
                 if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
                     if a_scope == cur_scope {
                         return false;
                     }
+                }
+
+                // This is a specialized version of the `lub_concrete_regions`
+                // check below for a common case, here purely as an
+                // optimization.
+                if let ReEmpty = a_region {
+                    return false;
                 }
 
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
@@ -407,8 +415,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     /// Returns the smallest region `c` such that `a <= c` and `b <= c`.
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        let tcx = self.tcx();
-
         match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
@@ -468,7 +474,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
                 // otherwise, we don't know what the free region is,
                 // so we must conservatively say the LUB is static:
-                tcx.lifetimes.re_static
+                self.tcx().lifetimes.re_static
             }
 
             (&ReScope(a_id), &ReScope(b_id)) => {
@@ -476,7 +482,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // subtype of the region corresponding to an inner
                 // block.
                 let lub = self.region_rels.region_scope_tree.nearest_common_ancestor(a_id, b_id);
-                tcx.mk_region(ReScope(lub))
+                self.tcx().mk_region(ReScope(lub))
             }
 
             (&ReEarlyBound(_), &ReEarlyBound(_))
@@ -490,7 +496,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 if a == b {
                     a
                 } else {
-                    tcx.lifetimes.re_static
+                    self.tcx().lifetimes.re_static
                 }
             }
         }
@@ -860,7 +866,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
-    fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
+    fn iterate_until_fixed_point<F>(&self, mut body: F)
     where
         F: FnMut(&Constraint<'tcx>) -> (bool, bool),
     {
@@ -870,7 +876,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         while changed {
             changed = false;
             iteration += 1;
-            debug!("---- {} Iteration {}{}", "#", tag, iteration);
+            debug!("---- Expansion iteration {}", iteration);
             constraints.retain(|constraint| {
                 let (edge_changed, retain) = body(constraint);
                 if edge_changed {
@@ -880,7 +886,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 retain
             });
         }
-        debug!("---- {} Complete after {} iteration(s)", tag, iteration);
+        debug!("---- Expansion complete after {} iteration(s)", iteration);
     }
 
     fn bound_is_met(

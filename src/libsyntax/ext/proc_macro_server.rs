@@ -394,7 +394,7 @@ impl server::Types for Rustc<'_> {
 
 impl server::TokenStream for Rustc<'_> {
     fn new(&mut self) -> Self::TokenStream {
-        TokenStream::empty()
+        TokenStream::default()
     }
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()

@@ -6,8 +6,7 @@ use crate::foreign_modules;
 use crate::schema;
 
 use rustc::ty::query::QueryConfig;
-use rustc::middle::cstore::{CrateStore, DepKind,
-                            EncodedMetadata, NativeLibraryKind};
+use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::middle::dependency_format::Linkage;
@@ -414,26 +413,12 @@ impl cstore::CStore {
         }
     }
 
-    pub fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind {
-        let data = self.get_crate_data(cnum);
-        let r = *data.dep_kind.lock();
-        r
-    }
-
     pub fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition {
         self.get_crate_data(cnum).root.edition
     }
 
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
-    }
-
-    pub fn ctor_kind_untracked(&self, def: DefId) -> def::CtorKind {
-        self.get_crate_data(def.krate).get_ctor_kind(def.index)
-    }
-
-    pub fn item_attrs_untracked(&self, def: DefId, sess: &Session) -> Lrc<[ast::Attribute]> {
-        self.get_crate_data(def.krate).get_item_attrs(def.index, sess)
     }
 
     pub fn item_children_untracked(
@@ -493,6 +478,10 @@ impl cstore::CStore {
     pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
+
+    pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
+        self.get_crate_data(cnum).source.clone()
+    }
 }
 
 impl CrateStore for cstore::CStore {
@@ -547,11 +536,6 @@ impl CrateStore for cstore::CStore {
         let mut result = vec![];
         self.iter_crate_data(|cnum, _| result.push(cnum));
         result
-    }
-
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>
-    {
-        self.do_extern_mod_stmt_cnum(emod_id)
     }
 
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {

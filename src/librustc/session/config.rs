@@ -23,7 +23,7 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax::source_map::SourceMap;
 
 use errors::emitter::HumanReadableErrorType;
-use errors::{ColorConfig, FatalError, Handler};
+use errors::{ColorConfig, FatalError, Handler, SourceMapperDyn};
 
 use getopts;
 
@@ -1857,6 +1857,7 @@ struct NullEmitter;
 
 impl errors::emitter::Emitter for NullEmitter {
     fn emit_diagnostic(&mut self, _: &errors::Diagnostic) {}
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
 }
 
 // Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.

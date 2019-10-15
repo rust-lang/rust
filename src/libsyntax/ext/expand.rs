@@ -676,12 +676,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
             Some(TokenTree::Token(..)) => {}
-            None => return TokenStream::empty(),
+            None => return TokenStream::default(),
         }
         self.cx.span_err(span, "custom attribute invocations must be \
             of the form `#[foo]` or `#[foo(..)]`, the macro name must only be \
             followed by a delimiter token");
-        TokenStream::empty()
+        TokenStream::default()
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {

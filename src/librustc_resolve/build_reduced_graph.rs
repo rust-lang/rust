@@ -104,8 +104,7 @@ impl<'a> Resolver<'a> {
             return self.module_map[&def_id]
         }
 
-        let macros_only = self.cstore.dep_kind_untracked(def_id.krate).macros_only();
-        if let Some(&module) = self.extern_module_map.get(&(def_id, macros_only)) {
+        if let Some(&module) = self.extern_module_map.get(&def_id) {
             return module;
         }
 
@@ -121,7 +120,7 @@ impl<'a> Resolver<'a> {
         let module = self.arenas.alloc_module(ModuleData::new(
             parent, kind, def_id, ExpnId::root(), DUMMY_SP
         ));
-        self.extern_module_map.insert((def_id, macros_only), module);
+        self.extern_module_map.insert(def_id, module);
         module
     }
 
@@ -618,6 +617,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     let crate_id = self.r.crate_loader.process_extern_crate(
                         item, &self.r.definitions
                     );
+                    self.r.extern_crate_map.insert(item.id, crate_id);
                     self.r.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 

@@ -10,7 +10,6 @@ use syntax::source_map::{DUMMY_SP, Span};
 
 use crate::base;
 use crate::MemFlags;
-use crate::callee;
 use crate::common::{self, RealPredicate, IntPredicate};
 
 use crate::traits::*;
@@ -95,7 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
+                    if bx.cx().const_to_opt_uint(v) == Some(0) {
                         let fill = bx.cx().const_u8(0);
                         bx.memset(start, fill, size, dest.align, MemFlags::empty());
                         return bx;
@@ -190,7 +189,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
-                                    callee::resolve_and_get_fn_for_ptr(bx.cx(), def_id, substs))
+                                    bx.get_fn_addr(
+                                        ty::Instance::resolve_for_fn_ptr(
+                                            bx.tcx(),
+                                            ty::ParamEnv::reveal_all(),
+                                            def_id,
+                                            substs
+                                        ).unwrap()
+                                    )
+                                )
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.layout.ty)
@@ -205,7 +212,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     substs,
                                     ty::ClosureKind::FnOnce);
-                                OperandValue::Immediate(bx.cx().get_fn(instance))
+                                OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.layout.ty)
@@ -488,7 +495,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let r = bx.cx().get_fn(instance);
+                let r = bx.cx().get_fn_addr(instance);
                 let call = bx.call(r, &[llsize, llalign], None);
                 let val = bx.pointercast(call, llty_ptr);
 

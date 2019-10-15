@@ -27,6 +27,7 @@ use rustc::dep_graph::WorkProduct;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::middle::lang_items::LangItem;
 use rustc::hir::def_id::CrateNum;
+use rustc::ty::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::svh::Svh;
@@ -41,7 +42,6 @@ pub mod traits;
 pub mod mir;
 pub mod debuginfo;
 pub mod base;
-pub mod callee;
 pub mod glue;
 pub mod meth;
 pub mod mono_item;
@@ -155,4 +155,14 @@ pub struct CodegenResults {
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    crate::back::symbol_export::provide(providers);
+    crate::base::provide_both(providers);
+}
+
+pub fn provide_extern(providers: &mut Providers<'_>) {
+    crate::back::symbol_export::provide_extern(providers);
+    crate::base::provide_both(providers);
 }

@@ -21,7 +21,7 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
-pub fn rustc_version() -> String {
+crate fn rustc_version() -> String {
     format!("rustc {}",
             option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
@@ -29,7 +29,7 @@ pub fn rustc_version() -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-pub const METADATA_VERSION: u8 = 4;
+const METADATA_VERSION: u8 = 4;
 
 /// Metadata header which includes `METADATA_VERSION`.
 /// To get older versions of rustc to ignore this metadata,
@@ -39,12 +39,12 @@ pub const METADATA_VERSION: u8 = 4;
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
 /// and further followed by the rustc version string.
-pub const METADATA_HEADER: &[u8; 12] =
+crate const METADATA_HEADER: &[u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
-pub trait LazyMeta {
+crate trait LazyMeta {
     type Meta: Copy + 'static;
 
     /// Returns the minimum encoded size.
@@ -98,7 +98,7 @@ impl<T> LazyMeta for [T] {
 #[must_use]
 // FIXME(#59875) the `Meta` parameter only exists to dodge
 // invariance wrt `T` (coming from the `meta: T::Meta` field).
-pub struct Lazy<T, Meta = <T as LazyMeta>::Meta>
+crate struct Lazy<T, Meta = <T as LazyMeta>::Meta>
     where T: ?Sized + LazyMeta<Meta = Meta>,
           Meta: 'static + Copy,
 {
@@ -108,7 +108,7 @@ pub struct Lazy<T, Meta = <T as LazyMeta>::Meta>
 }
 
 impl<T: ?Sized + LazyMeta> Lazy<T> {
-    pub fn from_position_and_meta(position: usize, meta: T::Meta) -> Lazy<T> {
+    crate fn from_position_and_meta(position: usize, meta: T::Meta) -> Lazy<T> {
         Lazy {
             position,
             meta,
@@ -118,13 +118,13 @@ impl<T: ?Sized + LazyMeta> Lazy<T> {
 }
 
 impl<T> Lazy<T> {
-    pub fn from_position(position: usize) -> Lazy<T> {
+    crate fn from_position(position: usize) -> Lazy<T> {
         Lazy::from_position_and_meta(position, ())
     }
 }
 
 impl<T> Lazy<[T]> {
-    pub fn empty() -> Lazy<[T]> {
+    crate fn empty() -> Lazy<[T]> {
         Lazy::from_position_and_meta(0, 0)
     }
 }
@@ -141,7 +141,7 @@ impl<T: ?Sized + LazyMeta> rustc_serialize::UseSpecializedDecodable for Lazy<T> 
 
 /// Encoding / decoding state for `Lazy`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum LazyState {
+crate enum LazyState {
     /// Outside of a metadata node.
     NoNode,
 
@@ -156,7 +156,7 @@ pub enum LazyState {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct CrateRoot<'tcx> {
+crate struct CrateRoot<'tcx> {
     pub name: Symbol,
     pub triple: TargetTriple,
     pub extra_filename: String,
@@ -202,7 +202,7 @@ pub struct CrateRoot<'tcx> {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct CrateDep {
+crate struct CrateDep {
     pub name: ast::Name,
     pub hash: Svh,
     pub kind: DepKind,
@@ -210,13 +210,13 @@ pub struct CrateDep {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct TraitImpls {
+crate struct TraitImpls {
     pub trait_id: (u32, DefIndex),
     pub impls: Lazy<[DefIndex]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct Entry<'tcx> {
+crate struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
     pub visibility: Lazy<ty::Visibility>,
     pub span: Lazy<Span>,
@@ -237,7 +237,7 @@ pub struct Entry<'tcx> {
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum EntryKind<'tcx> {
+crate enum EntryKind<'tcx> {
     Const(ConstQualif, Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
@@ -272,28 +272,28 @@ pub enum EntryKind<'tcx> {
 
 /// Additional data for EntryKind::Const and EntryKind::AssocConst
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
-pub struct ConstQualif {
+crate struct ConstQualif {
     pub mir: u8,
 }
 
 /// Contains a constant which has been rendered to a String.
 /// Used by rustdoc.
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct RenderedConst(pub String);
+crate struct RenderedConst(pub String);
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct ModData {
+crate struct ModData {
     pub reexports: Lazy<[def::Export<hir::HirId>]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MacroDef {
+crate struct MacroDef {
     pub body: String,
     pub legacy: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct FnData<'tcx> {
+crate struct FnData<'tcx> {
     pub asyncness: hir::IsAsync,
     pub constness: hir::Constness,
     pub param_names: Lazy<[ast::Name]>,
@@ -301,7 +301,7 @@ pub struct FnData<'tcx> {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct VariantData<'tcx> {
+crate struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
@@ -312,7 +312,7 @@ pub struct VariantData<'tcx> {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct TraitData<'tcx> {
+crate struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
@@ -321,12 +321,12 @@ pub struct TraitData<'tcx> {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct TraitAliasData<'tcx> {
+crate struct TraitAliasData<'tcx> {
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct ImplData<'tcx> {
+crate struct ImplData<'tcx> {
     pub polarity: ty::ImplPolarity,
     pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
@@ -341,7 +341,7 @@ pub struct ImplData<'tcx> {
 /// is a trait or an impl and whether, in a trait, it has
 /// a default, or an in impl, whether it's marked "default".
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum AssocContainer {
+crate enum AssocContainer {
     TraitRequired,
     TraitWithDefault,
     ImplDefault,
@@ -349,7 +349,7 @@ pub enum AssocContainer {
 }
 
 impl AssocContainer {
-    pub fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
+    crate fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
         match *self {
             AssocContainer::TraitRequired |
             AssocContainer::TraitWithDefault => ty::TraitContainer(def_id),
@@ -359,7 +359,7 @@ impl AssocContainer {
         }
     }
 
-    pub fn defaultness(&self) -> hir::Defaultness {
+    crate fn defaultness(&self) -> hir::Defaultness {
         match *self {
             AssocContainer::TraitRequired => hir::Defaultness::Default {
                 has_value: false,
@@ -376,22 +376,22 @@ impl AssocContainer {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MethodData<'tcx> {
+crate struct MethodData<'tcx> {
     pub fn_data: FnData<'tcx>,
     pub container: AssocContainer,
     pub has_self: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct ClosureData<'tcx> {
+crate struct ClosureData<'tcx> {
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct GeneratorData<'tcx> {
+crate struct GeneratorData<'tcx> {
     pub layout: mir::GeneratorLayout<'tcx>,
 }
 
 // Tags used for encoding Spans:
-pub const TAG_VALID_SPAN: u8 = 0;
-pub const TAG_INVALID_SPAN: u8 = 1;
+crate const TAG_VALID_SPAN: u8 = 0;
+crate const TAG_INVALID_SPAN: u8 = 1;

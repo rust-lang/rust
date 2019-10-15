@@ -13,7 +13,7 @@ pub use emitter::ColorConfig;
 
 use Level::*;
 
-use emitter::{Emitter, EmitterWriter};
+use emitter::{Emitter, EmitterWriter, is_case_difference};
 use registry::Registry;
 
 use rustc_data_structures::sync::{self, Lrc, Lock};
@@ -37,13 +37,16 @@ pub mod registry;
 mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos,
-                 Loc,
-                 FileLinesResult,
-                 SourceFile,
-                 FileName,
-                 MultiSpan,
-                 Span};
+use syntax_pos::{
+    BytePos,
+    FileLinesResult,
+    FileName,
+    Loc,
+    MultiSpan,
+    SourceFile,
+    Span,
+    SpanSnippetError,
+};
 
 /// Indicates the confidence in the correctness of a suggestion.
 ///
@@ -147,6 +150,7 @@ pub trait SourceMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
     fn span_to_string(&self, sp: Span) -> String;
+    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError>;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
@@ -155,9 +159,12 @@ pub trait SourceMapper {
 }
 
 impl CodeSuggestion {
-    /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &SourceMapperDyn)
-                        -> Vec<(String, Vec<SubstitutionPart>)> {
+    /// Returns the assembled code suggestions, whether they should be shown with an underline
+    /// and whether the substitution only differs in capitalization.
+    pub fn splice_lines(
+        &self,
+        cm: &SourceMapperDyn,
+    ) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
         use syntax_pos::{CharPos, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -232,6 +239,7 @@ impl CodeSuggestion {
                 prev_hi = cm.lookup_char_pos(part.span.hi());
                 prev_line = fm.get_line(prev_hi.line - 1);
             }
+            let only_capitalization = is_case_difference(cm, &buf, bounding_span);
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
                 push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
@@ -240,7 +248,7 @@ impl CodeSuggestion {
             while buf.ends_with('\n') {
                 buf.pop();
             }
-            (buf, substitution.parts)
+            (buf, substitution.parts, only_capitalization)
         }).collect()
     }
 }

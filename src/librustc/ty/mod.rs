@@ -28,7 +28,7 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use crate::ty::util::{IntTypeExt, Discr};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
-use crate::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use crate::util::nodemap::{NodeMap, NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
 use crate::session::DataTypeKind;
 
@@ -121,6 +121,7 @@ mod sty;
 
 #[derive(Clone)]
 pub struct Resolutions {
+    pub extern_crate_map: NodeMap<CrateNum>,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,

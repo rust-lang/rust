@@ -26,7 +26,7 @@ use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::{TraitMap, GlobMap};
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
@@ -855,6 +855,8 @@ pub struct Resolver<'a> {
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
 
+    /// `CrateNum` resolutions of `extern crate` items.
+    pub extern_crate_map: NodeMap<CrateNum>,
     pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
@@ -878,7 +880,7 @@ pub struct Resolver<'a> {
     /// language items.
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
-    extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
+    extern_module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
 
     /// Maps glob imports to the names of items actually imported.
@@ -900,7 +902,7 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: &'a mut CrateLoader<'a>,
+    crate_loader: &'a CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
@@ -1070,7 +1072,7 @@ impl<'a> Resolver<'a> {
                cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               crate_loader: &'a mut CrateLoader<'a>,
+               crate_loader: &'a CrateLoader<'a>,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
@@ -1155,6 +1157,7 @@ impl<'a> Resolver<'a> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
+            extern_crate_map: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
             empty_module,

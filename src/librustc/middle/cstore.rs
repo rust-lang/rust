@@ -32,6 +32,12 @@ pub struct CrateSource {
     pub rmeta: Option<(PathBuf, PathKind)>,
 }
 
+impl CrateSource {
+    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
+        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
+    }
+}
+
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone,
          Ord, PartialOrd, Eq, PartialEq, Debug, HashStable)]
 pub enum DepKind {
@@ -208,7 +214,6 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 

@@ -7,7 +7,7 @@ use std::u32;
 use log::debug;
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
-pub trait FixedSizeEncoding {
+trait FixedSizeEncoding {
     const BYTE_LEN: usize;
 
     // FIXME(eddyb) convert to and from `[u8; Self::BYTE_LEN]` instead,
@@ -75,25 +75,25 @@ impl FixedSizeEncoding for u32 {
 /// `u32::MAX`. Whenever an index is visited, we fill in the
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
-pub struct Index<'tcx> {
+crate struct Index<'tcx> {
     positions: Vec<u8>,
     _marker: PhantomData<&'tcx ()>,
 }
 
 impl Index<'tcx> {
-    pub fn new(max_index: usize) -> Self {
+    crate fn new(max_index: usize) -> Self {
         Index {
             positions: vec![0xff; max_index * 4],
             _marker: PhantomData,
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry<'tcx>>) {
+    crate fn record(&mut self, def_id: DefId, entry: Lazy<Entry<'tcx>>) {
         assert!(def_id.is_local());
         self.record_index(def_id.index, entry);
     }
 
-    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'tcx>>) {
+    fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'tcx>>) {
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
         let array_index = item.index();
@@ -108,7 +108,7 @@ impl Index<'tcx> {
         position.write_to_bytes_at(positions, array_index)
     }
 
-    pub fn write_index(&self, buf: &mut Encoder) -> Lazy<[Self]> {
+    crate fn write_index(&self, buf: &mut Encoder) -> Lazy<[Self]> {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
@@ -123,7 +123,7 @@ impl Lazy<[Index<'tcx>]> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
-    pub fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
+    crate fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         let bytes = &bytes[self.position..];
         debug!("Index::lookup: index={:?} len={:?}",
                def_index,
