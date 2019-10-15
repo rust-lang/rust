@@ -1,5 +1,7 @@
 //! FIXME: write short doc here
 
+use std::collections::HashSet;
+
 use hir::{DefWithBody, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{AstNode, TextRange};
@@ -9,7 +11,7 @@ use crate::db::RootDatabase;
 use super::{NameDefinition, NameKind};
 
 impl NameDefinition {
-    pub(crate) fn search_scope(&self, db: &RootDatabase) -> Vec<(FileId, Option<TextRange>)> {
+    pub(crate) fn search_scope(&self, db: &RootDatabase) -> HashSet<(FileId, Option<TextRange>)> {
         let module_src = self.container.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 
@@ -19,13 +21,13 @@ impl NameDefinition {
                 DefWithBody::Const(c) => c.source(db).ast.syntax().text_range(),
                 DefWithBody::Static(s) => s.source(db).ast.syntax().text_range(),
             };
-            return vec![(file_id, Some(range))];
+            return [(file_id, Some(range))].iter().cloned().collect();
         }
 
         if let Some(ref vis) = self.visibility {
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
-            let mut files = source_root.walk().map(|id| (id.into(), None)).collect::<Vec<_>>();
+            let mut files = source_root.walk().map(|id| (id.into(), None)).collect::<HashSet<_>>();
 
             if vis.syntax().to_string().as_str() == "pub(crate)" {
                 return files;
@@ -54,6 +56,6 @@ impl NameDefinition {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };
-        vec![(file_id, range)]
+        [(file_id, range)].iter().cloned().collect()
     }
 }

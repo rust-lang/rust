@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_all_refs_modules() {
+    fn test_find_all_refs_two_modules() {
         let code = r#"
             //- /lib.rs
             pub mod foo;
@@ -268,6 +268,33 @@ mod tests {
         let (analysis, pos) = analysis_and_position(code);
         let refs = analysis.find_all_refs(pos).unwrap().unwrap();
         assert_eq!(refs.len(), 3);
+    }
+
+
+    // `mod foo;` is not in the results because `foo` is an `ast::Name`.
+    // So, there are two references: the first one is a definition of the `foo` module, 
+    // which is the whole `foo.rs`, and the second one is in `use foo::Foo`.
+    #[test]
+    fn test_find_all_refs_decl_module() {
+        let code = r#"
+            //- /lib.rs
+            mod foo<|>;
+
+            use foo::Foo;
+
+            fn f() {
+                let i = Foo { n: 5 };
+            }
+
+            //- /foo.rs
+            pub struct Foo {
+                pub n: u32,
+            }
+        "#;
+
+        let (analysis, pos) = analysis_and_position(code);
+        let refs = analysis.find_all_refs(pos).unwrap().unwrap();
+        assert_eq!(refs.len(), 2);
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {

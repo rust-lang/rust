@@ -31,9 +31,16 @@ pub(crate) fn classify_name(
                 Some(from_struct_field(db, field))
             },
             ast::Module(it) => {
-                let ast = hir::ModuleSource::Module(it);
-                let src = hir::Source { file_id, ast };
-                let def = hir::Module::from_definition(db, src)?;
+                let def = {
+                    if !it.has_semi() {
+                        let ast = hir::ModuleSource::Module(it);
+                        let src = hir::Source { file_id, ast };
+                        hir::Module::from_definition(db, src)
+                    } else {
+                        let src = hir::Source { file_id, ast: it };
+                        hir::Module::from_declaration(db, src)
+                    }
+                }?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::StructDef(it) => {
