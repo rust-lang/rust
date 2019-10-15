@@ -42,9 +42,9 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
-pub struct EncodeContext<'tcx> {
+struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
-    pub tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
 
     entries_index: Index<'tcx>,
 
@@ -313,11 +313,12 @@ impl<'tcx> EncodeContext<'tcx> {
     /// the `Entry` (which may point to other encoded information)
     /// and will then record the `Lazy<Entry>` for use in the index.
     // FIXME(eddyb) remove this.
-    pub fn record<DATA>(&mut self,
-                        id: DefId,
-                        op: impl FnOnce(&mut Self, DATA) -> Entry<'tcx>,
-                        data: DATA)
-    {
+    fn record<DATA>(
+        &mut self,
+        id: DefId,
+        op: impl FnOnce(&mut Self, DATA) -> Entry<'tcx>,
+        data: DATA,
+    ) {
         assert!(id.is_local());
 
         let entry = op(self, data);
@@ -1920,7 +1921,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+crate fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
@@ -1962,7 +1963,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     EncodedMetadata { raw_data: result }
 }
 
-pub fn get_repr_options(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
+fn get_repr_options(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.kind {
         ty::Adt(ref def, _) => return def.repr,

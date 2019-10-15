@@ -60,7 +60,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 
-pub fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
+crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess.crate_types.borrow().iter().map(|&ty| {
         let linkage = calculate_type(tcx, ty);
         verify_ok(tcx, &linkage);

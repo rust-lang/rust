@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::middle::cstore::ForeignModule;
 use rustc::ty::TyCtxt;
 
-pub fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
+crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
     let mut collector = Collector {
         tcx,
         modules: Vec::new(),

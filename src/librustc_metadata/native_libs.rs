@@ -11,7 +11,7 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
-pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
+crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
         libs: Vec::new(),
@@ -21,7 +21,7 @@ pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     return collector.libs;
 }
 
-pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+crate fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
