@@ -134,7 +134,7 @@ impl LitKind {
         let (kind, symbol, suffix) = match *self {
             LitKind::Str(symbol, ast::StrStyle::Cooked) => {
                 // Don't re-intern unless the escaped string is different.
-                let s = &symbol.as_str();
+                let s: &str = &symbol.as_str();
                 let escaped = s.escape_default().to_string();
                 let symbol = if escaped == *s { symbol } else { Symbol::intern(&escaped) };
                 (token::Str, symbol, None)

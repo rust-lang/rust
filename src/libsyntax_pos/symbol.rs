@@ -1202,30 +1202,6 @@ impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for LocalInternedS
     }
 }
 
-impl std::cmp::PartialEq<LocalInternedString> for str {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a str {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        *self == other.string
-    }
-}
-
-impl std::cmp::PartialEq<LocalInternedString> for String {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a String {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        *self == other.string
-    }
-}
-
 impl !Send for LocalInternedString {}
 impl !Sync for LocalInternedString {}
 
