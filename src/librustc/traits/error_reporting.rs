@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let restrict_msg = "consider further restricting this bound";
                     let param_name = self_ty.to_string();
                     for param in generics.params.iter().filter(|p| {
-                        &param_name == p.name.ident().as_str()
+                        &param_name == std::convert::AsRef::<str>::as_ref(&p.name.ident().as_str())
                     }) {
                         if param_name.starts_with("impl ") {
                             // `impl Trait` in argument:
