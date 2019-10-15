@@ -1,8 +1,11 @@
 use std::mem;
 
-use rustc::ty::{self, layout::{self, Size, Align}};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
+use rustc::ty::{
+    self,
+    layout::{self, Align, LayoutOf, Size, TyLayout},
+};
 
 use rand::RngCore;
 
@@ -303,5 +306,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
         self.eval_libc(name)?.to_i32()
+    }
+
+    /// Helper function to get the `TyLayout` of a `libc` type
+    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
+        let this = self.eval_context_mut();
+        let tcx = &{ this.tcx.tcx };
+        let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
+        this.layout_of(ty)
+    }
+
+    // Writes several `ImmTy`s contiguosly into memory. This is useful when you have to pack
+    // different values into a struct.
+    fn write_packed_immediates(
+        &mut self,
+        place: &MPlaceTy<'tcx, Tag>,
+        imms: &[ImmTy<'tcx, Tag>],
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let tcx = &{ this.tcx.tcx };
+
+        let mut offset = Size::from_bytes(0);
+
+        for &imm in imms {
+            this.write_immediate_to_mplace(
+                *imm,
+                place.offset(offset, None, imm.layout, tcx)?,
+            )?;
+            offset += imm.layout.size;
+        }
+
+        Ok(())
     }
 }
