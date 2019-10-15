@@ -132,6 +132,11 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:28:5
@@ -141,6 +146,11 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:28:5
@@ -150,6 +160,11 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     three!("hip", "hop");
    |     --------------------- in this macro invocation
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
 
 error: aborting due to 21 previous errors
 

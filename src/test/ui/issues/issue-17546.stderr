@@ -1,8 +1,19 @@
 error[E0573]: expected type, found variant `NoResult`
   --> $DIR/issue-17546.rs:12:17
    |
-LL |     fn new() -> NoResult<MyEnum, String> {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       fn new() -> NoResult<MyEnum, String> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL | / pub enum Result<T, E> {
+LL | |     /// Contains the success value
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+...  |
+LL | |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+LL | | }
+   | |_- similarly named enum `Result` defined here
    |
 help: try using the variant's enum
    |
@@ -52,8 +63,19 @@ LL | use std::result::Result;
 error[E0573]: expected type, found variant `NoResult`
   --> $DIR/issue-17546.rs:33:15
    |
-LL | fn newer() -> NoResult<foo::MyEnum, String> {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   fn newer() -> NoResult<foo::MyEnum, String> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL | / pub enum Result<T, E> {
+LL | |     /// Contains the success value
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+...  |
+LL | |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+LL | | }
+   | |_- similarly named enum `Result` defined here
    |
 help: try using the variant's enum
    |

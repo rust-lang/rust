@@ -1,8 +1,15 @@
 error: cannot find macro `bang_proc_macrp` in this scope
   --> $DIR/resolve-error.rs:60:5
    |
-LL |     bang_proc_macrp!();
-   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
+LL |       bang_proc_macrp!();
+   |       ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
+   | 
+  ::: $DIR/auxiliary/test-macros.rs:15:1
+   |
+LL | / pub fn empty(_: TokenStream) -> TokenStream {
+LL | |     TokenStream::new()
+LL | | }
+   | |_- similarly named macro `bang_proc_macro` defined here
 
 error: cannot find macro `Dlona` in this scope
   --> $DIR/resolve-error.rs:57:5
@@ -53,8 +60,15 @@ LL | #[derive(Dlona)]
 error: cannot find derive macro `Dlona` in this scope
   --> $DIR/resolve-error.rs:40:10
    |
-LL | #[derive(Dlona)]
-   |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
+LL |   #[derive(Dlona)]
+   |            ^^^^^ help: a derive macro with a similar name exists: `Clona`
+   | 
+  ::: $DIR/auxiliary/derive-clona.rs:11:1
+   |
+LL | / pub fn derive_clonea(input: TokenStream) -> TokenStream {
+LL | |     "".parse().unwrap()
+LL | | }
+   | |_- similarly named derive macro `Clona` defined here
 
 error: cannot find derive macro `Dlone` in this scope
   --> $DIR/resolve-error.rs:35:10
@@ -67,6 +81,11 @@ error: cannot find derive macro `Dlone` in this scope
    |
 LL | #[derive(Dlone)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+   |
+LL | pub macro Clone($item:item) { /* compiler built-in */ }
+   | ------------------------------------------------------- similarly named derive macro `Clone` defined here
 
 error: cannot find attribute `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:32:3
@@ -77,14 +96,28 @@ LL | #[FooWithLongNan]
 error: cannot find attribute `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:28:3
    |
-LL | #[attr_proc_macra]
-   |   ^^^^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `attr_proc_macro`
+LL |   #[attr_proc_macra]
+   |     ^^^^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `attr_proc_macro`
+   | 
+  ::: $DIR/auxiliary/test-macros.rs:20:1
+   |
+LL | / pub fn empty_attr(_: TokenStream, _: TokenStream) -> TokenStream {
+LL | |     TokenStream::new()
+LL | | }
+   | |_- similarly named attribute macro `attr_proc_macro` defined here
 
 error: cannot find derive macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:22:10
    |
-LL | #[derive(FooWithLongNan)]
-   |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
+LL |   #[derive(FooWithLongNan)]
+   |            ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
+   | 
+  ::: $DIR/auxiliary/derive-foo.rs:11:1
+   |
+LL | / pub fn derive_foo(input: TokenStream) -> TokenStream {
+LL | |     "".parse().unwrap()
+LL | | }
+   | |_- similarly named derive macro `FooWithLongName` defined here
 
 error: cannot find derive macro `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:22:10

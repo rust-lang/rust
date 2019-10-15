@@ -1,8 +1,17 @@
 error[E0412]: cannot find type `Fo` in this scope
   --> $DIR/issue-7607-1.rs:5:6
    |
-LL | impl Fo {
-   |      ^^ help: a trait with a similar name exists: `Fn`
+LL |   impl Fo {
+   |        ^^ help: a trait with a similar name exists: `Fn`
+   | 
+  ::: $SRC_DIR/libcore/ops/function.rs:LL:COL
+   |
+LL | / pub trait Fn<Args> : FnMut<Args> {
+LL | |     /// Performs the call operation.
+LL | |     #[unstable(feature = "fn_traits", issue = "29625")]
+LL | |     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+LL | | }
+   | |_- similarly named trait `Fn` defined here
 
 error: aborting due to previous error
 

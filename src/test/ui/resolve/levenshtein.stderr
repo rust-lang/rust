@@ -16,8 +16,19 @@ LL | type A = Baz; // Misspelled type name.
 error[E0412]: cannot find type `Opiton` in this scope
   --> $DIR/levenshtein.rs:12:10
    |
-LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
-   |          ^^^^^^ help: an enum with a similar name exists: `Option`
+LL |   type B = Opiton<u8>; // Misspelled type name from the prelude.
+   |            ^^^^^^ help: an enum with a similar name exists: `Option`
+   | 
+  ::: $SRC_DIR/libcore/option.rs:LL:COL
+   |
+LL | / pub enum Option<T> {
+LL | |     /// No value
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+LL | |     None,
+...  |
+LL | |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+LL | | }
+   | |_- similarly named enum `Option` defined here
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:16:14
