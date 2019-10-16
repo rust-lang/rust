@@ -276,9 +276,8 @@ either of the following formats:
   such as within the sysroot or via the `-L` flag.
 
 The same crate name may be specified multiple times for different crate types.
-For loading metadata, `rlib` takes precedence over `rmeta`, which takes
-precedence over `dylib`. If both an `rlib` and `dylib` are found, an internal
-algorithm is used to decide which to use for linking. The [`-C prefer-dynamic`
+If both an `rlib` and `dylib` are found, an internal algorithm is used to
+decide which to use for linking. The [`-C prefer-dynamic`
 flag][prefer-dynamic] may be used to influence which is used.
 
 If the same crate name is specified with and without a path, the one with the
