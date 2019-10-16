@@ -140,12 +140,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 .read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len")
                                 .to_scalar()?
-                                .to_bits(self.memory().pointer_size())? as u64;
+                                .to_bits(self.memory.pointer_size())? as u64;
                             let index = self
                                 .read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index")
                                 .to_scalar()?
-                                .to_bits(self.memory().pointer_size())? as u64;
+                                .to_bits(self.memory.pointer_size())? as u64;
                             err_panic!(BoundsCheck { len, index })
                         }
                         Overflow(op) => err_panic!(Overflow(*op)),
