@@ -14,13 +14,12 @@ use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
-use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource};
+use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoader};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
 
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fs};
 
@@ -56,29 +55,6 @@ fn dump_crates(cstore: &CStore) {
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
         rmeta.map(|rl| info!("   rmeta: {}", rl.0.display()));
     });
-}
-
-// Extra info about a crate loaded for plugins or exported macros.
-struct ExtensionCrate {
-    metadata: PMDSource,
-    dylib: Option<PathBuf>,
-    target_only: bool,
-}
-
-enum PMDSource {
-    Registered(Lrc<cstore::CrateMetadata>),
-    Owned(Library),
-}
-
-impl Deref for PMDSource {
-    type Target = MetadataBlob;
-
-    fn deref(&self) -> &MetadataBlob {
-        match *self {
-            PMDSource::Registered(ref cmd) => &cmd.blob,
-            PMDSource::Owned(ref lib) => &lib.metadata
-        }
-    }
 }
 
 enum LoadResult {
@@ -495,21 +471,27 @@ impl<'a> CrateLoader<'a> {
             self.resolve_crate(dep.name, span, dep_kind, Some((root, &dep))).0
         })).collect()
     }
+}
 
-    fn read_extension_crate(&self, name: Symbol, span: Span) -> ExtensionCrate {
+    fn read_extension_crate(
+        sess: &Session,
+        metadata_loader: &dyn MetadataLoader,
+        name: Symbol,
+        span: Span,
+    ) -> (Library, bool) {
         info!("read extension crate `{}`", name);
-        let target_triple = self.sess.opts.target_triple.clone();
+        let target_triple = sess.opts.target_triple.clone();
         let host_triple = TargetTriple::from_triple(config::host_triple());
         let is_cross = target_triple != host_triple;
         let mut target_only = false;
         let mut locate_ctxt = locator::Context {
-            sess: self.sess,
+            sess,
             span,
             crate_name: name,
             hash: None,
             extra_filename: None,
-            filesearch: self.sess.host_filesearch(PathKind::Crate),
-            target: &self.sess.host,
+            filesearch: sess.host_filesearch(PathKind::Crate),
+            target: &sess.host,
             triple: host_triple,
             root: None,
             rejected_via_hash: vec![],
@@ -519,9 +501,10 @@ impl<'a> CrateLoader<'a> {
             rejected_via_filename: vec![],
             should_match_name: true,
             is_proc_macro: None,
-            metadata_loader: &*self.cstore.metadata_loader,
+            metadata_loader,
         };
-        let library = self.load(&mut locate_ctxt).or_else(|| {
+
+        let library = locate_ctxt.maybe_load_library_crate().or_else(|| {
             if !is_cross {
                 return None
             }
@@ -529,36 +512,21 @@ impl<'a> CrateLoader<'a> {
             // try to load a plugin registrar function,
             target_only = true;
 
-            locate_ctxt.target = &self.sess.target.target;
+            locate_ctxt.target = &sess.target.target;
             locate_ctxt.triple = target_triple;
-            locate_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
+            locate_ctxt.filesearch = sess.target_filesearch(PathKind::Crate);
 
-            self.load(&mut locate_ctxt)
+            locate_ctxt.maybe_load_library_crate()
         });
         let library = match library {
             Some(l) => l,
             None => locate_ctxt.report_errs(),
         };
 
-        let (dylib, metadata) = match library {
-            LoadResult::Previous(cnum) => {
-                let data = self.cstore.get_crate_data(cnum);
-                (data.source.dylib.clone(), PMDSource::Registered(data))
-            }
-            LoadResult::Loaded(library) => {
-                let dylib = library.source.dylib.clone();
-                let metadata = PMDSource::Owned(library);
-                (dylib, metadata)
-            }
-        };
-
-        ExtensionCrate {
-            metadata,
-            dylib: dylib.map(|p| p.0),
-            target_only,
-        }
+        (library, target_only)
     }
 
+impl<'a> CrateLoader<'a> {
     fn dlsym_proc_macros(&self,
                          path: &Path,
                          disambiguator: CrateDisambiguator,
@@ -589,32 +557,33 @@ impl<'a> CrateLoader<'a> {
 
         decls
     }
+}
 
     /// Look for a plugin registrar. Returns library path, crate
     /// SVH and DefIndex of the registrar function.
-    pub fn find_plugin_registrar(&self,
+    pub fn find_plugin_registrar(sess: &Session,
+                                 metadata_loader: &dyn MetadataLoader,
                                  span: Span,
                                  name: Symbol)
                                  -> Option<(PathBuf, CrateDisambiguator)> {
-        let ekrate = self.read_extension_crate(name, span);
+        let (library, target_only) = read_extension_crate(sess, metadata_loader, name, span);
 
-        if ekrate.target_only {
+        if target_only {
             // Need to abort before syntax expansion.
             let message = format!("plugin `{}` is not available for triple `{}` \
                                    (only found {})",
                                   name,
                                   config::host_triple(),
-                                  self.sess.opts.target_triple);
-            span_fatal!(self.sess, span, E0456, "{}", &message);
+                                  sess.opts.target_triple);
+            span_fatal!(sess, span, E0456, "{}", &message);
         }
 
-        let root = ekrate.metadata.get_root();
-        match ekrate.dylib.as_ref() {
+        match library.source.dylib {
             Some(dylib) => {
-                Some((dylib.to_path_buf(), root.disambiguator))
+                Some((dylib.0, library.metadata.get_root().disambiguator))
             }
             None => {
-                span_err!(self.sess, span, E0457,
+                span_err!(sess, span, E0457,
                           "plugin `{}` only found in rlib format, but must be available \
                            in dylib format",
                           name);
@@ -625,6 +594,7 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
+impl<'a> CrateLoader<'a> {
     fn inject_panic_runtime(&self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
@@ -957,9 +927,7 @@ impl<'a> CrateLoader<'a> {
             data.dependencies.borrow_mut().push(krate);
         });
     }
-}
 
-impl<'a> CrateLoader<'a> {
     pub fn postprocess(&self, krate: &ast::Crate) {
         self.inject_sanitizer_runtime();
         self.inject_profiler_runtime();

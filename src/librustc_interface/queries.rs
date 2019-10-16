@@ -118,7 +118,7 @@ impl Compiler {
             let empty: &(dyn Fn(&Session, &mut lint::LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
-                self.cstore(),
+                &*self.codegen_backend().metadata_loader(),
                 self.register_lints
                     .as_ref()
                     .map(|p| &**p)

@@ -9,7 +9,7 @@ use rustc::hir::lowering::lower_crate;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::cstore::CrateStore;
+use rustc::middle::cstore::{CrateStore, MetadataLoader};
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
 use rustc::ty::steal::Steal;
 use rustc::traits;
@@ -226,7 +226,7 @@ pub struct PluginInfo {
 
 pub fn register_plugins<'a>(
     sess: &'a Session,
-    cstore: &'a CStore,
+    metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut lint::LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
@@ -274,9 +274,8 @@ pub fn register_plugins<'a>(
     let registrars = time(sess, "plugin loading", || {
         plugin::load::load_plugins(
             sess,
-            &cstore,
+            metadata_loader,
             &krate,
-            crate_name,
             Some(sess.opts.debugging_opts.extra_plugins.clone()),
         )
     });
