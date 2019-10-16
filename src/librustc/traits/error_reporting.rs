@@ -771,6 +771,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 )
                             };
 
+                        if self.suggest_add_reference_to_arg(
+                            &obligation,
+                            &mut err,
+                            &trait_ref,
+                            points_at_arg,
+                        ) {
+                            self.note_obligation_cause(&mut err, obligation);
+                            err.emit();
+                            return;
+                        }
                         if let Some(ref s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -787,16 +797,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
                         self.suggest_fn_call(&obligation, &mut err, &trait_ref, points_at_arg);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
-                        if self.suggest_add_reference_to_arg(
-                            &obligation,
-                            &mut err,
-                            &trait_ref,
-                            points_at_arg,
-                        ) {
-                            self.note_obligation_cause(&mut err, obligation);
-                            err.emit();
-                            return;
-                        }
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
 
                         // Try to report a help message
@@ -1359,7 +1359,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // somewhere else in the obligation chain. Do not suggest non-sense.
                         return false;
                     }
-                    err.span.clear_span_labels();
                     err.span_label(span, &format!(
                         "expected an implementor of trait `{}`",
                         obligation.parent_trait_ref.skip_binder(),

@@ -7,7 +7,6 @@ LL |     println!("{:?}", line.find(pattern));
    |                                expected an implementor of trait `std::str::pattern::Pattern<'_>`
    |                                help: consider borrowing here: `&pattern`
    |
-   = help: the trait `std::ops::FnMut<(char,)>` is not implemented for `std::string::String`
    = note: required because of the requirements on the impl of `std::str::pattern::Pattern<'_>` for `std::string::String`
 
 error: aborting due to previous error
