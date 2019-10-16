@@ -120,9 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`getcwd` not available when isolation is enabled")
-        }
+        this.check_no_isolation("getcwd")?;
 
         let tcx = &{ this.tcx.tcx };
 
@@ -158,9 +156,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.machine.communicate {
-            throw_unsup_format!("`chdir` not available when isolation is enabled")
-        }
+        this.check_no_isolation("chdir")?;
 
         let path_bytes = this
             .memory()
