@@ -17,12 +17,14 @@ pub struct TypeAliasData {
     pub(crate) type_ref: Option<TypeRef>,
 }
 
-pub(crate) fn type_alias_data_query(
-    db: &(impl DefDatabase + AstDatabase),
-    typ: TypeAlias,
-) -> Arc<TypeAliasData> {
-    let node = typ.source(db).ast;
-    let name = node.name().map_or_else(Name::missing, |n| n.as_name());
-    let type_ref = node.type_ref().map(TypeRef::from_ast);
-    Arc::new(TypeAliasData { name, type_ref })
+impl TypeAliasData {
+    pub(crate) fn type_alias_data_query(
+        db: &(impl DefDatabase + AstDatabase),
+        typ: TypeAlias,
+    ) -> Arc<TypeAliasData> {
+        let node = typ.source(db).ast;
+        let name = node.name().map_or_else(Name::missing, |n| n.as_name());
+        let type_ref = node.type_ref().map(TypeRef::from_ast);
+        Arc::new(TypeAliasData { name, type_ref })
+    }
 }
