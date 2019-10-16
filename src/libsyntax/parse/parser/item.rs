@@ -1,4 +1,6 @@
 use super::{Parser, PResult, PathStyle, SemiColonMode, BlockMode};
+use super::diagnostics::{Error, dummy_arg};
+
 use crate::maybe_whole;
 use crate::ptr::P;
 use crate::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrStyle, AnonConst, Item, ItemKind};
@@ -7,10 +9,8 @@ use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness}
 use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
 use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, MethodSig, SelfKind, Param};
-use crate::ext::base::DummyResult;
 use crate::parse::token;
 use crate::parse::parser::maybe_append;
-use crate::parse::diagnostics::{Error, dummy_arg};
 use crate::tokenstream::{TokenTree, TokenStream};
 use crate::symbol::{kw, sym};
 use crate::source_map::{self, respan, Span};
@@ -23,7 +23,7 @@ use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
-pub enum AliasKind {
+pub(super) enum AliasKind {
     /// Just a new name for the same type.
     Weak(P<Ty>),
     /// Only trait impls of the type will be usable, not the actual type itself.
@@ -605,7 +605,7 @@ impl<'a> Parser<'a> {
         let ty_second = if self.token == token::DotDot {
             // We need to report this error after `cfg` expansion for compatibility reasons
             self.bump(); // `..`, do not add it to expected tokens
-            Some(DummyResult::raw_ty(self.prev_span, true))
+            Some(self.mk_ty(self.prev_span, TyKind::Err))
         } else if has_for || self.token.can_begin_type() {
             Some(self.parse_ty()?)
         } else {
@@ -1116,7 +1116,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item.
-    crate fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
+    pub fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;

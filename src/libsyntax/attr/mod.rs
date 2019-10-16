@@ -280,7 +280,7 @@ impl Attribute {
         self.item.meta(self.span)
     }
 
-    pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
+    crate fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let mut parser = Parser::new(
@@ -298,24 +298,11 @@ impl Attribute {
         Ok(result)
     }
 
-    pub fn parse_list<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, Vec<T>>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    {
+    pub fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
         if self.tokens.is_empty() {
             return Ok(Vec::new());
         }
-        self.parse(sess, |parser| {
-            parser.expect(&token::OpenDelim(token::Paren))?;
-            let mut list = Vec::new();
-            while !parser.eat(&token::CloseDelim(token::Paren)) {
-                list.push(f(parser)?);
-                if !parser.eat(&token::Comma) {
-                   parser.expect(&token::CloseDelim(token::Paren))?;
-                    break
-                }
-            }
-            Ok(list)
-        })
+        self.parse(sess, |p| p.parse_derive_paths())
     }
 
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {

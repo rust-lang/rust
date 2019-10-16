@@ -4,7 +4,7 @@
 //
 
 use syntax::ast::{self, Ident, GenericArg};
-use syntax::ext::base::{self, *};
+use syntax_expand::base::{self, *};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 use syntax::tokenstream::TokenStream;

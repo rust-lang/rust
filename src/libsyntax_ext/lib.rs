@@ -15,9 +15,9 @@ use crate::deriving::*;
 
 use syntax::ast::Ident;
 use syntax::edition::Edition;
-use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
-use syntax::ext::proc_macro::BangProcMacro;
 use syntax::symbol::sym;
+use syntax_expand::base::{Resolver, SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
+use syntax_expand::proc_macro::BangProcMacro;
 
 mod error_codes;
 
@@ -37,6 +37,7 @@ mod log_syntax;
 mod source_util;
 mod test;
 mod trace_macros;
+mod util;
 
 pub mod cmdline_attrs;
 pub mod plugin_macro_defs;
@@ -44,7 +45,7 @@ pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
 
-pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {
+pub fn register_builtin_macros(resolver: &mut dyn Resolver, edition: Edition) {
     let mut register = |name, kind| resolver.register_builtin_macro(
         Ident::with_dummy_span(name), SyntaxExtension {
             is_builtin: true, ..SyntaxExtension::default(kind, edition)

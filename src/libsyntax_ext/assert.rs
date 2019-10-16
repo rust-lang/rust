@@ -1,7 +1,7 @@
 use errors::{Applicability, DiagnosticBuilder};
 
 use syntax::ast::{self, *};
-use syntax::ext::base::*;
+use syntax_expand::base::*;
 use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;

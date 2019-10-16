@@ -1,7 +1,7 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
 use syntax::ast::{self, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt, MultiItemModifier};
+use syntax_expand::base::{Annotatable, ExtCtxt, MultiItemModifier};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;

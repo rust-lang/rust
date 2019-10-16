@@ -1,21 +1,21 @@
+pub mod attr;
 mod expr;
 mod pat;
 mod item;
-pub use item::AliasKind;
 mod module;
-pub use module::{ModulePath, ModulePathSuccess};
 mod ty;
 mod path;
 pub use path::PathStyle;
 mod stmt;
 mod generics;
-use super::diagnostics::Error;
+mod diagnostics;
+use diagnostics::Error;
 
 use crate::ast::{
     self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
-use crate::parse::{PResult, Directory, DirectoryOwnership, SeqSep};
+use crate::parse::{PResult, Directory, DirectoryOwnership};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::{self, Token, TokenKind, DelimToken};
@@ -44,14 +44,14 @@ bitflags::bitflags! {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-crate enum SemiColonMode {
+enum SemiColonMode {
     Break,
     Ignore,
     Comma,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-crate enum BlockMode {
+enum BlockMode {
     Break,
     Ignore,
 }
@@ -124,33 +124,33 @@ pub struct Parser<'a> {
     prev_token_kind: PrevTokenKind,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
-    crate directory: Directory<'a>,
+    pub(super) directory: Directory<'a>,
     /// `true` to parse sub-modules in other files.
-    pub recurse_into_file_modules: bool,
+    pub(super) recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
     pub root_module_name: Option<String>,
-    crate expected_tokens: Vec<TokenType>,
+    expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
     /// `true` we should configure out of line modules as we parse.
-    pub cfg_mods: bool,
+    cfg_mods: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
     ///
     /// See the comments in the `parse_path_segment` function for more details.
-    crate unmatched_angle_bracket_count: u32,
-    crate max_angle_bracket_count: u32,
+    unmatched_angle_bracket_count: u32,
+    max_angle_bracket_count: u32,
     /// A list of all unclosed delimiters found by the lexer. If an entry is used for error recovery
     /// it gets removed from here. Every entry left at the end gets emitted as an independent
     /// error.
-    crate unclosed_delims: Vec<UnmatchedBrace>,
-    crate last_unexpected_token_span: Option<Span>,
-    crate last_type_ascription: Option<(Span, bool /* likely path typo */)>,
+    pub(super) unclosed_delims: Vec<UnmatchedBrace>,
+    last_unexpected_token_span: Option<Span>,
+    pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
-    crate subparser_name: Option<&'static str>,
+    subparser_name: Option<&'static str>,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -194,7 +194,7 @@ struct TokenCursorFrame {
 /// You can find some more example usage of this in the `collect_tokens` method
 /// on the parser.
 #[derive(Clone)]
-crate enum LastToken {
+enum LastToken {
     Collecting(Vec<TreeAndJoint>),
     Was(Option<TreeAndJoint>),
 }
@@ -297,7 +297,7 @@ impl TokenCursor {
 }
 
 #[derive(Clone, PartialEq)]
-crate enum TokenType {
+enum TokenType {
     Token(TokenKind),
     Keyword(Symbol),
     Operator,
@@ -309,7 +309,7 @@ crate enum TokenType {
 }
 
 impl TokenType {
-    crate fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", pprust::token_kind_to_string(t)),
             TokenType::Keyword(kw) => format!("`{}`", kw),
@@ -324,9 +324,33 @@ impl TokenType {
 }
 
 #[derive(Copy, Clone, Debug)]
-crate enum TokenExpectType {
+enum TokenExpectType {
     Expect,
     NoExpect,
+}
+
+/// A sequence separator.
+struct SeqSep {
+    /// The separator token.
+    sep: Option<TokenKind>,
+    /// `true` if a trailing separator is allowed.
+    trailing_sep_allowed: bool,
+}
+
+impl SeqSep {
+    fn trailing_allowed(t: TokenKind) -> SeqSep {
+        SeqSep {
+            sep: Some(t),
+            trailing_sep_allowed: true,
+        }
+    }
+
+    fn none() -> SeqSep {
+        SeqSep {
+            sep: None,
+            trailing_sep_allowed: false,
+        }
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -405,7 +429,7 @@ impl<'a> Parser<'a> {
         pprust::token_to_string(&self.token)
     }
 
-    crate fn token_descr(&self) -> Option<&'static str> {
+    fn token_descr(&self) -> Option<&'static str> {
         Some(match &self.token.kind {
             _ if self.token.is_special_ident() => "reserved identifier",
             _ if self.token.is_used_keyword() => "keyword",
@@ -415,7 +439,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    crate fn this_token_descr(&self) -> String {
+    pub(super) fn this_token_descr(&self) -> String {
         if let Some(prefix) = self.token_descr() {
             format!("{} `{}`", prefix, self.this_token_to_string())
         } else {
@@ -465,7 +489,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
         self.parse_ident_common(true)
     }
 
@@ -498,7 +522,7 @@ impl<'a> Parser<'a> {
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
     /// encountered.
-    crate fn check(&mut self, tok: &TokenKind) -> bool {
+    fn check(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.token == *tok;
         if !is_present { self.expected_tokens.push(TokenType::Token(tok.clone())); }
         is_present
@@ -520,7 +544,7 @@ impl<'a> Parser<'a> {
 
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
-    pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
+    fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
             self.bump();
             true
@@ -558,7 +582,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_ident(&mut self) -> bool {
+    fn check_ident(&mut self) -> bool {
         self.check_or_expected(self.token.is_ident(), TokenType::Ident)
     }
 
@@ -723,7 +747,7 @@ impl<'a> Parser<'a> {
     /// Parses a sequence, including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_end<T>(
+    fn parse_seq_to_end<T>(
         &mut self,
         ket: &TokenKind,
         sep: SeqSep,
@@ -739,7 +763,7 @@ impl<'a> Parser<'a> {
     /// Parses a sequence, not including the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_seq_to_before_end<T>(
+    fn parse_seq_to_before_end<T>(
         &mut self,
         ket: &TokenKind,
         sep: SeqSep,
@@ -757,7 +781,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    crate fn parse_seq_to_before_tokens<T>(
+    fn parse_seq_to_before_tokens<T>(
         &mut self,
         kets: &[&TokenKind],
         sep: SeqSep,
@@ -1003,7 +1027,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn process_potential_macro_variable(&mut self) {
+    pub fn process_potential_macro_variable(&mut self) {
         self.token = match self.token.kind {
             token::Dollar if self.token.span.from_expansion() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
@@ -1037,7 +1061,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a single token tree from the input.
-    crate fn parse_token_tree(&mut self) -> TokenTree {
+    pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
                 let frame = mem::replace(&mut self.token_cursor.frame,
@@ -1323,7 +1347,7 @@ impl<'a> Parser<'a> {
                                    *t == token::BinOp(token::Star))
     }
 
-    pub fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
+    fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
         let ret = match self.token.kind {
             token::Literal(token::Lit { kind: token::Str, symbol, suffix }) =>
                 (symbol, ast::StrStyle::Cooked, suffix),

@@ -1,24 +1,25 @@
-use crate::ast;
-use crate::attr::{self, TransparencyError};
-use crate::edition::Edition;
-use crate::ext::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
-use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
-use crate::ext::expand::{AstFragment, AstFragmentKind};
-use crate::ext::mbe;
-use crate::ext::mbe::macro_check;
-use crate::ext::mbe::macro_parser::parse;
-use crate::ext::mbe::macro_parser::{Error, Failure, Success};
-use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
-use crate::ext::mbe::transcribe::transcribe;
-use crate::feature_gate::Features;
-use crate::parse::parser::Parser;
-use crate::parse::token::TokenKind::*;
-use crate::parse::token::{self, NtTT, Token};
-use crate::parse::Directory;
-use crate::print::pprust;
-use crate::sess::ParseSess;
-use crate::symbol::{kw, sym, Symbol};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
+use crate::base::{SyntaxExtension, SyntaxExtensionKind};
+use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
+use crate::mbe;
+use crate::mbe::macro_check;
+use crate::mbe::macro_parser::parse;
+use crate::mbe::macro_parser::{Error, Failure, Success};
+use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
+use crate::mbe::transcribe::transcribe;
+
+use syntax::ast;
+use syntax::attr::{self, TransparencyError};
+use syntax::edition::Edition;
+use syntax::feature_gate::Features;
+use syntax::parse::parser::Parser;
+use syntax::parse::token::TokenKind::*;
+use syntax::parse::token::{self, NtTT, Token};
+use syntax::parse::Directory;
+use syntax::print::pprust;
+use syntax::sess::ParseSess;
+use syntax::symbol::{kw, sym, Symbol};
+use syntax::tokenstream::{DelimSpan, TokenStream};
 
 use errors::{DiagnosticBuilder, FatalError};
 use log::debug;
@@ -66,7 +67,7 @@ crate fn annotate_err_with_kind(
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
+        let fragment = panictry!(parse_ast_fragment(parser, kind, true).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {
                     // early end of macro arm (#52866)
@@ -128,7 +129,7 @@ impl<'a> ParserAnyMacro<'a> {
 
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
         let path = ast::Path::from_ident(macro_ident.with_span_pos(site_span));
-        parser.ensure_complete_parse(&path, kind.name(), site_span);
+        ensure_complete_parse(parser, &path, kind.name(), site_span);
         fragment
     }
 }
@@ -189,7 +190,7 @@ fn generic_extension<'cx>(
             _ => cx.span_bug(sp, "malformed macro lhs"),
         };
 
-        match TokenTree::parse(cx, lhs_tt, arg.clone()) {
+        match parse_tt(cx, lhs_tt, arg.clone()) {
             Success(named_matches) => {
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -265,7 +266,7 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            match TokenTree::parse(cx, lhs_tt, arg.clone()) {
+            match parse_tt(cx, lhs_tt, arg.clone()) {
                 Success(_) => {
                     if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
@@ -1158,7 +1159,7 @@ fn is_legal_fragment_specifier(
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match *tt {
-        mbe::TokenTree::Token(ref token) => crate::print::pprust::token_to_string(&token),
+        mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token),
         mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
         mbe::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
         _ => panic!(
@@ -1168,17 +1169,14 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-impl TokenTree {
-    /// Use this token tree as a matcher to parse given tts.
-    fn parse(cx: &ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream)
-             -> NamedParseResult {
-        // `None` is because we're not interpolating
-        let directory = Directory {
-            path: Cow::from(cx.current_expansion.module.directory.as_path()),
-            ownership: cx.current_expansion.directory_ownership,
-        };
-        parse(cx.parse_sess(), tts, mtch, Some(directory), true)
-    }
+/// Use this token tree as a matcher to parse given tts.
+fn parse_tt(cx: &ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream) -> NamedParseResult {
+    // `None` is because we're not interpolating
+    let directory = Directory {
+        path: Cow::from(cx.current_expansion.module.directory.as_path()),
+        ownership: cx.current_expansion.directory_ownership,
+    };
+    parse(cx.parse_sess(), tts, mtch, Some(directory), true)
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For

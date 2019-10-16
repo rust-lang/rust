@@ -34,6 +34,7 @@ extern crate rustc_typeck;
 extern crate rustc_lexer;
 extern crate serialize;
 extern crate syntax;
+extern crate syntax_expand;
 extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;

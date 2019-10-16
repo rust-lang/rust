@@ -1,6 +1,7 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
+use super::diagnostics::Error;
 
 use crate::parse::literal::LitError;
 
@@ -12,7 +13,6 @@ use crate::ast::{
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::parse::classify;
 use crate::parse::token::{self, Token, TokenKind};
-use crate::parse::diagnostics::Error;
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};
@@ -1074,7 +1074,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `lit = true | false | token_lit`.
-    crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
+    pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         let mut recovered = None;
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
@@ -1233,7 +1233,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
-    crate fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
         let minus_lo = self.token.span;
@@ -1253,7 +1253,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block or unsafe block.
-    crate fn parse_block_expr(
+    pub(super) fn parse_block_expr(
         &mut self,
         opt_label: Option<Label>,
         lo: Span,
@@ -1558,7 +1558,7 @@ impl<'a> Parser<'a> {
         return Ok(self.mk_expr(lo.to(hi), ExprKind::Match(discriminant, arms), attrs));
     }
 
-    crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
+    pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let pat = self.parse_top_pat(GateOr::No)?;
@@ -1666,7 +1666,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `async move? {...}` expression.
-    pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let span_lo = self.token.span;
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause();
@@ -1945,5 +1945,9 @@ impl<'a> Parser<'a> {
 
     crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
+    }
+
+    pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
+        self.mk_expr(span, ExprKind::Err, ThinVec::new())
     }
 }

@@ -74,15 +74,16 @@ crate use NamedMatch::*;
 crate use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
-use crate::ast::{Ident, Name};
-use crate::ext::mbe::{self, TokenTree};
-use crate::parse::{Directory, PResult};
-use crate::parse::parser::{Parser, PathStyle};
-use crate::parse::token::{self, DocComment, Nonterminal, Token};
-use crate::print::pprust;
-use crate::sess::ParseSess;
-use crate::symbol::{kw, sym, Symbol};
-use crate::tokenstream::{DelimSpan, TokenStream};
+use crate::mbe::{self, TokenTree};
+
+use syntax::ast::{Ident, Name};
+use syntax::parse::{Directory, PResult};
+use syntax::parse::parser::{Parser, PathStyle};
+use syntax::parse::token::{self, DocComment, Nonterminal, Token};
+use syntax::print::pprust;
+use syntax::sess::ParseSess;
+use syntax::symbol::{kw, sym, Symbol};
+use syntax::tokenstream::{DelimSpan, TokenStream};
 
 use errors::FatalError;
 use smallvec::{smallvec, SmallVec};
@@ -651,7 +652,7 @@ pub(super) fn parse(
         directory,
         recurse_into_modules,
         true,
-        crate::MACRO_ARGUMENTS,
+        syntax::MACRO_ARGUMENTS,
     );
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
@@ -889,6 +890,9 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
 ///
 /// The parsed non-terminal.
 fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
+    // FIXME(Centril): Consider moving this to `parser.rs` to make
+    // the visibilities of the methods used below `pub(super)` at most.
+
     if name == sym::tt {
         return token::NtTT(p.parse_token_tree());
     }

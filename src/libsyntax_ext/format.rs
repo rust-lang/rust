@@ -8,7 +8,7 @@ use errors::Applicability;
 use errors::pluralise;
 
 use syntax::ast;
-use syntax::ext::base::{self, *};
+use syntax_expand::base::{self, *};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};

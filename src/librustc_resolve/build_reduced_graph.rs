@@ -32,9 +32,9 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
-use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::expand::AstFragment;
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::base::{MacroKind, SyntaxExtension};
+use syntax_expand::expand::AstFragment;
+use syntax_expand::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::print::pprust;
