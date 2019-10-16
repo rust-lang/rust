@@ -46,6 +46,10 @@ using namespace llvm;
 llvm::cl::opt<bool> enzyme_print("enzyme_print", cl::init(false), cl::Hidden,
                 cl::desc("Print before and after fns for autodiff"));
 
+cl::opt<bool> cachereads(
+            "enzyme_cachereads", cl::init(false), cl::Hidden,
+            cl::desc("Force caching of all reads"));
+
 //! return structtype if recursive function
 std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResults &AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed) {
   static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/, bool/*returnUsed*/>, std::pair<Function*,StructType*>> cachedfunctions;
@@ -100,6 +104,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
       //assert(st->getNumElements() > 0);
       return cachedfunctions[tup] = std::pair<Function*,StructType*>(foundcalled, nullptr); //dyn_cast<StructType>(st->getElementType(0)));
     }
+  if (todiff->empty()) {
+    llvm::errs() << *todiff << "\n";
+  }
   assert(!todiff->empty());
 
   GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnValue*/returnUsed ? ReturnType::TapeAndReturns : ReturnType::Tape, /*differentialReturn*/differentialReturn);
@@ -232,10 +239,18 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             case Intrinsic::pow:
             case Intrinsic::sin:
             case Intrinsic::cos:
+            case Intrinsic::floor:
+            case Intrinsic::ceil:
+            case Intrinsic::trunc:
+            case Intrinsic::rint:
+            case Intrinsic::nearbyint:
+            case Intrinsic::round:
                 break;
             default:
               if (gutils->isConstantInstruction(inst)) continue;
               assert(inst);
+              llvm::errs() << *gutils->oldFunc << "\n";
+              llvm::errs() << *gutils->newFunc << "\n";
               llvm::errs() << "cannot handle (augmented) unknown intrinsic\n" << *inst;
               report_fatal_error("(augmented) unknown intrinsic");
           }
@@ -338,7 +353,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
               }
 
                 bool subretused = op->getNumUses() != 0;
-                bool subdifferentialreturn = !gutils->isConstantValue(op) && subretused;
+                bool subdifferentialreturn = (!gutils->isConstantValue(op)) && subretused;
                 
                 //! We only need to cache something if it is used in a non return setting (since the backard pass doesnt need to use it if just returned)
                 bool shouldCache = false;//outermostAugmentation;
@@ -410,8 +425,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 }
 
                 gutils->erase(op);
-        } else if(isa<LoadInst>(inst)) {
+        } else if(LoadInst* li = dyn_cast<LoadInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
+
+          if (cachereads) {
+            IRBuilder<> BuilderZ(li);
+            gutils->addMalloc(BuilderZ, li);
+          }
 
            //TODO IF OP IS POINTER
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
@@ -1222,7 +1242,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   //TODO consider what to do if called == nullptr for augmentation
   if (modifyPrimal && called) {
     bool subretused = op->getNumUses() != 0;
-    bool subdifferentialreturn = !gutils->isConstantValue(op) && subretused;
+    bool subdifferentialreturn = (!gutils->isConstantValue(op)) && subretused;
     auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/subretused);
     if (topLevel) {
       Function* newcalled = fnandtapetype.first;
@@ -1292,7 +1312,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool retUsed = replaceFunction && (op->getNumUses() > 0);
   Value* newcalled = nullptr;
 
-  bool subdiffereturn = !gutils->isConstantValue(op) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy());
+  bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
+  llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
     newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, AA, /*returnValue*/retUsed, /*subdiffereturn*/subdiffereturn, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr);//, LI, DT);
   } else {
@@ -1892,6 +1913,15 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           }
           break;
         }
+        case Intrinsic::floor:
+        case Intrinsic::ceil:
+        case Intrinsic::trunc:
+        case Intrinsic::rint:
+        case Intrinsic::nearbyint:
+        case Intrinsic::round: {
+            //Derivative of these is zero
+            break;
+        }
         default:
           if (gutils->isConstantInstruction(inst)) continue;
           assert(inst);
@@ -1921,6 +1951,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif2) addToDiffe(op->getOperand(2), dif2);
     } else if(auto op = dyn_cast<LoadInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
+      
+      if (cachereads) {
+        inst = cast<Instruction>(gutils->addMalloc(Builder2, inst));
+      }
 
        //TODO IF OP IS POINTER
       if (!op->getType()->isPointerTy()) {
@@ -1931,8 +1965,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         //Builder2.CreateStore(diffe(inst), invertPointer(op->getOperand(0)));//, op->getName()+"'psweird");
         //addToNPtrDiffe(op->getOperand(0), diffe(inst));
         //assert(0 && "cannot handle non const pointer load inversion");
-        assert(op);
-        llvm::errs() << "ignoring load bc pointer of " << *op << "\n";
+        //assert(op);
+        //llvm::errs() << "ignoring load bc pointer of " << *op << "\n";
       }
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;

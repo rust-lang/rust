@@ -45,7 +45,9 @@ bool isIntASecretFloat(Value* val) {
       
     if (auto cint = dyn_cast<ConstantInt>(val)) {
 		if (!cint->isZero()) return false;
-        assert(0 && "unsure if constant or not because constantint");
+        return false;
+        //llvm::errs() << *val << "\n";
+        //assert(0 && "unsure if constant or not because constantint");
 		 //if (cint->isOne()) return cint;
 	}
 
