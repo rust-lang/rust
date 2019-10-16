@@ -16,10 +16,22 @@ pub fn write_mir_graphviz<W>(
 where
     W: Write,
 {
-    for def_id in dump_mir_def_ids(tcx, single) {
-        let body = &tcx.optimized_mir(def_id);
-        write_mir_fn_graphviz(tcx, def_id, body, w)?;
+    let def_ids = dump_mir_def_ids(tcx, single);
+
+    let use_subgraphs = def_ids.len() > 1;
+    if use_subgraphs {
+        writeln!(w, "digraph __crate__ {{")?;
     }
+
+    for def_id in def_ids {
+        let body = &tcx.optimized_mir(def_id);
+        write_mir_fn_graphviz(tcx, def_id, body, use_subgraphs, w)?;
+    }
+
+    if use_subgraphs {
+        writeln!(w, "}}")?;
+    }
+
     Ok(())
 }
 
@@ -38,12 +50,16 @@ pub fn write_mir_fn_graphviz<'tcx, W>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     body: &Body<'_>,
+    subgraph: bool,
     w: &mut W,
 ) -> io::Result<()>
 where
     W: Write,
 {
-    writeln!(w, "digraph Mir_{} {{", graphviz_safe_def_name(def_id))?;
+    let kind = if subgraph { "subgraph" } else { "digraph" };
+    let cluster = if subgraph { "cluster_" } else { "" }; // Prints a border around MIR
+    let def_name = graphviz_safe_def_name(def_id);
+    writeln!(w, "{} {}Mir_{} {{", kind, cluster, def_name)?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;
