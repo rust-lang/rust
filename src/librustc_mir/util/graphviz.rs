@@ -111,7 +111,7 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
     fini(w)?;
 
     // Close the table
-    writeln!(w, "</table>")
+    write!(w, "</table>")
 }
 
 /// Write a graphviz DOT node for the given basic block.
