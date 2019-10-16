@@ -141,10 +141,10 @@ impl<T> Box<T> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        if mem::size_of::<T>() == 0 {
+        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        if layout.size() == 0 {
             return Box(NonNull::dangling().into())
         }
-        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
         let ptr = unsafe {
             Global.alloc(layout)
                 .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
@@ -184,10 +184,10 @@ impl<T> Box<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        let ptr = if mem::size_of::<T>() == 0 || len == 0 {
+        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        let ptr = if layout.size() == 0 {
             NonNull::dangling()
         } else {
-            let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
             unsafe {
                 Global.alloc(layout)
                     .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
