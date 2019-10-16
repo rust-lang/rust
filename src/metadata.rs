@@ -9,7 +9,7 @@ use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc_data_structures::rustc_erase_owner;
 use rustc_target::spec::Target;
 
-use crate::backend::Product;
+use crate::backend::WriteMetadata;
 
 pub struct CraneliftMetadataLoader;
 
@@ -53,7 +53,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
-pub fn write_metadata<P: Product>(tcx: TyCtxt<'_>, product: &mut P) -> EncodedMetadata {
+pub fn write_metadata<P: WriteMetadata>(tcx: TyCtxt<'_>, product: &mut P) -> EncodedMetadata {
     use flate2::write::DeflateEncoder;
     use flate2::Compression;
     use std::io::Write;
