@@ -1,13 +1,7 @@
 // aux-build:option_helpers.rs
 // compile-flags: --edition 2018
 
-#![warn(
-    clippy::all,
-    clippy::pedantic,
-    clippy::option_unwrap_used,
-    clippy::option_expect_used,
-    clippy::result_expect_used
-)]
+#![warn(clippy::all, clippy::pedantic)]
 #![allow(
     clippy::blacklisted_name,
     clippy::default_trait_access,
@@ -307,8 +301,8 @@ fn search_is_some() {
     let _ = foo.rposition().is_some();
 }
 
-#[allow(clippy::similar_names)]
 fn main() {
-    let opt = Some(0);
-    let _ = opt.unwrap();
+    option_methods();
+    filter_next();
+    search_is_some();
 }

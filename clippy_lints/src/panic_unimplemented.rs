@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// ```
     pub PANIC,
     restriction,
-    "missing parameters in `panic!` calls"
+    "usage of the `panic!` macro"
 }
 
 declare_clippy_lint! {

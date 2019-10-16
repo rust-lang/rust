@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 329] = [
+pub const ALL_LINTS: [Lint; 331] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1394,6 +1394,13 @@ pub const ALL_LINTS: [Lint; 329] = [
         module: "methods",
     },
     Lint {
+        name: "option_expect_used",
+        group: "restriction",
+        desc: "using `Option.expect()`, which might be better handled",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "option_map_or_none",
         group: "style",
         desc: "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`",
@@ -1459,7 +1466,7 @@ pub const ALL_LINTS: [Lint; 329] = [
     Lint {
         name: "panic",
         group: "restriction",
-        desc: "missing parameters in `panic!` calls",
+        desc: "usage of the `panic!` macro",
         deprecation: None,
         module: "panic_unimplemented",
     },
@@ -1658,6 +1665,13 @@ pub const ALL_LINTS: [Lint; 329] = [
         desc: "Lint usages of standard library `const`s that could be replaced by `const fn`s",
         deprecation: None,
         module: "replace_consts",
+    },
+    Lint {
+        name: "result_expect_used",
+        group: "restriction",
+        desc: "using `Result.expect()`, which might be better handled",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "result_map_unit_fn",

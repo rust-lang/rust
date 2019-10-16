@@ -206,13 +206,5 @@ LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
 
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:307:13
-   |
-LL |     let _ = opt.unwrap();
-   |             ^^^^^^^^^^^^
-   |
-   = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
-
-error: aborting due to 24 previous errors
+error: aborting due to 23 previous errors
 

@@ -1,0 +1,18 @@
+error: used expect() on an Option value. If this value is an None it will panic
+  --> $DIR/expect.rs:5:13
+   |
+LL |     let _ = opt.expect("");
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-expect-used` implied by `-D warnings`
+
+error: used expect() on a Result value. If this value is an Err it will panic
+  --> $DIR/expect.rs:10:13
+   |
+LL |     let _ = res.expect("");
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::result-expect-used` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+

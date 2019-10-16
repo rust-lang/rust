@@ -111,9 +111,10 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```ignore
     /// let opt = Some(1);
     /// opt?;
+    /// # Some::<()>(())
     /// ```
     pub OPTION_EXPECT_USED,
     restriction,
@@ -139,9 +140,10 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```
     /// let res: Result<usize, ()> = Ok(1);
     /// res?;
+    /// # Ok::<(), ()>(())
     /// ```
     pub RESULT_EXPECT_USED,
     restriction,
