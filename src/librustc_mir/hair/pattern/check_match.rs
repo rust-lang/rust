@@ -153,7 +153,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         self.tables
                     );
                     patcx.include_lint_checks();
-                    let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
+                    let pattern =
+                        cx.pattern_arena.alloc(expand_pattern(cx, patcx.lower_pattern(&pat))) as &_;
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
                         have_errors = true;
@@ -252,8 +253,9 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             patcx.include_lint_checks();
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
+            let pattern = expand_pattern(cx, pattern);
             let pats: Matrix<'_, '_> = vec![smallvec![
-                expand_pattern(cx, pattern)
+                &pattern
             ]].into_iter().collect();
 
             let witnesses = match check_not_useful(cx, pattern_ty, &pats) {
