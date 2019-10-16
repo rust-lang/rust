@@ -56,6 +56,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
     (krate, features)
 }
 
+#[macro_export]
 macro_rules! configure {
     ($this:ident, $node:ident) => {
         match $this.configure($node) {

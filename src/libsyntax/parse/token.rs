@@ -285,7 +285,7 @@ impl TokenKind {
 }
 
 impl Token {
-    crate fn new(kind: TokenKind, span: Span) -> Self {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
         Token { kind, span }
     }
 
@@ -295,12 +295,12 @@ impl Token {
     }
 
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
-    crate fn from_ast_ident(ident: ast::Ident) -> Self {
+    pub fn from_ast_ident(ident: ast::Ident) -> Self {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
     }
 
     /// Return this token by value and leave a dummy token in its place.
-    crate fn take(&mut self) -> Self {
+    pub fn take(&mut self) -> Self {
         mem::replace(self, Token::dummy())
     }
 
@@ -321,7 +321,7 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
-    crate fn can_begin_expr(&self) -> bool {
+    pub fn can_begin_expr(&self) -> bool {
         match self.kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
@@ -353,7 +353,7 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of a type.
-    crate fn can_begin_type(&self) -> bool {
+    pub fn can_begin_type(&self) -> bool {
         match self.kind {
             Ident(name, is_raw)        =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
@@ -396,7 +396,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is any literal
-    crate fn is_lit(&self) -> bool {
+    pub fn is_lit(&self) -> bool {
         match self.kind {
             Literal(..) => true,
             _           => false,
@@ -412,7 +412,7 @@ impl Token {
 
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
-    crate fn can_begin_literal_or_bool(&self) -> bool {
+    pub fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,

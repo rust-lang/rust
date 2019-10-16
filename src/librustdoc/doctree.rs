@@ -4,7 +4,7 @@ pub use self::StructType::*;
 
 use syntax::ast;
 use syntax::ast::Name;
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax_pos::{self, Span};
 
 use rustc::hir;

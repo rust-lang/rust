@@ -433,13 +433,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_lifetime(&mut self) -> bool {
+    pub fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
     }
 
     /// Parses a single lifetime `'a` or panics.
-    crate fn expect_lifetime(&mut self) -> Lifetime {
+    pub fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
             let span = self.token.span;
             self.bump();

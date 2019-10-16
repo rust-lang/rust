@@ -31,7 +31,7 @@ use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::proc_macro::is_proc_macro_attr;
+use syntax_expand::proc_macro::is_proc_macro_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax_pos::{self, FileName, SourceFile, Span};

@@ -5,7 +5,7 @@ mod item;
 mod module;
 mod ty;
 mod path;
-crate use path::PathStyle;
+pub use path::PathStyle;
 mod stmt;
 mod generics;
 mod diagnostics;
@@ -130,7 +130,7 @@ pub struct Parser<'a> {
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
-    crate root_module_name: Option<String>,
+    pub root_module_name: Option<String>,
     expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
@@ -148,7 +148,7 @@ pub struct Parser<'a> {
     /// error.
     pub(super) unclosed_delims: Vec<UnmatchedBrace>,
     last_unexpected_token_span: Option<Span>,
-    crate last_type_ascription: Option<(Span, bool /* likely path typo */)>,
+    pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
 }
@@ -330,7 +330,7 @@ enum TokenExpectType {
 }
 
 impl<'a> Parser<'a> {
-    crate fn new(
+    pub fn new(
         sess: &'a ParseSess,
         tokens: TokenStream,
         directory: Option<Directory<'a>>,
@@ -1003,7 +1003,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn process_potential_macro_variable(&mut self) {
+    pub fn process_potential_macro_variable(&mut self) {
         self.token = match self.token.kind {
             token::Dollar if self.token.span.from_expansion() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
@@ -1037,7 +1037,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a single token tree from the input.
-    crate fn parse_token_tree(&mut self) -> TokenTree {
+    pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
                 let frame = mem::replace(&mut self.token_cursor.frame,
@@ -1099,7 +1099,7 @@ impl<'a> Parser<'a> {
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
     /// so emit a proper diagnostic.
-    crate fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
+    pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));

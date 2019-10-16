@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
-use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
+use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;

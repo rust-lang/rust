@@ -58,8 +58,7 @@ pub use builtin_attrs::{
     deprecated_attributes, is_builtin_attr,  is_builtin_attr_name,
 };
 pub use check::{
-    check_crate, get_features, feature_err, emit_feature_err,
+    check_crate, check_attribute, get_features, feature_err, emit_feature_err,
     Stability, GateIssue, UnstableFeatures,
     EXPLAIN_STMT_ATTR_SYNTAX, EXPLAIN_UNSIZED_TUPLE_COERCION,
 };
-crate use check::check_attribute;

@@ -1,22 +1,22 @@
-use crate::ast::{self, ItemKind, Attribute, Mac};
-use crate::attr::{mark_used, mark_known};
-use crate::errors::{Applicability, FatalError};
-use crate::ext::base::{self, *};
-use crate::ext::proc_macro_server;
-use crate::parse::{self, token};
-use crate::symbol::sym;
-use crate::tokenstream::{self, TokenStream};
-use crate::visit::Visitor;
+use crate::base::{self, *};
+use crate::proc_macro_server;
+
+use syntax::ast::{self, ItemKind, Attribute, Mac};
+use syntax::attr::{mark_used, mark_known};
+use syntax::errors::{Applicability, FatalError};
+use syntax::parse::{self, token};
+use syntax::symbol::sym;
+use syntax::tokenstream::{self, TokenStream};
+use syntax::visit::Visitor;
 
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, DUMMY_SP};
 
-const EXEC_STRATEGY: proc_macro::bridge::server::SameThread =
-    proc_macro::bridge::server::SameThread;
+const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 
 pub struct BangProcMacro {
-    pub client: proc_macro::bridge::client::Client<
-        fn(proc_macro::TokenStream) -> proc_macro::TokenStream,
+    pub client: pm::bridge::client::Client<
+        fn(pm::TokenStream) -> pm::TokenStream,
     >,
 }
 
@@ -44,9 +44,7 @@ impl base::ProcMacro for BangProcMacro {
 }
 
 pub struct AttrProcMacro {
-    pub client: proc_macro::bridge::client::Client<
-        fn(proc_macro::TokenStream, proc_macro::TokenStream) -> proc_macro::TokenStream,
-    >,
+    pub client: pm::bridge::client::Client<fn(pm::TokenStream, pm::TokenStream) -> pm::TokenStream>,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -74,9 +72,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct ProcMacroDerive {
-    pub client: proc_macro::bridge::client::Client<
-        fn(proc_macro::TokenStream) -> proc_macro::TokenStream,
-    >,
+    pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
 }
 
 impl MultiItemModifier for ProcMacroDerive {

@@ -5,7 +5,7 @@ use crate::util::check_builtin_macro_attribute;
 
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::base::*;
+use syntax_expand::base::*;
 use syntax::print::pprust;
 use syntax::source_map::respan;
 use syntax::symbol::{Symbol, sym};

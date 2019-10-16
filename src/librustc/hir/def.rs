@@ -6,7 +6,7 @@ use crate::ty;
 use crate::util::nodemap::DefIdMap;
 
 use syntax::ast;
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use rustc_macros::HashStable;

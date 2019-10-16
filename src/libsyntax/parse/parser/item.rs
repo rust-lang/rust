@@ -674,7 +674,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an impl item.
-    crate fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
@@ -850,7 +850,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the items in a trait declaration.
-    crate fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
+    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
@@ -1116,7 +1116,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a foreign item.
-    crate fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
+    pub fn parse_foreign_item(&mut self, extern_sp: Span) -> PResult<'a, ForeignItem> {
         maybe_whole!(self, NtForeignItem, |ni| ni);
 
         let attrs = self.parse_outer_attributes()?;

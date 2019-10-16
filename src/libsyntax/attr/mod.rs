@@ -298,14 +298,14 @@ impl Attribute {
         Ok(result)
     }
 
-    crate fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
+    pub fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
         if self.tokens.is_empty() {
             return Ok(Vec::new());
         }
         self.parse(sess, |p| p.parse_derive_paths())
     }
 
-    crate fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
+    pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         Ok(MetaItem {
             path: self.path.clone(),
             kind: self.parse(sess, |parser| parser.parse_meta_item_kind())?,

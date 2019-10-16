@@ -21,7 +21,7 @@
 //! extern crate syntax_pos;
 //!
 //! use rustc_driver::plugin::Registry;
-//! use syntax::ext::base::{ExtCtxt, MacResult};
+//! use syntax_expand::base::{ExtCtxt, MacResult};
 //! use syntax_pos::Span;
 //! use syntax::tokenstream::TokenTree;
 //!

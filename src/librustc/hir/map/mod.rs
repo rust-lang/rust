@@ -20,7 +20,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;

@@ -170,7 +170,7 @@ impl RecoverQPath for Expr {
 }
 
 impl<'a> Parser<'a> {
-    crate fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.span_fatal(self.token.span, m)
     }
 
@@ -190,11 +190,11 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_err(sp, m)
     }
 
-    crate fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
-    crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 

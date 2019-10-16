@@ -13,7 +13,7 @@ use std::cell::RefCell;
 
 use syntax::ast;
 use syntax::source_map::SourceMap;
-use syntax::ext::hygiene::SyntaxContext;
+use syntax_expand::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};

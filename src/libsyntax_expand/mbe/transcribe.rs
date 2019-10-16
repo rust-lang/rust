@@ -1,10 +1,11 @@
-use crate::ast::{Ident, Mac};
-use crate::ext::base::ExtCtxt;
-use crate::ext::mbe;
-use crate::ext::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
-use crate::mut_visit::{self, MutVisitor};
-use crate::parse::token::{self, NtTT, Token};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use crate::base::ExtCtxt;
+use crate::mbe;
+use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
+
+use syntax::ast::{Ident, Mac};
+use syntax::mut_visit::{self, MutVisitor};
+use syntax::parse::token::{self, NtTT, Token};
+use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
 

@@ -212,7 +212,7 @@ impl Lit {
     /// Attempts to recover an AST literal from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    crate fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
+    pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
         Lit { token: kind.to_lit_token(), kind, span }
     }
 

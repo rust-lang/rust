@@ -28,7 +28,7 @@ use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
 use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::hygiene::ExpnId;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
