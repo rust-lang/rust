@@ -156,6 +156,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cranelift-object"
+version = "0.46.1"
+source = "git+https://github.com/CraneStation/cranelift.git#387593d6c94d291e614c08d7a03f77b40efa451d"
+dependencies = [
+ "cranelift-codegen 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
+ "cranelift-module 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
+ "object 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "target-lexicon 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cranelift-simplejit"
 version = "0.46.1"
 source = "git+https://github.com/CraneStation/cranelift.git#387593d6c94d291e614c08d7a03f77b40efa451d"
@@ -332,8 +343,10 @@ name = "object"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -411,6 +424,7 @@ dependencies = [
  "cranelift 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-faerie 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
+ "cranelift-object 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-simplejit 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
  "faerie 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gimli 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -594,6 +608,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cranelift-frontend 0.46.1 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
 "checksum cranelift-module 0.46.1 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
 "checksum cranelift-native 0.46.1 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
+"checksum cranelift-object 0.46.1 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
 "checksum cranelift-simplejit 0.46.1 (git+https://github.com/CraneStation/cranelift.git)" = "<none>"
 "checksum crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ba125de2af0df55319f41944744ad91c71113bf74a4646efff39afe1f6842db1"
 "checksum errno 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2a071601ed01b988f896ab14b95e67335d1eeb50190932a1320f7fe3cadc84e"

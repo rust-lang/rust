@@ -9,6 +9,8 @@ use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc_data_structures::rustc_erase_owner;
 use rustc_target::spec::Target;
 
+use crate::backend::Product;
+
 pub struct CraneliftMetadataLoader;
 
 impl MetadataLoader for CraneliftMetadataLoader {
@@ -51,7 +53,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
-pub fn write_metadata(tcx: TyCtxt<'_>, artifact: &mut faerie::Artifact) -> EncodedMetadata {
+pub fn write_metadata<P: Product>(tcx: TyCtxt<'_>, product: &mut P) -> EncodedMetadata {
     use flate2::write::DeflateEncoder;
     use flate2::Compression;
     use std::io::Write;
@@ -95,24 +97,11 @@ pub fn write_metadata(tcx: TyCtxt<'_>, artifact: &mut faerie::Artifact) -> Encod
         .write_all(&metadata.raw_data)
         .unwrap();
 
-    artifact
-        .declare(".rustc", faerie::Decl::section(faerie::SectionKind::Data))
-        .unwrap();
-    artifact
-        .define_with_symbols(".rustc", compressed, {
-            let mut map = std::collections::BTreeMap::new();
-            // FIXME implement faerie elf backend section custom symbols
-            // For MachO this is necessary to prevent the linker from throwing away the .rustc section,
-            // but for ELF it isn't.
-            if tcx.sess.target.target.options.is_like_osx {
-                map.insert(
-                    rustc::middle::exported_symbols::metadata_symbol_name(tcx),
-                    0,
-                );
-            }
-            map
-        })
-        .unwrap();
+    product.add_rustc_section(
+        rustc::middle::exported_symbols::metadata_symbol_name(tcx),
+        compressed,
+        tcx.sess.target.target.options.is_like_osx,
+    );
 
     metadata
 }
