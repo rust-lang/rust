@@ -13,6 +13,13 @@ branches:
     - trying.tmp
     - staging.tmp
 
+cache:
+  directories:
+    - $HOME/.cargo
+before_cache:
+  - cargo install -Z install-upgrade cargo-cache --debug
+  - cargo cache --autoclean
+
 env:
  global:
    - RUST_BACKTRACE=1
@@ -23,8 +30,10 @@ before_install:
   - export PATH="$HOME/.cargo/bin:$PATH"
 install:
   - |
-    if [ -z ${INTEGRATION} ]; then
-      rustup component add rustfmt || cargo install --git https://github.com/rust-lang/rustfmt/ --force
+    if [[ -z ${INTEGRATION} ]]; then
+      if ! rustup component add rustfmt; then
+        cargo install -Z install-upgrade --git https://github.com/rust-lang/rustfmt --bin rustfmt
+      fi
       if [ "$TRAVIS_OS_NAME" == "linux" ]; then
         . $HOME/.nvm/nvm.sh
         nvm install stable
