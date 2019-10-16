@@ -713,20 +713,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 match obligation.predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
-                        let trait_predicate =
-                            self.resolve_vars_if_possible(trait_predicate);
+                        let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
-                        let (post_message, pre_message) =
-                            self.get_parent_trait_ref(&obligation.cause.code)
+                        let (
+                            post_message,
+                            pre_message,
+                        ) = self.get_parent_trait_ref(&obligation.cause.code)
                                 .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
                             .unwrap_or_default();
 
-                        let OnUnimplementedNote { message, label, note }
-                            = self.on_unimplemented_note(trait_ref, obligation);
+                        let OnUnimplementedNote {
+                            message,
+                            label,
+                            note,
+                        } = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try = self.tcx.sess.source_map().span_to_snippet(span)
                             .map(|s| &s == "?")
