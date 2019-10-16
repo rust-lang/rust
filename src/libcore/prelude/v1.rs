@@ -82,7 +82,7 @@ pub use crate::{
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
 #[doc(no_inline)]
-pub use crate::macros::builtin::{
+pub use crate::prelude_macros::builtin::{
     RustcDecodable,
     RustcEncodable,
     bench,

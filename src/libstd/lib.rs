@@ -276,6 +276,7 @@
 #![feature(linkage)]
 #![feature(log_syntax)]
 #![feature(manually_drop_take)]
+#![feature(matches_macro)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
@@ -353,7 +354,16 @@ extern crate cfg_if;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
-mod macros;
+#[path = "macros.rs"]
+mod prelude_macros;
+
+/// Macros that are not in the prelude and need to be imported explicitly
+#[unstable(feature = "matches_macro", issue = "0")]
+pub mod macros {
+    #[unstable(feature = "matches_macro", issue = "0")]
+    #[doc(inline)]
+    pub use core::macros::matches;
+}
 
 // The Rust prelude
 pub mod prelude;

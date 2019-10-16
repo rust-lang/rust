@@ -1,0 +1,8 @@
+error: cannot find macro `matches` in this scope
+  --> $DIR/matches_macro_not_in_the_prelude.rs:5:13
+   |
+LL |     assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+   |             ^^^^^^^
+
+error: aborting due to previous error
+
