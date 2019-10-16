@@ -1,6 +1,5 @@
-language: rust
-
-rust: nightly
+dist: xenial
+language: minimal
 
 os:
   - linux
@@ -19,6 +18,9 @@ env:
    - RUST_BACKTRACE=1
    - secure: "OKulfkA5OGd/d1IhvBKzRkHQwMcWjzrzbimo7+5NhkUkWxndAzl+719TB3wWvIh1i2wXXrEXsyZkXM5FtRrHm55v1VKQ5ibjEvFg1w3NIg81iDyoLq186fLqywvxGkOAFPrsePPsBj5USd5xvhwwbrjO6L7/RK6Z8shBwOSc41s="
 
+before_install:
+  - curl -sSL https://sh.rustup.rs | sh -s -- -y --default-toolchain=nightly --profile=minimal
+  - export PATH="$HOME/.cargo/bin:$PATH"
 install:
   - |
     if [ -z ${INTEGRATION} ]; then
