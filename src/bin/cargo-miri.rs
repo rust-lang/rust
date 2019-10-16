@@ -91,7 +91,7 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     let mut metadata = if let Ok(metadata) = cmd.exec() {
         metadata
     } else {
-        show_error(format!("Could not obtain Cargo metadata"));
+        show_error(format!("Could not obtain Cargo metadata; likely an ill-formed manifest"));
     };
 
     let current_dir = std::env::current_dir();
@@ -113,7 +113,7 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
                 package_manifest_directory == current_dir
             }
         })
-        .expect("could not find matching package");
+        .unwrap_or_else(|| show_error(format!("This seems to be a workspace, which is not supported by cargo-miri")));
     let package = metadata.packages.remove(package_index);
 
     // Finally we got the list of targets to build
