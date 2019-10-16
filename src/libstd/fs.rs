@@ -1091,8 +1091,8 @@ impl Metadata {
     /// Returns the creation time listed in this metadata.
     ///
     /// The returned value corresponds to the `btime` field of `statx` on
-    /// Linux not prior to 4.11, the `birthtime` field of `stat` on other
-    /// Unix platforms and the `ftCreationTime` field on Windows platforms.
+    /// Linux kernel starting from to 4.11, the `birthtime` field of `stat` on other
+    /// Unix platforms, and the `ftCreationTime` field on Windows platforms.
     ///
     /// # Errors
     ///
