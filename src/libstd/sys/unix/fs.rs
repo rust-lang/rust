@@ -137,7 +137,7 @@ cfg_has_statx! {{
             Ok(_) => {
                 // We cannot fill `stat64` exhaustively because of private padding fields.
                 let mut stat: stat64 = mem::zeroed();
-                // c_ulong`` on gnu-mips, `dev_t` otherwise
+                // `c_ulong` on gnu-mips, `dev_t` otherwise
                 stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor) as _;
                 stat.st_ino = buf.stx_ino as libc::ino64_t;
                 stat.st_nlink = buf.stx_nlink as libc::nlink_t;
