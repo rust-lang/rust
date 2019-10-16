@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 325] = [
+pub const ALL_LINTS: [Lint; 326] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -734,6 +734,13 @@ pub const ALL_LINTS: [Lint; 325] = [
         desc: "expressions where a bit mask will be rendered useless by a comparison, e.g., `(x | 1) > 2`",
         deprecation: None,
         module: "bit_mask",
+    },
+    Lint {
+        name: "inefficient_to_string",
+        group: "perf",
+        desc: "using `to_string` on `&&T` where `T: ToString`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "infallible_destructuring_match",

@@ -1,3 +1,4 @@
+mod inefficient_to_string;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
@@ -590,6 +591,29 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `.to_string()` on an `&&T` where
+    /// `T` implements `ToString` directly (like `&&str` or `&&String`).
+    ///
+    /// **Why is this bad?** This bypasses the specialized implementation of
+    /// `ToString` and instead goes through the more expensive string formatting
+    /// facilities.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// // Generic implementation for `T: Display` is used (slow)
+    /// ["foo", "bar"].iter().map(|s| s.to_string());
+    ///
+    /// // OK, the specialized impl is used
+    /// ["foo", "bar"].iter().map(|&s| s.to_string());
+    /// ```
+    pub INEFFICIENT_TO_STRING,
+    perf,
+    "using `to_string` on `&&T` where `T: ToString`"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for `new` not returning `Self`.
     ///
     /// **Why is this bad?** As a convention, `new` methods are used to make a new
@@ -1029,6 +1053,7 @@ declare_lint_pass!(Methods => [
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
     CLONE_DOUBLE_REF,
+    INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
     SEARCH_IS_SOME,
@@ -1121,6 +1146,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 if args.len() == 1 && method_call.ident.name == sym!(clone) {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
+                }
+                if args.len() == 1 && method_call.ident.name == sym!(to_string) {
+                    inefficient_to_string::lint(cx, expr, &args[0], self_ty);
                 }
 
                 match self_ty.kind {
