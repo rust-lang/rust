@@ -137,22 +137,24 @@ cfg_has_statx! {{
             Ok(_) => {
                 // We cannot fill `stat64` exhaustively because of private padding fields.
                 let mut stat: stat64 = mem::zeroed();
-                stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor);
+                // c_ulong`` on gnu-mips, `dev_t` otherwise
+                stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor) as _;
                 stat.st_ino = buf.stx_ino as libc::ino64_t;
                 stat.st_nlink = buf.stx_nlink as libc::nlink_t;
                 stat.st_mode = buf.stx_mode as libc::mode_t;
                 stat.st_uid = buf.stx_uid as libc::uid_t;
                 stat.st_gid = buf.stx_gid as libc::gid_t;
-                stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor);
+                stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor) as _;
                 stat.st_size = buf.stx_size as off64_t;
                 stat.st_blksize = buf.stx_blksize as libc::blksize_t;
                 stat.st_blocks = buf.stx_blocks as libc::blkcnt64_t;
                 stat.st_atime = buf.stx_atime.tv_sec as libc::time_t;
-                stat.st_atime_nsec = buf.stx_atime.tv_nsec as libc::c_long;
+                // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
+                stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
                 stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
-                stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as libc::c_long;
+                stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
                 stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
-                stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as libc::c_long;
+                stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
 
                 let extra = StatxExtraFields {
                     stx_mask: buf.stx_mask,
