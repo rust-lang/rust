@@ -736,6 +736,11 @@ impl MultiSpan {
         replacements_occurred
     }
 
+    /// This should be *rarely* used. Remove all the labels in this `MultiSpan`.
+    pub fn clear_span_labels(&mut self) {
+        self.span_labels.clear();
+    }
+
     /// Returns the strings to highlight. We always ensure that there
     /// is an entry for each of the primary spans -- for each primary
     /// span `P`, if there is at least one label with span `P`, we return

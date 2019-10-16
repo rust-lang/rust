@@ -4,7 +4,7 @@ error[E0277]: the trait bound `std::string::String: std::str::pattern::Pattern<'
 LL |     println!("{:?}", line.find(pattern));
    |                                ^^^^^^^
    |                                |
-   |                                expected an `FnMut<(char,)>` closure, found `std::string::String`
+   |                                expected an implementor of trait `std::str::pattern::Pattern<'_>`
    |                                help: consider borrowing here: `&pattern`
    |
    = help: the trait `std::ops::FnMut<(char,)>` is not implemented for `std::string::String`

@@ -52,7 +52,7 @@ LL | fn is_send<T: Send>(_: T) {}
 LL |     is_send(Box::new(TestType));
    |             ^^^^^^^^^^^^^^^^^^
    |             |
-   |             `dummy2::TestType` cannot be sent between threads safely
+   |             expected an implementor of trait `std::marker::Send`
    |             help: consider borrowing here: `&Box::new(TestType)`
    |
    = help: the trait `std::marker::Send` is not implemented for `dummy2::TestType`
@@ -82,7 +82,7 @@ LL | fn is_sync<T: Sync>(_: T) {}
 LL |     is_sync(Outer2(TestType));
    |             ^^^^^^^^^^^^^^^^
    |             |
-   |             `main::TestType` cannot be sent between threads safely
+   |             expected an implementor of trait `std::marker::Sync`
    |             help: consider borrowing here: `&Outer2(TestType)`
    |
    = help: the trait `std::marker::Send` is not implemented for `main::TestType`

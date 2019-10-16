@@ -1359,6 +1359,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // somewhere else in the obligation chain. Do not suggest non-sense.
                         return false;
                     }
+                    err.span.clear_span_labels();
+                    err.span_label(span, &format!(
+                        "expected an implementor of trait `{}`",
+                        obligation.parent_trait_ref.skip_binder(),
+                    ));
                     err.span_suggestion(
                         span,
                         "consider borrowing here",
