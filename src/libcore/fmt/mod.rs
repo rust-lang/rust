@@ -108,10 +108,10 @@ pub struct Error;
 /// [`io::Write`]: ../../std/io/trait.Write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
-    /// Writes a slice of bytes into this writer, returning whether the write
+    /// Writes a string slice into this writer, returning whether the write
     /// succeeded.
     ///
-    /// This method can only succeed if the entire byte slice was successfully
+    /// This method can only succeed if the entire string slice was successfully
     /// written, and this method will not return until all data has been
     /// written or an error occurs.
     ///
