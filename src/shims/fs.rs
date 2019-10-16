@@ -9,7 +9,6 @@ use crate::*;
 
 pub struct FileHandle {
     file: File,
-    flag: i32,
 }
 
 pub struct FileHandler {
@@ -44,27 +43,57 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let mut options = OpenOptions::new();
 
-        // The first two bits of the flag correspond to the access mode of the file in linux.
+        let o_rdonly = this.eval_libc_i32("O_RDONLY")?;
+        let o_wronly = this.eval_libc_i32("O_WRONLY")?;
+        let o_rdwr = this.eval_libc_i32("O_RDWR")?;
+        // The first two bits of the flag correspond to the access mode in linux, macOS and
+        // windows. We need to check that in fact the access mode flags for the current platform
+        // only use these two bits, otherwise we are in an unsupported platform and should error.
+        if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
+            throw_unsup_format!("Access mode flags on this platform are unsupported");
+        }
+        // Now we check the access mode
         let access_mode = flag & 0b11;
 
-        if access_mode == this.eval_libc_i32("O_RDONLY")? {
+        if access_mode == o_rdonly {
             options.read(true);
-        } else if access_mode == this.eval_libc_i32("O_WRONLY")? {
+        } else if access_mode == o_wronly {
             options.write(true);
-        } else if access_mode == this.eval_libc_i32("O_RDWR")? {
+        } else if access_mode == o_rdwr {
             options.read(true).write(true);
         } else {
             throw_unsup_format!("Unsupported access mode {:#x}", access_mode);
         }
+        // We need to check that there aren't unsupported options in `flag`. For this we try to
+        // reproduce the content of `flag` in the `mirror` variable using only the supported
+        // options.
+        let mut mirror = access_mode;
 
-        if flag & this.eval_libc_i32("O_APPEND")? != 0 {
+        let o_append = this.eval_libc_i32("O_APPEND")?;
+        if flag & o_append != 0 {
             options.append(true);
+            mirror |= o_append;
         }
-        if flag & this.eval_libc_i32("O_TRUNC")? != 0 {
+        let o_trunc = this.eval_libc_i32("O_TRUNC")?;
+        if flag & o_trunc != 0 {
             options.truncate(true);
+            mirror |= o_trunc;
         }
-        if flag & this.eval_libc_i32("O_CREAT")? != 0 {
+        let o_creat = this.eval_libc_i32("O_CREAT")?;
+        if flag & o_creat != 0 {
             options.create(true);
+            mirror |= o_creat;
+        }
+        let o_cloexec = this.eval_libc_i32("O_CLOEXEC")?;
+        if flag & o_cloexec != 0 {
+            // We do not need to do anything for this flag because `std` already sets it.
+            // (Technically we do not support *not* setting this flag, but we ignore that.)
+            mirror |= o_cloexec;
+        }
+        // If `flag` is not equal to `mirror`, there is an unsupported option enabled in `flag`,
+        // then we throw an error.
+        if flag != mirror {
+            throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
         let path_bytes = this
@@ -76,7 +105,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file, flag });
+            fh.handles.insert(fh.low, FileHandle { file });
             fh.low
         });
 
@@ -87,7 +116,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: OpTy<'tcx, Tag>,
         cmd_op: OpTy<'tcx, Tag>,
-        arg_op: Option<OpTy<'tcx, Tag>>,
+        _arg1_op: Option<OpTy<'tcx, Tag>>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -97,29 +126,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
-
-        if cmd == this.eval_libc_i32("F_SETFD")? {
-            // This does not affect the file itself. Certain flags might require changing the file
-            // or the way it is accessed somehow.
-            let flag = this.read_scalar(arg_op.unwrap())?.to_i32()?;
-            // The only usage of this in stdlib at the moment is to enable the `FD_CLOEXEC` flag.
+        // We only support getting the flags for a descriptor
+        if cmd == this.eval_libc_i32("F_GETFD")? {
+            // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
+            // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
+            // always sets this flag when opening a file. However we still need to check that the
+            // file itself is open.
             let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
-            if let Some(FileHandle { flag: old_flag, .. }) =
-                this.machine.file_handler.handles.get_mut(&fd)
-            {
-                // Check that the only difference between the old flag and the current flag is
-                // exactly the `FD_CLOEXEC` value.
-                if flag ^ *old_flag == fd_cloexec {
-                    *old_flag = flag;
-                } else {
-                    throw_unsup_format!("Unsupported arg {:#x} for `F_SETFD`", flag);
-                }
-            }
-            Ok(0)
-        } else if cmd == this.eval_libc_i32("F_GETFD")? {
-            this.get_handle_and(fd, |handle| Ok(handle.flag))
+            this.get_handle_and(fd, |_| Ok(fd_cloexec))
         } else {
-            throw_unsup_format!("Unsupported command {:#x}", cmd);
+            throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }
     }
 
