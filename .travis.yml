@@ -31,7 +31,7 @@ before_script:
     RUSTC_HASH=$(cat rust-version)
   fi
 # Install Rust ("stable" toolchain for better caching, it is just used to build rustup-toolchain-install-master)
-- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable
+- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable --profile minimal
 - export PATH=$HOME/.cargo/bin:$PATH
 - rustup default stable
 - rustup uninstall beta
