@@ -905,11 +905,10 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, span, feature, since);
         }
-        if lang_features.contains(&feature) {
+        if !lang_features.insert(feature) {
             // Warn if the user enables a lang feature multiple times.
             duplicate_feature_err(tcx.sess, span, feature);
         }
-        lang_features.insert(feature);
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;

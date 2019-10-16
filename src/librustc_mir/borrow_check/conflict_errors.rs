@@ -78,15 +78,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .last()
                 .unwrap();
 
-            if self.uninitialized_error_reported.contains(&root_place) {
+            if !self.uninitialized_error_reported.insert(root_place) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
                     root_place
                 );
                 return;
             }
-
-            self.uninitialized_error_reported.insert(root_place);
 
             let item_msg = match self.describe_place_with_options(used_place,
                                                                   IncludingDowncast(true)) {
