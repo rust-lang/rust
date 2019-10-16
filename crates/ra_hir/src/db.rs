@@ -111,37 +111,37 @@ pub trait DefDatabase: InternDatabase + HirDebugDatabase {
     #[salsa::invoke(CrateDefMap::crate_def_map_query)]
     fn crate_def_map(&self, krate: Crate) -> Arc<CrateDefMap>;
 
-    #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
+    #[salsa::invoke(ModuleImplBlocks::impls_in_module_with_source_map_query)]
     fn impls_in_module_with_source_map(
         &self,
         module: Module,
     ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
 
-    #[salsa::invoke(crate::impl_block::impls_in_module)]
+    #[salsa::invoke(ModuleImplBlocks::impls_in_module_query)]
     fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
 
-    #[salsa::invoke(crate::FnData::fn_data_query)]
+    #[salsa::invoke(FnData::fn_data_query)]
     fn fn_data(&self, func: Function) -> Arc<FnData>;
 
-    #[salsa::invoke(crate::type_alias::type_alias_data_query)]
+    #[salsa::invoke(TypeAliasData::type_alias_data_query)]
     fn type_alias_data(&self, typ: TypeAlias) -> Arc<TypeAliasData>;
 
-    #[salsa::invoke(crate::ConstData::const_data_query)]
+    #[salsa::invoke(ConstData::const_data_query)]
     fn const_data(&self, konst: Const) -> Arc<ConstData>;
 
-    #[salsa::invoke(crate::ConstData::static_data_query)]
+    #[salsa::invoke(ConstData::static_data_query)]
     fn static_data(&self, konst: Static) -> Arc<ConstData>;
 
-    #[salsa::invoke(crate::lang_item::LangItems::module_lang_items_query)]
+    #[salsa::invoke(LangItems::module_lang_items_query)]
     fn module_lang_items(&self, module: Module) -> Option<Arc<LangItems>>;
 
-    #[salsa::invoke(crate::lang_item::LangItems::crate_lang_items_query)]
+    #[salsa::invoke(LangItems::crate_lang_items_query)]
     fn crate_lang_items(&self, krate: Crate) -> Arc<LangItems>;
 
-    #[salsa::invoke(crate::lang_item::LangItems::lang_item_query)]
+    #[salsa::invoke(LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: Crate, item: SmolStr) -> Option<LangItemTarget>;
 
     #[salsa::invoke(crate::code_model::docs::documentation_query)]

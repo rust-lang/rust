@@ -176,6 +176,25 @@ pub struct ModuleImplBlocks {
 }
 
 impl ModuleImplBlocks {
+    pub(crate) fn impls_in_module_with_source_map_query(
+        db: &(impl DefDatabase + AstDatabase),
+        module: Module,
+    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
+        let mut source_map = ImplSourceMap::default();
+        let crate_graph = db.crate_graph();
+        let cfg_options = crate_graph.cfg_options(module.krate.crate_id());
+
+        let result = ModuleImplBlocks::collect(db, cfg_options, module, &mut source_map);
+        (Arc::new(result), Arc::new(source_map))
+    }
+
+    pub(crate) fn impls_in_module_query(
+        db: &impl DefDatabase,
+        module: Module,
+    ) -> Arc<ModuleImplBlocks> {
+        db.impls_in_module_with_source_map(module).0
+    }
+
     fn collect(
         db: &(impl DefDatabase + AstDatabase),
         cfg_options: &CfgOptions,
@@ -263,20 +282,4 @@ impl ModuleImplBlocks {
             }
         }
     }
-}
-
-pub(crate) fn impls_in_module_with_source_map_query(
-    db: &(impl DefDatabase + AstDatabase),
-    module: Module,
-) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
-    let mut source_map = ImplSourceMap::default();
-    let crate_graph = db.crate_graph();
-    let cfg_options = crate_graph.cfg_options(module.krate.crate_id());
-
-    let result = ModuleImplBlocks::collect(db, cfg_options, module, &mut source_map);
-    (Arc::new(result), Arc::new(source_map))
-}
-
-pub(crate) fn impls_in_module(db: &impl DefDatabase, module: Module) -> Arc<ModuleImplBlocks> {
-    db.impls_in_module_with_source_map(module).0
 }
