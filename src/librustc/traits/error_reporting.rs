@@ -33,7 +33,7 @@ use crate::ty::subst::Subst;
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use errors::{Applicability, DiagnosticBuilder, pluralize};
+use errors::{Applicability, DiagnosticBuilder, pluralise, Style};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
@@ -723,7 +723,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             post_message,
                             pre_message,
                         ) = self.get_parent_trait_ref(&obligation.cause.code)
-                                .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
+                            .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
                             .unwrap_or_default();
 
                         let OnUnimplementedNote {
@@ -787,6 +787,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
                         self.suggest_fn_call(&obligation, &mut err, &trait_ref, points_at_arg);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
+                        if self.suggest_add_reference_to_arg(
+                            &obligation,
+                            &mut err,
+                            &trait_ref,
+                            points_at_arg,
+                        ) {
+                            self.note_obligation_cause(&mut err, obligation);
+                            err.emit();
+                            return;
+                        }
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
 
                         // Try to report a help message
@@ -1300,6 +1310,66 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn suggest_add_reference_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        points_at_arg: bool,
+    ) -> bool {
+        if !points_at_arg {
+            return false;
+        }
+
+        let span = obligation.cause.span;
+        let param_env = obligation.param_env;
+        let trait_ref = trait_ref.skip_binder();
+
+        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &obligation.cause.code {
+            // Try to apply the original trait binding obligation by borrowing.
+            let self_ty = trait_ref.self_ty();
+            let found = self_ty.to_string();
+            let new_self_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, self_ty);
+            let substs = self.tcx.mk_substs_trait(new_self_ty, &[]);
+            let new_trait_ref = ty::TraitRef::new(obligation.parent_trait_ref.def_id(), substs);
+            let new_obligation = Obligation::new(
+                ObligationCause::dummy(),
+                param_env,
+                new_trait_ref.to_predicate(),
+            );
+            if self.predicate_may_hold(&new_obligation) {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    // We have a very specific type of error, where just borrowing this argument
+                    // might solve the problem. In cases like this, the important part is the
+                    // original type obligation, not the last one that failed, which is arbitrary.
+                    // Because of this, we modify the error to refer to the original obligation and
+                    // return early in the caller.
+                    err.message = vec![(
+                        format!(
+                            "the trait bound `{}: {}` is not satisfied",
+                            found,
+                            obligation.parent_trait_ref.skip_binder(),
+                        ),
+                        Style::NoStyle,
+                    )];
+                    if snippet.starts_with('&') {
+                        // This is already a literal borrow and the obligation is failing
+                        // somewhere else in the obligation chain. Do not suggest non-sense.
+                        return false;
+                    }
+                    err.span_suggestion(
+                        span,
+                        "consider borrowing here",
+                        format!("&{}", snippet),
+                        Applicability::MachineApplicable,
+                    );
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,

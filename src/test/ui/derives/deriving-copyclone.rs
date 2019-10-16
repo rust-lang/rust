@@ -28,10 +28,10 @@ fn main() {
     is_clone(B { a: 1, b: 2 });
 
     // B<C> cannot be copied or cloned
-    is_copy(B { a: 1, b: C }); //~ERROR Copy
-    is_clone(B { a: 1, b: C }); //~ERROR Clone
+    is_copy(B { a: 1, b: C }); //~ ERROR Copy
+    is_clone(B { a: 1, b: C }); //~ ERROR Clone
 
     // B<D> can be cloned but not copied
-    is_copy(B { a: 1, b: D }); //~ERROR Copy
+    is_copy(B { a: 1, b: D }); //~ ERROR Copy
     is_clone(B { a: 1, b: D });
 }
