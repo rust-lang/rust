@@ -21,10 +21,11 @@ install:
     - set /p RUSTC_HASH=<rust-version
     # Install Rust
     - curl -sSf --retry 3 -o rustup-init.exe https://win.rustup.rs/
-    - rustup-init.exe -y --default-host %TARGET% --default-toolchain stable
+    - rustup-init.exe -y --default-host %TARGET% --default-toolchain stable --profile minimal
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     - rustup default stable
     - rustup uninstall beta
+    - rustup component remove rust-docs & exit 0
     - rustup update
     # Install "master" toolchain
     - cargo install rustup-toolchain-install-master & exit 0
