@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 331] = [
+pub const ALL_LINTS: [Lint; 332] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -279,6 +279,13 @@ pub const ALL_LINTS: [Lint; 331] = [
         desc: "`dbg!` macro is intended as a debugging tool",
         deprecation: None,
         module: "dbg_macro",
+    },
+    Lint {
+        name: "debug_assert_with_mut_call",
+        group: "correctness",
+        desc: "mutable arguments in `debug_assert{,_ne,_eq}!`",
+        deprecation: None,
+        module: "mutable_debug_assertion",
     },
     Lint {
         name: "decimal_literal_representation",

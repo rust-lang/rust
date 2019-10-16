@@ -230,6 +230,7 @@ pub mod mul_add;
 pub mod multiple_crate_versions;
 pub mod mut_mut;
 pub mod mut_reference;
+pub mod mutable_debug_assertion;
 pub mod mutex_atomic;
 pub mod needless_bool;
 pub mod needless_borrow;
@@ -610,6 +611,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
     reg.register_late_lint_pass(box comparison_chain::ComparisonChain);
     reg.register_late_lint_pass(box mul_add::MulAddCheck);
     reg.register_late_lint_pass(box unused_self::UnusedSelf);
+    reg.register_late_lint_pass(box mutable_debug_assertion::DebugAssertWithMutCall);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -855,6 +857,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         misc_early::ZERO_PREFIXED_LITERAL,
         mul_add::MANUAL_MUL_ADD,
         mut_reference::UNNECESSARY_MUT_PASSED,
+        mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL,
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
@@ -1160,6 +1163,7 @@ pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Con
         misc::CMP_NAN,
         misc::FLOAT_CMP,
         misc::MODULO_ONE,
+        mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL,
         non_copy_const::BORROW_INTERIOR_MUTABLE_CONST,
         non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST,
         open_options::NONSENSICAL_OPEN_OPTIONS,
