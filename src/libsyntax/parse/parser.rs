@@ -1,4 +1,4 @@
-mod attr;
+pub mod attr;
 mod expr;
 mod pat;
 mod item;

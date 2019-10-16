@@ -26,7 +26,7 @@ pub(super) struct ModulePathSuccess {
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
-    crate fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
+    pub fn parse_crate_mod(&mut self) -> PResult<'a, Crate> {
         let lo = self.token.span;
         let krate = Ok(ast::Crate {
             attrs: self.parse_inner_attributes()?,
