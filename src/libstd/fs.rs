@@ -29,7 +29,7 @@ use crate::time::SystemTime;
 ///
 /// # Examples
 ///
-/// Creates a new file and write bytes to it (you can also use [`std::fs::write`]):
+/// Creates a new file and write bytes to it (you can also use [`write`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -42,7 +42,7 @@ use crate::time::SystemTime;
 /// }
 /// ```
 ///
-/// Read the contents of a file into a [`String`] (you can also use [`std::fs::read`]):
+/// Read the contents of a file into a [`String`] (you can also use [`read`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -89,6 +89,8 @@ use crate::time::SystemTime;
 /// [`Write`]: ../io/trait.Write.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
 /// [`sync_all`]: struct.File.html#method.sync_all
+/// [`read`]: fn.read.html
+/// [`write`]: fn.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
