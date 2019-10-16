@@ -1,11 +1,11 @@
 use syntax::{ast, attr};
 use syntax::edition::Edition;
-use syntax::ext::expand::ExpansionConfig;
-use syntax::ext::hygiene::AstPass;
-use syntax::ext::base::{ExtCtxt, Resolver};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{Ident, Symbol, kw, sym};
+use syntax_expand::expand::ExpansionConfig;
+use syntax_expand::hygiene::AstPass;
+use syntax_expand::base::{ExtCtxt, Resolver};
 use syntax_pos::DUMMY_SP;
 
 pub fn inject(

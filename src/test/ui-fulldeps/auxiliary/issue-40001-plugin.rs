@@ -5,10 +5,11 @@
 extern crate rustc;
 extern crate rustc_driver;
 extern crate syntax;
+extern crate syntax_expand;
 
 use rustc_driver::plugin::Registry;
 use syntax::attr;
-use syntax::ext::base::*;
+use syntax_expand::base::*;
 use syntax::feature_gate::AttributeType::Whitelisted;
 use syntax::symbol::Symbol;
 

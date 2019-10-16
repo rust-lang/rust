@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc_resolve::ParentScope;
 use syntax;
 use syntax::ast::{self, Ident};
-use syntax::ext::base::SyntaxExtensionKind;
+use syntax_expand::base::SyntaxExtensionKind;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;

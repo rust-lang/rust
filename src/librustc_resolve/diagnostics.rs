@@ -10,7 +10,7 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Ident, Path};
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;

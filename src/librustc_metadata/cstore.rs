@@ -11,7 +11,7 @@ use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock, MetadataRef, AtomicCell};
 use syntax::ast;
-use syntax::ext::base::SyntaxExtension;
+use syntax_expand::base::SyntaxExtension;
 use syntax_pos;
 use proc_macro::bridge::client::ProcMacro;
 

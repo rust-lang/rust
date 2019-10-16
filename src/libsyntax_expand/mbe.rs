@@ -9,9 +9,9 @@ crate mod macro_parser;
 crate mod macro_rules;
 crate mod quoted;
 
-use crate::ast;
-use crate::parse::token::{self, Token, TokenKind};
-use crate::tokenstream::{DelimSpan};
+use syntax::ast;
+use syntax::parse::token::{self, Token, TokenKind};
+use syntax::tokenstream::{DelimSpan};
 
 use syntax_pos::{BytePos, Span};
 

@@ -1,11 +1,12 @@
-use crate::ast;
-use crate::ext::mbe::macro_parser;
-use crate::ext::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
-use crate::parse::token::{self, Token};
-use crate::print::pprust;
-use crate::sess::ParseSess;
-use crate::symbol::kw;
-use crate::tokenstream;
+use crate::mbe::macro_parser;
+use crate::mbe::{TokenTree, KleeneOp, KleeneToken, SequenceRepetition, Delimited};
+
+use syntax::ast;
+use syntax::parse::token::{self, Token};
+use syntax::print::pprust;
+use syntax::sess::ParseSess;
+use syntax::symbol::kw;
+use syntax::tokenstream;
 
 use syntax_pos::Span;
 

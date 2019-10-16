@@ -35,7 +35,7 @@ use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::{self, ast, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
-use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
+use syntax_expand::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
@@ -397,12 +397,12 @@ fn configure_and_expand_inner<'a>(
 
         // Create the config for macro expansion
         let features = sess.features_untracked();
-        let cfg = syntax::ext::expand::ExpansionConfig {
+        let cfg = syntax_expand::expand::ExpansionConfig {
             features: Some(&features),
             recursion_limit: *sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
-            ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
+            ..syntax_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
         let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
@@ -559,7 +559,7 @@ pub fn lower_to_hir(
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
-        syntax::ext::hygiene::clear_syntax_context_map();
+        syntax_expand::hygiene::clear_syntax_context_map();
     }
 
     Ok(hir_forest)

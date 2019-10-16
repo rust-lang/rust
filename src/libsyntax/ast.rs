@@ -2,29 +2,28 @@
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-pub use crate::symbol::{Ident, Symbol as Name};
 pub use crate::util::parser::ExprPrecedence;
 
-use crate::ext::hygiene::ExpnId;
 use crate::parse::token::{self, DelimToken};
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
-use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::TokenStream;
-use crate::ThinVec;
+
+use rustc_target::spec::abi::Abi;
+pub use rustc_target::abi::FloatTy;
+
+use syntax_pos::{Span, DUMMY_SP, ExpnId};
+use syntax_pos::symbol::{kw, sym, Symbol};
+pub use syntax_pos::symbol::{Ident, Symbol as Name};
 
 use rustc_index::vec::Idx;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
-use rustc_target::spec::abi::Abi;
-use syntax_pos::{Span, DUMMY_SP};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_serialize::{self, Decoder, Encoder};
 use std::fmt;
-
-pub use rustc_target::abi::FloatTy;
 
 #[cfg(test)]
 mod tests;

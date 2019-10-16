@@ -1,4 +1,4 @@
-use syntax::ext::base::{self, ExtCtxt};
+use syntax_expand::base::{self, ExtCtxt};
 use syntax::symbol::kw;
 use syntax_pos::Span;
 use syntax::tokenstream::{TokenTree, TokenStream};
