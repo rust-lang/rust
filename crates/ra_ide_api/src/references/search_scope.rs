@@ -25,14 +25,53 @@ impl NameDefinition {
         }
 
         if let Some(ref vis) = self.visibility {
+            let vis = vis.syntax().to_string();
+
+            // FIXME: add "pub(in path)"
+
+            if vis.as_str() == "pub(super)" {
+                if let Some(parent_module) = self.container.parent(db) {
+                    let mut files = HashSet::new();
+
+                    let parent_src = parent_module.definition_source(db);
+                    let file_id = parent_src.file_id.original_file(db);
+
+                    match parent_src.ast {
+                        ModuleSource::Module(m) => {
+                            let range = Some(m.syntax().text_range());
+                            files.insert((file_id, range));
+                        }
+                        ModuleSource::SourceFile(_) => {
+                            files.insert((file_id, None));
+                            files.extend(
+                                parent_module
+                                    .children(db)
+                                    .map(|m| {
+                                        let src = m.definition_source(db);
+                                        (src.file_id.original_file(db), None)
+                                    })
+                                    .collect::<HashSet<_>>(),
+                            );
+                        }
+                    }
+                    return files;
+                } else {
+                    let range = match module_src.ast {
+                        ModuleSource::Module(m) => Some(m.syntax().text_range()),
+                        ModuleSource::SourceFile(_) => None,
+                    };
+                    return [(file_id, range)].iter().cloned().collect();
+                }
+            }
+
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
             let mut files = source_root.walk().map(|id| (id.into(), None)).collect::<HashSet<_>>();
 
-            if vis.syntax().to_string().as_str() == "pub(crate)" {
+            if vis.as_str() == "pub(crate)" {
                 return files;
             }
-            if vis.syntax().to_string().as_str() == "pub" {
+            if vis.as_str() == "pub" {
                 let krate = self.container.krate(db).unwrap();
                 let crate_graph = db.crate_graph();
 
@@ -49,7 +88,6 @@ impl NameDefinition {
 
                 return files;
             }
-            // FIXME: "pub(super)", "pub(in path)"
         }
 
         let range = match module_src.ast {

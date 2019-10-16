@@ -152,6 +152,7 @@ pub(crate) fn classify_name_ref(
         AssocItem(item) => Some(from_assoc_item(db, item)),
         LocalBinding(Either::A(pat)) => from_pat(db, file_id, pat),
         LocalBinding(Either::B(par)) => {
+            // Not really supported
             let kind = NameKind::SelfParam(par);
             Some(NameDefinition { kind, container, visibility })
         }
