@@ -1077,35 +1077,20 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     fn suspicious_intersection(&self, other: &Self) -> bool {
+        // `false` in the following cases:
+        // 1     ----      // 1  ----------   // 1 ----        // 1       ----
+        // 2  ----------   // 2     ----      // 2       ----  // 2 ----
+        //
+        // The following are currently `false`, but could be `true` in the future (#64007):
+        // 1 ---------       // 1     ---------
+        // 2     ----------  // 2 ----------
+        //
+        // `true` in the following cases:
+        // 1 -------          // 1       -------
+        // 2       --------   // 2 -------
         let (lo, hi) = (*self.range.start(), *self.range.end());
         let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
-
-        // `false` in the following cases:
-        // 1     ----
-        // 2  ----------
-        //
-        // 1  ----------
-        // 2     ----
-        //
-        // 1 ----
-        // 2       ----
-        //
-        // 1       ----
-        // 2 ----
-
-        // `true` in the following cases:
-        // 1 ---------
-        // 2     ----------
-        lo < other_lo && hi > other_lo && hi < other_hi ||
-            // 1     ---------
-            // 2  ----------
-            lo > other_lo && lo < other_hi && hi > other_hi ||
-            // 1  ----
-            // 2     ----
-            lo == other_hi && other_lo < lo ||
-            // 1     ----
-            // 2 -----
-            hi == other_lo && lo < other_lo
+        (lo == other_hi || hi == other_lo)
     }
 }
 

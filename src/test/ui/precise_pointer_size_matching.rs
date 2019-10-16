@@ -28,6 +28,6 @@ fn main() {
 
     match 0usize { //~ ERROR non-exhaustive patterns
         1 ..= 8 => {}
-        5 ..= 20 => {} //~ ERROR multiple patterns covering the same range
+        5 ..= 20 => {}
     }
 }

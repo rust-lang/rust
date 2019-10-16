@@ -19,7 +19,7 @@ fn main() {
         0 ..= 32 => {}
         33 => {}
         34 .. 128 => {}
-        100 ..= 200 => {} //~ ERROR multiple patterns covering the same range
+        100 ..= 200 => {}
         200 => {} //~ ERROR unreachable pattern
         201 ..= 255 => {}
     }
