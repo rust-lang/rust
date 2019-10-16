@@ -1747,7 +1747,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", ty, v.head());
 
-    let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head(), ty);
+    let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head());
 
     if cx.is_non_exhaustive_variant(v.head())
         && !cx.is_local(ty)
@@ -1760,7 +1760,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     let matrix_head_ctors: Vec<Constructor<'_>> = matrix
         .heads()
-        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p, ty))
+        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p))
         .filter(|ctor| !ctor.is_wildcard())
         .collect();
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
@@ -1804,11 +1804,10 @@ fn pat_constructors<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
-    ty: Ty<'tcx>,
 ) -> SmallVec<[Constructor<'tcx>; 1]> {
     match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
-            pat_constructors(tcx, param_env, subpattern, ty)
+            pat_constructors(tcx, param_env, subpattern)
         }
         PatKind::Binding { .. } | PatKind::Wild => smallvec![Wildcard],
         PatKind::Leaf { .. } | PatKind::Deref { .. } => smallvec![Single],
@@ -1829,9 +1828,9 @@ fn pat_constructors<'tcx>(
                 smallvec![ConstantRange(lo, hi, end)]
             }
         }
-        PatKind::Array { .. } => match ty.kind {
+        PatKind::Array { .. } => match pat.ty.kind {
             ty::Array(_, length) => smallvec![FixedLenSlice(length.eval_usize(tcx, param_env))],
-            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", ty),
+            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pat.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let prefix = prefix.len() as u64;
