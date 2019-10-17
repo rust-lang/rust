@@ -1,5 +1,5 @@
 dist: xenial
-language: minimal
+language: bash
 
 os:
   - linux
