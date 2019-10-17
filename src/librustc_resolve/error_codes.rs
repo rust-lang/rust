@@ -26,7 +26,7 @@ struct Foo<U = (), T = U> {
 }
 ```
 
-Please also verify that this wasn't because of a name-clash and rename the type
+Please also verify \hat this wasn't because of a name-clash and rename the type
 parameter if so.
 "##,
 
@@ -1674,8 +1674,8 @@ pub (in crate::Sea) struct Shark; // error!
 fn main() {}
 ```
 
-`Sea` is not a module, therefore, it is invalid. To fix this error, we need to
-replace `Sea` with a module.
+`Sea` is not a module, therefore it is invalid to use it in a visibility path.
+To fix this error we need to ensure `Sea` is a module.
 
 Please note that the visibility scope can only be applied on ancestors!
 
