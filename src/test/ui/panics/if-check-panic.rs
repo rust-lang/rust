@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:Number is odd
 fn even(x: usize) -> bool {
     if x < 2 {
@@ -5,7 +6,6 @@ fn even(x: usize) -> bool {
     } else if x == 2 {
         return true;
     } else {
-        run-fail
         return even(x - 2);
     }
 }

@@ -1,7 +1,7 @@
-run-fail
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 
+// run-fail
 // error-pattern:wooooo
 fn main() {
     let mut a = 1;
