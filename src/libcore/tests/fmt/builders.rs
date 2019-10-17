@@ -320,6 +320,46 @@ mod debug_map {
     }
 
     #[test]
+    fn test_entry_err() {
+        // Ensure errors in a map entry don't trigger panics (#65231)
+        use std::fmt::Write;
+
+        struct ErrorFmt;
+
+        impl fmt::Debug for ErrorFmt {
+            fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+                Err(fmt::Error)
+            }
+        }
+
+        struct KeyValue<K, V>(usize, K, V);
+
+        impl<K, V> fmt::Debug for KeyValue<K, V>
+        where
+            K: fmt::Debug,
+            V: fmt::Debug,
+        {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let mut map = fmt.debug_map();
+
+                for _ in 0..self.0 {
+                    map.entry(&self.1, &self.2);
+                }
+
+                map.finish()
+            }
+        }
+
+        let mut buf = String::new();
+
+        assert!(write!(&mut buf, "{:?}", KeyValue(1, ErrorFmt, "bar")).is_err());
+        assert!(write!(&mut buf, "{:?}", KeyValue(1, "foo", ErrorFmt)).is_err());
+
+        assert!(write!(&mut buf, "{:?}", KeyValue(2, ErrorFmt, "bar")).is_err());
+        assert!(write!(&mut buf, "{:?}", KeyValue(2, "foo", ErrorFmt)).is_err());
+    }
+
+    #[test]
     #[should_panic]
     fn test_invalid_key_when_entry_is_incomplete() {
         struct Foo;
