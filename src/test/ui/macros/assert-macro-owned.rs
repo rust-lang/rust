@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:panicked at 'test-assert-owned'
 
 fn main() {

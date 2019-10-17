@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:assertion failed: 1 == 2
 
 fn main() {
