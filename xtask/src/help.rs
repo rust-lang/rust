@@ -12,15 +12,15 @@ SUBCOMMANDS:
     format
     format-hook
     fuzz-tests
-    gen-syntax
+    codegen
     gen-tests
-    install-ra
+    install
     lint";
 
-pub const INSTALL_RA_HELP: &str = "ra_tools-install-ra
+pub const INSTALL_HELP: &str = "ra_tools-install
 
 USAGE:
-    ra_tools.exe install-ra [FLAGS]
+    ra_tools.exe install [FLAGS]
 
 FLAGS:
         --client-code
@@ -43,5 +43,5 @@ FLAGS:
 
 pub const INSTALL_RA_CONFLICT: &str =
     "error: The argument `--server` cannot be used with `--client-code`
-                    
+
 For more information try --help";

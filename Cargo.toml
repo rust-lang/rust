@@ -1,5 +1,5 @@
 [workspace]
-members = [ "crates/*" ]
+members = [ "crates/*", "xtask/", "website/website-gen" ]
 
 [profile.dev]
 debug = 1 # only line info

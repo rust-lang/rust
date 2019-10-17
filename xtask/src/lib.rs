@@ -78,7 +78,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
 }
 
 pub fn project_root() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(2).unwrap().to_path_buf()
+    Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(1).unwrap().to_path_buf()
 }
 
 pub struct Cmd<'a> {
