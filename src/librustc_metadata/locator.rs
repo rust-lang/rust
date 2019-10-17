@@ -220,12 +220,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc::middle::cstore::{CrateSource, MetadataLoader};
-use rustc::session::{config, Session};
+use rustc::session::{config, Session, CrateDisambiguator};
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use rustc::session::search_paths::PathKind;
 use rustc::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
+use syntax::{span_err, span_fatal};
 use syntax::symbol::{Symbol, sym};
 use syntax::struct_span_err;
 use syntax_pos::Span;
@@ -908,6 +909,83 @@ fn get_metadata_section_imp(target: &Target,
         Ok(blob)
     } else {
         Err(format!("incompatible metadata version found: '{}'", filename.display()))
+    }
+}
+
+/// Look for a plugin registrar. Returns its library path and crate disambiguator.
+pub fn find_plugin_registrar(
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+    span: Span,
+    name: Symbol,
+) -> Option<(PathBuf, CrateDisambiguator)> {
+    info!("find plugin registrar `{}`", name);
+    let target_triple = sess.opts.target_triple.clone();
+    let host_triple = TargetTriple::from_triple(config::host_triple());
+    let is_cross = target_triple != host_triple;
+    let mut target_only = false;
+    let mut locate_ctxt = Context {
+        sess,
+        span,
+        crate_name: name,
+        hash: None,
+        extra_filename: None,
+        filesearch: sess.host_filesearch(PathKind::Crate),
+        target: &sess.host,
+        triple: host_triple,
+        root: None,
+        rejected_via_hash: vec![],
+        rejected_via_triple: vec![],
+        rejected_via_kind: vec![],
+        rejected_via_version: vec![],
+        rejected_via_filename: vec![],
+        should_match_name: true,
+        is_proc_macro: None,
+        metadata_loader,
+    };
+
+    let library = locate_ctxt.maybe_load_library_crate().or_else(|| {
+        if !is_cross {
+            return None
+        }
+        // Try loading from target crates. This will abort later if we
+        // try to load a plugin registrar function,
+        target_only = true;
+
+        locate_ctxt.target = &sess.target.target;
+        locate_ctxt.triple = target_triple;
+        locate_ctxt.filesearch = sess.target_filesearch(PathKind::Crate);
+
+        locate_ctxt.maybe_load_library_crate()
+    });
+    let library = match library {
+        Some(l) => l,
+        None => locate_ctxt.report_errs(),
+    };
+
+    if target_only {
+        // Need to abort before syntax expansion.
+        let message = format!("plugin `{}` is not available for triple `{}` \
+                                (only found {})",
+                                name,
+                                config::host_triple(),
+                                sess.opts.target_triple);
+        span_fatal!(sess, span, E0456, "{}", &message);
+    }
+
+    match library.source.dylib {
+        Some(dylib) => {
+            Some((dylib.0, library.metadata.get_root().disambiguator))
+        }
+        None => {
+            span_err!(sess, span, E0457,
+                        "plugin `{}` only found in rlib format, but must be available \
+                        in dylib format",
+                        name);
+            // No need to abort because the loading code will just ignore this
+            // empty dylib.
+            None
+        }
     }
 }
 

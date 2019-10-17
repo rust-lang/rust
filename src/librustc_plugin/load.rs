@@ -2,7 +2,7 @@
 
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::Session;
-use rustc_metadata::creader;
+use rustc_metadata::locator;
 use crate::registry::Registry;
 
 use std::borrow::ToOwned;
@@ -80,7 +80,7 @@ pub fn load_plugins(sess: &Session,
 
 impl<'a> PluginLoader<'a> {
     fn load_plugin(&mut self, span: Span, name: Symbol, args: Vec<ast::NestedMetaItem>) {
-        let registrar = creader::find_plugin_registrar(self.sess, self.metadata_loader, span, name);
+        let registrar = locator::find_plugin_registrar(self.sess, self.metadata_loader, span, name);
 
         if let Some((lib, disambiguator)) = registrar {
             let symbol = self.sess.generate_plugin_registrar_symbol(disambiguator);
