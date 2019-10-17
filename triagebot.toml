@@ -9,7 +9,7 @@ allow-unauthenticated = [
 
 [assign]
 
-[ping.icebreaker-llvm]
+[ping.icebreakers-llvm]
 message = """\
 Hey LLVM ICE-breakers! This bug has been identified as a good
 "LLVM ICE-breaking candidate". In case it's useful, here are some
