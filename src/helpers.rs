@@ -345,10 +345,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
-}
 
-
-pub fn bytes_to_os_string<'tcx>(bytes: Vec<u8>) -> InterpResult<'tcx, OsString> {
+    fn read_os_string(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
+        let bytes = self.eval_context_mut().memory.read_c_str(scalar)?.to_vec();
         if cfg!(unix) {
             Ok(std::os::unix::ffi::OsStringExt::from_vec(bytes))
         } else {
@@ -358,13 +357,30 @@ pub fn bytes_to_os_string<'tcx>(bytes: Vec<u8>) -> InterpResult<'tcx, OsString> 
         }
     }
 
-pub fn os_string_to_bytes<'tcx>(os_string: OsString) -> InterpResult<'tcx, Vec<u8>> {
-        if cfg!(unix) {
-            Ok(std::os::unix::ffi::OsStringExt::into_vec(os_string))
+    fn write_os_string(&mut self, os_string: OsString, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
+        let mut bytes = if cfg!(unix) {
+            std::os::unix::ffi::OsStringExt::into_vec(os_string)
         } else {
             os_string
                 .into_string()
-                .map_err(|os_string| err_unsup_format!("{:?} is not a valid utf-8 string", os_string).into())
-                .map(|s| s.into_bytes())
+                .map_err(|os_string| err_unsup_format!("{:?} is not a valid utf-8 string", os_string))?
+                .into_bytes()
+        };
+        // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
+        // terminator to memory using the `ptr` pointer would cause an overflow.
+        if (bytes.len() as u64) < size {
+            // We add a `/0` terminator
+            bytes.push(0);
+            let this = self.eval_context_mut();
+            let tcx = &{ this.tcx.tcx };
+            // This is ok because the buffer was strictly larger than `bytes`, so after adding the
+            // null terminator, the buffer size is larger or equal to `bytes.len()`, meaning that
+            // `bytes` actually fit inside tbe buffer.
+            this.memory
+                .get_mut(ptr.alloc_id)?
+                .write_bytes(tcx, ptr, &bytes)
+        } else {
+            throw_unsup_format!("OsString is larger than destination")
         }
     }
+}

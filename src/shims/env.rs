@@ -127,20 +127,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
-                // It is not clear what happens with non-utf8 paths here
-                let mut bytes = helpers::os_string_to_bytes(cwd.into())?;
-                // If `size` is smaller or equal than the `bytes.len()`, writing `bytes` plus the
-                // required null terminator to memory using the `buf` pointer would cause an
-                // overflow. The desired behavior in this case is to return null.
-                if (bytes.len() as u64) < size {
-                    // We add a `/0` terminator
-                    bytes.push(0);
-                    // This is ok because the buffer was strictly larger than `bytes`, so after
-                    // adding the null terminator, the buffer size is larger or equal to
-                    // `bytes.len()`, meaning that `bytes` actually fit inside tbe buffer.
-                    this.memory
-                        .get_mut(buf.alloc_id)?
-                        .write_bytes(&*this.tcx, buf, &bytes)?;
+                if this.write_os_string(cwd.into(), buf, size).is_ok() {
                     return Ok(Scalar::Ptr(buf));
                 }
                 let erange = this.eval_libc("ERANGE")?;
@@ -156,10 +143,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("chdir")?;
 
-        let bytes = this.memory.read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
-        let path = helpers::bytes_to_os_string(bytes.to_vec());
+        let path = this.read_os_string(this.read_scalar(path_op)?.not_undef()?)?;
 
-        match env::set_current_dir(path?) {
+        match env::set_current_dir(path) {
             Ok(()) => Ok(0),
             Err(e) => {
                 this.consume_io_error(e)?;

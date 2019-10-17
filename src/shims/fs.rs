@@ -94,10 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let bytes = this
-            .memory
-            .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
-        let path: std::path::PathBuf = helpers::bytes_to_os_string(bytes.to_vec())?.into();
+        let path: std::path::PathBuf = this.read_os_string(this.read_scalar(path_op)?.not_undef()?)?.into();
 
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
