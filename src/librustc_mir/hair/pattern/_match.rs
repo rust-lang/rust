@@ -334,15 +334,15 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
     }
 }
 
-/// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
-/// works well.
+/// A row of a matrix.
 #[derive(Debug, Clone)]
 pub struct PatStack<'p, 'tcx> {
+    //  Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     patterns: SmallVec<[&'p Pat<'tcx>; 2]>,
     // This caches the invocation of `pat_constructors` on the head of the stack. We avoid mutating
     // `self` to be sure we don't keep an invalid cache around. Must be non-empty unless `patterns`
     // is empty.
-    head_ctors_cache: SmallVec<[Constructor<'tcx>; 1]>,
+    head_ctors: SmallVec<[Constructor<'tcx>; 1]>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
@@ -351,15 +351,15 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn empty() -> Self {
-        PatStack { patterns: smallvec![], head_ctors_cache: smallvec![] }
+        PatStack { patterns: smallvec![], head_ctors: smallvec![] }
     }
 
     fn from_vec(cx: &MatchCheckCtxt<'_, 'tcx>, patterns: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
         if patterns.is_empty() {
             return PatStack::empty();
         }
-        let head_ctors_cache = pat_constructors(cx.tcx, cx.param_env, patterns[0]);
-        PatStack { patterns, head_ctors_cache }
+        let head_ctors = pat_constructors(cx.tcx, cx.param_env, patterns[0]);
+        PatStack { patterns, head_ctors }
     }
 
     fn from_slice(cx: &MatchCheckCtxt<'_, 'tcx>, s: &[&'p Pat<'tcx>]) -> Self {
@@ -378,10 +378,8 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.patterns[0]
     }
 
-    fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        let new_ctors = pat_constructors(cx.tcx, cx.param_env, self.head());
-        assert_eq!(self.head_ctors_cache, new_ctors);
-        new_ctors
+    fn head_ctors(&self) -> &SmallVec<[Constructor<'tcx>; 1]> {
+        &self.head_ctors
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
@@ -436,8 +434,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.0.iter().map(|r| r.head())
     }
 
-    fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Vec<Constructor<'tcx>> {
-        self.0.iter().flat_map(|r| r.head_ctors(cx)).filter(|ctor| !ctor.is_wildcard()).collect()
+    fn head_ctors(&self) -> Vec<&Constructor<'tcx>> {
+        self.0.iter().flat_map(|r| r.head_ctors()).filter(|ctor| !ctor.is_wildcard()).collect()
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
@@ -641,18 +639,18 @@ impl<'tcx> Constructor<'tcx> {
     /// for the given matrix. See description of the algorithm for details.
     /// Note: We can rely on this returning an empty list if the type is (visibly) uninhabited.
     fn split_meta_constructor(
-        self,
+        &self,
         cx: &MatchCheckCtxt<'_, 'tcx>,
         ty: Ty<'tcx>,
-        head_ctors: &Vec<Constructor<'tcx>>,
+        head_ctors: &Vec<&Constructor<'tcx>>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         debug!("split_meta_constructor {:?}", self);
         assert!(!head_ctors.iter().any(|c| c.is_wildcard()));
 
-        match self {
+        match *self {
             // Any base constructor can be used unchanged.
-            Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self],
-            IntRange(ctor_range) if IntRange::should_treat_range_exhaustively(cx.tcx, ty) => {
+            Single | Variant(_) | ConstantValue(_) | FixedLenSlice(_) => smallvec![self.clone()],
+            IntRange(ref ctor_range) if IntRange::should_treat_range_exhaustively(cx.tcx, ty) => {
                 // Splitting up a range naïvely would mean creating a separate constructor for
                 // every single value in the range, which is clearly impractical. We therefore want
                 // to keep together subranges for which the specialisation will be identical across
@@ -708,6 +706,7 @@ impl<'tcx> Constructor<'tcx> {
                 // class lies between 2 borders.
                 let row_borders = head_ctors
                     .iter()
+                    .map(|c| *c)
                     .flat_map(IntRange::from_ctor)
                     .flat_map(|range| ctor_range.intersection(cx.tcx, &range))
                     .flat_map(|range| range_borders(range));
@@ -736,7 +735,7 @@ impl<'tcx> Constructor<'tcx> {
                     .collect()
             }
             // When not treated exhaustively, don't split ranges.
-            ConstantRange(..) | IntRange(..) => smallvec![self],
+            ConstantRange(..) | IntRange(..) => smallvec![self.clone()],
             VarLenSlice(self_prefix, self_suffix) => {
                 // A variable-length slice pattern is matched by an infinite collection of
                 // fixed-length array patterns. However it turns out that for each finite set of
@@ -806,7 +805,7 @@ impl<'tcx> Constructor<'tcx> {
                 let mut max_fixed_len = 0;
 
                 for ctor in head_ctors {
-                    match *ctor {
+                    match **ctor {
                         ConstantValue(value) => {
                             // Extract the length of an array/slice from a constant
                             match (value.val, &value.ty.kind) {
@@ -868,8 +867,12 @@ impl<'tcx> Constructor<'tcx> {
                 // Therefore, if there is some pattern that is unmatched by `matrix`,
                 // it will still be unmatched if the first constructor is replaced by
                 // any of the constructors in `missing_ctors`
-                let missing_ctors =
-                    MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, head_ctors.clone());
+                let missing_ctors = MissingConstructors::new(
+                    cx.tcx,
+                    cx.param_env,
+                    all_ctors,
+                    head_ctors.iter().map(|c| (**c).clone()).collect(),
+                );
                 debug!(
                     "missing_ctors.is_empty()={:#?} is_non_exhaustive={:#?}",
                     missing_ctors.is_empty(),
@@ -1760,7 +1763,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", ty, v.head());
 
-    let v_constructors = v.head_ctors(cx);
+    let v_constructors = v.head_ctors();
 
     if cx.is_non_exhaustive_variant(v.head())
         && !cx.is_local(ty)
@@ -1771,11 +1774,11 @@ pub fn is_useful<'p, 'a, 'tcx>(
         return Useful;
     }
 
-    let matrix_head_ctors = matrix.head_ctors(cx);
+    let matrix_head_ctors = matrix.head_ctors();
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
 
     v_constructors
-        .into_iter()
+        .iter()
         .flat_map(|ctor| ctor.split_meta_constructor(cx, ty, &matrix_head_ctors))
         .map(|c| is_useful_specialized(cx, matrix, v, c, ty, witness_preference))
         .find(|result| result.is_useful())
