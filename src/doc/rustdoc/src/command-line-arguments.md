@@ -359,26 +359,34 @@ This flag allows `rustdoc` to treat your rust code as the given edition. It will
 the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
 (the first edition).
 
-## `theme`: add more themes to generated documentation
+## `--theme`: add a theme to the documentation output
 
-By default, `rustdoc` only provides the "dark" and "light" themes. If you want to add new ones,
-you'll need to use this flag as follows:
-
-```bash
-$ rustdoc src/lib.rs --theme /path/to/your/theme/file.css
-```
-
-Note that the theme's name will be the file name without its extension. So if you pass
-`/path/to/your/theme/file.css` as theme, then the theme's name will be `file`.
-
-### `check-theme`: check if your themes implement all the required rules
-
-This flag allows you to check if your themes implement the necessary CSS rules. To put it more
-simply, when adding a new theme, it needs to implement all the CSS rules present in the "light"
-CSS theme.
-
-You can use this flag like this:
+Using this flag looks like this:
 
 ```bash
-$ rustdoc --check-theme /path/to/your/theme/file.css
+$ rustdoc src/lib.rs --theme /path/to/your/custom-theme.css
 ```
+
+`rustdoc`'s default output includes two themes: `light` (the default) and
+`dark`. This flag allows you to add custom themes to the output. Giving a CSS
+file to this flag adds it to your documentation as an additional theme choice.
+The theme's name is determined by its filename; a theme file named
+`custom-theme.css` will add a theme named `custom-theme` to the documentation.
+
+## `--check-theme`: verify custom themes against the default theme
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc --check-theme /path/to/your/custom-theme.css
+```
+
+While `rustdoc`'s HTML output is more-or-less consistent between versions, there
+is no guarantee that a theme file will have the same effect. The `--theme` flag
+will still allow you to add the theme to your documentation, but to ensure that
+your theme works as expected, you can use this flag to verify that it implements
+the same CSS rules as the official `light` theme.
+
+`--check-theme` is a separate mode in `rustdoc`. When `rustdoc` sees the
+`--check-theme` flag, it discards all other flags and only performs the CSS rule
+comparison operation.
