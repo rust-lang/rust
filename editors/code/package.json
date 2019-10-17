@@ -224,6 +224,11 @@
                     "description": "`cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )",
                     "default": "check"
                 },
+                "rust-analyzer.showWorkspaceLoadedNotification": {
+                    "type": "boolean",
+                    "description": "Controls whether rust-analyzer displays a notification when a project is loaded.",
+                    "default": false
+                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
