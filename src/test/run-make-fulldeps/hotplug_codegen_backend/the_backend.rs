@@ -9,14 +9,14 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::sync::{Arc, mpsc};
+use std::sync::Arc;
 use std::path::Path;
 use syntax::symbol::Symbol;
 use rustc::session::Session;
 use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
 use rustc::dep_graph::DepGraph;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -41,7 +41,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
         Box::new(NoLlvmMetadataLoader)
     }
 

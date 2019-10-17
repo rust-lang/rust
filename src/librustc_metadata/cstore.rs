@@ -5,7 +5,7 @@ use crate::schema;
 use rustc::dep_graph::DepNodeIndex;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate, MetadataLoader};
+use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate, MetadataLoaderDyn};
 use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::FxHashMap;
@@ -96,7 +96,7 @@ pub struct CrateMetadata {
 
 pub struct CStore {
     metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
-    crate metadata_loader: Box<dyn MetadataLoader + Sync>,
+    crate metadata_loader: Box<MetadataLoaderDyn>,
 }
 
 pub enum LoadedMacro {
@@ -105,7 +105,7 @@ pub enum LoadedMacro {
 }
 
 impl CStore {
-    pub fn new(metadata_loader: Box<dyn MetadataLoader + Sync>) -> CStore {
+    pub fn new(metadata_loader: Box<MetadataLoaderDyn>) -> CStore {
         CStore {
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
             // order to make array indices in `metas` match with the

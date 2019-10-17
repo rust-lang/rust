@@ -191,6 +191,8 @@ pub trait MetadataLoader {
                           -> Result<MetadataRef, String>;
 }
 
+pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
+
 /// A store of Rust crates, through which their metadata can be accessed.
 ///
 /// Note that this trait should probably not be expanding today. All new
