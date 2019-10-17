@@ -24,7 +24,7 @@ pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr, arg: &hir::Expr,
                 &format!("calling `to_string` on `{}`", arg_ty),
                 |db| {
                     db.help(&format!(
-                        "`{}` implements `ToString` through the blanket impl, but `{}` specializes `ToString` directly",
+                        "`{}` implements `ToString` through a slower blanket impl, but `{}` has a fast specialization of `ToString`",
                         self_ty, deref_self_ty
                     ));
                     let mut applicability = Applicability::MachineApplicable;
