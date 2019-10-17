@@ -337,35 +337,37 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
 #[derive(Debug, Clone)]
-pub struct PatStack<'p, 'tcx>(SmallVec<[&'p Pat<'tcx>; 2]>);
+pub struct PatStack<'p, 'tcx> {
+    patterns: SmallVec<[&'p Pat<'tcx>; 2]>,
+}
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
     pub fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
-        PatStack(smallvec![pat])
+        PatStack::from_vec(smallvec![pat])
     }
 
     fn empty() -> Self {
-        PatStack(smallvec![])
+        PatStack::from_vec(smallvec![])
     }
 
     fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
-        PatStack(vec)
+        PatStack { patterns: vec }
     }
 
     fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
-        PatStack(SmallVec::from_slice(s))
+        PatStack::from_vec(SmallVec::from_slice(s))
     }
 
     fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.patterns.is_empty()
     }
 
     fn len(&self) -> usize {
-        self.0.len()
+        self.patterns.len()
     }
 
     fn head<'a>(&'a self) -> &'p Pat<'tcx> {
-        self.0[0]
+        self.patterns[0]
     }
 
     fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
@@ -373,7 +375,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
-        self.0.iter().map(|p| *p)
+        self.patterns.iter().map(|p| *p)
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
@@ -391,7 +393,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         let result = new_heads
             .into_iter()
             .map(|mut new_head| {
-                new_head.0.extend_from_slice(&self.0[1..]);
+                new_head.patterns.extend_from_slice(&self.patterns[1..]);
                 new_head
             })
             .collect();
@@ -402,7 +404,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
 
 impl<'p, 'tcx> Default for PatStack<'p, 'tcx> {
     fn default() -> Self {
-        PatStack(smallvec![])
+        PatStack::empty()
     }
 }
 
@@ -411,7 +413,7 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
     where
         T: IntoIterator<Item = &'p Pat<'tcx>>,
     {
-        PatStack(iter.into_iter().collect())
+        PatStack::from_vec(iter.into_iter().collect())
     }
 }
 
