@@ -110,11 +110,16 @@ before_script:
     rm rust-toolchain
     ./setup-toolchain.sh
   - |
-    if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-      export PATH=$PATH:$(rustc --print sysroot)/bin
-    else
-      export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
-    fi
+    SYSROOT=$(rustc --print sysroot)
+    case "$TRAVIS_OS_NAME" in
+      windows ) export PATH="${SYSROOT}/bin:${PATH}" ;;
+      linux ) export LD_LIBRARY_PATH="${SYSROOT}/lib" ;;
+      osx )
+        # See <https://github.com/nteract/nteract/issues/1523#issuecomment-301623519>
+        sudo mkdir -p /usr/local/lib
+        sudo find "$SYSROOT/lib" -maxdepth 1 -name '*.dylib' -exec ln -s {} /usr/local/lib \;
+        ;;
+    esac
 
 script:
   - |
