@@ -738,10 +738,10 @@ impl<'a> CrateLoader<'a> {
                 if !self.sess.crate_types.borrow().iter().all(|ct| {
                     match *ct {
                         // Link the runtime
-                        config::CrateType::Staticlib |
                         config::CrateType::Executable => true,
                         // This crate will be compiled with the required
                         // instrumentation pass
+                        config::CrateType::Staticlib |
                         config::CrateType::Rlib |
                         config::CrateType::Dylib |
                         config::CrateType::Cdylib =>
