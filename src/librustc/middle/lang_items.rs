@@ -297,6 +297,10 @@ language_item_table! {
 
     SizedTraitLangItem,          "sized",              sized_trait,             Target::Trait;
     UnsizeTraitLangItem,         "unsize",             unsize_trait,            Target::Trait;
+    // trait injected by #[derive(PartialEq)], (i.e. "Partial EQ").
+    StructuralPeqTraitLangItem,  "structural_peq",     structural_peq_trait,    Target::Trait;
+    // trait injected by #[derive(Eq)], (i.e. "Total EQ"; no, I will not apologize).
+    StructuralTeqTraitLangItem,  "structural_teq",     structural_teq_trait,    Target::Trait;
     CopyTraitLangItem,           "copy",               copy_trait,              Target::Trait;
     CloneTraitLangItem,          "clone",              clone_trait,             Target::Trait;
     SyncTraitLangItem,           "sync",               sync_trait,              Target::Trait;

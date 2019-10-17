@@ -6,7 +6,7 @@ use syntax::ast::{BinOpKind, Expr, MetaItem};
 use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
 use syntax::symbol::sym;
-use syntax_pos::Span;
+use syntax_pos::{self, Span};
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   span: Span,
@@ -80,6 +80,11 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
             }
         } }
     }
+
+    super::inject_impl_of_structural_trait(
+        cx, span, item,
+        path_std!(cx, marker::StructuralPartialEq),
+        push);
 
     // avoid defining `ne` if we can
     // c-like enums, enums without any fields and structs without fields

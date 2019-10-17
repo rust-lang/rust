@@ -497,6 +497,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::RepeatVec => Some(super::RepeatVec),
             super::FieldSized { adt_kind, last } => Some(super::FieldSized { adt_kind, last }),
             super::ConstSized => Some(super::ConstSized),
+            super::ConstPatternStructural => Some(super::ConstPatternStructural),
             super::SharedStatic => Some(super::SharedStatic),
             super::BuiltinDerivedObligation(ref cause) => {
                 tcx.lift(cause).map(super::BuiltinDerivedObligation)

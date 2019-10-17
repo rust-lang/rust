@@ -42,6 +42,12 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
                       }],
         associated_types: Vec::new(),
     };
+
+    super::inject_impl_of_structural_trait(
+        cx, span, item,
+        path_std!(cx, marker::StructuralEq),
+        push);
+
     trait_def.expand_ext(cx, mitem, item, push, true)
 }
 
