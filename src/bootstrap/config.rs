@@ -668,7 +668,6 @@ impl Config {
 
     pub fn llvm_enabled(&self) -> bool {
         self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
-        || self.rust_codegen_backends.contains(&INTERNER.intern_str("emscripten"))
     }
 }
 

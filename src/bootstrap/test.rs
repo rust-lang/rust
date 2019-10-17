@@ -1163,7 +1163,7 @@ impl Step for Compiletest {
                     }).to_string()
             })
         };
-        let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
+        let lldb_exe = if builder.config.lldb_enabled {
             // Test against the lldb that was just built.
             builder.llvm_out(target).join("bin").join("lldb")
         } else {
@@ -1232,7 +1232,6 @@ impl Step for Compiletest {
         if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
-                emscripten: false,
             });
             if !builder.config.dry_run {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
