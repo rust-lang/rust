@@ -115,6 +115,7 @@ impl TokenTree {
         let open_span = if span.is_dummy() {
             span
         } else {
+            assert!(span.lo() != span.hi());
             span.with_hi(span.lo() + BytePos(delim.len() as u32))
         };
         TokenTree::token(token::OpenDelim(delim), open_span)
@@ -122,7 +123,7 @@ impl TokenTree {
 
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(span: Span, delim: DelimToken) -> TokenTree {
-        let close_span = if span.is_dummy() {
+        let close_span = if span.is_dummy() || span.lo() == span.hi() {
             span
         } else {
             span.with_lo(span.hi() - BytePos(delim.len() as u32))
