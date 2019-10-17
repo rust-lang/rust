@@ -248,7 +248,6 @@ use syntax_pos::{Span, DUMMY_SP};
 use arena::TypedArena;
 
 use smallvec::{smallvec, SmallVec};
-use std::cell::RefCell;
 use std::cmp::{self, max, min, Ordering};
 use std::convert::TryInto;
 use std::fmt;
@@ -341,25 +340,30 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
 pub struct PatStack<'p, 'tcx> {
     patterns: SmallVec<[&'p Pat<'tcx>; 2]>,
     // This caches the invocation of `pat_constructors` on the head of the stack. We avoid mutating
-    // `self` to be sure we don't keep an invalid cache around.
-    head_ctors_cache: RefCell<Option<SmallVec<[Constructor<'tcx>; 1]>>>,
+    // `self` to be sure we don't keep an invalid cache around. Must be non-empty unless `patterns`
+    // is empty.
+    head_ctors_cache: SmallVec<[Constructor<'tcx>; 1]>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    pub fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
-        PatStack::from_vec(smallvec![pat])
+    pub fn from_pattern(cx: &MatchCheckCtxt<'_, 'tcx>, pat: &'p Pat<'tcx>) -> Self {
+        PatStack::from_vec(cx, smallvec![pat])
     }
 
     fn empty() -> Self {
-        PatStack::from_vec(smallvec![])
+        PatStack { patterns: smallvec![], head_ctors_cache: smallvec![] }
     }
 
-    fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
-        PatStack { patterns: vec, head_ctors_cache: RefCell::new(None) }
+    fn from_vec(cx: &MatchCheckCtxt<'_, 'tcx>, patterns: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
+        if patterns.is_empty() {
+            return PatStack::empty();
+        }
+        let head_ctors_cache = pat_constructors(cx.tcx, cx.param_env, patterns[0]);
+        PatStack { patterns, head_ctors_cache }
     }
 
-    fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
-        PatStack::from_vec(SmallVec::from_slice(s))
+    fn from_slice(cx: &MatchCheckCtxt<'_, 'tcx>, s: &[&'p Pat<'tcx>]) -> Self {
+        PatStack::from_vec(cx, SmallVec::from_slice(s))
     }
 
     fn is_empty(&self) -> bool {
@@ -376,16 +380,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
 
     fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         let new_ctors = pat_constructors(cx.tcx, cx.param_env, self.head());
-        let borrow = self.head_ctors_cache.borrow();
-        match *borrow {
-            Some(ref cached_ctors) => {
-                assert_eq!(cached_ctors, &new_ctors);
-            }
-            None => {
-                drop(borrow);
-                *self.head_ctors_cache.borrow_mut() = Some(new_ctors.clone());
-            }
-        }
+        assert_eq!(self.head_ctors_cache, new_ctors);
         new_ctors
     }
 
@@ -410,7 +405,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
             .map(|new_head| {
                 let mut pats = new_head.patterns;
                 pats.extend_from_slice(&self.patterns[1..]);
-                PatStack::from_vec(pats)
+                PatStack::from_vec(cx, pats)
             })
             .collect();
         debug!("specialize({:#?}, {:#?}) = {:#?}", self, constructor, result);
@@ -421,15 +416,6 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
 impl<'p, 'tcx> Default for PatStack<'p, 'tcx> {
     fn default() -> Self {
         PatStack::empty()
-    }
-}
-
-impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = &'p Pat<'tcx>>,
-    {
-        PatStack::from_vec(iter.into_iter().collect())
     }
 }
 
@@ -1987,6 +1973,7 @@ fn constructor_intersects_pattern<'p, 'tcx>(
 }
 
 fn patterns_for_variant<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'_, 'tcx>,
     subpatterns: &'p [FieldPat<'tcx>],
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> PatStack<'p, 'tcx> {
@@ -2000,7 +1987,7 @@ fn patterns_for_variant<'p, 'tcx>(
         "patterns_for_variant({:#?}, {:#?}) = {:#?}",
         subpatterns, ctor_wild_subpatterns, result
     );
-    PatStack::from_vec(result)
+    PatStack::from_vec(cx, result)
 }
 
 /// This is the main specialization step. It expands the pattern into `arity` patterns based on the
@@ -2037,23 +2024,23 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
         PatKind::AscribeUserType { .. } => unreachable!(), // Handled above
 
         PatKind::Binding { .. } | PatKind::Wild => {
-            smallvec![PatStack::from_slice(ctor_wild_subpatterns)]
+            smallvec![PatStack::from_slice(cx, ctor_wild_subpatterns)]
         }
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
             if Variant(variant.def_id) == *constructor {
-                smallvec![patterns_for_variant(subpatterns, ctor_wild_subpatterns)]
+                smallvec![patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns)]
             } else {
                 smallvec![]
             }
         }
 
         PatKind::Leaf { ref subpatterns } => {
-            smallvec![patterns_for_variant(subpatterns, ctor_wild_subpatterns)]
+            smallvec![patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns)]
         }
 
-        PatKind::Deref { ref subpattern } => smallvec![PatStack::from_pattern(subpattern)],
+        PatKind::Deref { ref subpattern } => smallvec![PatStack::from_pattern(cx, subpattern)],
 
         PatKind::Constant { value } if constructor.is_slice() => {
             // We extract an `Option` for the pointer because slices of zero
@@ -2098,7 +2085,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                     return smallvec![];
                 };
                 let ptr = Pointer::new(AllocId(0), offset);
-                let stack: Option<PatStack<'_, '_>> = (0..n)
+                let stack: Option<SmallVec<_>> = (0..n)
                     .map(|i| {
                         let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
                         let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
@@ -2109,7 +2096,10 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                         Some(&*cx.pattern_arena.alloc(pattern))
                     })
                     .collect();
-                stack.into_iter().collect()
+                match stack {
+                    Some(v) => smallvec![PatStack::from_vec(cx, v)],
+                    None => smallvec![],
+                }
             } else {
                 smallvec![]
             }
@@ -2132,7 +2122,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
-                        smallvec![
+                        smallvec![PatStack::from_vec(
+                            cx,
                             prefix
                                 .iter()
                                 .chain(
@@ -2144,7 +2135,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                                         .chain(suffix.iter()),
                                 )
                                 .collect(),
-                        ]
+                        )]
                     } else {
                         smallvec![]
                     }

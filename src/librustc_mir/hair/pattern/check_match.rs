@@ -246,7 +246,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
-                .map(|pat| PatStack::from_pattern(pat.0))
+                .map(|pat| PatStack::from_pattern(cx, pat.0))
                 .collect();
             let scrut_ty = self.tables.node_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
@@ -262,7 +262,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats: Matrix<'_, '_> =
-                vec![PatStack::from_pattern(expand_pattern(cx, pattern))].into_iter().collect();
+                vec![PatStack::from_pattern(cx, expand_pattern(cx, pattern))].into_iter().collect();
 
             let witnesses = match check_not_useful(cx, pattern_ty, &pats) {
                 Ok(_) => return,
@@ -406,7 +406,7 @@ fn check_arms<'tcx>(
     let mut catchall = None;
     for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
         for &(pat, hir_pat) in pats {
-            let v = PatStack::from_pattern(pat);
+            let v = PatStack::from_pattern(cx, pat);
 
             match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
@@ -487,7 +487,7 @@ fn check_not_useful(
     matrix: &Matrix<'_, 'tcx>,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
     let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
-    match is_useful(cx, matrix, &PatStack::from_pattern(&wild_pattern), ConstructWitness) {
+    match is_useful(cx, matrix, &PatStack::from_pattern(cx, &wild_pattern), ConstructWitness) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             vec![wild_pattern]
