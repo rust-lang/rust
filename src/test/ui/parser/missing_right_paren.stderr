@@ -1,0 +1,17 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/missing_right_paren.rs:3:11
+   |
+LL | fn main((ؼ
+   |        -- ^
+   |        ||
+   |        |un-closed delimiter
+   |        un-closed delimiter
+
+error: expected one of `:` or `|`, found `)`
+  --> $DIR/missing_right_paren.rs:3:11
+   |
+LL | fn main((ؼ
+   |           ^ expected one of `:` or `|` here
+
+error: aborting due to 2 previous errors
+

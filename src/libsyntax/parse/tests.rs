@@ -135,6 +135,28 @@ fn string_to_tts_1() {
     })
 }
 
+#[test]
+fn string_to_tts_2() {
+    with_default_globals(|| {
+        let tts = string_to_stream("fn main(\u{063c}".to_string());
+
+        let expected = TokenStream::new(vec![
+            TokenTree::token(token::Ident(kw::Fn, false), sp(0, 2)).into(),
+            TokenTree::token(token::Ident(Name::intern("main"), false), sp(3, 7)).into(),
+            TokenTree::Delimited(
+                DelimSpan::from_pair(sp(7, 8), sp(10, 10)),
+                token::DelimToken::Paren,
+                TokenStream::new(vec![
+                    TokenTree::token(token::Ident(Name::intern("\u{063c}"), false),
+                    sp(8, 10)).into(),
+                ]).into(),
+            ).into()
+        ]);
+
+        assert_eq!(tts, expected);
+    })
+}
+
 #[test] fn parse_use() {
     with_default_globals(|| {
         let use_s = "use foo::bar::baz;";
