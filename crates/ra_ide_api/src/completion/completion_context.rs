@@ -38,6 +38,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_new_item: bool,
     /// The receiver if this is a field or method access, i.e. writing something.<|>
     pub(super) dot_receiver: Option<ast::Expr>,
+    pub(super) dot_receiver_is_ambiguous_float_literal: bool,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
     pub(super) is_call: bool,
     pub(super) is_path_type: bool,
@@ -80,6 +81,7 @@ impl<'a> CompletionContext<'a> {
             is_call: false,
             is_path_type: false,
             has_type_args: false,
+            dot_receiver_is_ambiguous_float_literal: false,
         };
         ctx.fill(&original_parse, position.offset);
         Some(ctx)
@@ -235,6 +237,16 @@ impl<'a> CompletionContext<'a> {
                 .expr()
                 .map(|e| e.syntax().text_range())
                 .and_then(|r| find_node_with_range(original_file.syntax(), r));
+            self.dot_receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) =
+                &self.dot_receiver
+            {
+                match l.kind() {
+                    ast::LiteralKind::FloatNumber { suffix: _ } => l.token().text().ends_with('.'),
+                    _ => false,
+                }
+            } else {
+                false
+            }
         }
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above
