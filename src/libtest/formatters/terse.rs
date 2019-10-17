@@ -174,7 +174,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        _: Option<&TestExecTime>,
+        _: Option<&time::TestExecTime>,
         _: &[u8],
         _: &ConsoleTestState,
     ) -> io::Result<()> {
@@ -196,7 +196,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
-            desc.name, TEST_WARN_TIMEOUT_S
+            desc.name, time::TEST_WARN_TIMEOUT_S
         ))
     }
 

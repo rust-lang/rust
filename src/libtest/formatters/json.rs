@@ -27,7 +27,7 @@ impl<T: Write> JsonFormatter<T> {
         ty: &str,
         name: &str,
         evt: &str,
-        exec_time: Option<&TestExecTime>,
+        exec_time: Option<&time::TestExecTime>,
         stdout: Option<Cow<'_, str>>,
         extra: Option<&str>,
     ) -> io::Result<()> {
@@ -76,7 +76,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        exec_time: Option<&TestExecTime>,
+        exec_time: Option<&time::TestExecTime>,
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()> {

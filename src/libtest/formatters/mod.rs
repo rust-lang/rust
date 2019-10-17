@@ -16,7 +16,7 @@ pub(crate) trait OutputFormatter {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        exec_time: Option<&TestExecTime>,
+        exec_time: Option<&time::TestExecTime>,
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()>;
