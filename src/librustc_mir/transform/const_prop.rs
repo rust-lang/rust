@@ -540,13 +540,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
             }
 
-            // Work around: avoid extra unnecessary locals. FIXME(wesleywiser)
-            // Const eval will turn this into a `const Scalar(<ZST>)` that
-            // `SimplifyLocals` doesn't know it can remove.
-            Rvalue::Aggregate(_, operands) if operands.len() == 0 => {
-                return None;
-            }
-
             _ => { }
         }
 
