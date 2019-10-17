@@ -33,10 +33,10 @@ To quickly install rust-analyzer with VS Code extension with standard setup
 $ git clone https://github.com/rust-analyzer/rust-analyzer && cd rust-analyzer
 
 # install both the language server and VS Code extension
-$ cargo install-ra
+$ cargo xtask install
 
 # alternatively, install only the server. Binary name is `ra_lsp_server`.
-$ cargo install-ra --server
+$ cargo xtask install --server
 ```
 
 For non-standard setup of VS Code and other editors, see [./docs/user](./docs/user).

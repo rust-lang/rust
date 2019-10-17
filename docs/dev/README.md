@@ -65,8 +65,8 @@ integrating with editors. Currently, it contains plugins for VS Code (in
 typescript) and Emacs (in elisp). The `docs` top-level directory contains both
 developer and user documentation.
 
-We have some automation infra in Rust in the `crates/tool` package. It contains
-stuff like formatting checking, code generation and powers `cargo install-ra`.
+We have some automation infra in Rust in the `xtask` package. It contains
+stuff like formatting checking, code generation and powers `cargo xtask install`.
 The latter syntax is achieved with the help of cargo aliases (see `.cargo`
 directory).
 
@@ -84,7 +84,7 @@ However, launching a VS Code instance with locally build language server is
 possible. There's even a VS Code task for this, so just <kbd>F5</kbd> should
 work (thanks, [@andrew-w-ross](https://github.com/andrew-w-ross)!).
 
-I often just install development version with `cargo install-ra --server --jemalloc` and
+I often just install development version with `cargo xtask install --server --jemalloc` and
 restart the host VS Code.
 
 See [./debugging.md](./debugging.md) for how to attach to rust-analyzer with
@@ -116,7 +116,7 @@ Due to the requirements of running the tests inside VS Code they are **not run
 on CI**. When making changes to the extension please ensure the tests are not
 broken locally before opening a Pull Request.
 
-To install **only** the VS Code extension, use `cargo install-ra --client-code`.
+To install **only** the VS Code extension, use `cargo xtask install --client-code`.
 
 # Logging
 
@@ -153,7 +153,7 @@ There's also two VS Code commands which might be of interest:
   $ cargo install --path crates/ra_lsp_server --force --features jemalloc
   ```
 
-  There's an alias for this: `cargo install-ra --server --jemalloc`.
+  There's an alias for this: `cargo xtask install --server --jemalloc`.
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 

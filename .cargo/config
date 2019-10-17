@@ -1,23 +1,4 @@
 [alias]
-# Automatically generates the ast and syntax kinds files
-gen-syntax   = "run --package ra_tools --bin ra_tools -- gen-syntax"
+xtask = "run --package xtask --bin xtask --"
 
-# Extracts the tests from
-gen-tests    = "run --package ra_tools --bin ra_tools -- gen-tests"
-
-# Installs the visual studio code extension
-install-ra   = "run --package ra_tools --bin ra_tools -- install-ra"
-install-code = "run --package ra_tools --bin ra_tools -- install-ra" # just an alias
-
-# Formats the full repository or installs the git hook to do it automatically.
-format       = "run --package ra_tools --bin ra_tools -- format"
-format-hook  = "run --package ra_tools --bin ra_tools -- format-hook"
-
-# Run clippy
-lint         = "run --package ra_tools --bin ra_tools -- lint"
-
-# Runs the fuzzing test suite (currently only parser)
-fuzz-tests   = "run --package ra_tools --bin ra_tools -- fuzz-tests"
-
-# Parse a file. This should be piped the file contents
-parse        = "run --package ra_cli -- parse"
+install-ra = "run --package xtask --bin xtask -- install" # for backwards compat

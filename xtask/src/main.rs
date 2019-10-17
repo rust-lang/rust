@@ -5,11 +5,11 @@ mod help;
 use core::fmt::Write;
 use core::str;
 use pico_args::Arguments;
-use ra_tools::{
+use std::{env, path::PathBuf};
+use xtask::{
     gen_tests, generate_boilerplate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt,
     Cmd, Overwrite, Result,
 };
-use std::{env, path::PathBuf};
 
 struct InstallOpt {
     client: Option<ClientOpt>,
@@ -35,9 +35,9 @@ fn main() -> Result<()> {
     let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
     let subcommand = &*subcommand.to_string_lossy();
     match subcommand {
-        "install-ra" | "install-code" => {
+        "install" => {
             if matches.contains(["-h", "--help"]) {
-                eprintln!("{}", help::INSTALL_RA_HELP);
+                eprintln!("{}", help::INSTALL_HELP);
                 return Ok(());
             }
             let server = matches.contains("--server");
@@ -61,7 +61,7 @@ fn main() -> Result<()> {
             }
             gen_tests(Overwrite)?
         }
-        "gen-syntax" => {
+        "codegen" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());

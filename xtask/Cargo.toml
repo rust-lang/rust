@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "ra_tools"
+name = "xtask"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 publish = false

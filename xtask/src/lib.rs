@@ -78,7 +78,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
 }
 
 pub fn project_root() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(2).unwrap().to_path_buf()
+    Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(1).unwrap().to_path_buf()
 }
 
 pub struct Cmd<'a> {
@@ -146,7 +146,7 @@ pub fn install_format_hook() -> Result<()> {
         "./.git/hooks/pre-commit"
     });
     if !result_path.exists() {
-        run("cargo build --package ra_tools --bin pre-commit", ".")?;
+        run("cargo build --package xtask --bin pre-commit", ".")?;
         if cfg!(windows) {
             fs::copy("./target/debug/pre-commit.exe", result_path)?;
         } else {

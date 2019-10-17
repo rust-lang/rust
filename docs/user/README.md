@@ -1,6 +1,6 @@
 The main interface to rust-analyzer is the
 [LSP](https://microsoft.github.io/language-server-protocol/) implementation. To
-install lsp server, use `cargo install-ra --server`, which is a shorthand for `cargo
+install lsp server, use `cargo xtask install --server`, which is a shorthand for `cargo
 install --package ra_lsp_server`. The binary is named `ra_lsp_server`, you
 should be able to use it with any LSP-compatible editor. We use custom
 extensions to LSP, so special client-side support is required to take full
@@ -33,7 +33,7 @@ following commands:
 ```
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
 $ cd rust-analyzer
-$ cargo install-ra
+$ cargo xtask install
 ```
 
 The automatic installation is expected to *just work* for common cases, if it
@@ -58,7 +58,7 @@ Beyond basic LSP features, there are some extension commands which you can
 invoke via <kbd>Ctrl+Shift+P</kbd> or bind to a shortcut. See [./features.md](./features.md)
 for details.
 
-For updates, pull the latest changes from the master branch, run `cargo install-ra` again, and **restart** VS Code instance.
+For updates, pull the latest changes from the master branch, run `cargo xtask install` again, and **restart** VS Code instance.
 See [microsoft/vscode#72308](https://github.com/microsoft/vscode/issues/72308) for why a full restart is needed.
 
 ### Settings
