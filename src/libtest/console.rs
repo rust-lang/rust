@@ -7,21 +7,23 @@ use std::io;
 use term;
 
 use super::{
+    bench::fmt_bench_samples,
+    cli::TestOpts,
+    event::{TestEvent, CompletedTest},
+    formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter},
     helpers::{
         concurrency::get_concurrency,
         metrics::MetricMap,
     },
     types::{TestDesc, TestDescAndFn, NamePadding},
     options::{Options, OutputFormat},
-    bench::fmt_bench_samples,
     test_result::TestResult,
     time::TestExecTime,
-    cli::TestOpts,
-    event::TestEvent,
     run_tests,
     filter_tests,
 };
 
+/// Generic wrapper over stdout.
 pub enum OutputLocation<T> {
     Pretty(Box<term::StdoutTerminal>),
     Raw(T),
@@ -42,8 +44,6 @@ impl<T: Write> Write for OutputLocation<T> {
         }
     }
 }
-
-use crate::formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
 pub struct ConsoleTestState {
     pub log_out: Option<File>,
@@ -190,65 +190,77 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     Ok(())
 }
 
-// A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    // A callback handling events that occure during test execution.
-    fn on_test_event(
-        event: &TestEvent,
-        st: &mut ConsoleTestState,
-        out: &mut dyn OutputFormatter,
-    ) -> io::Result<()> {
-        match (*event).clone() {
-            TestEvent::TeFiltered(ref filtered_tests) => {
-                st.total = filtered_tests.len();
-                out.write_run_start(filtered_tests.len())
-            }
-            TestEvent::TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
-            TestEvent::TeWait(ref test) => out.write_test_start(test),
-            TestEvent::TeTimeout(ref test) => out.write_timeout(test),
-            TestEvent::TeResult(completed_test) => {
-                let test = completed_test.desc;
-                let result = &completed_test.result;
-                let exec_time = &completed_test.exec_time;
-                let stdout = completed_test.stdout;
+// Updates `ConsoleTestState` depending on result of the test execution.
+fn handle_test_result(st: &mut ConsoleTestState, completed_test: CompletedTest) {
+    let test = completed_test.desc;
+    let stdout = completed_test.stdout;
+    match completed_test.result {
+        TestResult::TrOk => {
+            st.passed += 1;
+            st.not_failures.push((test, stdout));
+        }
+        TestResult::TrIgnored => st.ignored += 1,
+        TestResult::TrAllowedFail => st.allowed_fail += 1,
+        TestResult::TrBench(bs) => {
+            st.metrics.insert_metric(
+                test.name.as_slice(),
+                bs.ns_iter_summ.median,
+                bs.ns_iter_summ.max - bs.ns_iter_summ.min,
+            );
+            st.measured += 1
+        }
+        TestResult::TrFailed => {
+            st.failed += 1;
+            st.failures.push((test, stdout));
+        }
+        TestResult::TrFailedMsg(msg) => {
+            st.failed += 1;
+            let mut stdout = stdout;
+            stdout.extend_from_slice(format!("note: {}", msg).as_bytes());
+            st.failures.push((test, stdout));
+        }
+        TestResult::TrTimedFail => {
+            st.failed += 1;
+            st.time_failures.push((test, stdout));
+        }
+    }
+}
 
-                st.write_log_result(&test, result, exec_time.as_ref())?;
-                out.write_result(&test, result, exec_time.as_ref(), &*stdout, st)?;
-                match result {
-                    TestResult::TrOk => {
-                        st.passed += 1;
-                        st.not_failures.push((test, stdout));
-                    }
-                    TestResult::TrIgnored => st.ignored += 1,
-                    TestResult::TrAllowedFail => st.allowed_fail += 1,
-                    TestResult::TrBench(bs) => {
-                        st.metrics.insert_metric(
-                            test.name.as_slice(),
-                            bs.ns_iter_summ.median,
-                            bs.ns_iter_summ.max - bs.ns_iter_summ.min,
-                        );
-                        st.measured += 1
-                    }
-                    TestResult::TrFailed => {
-                        st.failed += 1;
-                        st.failures.push((test, stdout));
-                    }
-                    TestResult::TrFailedMsg(msg) => {
-                        st.failed += 1;
-                        let mut stdout = stdout;
-                        stdout.extend_from_slice(format!("note: {}", msg).as_bytes());
-                        st.failures.push((test, stdout));
-                    }
-                    TestResult::TrTimedFail => {
-                        st.failed += 1;
-                        st.time_failures.push((test, stdout));
-                    }
-                }
-                Ok(())
-            }
+// Handler for events that occur during test execution.
+// It is provided as a callback to the `run_tests` function.
+fn on_test_event(
+    event: &TestEvent,
+    st: &mut ConsoleTestState,
+    out: &mut dyn OutputFormatter,
+) -> io::Result<()> {
+    match (*event).clone() {
+        TestEvent::TeFiltered(ref filtered_tests) => {
+            st.total = filtered_tests.len();
+            out.write_run_start(filtered_tests.len())?;
+        }
+        TestEvent::TeFilteredOut(filtered_out) => {
+            st.filtered_out = filtered_out;
+        }
+        TestEvent::TeWait(ref test) => out.write_test_start(test)?,
+        TestEvent::TeTimeout(ref test) => out.write_timeout(test)?,
+        TestEvent::TeResult(completed_test) => {
+            let test = &completed_test.desc;
+            let result = &completed_test.result;
+            let exec_time = &completed_test.exec_time;
+            let stdout = &completed_test.stdout;
+
+            st.write_log_result(test, result, exec_time.as_ref())?;
+            out.write_result(test, result, exec_time.as_ref(), &*stdout, st)?;
+            handle_test_result(st, completed_test);
         }
     }
 
+    Ok(())
+}
+
+/// A simple console test runner.
+/// Runs provided tests reporting process and results to the stdout.
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
     let output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout()),
         Some(t) => OutputLocation::Pretty(t),
@@ -279,16 +291,18 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         OutputFormat::Json => Box::new(JsonFormatter::new(output)),
     };
     let mut st = ConsoleTestState::new(opts)?;
-    fn len_if_padded(t: &TestDescAndFn) -> usize {
-        match t.testfn.padding() {
-            NamePadding::PadNone => 0,
-            NamePadding::PadOnRight => t.desc.name.as_slice().len(),
-        }
-    }
 
     run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
 
     assert!(st.current_test_count() == st.total);
 
     return out.write_run_finish(&st);
+}
+
+// Calculates padding for given test description.
+fn len_if_padded(t: &TestDescAndFn) -> usize {
+    match t.testfn.padding() {
+        NamePadding::PadNone => 0,
+        NamePadding::PadOnRight => t.desc.name.as_slice().len(),
+    }
 }

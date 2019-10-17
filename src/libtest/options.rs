@@ -7,12 +7,14 @@ pub enum Concurrent {
     No,
 }
 
+/// Number of times to run a benchmarked function
 #[derive(Clone, PartialEq, Eq)]
 pub enum BenchMode {
     Auto,
     Single,
 }
 
+/// Whether test is expected to panic or not
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShouldPanic {
     No,
@@ -20,6 +22,7 @@ pub enum ShouldPanic {
     YesWithMessage(&'static str),
 }
 
+/// Whether should console output be colored or not
 #[derive(Copy, Clone, Debug)]
 pub enum ColorConfig {
     AutoColor,
@@ -27,17 +30,23 @@ pub enum ColorConfig {
     NeverColor,
 }
 
+/// Format of the test results output
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OutputFormat {
+    /// Verbose output
     Pretty,
+    /// Quiet output
     Terse,
+    /// JSON output
     Json,
 }
 
+/// Whether ignored test should be runned or not
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RunIgnored {
     Yes,
     No,
+    /// Run only ignored tests
     Only,
 }
 
@@ -53,6 +62,7 @@ pub enum RunStrategy {
     SpawnPrimary,
 }
 
+/// Options for the test run defined by the caller (instead of CLI arguments).
 /// In case we want to add other options as well, just add them in this struct.
 #[derive(Copy, Clone, Debug)]
 pub struct Options {

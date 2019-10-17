@@ -27,7 +27,8 @@ pub enum TestResult {
 
 unsafe impl Send for TestResult {}
 
-
+/// Creates a `TestResult` depending on the raw result of test execution
+/// and assotiated data.
 pub fn calc_result<'a>(
     desc: &TestDesc,
     task_result: Result<(), &'a (dyn Any + 'static + Send)>,
@@ -73,6 +74,7 @@ pub fn calc_result<'a>(
     result
 }
 
+/// Creates a `TestResult` depending on the exit code of test subprocess.
 pub fn get_result_from_exit_code(
     desc: &TestDesc,
     code: i32,
