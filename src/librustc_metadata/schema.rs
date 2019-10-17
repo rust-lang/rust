@@ -1,4 +1,4 @@
-use crate::index;
+use crate::table::PerDefTable;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -14,12 +14,14 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 
+use rustc_serialize::Encodable;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 crate fn rustc_version() -> String {
     format!("rustc {}",
@@ -52,7 +54,7 @@ crate trait LazyMeta {
     fn min_size(meta: Self::Meta) -> usize;
 }
 
-impl<T> LazyMeta for T {
+impl<T: Encodable> LazyMeta for T {
     type Meta = ();
 
     fn min_size(_: ()) -> usize {
@@ -61,7 +63,7 @@ impl<T> LazyMeta for T {
     }
 }
 
-impl<T> LazyMeta for [T] {
+impl<T: Encodable> LazyMeta for [T] {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
@@ -102,13 +104,13 @@ crate struct Lazy<T, Meta = <T as LazyMeta>::Meta>
     where T: ?Sized + LazyMeta<Meta = Meta>,
           Meta: 'static + Copy,
 {
-    pub position: usize,
+    pub position: NonZeroUsize,
     pub meta: Meta,
     _marker: PhantomData<T>,
 }
 
 impl<T: ?Sized + LazyMeta> Lazy<T> {
-    crate fn from_position_and_meta(position: usize, meta: T::Meta) -> Lazy<T> {
+     crate fn from_position_and_meta(position: NonZeroUsize, meta: T::Meta) -> Lazy<T> {
         Lazy {
             position,
             meta,
@@ -117,15 +119,15 @@ impl<T: ?Sized + LazyMeta> Lazy<T> {
     }
 }
 
-impl<T> Lazy<T> {
-    crate fn from_position(position: usize) -> Lazy<T> {
+impl<T: Encodable> Lazy<T> {
+    crate fn from_position(position: NonZeroUsize) -> Lazy<T> {
         Lazy::from_position_and_meta(position, ())
     }
 }
 
-impl<T> Lazy<[T]> {
+impl<T: Encodable> Lazy<[T]> {
     crate fn empty() -> Lazy<[T]> {
-        Lazy::from_position_and_meta(0, 0)
+        Lazy::from_position_and_meta(NonZeroUsize::new(1).unwrap(), 0)
     }
 }
 
@@ -147,12 +149,22 @@ crate enum LazyState {
 
     /// Inside a metadata node, and before any `Lazy`.
     /// The position is that of the node itself.
-    NodeStart(usize),
+    NodeStart(NonZeroUsize),
 
     /// Inside a metadata node, with a previous `Lazy`.
     /// The position is a conservative estimate of where that
     /// previous `Lazy` would end (see their comments).
-    Previous(usize),
+    Previous(NonZeroUsize),
+}
+
+// FIXME(#59875) `Lazy!(T)` replaces `Lazy<T>`, passing the `Meta` parameter
+// manually, instead of relying on the default, to get the correct variance.
+// Only needed when `T` itself contains a parameter (e.g. `'tcx`).
+macro_rules! Lazy {
+    (Table<$T:ty>) => {Lazy<Table<$T>, usize>};
+    (PerDefTable<$T:ty>) => {Lazy<PerDefTable<$T>, usize>};
+    ([$T:ty]) => {Lazy<[$T], usize>};
+    ($T:ty) => {Lazy<$T, ()>};
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -182,10 +194,10 @@ crate struct CrateRoot<'tcx> {
     pub source_map: Lazy<[syntax_pos::SourceFile]>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: Lazy<[TraitImpls]>,
-    pub exported_symbols: Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]>,
+    pub exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_index: Lazy<[index::Index<'tcx>]>,
+    pub per_def: LazyPerDefTables<'tcx>,
 
     /// The DefIndex's of any proc macros delcared by
     /// this crate
@@ -216,24 +228,24 @@ crate struct TraitImpls {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct Entry<'tcx> {
-    pub kind: EntryKind<'tcx>,
-    pub visibility: Lazy<ty::Visibility>,
-    pub span: Lazy<Span>,
-    pub attributes: Lazy<[ast::Attribute]>,
-    pub children: Lazy<[DefIndex]>,
-    pub stability: Option<Lazy<attr::Stability>>,
-    pub deprecation: Option<Lazy<attr::Deprecation>>,
+crate struct LazyPerDefTables<'tcx> {
+    pub kind: Lazy!(PerDefTable<Lazy!(EntryKind<'tcx>)>),
+    pub visibility: Lazy!(PerDefTable<Lazy<ty::Visibility>>),
+    pub span: Lazy!(PerDefTable<Lazy<Span>>),
+    pub attributes: Lazy!(PerDefTable<Lazy<[ast::Attribute]>>),
+    pub children: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
+    pub stability: Lazy!(PerDefTable<Lazy<attr::Stability>>),
+    pub deprecation: Lazy!(PerDefTable<Lazy<attr::Deprecation>>),
 
-    pub ty: Option<Lazy<Ty<'tcx>>>,
-    pub inherent_impls: Lazy<[DefIndex]>,
-    pub variances: Lazy<[ty::Variance]>,
-    pub generics: Option<Lazy<ty::Generics>>,
-    pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
-    pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
+    pub ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
+    pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
+    pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
+    pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
+    pub predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    pub predicates_defined_on: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 
-    pub mir: Option<Lazy<mir::Body<'tcx>>>,
-    pub promoted_mir: Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
+    pub mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),
+    pub promoted_mir: Lazy!(PerDefTable<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
@@ -252,22 +264,22 @@ crate enum EntryKind<'tcx> {
     OpaqueTy,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy<VariantData<'tcx>>),
-    Struct(Lazy<VariantData<'tcx>>, ReprOptions),
-    Union(Lazy<VariantData<'tcx>>, ReprOptions),
-    Fn(Lazy<FnData<'tcx>>),
-    ForeignFn(Lazy<FnData<'tcx>>),
+    Variant(Lazy!(VariantData<'tcx>)),
+    Struct(Lazy!(VariantData<'tcx>), ReprOptions),
+    Union(Lazy!(VariantData<'tcx>), ReprOptions),
+    Fn(Lazy!(FnData<'tcx>)),
+    ForeignFn(Lazy!(FnData<'tcx>)),
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
-    Closure(Lazy<ClosureData<'tcx>>),
-    Generator(Lazy<GeneratorData<'tcx>>),
-    Trait(Lazy<TraitData<'tcx>>),
-    Impl(Lazy<ImplData<'tcx>>),
-    Method(Lazy<MethodData<'tcx>>),
+    Closure(Lazy!(ClosureData<'tcx>)),
+    Generator(Lazy!(GeneratorData<'tcx>)),
+    Trait(Lazy!(TraitData<'tcx>)),
+    Impl(Lazy!(ImplData<'tcx>)),
+    Method(Lazy!(MethodData<'tcx>)),
     AssocType(AssocContainer),
     AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
-    TraitAlias(Lazy<TraitAliasData<'tcx>>),
+    TraitAlias(Lazy!(TraitAliasData<'tcx>)),
 }
 
 /// Additional data for EntryKind::Const and EntryKind::AssocConst
@@ -297,7 +309,7 @@ crate struct FnData<'tcx> {
     pub asyncness: hir::IsAsync,
     pub constness: hir::Constness,
     pub param_names: Lazy<[ast::Name]>,
-    pub sig: Lazy<ty::PolyFnSig<'tcx>>,
+    pub sig: Lazy!(ty::PolyFnSig<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -308,7 +320,7 @@ crate struct VariantData<'tcx> {
     pub ctor: Option<DefIndex>,
     /// If this is a tuple struct or variant
     /// ctor, this is its "function" signature.
-    pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
+    pub ctor_sig: Option<Lazy!(ty::PolyFnSig<'tcx>)>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -317,12 +329,12 @@ crate struct TraitData<'tcx> {
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,
-    pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
+    pub super_predicates: Lazy!(ty::GenericPredicates<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct TraitAliasData<'tcx> {
-    pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
+    pub super_predicates: Lazy!(ty::GenericPredicates<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -333,7 +345,7 @@ crate struct ImplData<'tcx> {
 
     /// This is `Some` only for impls of `CoerceUnsized`.
     pub coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
-    pub trait_ref: Option<Lazy<ty::TraitRef<'tcx>>>,
+    pub trait_ref: Option<Lazy!(ty::TraitRef<'tcx>)>,
 }
 
 
@@ -384,7 +396,7 @@ crate struct MethodData<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct ClosureData<'tcx> {
-    pub sig: Lazy<ty::PolyFnSig<'tcx>>,
+    pub sig: Lazy!(ty::PolyFnSig<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

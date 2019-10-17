@@ -26,15 +26,15 @@ extern crate rustc_data_structures;
 
 pub mod error_codes;
 
-mod index;
 mod encoder;
 mod decoder;
-mod cstore_impl;
-mod schema;
-mod native_libs;
-mod link_args;
-mod foreign_modules;
 mod dependency_format;
+mod cstore_impl;
+mod foreign_modules;
+mod link_args;
+mod native_libs;
+mod schema;
+mod table;
 
 pub mod creader;
 pub mod cstore;
