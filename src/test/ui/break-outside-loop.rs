@@ -22,4 +22,12 @@ fn main() {
     let rs: Foo = Foo{t: pth};
 
     let unconstrained = break; //~ ERROR: `break` outside of a loop
+
+    // This used to ICE because `target_id` passed to `check_expr_break` would be the closure and
+    // not the `loop`, which failed in the call to `find_breakable`. (#65383)
+    'lab: loop {
+        || {
+            break 'lab; //~ ERROR `break` inside of a closure
+        };
+    }
 }
