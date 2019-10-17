@@ -4,3 +4,5 @@
 pub mod concurrency;
 pub mod isatty;
 pub mod metrics;
+pub mod sink;
+pub mod exit_code;

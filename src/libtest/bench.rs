@@ -1,6 +1,11 @@
 //! Benchmarking module.
 use super::{
-    BenchMode, MonitorMsg, Sender, Sink, TestDesc, TestResult
+    event::CompletedTest,
+    helpers::sink::Sink,
+    options::BenchMode,
+    types::TestDesc,
+    test_result::TestResult,
+    Sender,
 };
 
 use crate::stats;
@@ -182,7 +187,7 @@ where
     }
 }
 
-pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<MonitorMsg>, nocapture: bool, f: F)
+pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<CompletedTest>, nocapture: bool, f: F)
 where
     F: FnMut(&mut Bencher),
 {
@@ -195,8 +200,8 @@ where
     let data = Arc::new(Mutex::new(Vec::new()));
     let oldio = if !nocapture {
         Some((
-            io::set_print(Some(Box::new(Sink(data.clone())))),
-            io::set_panic(Some(Box::new(Sink(data.clone())))),
+            io::set_print(Some(Sink::new_boxed(&data))),
+            io::set_panic(Some(Sink::new_boxed(&data))),
         ))
     } else {
         None
@@ -235,7 +240,8 @@ where
     };
 
     let stdout = data.lock().unwrap().to_vec();
-    monitor_ch.send((desc, test_result, None, stdout)).unwrap();
+    let message = CompletedTest::new(desc, test_result, None, stdout);
+    monitor_ch.send(message).unwrap();
 }
 
 pub fn run_once<F>(f: F)

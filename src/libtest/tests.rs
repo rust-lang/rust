@@ -1,11 +1,18 @@
 use super::*;
 
-use crate::test::{
-    filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
-    // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
-    // TestType, TrFailedMsg, TrIgnored, TrOk,
-    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts,
-    TrIgnored, TrOk,
+use crate::{
+    bench::Bencher,
+    console::OutputLocation,
+    options::OutputFormat,
+    time::{TimeThreshold, TestTimeOptions},
+    formatters::PrettyFormatter,
+    test::{
+        filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
+        // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
+        // TestType, TrFailedMsg, TrIgnored, TrOk,
+        ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts,
+        TrIgnored, TrOk,
+    },
 };
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -74,8 +81,8 @@ pub fn do_not_run_ignored_tests() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res != TrOk);
+    let result = rx.recv().unwrap().result;
+    assert!(result != TrOk);
 }
 
 #[test]
@@ -93,8 +100,8 @@ pub fn ignored_tests_result_in_ignored() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrIgnored);
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrIgnored);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again
@@ -116,8 +123,8 @@ fn test_should_panic() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrOk);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again
@@ -139,8 +146,8 @@ fn test_should_panic_good_message() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrOk);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again
@@ -165,8 +172,8 @@ fn test_should_panic_bad_message() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again
@@ -186,8 +193,8 @@ fn test_should_panic_but_succeeds() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailedMsg("test did not panic as expected".to_string()));
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrFailedMsg("test did not panic as expected".to_string()));
 }
 
 fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
@@ -214,7 +221,7 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
     };
     let (tx, rx) = channel();
     run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, _, exec_time, _) = rx.recv().unwrap();
+    let exec_time = rx.recv().unwrap().exec_time;
     exec_time
 }
 
@@ -252,7 +259,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
     };
     let (tx, rx) = channel();
     run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, result, _, _) = rx.recv().unwrap();
+    let result = rx.recv().unwrap().result;
 
     result
 }
@@ -658,9 +665,9 @@ fn should_sort_failures_before_printing_them() {
         test_type: TestType::Unknown,
     };
 
-    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false, None);
+    let mut out = PrettyFormatter::new(OutputLocation::Raw(Vec::new()), false, 10, false, None);
 
-    let st = ConsoleTestState {
+    let st = console::ConsoleTestState {
         log_out: None,
         total: 0,
         passed: 0,
@@ -678,8 +685,8 @@ fn should_sort_failures_before_printing_them() {
 
     out.write_failures(&st).unwrap();
     let s = match out.output_location() {
-        &Raw(ref m) => String::from_utf8_lossy(&m[..]),
-        &Pretty(_) => unreachable!(),
+        &OutputLocation::Raw(ref m) => String::from_utf8_lossy(&m[..]),
+        &OutputLocation::Pretty(_) => unreachable!(),
     };
 
     let apos = s.find("a").unwrap();

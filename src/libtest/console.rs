@@ -1,7 +1,7 @@
 //! Module providing interface for running tests in the console.
 
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::prelude::Write;
 use std::io;
 
 use term;
@@ -192,7 +192,8 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    fn callback(
+    // A callback handling events that occure during test execution.
+    fn on_test_event(
         event: &TestEvent,
         st: &mut ConsoleTestState,
         out: &mut dyn OutputFormatter,
@@ -205,9 +206,14 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TestEvent::TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
             TestEvent::TeWait(ref test) => out.write_test_start(test),
             TestEvent::TeTimeout(ref test) => out.write_timeout(test),
-            TestEvent::TeResult(test, result, exec_time, stdout) => {
-                st.write_log_result(&test, &result, exec_time.as_ref())?;
-                out.write_result(&test, &result, exec_time.as_ref(), &*stdout, &st)?;
+            TestEvent::TeResult(completed_test) => {
+                let test = completed_test.desc;
+                let result = &completed_test.result;
+                let exec_time = &completed_test.exec_time;
+                let stdout = completed_test.stdout;
+
+                st.write_log_result(&test, result, exec_time.as_ref())?;
+                out.write_result(&test, result, exec_time.as_ref(), &*stdout, st)?;
                 match result {
                     TestResult::TrOk => {
                         st.passed += 1;
@@ -280,7 +286,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         }
     }
 
-    run_tests(opts, tests, |x| callback(&x, &mut st, &mut *out))?;
+    run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
 
     assert!(st.current_test_count() == st.total);
 

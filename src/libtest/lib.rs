@@ -30,30 +30,13 @@
 #![feature(termination_trait_lib)]
 #![feature(test)]
 
+// Public reexports
 pub use self::ColorConfig::*;
-use self::event::TestEvent::*;
+pub use self::types::*;
 pub use self::types::TestName::*;
+pub use self::options::{Options, ShouldPanic};
 
-use std::borrow::Cow;
-use std::env;
-use std::io;
-use std::io::prelude::*;
-use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo};
-use std::process;
-use std::process::{ExitStatus, Command, Termination};
-use std::sync::mpsc::{channel, Sender};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
-
-#[cfg(test)]
-mod tests;
-
-const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
-
-const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
-
-// to be used by rustc to compile tests in libtest
+// Module to be used by rustc to compile tests in libtest
 pub mod test {
     pub use crate::{
         bench::Bencher,
@@ -61,7 +44,7 @@ pub mod test {
         helpers::metrics::{Metric, MetricMap},
         options::{ShouldPanic, Options, RunIgnored, RunStrategy},
         test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk},
-        time::TestTimeOptions,
+        time::{TestTimeOptions, TestExecTime},
         types::{
             DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn,
             TestName, TestType,
@@ -70,18 +53,21 @@ pub mod test {
     };
 }
 
-use bench::*;
-use test_result::*;
-use types::*;
-use options::*;
-use cli::*;
-use event::*;
+use std::{
+    env,
+    io,
+    io::prelude::Write,
+    panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
+    process,
+    process::{Command, Termination},
+    sync::mpsc::{channel, Sender},
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 
-use helpers::concurrency::get_concurrency;
-
-mod formatters;
 pub mod stats;
-
+mod formatters;
 mod cli;
 mod console;
 mod event;
@@ -92,14 +78,31 @@ mod options;
 mod bench;
 mod test_result;
 
+#[cfg(test)]
+mod tests;
+
+use test_result::*;
+use time::TestExecTime;
+use options::{RunStrategy, Concurrent, RunIgnored, ColorConfig};
+use event::{CompletedTest, TestEvent};
+use cli::TestOpts;
+use helpers::sink::Sink;
+use helpers::concurrency::get_concurrency;
+use helpers::exit_code::get_exit_code;
+
+// Process exit code to be used to indicate test failures.
+const ERROR_EXIT_CODE: i32 = 101;
+
+const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
+
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
-    let mut opts = match parse_opts(args) {
+    let mut opts = match cli::parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
             eprintln!("error: {}", msg);
-            process::exit(101);
+            process::exit(ERROR_EXIT_CODE);
         }
         None => return,
     };
@@ -109,15 +112,15 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
     if opts.list {
         if let Err(e) = console::list_tests_console(&opts, tests) {
             eprintln!("error: io error when listing tests: {:?}", e);
-            process::exit(101);
+            process::exit(ERROR_EXIT_CODE);
         }
     } else {
         match console::run_tests_console(&opts, tests) {
             Ok(true) => {}
-            Ok(false) => process::exit(101),
+            Ok(false) => process::exit(ERROR_EXIT_CODE),
             Err(e) => {
                 eprintln!("error: io error when listing tests: {:?}", e);
-                process::exit(101);
+                process::exit(ERROR_EXIT_CODE);
             }
         }
     }
@@ -196,19 +199,7 @@ pub fn assert_test_result<T: Termination>(result: T) {
     );
 }
 
-pub type MonitorMsg = (TestDesc, TestResult, Option<time::TestExecTime>, Vec<u8>);
-
-struct Sink(Arc<Mutex<Vec<u8>>>);
-impl Write for Sink {
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        Write::write(&mut *self.0.lock().unwrap(), data)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
+pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut notify_about_test_event: F) -> io::Result<()>
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
@@ -236,11 +227,13 @@ where
     };
 
     let filtered_out = tests_len - filtered_tests.len();
-    callback(TeFilteredOut(filtered_out))?;
+    let event = TestEvent::TeFilteredOut(filtered_out);
+    notify_about_test_event(event)?;
 
     let filtered_descs = filtered_tests.iter().map(|t| t.desc.clone()).collect();
 
-    callback(TeFiltered(filtered_descs))?;
+    let event = TestEvent::TeFiltered(filtered_descs);
+    notify_about_test_event(event)?;
 
     let (filtered_tests, filtered_benchs): (Vec<_>, _) =
         filtered_tests.into_iter().partition(|e| match e.testfn {
@@ -254,7 +247,7 @@ where
     remaining.reverse();
     let mut pending = 0;
 
-    let (tx, rx) = channel::<MonitorMsg>();
+    let (tx, rx) = channel::<CompletedTest>();
     let run_strategy = if opts.options.panic_abort {
         RunStrategy::SpawnPrimary
     } else {
@@ -295,10 +288,13 @@ where
     if concurrency == 1 {
         while !remaining.is_empty() {
             let test = remaining.pop().unwrap();
-            callback(TeWait(test.desc.clone()))?;
+            let event = TestEvent::TeWait(test.desc.clone());
+            notify_about_test_event(event)?;
             run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::No);
-            let (test, result, exec_time, stdout) = rx.recv().unwrap();
-            callback(TeResult(test, result, exec_time, stdout))?;
+            let completed_test = rx.recv().unwrap();
+
+            let event = TestEvent::TeResult(completed_test);
+            notify_about_test_event(event)?;
         }
     } else {
         while pending > 0 || !remaining.is_empty() {
@@ -306,7 +302,9 @@ where
                 let test = remaining.pop().unwrap();
                 let timeout = time::get_default_test_timeout();
                 running_tests.insert(test.desc.clone(), timeout);
-                callback(TeWait(test.desc.clone()))?; //here no pad
+
+                let event = TestEvent::TeWait(test.desc.clone());
+                notify_about_test_event(event)?; //here no pad
                 run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::Yes);
                 pending += 1;
             }
@@ -316,10 +314,18 @@ where
                 if let Some(timeout) = calc_timeout(&running_tests) {
                     res = rx.recv_timeout(timeout);
                     for test in get_timed_out_tests(&mut running_tests) {
-                        callback(TeTimeout(test))?;
+                        let event = TestEvent::TeTimeout(test);
+                        notify_about_test_event(event)?;
                     }
-                    if res != Err(RecvTimeoutError::Timeout) {
-                        break;
+
+                    match res {
+                        Err(RecvTimeoutError::Timeout) => {
+                            // Result is not yet ready, continue waiting.
+                        }
+                        _ => {
+                            // We've got a result, stop the loop.
+                            break;
+                        }            
                     }
                 } else {
                     res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
@@ -327,10 +333,11 @@ where
                 }
             }
 
-            let (desc, result, exec_time, stdout) = res.unwrap();
-            running_tests.remove(&desc);
+            let completed_test = res.unwrap();
+            running_tests.remove(&completed_test.desc);
 
-            callback(TeResult(desc, result, exec_time, stdout))?;
+            let event = TestEvent::TeResult(completed_test);
+            notify_about_test_event(event)?;
             pending -= 1;
         }
     }
@@ -338,10 +345,13 @@ where
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
         for b in filtered_benchs {
-            callback(TeWait(b.desc.clone()))?;
+            let event = TestEvent::TeWait(b.desc.clone());
+            notify_about_test_event(event)?;
             run_test(opts, false, b, run_strategy, tx.clone(), Concurrent::No);
-            let (test, result, exec_time, stdout) = rx.recv().unwrap();
-            callback(TeResult(test, result, exec_time, stdout))?;
+            let completed_test = rx.recv().unwrap();
+
+            let event = TestEvent::TeResult(completed_test);
+            notify_about_test_event(event)?;
         }
     }
     Ok(())
@@ -420,7 +430,7 @@ pub fn run_test(
     force_ignore: bool,
     test: TestDescAndFn,
     strategy: RunStrategy,
-    monitor_ch: Sender<MonitorMsg>,
+    monitor_ch: Sender<CompletedTest>,
     concurrency: Concurrent,
 ) {
     let TestDescAndFn { desc, testfn } = test;
@@ -430,7 +440,8 @@ pub fn run_test(
         && (cfg!(target_arch = "wasm32") || cfg!(target_os = "emscripten"));
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
-        monitor_ch.send((desc, TrIgnored, None, Vec::new())).unwrap();
+        let message = CompletedTest::new(desc, TrIgnored, None, Vec::new());
+        monitor_ch.send(message).unwrap();
         return;
     }
 
@@ -443,7 +454,7 @@ pub fn run_test(
 
     fn run_test_inner(
         desc: TestDesc,
-        monitor_ch: Sender<MonitorMsg>,
+        monitor_ch: Sender<CompletedTest>,
         testfn: Box<dyn FnOnce() + Send>,
         opts: TestRunOpts,
     ) {
@@ -530,7 +541,7 @@ fn run_test_in_process(
     nocapture: bool,
     report_time: bool,
     testfn: Box<dyn FnOnce() + Send>,
-    monitor_ch: Sender<MonitorMsg>,
+    monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
 ) {
     // Buffer for capturing standard I/O
@@ -538,8 +549,8 @@ fn run_test_in_process(
 
     let oldio = if !nocapture {
         Some((
-            io::set_print(Some(Box::new(Sink(data.clone())))),
-            io::set_panic(Some(Box::new(Sink(data.clone())))),
+            io::set_print(Some(Sink::new_boxed(&data))),
+            io::set_panic(Some(Sink::new_boxed(&data))),
         ))
     } else {
         None
@@ -553,7 +564,7 @@ fn run_test_in_process(
     let result = catch_unwind(AssertUnwindSafe(testfn));
     let exec_time = start.map(|start| {
         let duration = start.elapsed();
-        time::TestExecTime(duration)
+        TestExecTime(duration)
     });
 
     if let Some((printio, panicio)) = oldio {
@@ -566,13 +577,14 @@ fn run_test_in_process(
         Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
     let stdout = data.lock().unwrap().to_vec();
-    monitor_ch.send((desc.clone(), test_result, exec_time, stdout)).unwrap();
+    let message = CompletedTest::new(desc.clone(), test_result, exec_time, stdout);
+    monitor_ch.send(message).unwrap();
 }
 
 fn spawn_test_subprocess(
     desc: TestDesc,
     report_time: bool,
-    monitor_ch: Sender<MonitorMsg>,
+    monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
 ) {
     let (result, test_output, exec_time) = (|| {
@@ -595,7 +607,7 @@ fn spawn_test_subprocess(
             };
         let exec_time = start.map(|start| {
             let duration = start.elapsed();
-            time::TestExecTime(duration)
+            TestExecTime(duration)
         });
 
         let std::process::Output { stdout, stderr, status } = output;
@@ -617,7 +629,8 @@ fn spawn_test_subprocess(
         (result, test_output, exec_time)
     })();
 
-    monitor_ch.send((desc.clone(), result, exec_time, test_output)).unwrap();
+    let message = CompletedTest::new(desc.clone(), result, exec_time, test_output);
+    monitor_ch.send(message).unwrap();
 }
 
 fn run_test_in_spawned_subprocess(
@@ -652,21 +665,4 @@ fn run_test_in_spawned_subprocess(
     testfn();
     record_result(None);
     unreachable!("panic=abort callback should have exited the process")
-}
-
-#[cfg(not(unix))]
-fn get_exit_code(status: ExitStatus) -> Result<i32, String> {
-    status.code().ok_or("received no exit code from child process".into())
-}
-
-#[cfg(unix)]
-fn get_exit_code(status: ExitStatus) -> Result<i32, String> {
-    use std::os::unix::process::ExitStatusExt;
-    match status.code() {
-        Some(code) => Ok(code),
-        None => match status.signal() {
-            Some(signal) => Err(format!("child process exited with signal {}", signal)),
-            None => Err("child process exited with unknown signal".into()),
-        }
-    }
 }

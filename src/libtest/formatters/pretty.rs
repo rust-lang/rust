@@ -1,5 +1,16 @@
-use super::*;
-use super::console::{ConsoleTestState, OutputLocation};
+use std::{
+    io,
+    io::prelude::Write,
+};
+
+use crate::{
+    types::TestDesc,
+    time,
+    test_result::TestResult,
+    console::{ConsoleTestState, OutputLocation},
+    bench::fmt_bench_samples,
+};
+use super::OutputFormatter;
 
 pub(crate) struct PrettyFormatter<T> {
     out: OutputLocation<T>,
@@ -204,15 +215,15 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         }
 
         match *result {
-            TrOk => self.write_ok()?,
-            TrFailed | TrFailedMsg(_) => self.write_failed()?,
-            TrIgnored => self.write_ignored()?,
-            TrAllowedFail => self.write_allowed_fail()?,
-            TrBench(ref bs) => {
+            TestResult::TrOk => self.write_ok()?,
+            TestResult::TrFailed | TestResult::TrFailedMsg(_) => self.write_failed()?,
+            TestResult::TrIgnored => self.write_ignored()?,
+            TestResult::TrAllowedFail => self.write_allowed_fail()?,
+            TestResult::TrBench(ref bs) => {
                 self.write_bench()?;
                 self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;
             }
-            TrTimedFail => self.write_time_failed()?,
+            TestResult::TrTimedFail => self.write_time_failed()?,
         }
 
         self.write_time(desc, exec_time)?;

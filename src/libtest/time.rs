@@ -61,7 +61,7 @@ pub fn get_default_test_timeout() -> Instant {
 }
 
 /// The meassured execution time of a unit test.
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TestExecTime(pub Duration);
 
 impl fmt::Display for TestExecTime {
