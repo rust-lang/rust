@@ -934,19 +934,19 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
+        self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
 
 impl Encodable for Symbol {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
+        self.with(|string| s.emit_str(string))
     }
 }
 
