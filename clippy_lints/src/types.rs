@@ -17,10 +17,10 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::MacroKind;
-use syntax::ext::hygiene::ExpnKind;
 use syntax::source_map::Span;
 use syntax::symbol::{sym, Symbol};
+use syntax_expand::base::MacroKind;
+use syntax_expand::hygiene::ExpnKind;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
