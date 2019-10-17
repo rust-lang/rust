@@ -93,10 +93,15 @@ export class CargoWatchProvider implements vscode.Disposable {
             args = '"' + args + '"';
         }
 
+        const ignoreFlags = Server.config.cargoWatchOptions.ignore.reduce(
+            (flags, pattern) => [...flags, '--ignore', pattern],
+            [] as string[]
+        );
+
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
             'cargo',
-            ['watch', '-x', args],
+            ['watch', '-x', args, ...ignoreFlags],
             {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: vscode.workspace.rootPath,

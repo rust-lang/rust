@@ -79,6 +79,7 @@ See [microsoft/vscode#72308](https://github.com/microsoft/vscode/issues/72308) f
 * `rust-analyzer.cargo-watch.command`: `cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )
 * `rust-analyzer.cargo-watch.arguments`: cargo-watch check arguments.
   (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )
+* `rust-analyzer.cargo-watch.ignore`: list of patterns for cargo-watch to ignore (will be passed as `--ignore`)
 * `rust-analyzer.trace.server`: enables internal logging
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
 * `RUST_SRC_PATH`: environment variable that overwrites the sysroot
