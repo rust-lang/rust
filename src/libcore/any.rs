@@ -445,6 +445,15 @@ impl TypeId {
 ///
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.
+///
+/// # Example
+///
+/// ```rust
+/// assert_eq!(
+///     std::any::type_name::<Option<String>>(),
+///     "core::option::Option<alloc::string::String>",
+/// );
+/// ```
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
