@@ -934,7 +934,7 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Display::fmt(&str, f))
+        self.with(|str| fmt::Debug::fmt(&str, f))
     }
 }
 
