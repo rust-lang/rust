@@ -1,18 +1,19 @@
-use crate::ast::{self, NodeId, Attribute, Name, PatKind};
-use crate::attr::{self, HasAttrs, Stability, Deprecation};
-use crate::source_map::SourceMap;
-use crate::edition::Edition;
-use crate::ext::expand::{self, AstFragment, Invocation};
-use crate::ext::hygiene::ExpnId;
-use crate::mut_visit::{self, MutVisitor};
-use crate::parse::{self, parser, DirectoryOwnership};
-use crate::parse::token;
-use crate::ptr::P;
-use crate::sess::ParseSess;
-use crate::symbol::{kw, sym, Ident, Symbol};
-use crate::{ThinVec, MACRO_ARGUMENTS};
-use crate::tokenstream::{self, TokenStream};
-use crate::visit::Visitor;
+use crate::expand::{self, AstFragment, Invocation};
+use crate::hygiene::ExpnId;
+
+use syntax::ast::{self, NodeId, Attribute, Name, PatKind};
+use syntax::attr::{self, HasAttrs, Stability, Deprecation};
+use syntax::source_map::SourceMap;
+use syntax::edition::Edition;
+use syntax::mut_visit::{self, MutVisitor};
+use syntax::parse::{self, parser, DirectoryOwnership};
+use syntax::parse::token;
+use syntax::ptr::P;
+use syntax::sess::ParseSess;
+use syntax::symbol::{kw, sym, Ident, Symbol};
+use syntax::{ThinVec, MACRO_ARGUMENTS};
+use syntax::tokenstream::{self, TokenStream};
+use syntax::visit::Visitor;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};

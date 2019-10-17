@@ -39,7 +39,7 @@ use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 

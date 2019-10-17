@@ -4,7 +4,7 @@
 use syntax::ast::*;
 use syntax::attr;
 use syntax::edition::Edition;
-use syntax::ext::base::{Resolver, NamedSyntaxExtension};
+use syntax_expand::base::{Resolver, NamedSyntaxExtension};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::source_map::respan;

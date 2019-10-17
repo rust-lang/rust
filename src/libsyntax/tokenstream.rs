@@ -156,7 +156,7 @@ use IsJoint::*;
 impl TokenStream {
     /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
     /// separating the two arguments with a comma for diagnostic suggestions.
-    pub(crate) fn add_comma(&self) -> Option<(TokenStream, Span)> {
+    pub fn add_comma(&self) -> Option<(TokenStream, Span)> {
         // Used to suggest if a user writes `foo!(a b);`
         let mut suggestion = None;
         let mut iter = self.0.iter().enumerate().peekable();

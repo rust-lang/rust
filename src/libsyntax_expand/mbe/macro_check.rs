@@ -104,13 +104,13 @@
 //! Kleene operators under which a meta-variable is repeating is the concatenation of the stacks
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
-use crate::ast::NodeId;
-use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::ext::mbe::{KleeneToken, TokenTree};
-use crate::parse::token::TokenKind;
-use crate::parse::token::{DelimToken, Token};
-use crate::sess::ParseSess;
-use crate::symbol::{kw, sym};
+use crate::mbe::{KleeneToken, TokenTree};
+
+use syntax::ast::NodeId;
+use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax::parse::token::{DelimToken, Token, TokenKind};
+use syntax::sess::ParseSess;
+use syntax::symbol::{kw, sym};
 
 use rustc_data_structures::fx::FxHashMap;
 use smallvec::SmallVec;

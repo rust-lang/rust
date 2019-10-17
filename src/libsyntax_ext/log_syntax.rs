@@ -1,4 +1,4 @@
-use syntax::ext::base;
+use syntax_expand::base;
 use syntax::print;
 use syntax::tokenstream::TokenStream;
 use syntax_pos;

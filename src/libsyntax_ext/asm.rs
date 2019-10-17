@@ -7,7 +7,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use errors::DiagnosticBuilder;
 
 use syntax::ast;
-use syntax::ext::base::{self, *};
+use syntax_expand::base::{self, *};
 use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};

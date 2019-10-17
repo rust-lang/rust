@@ -27,7 +27,7 @@ use rustc_errors::{Handler, Level, FatalError, DiagnosticId, SourceMapperDyn};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::hygiene::ExpnId;
 use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
 

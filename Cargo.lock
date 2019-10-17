@@ -3112,6 +3112,7 @@ dependencies = [
  "serialize",
  "smallvec",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
 ]
 
@@ -3427,6 +3428,7 @@ dependencies = [
  "rustc_target",
  "serialize",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
  "tempfile",
 ]
@@ -3559,6 +3561,7 @@ dependencies = [
  "serialize",
  "smallvec",
  "syntax",
+ "syntax_expand",
  "syntax_ext",
  "syntax_pos",
  "tempfile",
@@ -3630,6 +3633,7 @@ dependencies = [
  "smallvec",
  "stable_deref_trait",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
 ]
 
@@ -3678,6 +3682,7 @@ dependencies = [
  "rustc_index",
  "rustc_target",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
 ]
 
@@ -3695,6 +3700,7 @@ dependencies = [
  "rustc",
  "rustc_metadata",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
 ]
 
@@ -3723,6 +3729,7 @@ dependencies = [
  "rustc_metadata",
  "smallvec",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
 ]
 
@@ -4337,6 +4344,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "syntax_expand"
+version = "0.0.0"
+dependencies = [
+ "bitflags",
+ "lazy_static 1.3.0",
+ "log",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_index",
+ "rustc_lexer",
+ "rustc_target",
+ "scoped-tls",
+ "serialize",
+ "smallvec",
+ "syntax",
+ "syntax_pos",
+]
+
+[[package]]
 name = "syntax_ext"
 version = "0.0.0"
 dependencies = [
@@ -4347,6 +4373,7 @@ dependencies = [
  "rustc_target",
  "smallvec",
  "syntax",
+ "syntax_expand",
  "syntax_pos",
 ]
 

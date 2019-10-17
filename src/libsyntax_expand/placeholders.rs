@@ -1,11 +1,12 @@
-use crate::ast::{self, NodeId};
-use crate::source_map::{DUMMY_SP, dummy_spanned};
-use crate::ext::base::ExtCtxt;
-use crate::ext::expand::{AstFragment, AstFragmentKind};
-use crate::tokenstream::TokenStream;
-use crate::mut_visit::*;
-use crate::ptr::P;
-use crate::ThinVec;
+use crate::base::ExtCtxt;
+use crate::expand::{AstFragment, AstFragmentKind};
+
+use syntax::ast::{self, NodeId};
+use syntax::source_map::{DUMMY_SP, dummy_spanned};
+use syntax::tokenstream::TokenStream;
+use syntax::mut_visit::*;
+use syntax::ptr::P;
+use syntax::ThinVec;
 
 use smallvec::{smallvec, SmallVec};
 
