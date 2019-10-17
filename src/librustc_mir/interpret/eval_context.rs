@@ -35,7 +35,7 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub(crate) memory: Memory<'mir, 'tcx, M>,
+    pub memory: Memory<'mir, 'tcx, M>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
@@ -209,16 +209,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }
-    }
-
-    #[inline(always)]
-    pub fn memory(&self) -> &Memory<'mir, 'tcx, M> {
-        &self.memory
-    }
-
-    #[inline(always)]
-    pub fn memory_mut(&mut self) -> &mut Memory<'mir, 'tcx, M> {
-        &mut self.memory
     }
 
     #[inline(always)]
