@@ -174,7 +174,7 @@ Once the feature is moved to `accepted.rs`, the version is changed to that night
 8. Get your PR reviewed and land it. You have now successfully
    implemented a feature in Rust!
 
-[`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/struct.GatedSpans.html
+[`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.GatedSpans.html
 [`feature_gate::check::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/feature_gate/check/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
