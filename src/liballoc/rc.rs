@@ -4,7 +4,8 @@
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
 //! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
 //! pointer to the same allocation in the heap. When the last [`Rc`] pointer to a
-//! given allocation is destroyed, the pointed-to value is also destroyed.
+//! given allocation is destroyed, the value stored in that allocation (often
+//! referred to as "inner value") is also dropped.
 //!
 //! Shared references in Rust disallow mutation by default, and [`Rc`]
 //! is no exception: you cannot generally obtain a mutable reference to
@@ -21,8 +22,10 @@
 //!
 //! The [`downgrade`][downgrade] method can be used to create a non-owning
 //! [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
-//! to an [`Rc`], but this will return [`None`] if the allocation has
-//! already been dropped.
+//! to an [`Rc`], but this will return [`None`] if the value stored in the allocation has
+//! already been dropped. In other words, `Weak` pointers do not keep the value
+//! inside the allocation alive; however, they *do* keep the allocation
+//! (the backing store for the value) alive.
 //!
 //! A cycle between [`Rc`] pointers will never be deallocated. For this reason,
 //! [`Weak`] is used to break cycles. For example, a tree could have strong
@@ -46,8 +49,8 @@
 //!
 //! # Cloning references
 //!
-//! Creating a new reference from an existing reference counted pointer is done using the
-//! `Clone` trait implemented for [`Rc<T>`][`Rc`] and [`Weak<T>`][`Weak`].
+//! Creating a new reference to the same allocation as an existing reference counted pointer
+//! is done using the `Clone` trait implemented for [`Rc<T>`][`Rc`] and [`Weak<T>`][`Weak`].
 //!
 //! ```
 //! use std::rc::Rc;
@@ -109,8 +112,8 @@
 //!
 //!     // Despite dropping `gadget_owner`, we're still able to print out the name
 //!     // of the `Owner` of the `Gadget`s. This is because we've only dropped a
-//!     // single `Rc<Owner>`, not the `Owner` it points to. As long as there are
-//!     // other `Rc<Owner>` pointing at the same `Owner`, it will remain
+//!     // single `Rc<Owner>`, not the `Owner` allocation it points to. As long as there are
+//!     // other `Rc<Owner>` pointing at the same `Owner` allocation, it will remain
 //!     // allocated. The field projection `gadget1.owner.name` works because
 //!     // `Rc<Owner>` automatically dereferences to `Owner`.
 //!     println!("Gadget {} owned by {}", gadget1.id, gadget1.owner.name);
@@ -365,7 +368,7 @@ impl<T> Rc<T> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
     }
 
-    /// Returns the contained value, if the `Rc` has exactly one strong reference.
+    /// Returns the inner value, if the `Rc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`][result] is returned with the same `Rc` that was
     /// passed in.
@@ -679,7 +682,7 @@ impl<T: ?Sized> Rc<T> {
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]
-    /// the inner value when it's shared.
+    /// the inner value when there are other pointers.
     ///
     /// [weak]: struct.Weak.html
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
@@ -1551,12 +1554,13 @@ impl<'a, T: 'a + Clone> RcFromIter<&'a T, slice::Iter<'a, T>> for Rc<[T]> {
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
 /// prevent the value stored in the allocation from being dropped, and `Weak` itself makes no
-/// guarantees about the value still being present and may return [`None`]
-/// when [`upgrade`]d.
+/// guarantees about the value still being present. Thus it may return [`None`]
+/// when [`upgrade`]d. Note however that a `Weak` reference *does* prevent the allocation
+/// itself (the backing store) from being deallocated.
 ///
 /// A `Weak` pointer is useful for keeping a temporary reference to the allocation
-/// managed by [`Rc`] without extending its lifetime. It is also used to prevent
-/// circular references between [`Rc`] pointers, since mutual owning references
+/// managed by [`Rc`] without preventing its inner value from being dropped. It is also used to
+/// prevent circular references between [`Rc`] pointers, since mutual owning references
 /// would never allow either [`Rc`] to be dropped. For example, a tree could
 /// have strong [`Rc`] pointers from parent nodes to children, and `Weak`
 /// pointers from children back to their parents.
