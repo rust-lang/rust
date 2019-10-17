@@ -3,8 +3,8 @@
 //!
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
 //! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
-//! pointer to the same value in the heap. When the last [`Rc`] pointer to a
-//! given value is destroyed, the pointed-to value is also destroyed.
+//! pointer to the same allocation in the heap. When the last [`Rc`] pointer to a
+//! given allocation is destroyed, the pointed-to value is also destroyed.
 //!
 //! Shared references in Rust disallow mutation by default, and [`Rc`]
 //! is no exception: you cannot generally obtain a mutable reference to
@@ -21,7 +21,7 @@
 //!
 //! The [`downgrade`][downgrade] method can be used to create a non-owning
 //! [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
-//! to an [`Rc`], but this will return [`None`] if the value has
+//! to an [`Rc`], but this will return [`None`] if the allocation has
 //! already been dropped.
 //!
 //! A cycle between [`Rc`] pointers will never be deallocated. For this reason,
@@ -41,7 +41,7 @@
 //! Rc::downgrade(&my_rc);
 //! ```
 //!
-//! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the value may have
+//! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the allocation may have
 //! already been destroyed.
 //!
 //! # Cloning references
@@ -93,7 +93,7 @@
 //!     );
 //!
 //!     // Create `Gadget`s belonging to `gadget_owner`. Cloning the `Rc<Owner>`
-//!     // value gives us a new pointer to the same `Owner` value, incrementing
+//!     // gives us a new pointer to the same `Owner` allocation, incrementing
 //!     // the reference count in the process.
 //!     let gadget1 = Gadget {
 //!         id: 1,
@@ -110,7 +110,7 @@
 //!     // Despite dropping `gadget_owner`, we're still able to print out the name
 //!     // of the `Owner` of the `Gadget`s. This is because we've only dropped a
 //!     // single `Rc<Owner>`, not the `Owner` it points to. As long as there are
-//!     // other `Rc<Owner>` values pointing at the same `Owner`, it will remain
+//!     // other `Rc<Owner>` pointing at the same `Owner`, it will remain
 //!     // allocated. The field projection `gadget1.owner.name` works because
 //!     // `Rc<Owner>` automatically dereferences to `Owner`.
 //!     println!("Gadget {} owned by {}", gadget1.id, gadget1.owner.name);
@@ -124,9 +124,9 @@
 //!
 //! If our requirements change, and we also need to be able to traverse from
 //! `Owner` to `Gadget`, we will run into problems. An [`Rc`] pointer from `Owner`
-//! to `Gadget` introduces a cycle between the values. This means that their
-//! reference counts can never reach 0, and the values will remain allocated
-//! forever: a memory leak. In order to get around this, we can use [`Weak`]
+//! to `Gadget` introduces a cycle. This means that their
+//! reference counts can never reach 0, and the allocation will never be destroyed:
+//! a memory leak. In order to get around this, we can use [`Weak`]
 //! pointers.
 //!
 //! Rust actually makes it somewhat difficult to produce this loop in the first
@@ -193,10 +193,10 @@
 //!     for gadget_weak in gadget_owner.gadgets.borrow().iter() {
 //!
 //!         // `gadget_weak` is a `Weak<Gadget>`. Since `Weak` pointers can't
-//!         // guarantee the value is still allocated, we need to call
+//!         // guarantee the allocation still exists, we need to call
 //!         // `upgrade`, which returns an `Option<Rc<Gadget>>`.
 //!         //
-//!         // In this case we know the value still exists, so we simply
+//!         // In this case we know the allocation still exists, so we simply
 //!         // `unwrap` the `Option`. In a more complicated program, you might
 //!         // need graceful error handling for a `None` result.
 //!
@@ -604,7 +604,7 @@ impl<T: ?Sized> Rc<T> {
         unsafe { NonNull::new_unchecked(Rc::into_raw(this) as *mut _) }
     }
 
-    /// Creates a new [`Weak`][weak] pointer to this value.
+    /// Creates a new [`Weak`][weak] pointer to this allocation.
     ///
     /// [weak]: struct.Weak.html
     ///
@@ -625,7 +625,7 @@ impl<T: ?Sized> Rc<T> {
         Weak { ptr: this.ptr }
     }
 
-    /// Gets the number of [`Weak`][weak] pointers to this value.
+    /// Gets the number of [`Weak`][weak] pointers to this allocation.
     ///
     /// [weak]: struct.Weak.html
     ///
@@ -645,7 +645,7 @@ impl<T: ?Sized> Rc<T> {
         this.weak() - 1
     }
 
-    /// Gets the number of strong (`Rc`) pointers to this value.
+    /// Gets the number of strong (`Rc`) pointers to this allocation.
     ///
     /// # Examples
     ///
@@ -664,7 +664,7 @@ impl<T: ?Sized> Rc<T> {
     }
 
     /// Returns `true` if there are no other `Rc` or [`Weak`][weak] pointers to
-    /// this inner value.
+    /// this allocation.
     ///
     /// [weak]: struct.Weak.html
     #[inline]
@@ -672,8 +672,8 @@ impl<T: ?Sized> Rc<T> {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 
-    /// Returns a mutable reference to the inner value, if there are
-    /// no other `Rc` or [`Weak`][weak] pointers to the same value.
+    /// Returns a mutable reference into the given `Rc`, if there are
+    /// no other `Rc` or [`Weak`][weak] pointers to the same allocation.
     ///
     /// Returns [`None`] otherwise, because it is not safe to
     /// mutate a shared value.
@@ -710,7 +710,7 @@ impl<T: ?Sized> Rc<T> {
         }
     }
 
-    /// Returns a mutable reference to the inner value,
+    /// Returns a mutable reference into the given `Rc`,
     /// without any check.
     ///
     /// See also [`get_mut`], which is safe and does appropriate checks.
@@ -719,7 +719,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// Any other `Rc` or [`Weak`] pointers to the same value must not be dereferenced
+    /// Any other `Rc` or [`Weak`] pointers to the same allocation must not be dereferenced
     /// for the duration of the returned borrow.
     /// This is trivially the case if no such pointers exist,
     /// for example immediately after `Rc::new`.
@@ -745,8 +745,8 @@ impl<T: ?Sized> Rc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns `true` if the two `Rc`s point to the same value (not
-    /// just values that compare as equal).
+    /// Returns `true` if the two `Rc`s point to the same allocation
+    /// (in a vein similar to [`ptr::eq`]).
     ///
     /// # Examples
     ///
@@ -760,6 +760,8 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::ptr_eq(&five, &same_five));
     /// assert!(!Rc::ptr_eq(&five, &other_five));
     /// ```
+    ///
+    /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
@@ -768,12 +770,12 @@ impl<T: ?Sized> Rc<T> {
 impl<T: Clone> Rc<T> {
     /// Makes a mutable reference into the given `Rc`.
     ///
-    /// If there are other `Rc` pointers to the same value, then `make_mut` will
-    /// [`clone`] the inner value to ensure unique ownership.  This is also
+    /// If there are other `Rc` pointers to the same allocation, then `make_mut` will
+    /// [`clone`] the inner value to a new allocation to ensure unique ownership.  This is also
     /// referred to as clone-on-write.
     ///
-    /// If there are no other `Rc` pointers to this value, then [`Weak`]
-    /// pointers to this value will be disassociated.
+    /// If there are no other `Rc` pointers to this allocation, then [`Weak`]
+    /// pointers to this allocation will be disassociated.
     ///
     /// See also [`get_mut`], which will fail rather than cloning.
     ///
@@ -794,7 +796,7 @@ impl<T: Clone> Rc<T> {
     /// *Rc::make_mut(&mut data) += 1;        // Won't clone anything
     /// *Rc::make_mut(&mut other_data) *= 2;  // Won't clone anything
     ///
-    /// // Now `data` and `other_data` point to different values.
+    /// // Now `data` and `other_data` point to different allocations.
     /// assert_eq!(*data, 8);
     /// assert_eq!(*other_data, 12);
     /// ```
@@ -837,7 +839,7 @@ impl<T: Clone> Rc<T> {
         // returned is the *only* pointer that will ever be returned to T. Our
         // reference count is guaranteed to be 1 at this point, and we required
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
-        // reference to the inner value.
+        // reference to the allocation.
         unsafe {
             &mut this.ptr.as_mut().value
         }
@@ -1111,7 +1113,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
 impl<T: ?Sized> Clone for Rc<T> {
     /// Makes a clone of the `Rc` pointer.
     ///
-    /// This creates another pointer to the same inner value, increasing the
+    /// This creates another pointer to the same allocation, increasing the
     /// strong reference count.
     ///
     /// # Examples
@@ -1189,9 +1191,11 @@ impl<T: ?Sized + Eq> RcEqIdent<T> for Rc<T> {
 impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// Equality for two `Rc`s.
     ///
-    /// Two `Rc`s are equal if their inner values are equal.
+    /// Two `Rc`s are equal if their inner values are equal, even if they are
+    /// stored in different allocation.
     ///
-    /// If `T` also implements `Eq`, two `Rc`s that point to the same value are
+    /// If `T` also implements `Eq` (implying reflexivity of equality),
+    /// two `Rc`s that point to the same allocation are
     /// always equal.
     ///
     /// # Examples
@@ -1212,7 +1216,8 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     ///
     /// Two `Rc`s are unequal if their inner values are unequal.
     ///
-    /// If `T` also implements `Eq`, two `Rc`s that point to the same value are
+    /// If `T` also implements `Eq` (implying reflexivity of equality),
+    /// two `Rc`s that point to the same allocation are
     /// never unequal.
     ///
     /// # Examples
@@ -1541,16 +1546,16 @@ impl<'a, T: 'a + Clone> RcFromIter<&'a T, slice::Iter<'a, T>> for Rc<[T]> {
 }
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
-/// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
+/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an [`Option`]`<`[`Rc`]`<T>>`.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
-/// prevent the inner value from being dropped, and `Weak` itself makes no
+/// prevent the value stored in the allocation from being dropped, and `Weak` itself makes no
 /// guarantees about the value still being present and may return [`None`]
 /// when [`upgrade`]d.
 ///
-/// A `Weak` pointer is useful for keeping a temporary reference to the value
-/// within [`Rc`] without extending its lifetime. It is also used to prevent
+/// A `Weak` pointer is useful for keeping a temporary reference to the allocation
+/// managed by [`Rc`] without extending its lifetime. It is also used to prevent
 /// circular references between [`Rc`] pointers, since mutual owning references
 /// would never allow either [`Rc`] to be dropped. For example, a tree could
 /// have strong [`Rc`] pointers from parent nodes to children, and `Weak`
@@ -1751,9 +1756,9 @@ pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
 
 impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], extending
-    /// the lifetime of the value if successful.
+    /// the lifetime of the allocation if successful.
     ///
-    /// Returns [`None`] if the value has since been dropped.
+    /// Returns [`None`] if the value stored in the allocation has since been dropped.
     ///
     /// [`Rc`]: struct.Rc.html
     /// [`None`]: ../../std/option/enum.Option.html
@@ -1787,7 +1792,7 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Gets the number of strong (`Rc`) pointers pointing to this value.
+    /// Gets the number of strong (`Rc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
@@ -1801,11 +1806,11 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Gets the number of `Weak` pointers pointing to this value.
+    /// Gets the number of `Weak` pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return `None`. If
     /// not, the returned value is at least 1, since `self` still points to the
-    /// value.
+    /// allocation.
     ///
     /// [`Weak::new`]: #method.new
     #[unstable(feature = "weak_counts", issue = "57977")]
@@ -1830,14 +1835,14 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same value (not just
-    /// values that compare as equal), or if both don't point to any value
+    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
+    /// [`ptr::eq`]), or if both don't point to any allocation
     /// (because they were created with `Weak::new()`).
     ///
     /// # Notes
     ///
     /// Since this compares pointers it means that `Weak::new()` will equal each
-    /// other, even though they don't point to any value.
+    /// other, even though they don't point to any allocation.
     ///
     /// # Examples
     ///
@@ -1869,6 +1874,8 @@ impl<T: ?Sized> Weak<T> {
     /// let third = Rc::downgrade(&third_rc);
     /// assert!(!first.ptr_eq(&third));
     /// ```
+    ///
+    /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
     #[inline]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
@@ -1918,7 +1925,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
-    /// Makes a clone of the `Weak` pointer that points to the same value.
+    /// Makes a clone of the `Weak` pointer that points to the same allocation.
     ///
     /// # Examples
     ///
