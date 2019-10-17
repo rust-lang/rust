@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             fh.low
         });
 
-        this.consume_result(fd)
+        this.set_last_error_from_io_result(fd)
     }
 
     fn fcntl(
@@ -144,7 +144,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         this.remove_handle_and(fd, |handle, this| {
-            this.consume_result(handle.file.sync_all().map(|_| 0i32))
+            this.set_last_error_from_io_result(handle.file.sync_all().map(|_| 0i32))
         })
     }
 
@@ -177,7 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             });
             // Reinsert the file handle
             this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
-            this.consume_result(bytes?.map(|bytes| bytes as i64))
+            this.set_last_error_from_io_result(bytes?.map(|bytes| bytes as i64))
         })
     }
 
@@ -206,7 +206,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
             });
             this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
-            this.consume_result(bytes?)
+            this.set_last_error_from_io_result(bytes?)
         })
     }
 
@@ -223,7 +223,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let result = remove_file(path).map(|_| 0);
 
-        this.consume_result(result)
+        this.set_last_error_from_io_result(result)
     }
 
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
@@ -269,25 +269,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ebadf = this.eval_libc("EBADF")?;
             this.set_last_error(ebadf)?;
             Ok((-1).into())
-        }
-    }
-
-    /// Helper function that consumes an `std::io::Result<T>` and returns an
-    /// `InterpResult<'tcx,T>::Ok` instead. It is expected that the result can be converted to an
-    /// OS error using `std::io::Error::raw_os_error`.
-    ///
-    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
-    fn consume_result<T: From<i32>>(
-        &mut self,
-        result: std::io::Result<T>,
-    ) -> InterpResult<'tcx, T> {
-        match result {
-            Ok(ok) => Ok(ok),
-            Err(e) => {
-                self.eval_context_mut().set_last_error_from_io_error(e)?;
-                Ok((-1).into())
-            }
         }
     }
 }

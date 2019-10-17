@@ -370,4 +370,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Size::from_bits(32),
         ))
     }
+
+    /// Helper function that consumes an `std::io::Result<T>` and returns an
+    /// `InterpResult<'tcx,T>::Ok` instead. It is expected that the result can be converted to an
+    /// OS error using `std::io::Error::raw_os_error`.
+    ///
+    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
+    /// functions return different integer types (like `read`, that returns an `i64`)
+    fn set_last_error_from_io_result<T: From<i32>>(
+        &mut self,
+        result: std::io::Result<T>,
+    ) -> InterpResult<'tcx, T> {
+        match result {
+            Ok(ok) => Ok(ok),
+            Err(e) => {
+                self.eval_context_mut().set_last_error_from_io_error(e)?;
+                Ok((-1).into())
+            }
+        }
+    }
 }
