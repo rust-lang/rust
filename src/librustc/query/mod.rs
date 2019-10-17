@@ -231,6 +231,12 @@ rustc_queries! {
             cycle_delay_bug
         }
 
+        query trivial_dropck_outlives(ty: Ty<'tcx>) -> bool {
+            anon
+            no_force
+            desc { "checking if `{:?}` has trivial dropck", ty }
+        }
+
         query adt_dtorck_constraint(
             _: DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution> {}

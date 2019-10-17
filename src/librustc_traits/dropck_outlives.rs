@@ -80,22 +80,30 @@ fn dropck_outlives<'tcx>(
             let mut fulfill_cx = TraitEngine::new(infcx.tcx);
 
             let cause = ObligationCause::dummy();
+            let mut constraints = DtorckConstraint::empty();
             while let Some((ty, depth)) = ty_stack.pop() {
-                let DtorckConstraint {
-                    dtorck_types,
-                    outlives,
-                    overflows,
-                } = dtorck_constraint_for_ty(tcx, DUMMY_SP, for_ty, depth, ty)?;
+                info!("{} kinds, {} overflows, {} ty_stack",
+                    result.kinds.len(), result.overflows.len(), ty_stack.len());
+                dtorck_constraint_for_ty(tcx, DUMMY_SP, for_ty, depth, ty, &mut constraints)?;
 
                 // "outlives" represent types/regions that may be touched
                 // by a destructor.
-                result.kinds.extend(outlives);
-                result.overflows.extend(overflows);
+                result.kinds.extend(constraints.outlives.drain(..));
+                result.overflows.extend(constraints.overflows.drain(..));
+
+                // If we have even one overflow, we should stop trying to evaluate further --
+                // chances are, the subsequent overflows for this evaluation won't provide useful
+                // information and will just decrease the speed at which we can emit these errors
+                // (since we'll be printing for just that much longer for the often enormous types
+                // that result here).
+                if result.overflows.len() >= 1 {
+                    break;
+                }
 
                 // dtorck types are "types that will get dropped but which
                 // do not themselves define a destructor", more or less. We have
                 // to push them onto the stack to be expanded.
-                for ty in dtorck_types {
+                for ty in constraints.dtorck_types.drain(..) {
                     match infcx.at(&cause, param_env).normalize(&ty) {
                         Ok(Normalized {
                             value: ty,
@@ -152,21 +160,23 @@ fn dtorck_constraint_for_ty<'tcx>(
     for_ty: Ty<'tcx>,
     depth: usize,
     ty: Ty<'tcx>,
-) -> Result<DtorckConstraint<'tcx>, NoSolution> {
+    constraints: &mut DtorckConstraint<'tcx>,
+) -> Result<(), NoSolution> {
     debug!(
         "dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})",
         span, for_ty, depth, ty
     );
 
     if depth >= *tcx.sess.recursion_limit.get() {
-        return Ok(DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![],
-            overflows: vec![ty],
-        });
+        constraints.overflows.push(ty);
+        return Ok(());
     }
 
-    let result = match ty.kind {
+    if tcx.trivial_dropck_outlives(ty) {
+        return Ok(());
+    }
+
+    match ty.kind {
         ty::Bool
         | ty::Char
         | ty::Int(_)
@@ -181,22 +191,20 @@ fn dtorck_constraint_for_ty<'tcx>(
         | ty::FnPtr(_)
         | ty::GeneratorWitness(..) => {
             // these types never have a destructor
-            Ok(DtorckConstraint::empty())
         }
 
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety)
+            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)?;
         }
 
-        ty::Tuple(tys) => tys.iter()
-            .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty.expect_ty()))
-            .collect(),
+        ty::Tuple(tys) => for ty in tys.iter() {
+            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty.expect_ty(), constraints)?;
+        },
 
-        ty::Closure(def_id, substs) => substs.as_closure()
-            .upvar_tys(def_id, tcx)
-            .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
-            .collect(),
+        ty::Closure(def_id, substs) => for ty in substs.as_closure().upvar_tys(def_id, tcx) {
+            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
+        }
 
         ty::Generator(def_id, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
@@ -222,17 +230,8 @@ fn dtorck_constraint_for_ty<'tcx>(
             // derived from lifetimes attached to the upvars, and we
             // *do* incorporate the upvars here.
 
-            let constraint = DtorckConstraint {
-                outlives: substs.as_generator().upvar_tys(def_id, tcx).map(|t| t.into()).collect(),
-                dtorck_types: vec![],
-                overflows: vec![],
-            };
-            debug!(
-                "dtorck_constraint: generator {:?} => {:?}",
-                def_id, constraint
-            );
-
-            Ok(constraint)
+            constraints.outlives.extend(substs.as_generator().upvar_tys(def_id, tcx)
+                .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }));
         }
 
         ty::Adt(def, substs) => {
@@ -241,41 +240,34 @@ fn dtorck_constraint_for_ty<'tcx>(
                 outlives,
                 overflows,
             } = tcx.at(span).adt_dtorck_constraint(def.did)?;
-            Ok(DtorckConstraint {
-                // FIXME: we can try to recursively `dtorck_constraint_on_ty`
-                // there, but that needs some way to handle cycles.
-                dtorck_types: dtorck_types.subst(tcx, substs),
-                outlives: outlives.subst(tcx, substs),
-                overflows: overflows.subst(tcx, substs),
-            })
+            // FIXME: we can try to recursively `dtorck_constraint_on_ty`
+            // there, but that needs some way to handle cycles.
+            constraints.dtorck_types.extend(dtorck_types.subst(tcx, substs));
+            constraints.outlives.extend(outlives.subst(tcx, substs));
+            constraints.overflows.extend(overflows.subst(tcx, substs));
         }
 
         // Objects must be alive in order for their destructor
         // to be called.
-        ty::Dynamic(..) => Ok(DtorckConstraint {
-            outlives: vec![ty.into()],
-            dtorck_types: vec![],
-            overflows: vec![],
-        }),
+        ty::Dynamic(..) => {
+            constraints.outlives.push(ty.into());
+        },
 
         // Types that can't be resolved. Pass them forward.
-        ty::Projection(..) | ty::Opaque(..) | ty::Param(..) => Ok(DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![ty],
-            overflows: vec![],
-        }),
+        ty::Projection(..) | ty::Opaque(..) | ty::Param(..) => {
+            constraints.dtorck_types.push(ty);
+        },
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.
-            Err(NoSolution)
+            return Err(NoSolution)
         }
-    };
+    }
 
-    debug!("dtorck_constraint_for_ty({:?}) = {:?}", ty, result);
-    result
+    Ok(())
 }
 
 /// Calculates the dtorck constraint for a type.
@@ -301,10 +293,11 @@ crate fn adt_dtorck_constraint(
         return Ok(result);
     }
 
-    let mut result = def.all_fields()
-        .map(|field| tcx.type_of(field.did))
-        .map(|fty| dtorck_constraint_for_ty(tcx, span, fty, 0, fty))
-        .collect::<Result<DtorckConstraint<'_>, NoSolution>>()?;
+    let mut result = DtorckConstraint::empty();
+    for field in def.all_fields() {
+        let fty = tcx.type_of(field.did);
+        dtorck_constraint_for_ty(tcx, span, fty, 0, fty, &mut result)?;
+    }
     result.outlives.extend(tcx.destructor_constraints(def));
     dedup_dtorck_constraint(&mut result);
 
