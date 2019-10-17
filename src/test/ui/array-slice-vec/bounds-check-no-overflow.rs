@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:index out of bounds
 
 use std::usize;

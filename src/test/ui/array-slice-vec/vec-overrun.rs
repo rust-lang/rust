@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:index out of bounds: the len is 1 but the index is 2
 
 
