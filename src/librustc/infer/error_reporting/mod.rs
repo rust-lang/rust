@@ -867,6 +867,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
+        debug!("cmp(t1={}, t2={})", t1, t2);
+
+        // helper functions
         fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             match (&a.kind, &b.kind) {
                 (a, b) if *a == *b => true,
@@ -902,6 +905,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             s.push_normal(ty.to_string());
         }
 
+        // process starts here
         match (&t1.kind, &t2.kind) {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
@@ -1120,6 +1124,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        debug!("note_type_err(diag={:?})", diag);
         let (expected_found, exp_found, is_simple_error) = match values {
             None => (None, None, false),
             Some(values) => {
@@ -1170,6 +1175,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
                 (_, false, _) => {
+                    debug!(
+                        "note_type_err: exp_found={:?}, expected={:?} found={:?}",
+                        exp_found, expected, found
+                    );
                     if let Some(exp_found) = exp_found {
                         self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
                     }
