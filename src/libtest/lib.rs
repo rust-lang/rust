@@ -46,8 +46,8 @@ pub mod test {
         test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk},
         time::{TestTimeOptions, TestExecTime},
         types::{
-            DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn,
-            TestName, TestType,
+            DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName,
+            TestDesc, TestDescAndFn, TestName, TestType,
         },
         assert_test_result, filter_tests, run_test, test_main, test_main_static,
     };
@@ -199,7 +199,11 @@ pub fn assert_test_result<T: Termination>(result: T) {
     );
 }
 
-pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut notify_about_test_event: F) -> io::Result<()>
+pub fn run_tests<F>(
+    opts: &TestOpts,
+    tests: Vec<TestDescAndFn>,
+    mut notify_about_test_event: F
+) -> io::Result<()>
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
@@ -325,7 +329,7 @@ where
                         _ => {
                             // We've got a result, stop the loop.
                             break;
-                        }            
+                        }
                     }
                 } else {
                     res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);

@@ -14,7 +14,12 @@ pub struct CompletedTest {
 }
 
 impl CompletedTest {
-    pub fn new(desc: TestDesc, result: TestResult, exec_time: Option<TestExecTime>, stdout: Vec<u8>) -> Self {
+    pub fn new(
+        desc: TestDesc,
+        result: TestResult,
+        exec_time: Option<TestExecTime>,
+        stdout: Vec<u8>
+    ) -> Self {
         Self {
             desc,
             result,

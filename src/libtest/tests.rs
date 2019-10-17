@@ -7,11 +7,12 @@ use crate::{
     time::{TimeThreshold, TestTimeOptions},
     formatters::PrettyFormatter,
     test::{
-        filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
+        filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap,
+        RunIgnored, RunStrategy, ShouldPanic, StaticTestName, TestDesc,
+        TestDescAndFn, TestOpts, TrIgnored, TrOk,
+        // FIXME (introduced by #65251)
         // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
         // TestType, TrFailedMsg, TrIgnored, TrOk,
-        ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts,
-        TrIgnored, TrOk,
     },
 };
 use std::sync::mpsc::channel;
@@ -104,7 +105,7 @@ pub fn ignored_tests_result_in_ignored() {
     assert!(result == TrIgnored);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic() {
@@ -127,7 +128,7 @@ fn test_should_panic() {
     assert!(result == TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_good_message() {
@@ -150,7 +151,7 @@ fn test_should_panic_good_message() {
     assert!(result == TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_bad_message() {
@@ -176,7 +177,7 @@ fn test_should_panic_bad_message() {
     assert!(result == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_but_succeeds() {

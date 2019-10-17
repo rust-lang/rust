@@ -92,7 +92,8 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()> {
-        let stdout = if (state.options.display_output || *result != TestResult::TrOk) && stdout.len() > 0 {
+        let display_stdout = state.options.display_output || *result != TestResult::TrOk;
+        let stdout = if display_stdout && stdout.len() > 0 {
             Some(String::from_utf8_lossy(stdout))
         } else {
             None

@@ -1,4 +1,3 @@
-
 use std::any::Any;
 
 use super::bench::BenchSamples;
@@ -50,11 +49,15 @@ pub fn calc_result<'a>(
                 if desc.allow_fail {
                     TestResult::TrAllowedFail
                 } else {
-                    TestResult::TrFailedMsg(format!("panic did not include expected string '{}'", msg))
+                    TestResult::TrFailedMsg(
+                        format!("panic did not include expected string '{}'", msg)
+                    )
                 }
             }
         }
-        (&ShouldPanic::Yes, Ok(())) => TestResult::TrFailedMsg("test did not panic as expected".to_string()),
+        (&ShouldPanic::Yes, Ok(())) => {
+            TestResult::TrFailedMsg("test did not panic as expected".to_string())
+        }
         _ if desc.allow_fail => TestResult::TrAllowedFail,
         _ => TestResult::TrFailed,
     };

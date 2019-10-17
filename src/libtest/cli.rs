@@ -329,7 +329,11 @@ fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
     Ok(test_threads)
 }
 
-fn get_format(matches: &getopts::Matches, quiet: bool, allow_unstable: bool) -> OptPartRes<OutputFormat> {
+fn get_format(
+    matches: &getopts::Matches,
+    quiet: bool,
+    allow_unstable: bool
+) -> OptPartRes<OutputFormat> {
     let format = match matches.opt_str("format").as_ref().map(|s| &**s) {
         None if quiet => OutputFormat::Terse,
         Some("pretty") | None => OutputFormat::Pretty,

@@ -2,7 +2,7 @@
 //! execution.
 //! Two main purposes of this module:
 //! - Check whether test is timed out.
-//! - Provide helpers for `report-time` and `measure-time` options. 
+//! - Provide helpers for `report-time` and `measure-time` options.
 
 use std::time::{Duration, Instant};
 use std::str::FromStr;
@@ -55,7 +55,7 @@ pub mod time_constants {
 }
 
 /// Returns an `Instance` object denoting when the test should be considered
-/// timed out. 
+/// timed out.
 pub fn get_default_test_timeout() -> Instant {
     Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S)
 }
