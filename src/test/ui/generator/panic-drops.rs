@@ -1,6 +1,6 @@
 // run-pass
 
-// ignore-wasm32-bare compiled as panic=abort by default
+// ignore-emscripten compiled with panic=abort by default
 
 #![feature(generators, generator_trait)]
 

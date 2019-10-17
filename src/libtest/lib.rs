@@ -1735,9 +1735,9 @@ pub fn run_test(
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
-    let ignore_because_no_process_support = cfg!(target_arch = "wasm32")
-        && !cfg!(target_os = "emscripten")
-        && desc.should_panic != ShouldPanic::No;
+    // FIXME: Re-enable emscripten once it can catch panics again
+    let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
+        && (cfg!(target_arch = "wasm32") || cfg!(target_os = "emscripten"));
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
         monitor_ch.send((desc, TrIgnored, None, Vec::new())).unwrap();

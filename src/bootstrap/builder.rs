@@ -980,6 +980,7 @@ impl<'a> Builder<'a> {
                 Some("-Wl,-rpath,@loader_path/../lib")
             } else if !target.contains("windows") &&
                       !target.contains("wasm32") &&
+                      !target.contains("emscripten") &&
                       !target.contains("fuchsia") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {

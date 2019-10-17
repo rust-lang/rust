@@ -2,7 +2,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 
-// ignore-wasm32-bare compiled with panic=abort by default
+// ignore-emscripten compiled with panic=abort by default
 
 #![feature(generators, generator_trait, untagged_unions)]
 #![feature(slice_patterns)]

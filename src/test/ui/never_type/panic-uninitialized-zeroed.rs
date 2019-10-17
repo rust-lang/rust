@@ -1,5 +1,5 @@
 // run-pass
-// ignore-wasm32-bare always compiled as panic=abort right now and this requires unwinding
+// ignore-emscripten compiled with panic=abort by default
 // This test checks that instantiating an uninhabited type via `mem::{uninitialized,zeroed}` results
 // in a runtime panic.
 

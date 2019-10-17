@@ -4,7 +4,7 @@
 // What we don't want to see is the wrong multiple of 1024 (the size of `Big`)
 // being reflected in the size.
 
-// ignore-wasm32-bare (sizes don't match)
+// ignore-emscripten (sizes don't match)
 // run-pass
 
 // edition:2018

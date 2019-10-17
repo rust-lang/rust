@@ -1,3 +1,4 @@
+// ignore-emscripten default visibility is hidden
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
