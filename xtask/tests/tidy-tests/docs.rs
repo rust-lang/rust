@@ -5,7 +5,7 @@ use std::path::Path;
 
 use walkdir::{DirEntry, WalkDir};
 
-use ra_tools::project_root;
+use xtask::project_root;
 
 fn is_exclude_dir(p: &Path) -> bool {
     let exclude_dirs = ["tests", "test_data"];

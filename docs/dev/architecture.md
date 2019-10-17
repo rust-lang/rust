@@ -71,7 +71,7 @@ Rust syntax tree structure and parser. See
   This is the thing that turns a flat list of events into a tree (see `EventProcessor`)
 - `ast` provides a type safe API on top of the raw `rowan` tree.
 - `grammar.ron` RON description of the grammar, which is used to
-  generate `syntax_kinds` and `ast` modules, using `cargo gen-syntax` command.
+  generate `syntax_kinds` and `ast` modules, using `cargo xtask codegen` command.
 - `algo`: generic tree algorithms, including `walk` for O(1) stack
   space tree traversal (this is cool).
 

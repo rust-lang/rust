@@ -2,7 +2,7 @@
 
 use std::process::Command;
 
-use ra_tools::{project_root, run, run_rustfmt, Overwrite, Result};
+use xtask::{project_root, run, run_rustfmt, Overwrite, Result};
 
 fn main() -> Result<()> {
     run_rustfmt(Overwrite)?;

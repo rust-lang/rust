@@ -1,4 +1,4 @@
 [alias]
 xtask = "run --package xtask --bin xtask --"
 
-install-ra = "run --package xtask -- install" # for backwards compat
+install-ra = "run --package xtask --bin xtask -- install" # for backwards compat

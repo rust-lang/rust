@@ -1,17 +1,17 @@
-use ra_tools::{gen_tests, generate_boilerplate, project_root, run_rustfmt, Verify};
 use walkdir::WalkDir;
+use xtask::{gen_tests, generate_boilerplate, project_root, run_rustfmt, Verify};
 
 #[test]
 fn generated_grammar_is_fresh() {
     if let Err(error) = generate_boilerplate(Verify) {
-        panic!("{}. Please update it by running `cargo gen-syntax`", error);
+        panic!("{}. Please update it by running `cargo xtask codegen`", error);
     }
 }
 
 #[test]
 fn generated_tests_are_fresh() {
     if let Err(error) = gen_tests(Verify) {
-        panic!("{}. Please update tests by running `cargo gen-tests`", error);
+        panic!("{}. Please update tests by running `cargo xtask gen-tests`", error);
     }
 }
 
