@@ -43,9 +43,9 @@ use rustc_errors::Applicability;
 use smallvec::SmallVec;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::ext::hygiene::ExpnKind;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
+use syntax_expand::hygiene::ExpnKind;
 
 use crate::consts::{constant, Constant};
 use crate::reexport::*;
