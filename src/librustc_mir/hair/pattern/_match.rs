@@ -367,6 +367,11 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     fn head<'a>(&'a self) -> &'p Pat<'tcx> {
         self.0[0]
     }
+
+    fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+        pat_constructors(cx.tcx, cx.param_env, self.head())
+    }
+
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
         self.0.iter().map(|p| *p)
     }
@@ -425,6 +430,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Iterate over the first component of each row
     fn heads<'a>(&'a self) -> impl Iterator<Item = &'a Pat<'tcx>> + Captures<'p> {
         self.0.iter().map(|r| r.head())
+    }
+
+    fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Vec<Constructor<'tcx>> {
+        self.0.iter().flat_map(|r| r.head_ctors(cx)).filter(|ctor| !ctor.is_wildcard()).collect()
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
@@ -1747,7 +1756,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", ty, v.head());
 
-    let v_constructors = pat_constructors(cx.tcx, cx.param_env, v.head());
+    let v_constructors = v.head_ctors(cx);
 
     if cx.is_non_exhaustive_variant(v.head())
         && !cx.is_local(ty)
@@ -1758,11 +1767,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         return Useful;
     }
 
-    let matrix_head_ctors: Vec<Constructor<'_>> = matrix
-        .heads()
-        .flat_map(|p| pat_constructors(cx.tcx, cx.param_env, p))
-        .filter(|ctor| !ctor.is_wildcard())
-        .collect();
+    let matrix_head_ctors = matrix.head_ctors(cx);
     debug!("matrix_head_ctors = {:#?}", matrix_head_ctors);
 
     v_constructors
