@@ -58,7 +58,7 @@ impl hir::debug::HirDebugHelper for RootDatabase {
         let source_root_id = self.file_source_root(file_id);
         let source_root_path = self.debug_data.root_paths.get(&source_root_id)?;
         let file_path = self.file_relative_path(file_id);
-        Some(format!("{}/{}", source_root_path, file_path.display()))
+        Some(format!("{}/{}", source_root_path, file_path))
     }
 }
 

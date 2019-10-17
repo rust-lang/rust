@@ -143,7 +143,7 @@ pub fn run(
                         );
                         bar.println(format!(
                             "{} {}:{}-{}:{}: Expected {}, got {}",
-                            path.display(),
+                            path,
                             start.line + 1,
                             start.col_utf16,
                             end.line + 1,
