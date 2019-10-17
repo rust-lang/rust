@@ -54,7 +54,9 @@ where
                     // recursive type
                     return tv.fallback_value();
                 }
-                if let Some(known_ty) = self.ctx.var_unification_table.probe_value(inner).known() {
+                if let Some(known_ty) =
+                    self.ctx.var_unification_table.inlined_probe_value(inner).known()
+                {
                     self.var_stack.push(inner);
                     let result = self.do_canonicalize_ty(known_ty.clone());
                     self.var_stack.pop();
