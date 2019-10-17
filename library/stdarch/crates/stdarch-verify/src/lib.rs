@@ -260,12 +260,7 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     if path.segments.len() != 1 {
         panic!("unsupported path that needs name resolution")
     }
-    match path
-        .segments
-        .first()
-        .expect("segment not found")
-        .arguments
-    {
+    match path.segments.first().expect("segment not found").arguments {
         syn::PathArguments::None => {}
         _ => panic!("unsupported path that has path arguments"),
     }
@@ -407,7 +402,10 @@ impl syn::parse::Parse for RustcArgsRequiredConst {
         let list =
             syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(&content)?;
         Ok(Self {
-            args: list.into_iter().map(|a| a.base10_parse::<usize>()).collect::<syn::Result<_>>()?,
+            args: list
+                .into_iter()
+                .map(|a| a.base10_parse::<usize>())
+                .collect::<syn::Result<_>>()?,
         })
     }
 }

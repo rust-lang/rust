@@ -147,7 +147,10 @@ pub fn assert_instr(
         }
     };
     // why? necessary now to get tests to work?
-    let tokens: TokenStream = tokens.to_string().parse().expect("cannot parse tokenstream");
+    let tokens: TokenStream = tokens
+        .to_string()
+        .parse()
+        .expect("cannot parse tokenstream");
 
     let tokens: TokenStream = quote! {
         #item
