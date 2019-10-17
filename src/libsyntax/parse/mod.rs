@@ -2,7 +2,7 @@
 
 use crate::ast;
 use crate::parse::parser::{Parser, emit_unclosed_delims};
-use crate::parse::token::{Nonterminal, TokenKind};
+use crate::parse::token::Nonterminal;
 use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
 use crate::sess::ParseSess;
@@ -24,12 +24,10 @@ mod tests;
 
 #[macro_use]
 pub mod parser;
-pub mod attr;
 pub mod lexer;
 pub mod token;
 
 crate mod classify;
-crate mod diagnostics;
 crate mod literal;
 crate mod unescape_error_reporting;
 
@@ -271,30 +269,6 @@ pub fn stream_to_parser_with_base_dir<'a>(
     base_dir: Directory<'a>,
 ) -> Parser<'a> {
     Parser::new(sess, stream, Some(base_dir), true, false, None)
-}
-
-/// A sequence separator.
-pub struct SeqSep {
-    /// The separator token.
-    pub sep: Option<TokenKind>,
-    /// `true` if a trailing separator is allowed.
-    pub trailing_sep_allowed: bool,
-}
-
-impl SeqSep {
-    pub fn trailing_allowed(t: TokenKind) -> SeqSep {
-        SeqSep {
-            sep: Some(t),
-            trailing_sep_allowed: true,
-        }
-    }
-
-    pub fn none() -> SeqSep {
-        SeqSep {
-            sep: None,
-            trailing_sep_allowed: false,
-        }
-    }
 }
 
 // NOTE(Centril): The following probably shouldn't be here but it acknowledges the

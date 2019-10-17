@@ -64,15 +64,15 @@ use syntax::ast;
 use syntax::ptr::P as AstP;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::base::SpecialDerives;
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::base::SpecialDerives;
 use syntax::print::pprust;
-use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Nonterminal, Token};
+use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::sess::ParseSess;
 use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::visit::{self, Visitor};
+use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;

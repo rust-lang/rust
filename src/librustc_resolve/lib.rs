@@ -35,18 +35,16 @@ use rustc::span_bug;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
-use syntax::ext::hygiene::{ExpnId, Transparency, SyntaxContext};
+use syntax_expand::hygiene::{ExpnId, Transparency, SyntaxContext};
+use syntax_expand::base::{SyntaxExtension, MacroKind, SpecialDerives};
+use syntax::{struct_span_err, unwrap_or};
+use syntax::attr;
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
-use syntax::ext::base::{SyntaxExtension, MacroKind, SpecialDerives};
+use syntax::ast::{ItemKind, Path, CRATE_NODE_ID, Crate};
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
-
-use syntax::visit::{self, Visitor};
-use syntax::attr;
-use syntax::ast::{CRATE_NODE_ID, Crate};
-use syntax::ast::{ItemKind, Path};
-use syntax::{struct_span_err, unwrap_or};
 use syntax::source_map::Spanned;
+use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{Applicability, DiagnosticBuilder};

@@ -6,7 +6,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 
 use syntax::ast::{self, Ident};
 use syntax::ast::{Expr, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span};

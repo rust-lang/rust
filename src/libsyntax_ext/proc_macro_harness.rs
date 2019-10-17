@@ -3,14 +3,14 @@ use std::mem;
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::ext::base::ExtCtxt;
-use syntax::ext::expand::{AstFragment, ExpansionConfig};
-use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
+use syntax_expand::base::{ExtCtxt, Resolver};
+use syntax_expand::expand::{AstFragment, ExpansionConfig};
+use syntax_expand::proc_macro::is_proc_macro_attr;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::AstPass;
 
@@ -46,7 +46,7 @@ struct CollectProcMacros<'a> {
 }
 
 pub fn inject(sess: &ParseSess,
-              resolver: &mut dyn (::syntax::ext::base::Resolver),
+              resolver: &mut dyn Resolver,
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
               has_proc_macro_decls: bool,

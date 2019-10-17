@@ -1,24 +1,26 @@
-use crate::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
-use crate::ast::{MacStmtStyle, StmtKind, ItemKind};
-use crate::attr::{self, HasAttrs};
-use crate::source_map::respan;
-use crate::config::StripUnconfigured;
-use crate::ext::base::*;
-use crate::ext::proc_macro::{collect_derives, MarkAttrs};
-use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
-use crate::ext::mbe::macro_rules::annotate_err_with_kind;
-use crate::ext::placeholders::{placeholder, PlaceholderExpander};
-use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
-use crate::mut_visit::*;
-use crate::parse::{DirectoryOwnership, PResult};
-use crate::parse::token;
-use crate::parse::parser::Parser;
-use crate::print::pprust;
-use crate::ptr::P;
-use crate::symbol::{sym, Symbol};
-use crate::tokenstream::{TokenStream, TokenTree};
-use crate::visit::Visitor;
-use crate::util::map_in_place::MapInPlace;
+use crate::base::*;
+use crate::proc_macro::{collect_derives, MarkAttrs};
+use crate::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
+use crate::mbe::macro_rules::annotate_err_with_kind;
+use crate::placeholders::{placeholder, PlaceholderExpander};
+
+use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
+use syntax::ast::{MacStmtStyle, StmtKind, ItemKind};
+use syntax::attr::{self, HasAttrs};
+use syntax::source_map::respan;
+use syntax::configure;
+use syntax::config::StripUnconfigured;
+use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
+use syntax::mut_visit::*;
+use syntax::parse::{DirectoryOwnership, PResult};
+use syntax::parse::token;
+use syntax::parse::parser::Parser;
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::symbol::{sym, Symbol};
+use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::visit::Visitor;
+use syntax::util::map_in_place::MapInPlace;
 
 use errors::{Applicability, FatalError};
 use smallvec::{smallvec, SmallVec};
@@ -116,8 +118,8 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a> MacResult for crate::ext::mbe::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<crate::ext::mbe::macro_rules::ParserAnyMacro<'a>>)
+        impl<'a> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a> {
+            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a>>)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
@@ -752,9 +754,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         span: Span,
     ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(toks);
-        match parser.parse_ast_fragment(kind, false) {
+        match parse_ast_fragment(&mut parser, kind, false) {
             Ok(fragment) => {
-                parser.ensure_complete_parse(path, kind.name(), span);
+                ensure_complete_parse(&mut parser, path, kind.name(), span);
                 fragment
             }
             Err(mut err) => {
@@ -768,100 +770,106 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 }
 
-impl<'a> Parser<'a> {
-    pub fn parse_ast_fragment(&mut self, kind: AstFragmentKind, macro_legacy_warnings: bool)
-                              -> PResult<'a, AstFragment> {
-        Ok(match kind {
-            AstFragmentKind::Items => {
-                let mut items = SmallVec::new();
-                while let Some(item) = self.parse_item()? {
-                    items.push(item);
-                }
-                AstFragment::Items(items)
+pub fn parse_ast_fragment<'a>(
+    this: &mut Parser<'a>,
+    kind: AstFragmentKind,
+    macro_legacy_warnings: bool,
+) -> PResult<'a, AstFragment> {
+    Ok(match kind {
+        AstFragmentKind::Items => {
+            let mut items = SmallVec::new();
+            while let Some(item) = this.parse_item()? {
+                items.push(item);
             }
-            AstFragmentKind::TraitItems => {
-                let mut items = SmallVec::new();
-                while self.token != token::Eof {
-                    items.push(self.parse_trait_item(&mut false)?);
-                }
-                AstFragment::TraitItems(items)
-            }
-            AstFragmentKind::ImplItems => {
-                let mut items = SmallVec::new();
-                while self.token != token::Eof {
-                    items.push(self.parse_impl_item(&mut false)?);
-                }
-                AstFragment::ImplItems(items)
-            }
-            AstFragmentKind::ForeignItems => {
-                let mut items = SmallVec::new();
-                while self.token != token::Eof {
-                    items.push(self.parse_foreign_item(DUMMY_SP)?);
-                }
-                AstFragment::ForeignItems(items)
-            }
-            AstFragmentKind::Stmts => {
-                let mut stmts = SmallVec::new();
-                while self.token != token::Eof &&
-                      // won't make progress on a `}`
-                      self.token != token::CloseDelim(token::Brace) {
-                    if let Some(stmt) = self.parse_full_stmt(macro_legacy_warnings)? {
-                        stmts.push(stmt);
-                    }
-                }
-                AstFragment::Stmts(stmts)
-            }
-            AstFragmentKind::Expr => AstFragment::Expr(self.parse_expr()?),
-            AstFragmentKind::OptExpr => {
-                if self.token != token::Eof {
-                    AstFragment::OptExpr(Some(self.parse_expr()?))
-                } else {
-                    AstFragment::OptExpr(None)
-                }
-            },
-            AstFragmentKind::Ty => AstFragment::Ty(self.parse_ty()?),
-            AstFragmentKind::Pat => AstFragment::Pat(self.parse_pat(None)?),
-            AstFragmentKind::Arms
-            | AstFragmentKind::Fields
-            | AstFragmentKind::FieldPats
-            | AstFragmentKind::GenericParams
-            | AstFragmentKind::Params
-            | AstFragmentKind::StructFields
-            | AstFragmentKind::Variants
-                => panic!("unexpected AST fragment kind"),
-        })
-    }
-
-    pub fn ensure_complete_parse(&mut self, macro_path: &Path, kind_name: &str, span: Span) {
-        if self.token != token::Eof {
-            let msg = format!("macro expansion ignores token `{}` and any following",
-                              self.this_token_to_string());
-            // Avoid emitting backtrace info twice.
-            let def_site_span = self.token.span.with_ctxt(SyntaxContext::root());
-            let mut err = self.diagnostic().struct_span_err(def_site_span, &msg);
-            err.span_label(span, "caused by the macro expansion here");
-            let msg = format!(
-                "the usage of `{}!` is likely invalid in {} context",
-                pprust::path_to_string(&macro_path),
-                kind_name,
-            );
-            err.note(&msg);
-            let semi_span = self.sess.source_map().next_point(span);
-
-            let semi_full_span = semi_span.to(self.sess.source_map().next_point(semi_span));
-            match self.sess.source_map().span_to_snippet(semi_full_span) {
-                Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
-                    err.span_suggestion(
-                        semi_span,
-                        "you might be missing a semicolon here",
-                        ";".to_owned(),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                _ => {}
-            }
-            err.emit();
+            AstFragment::Items(items)
         }
+        AstFragmentKind::TraitItems => {
+            let mut items = SmallVec::new();
+            while this.token != token::Eof {
+                items.push(this.parse_trait_item(&mut false)?);
+            }
+            AstFragment::TraitItems(items)
+        }
+        AstFragmentKind::ImplItems => {
+            let mut items = SmallVec::new();
+            while this.token != token::Eof {
+                items.push(this.parse_impl_item(&mut false)?);
+            }
+            AstFragment::ImplItems(items)
+        }
+        AstFragmentKind::ForeignItems => {
+            let mut items = SmallVec::new();
+            while this.token != token::Eof {
+                items.push(this.parse_foreign_item(DUMMY_SP)?);
+            }
+            AstFragment::ForeignItems(items)
+        }
+        AstFragmentKind::Stmts => {
+            let mut stmts = SmallVec::new();
+            while this.token != token::Eof &&
+                    // won't make progress on a `}`
+                    this.token != token::CloseDelim(token::Brace) {
+                if let Some(stmt) = this.parse_full_stmt(macro_legacy_warnings)? {
+                    stmts.push(stmt);
+                }
+            }
+            AstFragment::Stmts(stmts)
+        }
+        AstFragmentKind::Expr => AstFragment::Expr(this.parse_expr()?),
+        AstFragmentKind::OptExpr => {
+            if this.token != token::Eof {
+                AstFragment::OptExpr(Some(this.parse_expr()?))
+            } else {
+                AstFragment::OptExpr(None)
+            }
+        },
+        AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
+        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat(None)?),
+        AstFragmentKind::Arms
+        | AstFragmentKind::Fields
+        | AstFragmentKind::FieldPats
+        | AstFragmentKind::GenericParams
+        | AstFragmentKind::Params
+        | AstFragmentKind::StructFields
+        | AstFragmentKind::Variants
+            => panic!("unexpected AST fragment kind"),
+    })
+}
+
+pub fn ensure_complete_parse<'a>(
+    this: &mut Parser<'a>,
+    macro_path: &Path,
+    kind_name: &str,
+    span: Span,
+) {
+    if this.token != token::Eof {
+        let msg = format!("macro expansion ignores token `{}` and any following",
+                            this.this_token_to_string());
+        // Avoid emitting backtrace info twice.
+        let def_site_span = this.token.span.with_ctxt(SyntaxContext::root());
+        let mut err = this.struct_span_err(def_site_span, &msg);
+        err.span_label(span, "caused by the macro expansion here");
+        let msg = format!(
+            "the usage of `{}!` is likely invalid in {} context",
+            pprust::path_to_string(macro_path),
+            kind_name,
+        );
+        err.note(&msg);
+        let semi_span = this.sess.source_map().next_point(span);
+
+        let semi_full_span = semi_span.to(this.sess.source_map().next_point(semi_span));
+        match this.sess.source_map().span_to_snippet(semi_full_span) {
+            Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
+                err.span_suggestion(
+                    semi_span,
+                    "you might be missing a semicolon here",
+                    ";".to_owned(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {}
+        }
+        err.emit();
     }
 }
 

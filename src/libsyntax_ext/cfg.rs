@@ -5,7 +5,7 @@
 use errors::DiagnosticBuilder;
 
 use syntax::ast;
-use syntax::ext::base::{self, *};
+use syntax_expand::base::{self, *};
 use syntax::attr;
 use syntax::tokenstream::TokenStream;
 use syntax::parse::token;

@@ -3,7 +3,7 @@ use std::ffi::CString;
 use crate::attributes;
 use libc::c_uint;
 use rustc::ty::TyCtxt;
-use syntax::ext::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use syntax_expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 use crate::ModuleLlvm;
 use crate::llvm::{self, False, True};

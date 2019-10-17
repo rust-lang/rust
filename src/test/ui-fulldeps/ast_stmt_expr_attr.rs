@@ -18,7 +18,7 @@ use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::parse::attr::*;
+use syntax::parse::parser::attr::*;
 use syntax::print::pprust;
 use std::fmt;
 

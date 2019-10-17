@@ -4,8 +4,8 @@ use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 
-use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
-use syntax::ext::base::MacroExpanderFn;
+use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
+use syntax_expand::base::MacroExpanderFn;
 use syntax::symbol::Symbol;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;

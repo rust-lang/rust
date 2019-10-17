@@ -56,7 +56,7 @@ macro_rules! gate_feature {
     };
 }
 
-crate fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
+pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 

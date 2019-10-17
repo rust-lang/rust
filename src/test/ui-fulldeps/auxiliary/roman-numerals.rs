@@ -10,13 +10,14 @@
 #![feature(plugin_registrar, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_expand;
 extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_driver;
 
 use syntax::parse::token::{self, Token};
 use syntax::tokenstream::{TokenTree, TokenStream};
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
+use syntax_expand::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax_pos::Span;
 use rustc_driver::plugin::Registry;
 

@@ -12,7 +12,7 @@ use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::source_map::respan;
-use syntax::ext::base::{self, *};
+use syntax_expand::base::{self, *};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
