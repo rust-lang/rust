@@ -21,13 +21,3 @@ git clone https://github.com/emscripten-core/emsdk.git /emsdk-portable
 cd /emsdk-portable
 hide_output ./emsdk install 1.38.46-upstream
 ./emsdk activate 1.38.46-upstream
-
-# Compile and cache libc
-source ./emsdk_env.sh
-echo "main(){}" > a.c
-HOME=/emsdk-portable/ emcc a.c
-rm -f a.*
-
-# Make emsdk usable by any user
-cp /root/.emscripten /emsdk-portable
-chmod a+rxw -R /emsdk-portable
