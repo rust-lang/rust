@@ -414,7 +414,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // recursive type
                     return tv.fallback_value();
                 }
-                if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
+                if let Some(known_ty) =
+                    self.var_unification_table.inlined_probe_value(inner).known()
+                {
                     // known_ty may contain other variables that are known by now
                     tv_stack.push(inner);
                     let result = self.resolve_ty_as_possible(tv_stack, known_ty.clone());
@@ -442,7 +444,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             match &*ty {
                 Ty::Infer(tv) => {
                     let inner = tv.to_inner();
-                    match self.var_unification_table.probe_value(inner).known() {
+                    match self.var_unification_table.inlined_probe_value(inner).known() {
                         Some(known_ty) => {
                             // The known_ty can't be a type var itself
                             ty = Cow::Owned(known_ty.clone());
@@ -490,7 +492,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // recursive type
                     return tv.fallback_value();
                 }
-                if let Some(known_ty) = self.var_unification_table.probe_value(inner).known() {
+                if let Some(known_ty) =
+                    self.var_unification_table.inlined_probe_value(inner).known()
+                {
                     // known_ty may contain other variables that are known by now
                     tv_stack.push(inner);
                     let result = self.resolve_ty_completely(tv_stack, known_ty.clone());

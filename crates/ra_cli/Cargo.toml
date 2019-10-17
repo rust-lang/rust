@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 pico-args = "0.3.0"
 flexi_logger = "0.14.0"
-indicatif = "0.11.0"
+indicatif = "0.12.0"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_ide_api = { path = "../ra_ide_api" }
