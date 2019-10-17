@@ -365,13 +365,13 @@ impl Options {
                                                 .iter()
                                                 .map(|s| (PathBuf::from(&s), s.to_owned())) {
                 if !theme_file.is_file() {
-                    diag.struct_err(&format!("invalid file: \"{}\"", theme_s))
-                        .help("option --theme arguments must all be files")
+                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
+                        .help("arguments to --theme must be files")
                         .emit();
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(&format!("invalid file: \"{}\": expected CSS file", theme_s))
+                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
                         .emit();
                     return Err(1);
                 }
