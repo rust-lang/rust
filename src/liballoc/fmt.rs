@@ -136,8 +136,12 @@
 //!
 //! Note that alignment may not be implemented by some types. In particular, it
 //! is not generally implemented for the `Debug` trait.  A good way to ensure
-//! padding is applied is to format your input, then use this resulting string
-//! to pad your output.
+//! padding is applied is to format your input, then pad this resulting string
+//! to obtain your output:
+//!
+//! ```
+//! println!("Hello {:^15}!", format!("{:?}", Some("hi"))); // => "Hello   Some("hi")   !"
+//! ```
 //!
 //! ## Sign/`#`/`0`
 //!
