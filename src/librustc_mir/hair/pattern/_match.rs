@@ -248,6 +248,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use arena::TypedArena;
 
 use smallvec::{smallvec, SmallVec};
+use std::cell::RefCell;
 use std::cmp::{self, max, min, Ordering};
 use std::convert::TryInto;
 use std::fmt;
@@ -339,6 +340,9 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
 #[derive(Debug, Clone)]
 pub struct PatStack<'p, 'tcx> {
     patterns: SmallVec<[&'p Pat<'tcx>; 2]>,
+    // This caches the invocation of `pat_constructors` on the head of the stack. We avoid mutating
+    // `self` to be sure we don't keep an invalid cache around.
+    head_ctors_cache: RefCell<Option<SmallVec<[Constructor<'tcx>; 1]>>>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
@@ -351,7 +355,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
-        PatStack { patterns: vec }
+        PatStack { patterns: vec, head_ctors_cache: RefCell::new(None) }
     }
 
     fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
@@ -371,7 +375,18 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn head_ctors(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        pat_constructors(cx.tcx, cx.param_env, self.head())
+        let new_ctors = pat_constructors(cx.tcx, cx.param_env, self.head());
+        let borrow = self.head_ctors_cache.borrow();
+        match *borrow {
+            Some(ref cached_ctors) => {
+                assert_eq!(cached_ctors, &new_ctors);
+            }
+            None => {
+                drop(borrow);
+                *self.head_ctors_cache.borrow_mut() = Some(new_ctors.clone());
+            }
+        }
+        new_ctors
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
@@ -392,9 +407,10 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
         let result = new_heads
             .into_iter()
-            .map(|mut new_head| {
-                new_head.patterns.extend_from_slice(&self.patterns[1..]);
-                new_head
+            .map(|new_head| {
+                let mut pats = new_head.patterns;
+                pats.extend_from_slice(&self.patterns[1..]);
+                PatStack::from_vec(pats)
             })
             .collect();
         debug!("specialize({:#?}, {:#?}) = {:#?}", self, constructor, result);
