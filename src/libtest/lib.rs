@@ -30,16 +30,12 @@
 #![feature(termination_trait_lib)]
 #![feature(test)]
 
-use term;
-
 pub use self::ColorConfig::*;
-use self::OutputLocation::*;
-use self::TestEvent::*;
+use self::event::TestEvent::*;
 pub use self::types::TestName::*;
 
 use std::borrow::Cow;
 use std::env;
-use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo};
@@ -79,22 +75,22 @@ use test_result::*;
 use types::*;
 use options::*;
 use cli::*;
+use event::*;
 
 use helpers::concurrency::get_concurrency;
-use helpers::metrics::MetricMap;
 
 mod formatters;
 pub mod stats;
 
 mod cli;
+mod console;
+mod event;
 mod helpers;
 mod time;
 mod types;
 mod options;
 mod bench;
 mod test_result;
-
-use crate::formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -111,12 +107,12 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
         opts.options = options;
     }
     if opts.list {
-        if let Err(e) = list_tests_console(&opts, tests) {
+        if let Err(e) = console::list_tests_console(&opts, tests) {
             eprintln!("error: io error when listing tests: {:?}", e);
             process::exit(101);
         }
     } else {
-        match run_tests_console(&opts, tests) {
+        match console::run_tests_console(&opts, tests) {
             Ok(true) => {}
             Ok(false) => process::exit(101),
             Err(e) => {
@@ -198,278 +194,6 @@ pub fn assert_test_result<T: Termination>(result: T) {
          which indicates a failure",
         code
     );
-}
-
-enum OutputLocation<T> {
-    Pretty(Box<term::StdoutTerminal>),
-    Raw(T),
-}
-
-impl<T: Write> Write for OutputLocation<T> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match *self {
-            Pretty(ref mut term) => term.write(buf),
-            Raw(ref mut stdout) => stdout.write(buf),
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            Pretty(ref mut term) => term.flush(),
-            Raw(ref mut stdout) => stdout.flush(),
-        }
-    }
-}
-
-struct ConsoleTestState {
-    log_out: Option<File>,
-    total: usize,
-    passed: usize,
-    failed: usize,
-    ignored: usize,
-    allowed_fail: usize,
-    filtered_out: usize,
-    measured: usize,
-    metrics: MetricMap,
-    failures: Vec<(TestDesc, Vec<u8>)>,
-    not_failures: Vec<(TestDesc, Vec<u8>)>,
-    time_failures: Vec<(TestDesc, Vec<u8>)>,
-    options: Options,
-}
-
-impl ConsoleTestState {
-    pub fn new(opts: &TestOpts) -> io::Result<ConsoleTestState> {
-        let log_out = match opts.logfile {
-            Some(ref path) => Some(File::create(path)?),
-            None => None,
-        };
-
-        Ok(ConsoleTestState {
-            log_out,
-            total: 0,
-            passed: 0,
-            failed: 0,
-            ignored: 0,
-            allowed_fail: 0,
-            filtered_out: 0,
-            measured: 0,
-            metrics: MetricMap::new(),
-            failures: Vec::new(),
-            not_failures: Vec::new(),
-            time_failures: Vec::new(),
-            options: opts.options,
-        })
-    }
-
-    pub fn write_log<F, S>(
-        &mut self,
-        msg: F,
-    ) -> io::Result<()>
-    where
-        S: AsRef<str>,
-        F: FnOnce() -> S,
-    {
-        match self.log_out {
-            None => Ok(()),
-            Some(ref mut o) => {
-                let msg = msg();
-                let msg = msg.as_ref();
-                o.write_all(msg.as_bytes())
-            },
-        }
-    }
-
-    pub fn write_log_result(&mut self,test: &TestDesc,
-        result: &TestResult,
-        exec_time: Option<&time::TestExecTime>,
-    ) -> io::Result<()> {
-        self.write_log(|| format!(
-            "{} {}",
-            match *result {
-                TrOk => "ok".to_owned(),
-                TrFailed => "failed".to_owned(),
-                TrFailedMsg(ref msg) => format!("failed: {}", msg),
-                TrIgnored => "ignored".to_owned(),
-                TrAllowedFail => "failed (allowed)".to_owned(),
-                TrBench(ref bs) => fmt_bench_samples(bs),
-                TrTimedFail => "failed (time limit exceeded)".to_owned(),
-            },
-            test.name,
-        ))?;
-        if let Some(exec_time) = exec_time {
-            self.write_log(|| format!(" <{}>", exec_time))?;
-        }
-        self.write_log(|| "\n")
-    }
-
-    fn current_test_count(&self) -> usize {
-        self.passed + self.failed + self.ignored + self.measured + self.allowed_fail
-    }
-}
-
-// List the tests to console, and optionally to logfile. Filters are honored.
-pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let mut output = match term::stdout() {
-        None => Raw(io::stdout()),
-        Some(t) => Pretty(t),
-    };
-
-    let quiet = opts.format == OutputFormat::Terse;
-    let mut st = ConsoleTestState::new(opts)?;
-
-    let mut ntest = 0;
-    let mut nbench = 0;
-
-    for test in filter_tests(&opts, tests) {
-        use crate::TestFn::*;
-
-        let TestDescAndFn {
-            desc: TestDesc { name, .. },
-            testfn,
-        } = test;
-
-        let fntype = match testfn {
-            StaticTestFn(..) | DynTestFn(..) => {
-                ntest += 1;
-                "test"
-            }
-            StaticBenchFn(..) | DynBenchFn(..) => {
-                nbench += 1;
-                "benchmark"
-            }
-        };
-
-        writeln!(output, "{}: {}", name, fntype)?;
-        st.write_log(|| format!("{} {}\n", fntype, name))?;
-    }
-
-    fn plural(count: u32, s: &str) -> String {
-        match count {
-            1 => format!("{} {}", 1, s),
-            n => format!("{} {}s", n, s),
-        }
-    }
-
-    if !quiet {
-        if ntest != 0 || nbench != 0 {
-            writeln!(output, "")?;
-        }
-
-        writeln!(
-            output,
-            "{}, {}",
-            plural(ntest, "test"),
-            plural(nbench, "benchmark")
-        )?;
-    }
-
-    Ok(())
-}
-
-// A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    fn callback(
-        event: &TestEvent,
-        st: &mut ConsoleTestState,
-        out: &mut dyn OutputFormatter,
-    ) -> io::Result<()> {
-        match (*event).clone() {
-            TeFiltered(ref filtered_tests) => {
-                st.total = filtered_tests.len();
-                out.write_run_start(filtered_tests.len())
-            }
-            TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
-            TeWait(ref test) => out.write_test_start(test),
-            TeTimeout(ref test) => out.write_timeout(test),
-            TeResult(test, result, exec_time, stdout) => {
-                st.write_log_result(&test, &result, exec_time.as_ref())?;
-                out.write_result(&test, &result, exec_time.as_ref(), &*stdout, &st)?;
-                match result {
-                    TrOk => {
-                        st.passed += 1;
-                        st.not_failures.push((test, stdout));
-                    }
-                    TrIgnored => st.ignored += 1,
-                    TrAllowedFail => st.allowed_fail += 1,
-                    TrBench(bs) => {
-                        st.metrics.insert_metric(
-                            test.name.as_slice(),
-                            bs.ns_iter_summ.median,
-                            bs.ns_iter_summ.max - bs.ns_iter_summ.min,
-                        );
-                        st.measured += 1
-                    }
-                    TrFailed => {
-                        st.failed += 1;
-                        st.failures.push((test, stdout));
-                    }
-                    TrFailedMsg(msg) => {
-                        st.failed += 1;
-                        let mut stdout = stdout;
-                        stdout.extend_from_slice(format!("note: {}", msg).as_bytes());
-                        st.failures.push((test, stdout));
-                    }
-                    TrTimedFail => {
-                        st.failed += 1;
-                        st.time_failures.push((test, stdout));
-                    }
-                }
-                Ok(())
-            }
-        }
-    }
-
-    let output = match term::stdout() {
-        None => Raw(io::stdout()),
-        Some(t) => Pretty(t),
-    };
-
-    let max_name_len = tests
-        .iter()
-        .max_by_key(|t| len_if_padded(*t))
-        .map(|t| t.desc.name.as_slice().len())
-        .unwrap_or(0);
-
-    let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
-
-    let mut out: Box<dyn OutputFormatter> = match opts.format {
-        OutputFormat::Pretty => Box::new(PrettyFormatter::new(
-            output,
-            opts.use_color(),
-            max_name_len,
-            is_multithreaded,
-            opts.time_options,
-        )),
-        OutputFormat::Terse => Box::new(TerseFormatter::new(
-            output,
-            opts.use_color(),
-            max_name_len,
-            is_multithreaded,
-        )),
-        OutputFormat::Json => Box::new(JsonFormatter::new(output)),
-    };
-    let mut st = ConsoleTestState::new(opts)?;
-    fn len_if_padded(t: &TestDescAndFn) -> usize {
-        match t.testfn.padding() {
-            PadNone => 0,
-            PadOnRight => t.desc.name.as_slice().len(),
-        }
-    }
-
-    run_tests(opts, tests, |x| callback(&x, &mut st, &mut *out))?;
-
-    assert!(st.current_test_count() == st.total);
-
-    return out.write_run_finish(&st);
-}
-
-#[derive(Clone)]
-pub enum TestEvent {
-    TeFiltered(Vec<TestDesc>),
-    TeWait(TestDesc),
-    TeResult(TestDesc, TestResult, Option<time::TestExecTime>, Vec<u8>),
-    TeTimeout(TestDesc),
-    TeFilteredOut(usize),
 }
 
 pub type MonitorMsg = (TestDesc, TestResult, Option<time::TestExecTime>, Vec<u8>);

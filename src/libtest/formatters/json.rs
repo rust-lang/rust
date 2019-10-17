@@ -1,4 +1,5 @@
 use super::*;
+use super::console::{ConsoleTestState, OutputLocation};
 
 pub(crate) struct JsonFormatter<T> {
     out: OutputLocation<T>,

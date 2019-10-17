@@ -1,4 +1,5 @@
 use super::*;
+use super::console::ConsoleTestState;
 
 mod pretty;
 mod json;

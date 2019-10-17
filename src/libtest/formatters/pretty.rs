@@ -1,4 +1,5 @@
 use super::*;
+use super::console::{ConsoleTestState, OutputLocation};
 
 pub(crate) struct PrettyFormatter<T> {
     out: OutputLocation<T>,
@@ -67,7 +68,7 @@ impl<T: Write> PrettyFormatter<T> {
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self.out {
-            Pretty(ref mut term) => {
+            OutputLocation::Pretty(ref mut term) => {
                 if self.use_color {
                     term.fg(color)?;
                 }
@@ -77,7 +78,7 @@ impl<T: Write> PrettyFormatter<T> {
                 }
                 term.flush()
             }
-            Raw(ref mut stdout) => {
+            OutputLocation::Raw(ref mut stdout) => {
                 stdout.write_all(word.as_bytes())?;
                 stdout.flush()
             }
