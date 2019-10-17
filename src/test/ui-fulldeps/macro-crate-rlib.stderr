@@ -4,11 +4,11 @@ error[E0457]: plugin `rlib_crate_test` only found in rlib format, but must be av
 LL | #![plugin(rlib_crate_test)]
    |           ^^^^^^^^^^^^^^^
 
-warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/macro-crate-rlib.rs:6:1
    |
 LL | #![plugin(rlib_crate_test)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 
