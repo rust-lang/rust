@@ -28,7 +28,6 @@ use crate::GitRepo;
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: Interned<String>,
-    pub emscripten: bool,
 }
 
 impl Step for Llvm {
@@ -40,46 +39,35 @@ impl Step for Llvm {
         run.path("src/llvm-project")
             .path("src/llvm-project/llvm")
             .path("src/llvm")
-            .path("src/llvm-emscripten")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let emscripten = run.path.ends_with("llvm-emscripten");
         run.builder.ensure(Llvm {
             target: run.target,
-            emscripten,
         });
     }
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let target = self.target;
-        let emscripten = self.emscripten;
 
         // If we're using a custom LLVM bail out here, but we can only use a
         // custom LLVM for the build triple.
-        if !self.emscripten {
-            if let Some(config) = builder.config.target_config.get(&target) {
-                if let Some(ref s) = config.llvm_config {
-                    check_llvm_version(builder, s);
-                    return s.to_path_buf()
-                }
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref s) = config.llvm_config {
+                check_llvm_version(builder, s);
+                return s.to_path_buf()
             }
         }
 
-        let (llvm_info, root, out_dir, llvm_config_ret_dir) = if emscripten {
-            let info = &builder.emscripten_llvm_info;
-            let dir = builder.emscripten_llvm_out(target);
-            let config_dir = dir.join("bin");
-            (info, "src/llvm-emscripten", dir, config_dir)
-        } else {
-            let info = &builder.in_tree_llvm_info;
-            let mut dir = builder.llvm_out(builder.config.build);
-            if !builder.config.build.contains("msvc") || builder.config.ninja {
-                dir.push("build");
-            }
-            (info, "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
-        };
+        let llvm_info = &builder.in_tree_llvm_info;
+        let root = "src/llvm-project/llvm";
+        let out_dir = builder.llvm_out(target);
+        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
+        if !builder.config.build.contains("msvc") || builder.config.ninja {
+            llvm_config_ret_dir.push("build");
+        }
+        llvm_config_ret_dir.push("bin");
 
         let build_llvm_config = llvm_config_ret_dir
             .join(exe("llvm-config", &*builder.config.build));
@@ -107,8 +95,7 @@ impl Step for Llvm {
             }
         }
 
-        let descriptor = if emscripten { "Emscripten " } else { "" };
-        builder.info(&format!("Building {}LLVM for {}", descriptor, target));
+        builder.info(&format!("Building LLVM for {}", target));
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -123,23 +110,15 @@ impl Step for Llvm {
 
         // NOTE: remember to also update `config.toml.example` when changing the
         // defaults!
-        let llvm_targets = if self.emscripten {
-            "JSBackend"
-        } else {
-            match builder.config.llvm_targets {
-                Some(ref s) => s,
-                None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
-                         Sparc;SystemZ;WebAssembly;X86",
-            }
+        let llvm_targets = match &builder.config.llvm_targets {
+            Some(s) => s,
+            None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                     Sparc;SystemZ;WebAssembly;X86",
         };
 
-        let llvm_exp_targets = if self.emscripten {
-            ""
-        } else {
-            match builder.config.llvm_experimental_targets {
-                Some(ref s) => s,
-                None => "",
-            }
+        let llvm_exp_targets = match builder.config.llvm_experimental_targets {
+            Some(ref s) => s,
+            None => "",
         };
 
         let assertions = if builder.config.llvm_assertions {"ON"} else {"OFF"};
@@ -163,25 +142,23 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
-        if builder.config.llvm_thin_lto && !emscripten {
+        if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
             if !target.contains("apple") {
                cfg.define("LLVM_ENABLE_LLD", "ON");
             }
         }
 
-        let want_lldb = builder.config.lldb_enabled && !self.emscripten;
-
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
-        if builder.llvm_link_tools_dynamically(target) && !emscripten {
+        if builder.llvm_link_tools_dynamically(target) {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.llvm_tools_enabled || want_lldb {
+        if builder.config.llvm_tools_enabled || builder.config.lldb_enabled {
             if !target.contains("windows") {
                 if target.contains("apple") {
                     cfg.define("CMAKE_EXE_LINKER_FLAGS", "-static-libstdc++");
@@ -209,7 +186,7 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
-        if want_lldb {
+        if builder.config.lldb_enabled {
             enabled_llvm_projects.push("clang");
             enabled_llvm_projects.push("lldb");
             // For the time being, disable code signing.
@@ -234,10 +211,9 @@ impl Step for Llvm {
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != builder.config.build && !emscripten {
+        if target != builder.config.build {
             builder.ensure(Llvm {
                 target: builder.config.build,
-                emscripten: false,
             });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
@@ -481,7 +457,6 @@ impl Step for Lld {
 
         let llvm_config = builder.ensure(Llvm {
             target: self.target,
-            emscripten: false,
         });
 
         let out_dir = builder.lld_out(target);
