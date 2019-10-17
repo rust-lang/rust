@@ -9,22 +9,38 @@ use crate::traits::{
     SelectionError,
 };
 use crate::traits::query::NoSolution;
+use crate::traits::DelayedGenerators;
 use crate::infer::InferCtxt;
 use crate::infer::canonical::{Canonical, OriginalQueryValues};
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, Predicate};
 use rustc_data_structures::fx::FxHashSet;
 
 pub type CanonicalGoal<'tcx> = Canonical<'tcx, InEnvironment<'tcx, ty::Predicate<'tcx>>>;
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxHashSet<InEnvironment<'tcx, PredicateObligation<'tcx>>>,
+    // See FulfillmentContext for more details about delayed generator
+    // witness obligations
+    delayed_generator_witnesses: DelayedGenerators<'tcx>,
+    has_delayed_generator_witnesses: bool
 }
 
 impl FulfillmentContext<'tcx> {
     crate fn new() -> Self {
         FulfillmentContext {
             obligations: FxHashSet::default(),
+            delayed_generator_witnesses: None,
+            has_delayed_generator_witnesses: false
         }
+    }
+
+    crate fn with_delayed_generator_witness() -> Self {
+        FulfillmentContext {
+            obligations: FxHashSet::default(),
+            delayed_generator_witnesses: Some(Vec::new()),
+            has_delayed_generator_witnesses: true
+        }
+
     }
 }
 
@@ -108,6 +124,24 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     goal: obligation.goal.predicate,
                 }, &mut orig_values);
 
+                // See FulfillmentContext for more details about this
+                if self.has_delayed_generator_witnesses {
+
+                    if let Predicate::Trait(p) = obligation.goal.predicate {
+                        if let ty::GeneratorWitness(..) = p.skip_binder().self_ty().kind {
+                            if infcx.tcx.trait_is_auto(p.def_id()) {
+                                debug!("delaying generator witness predicate {:?}",
+                                       obligation.goal.predicate);
+
+                                self.delayed_generator_witnesses.as_mut()
+                                    .expect("Already consumed generator witnesses!")
+                                    .push(obligation.goal);
+                                continue;
+                            }
+                        }
+                    }
+                }
+
                 match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {
                         if response.is_proven() {
@@ -164,5 +198,12 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.obligations.iter().map(|obligation| obligation.goal.clone()).collect()
+    }
+
+    fn delayed_generator_obligations(&mut self) -> Option<Vec<PredicateObligation<'tcx>>> {
+        if !self.has_delayed_generator_witnesses {
+            panic!("Tried to retrieve delayed generators in wrong mode!")
+        }
+        self.delayed_generator_witnesses.take()
     }
 }

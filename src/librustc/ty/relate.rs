@@ -417,7 +417,8 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             Ok(tcx.mk_generator(a_id, substs, movability))
         }
 
-        (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) =>
+        (&ty::GeneratorWitness(a_id, a_types), &ty::GeneratorWitness(b_id, b_types))
+            if a_id == b_id =>
         {
             // Wrap our types with a temporary GeneratorWitness struct
             // inside the binder so we can related them
@@ -425,7 +426,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             let b_types = b_types.map_bound(GeneratorWitness);
             // Then remove the GeneratorWitness for the result
             let types = relation.relate(&a_types, &b_types)?.map_bound(|witness| witness.0);
-            Ok(tcx.mk_generator_witness(types))
+            Ok(tcx.mk_generator_witness(a_id, types))
         }
 
         (&ty::Closure(a_id, a_substs),

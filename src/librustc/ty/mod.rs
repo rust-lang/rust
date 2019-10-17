@@ -810,7 +810,7 @@ pub struct ClosureUpvar<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum IntVarValue {
     IntType(ast::IntTy),
     UintType(ast::UintTy),
@@ -1632,7 +1632,8 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, RustcEncodable, RustcDecodable,
+         TypeFoldable)]
 pub struct ParamEnv<'tcx> {
     /// `Obligation`s that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
@@ -2006,7 +2007,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable, RustcEncodable, RustcDecodable)]
 pub enum AdtKind { Struct, Union, Enum }
 
 impl Into<DataTypeKind> for AdtKind {

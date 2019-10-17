@@ -2181,7 +2181,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         ty::Adt(ty::AdtDef { did, .. }, ..) if
                             self.tcx.is_diagnostic_item(sym::gen_future, *did) => {},
                         ty::Generator(did, ..) => generator = generator.or(Some(did)),
-                        ty::GeneratorWitness(_) | ty::Opaque(..) => {},
+                        ty::GeneratorWitness(..) | ty::Opaque(..) => {},
                         _ => return false,
                     }
 

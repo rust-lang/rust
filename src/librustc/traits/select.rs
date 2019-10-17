@@ -2177,6 +2177,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
+                ty::Generator(..)
+                    if self.tcx().lang_items().freeze_trait() == Some(def_id) =>
+                {
+                    // Generators are always Freeze - it's impossible to do anything
+                    // with them unless you have a mutable reference, so any interior
+                    // mutability of types 'inside' them is not observable from
+                    // outside the generator
+                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                }
 
                 _ => candidates.vec.push(AutoImplCandidate(def_id.clone())),
             }
@@ -2688,7 +2697,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
-    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+    fn constituent_types_for_ty(
+        &self,
+        t: Ty<'tcx>,
+    ) -> Vec<Ty<'tcx>> {
         match t.kind {
             ty::Uint(_)
             | ty::Int(_)
@@ -2744,11 +2756,69 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .collect()
             }
 
-            ty::GeneratorWitness(types) => {
-                // This is sound because no regions in the witness can refer to
-                // the binder outside the witness. So we'll effectivly reuse
-                // the implicit binder around the witness.
-                types.skip_binder().to_vec()
+            ty::GeneratorWitness(did, types) => {
+                // Note that we need to use optimized_mir here,
+                // in order to have the `StateTransform` pass run
+                let gen_mir = self.tcx().optimized_mir(did);
+                let gen_layout = gen_mir.generator_layout.as_ref()
+                    .expect("Missing generator layout!");
+
+                // We need to compare the types from the GeneratoWitness
+                // to the types from the MIR. Since the generator MIR (specifically
+                // the StateTransform pass) runs after lifetimes are erased, we must
+                // erase lifetime from our witness types in order to perform the comparsion
+                //
+                // First, we erase all of late-bound regions bound by
+                // the witness type.
+                let unbound_tys = self.tcx().erase_late_bound_regions(&types);
+
+                // However, we may still have other regions within the inner
+                // witness type (eg.. 'static'). Thus, we need to call
+                // 'erase_regions' on each of the inner witness types.
+                // These erased types can now be directly compared with
+                // types from the generator MIR
+                //
+                // The only case we need to worry about is where the witness
+                // contains two types that differ only in regions. Currently,
+                // the construction of a witness type causes all of its sub-types
+                // to have their regions replace with unique late-bound regions.
+                // Effectively, we are throwing away region information when
+                // we construct the generator witness. Any types that differ only
+                // in their late-bound regions are effectily 'the same', since
+                // we don't know anything about the relationships between those
+                // regions.
+                //
+                // In the future, we might keep track of more region information
+                // in the generator witness (e.g. recording `MyType<'static>`,
+                // or that `'a: 'b` in `OtherType<'a, 'b>`. Should this change be made,
+                // this code will still be sound - however, it could overapproximate
+                // which types are actually contained in the generator MIR, since
+                // types that differ only in regions become equivalent when regions are
+                // erased. This would have the effect of adding unecessary auto-trait
+                // bounds for generator types - e.g. we require `MyType: Send` for some
+                // type `MyType` when it would be safe to ignore `MyType`. This is
+                // perfectly safe, but could be relaxed to allow more valid code
+                // to type-check.
+                //
+                // Note that we need map erased types back to the orignal type.
+                // This allows to return the original type from the GeneratorWitness
+                //  in our Vec of consiitutent types - preservering the internal regions
+                let erased_types: FxHashMap<_, _> = self.tcx().erase_regions(&unbound_tys)
+                    .into_iter()
+                    .zip(types.skip_binder().into_iter())
+                    .collect();
+
+                let mut used_types = Vec::new();
+
+                for ty in &gen_layout.field_tys {
+                    if let Some(witness_ty) = erased_types.get(&self.tcx().erase_regions(ty)) {
+                        used_types.push(**witness_ty);
+                    }
+                }
+
+                debug!("Used witness types for witness {:?} are: '{:?}'", t, used_types);
+
+                used_types.to_vec()
             }
 
             // For `PhantomData<T>`, we pass `T`.
@@ -2856,7 +2926,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ))),
 
             AutoImplCandidate(trait_def_id) => {
-                let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
+                let data = self.confirm_auto_impl_candidate(obligation, trait_def_id)?;
                 Ok(VtableAutoImpl(data))
             }
 
@@ -2996,7 +3066,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         trait_def_id: DefId,
-    ) -> VtableAutoImplData<PredicateObligation<'tcx>> {
+    ) -> Result<VtableAutoImplData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(
             "confirm_auto_impl_candidate({:?}, {:?})",
             obligation, trait_def_id
@@ -3006,7 +3076,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let self_ty = self.infcx.shallow_resolve(inner.self_ty());
             self.constituent_types_for_ty(self_ty)
         });
-        self.vtable_auto_impl(obligation, trait_def_id, types)
+
+        Ok(self.vtable_auto_impl(obligation, trait_def_id, types))
     }
 
     /// See `confirm_auto_impl_candidate`.

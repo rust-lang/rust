@@ -17,12 +17,13 @@ use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::traits::query::{Fallible, NoSolution};
+use rustc::traits::{TraitEngine, TraitEngineExt};
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
-    TyCtxt, UserType,
-    UserTypeAnnotationIndex,
+    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, UserType,
+    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    UserTypeAnnotationIndex
 };
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::cast::CastTy;
@@ -92,8 +93,16 @@ mod relate_tys;
 /// are live at all points where that local variable may later be
 /// used.
 ///
-/// This phase of type-check ought to be infallible -- this is because
-/// the original, HIR-based type-check succeeded. So if any errors
+/// This phase of type-check is usually infallible -- this is because
+/// the original, HIR-based type-check succeeded.
+///
+/// The only exception to this is generators. We rely on analyis of the generated
+/// MIR to determine which types are live across a `yield` point. This means that
+/// we need to partially delay type-checking of generators until MIR is generated -
+/// that is, after the HIR-based type-check has run. As a result, we may need to report
+/// type-check errors from this phase.
+///
+/// So if any errors unrelated to generators
 /// occur here, we will get a `bug!` reported.
 ///
 /// # Parameters
@@ -158,6 +167,66 @@ pub(crate) fn type_check<'tcx>(
         all_facts,
         constraints: &mut constraints,
     };
+
+    // When processing the 'base' function for a given
+    // TypeckTable, resolve any delayed obligations for
+    // it.
+    let closure_base = infcx.tcx.closure_base_def_id(mir_def_id);
+    debug!("considering delayed generator for {:?}: {:?}", mir_def_id, closure_base);
+
+    let has_errors = infcx.tcx.sess.has_errors();
+
+    if closure_base == mir_def_id {
+        debug!("evaluating delayed generator obligations for {:?}",
+               mir_def_id);
+
+        // Enter a fresh InferCtxt, so that we can resolve
+        // the region obligations generated
+        // by selecting these predicates
+        infcx.tcx.infer_ctxt().enter(|infcx| {
+
+            let tables = infcx.tcx.typeck_tables_of(mir_def_id);
+
+            // We use a normal TraitEngine here - this is where
+            // we actually try to resolve generator obligations
+            let mut fulfill = TraitEngine::new(infcx.tcx);
+
+            debug!("registering delayed bounds for {:?}: {:?}",
+                   mir_def_id, tables.generator_obligations);
+            fulfill.register_predicate_obligations(
+                &infcx, tables.generator_obligations.clone()
+            );
+            if let Err(errs) = fulfill.select_all_or_error(&infcx) {
+                debug!("reporting MIR typeck errors: {:?}", errs);
+                infcx.report_fulfillment_errors(&errs, None, false);
+                infcx.tcx.sess.abort_if_errors()
+            } else {
+                infcx.resolve_regions_and_report_errors(
+                    mir_def_id,
+                    &Default::default(),
+                    &rustc::infer::outlives::env::OutlivesEnvironment::new(ty::ParamEnv::empty()),
+                    Default::default()
+                );
+            }
+        });
+    }
+
+    // Attempting to fulfill generator predicates can cause
+    // us to run `tcx.optimized_mir` for other generators,
+    // which may result in errors being registered.
+    // To avoid weird ICEs from being reported, we abort
+    // early if any errors were triggered during the
+    // processing of delayed generator obligations.
+    // Note that errors can be triggered even if we
+    // successfully select the generator predicates.
+    //
+    // We don't want to undcondtionally abort, as
+    // this would prevent us from displaying additional
+    // errors in the case where errors were triggered
+    // before we started doing type checking.
+    if !has_errors && infcx.tcx.sess.has_errors() {
+        infcx.tcx.sess.abort_if_errors()
+    }
 
     type_check_internal(
         infcx,

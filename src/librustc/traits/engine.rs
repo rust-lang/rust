@@ -55,6 +55,22 @@ pub trait TraitEngine<'tcx>: 'tcx {
     ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
+
+    /// Retrieves the list of delayed generator witness predicates
+    /// stored by this `TraitEngine`. This `TraitEngine` must have been
+    /// created by `TraitEngine::with_delayed_generator_witness` - otherwise,
+    /// this method will panic.
+    ///
+    /// Calling this method consumes the underling `Vec` - subsequent calls
+    /// will return `None`.
+    ///
+    /// This method *MUST* be called on a `TraitEngine` created by
+    /// `with_delayed_generator_witness` - if the `TraitEngine` is dropped
+    /// without this method being called, a panic will occur. This ensures
+    /// that the caller explicitly acknowledges these stored predicates -
+    /// failure to do so will result in unsound code being accepted by
+    /// the compiler.
+    fn delayed_generator_obligations(&mut self) -> Option<Vec<PredicateObligation<'tcx>>>;
 }
 
 pub trait TraitEngineExt<'tcx> {
@@ -84,5 +100,29 @@ impl dyn TraitEngine<'tcx> {
         } else {
             Box::new(FulfillmentContext::new())
         }
+    }
+
+    /// Creates a `TraitEngine` in a special 'delay generator witness' mode.
+    /// This imposes additional requirements for the caller in order to avoid
+    /// accepting unsound code, and should only be used by `FnCtxt`. All other
+    /// users of `TraitEngine` should use `TraitEngine::new`
+    ///
+    /// A `TraitEngine` returned by this constructor will not attempt
+    /// to resolve any `GeneratorWitness` predicates involving auto traits,
+    /// Specifically, predicates of the form:
+    ///
+    /// `<GeneratorWitness>: MyTrait` where `MyTrait` is an auto-trait
+    /// will be stored for later retrieval by `delayed_generator_obligations`.
+    /// The caller of this code *MUST* register these predicates with a
+    /// regular `TraitEngine` (created with `TraitEngine::new`) at some point.
+    /// Otherwise, these predicates will never be evaluated, resulting in
+    /// unsound programs being accepted by the compiler.
+    pub fn with_delayed_generator_witness(tcx: TyCtxt<'tcx>) -> Box<Self> {
+        if tcx.sess.opts.debugging_opts.chalk {
+            Box::new(ChalkFulfillmentContext::with_delayed_generator_witness())
+        } else {
+            Box::new(FulfillmentContext::with_delayed_generator_witness())
+        }
+
     }
 }

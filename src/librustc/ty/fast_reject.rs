@@ -90,7 +90,7 @@ pub fn simplify_type(
         ty::Generator(def_id, _, _) => {
             Some(GeneratorSimplifiedType(def_id))
         }
-        ty::GeneratorWitness(ref tys) => {
+        ty::GeneratorWitness(_, ref tys) => {
             Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
         }
         ty::Never => Some(NeverSimplifiedType),

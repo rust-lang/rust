@@ -96,7 +96,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::GeneratorWitness(ref ts) => {
+            &ty::GeneratorWitness(_, ref ts) => {
                 let mut computation = FlagComputation::new();
                 computation.add_tys(&ts.skip_binder()[..]);
                 self.add_bound_computation(&computation);

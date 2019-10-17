@@ -151,7 +151,7 @@ impl DefPathBasedNames<'tcx> {
             | ty::UnnormalizedProjection(..)
             | ty::Projection(..)
             | ty::Param(_)
-            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitness(..)
             | ty::Opaque(..) => {
                 if debug {
                     output.push_str(&format!("`{:?}`", t));

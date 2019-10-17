@@ -40,8 +40,10 @@ fn main() {
     assert_foo(gen); // ok
 
     // Disallow impls which relates lifetimes in the generator interior
-    let gen = || {
-        let a = A(&mut true, &mut true, No);
+    let gen = static || {
+        let first = &mut true;
+        let second = &mut true;
+        let a = A(first, second, No);
         yield;
         assert_foo(a);
     };

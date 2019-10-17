@@ -101,6 +101,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 pub fn resolve_interior<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     def_id: DefId,
+    gen_def_id: DefId,
     body_id: hir::BodyId,
     interior: Ty<'tcx>,
     kind: hir::GeneratorKind,
@@ -152,7 +153,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // Extract type components
     let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
 
-    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
+    let witness = fcx.tcx.mk_generator_witness(gen_def_id, ty::Binder::bind(type_list));
 
     debug!("types in generator after region replacement {:?}, span = {:?}",
             witness, body.value.span);

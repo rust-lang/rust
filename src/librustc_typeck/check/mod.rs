@@ -109,8 +109,9 @@ use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{
     self, AdtKind, CanonicalUserType, Ty, TyCtxt, Const, GenericParamDefKind,
-    ToPolyTraitRef, ToPredicate, RegionKind, UserType
+    ToPolyTraitRef, ToPredicate, RegionKind, UserType, Predicate
 };
+use rustc::traits::PredicateObligation;
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
@@ -156,6 +157,7 @@ use self::coercion::{CoerceMany, DynamicCoerceMany};
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::method::{MethodCallee, SelfSource};
 use self::TupleArgumentsFlag::*;
+
 
 /// The type of a local binding, including the revealed type for anon types.
 #[derive(Copy, Clone, Debug)]
@@ -223,7 +225,7 @@ pub struct Inherited<'a, 'tcx> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
+    deferred_generator_interiors: RefCell<Vec<(DefId, hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
     // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -247,6 +249,20 @@ pub struct Inherited<'a, 'tcx> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
 
     body_id: Option<hir::BodyId>,
+    delayed_generators: bool
+}
+
+impl<'a, 'tcx> Drop for Inherited<'a, 'tcx> {
+    fn drop(&mut self) {
+        if self.delayed_generators && !self.infcx.is_tainted_by_errors() {
+            // By the time Inherited is dropped, we should have already called
+            // .delayed_generator_obligations()
+            if let Some(generators) = self.fulfillment_cx.borrow_mut()
+                .delayed_generator_obligations() {
+                    panic!("Failed to consume generator obligations: {:?}", generators);
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
@@ -671,15 +687,30 @@ impl Inherited<'_, 'tcx> {
 impl<'tcx> InheritedBuilder<'tcx> {
     fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
+        F: for<'a> FnOnce(&mut Inherited<'a, 'tcx>) -> R,
     {
         let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
+        self.infcx.enter(|infcx| f(&mut Inherited::new(infcx, def_id)))
+    }
+
+    fn enter_delayed_generator<F, R>(&mut self, f: F) -> R
+    where
+        F: for<'a> FnOnce(&mut Inherited<'a, 'tcx>) -> R,
+    {
+        let def_id = self.def_id;
+        self.infcx.enter(|infcx| {
+            let mut inh = Inherited::new_delayed_generators(infcx, def_id);
+            f(&mut inh)
+        })
     }
 }
 
 impl Inherited<'a, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'tcx>, def_id: DefId) -> Self {
+    fn new_internal(
+        infcx: InferCtxt<'a, 'tcx>,
+        def_id: DefId,
+        delayed_generators: bool
+    ) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().as_local_hir_id(def_id);
         let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by(id));
@@ -691,12 +722,18 @@ impl Inherited<'a, 'tcx> {
             }))
         });
 
+        let engine = if delayed_generators {
+            TraitEngine::with_delayed_generator_witness(tcx)
+        } else {
+            TraitEngine::new(tcx)
+        };
+
         Inherited {
             tables: MaybeInProgressTables {
                 maybe_tables: infcx.in_progress_tables,
             },
             infcx,
-            fulfillment_cx: RefCell::new(TraitEngine::new(tcx)),
+            fulfillment_cx: RefCell::new(engine),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
@@ -706,8 +743,18 @@ impl Inherited<'a, 'tcx> {
             opaque_types_vars: RefCell::new(Default::default()),
             implicit_region_bound,
             body_id,
+            delayed_generators
         }
     }
+
+    fn new(infcx: InferCtxt<'a, 'tcx>, def_id: DefId) -> Self {
+        Self::new_internal(infcx, def_id, false)
+    }
+
+    fn new_delayed_generators(infcx: InferCtxt<'a, 'tcx>, def_id: DefId) -> Self {
+        Self::new_internal(infcx, def_id, true)
+    }
+
 
     fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
         debug!("register_predicate({:?})", obligation);
@@ -995,7 +1042,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         });
     let body = tcx.hir().body(body_id);
 
-    let tables = Inherited::build(tcx, def_id).enter(|inh| {
+    let tables = Inherited::build(tcx, def_id).enter_delayed_generator(|inh| {
         let param_env = tcx.param_env(def_id);
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
@@ -1118,6 +1165,8 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
 
         fcx.resolve_type_vars_in_body(body)
     });
+
+    debug!("table generator obligations: {:?}", tables.generator_obligations);
 
     // Consistency check our TypeckTables instance can hold all ItemLocalIds
     // it will need to hold.
@@ -1350,11 +1399,14 @@ fn check_fn<'a, 'tcx>(
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
     let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_generator, body.generator_kind) {
+        let gen_def_id = fcx.tcx.hir().local_def_id(fn_id);
         let interior = fcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::MiscVariable,
             span,
         });
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior, gen_kind));
+        fcx.deferred_generator_interiors.borrow_mut().push(
+            (gen_def_id, body.id(), interior, gen_kind)
+        );
         Some(GeneratorTypes {
             yield_ty: fcx.yield_ty.unwrap(),
             interior,
@@ -3233,9 +3285,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, interior, kind) in generators.drain(..) {
+        for (gen_def_id, body_id, interior, kind) in generators.drain(..) {
             self.select_obligations_where_possible(false, |_| {});
-            generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
+            generator_interior::resolve_interior(self, def_id, gen_def_id, body_id, interior, kind);
         }
     }
 
@@ -5427,6 +5479,99 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         contained_in_place
+    }
+
+    /// Processes the delayed generator witness obligations,
+    /// sanitizing them for inclusion into a `TypeckTables`.
+    ///
+    /// When we try to resolve a predicate of the form
+    /// `<GeneratorWitness>: AutoTrait`, we inspect the generator
+    /// MIR to determine which inner types are actually stored in the generator
+    /// (e.g. which types must implement `AutoTrait`). This allows us to
+    /// avoid creating spurious auto-trait bounds, making using
+    /// generators much more ergonomic for the user.
+    ///
+    /// However, when we actually generate these auto-trait predicates
+    /// (during `typeck_tables_of`), we are not in a position to actually
+    /// resolve them, since the MIR will not be generated until much
+    /// later in compilation. As a result, we delay the resolution
+    /// until we run MIR type-checking for the containing function
+    /// (i.e. the function in which the generator is defined).
+    ///
+    /// This involves 'transplating' a `PredicateObligation` from
+    /// one `InferCtxt` (the one used by `FnCtxt`) to a new `InferCtxt`
+    /// (the fresh one we create when we are ready to resolve the obligation).
+    /// Fortunately, the actual `TraitPredicate` can be freely
+    /// moved between different `InferCtxt`, as it contains no inference
+    /// variables. This is due to the fact that a `GeneratorWitness`.
+    /// is constructed such that it contains only late-bound regions
+    /// (bound by the `Binder` in the `GeneratorWitness). Auto traits
+    /// cannot have any generic parameters whatsoever, so this guarnatees
+    /// that the `TraitPredicate` will have no inference variables. As a result,
+    /// it is independent of the `InferCtxt` in which is was constructed,
+    /// and can be re-processed in a different `InferCtxt` without causing any issues.
+    ///
+    /// However, we still need to worry about the `ObligationCause` stored by the
+    /// `PredicateObligation`. An `ObligationCause` can (and usually does) contain
+    /// region inference variables. Fortunately, `ObligationCause`s are only used
+    /// when generating error messages. This means that we can safely erase all
+    /// region variables from the `PredicateObligation`, without affecting
+    /// anything other than the printing of error messages.
+    fn process_generators(&self) -> Vec<PredicateObligation<'tcx>> {
+        let mut obligations = self
+               .fulfillment_cx
+               .borrow_mut()
+               .delayed_generator_obligations()
+               .unwrap_or_default();
+
+        obligations = self.resolve_vars_if_possible(&obligations);
+
+        let mut delayed_obligations = Vec::new();
+
+        debug!("process_generators: {:?}", obligations);
+
+        for obligation in obligations {
+            let p = match obligation.predicate {
+                Predicate::Trait(p) => p,
+                _ => panic!("Unexpected obligation {:?}", obligation)
+            };
+
+            let self_ty = p.skip_binder().self_ty();
+            match self_ty.kind {
+                ty::GeneratorWitness(..) => {},
+                _ => panic!("Unexpected self type in obligation {:?}", obligation)
+            };
+
+            let trait_did = p.def_id();
+            if !self.tcx.trait_is_auto(trait_did) {
+                panic!("Predicate does not involve an auto trait: {:?}", obligation);
+            }
+
+            let mut erased_obligation = self.resolve_vars_if_possible(&obligation);
+
+            // Erase regions from cause - it is only used to display error messages
+            // if we end up failing to fulfill this obligation, so it's fine to
+            // lose region information
+            erased_obligation.cause = self.tcx.erase_regions(
+                &self.resolve_vars_if_possible(&&erased_obligation.cause)
+            );
+
+            if erased_obligation.needs_infer() {
+                panic!("Failed to resolve inference variables in obligation: {:?}",
+                       erased_obligation);
+            }
+
+            if erased_obligation.cause.needs_infer() {
+                panic!("Failed to resolve inference variables in cause: {:?}",
+                       erased_obligation.cause);
+            }
+
+            debug!("process_generators_inner: delaying auto-trait obligation {:?} \
+                   (original = {:?})", erased_obligation, obligation);
+            delayed_obligations.push(erased_obligation);
+
+        }
+        delayed_obligations
     }
 }
 

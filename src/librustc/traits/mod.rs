@@ -75,6 +75,9 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::SelectionError::*;
 pub use self::Vtable::*;
 
+pub type DelayedGenerators<'tcx> = Option<Vec<PredicateObligation<'tcx>>>;
+
+
 /// Whether to enable bug compatibility with issue #43355.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IntercrateMode {
@@ -101,9 +104,13 @@ pub enum TraitQueryMode {
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Obligation<'tcx, T> {
     /// The reason we have to prove this thing.
+    /// Note that this is *not* folded by the `TypeFoldable`
+    /// impl for `Obligation`. This is almost always the correct
+    /// behavior - an `ObligationCause` is only for generating error messages,
+    /// and should have no effect on type-checking or trait resolution.
     pub cause: ObligationCause<'tcx>,
 
     /// The environment in which we should prove this thing.
@@ -128,7 +135,7 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 static_assert_size!(PredicateObligation<'_>, 112);
 
 /// The reason why we incurred this obligation; used for error reporting.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, RustcEncodable, RustcDecodable)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -158,7 +165,13 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ObligationCause<'tcx> {
+        span, body_id, code
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
     MiscObligation,
@@ -290,7 +303,57 @@ pub struct AssocTypeBoundData {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(ObligationCauseCode<'_>, 32);
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ObligationCauseCode<'tcx> {
+        (ObligationCauseCode::MiscObligation),
+        (ObligationCauseCode::SliceOrArrayElem),
+        (ObligationCauseCode::TupleElem),
+        (ObligationCauseCode::ProjectionWf)(a),
+        (ObligationCauseCode::ItemObligation)(a),
+        (ObligationCauseCode::BindingObligation)(a, b),
+        (ObligationCauseCode::ReferenceOutlivesReferent)(a),
+        (ObligationCauseCode::ObjectTypeBound)(a, b),
+        (ObligationCauseCode::ObjectCastObligation)(a),
+        (ObligationCauseCode::Coercion){source, target},
+        (ObligationCauseCode::AssignmentLhsSized),
+        (ObligationCauseCode::TupleInitializerSized),
+        (ObligationCauseCode::StructInitializerSized),
+        (ObligationCauseCode::VariableType)(a),
+        (ObligationCauseCode::SizedArgumentType),
+        (ObligationCauseCode::SizedReturnType),
+        (ObligationCauseCode::SizedYieldType),
+        (ObligationCauseCode::RepeatVec),
+        (ObligationCauseCode::FieldSized){ adt_kind, last },
+        (ObligationCauseCode::ConstSized),
+        (ObligationCauseCode::SharedStatic),
+        (ObligationCauseCode::BuiltinDerivedObligation)(a),
+        (ObligationCauseCode::ImplDerivedObligation)(a),
+        (ObligationCauseCode::CompareImplMethodObligation){
+            item_name,
+            impl_item_def_id,
+            trait_item_def_id
+        },
+        (ObligationCauseCode::ExprAssignable),
+        (ObligationCauseCode::MatchExpressionArm)(a),
+        (ObligationCauseCode::MatchExpressionArmPattern){
+            span,
+            ty
+        },
+        (ObligationCauseCode::IfExpression)(a),
+        (ObligationCauseCode::IfExpressionWithNoElse),
+        (ObligationCauseCode::MainFunctionType),
+        (ObligationCauseCode::StartFunctionType),
+        (ObligationCauseCode::IntrinsicType),
+        (ObligationCauseCode::MethodReceiver),
+        (ObligationCauseCode::ReturnNoExpression),
+        (ObligationCauseCode::ReturnValue)(a),
+        (ObligationCauseCode::ReturnType),
+        (ObligationCauseCode::BlockTailExpression)(a),
+        (ObligationCauseCode::TrivialBound),
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, RustcEncodable, RustcDecodable)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_span: Span,
     pub source: hir::MatchSource,
@@ -299,14 +362,26 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub discrim_hir_id: hir::HirId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for MatchExpressionArmCause<'tcx> {
+        arm_span, source, prior_arms, last_ty, discrim_hir_id
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, RustcEncodable, RustcDecodable)]
 pub struct IfExpressionCause {
     pub then: Span,
     pub outer: Option<Span>,
     pub semicolon: Option<Span>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for IfExpressionCause {
+        then, outer, semicolon
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, RustcEncodable, RustcDecodable)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait reference of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
@@ -317,6 +392,13 @@ pub struct DerivedObligationCause<'tcx> {
     /// The parent trait had this cause.
     parent_code: Rc<ObligationCauseCode<'tcx>>
 }
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for DerivedObligationCause<'tcx> {
+        parent_trait_ref, parent_code
+    }
+}
+
 
 pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
@@ -483,7 +565,7 @@ pub struct InEnvironment<'tcx, G> {
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
-#[derive(Clone,Debug,TypeFoldable)]
+#[derive(Clone,Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
@@ -494,6 +576,8 @@ pub enum SelectionError<'tcx> {
     Overflow,
 }
 
+
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -503,7 +587,7 @@ pub struct FulfillmentError<'tcx> {
     pub points_at_arg_span: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),

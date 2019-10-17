@@ -766,7 +766,7 @@ fn compute_layout<'tcx>(
     // MIR types
     let allowed_upvars = tcx.erase_regions(upvars);
     let allowed = match interior.kind {
-        ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
+        ty::GeneratorWitness(_, s) => tcx.erase_late_bound_regions(&s),
         _ => bug!(),
     };
 
@@ -1197,6 +1197,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             }
             _ => bug!(),
         };
+
+        debug!("MIR generator type: {:?}", gen_ty);
 
         // Compute GeneratorState<yield_ty, return_ty>
         let state_did = tcx.lang_items().gen_state().unwrap();

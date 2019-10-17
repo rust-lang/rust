@@ -170,7 +170,9 @@ pub enum TyKind<'tcx> {
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
-    GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
+    /// The `DefId` refers to the generator corresponding
+    /// to this `GeneratorWitness
+    GeneratorWitness(DefId, Binder<&'tcx List<Ty<'tcx>>>),
 
     /// The never type `!`
     Never,
@@ -643,6 +645,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     }
 }
 
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<ty::Predicate<'tcx>> {}
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
 impl<'tcx> List<ExistentialPredicate<'tcx>> {
@@ -897,7 +900,8 @@ impl<T> Binder<T> {
     pub fn dummy<'tcx>(value: T) -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
-        debug_assert!(!value.has_escaping_bound_vars());
+        debug_assert!(!value.has_escaping_bound_vars(),
+            "Value has escaping vars: {:?}", value);
         Binder(value)
     }
 

@@ -37,7 +37,6 @@ async fn non_send_temporary_in_match() {
 }
 
 async fn non_sync_with_method_call() {
-    // FIXME: it'd be nice for this to work.
     let f: &mut std::fmt::Formatter = panic!();
     if non_sync().fmt(f).unwrap() == () {
         fut().await;
@@ -48,10 +47,9 @@ fn assert_send(_: impl Send) {}
 
 pub fn pass_assert() {
     assert_send(local_dropped_before_await());
-    //~^ ERROR `std::rc::Rc<()>` cannot be sent between threads safely
     assert_send(non_send_temporary_in_match());
     //~^ ERROR `std::rc::Rc<()>` cannot be sent between threads safely
     assert_send(non_sync_with_method_call());
-    //~^ ERROR `dyn std::fmt::Write` cannot be sent between threads safely
-    //~^^ ERROR `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
 }
+
+fn main() {}

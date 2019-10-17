@@ -30,8 +30,13 @@ use std::mem;
 // so instead all of the replacement happens at the end in
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
+
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
+    pub fn resolve_type_vars_in_body(
+        &self,
+        body: &'tcx hir::Body,
+    ) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
@@ -78,6 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
+        wbcx.tables.generator_obligations = self.process_generators();
 
         debug!(
             "writeback: tables for {:?} are {:#?}",

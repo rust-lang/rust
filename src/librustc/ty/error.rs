@@ -11,14 +11,15 @@ use syntax_pos::Span;
 use std::borrow::Cow;
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable,
+         TypeFoldable)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),

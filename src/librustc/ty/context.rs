@@ -26,7 +26,7 @@ use crate::mir::{BodyCache, Field, interpret, Local, Place, PlaceElem, Projectio
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
-use crate::traits;
+use crate::traits::{self, PredicateObligation};
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{TyS, TyKind, List};
@@ -430,6 +430,8 @@ pub struct TypeckTables<'tcx> {
     /// Stores the type, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
     pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
+
+    pub generator_obligations: Vec<PredicateObligation<'tcx>>
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -456,6 +458,7 @@ impl<'tcx> TypeckTables<'tcx> {
             concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
             generator_interior_types: Default::default(),
+            generator_obligations: Default::default()
         }
     }
 
@@ -764,7 +767,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref concrete_opaque_types,
             ref upvar_list,
             ref generator_interior_types,
-
+            ref generator_obligations
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -809,6 +812,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
+            generator_obligations.hash_stable(hcx, hasher);
         })
     }
 }
@@ -2496,8 +2500,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_generator_witness(self, types: ty::Binder<&'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
-        self.mk_ty(GeneratorWitness(types))
+    pub fn mk_generator_witness(
+        self,
+        id: DefId,
+        types: ty::Binder<&'tcx List<Ty<'tcx>>>
+    ) -> Ty<'tcx> {
+        self.mk_ty(GeneratorWitness(id, types))
     }
 
     #[inline]

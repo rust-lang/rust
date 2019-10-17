@@ -89,6 +89,10 @@ impl HirId {
     }
 }
 
+CloneTypeFoldableImpls! {
+    HirId,
+}
+
 impl rustc_serialize::UseSpecializedEncodable for HirId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let HirId {

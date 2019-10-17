@@ -460,7 +460,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 self = r.print(self)?;
             }
 
-            ty::GeneratorWitness(_) => {
+            ty::GeneratorWitness(..) => {
                 bug!("symbol_names: unexpected `GeneratorWitness`")
             }
         }

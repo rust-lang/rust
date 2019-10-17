@@ -15,13 +15,14 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 use super::project;
 use super::select::SelectionContext;
-use super::{Unimplemented, ConstEvalFailure};
+use super::{Unimplemented, ConstEvalFailure, DelayedGenerators};
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     type Predicate = ty::Predicate<'tcx>;
 
     fn as_predicate(&self) -> &Self::Predicate { &self.obligation.predicate }
 }
+
 
 /// The fulfillment context is used to drive trait resolution. It
 /// consists of a list of obligations that must be (eventually)
@@ -59,7 +60,17 @@ pub struct FulfillmentContext<'tcx> {
     // other fulfillment contexts sometimes do live inside of
     // a snapshot (they don't *straddle* a snapshot, so there
     // is no trouble there).
-    usable_in_snapshot: bool
+    usable_in_snapshot: bool,
+
+    // Whether or not we show delay the selection of predicates
+    // involving `ty::GeneratorWitness`.
+    // This is used by `FnCtxt` to delay the checking of
+    // `GeneratorWitness` predicates, since generator MIR is
+    // not available when `FnCxtxt` is run.
+    has_delayed_generator_witness: bool,
+    // The delayed generator witness predicates. This is only
+    // used when `has_delayed_generator_witness:` is `true`
+    delayed_generator_witness: DelayedGenerators<'tcx>,
 }
 
 #[derive(Clone, Debug)]
@@ -79,6 +90,18 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: true,
             usable_in_snapshot: false,
+            delayed_generator_witness: None,
+            has_delayed_generator_witness: false
+        }
+    }
+
+    pub fn with_delayed_generator_witness() -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            register_region_obligations: true,
+            usable_in_snapshot: false,
+            delayed_generator_witness: Some(Vec::new()),
+            has_delayed_generator_witness: true
         }
     }
 
@@ -87,6 +110,8 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: true,
             usable_in_snapshot: true,
+            delayed_generator_witness: None,
+            has_delayed_generator_witness: false
         }
     }
 
@@ -94,7 +119,9 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             register_region_obligations: false,
-            usable_in_snapshot: false
+            usable_in_snapshot: false,
+            delayed_generator_witness: None,
+            has_delayed_generator_witness: false
         }
     }
 
@@ -112,6 +139,8 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
 
             // Process pending obligations.
             let outcome = self.predicates.process_obligations(&mut FulfillProcessor {
+                has_delayed_generator_witness: self.has_delayed_generator_witness,
+                delayed_generator_witness: &mut self.delayed_generator_witness,
                 selcx,
                 register_region_obligations: self.register_region_obligations
             }, DoCompleted::No);
@@ -226,10 +255,19 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.predicates.map_pending_obligations(|o| o.obligation.clone())
     }
+
+    fn delayed_generator_obligations(&mut self) -> Option<Vec<PredicateObligation<'tcx>>> {
+        if !self.has_delayed_generator_witness {
+            panic!("Tried to retrieve delayed generators in wrong mode!")
+        }
+        self.delayed_generator_witness.take()
+    }
 }
 
 struct FulfillProcessor<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
+    has_delayed_generator_witness: bool,
+    delayed_generator_witness: &'a mut DelayedGenerators<'tcx>,
     register_region_obligations: bool,
 }
 
@@ -309,6 +347,21 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             ty::Predicate::Trait(ref data) => {
                 let trait_obligation = obligation.with(data.clone());
 
+
+                if self.has_delayed_generator_witness &&
+                    self.selcx.tcx().trait_is_auto(data.def_id()) {
+                    // Ok to skip binder - bound regions do not affect whether self
+                    // type is a `GeneratorWitness
+                    if let ty::GeneratorWitness(..) = data.skip_binder().self_ty().kind {
+                        debug!("delaying generator witness predicate `{:?}` at depth {}",
+                               data, obligation.recursion_depth);
+                        self.delayed_generator_witness.as_mut()
+                            .expect("Delayed generator witnesses already consumed!")
+                            .push(obligation.clone());
+                        return ProcessResult::Changed(vec![])
+                    }
+                }
+
                 if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
@@ -318,6 +371,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         return ProcessResult::Changed(vec![])
                     }
                 }
+
 
                 match self.selcx.select(&trait_obligation) {
                     Ok(Some(vtable)) => {

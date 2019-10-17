@@ -272,6 +272,18 @@ where
 }
 
 #[inline]
+pub fn decode_predicate_slice<D>(
+    decoder: &mut D,
+) -> Result<&'tcx ty::List<ty::Predicate<'tcx>>, D::Error>
+where
+    D: TyDecoder<'tcx>,
+{
+    let len = decoder.read_usize()?;
+    Ok(decoder.tcx()
+              .mk_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+}
+
+#[inline]
 pub fn decode_canonical_var_infos<D>(decoder: &mut D) -> Result<CanonicalVarInfos<'tcx>, D::Error>
 where
     D: TyDecoder<'tcx>,
@@ -464,6 +476,14 @@ macro_rules! implement_ty_decoder {
                 fn specialized_decode(&mut self)
                     -> Result<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>, Self::Error> {
                     decode_existential_predicate_slice(self)
+                }
+            }
+
+            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::List<ty::Predicate<'tcx>>>
+                for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self)
+                    -> Result<&'tcx ty::List<ty::Predicate<'tcx>>, Self::Error> {
+                    decode_predicate_slice(self)
                 }
             }
 

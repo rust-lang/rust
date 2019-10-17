@@ -672,8 +672,10 @@ pub trait PrettyPrinter<'tcx>:
 
                 p!(write(" "), print(witness), write("]"))
             },
-            ty::GeneratorWitness(types) => {
+            ty::GeneratorWitness(did, types) => {
+                p!(write("[witness@{:?}", did));
                 p!(in_binder(&types));
+                p!(write("]"));
             }
             ty::Closure(did, substs) => {
                 let upvar_tys = substs.as_closure().upvar_tys(did, self.tcx());
