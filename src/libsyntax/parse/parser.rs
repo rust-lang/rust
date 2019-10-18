@@ -285,10 +285,10 @@ impl TokenCursor {
             token::NoDelim,
             &if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
                 [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
-                    .iter().cloned().collect::<TokenStream>().into()
+                    .iter().cloned().collect::<TokenStream>()
             } else {
                 [TokenTree::token(token::Pound, sp), body]
-                    .iter().cloned().collect::<TokenStream>().into()
+                    .iter().cloned().collect::<TokenStream>()
             },
         )));
 
