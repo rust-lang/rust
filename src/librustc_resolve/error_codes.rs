@@ -26,7 +26,7 @@ struct Foo<U = (), T = U> {
 }
 ```
 
-Please also verify \hat this wasn't because of a name-clash and rename the type
+Please also verify that this wasn't because of a name-clash and rename the type
 parameter if so.
 "##,
 
