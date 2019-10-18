@@ -1014,11 +1014,7 @@ fn h1() -> i32 {
 
 E0424: r##"
 The `self` keyword was used inside of an associated function without a "`self`
-receiver" parameter. The `self` keyword can only be used inside methods, which
-are associated functions (functions defined inside of a `trait` or `impl` block)
-that have a `self` receiver as its first parameter, like `self`, `&self`,
-`&mut self` or `self: &mut Pin<Self>` (this last one is an example of an
-["abitrary `self` type"](https://github.com/rust-lang/rust/issues/44874)).
+receiver" parameter.
 
 Erroneous code example:
 
@@ -1036,6 +1032,12 @@ impl Foo {
     }
 }
 ```
+
+The `self` keyword can only be used inside methods, which are associated
+functions (functions defined inside of a `trait` or `impl` block) that have a
+`self` receiver as its first parameter, like `self`, `&self`, `&mut self` or
+`self: &mut Pin<Self>` (this last one is an example of an ["abitrary `self`
+type"](https://github.com/rust-lang/rust/issues/44874)).
 
 Check if the associated function's parameter list should have contained a `self`
 receiver for it to be a method, and add it if so. Example:
