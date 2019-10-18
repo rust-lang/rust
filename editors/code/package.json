@@ -260,6 +260,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Display additional type information in the editor"
+                },
+                "rust-analyzer.maxInlayHintLength": {
+                    "type": "number",
+                    "default": 20,
+                    "description": "Maximum length for inlay hints"
                 }
             }
         },

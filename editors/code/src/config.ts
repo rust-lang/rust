@@ -22,6 +22,7 @@ export class Config {
     public showWorkspaceLoadedNotification = true;
     public lruCapacity: null | number = null;
     public displayInlayHints = true;
+    public maxInlayHintLength: null | number = null;
     public excludeGlobs = [];
     public useClientWatching = false;
     public featureFlags = {};
@@ -130,6 +131,11 @@ export class Config {
 
         if (config.has('displayInlayHints')) {
             this.displayInlayHints = config.get('displayInlayHints') as boolean;
+        }
+        if (config.has('maxInlayHintLength')) {
+            this.maxInlayHintLength = config.get(
+                'maxInlayHintLength'
+            ) as number;
         }
         if (config.has('excludeGlobs')) {
             this.excludeGlobs = config.get('excludeGlobs') || [];

@@ -13,8 +13,6 @@ interface InlayHint {
     label: string;
 }
 
-const maxHintLength = 20;
-
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
     after: {
         color: new vscode.ThemeColor('ralsp.inlayHint')
@@ -86,12 +84,12 @@ export class HintsUpdater {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints !== null) {
             const newDecorations = newHints.map(hint => {
-                let label = hint.label.substring(0, maxHintLength);
-                if (hint.label.length > maxHintLength) {
-                    label += '…';
-                }
+                const [label, range] = this.truncateHint(
+                    hint.label,
+                    hint.range
+                );
                 return {
-                    range: this.truncateHint(hint.range),
+                    range,
                     renderOptions: {
                         after: {
                             contentText: `: ${label}`
@@ -106,16 +104,30 @@ export class HintsUpdater {
         }
     }
 
-    private truncateHint(range: Range): Range {
-        if (!range.isSingleLine) {
-            return range;
+    private truncateHint(
+        label: string,
+        range: vscode.Range
+    ): [string, vscode.Range] {
+        if (!Server.config.maxInlayHintLength) {
+            return [label, range];
         }
-        const maxEnd = new vscode.Position(
+
+        let newLabel = label.substring(0, Server.config.maxInlayHintLength);
+        if (label.length > Server.config.maxInlayHintLength) {
+            newLabel += '…';
+        }
+
+        range = new vscode.Range(
             range.start.line,
-            range.start.character + maxHintLength
+            range.start.character,
+            range.end.line,
+            Math.min(
+                range.start.character + Server.config.maxInlayHintLength,
+                range.end.character
+            )
         );
-        const end = range.end.isAfter(maxEnd) ? maxEnd : range.end;
-        return new Range(range.start, end);
+
+        return [newLabel, range];
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
