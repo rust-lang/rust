@@ -6,7 +6,6 @@ use crate::tokenstream::{TokenStream, TokenTree};
 use crate::source_map::Span;
 
 use log::debug;
-use smallvec::smallvec;
 
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -193,15 +192,15 @@ impl<'a> Parser<'a> {
                         is_interpolated_expr = true;
                     }
                 }
-                let tokens = if is_interpolated_expr {
+                let token_tree = if is_interpolated_expr {
                     // We need to accept arbitrary interpolated expressions to continue
                     // supporting things like `doc = $expr` that work on stable.
                     // Non-literal interpolated expressions are rejected after expansion.
-                    self.parse_token_tree().into()
+                    self.parse_token_tree()
                 } else {
-                    self.parse_unsuffixed_lit()?.tokens()
+                    self.parse_unsuffixed_lit()?.token_tree()
                 };
-                TokenStream::from_streams(smallvec![eq.into(), tokens])
+                TokenStream::new(vec![eq.into(), token_tree.into()])
             } else {
                 TokenStream::default()
             };

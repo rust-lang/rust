@@ -3,7 +3,7 @@
 use crate::ast::{self, Lit, LitKind};
 use crate::parse::token::{self, Token};
 use crate::symbol::{kw, sym, Symbol};
-use crate::tokenstream::{TokenStream, TokenTree};
+use crate::tokenstream::TokenTree;
 
 use log::debug;
 use rustc_data_structures::sync::Lrc;
@@ -216,13 +216,13 @@ impl Lit {
         Lit { token: kind.to_lit_token(), kind, span }
     }
 
-    /// Losslessly convert an AST literal into a token stream.
-    crate fn tokens(&self) -> TokenStream {
+    /// Losslessly convert an AST literal into a token tree.
+    crate fn token_tree(&self) -> TokenTree {
         let token = match self.token.kind {
             token::Bool => token::Ident(self.token.symbol, false),
             _ => token::Literal(self.token),
         };
-        TokenTree::token(token, self.span).into()
+        TokenTree::token(token, self.span)
     }
 }
 
