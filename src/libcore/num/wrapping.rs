@@ -437,7 +437,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// wrapping the truncated bits to the end of the resulting
             /// integer.
             ///
-            /// Please note this isn't the same operation as the `>>` shifting
+            /// Please note this isn't the same operation as the `<<` shifting
             /// operator!
             ///
             /// # Examples
@@ -463,7 +463,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// wrapping the truncated bits to the beginning of the resulting
             /// integer.
             ///
-            /// Please note this isn't the same operation as the `<<` shifting
+            /// Please note this isn't the same operation as the `>>` shifting
             /// operator!
             ///
             /// # Examples
