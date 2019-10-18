@@ -1,6 +1,6 @@
 use crate::utils::{
-    iter_input_pats, match_def_path, qpath_res, return_ty, snippet, snippet_opt, span_help_and_lint, span_lint,
-    span_lint_and_then, type_is_unsafe_function,
+    attrs::is_proc_macro, iter_input_pats, match_def_path, qpath_res, return_ty, snippet, snippet_opt,
+    span_help_and_lint, span_lint, span_lint_and_then, type_is_unsafe_function,
 };
 use matches::matches;
 use rustc::hir::{self, def::Res, def_id::DefId, intravisit};
@@ -234,7 +234,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                 check_needless_must_use(cx, decl, item.hir_id, item.span, fn_header_span, attr);
                 return;
             }
-            if cx.access_levels.is_exported(item.hir_id) {
+            if cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
                 check_must_use_candidate(
                     cx,
                     decl,
@@ -254,7 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             if let Some(attr) = attr {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
                 check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
-            } else if cx.access_levels.is_exported(item.hir_id) {
+            } else if cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,
@@ -284,7 +284,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
 
-                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) {
+                if attr.is_none() && cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,
