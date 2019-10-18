@@ -295,6 +295,33 @@ named `file_that_doesnt_exist.rs` or `file_that_doesnt_exist/mod.rs` in the
 same directory.
 "##,
 
+E0584: r##"
+A doc comment that is not attached to anything has been encountered.
+
+Erroneous code example:
+
+```compile_fail,E0584
+trait Island {
+    fn lost();
+
+    /// I'm lost!
+}
+```
+
+A little reminder: a doc comment has to be placed before the item it's supposed
+to document. So if you want to document the `Island` trait, you need to put a
+doc comment before it, not inside it. Same goes for the `lost` method: the doc
+comment needs to be before it:
+
+```
+/// I'm THE island!
+trait Island {
+    /// I'm lost!
+    fn lost();
+}
+```
+"##,
+
 E0585: r##"
 A documentation comment that doesn't document anything was found.
 
@@ -494,7 +521,6 @@ features in the `-Z allow_features` flag.
     E0549,
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
-    E0584, // file for module `..` found at both .. and ..
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable
     // attribute
