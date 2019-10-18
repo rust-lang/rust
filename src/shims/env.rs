@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::env;
 
 use crate::stacked_borrows::Tag;
@@ -127,7 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
-                if this.write_os_string(cwd.into(), buf, size).is_ok() {
+                if this.write_os_str(&OsString::from(cwd), buf, size).is_ok() {
                     return Ok(Scalar::Ptr(buf));
                 }
                 let erange = this.eval_libc("ERANGE")?;

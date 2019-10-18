@@ -1,5 +1,5 @@
 use std::mem;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
@@ -347,30 +347,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     fn read_os_string(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
-        let bytes = self.eval_context_mut().memory.read_c_str(scalar)?.to_vec();
-        if cfg!(unix) {
-            Ok(std::os::unix::ffi::OsStringExt::from_vec(bytes))
-        } else {
-            std::str::from_utf8(&bytes)
-                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes).into())
-                .map(OsString::from)
-        }
+        let bytes = self.eval_context_mut().memory.read_c_str(scalar)?;
+        Ok(bytes_to_os_str(bytes)?.into())
     }
 
-    fn write_os_string(&mut self, os_string: OsString, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
-        let mut bytes = if cfg!(unix) {
-            std::os::unix::ffi::OsStringExt::into_vec(os_string)
-        } else {
-            os_string
-                .into_string()
-                .map_err(|os_string| err_unsup_format!("{:?} is not a valid utf-8 string", os_string))?
-                .into_bytes()
-        };
+    fn write_os_str(&mut self, os_str: &OsStr, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
+        let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an overflow.
         if (bytes.len() as u64) < size {
-            // We add a `/0` terminator
-            bytes.push(0);
             let this = self.eval_context_mut();
             let tcx = &{ this.tcx.tcx };
             // This is ok because the buffer was strictly larger than `bytes`, so after adding the
@@ -378,9 +363,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `bytes` actually fit inside tbe buffer.
             this.memory
                 .get_mut(ptr.alloc_id)?
-                .write_bytes(tcx, ptr, &bytes)
+                .write_bytes(tcx, ptr, &bytes)?;
+            // We write the `/0` terminator
+            let tail_ptr = ptr.offset(Size::from_bytes(bytes.len() as u64 + 1), this)?;
+            this.memory
+                .get_mut(ptr.alloc_id)?
+                .write_bytes(tcx, tail_ptr, b"0")
         } else {
             throw_unsup_format!("OsString is larger than destination")
         }
     }
+}
+
+#[cfg(target_os = "unix")]
+fn bytes_to_os_str<'tcx, 'a>(bytes: &'a[u8]) -> InterpResult<'tcx, &'a OsStr> {
+    Ok(std::os::unix::ffi::OsStringExt::from_bytes(bytes))
+}
+
+#[cfg(target_os = "unix")]
+fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+    std::os::unix::ffi::OsStringExt::into_bytes(os_str)
+}
+
+// On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
+// intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
+// valid.
+#[cfg(not(target_os = "unix"))]
+fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+    os_str
+        .to_str()
+        .map(|s| s.as_bytes())
+        .ok_or_else(|| err_unsup_format!("{:?} is not a valid utf-8 string", os_str).into())
+}
+
+#[cfg(not(target_os = "unix"))]
+fn bytes_to_os_str<'tcx, 'a>(bytes: &'a[u8]) -> InterpResult<'tcx, &'a OsStr> {
+    let s = std::str::from_utf8(bytes)
+        .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
+    Ok(&OsStr::new(s))
 }
