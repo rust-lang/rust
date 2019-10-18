@@ -59,6 +59,7 @@ fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindS
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start<T: crate::process::Termination + 'static>
-    (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize {
+    (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize
+{
     lang_start_internal(&move || main().report(), argc, argv)
 }
