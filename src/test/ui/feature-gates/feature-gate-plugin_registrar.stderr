@@ -16,11 +16,11 @@ LL | #[plugin_registrar]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29597
    = help: add `#![feature(plugin_registrar)]` to the crate attributes to enable
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/feature-gate-plugin_registrar.rs:5:1
    |
 LL | #[plugin_registrar]
-   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 
