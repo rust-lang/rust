@@ -54,8 +54,7 @@ pub trait AstConv<'tcx> {
     /// but this can lead to cycle errors. The problem is that we have
     /// to do this resolution *in order to create the predicates in
     /// the first place*. Hence, we have this "special pass".
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> &'tcx ty::GenericPredicates<'tcx>;
+    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
     fn re_infer(

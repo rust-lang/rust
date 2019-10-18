@@ -2245,19 +2245,17 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
-                                 -> &'tcx ty::GenericPredicates<'tcx>
-    {
+    fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let item_id = tcx.hir().ty_param_owner(hir_id);
         let item_def_id = tcx.hir().local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
-        tcx.arena.alloc(ty::GenericPredicates {
+        ty::GenericPredicates {
             parent: None,
-            predicates: self.param_env.caller_bounds.iter().filter_map(|&predicate| {
-                match predicate {
+            predicates: tcx.arena.alloc_from_iter(
+                self.param_env.caller_bounds.iter().filter_map(|&predicate| match predicate {
                     ty::Predicate::Trait(ref data)
                     if data.skip_binder().self_ty().is_param(index) => {
                         // HACK(eddyb) should get the original `Span`.
@@ -2265,9 +2263,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                         Some((predicate, span))
                     }
                     _ => None
-                }
-            }).collect()
-        })
+                }),
+            ),
+        }
     }
 
     fn re_infer(

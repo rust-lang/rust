@@ -1218,12 +1218,6 @@ EnumTypeFoldableImpl! {
     }
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
-        parent, predicates
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         // This code is hot enough that it's worth specializing for a list of

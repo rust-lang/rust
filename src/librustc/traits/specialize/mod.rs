@@ -419,7 +419,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> 
 
     // The predicates will contain default bounds like `T: Sized`. We need to
     // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
-    let predicates = &tcx.predicates_of(impl_def_id).predicates;
+    let predicates = tcx.predicates_of(impl_def_id).predicates;
     let mut pretty_predicates = Vec::with_capacity(
         predicates.len() + types_without_default_bounds.len());
 

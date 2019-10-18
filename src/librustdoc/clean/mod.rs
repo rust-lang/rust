@@ -1664,8 +1664,7 @@ impl Clean<Generics> for hir::Generics {
     }
 }
 
-impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
-                                    &'a &'tcx ty::GenericPredicates<'tcx>) {
+impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> Generics {
         use self::WherePredicate as WP;
         use std::collections::BTreeMap;
@@ -2369,7 +2368,7 @@ impl Clean<Item> for ty::AssocItem {
             }
             ty::AssocKind::Method => {
                 let generics = (cx.tcx.generics_of(self.def_id),
-                                &cx.tcx.explicit_predicates_of(self.def_id)).clean(cx);
+                                cx.tcx.explicit_predicates_of(self.def_id)).clean(cx);
                 let sig = cx.tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
@@ -2448,7 +2447,7 @@ impl Clean<Item> for ty::AssocItem {
                     // all of the generics from there and then look for bounds that are
                     // applied to this associated type in question.
                     let predicates = cx.tcx.explicit_predicates_of(did);
-                    let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
+                    let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
                     let mut bounds = generics.where_predicates.iter().filter_map(|pred| {
                         let (name, self_type, trait_, bounds) = match *pred {
                             WherePredicate::BoundPredicate {

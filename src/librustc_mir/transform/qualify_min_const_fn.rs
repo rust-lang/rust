@@ -14,7 +14,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
-        for (predicate, _) in &predicates.predicates {
+        for (predicate, _) in predicates.predicates {
             match predicate {
                 | Predicate::RegionOutlives(_)
                 | Predicate::TypeOutlives(_)
