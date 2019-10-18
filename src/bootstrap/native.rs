@@ -157,6 +157,7 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
+           .define("LLVM_ENABLE_BINDINGS", "OFF")
            .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
@@ -168,15 +169,6 @@ impl Step for Llvm {
                cfg.define("LLVM_ENABLE_LLD", "ON");
             }
         }
-
-        // By default, LLVM will automatically find OCaml and, if it finds it,
-        // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
-        // to /usr/bin/ocaml.
-        // This causes problem for non-root builds of Rust. Side-step the issue
-        // by setting LLVM_OCAML_INSTALL_PATH to a relative path, so it installs
-        // in the prefix.
-        cfg.define("LLVM_OCAML_INSTALL_PATH",
-            env::var_os("LLVM_OCAML_INSTALL_PATH").unwrap_or_else(|| "usr/lib/ocaml".into()));
 
         let want_lldb = builder.config.lldb_enabled && !self.emscripten;
 
