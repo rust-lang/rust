@@ -4,6 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, AtomicU64, Ordering};
+use rustc_data_structures::sharded::{self, Sharded};
 use std::sync::atomic::Ordering::SeqCst;
 use std::env;
 use std::hash::Hash;
@@ -381,7 +382,7 @@ impl DepGraph {
     #[inline]
     pub fn read(&self, v: DepNode) {
         if let Some(ref data) = self.data {
-            let map = data.current.node_to_node_index.lock();
+            let map = data.current.node_to_node_index.get_shard_by_value(&v).lock();
             if let Some(dep_node_index) = map.get(&v).copied() {
                 std::mem::drop(map);
                 data.read_index(dep_node_index);
@@ -405,6 +406,7 @@ impl DepGraph {
             .unwrap()
             .current
             .node_to_node_index
+            .get_shard_by_value(dep_node)
             .lock()
             .get(dep_node)
             .cloned()
@@ -414,7 +416,11 @@ impl DepGraph {
     #[inline]
     pub fn dep_node_exists(&self, dep_node: &DepNode) -> bool {
         if let Some(ref data) = self.data {
-            data.current.node_to_node_index.lock().contains_key(dep_node)
+            data.current
+                .node_to_node_index
+                .get_shard_by_value(&dep_node)
+                .lock()
+                .contains_key(dep_node)
         } else {
             false
         }
@@ -595,7 +601,11 @@ impl DepGraph {
 
         #[cfg(not(parallel_compiler))]
         {
-            debug_assert!(!data.current.node_to_node_index.lock().contains_key(dep_node));
+            debug_assert!(!data.current
+                               .node_to_node_index
+                               .get_shard_by_value(dep_node)
+                               .lock()
+                               .contains_key(dep_node));
             debug_assert!(data.colors.get(prev_dep_node_index).is_none());
         }
 
@@ -927,7 +937,7 @@ struct DepNodeData {
 /// acquire the lock on `data.`
 pub(super) struct CurrentDepGraph {
     data: Lock<IndexVec<DepNodeIndex, DepNodeData>>,
-    node_to_node_index: Lock<FxHashMap<DepNode, DepNodeIndex>>,
+    node_to_node_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
@@ -985,8 +995,8 @@ impl CurrentDepGraph {
 
         CurrentDepGraph {
             data: Lock::new(IndexVec::with_capacity(new_node_count_estimate)),
-            node_to_node_index: Lock::new(FxHashMap::with_capacity_and_hasher(
-                new_node_count_estimate,
+            node_to_node_index: Sharded::new(|| FxHashMap::with_capacity_and_hasher(
+                new_node_count_estimate / sharded::SHARDS,
                 Default::default(),
             )),
             anon_id_seed: stable_hasher.finish(),
@@ -1035,7 +1045,10 @@ impl CurrentDepGraph {
         edges: SmallVec<[DepNodeIndex; 8]>,
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
-        debug_assert!(!self.node_to_node_index.lock().contains_key(&dep_node));
+        debug_assert!(!self.node_to_node_index
+                           .get_shard_by_value(&dep_node)
+                           .lock()
+                           .contains_key(&dep_node));
         self.intern_node(dep_node, edges, fingerprint)
     }
 
@@ -1045,7 +1058,7 @@ impl CurrentDepGraph {
         edges: SmallVec<[DepNodeIndex; 8]>,
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
-        match self.node_to_node_index.lock().entry(dep_node) {
+        match self.node_to_node_index.get_shard_by_value(&dep_node).lock().entry(dep_node) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let mut data = self.data.lock();
