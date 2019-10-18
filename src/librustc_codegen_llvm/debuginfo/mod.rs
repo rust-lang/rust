@@ -36,7 +36,7 @@ use std::ffi::{CStr, CString};
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc_codegen_ssa::traits::*;
 
@@ -490,7 +490,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         fn get_parameter_names(cx: &CodegenCx<'_, '_>,
                                generics: &ty::Generics)
-                               -> Vec<InternedString> {
+                               -> Vec<Symbol> {
             let mut names = generics.parent.map_or(vec![], |def_id| {
                 get_parameter_names(cx, cx.tcx.generics_of(def_id))
             });

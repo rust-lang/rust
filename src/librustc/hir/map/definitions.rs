@@ -18,7 +18,7 @@ use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
 use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{Symbol, sym, InternedString};
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
@@ -218,7 +218,7 @@ impl DefPath {
         for component in &self.data {
             write!(s,
                    "::{}[{}]",
-                   component.data.as_interned_str(),
+                   component.data.as_symbol(),
                    component.disambiguator)
                 .unwrap();
         }
@@ -238,11 +238,11 @@ impl DefPath {
 
         for component in &self.data {
             if component.disambiguator == 0 {
-                write!(s, "::{}", component.data.as_interned_str()).unwrap();
+                write!(s, "::{}", component.data.as_symbol()).unwrap();
             } else {
                 write!(s,
                        "{}[{}]",
-                       component.data.as_interned_str(),
+                       component.data.as_symbol(),
                        component.disambiguator)
                        .unwrap();
             }
@@ -262,11 +262,11 @@ impl DefPath {
             opt_delimiter.map(|d| s.push(d));
             opt_delimiter = Some('-');
             if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_interned_str()).unwrap();
+                write!(s, "{}", component.data.as_symbol()).unwrap();
             } else {
                 write!(s,
                        "{}[{}]",
-                       component.data.as_interned_str(),
+                       component.data.as_symbol(),
                        component.disambiguator)
                        .unwrap();
             }
@@ -290,13 +290,13 @@ pub enum DefPathData {
     /// An impl.
     Impl,
     /// Something in the type namespace.
-    TypeNs(InternedString),
+    TypeNs(Symbol),
     /// Something in the value namespace.
-    ValueNs(InternedString),
+    ValueNs(Symbol),
     /// Something in the macro namespace.
-    MacroNs(InternedString),
+    MacroNs(Symbol),
     /// Something in the lifetime namespace.
-    LifetimeNs(InternedString),
+    LifetimeNs(Symbol),
     /// A closure expression.
     ClosureExpr,
 
@@ -311,7 +311,7 @@ pub enum DefPathData {
     /// Identifies a piece of crate metadata that is global to a whole crate
     /// (as opposed to just one item). `GlobalMetaData` components are only
     /// supposed to show up right below the crate root.
-    GlobalMetaData(InternedString),
+    GlobalMetaData(Symbol),
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
@@ -545,7 +545,7 @@ impl Definitions {
 }
 
 impl DefPathData {
-    pub fn get_opt_name(&self) -> Option<InternedString> {
+    pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) |
@@ -564,15 +564,15 @@ impl DefPathData {
         }
     }
 
-    pub fn as_interned_str(&self) -> InternedString {
+    pub fn as_symbol(&self) -> Symbol {
         use self::DefPathData::*;
-        let s = match *self {
+        match *self {
             TypeNs(name) |
             ValueNs(name) |
             MacroNs(name) |
             LifetimeNs(name) |
             GlobalMetaData(name) => {
-                return name
+                name
             }
             // Note that this does not show up in user print-outs.
             CrateRoot => sym::double_braced_crate,
@@ -582,13 +582,11 @@ impl DefPathData {
             Ctor => sym::double_braced_constructor,
             AnonConst => sym::double_braced_constant,
             ImplTrait => sym::double_braced_opaque,
-        };
-
-        s.as_interned_str()
+        }
     }
 
     pub fn to_string(&self) -> String {
-        self.as_interned_str().to_string()
+        self.as_symbol().to_string()
     }
 }
 
@@ -611,7 +609,7 @@ macro_rules! define_global_metadata_kind {
                     definitions.create_def_with_parent(
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
-                        DefPathData::GlobalMetaData(instance.name().as_interned_str()),
+                        DefPathData::GlobalMetaData(instance.name()),
                         ExpnId::root(),
                         DUMMY_SP
                     );
@@ -625,7 +623,7 @@ macro_rules! define_global_metadata_kind {
                 let def_key = DefKey {
                     parent: Some(CRATE_DEF_INDEX),
                     disambiguated_data: DisambiguatedDefPathData {
-                        data: DefPathData::GlobalMetaData(self.name().as_interned_str()),
+                        data: DefPathData::GlobalMetaData(self.name()),
                         disambiguator: 0,
                     }
                 };

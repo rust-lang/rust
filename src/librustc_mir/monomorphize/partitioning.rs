@@ -96,7 +96,7 @@ use std::collections::hash_map::Entry;
 use std::cmp;
 use std::sync::Arc;
 
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
@@ -121,7 +121,7 @@ pub enum PartitioningStrategy {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> InternedString {
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
@@ -203,7 +203,7 @@ struct PreInliningPartitioning<'tcx> {
 /// to keep track of that.
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum MonoItemPlacement {
-    SingleCgu { cgu_name: InternedString },
+    SingleCgu { cgu_name: Symbol },
     MultipleCgus,
 }
 
@@ -717,7 +717,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
     }
 }
 
-type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
+type CguNameCache = FxHashMap<(DefId, bool), Symbol>;
 
 fn compute_codegen_unit_name(
     tcx: TyCtxt<'_>,
@@ -725,7 +725,7 @@ fn compute_codegen_unit_name(
     def_id: DefId,
     volatile: bool,
     cache: &mut CguNameCache,
-) -> InternedString {
+) -> Symbol {
     // Find the innermost module that is not nested within a function.
     let mut current_def_id = def_id;
     let mut cgu_def_id = None;
@@ -762,7 +762,7 @@ fn compute_codegen_unit_name(
         let components = def_path
             .data
             .iter()
-            .map(|part| part.data.as_interned_str());
+            .map(|part| part.data.as_symbol());
 
         let volatile_suffix = if volatile {
             Some("volatile")
@@ -777,7 +777,7 @@ fn compute_codegen_unit_name(
 fn numbered_codegen_unit_name(
     name_builder: &mut CodegenUnitNameBuilder<'_>,
     index: usize,
-) -> InternedString {
+) -> Symbol {
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 

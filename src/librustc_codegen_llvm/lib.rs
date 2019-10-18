@@ -21,7 +21,6 @@
 #![feature(trusted_len)]
 
 use back::write::{create_target_machine, create_informational_target_machine};
-use syntax_pos::symbol::Symbol;
 
 extern crate rustc_demangle;
 extern crate flate2;
@@ -50,7 +49,7 @@ use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
 use syntax_expand::allocator::AllocatorKind;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::Arc;
@@ -123,7 +122,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
     fn compile_codegen_unit(
         &self, tcx: TyCtxt<'_>,
-        cgu_name: InternedString,
+        cgu_name: Symbol,
         tx: &std::sync::mpsc::Sender<Box<dyn Any + Send>>,
     ) {
         base::compile_codegen_unit(tcx, cgu_name, tx);

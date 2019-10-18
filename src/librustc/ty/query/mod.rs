@@ -55,11 +55,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::any::type_name;
 use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 use syntax::attr;
 use syntax::ast;
 use syntax::feature_gate;
-use syntax::symbol::Symbol;
 
 #[macro_use]
 mod plumbing;

@@ -250,7 +250,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == sym::from_desugaring => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        param.name.as_symbol() == s
+                        param.name == s
                     }) {
                         Some(_) => (),
                         None => {
@@ -289,7 +289,7 @@ impl<'tcx> OnUnimplementedFormatString {
                 },
                 GenericParamDefKind::Lifetime => return None
             };
-            let name = param.name.as_symbol();
+            let name = param.name;
             Some((name, value))
         }).collect::<FxHashMap<Symbol, String>>();
         let empty_string = String::new();

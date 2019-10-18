@@ -31,7 +31,6 @@ use syntax::attr;
 use syntax_expand::base::MacroKind;
 use syntax::source_map::DUMMY_SP;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax::symbol::InternedString;
 use syntax_pos::{self, Pos, FileName};
 
 use std::collections::hash_map::Entry;
@@ -1683,7 +1682,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             .filter_map(|param| match param.kind {
                 ty::GenericParamDefKind::Lifetime => None,
                 ty::GenericParamDefKind::Type { synthetic, .. } => {
-                    if param.name.as_symbol() == kw::SelfUpper {
+                    if param.name == kw::SelfUpper {
                         assert_eq!(param.index, 0);
                         return None;
                     }
@@ -3696,13 +3695,6 @@ impl Clean<String> for Ident {
 }
 
 impl Clean<String> for ast::Name {
-    #[inline]
-    fn clean(&self, _: &DocContext<'_>) -> String {
-        self.to_string()
-    }
-}
-
-impl Clean<String> for InternedString {
     #[inline]
     fn clean(&self, _: &DocContext<'_>) -> String {
         self.to_string()

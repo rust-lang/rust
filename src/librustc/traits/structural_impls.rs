@@ -4,7 +4,7 @@ use crate::traits;
 use crate::traits::project::Normalized;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::{self, Lift, Ty, TyCtxt};
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 
 use std::fmt;
 use std::rc::Rc;
@@ -261,11 +261,11 @@ impl fmt::Display for traits::QuantifierKind {
 /// for debug output in tests anyway.
 struct BoundNamesCollector {
     // Just sort by name because `BoundRegion::BrNamed` does not have a `BoundVar` index anyway.
-    regions: BTreeSet<InternedString>,
+    regions: BTreeSet<Symbol>,
 
     // Sort by `BoundVar` index, so usually this should be equivalent to the order given
     // by the list of type parameters.
-    types: BTreeMap<u32, InternedString>,
+    types: BTreeMap<u32, Symbol>,
 
     binder_index: ty::DebruijnIndex,
 }
@@ -319,7 +319,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
                     match bound_ty.kind {
                         ty::BoundTyKind::Param(name) => name,
                         ty::BoundTyKind::Anon =>
-                            InternedString::intern(&format!("^{}", bound_ty.var.as_u32()),
+                            Symbol::intern(&format!("^{}", bound_ty.var.as_u32()),
                         ),
                     }
                 );
@@ -340,7 +340,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
                     }
 
                     ty::BoundRegion::BrAnon(var) => {
-                        self.regions.insert(InternedString::intern(&format!("'^{}", var)));
+                        self.regions.insert(Symbol::intern(&format!("'^{}", var)));
                     }
 
                     _ => (),

@@ -221,7 +221,7 @@ impl CodegenCx<'ll, 'tcx> {
                  def_id);
 
         let ty = instance.ty(self.tcx);
-        let sym = self.tcx.symbol_name(instance).name.as_symbol();
+        let sym = self.tcx.symbol_name(instance).name;
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
 

@@ -19,12 +19,12 @@ use crate::ty::query::Providers;
 use crate::util::nodemap::{NodeMap, FxHashSet};
 
 use errors::FatalError;
-use syntax_pos::{Span, DUMMY_SP, symbol::InternedString, MultiSpan};
+use syntax_pos::{Span, DUMMY_SP, symbol::Symbol, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
-use syntax::symbol::{Symbol, kw};
+use syntax::symbol::kw;
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
 use rustc_target::spec::abi::Abi;
@@ -628,9 +628,9 @@ impl Generics {
         own_counts
     }
 
-    pub fn get_named(&self, name: InternedString) -> Option<&GenericParam> {
+    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam> {
         for param in &self.params {
-            if name == param.name.ident().as_interned_str() {
+            if name == param.name.ident().name {
                 return Some(param);
             }
         }

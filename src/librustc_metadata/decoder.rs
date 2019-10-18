@@ -35,7 +35,7 @@ use syntax::ast::{self, Ident};
 use syntax::source_map::{self, respan, Spanned};
 use syntax::symbol::{Symbol, sym};
 use syntax_expand::base::{MacroKind, SyntaxExtensionKind, SyntaxExtension};
-use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, symbol::{InternedString}};
+use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
 use syntax_expand::proc_macro::{AttrProcMacro, ProcMacroDerive, BangProcMacro};
@@ -514,7 +514,6 @@ impl<'a, 'tcx> CrateMetadata {
                 .data
                 .get_opt_name()
                 .expect("no name in item_name")
-                .as_symbol()
         } else {
             Symbol::intern(self.raw_proc_macro(item_index).name())
         }
@@ -864,7 +863,7 @@ impl<'a, 'tcx> CrateMetadata {
                 let span = self.get_span(child_index, sess);
                 if let (Some(kind), Some(name)) =
                     (self.def_kind(child_index), def_key.disambiguated_data.data.get_opt_name()) {
-                    let ident = Ident::from_interned_str(name);
+                    let ident = Ident::with_dummy_span(name);
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
@@ -987,7 +986,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         ty::AssocItem {
-            ident: Ident::from_interned_str(name),
+            ident: Ident::with_dummy_span(name),
             kind,
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
@@ -1262,7 +1261,7 @@ impl<'a, 'tcx> CrateMetadata {
         let mut key = self.def_path_table.def_key(index);
         if self.is_proc_macro(index) {
             let name = self.raw_proc_macro(index).name();
-            key.disambiguated_data.data = DefPathData::MacroNs(InternedString::intern(name));
+            key.disambiguated_data.data = DefPathData::MacroNs(Symbol::intern(name));
         }
         key
     }

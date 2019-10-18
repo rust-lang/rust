@@ -46,7 +46,7 @@ use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{kw, sym, Symbol, InternedString};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 
 use smallvec;
@@ -849,7 +849,7 @@ impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime.as_interned_str()
+        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -866,7 +866,7 @@ pub enum GenericParamDefKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericParamDef {
-    pub name: InternedString,
+    pub name: Symbol,
     pub def_id: DefId,
     pub index: u32,
 
@@ -3022,7 +3022,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }),
                 _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
                     bug!("item_name: no name for {:?}", self.def_path(id));
-                }).as_symbol(),
+                }),
             }
         }
     }
@@ -3436,7 +3436,7 @@ pub struct CrateInherentImpls {
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.
-    pub name: InternedString
+    pub name: Symbol
 }
 
 impl_stable_hash_for!(struct self::SymbolName {
@@ -3446,7 +3446,7 @@ impl_stable_hash_for!(struct self::SymbolName {
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {
         SymbolName {
-            name: InternedString::intern(name)
+            name: Symbol::intern(name)
         }
     }
 }
