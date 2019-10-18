@@ -1,5 +1,5 @@
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic_unimplemented.rs:5:16
+  --> $DIR/panic.rs:5:16
    |
 LL |         panic!("{}");
    |                ^^^^
@@ -7,30 +7,22 @@ LL |         panic!("{}");
    = note: `-D clippy::panic-params` implied by `-D warnings`
 
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic_unimplemented.rs:7:16
+  --> $DIR/panic.rs:7:16
    |
 LL |         panic!("{:?}");
    |                ^^^^^^
 
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic_unimplemented.rs:9:23
+  --> $DIR/panic.rs:9:23
    |
 LL |         assert!(true, "here be missing values: {}");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic_unimplemented.rs:12:12
+  --> $DIR/panic.rs:12:12
    |
 LL |     panic!("{{{this}}}");
    |            ^^^^^^^^^^^^
 
-error: `unimplemented` should not be present in production code
-  --> $DIR/panic_unimplemented.rs:55:5
-   |
-LL |     unimplemented!();
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::unimplemented` implied by `-D warnings`
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

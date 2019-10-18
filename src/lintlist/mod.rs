@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 326] = [
+pub const ALL_LINTS: [Lint; 331] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1394,6 +1394,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         module: "methods",
     },
     Lint {
+        name: "option_expect_used",
+        group: "restriction",
+        desc: "using `Option.expect()`, which might be better handled",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "option_map_or_none",
         group: "style",
         desc: "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`",
@@ -1455,6 +1462,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         desc: "overflow checks inspired by C which are likely to panic",
         deprecation: None,
         module: "overflow_check_conditional",
+    },
+    Lint {
+        name: "panic",
+        group: "restriction",
+        desc: "usage of the `panic!` macro",
+        deprecation: None,
+        module: "panic_unimplemented",
     },
     Lint {
         name: "panic_params",
@@ -1653,6 +1667,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         module: "replace_consts",
     },
     Lint {
+        name: "result_expect_used",
+        group: "restriction",
+        desc: "using `Result.expect()`, which might be better handled",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "result_map_unit_fn",
         group: "complexity",
         desc: "using `result.map(f)`, where f is a function or closure that returns ()",
@@ -1847,6 +1868,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         desc: "getting the inner pointer of a temporary `CString`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "todo",
+        group: "restriction",
+        desc: "`todo!` should not be present in production code",
+        deprecation: None,
+        module: "panic_unimplemented",
     },
     Lint {
         name: "too_many_arguments",
@@ -2050,6 +2078,13 @@ pub const ALL_LINTS: [Lint; 326] = [
         desc: "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)",
         deprecation: None,
         module: "misc_early",
+    },
+    Lint {
+        name: "unreachable",
+        group: "restriction",
+        desc: "`unreachable!` should not be present in production code",
+        deprecation: None,
+        module: "panic_unimplemented",
     },
     Lint {
         name: "unreadable_literal",

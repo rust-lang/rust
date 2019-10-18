@@ -26,6 +26,22 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `panic!`.
+    ///
+    /// **Why is this bad?** `panic!` will stop the execution of the executable
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// panic!("even with a good reason");
+    /// ```
+    pub PANIC,
+    restriction,
+    "usage of the `panic!` macro"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for usage of `unimplemented!`.
     ///
     /// **Why is this bad?** This macro should not be present in production code
@@ -41,7 +57,39 @@ declare_clippy_lint! {
     "`unimplemented!` should not be present in production code"
 }
 
-declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `todo!`.
+    ///
+    /// **Why is this bad?** This macro should not be present in production code
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// todo!();
+    /// ```
+    pub TODO,
+    restriction,
+    "`todo!` should not be present in production code"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `unreachable!`.
+    ///
+    /// **Why is this bad?** This macro can cause code to panic
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```no_run
+    /// unreachable!();
+    /// ```
+    pub UNREACHABLE,
+    restriction,
+    "`unreachable!` should not be present in production code"
+}
+
+declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
@@ -55,7 +103,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
                     let span = get_outer_span(expr);
                     span_lint(cx, UNIMPLEMENTED, span,
                               "`unimplemented` should not be present in production code");
-                } else {
+                } else if is_expn_of(expr.span, "todo").is_some() {
+                    let span = get_outer_span(expr);
+                    span_lint(cx, TODO, span,
+                              "`todo` should not be present in production code");
+                } else if is_expn_of(expr.span, "unreachable").is_some() {
+                    let span = get_outer_span(expr);
+                    span_lint(cx, UNREACHABLE, span,
+                              "`unreachable` should not be present in production code");
+                } else if is_expn_of(expr.span, "panic").is_some() {
+                    let span = get_outer_span(expr);
+                    span_lint(cx, PANIC, span,
+                              "`panic` should not be present in production code");
                     match_panic(params, expr, cx);
                 }
             }

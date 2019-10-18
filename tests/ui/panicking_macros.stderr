@@ -1,0 +1,34 @@
+error: `panic` should not be present in production code
+  --> $DIR/panicking_macros.rs:6:5
+   |
+LL |     panic!();
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::panic` implied by `-D warnings`
+
+error: `todo` should not be present in production code
+  --> $DIR/panicking_macros.rs:12:5
+   |
+LL |     todo!();
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::todo` implied by `-D warnings`
+
+error: `unimplemented` should not be present in production code
+  --> $DIR/panicking_macros.rs:18:5
+   |
+LL |     unimplemented!();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unimplemented` implied by `-D warnings`
+
+error: `unreachable` should not be present in production code
+  --> $DIR/panicking_macros.rs:24:5
+   |
+LL |     unreachable!();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unreachable` implied by `-D warnings`
+
+error: aborting due to 4 previous errors
+
