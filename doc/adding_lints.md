@@ -104,8 +104,6 @@ test file and compare that to the contents of a `.fixed` file.
 Use `tests/ui/update-all-references.sh` to automatically generate the
 `.fixed` file after running the tests.
 
-With tests in place, let's have a look at implementing our lint now.
-
 ### Edition 2018 tests
 
 Some features require the 2018 edition to work (e.g. `async_await`), but
@@ -118,6 +116,8 @@ Manually testing against an example file can be useful if you have added some
 `println!`s and the test suite output becomes unreadable. To try Clippy with
 your local modifications, run `env CLIPPY_TESTS=true cargo run --bin
 clippy-driver -- -L ./target/debug input.rs` from the working copy root.
+
+With tests in place, let's have a look at implementing our lint now.
 
 ### Lint declaration
 
