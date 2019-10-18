@@ -35,6 +35,7 @@ pub use self::ColorConfig::*;
 pub use self::types::*;
 pub use self::types::TestName::*;
 pub use self::options::{Options, ShouldPanic};
+pub use self::bench::{Bencher, black_box};
 
 // Module to be used by rustc to compile tests in libtest
 pub mod test {
@@ -67,6 +68,7 @@ use std::{
 };
 
 pub mod stats;
+pub mod bench;
 mod formatters;
 mod cli;
 mod console;
@@ -75,7 +77,6 @@ mod helpers;
 mod time;
 mod types;
 mod options;
-mod bench;
 mod test_result;
 
 #[cfg(test)]

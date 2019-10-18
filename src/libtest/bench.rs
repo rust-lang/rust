@@ -1,4 +1,6 @@
 //! Benchmarking module.
+pub use std::hint::black_box;
+
 use super::{
     event::CompletedTest,
     helpers::sink::Sink,
@@ -14,7 +16,6 @@ use std::cmp;
 use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
-use std::hint::black_box;
 
 /// Manager of the benchmarking runs.
 ///
