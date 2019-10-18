@@ -1128,7 +1128,6 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 // FIXME: ensure that the interner outlives any thread which uses
 // `LocalInternedString`, by creating a new thread right after constructing the
 // interner.
-#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
 }

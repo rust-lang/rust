@@ -32,7 +32,7 @@ impl LibFeatures {
         let mut all_features: Vec<_> = self.stable.iter().map(|(f, s)| (*f, Some(*s)))
             .chain(self.unstable.iter().map(|f| (*f, None)))
             .collect();
-        all_features.sort_unstable_by_key(|f| f.0.as_str());
+        all_features.sort_unstable_by_key(|f| f.0);
         all_features
     }
 }

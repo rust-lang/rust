@@ -618,7 +618,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         let name = path[path.len() - 1].ident.name;
         // Make sure error reporting is deterministic.
-        names.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
+        names.sort_by_key(|suggestion| suggestion.candidate);
 
         match find_best_match_for_name(
             names.iter().map(|suggestion| &suggestion.candidate),

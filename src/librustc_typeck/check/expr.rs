@@ -1182,9 +1182,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let mut displayable_field_names = remaining_fields
                                               .keys()
-                                              .map(|ident| ident.as_str())
+                                              .map(|ident| ident.name)
                                               .collect::<Vec<_>>();
-
             displayable_field_names.sort();
 
             let truncated_fields_error = if len <= 3 {
