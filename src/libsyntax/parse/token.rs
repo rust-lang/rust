@@ -33,7 +33,7 @@ pub enum BinOpToken {
 }
 
 /// A delimiter token.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum DelimToken {
     /// A round parenthesis (i.e., `(` or `)`).
     Paren,
