@@ -238,6 +238,7 @@ crate struct LazyPerDefTables<'tcx> {
     pub deprecation: Lazy!(PerDefTable<Lazy<attr::Deprecation>>),
 
     pub ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
+    pub fn_sig: Lazy!(PerDefTable<Lazy!(ty::PolyFnSig<'tcx>)>),
     pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
     pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
     pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
@@ -265,18 +266,18 @@ crate enum EntryKind<'tcx> {
     OpaqueTy,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy!(VariantData<'tcx>)),
-    Struct(Lazy!(VariantData<'tcx>), ReprOptions),
-    Union(Lazy!(VariantData<'tcx>), ReprOptions),
-    Fn(Lazy!(FnData<'tcx>)),
-    ForeignFn(Lazy!(FnData<'tcx>)),
+    Variant(Lazy<VariantData>),
+    Struct(Lazy<VariantData>, ReprOptions),
+    Union(Lazy<VariantData>, ReprOptions),
+    Fn(Lazy<FnData>),
+    ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
-    Closure(Lazy!(ClosureData<'tcx>)),
+    Closure,
     Generator(Lazy!(GeneratorData<'tcx>)),
     Trait(Lazy<TraitData>),
     Impl(Lazy!(ImplData<'tcx>)),
-    Method(Lazy!(MethodData<'tcx>)),
+    Method(Lazy<MethodData>),
     AssocType(AssocContainer),
     AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
@@ -306,22 +307,18 @@ crate struct MacroDef {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct FnData<'tcx> {
+crate struct FnData {
     pub asyncness: hir::IsAsync,
     pub constness: hir::Constness,
     pub param_names: Lazy<[ast::Name]>,
-    pub sig: Lazy!(ty::PolyFnSig<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct VariantData<'tcx> {
+crate struct VariantData {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     pub ctor: Option<DefIndex>,
-    /// If this is a tuple struct or variant
-    /// ctor, this is its "function" signature.
-    pub ctor_sig: Option<Lazy!(ty::PolyFnSig<'tcx>)>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -383,15 +380,10 @@ impl AssocContainer {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct MethodData<'tcx> {
-    pub fn_data: FnData<'tcx>,
+crate struct MethodData {
+    pub fn_data: FnData,
     pub container: AssocContainer,
     pub has_self: bool,
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct ClosureData<'tcx> {
-    pub sig: Lazy!(ty::PolyFnSig<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

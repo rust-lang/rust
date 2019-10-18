@@ -458,7 +458,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Impl(_) |
             EntryKind::Field |
             EntryKind::Generator(_) |
-            EntryKind::Closure(_) => return None,
+            EntryKind::Closure => return None,
         })
     }
 }
@@ -1239,16 +1239,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     crate fn fn_sig(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let sig = match self.kind(id) {
-            EntryKind::Fn(data) |
-            EntryKind::ForeignFn(data) => data.decode(self).sig,
-            EntryKind::Method(data) => data.decode(self).fn_data.sig,
-            EntryKind::Variant(data) |
-            EntryKind::Struct(data, _) => data.decode(self).ctor_sig.unwrap(),
-            EntryKind::Closure(data) => data.decode(self).sig,
-            _ => bug!(),
-        };
-        sig.decode((self, tcx))
+        self.root.per_def.fn_sig.get(self, id).unwrap().decode((self, tcx))
     }
 
     #[inline]

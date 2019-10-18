@@ -71,6 +71,7 @@ struct PerDefTables<'tcx> {
     deprecation: PerDefTable<Lazy<attr::Deprecation>>,
 
     ty: PerDefTable<Lazy<Ty<'tcx>>>,
+    fn_sig: PerDefTable<Lazy<ty::PolyFnSig<'tcx>>>,
     inherent_impls: PerDefTable<Lazy<[DefIndex]>>,
     variances: PerDefTable<Lazy<[ty::Variance]>>,
     generics: PerDefTable<Lazy<ty::Generics>>,
@@ -509,6 +510,7 @@ impl<'tcx> EncodeContext<'tcx> {
             deprecation: self.per_def.deprecation.encode(&mut self.opaque),
 
             ty: self.per_def.ty.encode(&mut self.opaque),
+            fn_sig: self.per_def.fn_sig.encode(&mut self.opaque),
             inherent_impls: self.per_def.inherent_impls.encode(&mut self.opaque),
             variances: self.per_def.variances.encode(&mut self.opaque),
             generics: self.per_def.generics.encode(&mut self.opaque),
@@ -637,13 +639,7 @@ impl EncodeContext<'tcx> {
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            // FIXME(eddyb) deduplicate these with `encode_enum_variant_ctor`.
             ctor: variant.ctor_def_id.map(|did| did.index),
-            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
-                variant.ctor_def_id.map(|ctor_def_id| self.lazy(&tcx.fn_sig(ctor_def_id)))
-            } else {
-                None
-            },
         };
 
         let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
@@ -662,6 +658,11 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
+            // FIXME(eddyb) encode signature only in `encode_enum_variant_ctor`.
+            if let Some(ctor_def_id) = variant.ctor_def_id {
+                record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
+            }
+            // FIXME(eddyb) is this ever used?
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
@@ -681,15 +682,11 @@ impl EncodeContext<'tcx> {
         let def_id = variant.ctor_def_id.unwrap();
         debug!("EncodeContext::encode_enum_variant_ctor({:?})", def_id);
 
+        // FIXME(eddyb) encode only the `CtorKind` for constructors.
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             ctor: Some(def_id.index),
-            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
-                Some(self.lazy(tcx.fn_sig(def_id)))
-            } else {
-                None
-            }
         };
 
         // Variant constructors have the same visibility as the parent enums, unless marked as
@@ -708,6 +705,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
+            record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
@@ -782,11 +780,6 @@ impl EncodeContext<'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             ctor: Some(def_id.index),
-            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
-                Some(self.lazy(tcx.fn_sig(def_id)))
-            } else {
-                None
-            }
         };
 
         let struct_id = tcx.hir().as_local_hir_id(adt_def_id).unwrap();
@@ -813,6 +806,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
+            record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
@@ -881,7 +875,6 @@ impl EncodeContext<'tcx> {
                         asyncness: m_sig.header.asyncness,
                         constness: hir::Constness::NotConst,
                         param_names,
-                        sig: self.lazy(tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -913,6 +906,7 @@ impl EncodeContext<'tcx> {
             ty::AssocKind::OpaqueTy => unreachable!(),
         }
         if trait_item.kind == ty::AssocKind::Method {
+            record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
@@ -959,7 +953,6 @@ impl EncodeContext<'tcx> {
                         asyncness: sig.header.asyncness,
                         constness: sig.header.constness,
                         param_names: self.encode_fn_param_names_for_body(body),
-                        sig: self.lazy(tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -980,6 +973,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if impl_item.kind == ty::AssocKind::Method {
+            record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
@@ -1088,7 +1082,6 @@ impl EncodeContext<'tcx> {
                     asyncness: header.asyncness,
                     constness: header.constness,
                     param_names: self.encode_fn_param_names_for_body(body),
-                    sig: self.lazy(tcx.fn_sig(def_id)),
                 };
 
                 EntryKind::Fn(self.lazy(data))
@@ -1116,7 +1109,6 @@ impl EncodeContext<'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     ctor,
-                    ctor_sig: None,
                 }), adt_def.repr)
             }
             hir::ItemKind::Union(..) => {
@@ -1127,7 +1119,6 @@ impl EncodeContext<'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     ctor: None,
-                    ctor_sig: None,
                 }), adt_def.repr)
             }
             hir::ItemKind::Impl(_, _, defaultness, ..) => {
@@ -1232,6 +1223,9 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Impl(..) => self.encode_item_type(def_id),
             _ => {}
         }
+        if let hir::ItemKind::Fn(..) = item.kind {
+            record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
+        }
         self.encode_inherent_implementations(def_id);
         match item.kind {
             hir::ItemKind::Enum(..) |
@@ -1328,10 +1322,12 @@ impl EncodeContext<'tcx> {
     fn encode_info_for_closure(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
 
-        let tables = self.tcx.typeck_tables_of(def_id);
+        // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
+        // including on the signature, which is inferred in `typeck_tables_of.
         let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
+        let ty = self.tcx.typeck_tables_of(def_id).node_type(hir_id);
 
-        record!(self.per_def.kind[def_id] <- match tables.node_type(hir_id).kind {
+        record!(self.per_def.kind[def_id] <- match ty.kind {
             ty::Generator(def_id, ..) => {
                 let layout = self.tcx.generator_layout(def_id);
                 let data = GeneratorData {
@@ -1340,11 +1336,7 @@ impl EncodeContext<'tcx> {
                 EntryKind::Generator(self.lazy(data))
             }
 
-            ty::Closure(def_id, substs) => {
-                let sig = substs.as_closure().sig(def_id, self.tcx);
-                let data = ClosureData { sig: self.lazy(sig) };
-                EntryKind::Closure(self.lazy(data))
-            }
+            ty::Closure(..) => EntryKind::Closure,
 
             _ => bug!("closure that is neither generator nor closure"),
         });
@@ -1352,6 +1344,9 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.per_def.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
         self.encode_item_type(def_id);
+        if let ty::Closure(def_id, substs) = ty.kind {
+            record!(self.per_def.fn_sig[def_id] <- substs.as_closure().sig(def_id, self.tcx));
+        }
         self.encode_generics(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
@@ -1560,7 +1555,6 @@ impl EncodeContext<'tcx> {
                     asyncness: hir::IsAsync::NotAsync,
                     constness: hir::Constness::NotConst,
                     param_names: self.encode_fn_param_names(names),
-                    sig: self.lazy(tcx.fn_sig(def_id)),
                 };
                 EntryKind::ForeignFn(self.lazy(data))
             }
@@ -1576,6 +1570,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
+            record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
