@@ -34,7 +34,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     /// Test if the pointer is in-bounds of a live allocation.
     #[inline]
     fn pointer_inbounds(&self, ptr: Pointer<Tag>) -> InterpResult<'tcx> {
-        let (size, _align) = self.memory().get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
+        let (size, _align) = self.memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
         ptr.check_inbounds_alloc(size, CheckInAllocMsg::InboundsTest)
     }
 

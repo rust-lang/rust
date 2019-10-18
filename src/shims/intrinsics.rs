@@ -68,7 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
                 let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
+                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_scalar(val, dest)?;
             }
@@ -83,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
                 let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
+                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_scalar(val, place.into())?;
             }
@@ -104,7 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
                 let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
+                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_scalar(old, dest)?; // old value is returned
                 this.write_scalar(new, place.into())?;
@@ -120,7 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
                 let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
+                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 // binary_op will bail if either of them is not a scalar
                 let eq = this.overflowing_binary_op(mir::BinOp::Eq, old, expect_old)?.0;
@@ -173,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
                 // be 8-aligned).
                 let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
+                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 this.write_immediate(*old, dest)?; // old value is returned
                 let (op, neg) = match intrinsic_name.split('_').nth(1).unwrap() {
@@ -207,12 +207,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let size = Size::from_bytes(count * elem_size);
                 let src = this.read_scalar(args[0])?.not_undef()?;
-                let src = this.memory().check_ptr_access(src, size, elem_align)?;
+                let src = this.memory.check_ptr_access(src, size, elem_align)?;
                 let dest = this.read_scalar(args[1])?.not_undef()?;
-                let dest = this.memory().check_ptr_access(dest, size, elem_align)?;
+                let dest = this.memory.check_ptr_access(dest, size, elem_align)?;
 
                 if let (Some(src), Some(dest)) = (src, dest) {
-                    this.memory_mut().copy(
+                    this.memory.copy(
                         src,
                         dest,
                         size,
@@ -359,7 +359,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             assert!(mplace.meta.is_none());
                             // not a zst, must be valid pointer
                             let ptr = mplace.ptr.to_ptr()?;
-                            this.memory_mut().get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, dest.layout.size)?;
+                            this.memory.get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, dest.layout.size)?;
                         }
                     }
                 }
@@ -548,7 +548,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             let mplace = this.force_allocation(dest)?;
                             assert!(mplace.meta.is_none());
                             let ptr = mplace.ptr.to_ptr()?;
-                            this.memory_mut()
+                            this.memory
                                 .get_mut(ptr.alloc_id)?
                                 .mark_definedness(ptr, dest.layout.size, false);
                         }
@@ -563,9 +563,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let count = this.read_scalar(args[2])?.to_usize(this)?;
                 let byte_count = ty_layout.size * count;
-                match this.memory().check_ptr_access(ptr, byte_count, ty_layout.align.abi)? {
+                match this.memory.check_ptr_access(ptr, byte_count, ty_layout.align.abi)? {
                     Some(ptr) => {
-                        this.memory_mut()
+                        this.memory
                             .get_mut(ptr.alloc_id)?
                             .write_repeat(tcx, ptr, val_byte, byte_count)?;
                     }

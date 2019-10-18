@@ -26,7 +26,7 @@ impl EnvVars {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr =
-                        alloc_env_var(name.as_bytes(), value.as_bytes(), ecx.memory_mut());
+                        alloc_env_var(name.as_bytes(), value.as_bytes(), &mut ecx.memory);
                     ecx.machine.env_vars.map.insert(name.into_bytes(), var_ptr);
                 }
             }
@@ -52,7 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
-        let name = this.memory().read_c_str(name_ptr)?;
+        let name = this.memory.read_c_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(name) {
             // The offset is used to strip the "{name}=" part of the string.
             Some(var_ptr) => {
@@ -71,18 +71,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let value_ptr = this.read_scalar(value_op)?.not_undef()?;
-        let value = this.memory().read_c_str(value_ptr)?;
+        let value = this.memory.read_c_str(value_ptr)?;
         let mut new = None;
         if !this.is_null(name_ptr)? {
-            let name = this.memory().read_c_str(name_ptr)?;
+            let name = this.memory.read_c_str(name_ptr)?;
             if !name.is_empty() && !name.contains(&b'=') {
                 new = Some((name.to_owned(), value.to_owned()));
             }
         }
         if let Some((name, value)) = new {
-            let var_ptr = alloc_env_var(&name, &value, this.memory_mut());
+            let var_ptr = alloc_env_var(&name, &value, &mut this.memory);
             if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), var_ptr) {
-                this.memory_mut()
+                this.memory
                     .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             Ok(0)
@@ -97,14 +97,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let mut success = None;
         if !this.is_null(name_ptr)? {
-            let name = this.memory().read_c_str(name_ptr)?.to_owned();
+            let name = this.memory.read_c_str(name_ptr)?.to_owned();
             if !name.is_empty() && !name.contains(&b'=') {
                 success = Some(this.machine.env_vars.map.remove(&name));
             }
         }
         if let Some(old) = success {
             if let Some(var) = old {
-                this.memory_mut()
+                this.memory
                     .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             Ok(0)
@@ -140,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // This is ok because the buffer was strictly larger than `bytes`, so after
                     // adding the null terminator, the buffer size is larger or equal to
                     // `bytes.len()`, meaning that `bytes` actually fit inside tbe buffer.
-                    this.memory_mut()
+                    this.memory
                         .get_mut(buf.alloc_id)?
                         .write_bytes(tcx, buf, &bytes)?;
                     return Ok(Scalar::Ptr(buf));
@@ -159,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("chdir")?;
 
         let path_bytes = this
-            .memory()
+            .memory
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let path = Path::new(

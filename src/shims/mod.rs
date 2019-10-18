@@ -75,7 +75,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
 
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
-            let cur_align = this.memory().get(ptr.alloc_id)?.align.bytes() as usize;
+            let cur_align = this.memory.get(ptr.alloc_id)?.align.bytes() as usize;
             if cur_align >= req_align {
                 // if the allocation alignment is at least the required alignment we use the
                 // libcore implementation
