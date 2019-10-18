@@ -310,7 +310,7 @@ impl FileAttr {
                 return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
                     Ok(SystemTime::from(libc::timespec {
                         tv_sec: ext.stx_btime.tv_sec as libc::time_t,
-                        tv_nsec: ext.stx_btime.tv_nsec as libc::c_long,
+                        tv_nsec: ext.stx_btime.tv_nsec as _,
                     }))
                 } else {
                     Err(io::Error::new(
