@@ -360,8 +360,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.read_scalar(errno_place.into())?.not_undef()
     }
 
-    /// Sets the last error variable using a `std::io::Error`. It fails if the error cannot be
-    /// transformed to a raw os error succesfully.
+    /// Sets the last OS error using a `std::io::Error`. This function tries to produce the most
+    /// similar OS error from the `std::io::ErrorKind` and sets it as the last OS error.
     fn set_last_error_from_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
         use std::io::ErrorKind::*;
         let this = self.eval_context_mut();
@@ -392,12 +392,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Helper function that consumes an `std::io::Result<T>` and returns an
-    /// `InterpResult<'tcx,T>::Ok` instead. It is expected that the result can be converted to an
-    /// OS error using `std::io::Error::raw_os_error`.
+    /// `InterpResult<'tcx,T>::Ok` instead. In case the result is an error, this function returns
+    /// `Ok(-1)` and sets the last OS error accordingly.
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
     /// functions return different integer types (like `read`, that returns an `i64`)
-    fn set_last_error_from_io_result<T: From<i32>>(
+    fn try_unwrap_io_result<T: From<i32>>(
         &mut self,
         result: std::io::Result<T>,
     ) -> InterpResult<'tcx, T> {

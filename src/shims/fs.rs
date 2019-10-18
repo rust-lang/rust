@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             fh.low
         });
 
-        this.set_last_error_from_io_result(fd)
+        this.try_unwrap_io_result(fd)
     }
 
     fn fcntl(
@@ -144,7 +144,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         this.remove_handle_and(fd, |handle, this| {
-            this.set_last_error_from_io_result(handle.file.sync_all().map(|_| 0i32))
+            this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32))
         })
     }
 
@@ -175,9 +175,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .get_bytes_mut(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|buffer| handle.file.read(buffer))
             });
-            // Reinsert the file handle
             this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
-            this.set_last_error_from_io_result(bytes?.map(|bytes| bytes as i64))
+            this.try_unwrap_io_result(bytes?.map(|bytes| bytes as i64))
         })
     }
 
@@ -206,7 +205,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
             });
             this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
-            this.set_last_error_from_io_result(bytes?)
+            this.try_unwrap_io_result(bytes?)
         })
     }
 
@@ -223,7 +222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let result = remove_file(path).map(|_| 0);
 
-        this.set_last_error_from_io_result(result)
+        this.try_unwrap_io_result(result)
     }
 
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
