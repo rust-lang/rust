@@ -258,6 +258,37 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
+    /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_extra, maybe_uninit_slice_assume_init)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let input = b"Foo";
+    /// let f = u8::to_ascii_uppercase;
+    ///
+    /// let mut buffer: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
+    /// let vec;
+    /// let output = if let Some(buffer) = buffer.get_mut(..input.len()) {
+    ///     buffer.iter_mut().zip(input).for_each(|(a, b)| { a.write(f(b)); });
+    ///     unsafe { MaybeUninit::slice_get_ref(buffer) }
+    /// } else {
+    ///     vec = input.iter().map(f).collect::<Vec<u8>>();
+    ///     &vec
+    /// };
+    ///
+    /// assert_eq!(output, b"FOO");
+    /// ```
+    #[unstable(feature = "maybe_uninit_uninit_array", issue = "0")]
+    #[inline(always)]
+    pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+        unsafe {
+            MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init()
+        }
+    }
+
     /// A promotable constant, equivalent to `uninit()`.
     #[unstable(feature = "internal_uninit_const", issue = "0",
         reason = "hack to work around promotability")]
@@ -688,6 +719,32 @@ impl<T> MaybeUninit<T> {
     pub unsafe fn get_mut(&mut self) -> &mut T {
         intrinsics::panic_if_uninhabited::<T>();
         &mut *self.value
+    }
+
+    /// Get a slice of assume-initialized items.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` items
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized causes undefined behavior.
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[inline(always)]
+    pub unsafe fn slice_get_ref(slice: &[Self]) -> &[T] {
+        &*(slice as *const [Self] as *const [T])
+    }
+
+    /// Get a mutable slice of assume-initialized items.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` items
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized causes undefined behavior.
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[inline(always)]
+    pub unsafe fn slice_get_mut(slice: &mut [Self]) -> &mut [T] {
+        &mut *(slice as *mut [Self] as *mut [T])
     }
 
     /// Gets a pointer to the first element of the array.
