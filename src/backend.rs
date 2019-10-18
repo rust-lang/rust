@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
-use cranelift_module::FuncId;
+use rustc::session::Session;
+
+use cranelift_module::{FuncId, Module};
 
 use faerie::*;
 use object::{SectionKind, RelocationKind, RelocationEncoding};
 use object::write::*;
+use cranelift_faerie::{FaerieBackend, FaerieBuilder, FaerieProduct, FaerieTrapCollection};
 use cranelift_object::*;
 
 use gimli::SectionId;
@@ -73,11 +76,11 @@ pub trait WriteDebugInfo {
     );
 }
 
-impl WriteDebugInfo for Artifact {
+impl WriteDebugInfo for FaerieProduct {
     type SectionId = SectionId;
 
     fn add_debug_section(&mut self, id: SectionId, data: Vec<u8>) -> SectionId {
-        self.declare_with(id.name(), Decl::section(faerie::SectionKind::Debug), data).unwrap();
+        self.artifact.declare_with(id.name(), Decl::section(faerie::SectionKind::Debug), data).unwrap();
         id
     }
 
@@ -89,6 +92,7 @@ impl WriteDebugInfo for Artifact {
         reloc: &DebugReloc,
     ) {
         self
+            .artifact
             .link_with(
                 faerie::Link {
                     from: from.name(),
@@ -146,4 +150,70 @@ impl WriteDebugInfo for ObjectProduct {
             addend: reloc.addend,
         }).unwrap();
     }
+}
+
+pub trait Emit {
+    fn emit(self) -> Vec<u8>;
+}
+
+impl Emit for FaerieProduct {
+    fn emit(self) -> Vec<u8> {
+        self.artifact.emit().unwrap()
+    }
+}
+
+impl Emit for ObjectProduct {
+    fn emit(self) -> Vec<u8> {
+        self.object.write().unwrap()
+    }
+}
+
+#[cfg(not(feature = "backend_object"))]
+pub fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Artifact)) -> Vec<u8> {
+    let mut metadata_artifact = faerie::Artifact::new(
+        crate::build_isa(sess, true).triple().clone(),
+        name.to_string(),
+    );
+    f(&mut metadata_artifact);
+    metadata_artifact.emit().unwrap()
+}
+
+#[cfg(feature = "backend_object")]
+pub fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
+    let triple = crate::build_isa(sess, true).triple().clone();
+    let mut metadata_object =
+        object::write::Object::new(triple.binary_format, triple.architecture);
+    metadata_object.add_file_symbol(name.as_bytes().to_vec());
+    f(&mut metadata_object);
+    metadata_object.write().unwrap()
+}
+
+pub type Backend = impl cranelift_module::Backend<Product: Emit + WriteDebugInfo>;
+
+#[cfg(not(feature = "backend_object"))]
+pub fn make_module(sess: &Session, name: String) -> Module<Backend> {
+    let module: Module<FaerieBackend> = Module::new(
+        FaerieBuilder::new(
+            crate::build_isa(sess, true),
+            name + ".o",
+            FaerieTrapCollection::Disabled,
+            cranelift_module::default_libcall_names(),
+        )
+        .unwrap(),
+    );
+    module
+}
+
+#[cfg(feature = "backend_object")]
+pub fn make_module(sess: &Session, name: String) -> Module<Backend> {
+    let module: Module<ObjectBackend> = Module::new(
+        ObjectBuilder::new(
+            crate::build_isa(sess, true),
+            name + ".o",
+            ObjectTrapCollection::Disabled,
+            cranelift_module::default_libcall_names(),
+        )
+        .unwrap(),
+    );
+    module
 }

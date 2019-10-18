@@ -9,6 +9,9 @@ edition = "2018"
 [lib]
 crate-type = ["dylib"]
 
+[features]
+backend_object = ["object/write"]
+
 [dependencies]
 # These have to be in sync with each other
 cranelift = { git = "https://github.com/CraneStation/cranelift.git" }
@@ -29,7 +32,7 @@ libloading = "0.5.1"
 [dependencies.object]
 version = "0.14.0"
 default-features = false
-features = ["compression", "read", "std", "write"] # We don't need WASM support
+features = ["compression", "read", "std"] # We don't need WASM support
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
