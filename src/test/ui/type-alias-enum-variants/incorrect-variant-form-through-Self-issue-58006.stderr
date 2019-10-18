@@ -1,4 +1,4 @@
-error[E0533]: expected unit struct, unit variant or constant, found tuple variant `<Self>::A`
+error[E0533]: expected unit struct, unit variant or constant, found tuple variant `Self::A`
   --> $DIR/incorrect-variant-form-through-Self-issue-58006.rs:8:13
    |
 LL |             Self::A => (),

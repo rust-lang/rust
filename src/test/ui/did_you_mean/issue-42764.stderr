@@ -6,7 +6,7 @@ LL |     this_function_expects_a_double_option(n);
    |
    = note: expected type `DoubleOption<_>`
               found type `usize`
-help: try using a variant of the expected type
+help: try using a variant of the expected enum
    |
 LL |     this_function_expects_a_double_option(DoubleOption::FirstSome(n));
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
