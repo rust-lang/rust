@@ -1523,9 +1523,7 @@ impl<'a> State<'a> {
                                         colons_before_params)
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
-                self.s.word("<");
                 self.print_type(qself);
-                self.s.word(">");
                 self.s.word("::");
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(item_segment.generic_args(),
