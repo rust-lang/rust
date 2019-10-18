@@ -871,14 +871,17 @@ impl UseSpecializedDecodable for Ident {
 
 /// An interned string.
 ///
-/// Internally, a `Symbol` is implemented as an index, and all operations
-/// (including hashing, equality, and ordering) operate on that index. The use
-/// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
-/// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
+/// Internally, a `Symbol` is implemented as an index. Ordering and hashing use
+/// the underlying string chars. Equality uses the index, but because of the
+/// interning this is equivalent to using the underlying string chars.
+///
+/// The use of `rustc_index::newtype_index!` means that `Option<Symbol>` only
+/// takes up 4 bytes, because `rustc_index::newtype_index!` reserves the last
+/// 256 values for tagging purposes.
 ///
 /// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!` because it
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Symbol(SymbolIndex);
 
 rustc_index::newtype_index! {
@@ -929,6 +932,30 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
+    }
+}
+
+impl PartialOrd for Symbol {
+    fn partial_cmp(&self, other: &Symbol) -> Option<Ordering> {
+        if self == other {
+            return Some(Ordering::Equal);
+        }
+        self.with2(*other, |self_str, other_str| self_str.partial_cmp(other_str))
+    }
+}
+
+impl Ord for Symbol {
+    fn cmp(&self, other: &Symbol) -> Ordering {
+        if self == other {
+            return Ordering::Equal;
+        }
+        self.with2(*other, |self_str, other_str| self_str.cmp(other_str))
+    }
+}
+
+impl Hash for Symbol {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.with(|str| str.hash(state))
     }
 }
 
@@ -1028,7 +1055,7 @@ pub mod sym {
 
 impl Symbol {
     fn is_used_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Dyn
+        self.0 >= kw::Async.0 && self.0 <= kw::Dyn.0
     }
 
     fn is_unused_keyword_2018(self) -> bool {
@@ -1037,7 +1064,7 @@ impl Symbol {
 
     /// Used for sanity checking rustdoc keyword sections.
     pub fn is_doc_keyword(self) -> bool {
-        self <= kw::Union
+        self.0 <= kw::Union.0
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.
@@ -1065,20 +1092,20 @@ impl Ident {
     // Returns `true` for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
-        self.name <= kw::Underscore
+        self.name.0 <= kw::Underscore.0
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::As && self.name <= kw::While ||
+        self.name.0 >= kw::As.0 && self.name.0 <= kw::While.0 ||
         self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::Abstract && self.name <= kw::Yield ||
+        self.name.0 >= kw::Abstract.0 && self.name.0 <= kw::Yield.0 ||
         self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 
