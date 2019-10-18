@@ -1,5 +1,5 @@
 // run-pass
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 use std::panic;
 

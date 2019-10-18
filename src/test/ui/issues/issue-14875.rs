@@ -1,5 +1,5 @@
 // run-pass
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 // Check that values are not leaked when a dtor panics (#14875)
 

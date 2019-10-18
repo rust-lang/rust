@@ -9,12 +9,8 @@ pub fn target() -> Result<Target, String> {
                                "-s".to_string(),
                                "ASSERTIONS=1".to_string(),
                                "-s".to_string(),
-                               "DISABLE_EXCEPTION_CATCHING=1".to_string(),
-                               "-s".to_string(),
                                "ABORTING_MALLOC=0".to_string(),
-                               // FIXME(tlively): Enable this linker option once libc type errors
-                               // are resolved. See https://github.com/rust-lang/libc/pull/1478.
-                               // "-Wl,--fatal-warnings".to_string(),
+                               "-Wl,--fatal-warnings".to_string(),
                                ]);
 
     let opts = TargetOptions {
@@ -24,10 +20,7 @@ pub fn target() -> Result<Target, String> {
         linker: None,
         linker_is_gnu: true,
         is_like_emscripten: true,
-        // FIXME(tlively): Emscripten supports unwinding, but we would have to pass
-        // -enable-emscripten-cxx-exceptions to LLVM at codegen time and merge
-        // https://reviews.llvm.org/rG5c3cdef84b82464756bb571c13c31cf7773860c3to use it.
-        panic_strategy: PanicStrategy::Abort,
+        panic_strategy: PanicStrategy::Unwind,
         post_link_args,
         target_family: Some("unix".to_string()),
         .. wasm32_base::options()
