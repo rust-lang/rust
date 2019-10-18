@@ -222,6 +222,59 @@
 /// wildcards. Thus this mostly extends the original algorithm to ranges and variable-length
 /// slices, while removing the special-casing of the wildcard pattern. We also additionally
 /// support uninhabited types.
+///
+///
+/// # Handling of missing constructors (MISSING-CTOR)
+///
+/// This algorithm can be seen to essentially explore the full decision tree of patterns, except in
+/// the case where it "takes a shortcut" to find a "missing" constructor - that is, a constructor
+/// that is not covered by any of the non-wildcard patterns.
+///
+/// For example, in the following case:
+/// ```rust
+/// match x {
+///     (_, false) => {}
+///     (None, false) => {}
+/// }
+/// ```
+///
+/// The algorithm proceeds as follows:
+/// ```
+/// M = [ [(_, false)],
+///       [(None, false)]]
+/// p = [_]
+/// -- expand tuple (ctor = Simple)
+///   M = [ [_, false],
+///         [None, false]]
+///   p = [_, _]
+///   -- `Some(_)` is a missing ctor, dropping all the non-wildcard arms
+///     M = [ [false]]
+///     p = [_]
+///     -- `true` is a possible witness
+///       M = []
+///       p = []
+///       return "[]"
+///     return "[true]"
+///   return "[Some(_), true]"
+/// return "[(Some(_), true)]"
+/// ```
+///
+/// Once it finds that `Some(_)` is a missing constructor, it does not need to look any further -
+/// any witness using a non-missing constructor can be transformed to a witness using a missing
+/// constructor - and therefore it does not try to look for witnesses involving the other
+/// constructors - in this case, the `(None, true)` witness (which can be "transformed" to
+/// `(Some(_), true)`).
+///
+/// In the code, missing constructors are represented by the `Wildcard` and `MissingConstructors`
+/// variants of `Constructor`, with the difference between them being down to error reporting:
+/// `MissingConstructors` "remembers" the set of constructors it contains for error reporting (so
+/// we can show the `... not covered` error message), while `Wildcard` doesn't.
+///
+/// Therefore, `Wildcard` is used in cases where the exact constructor doesn't matter - either
+/// where the head column of the matrix contains only wildcards (and therefore, *every* constructor
+/// will work) or when the enum is `#[non_exhaustive]`, and therefore from a user POV there can
+/// always assumed to be an "fresh" constructor that will be useful for the witness.
+/// `MissingConstructors` is used in the other cases.
 use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
@@ -1821,6 +1874,7 @@ fn pat_constructors<'tcx>(
             Variant(adt_def.variants[variant_index].def_id)
         }
         PatKind::Constant { value } => {
+            // FIXME: consts are not handled properly; see #65413
             if let Some(range) = IntRange::from_const(tcx, param_env, value) {
                 IntRange(range)
             } else {
@@ -2005,12 +2059,9 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     }
 
     if let Wildcard | MissingConstructors(_) = constructor {
-        // If `constructor` is `Wildcard`: either there were only wildcards in the first component
-        // of the matrix, or we are in a special non_exhaustive case where we pretend the type has
-        // an extra `_` constructor to prevent exhaustive matching. In both cases, all non-wildcard
-        // constructors should be discarded.
-        // If `constructor` is `MissingConstructors(_)`: by the invariant of MissingConstructors,
-        // we know that all non-wildcard constructors should be discarded.
+        // Both those cases capture a set of constructors that are not present in the head of
+        // current matrix. This means that we discard all non-wildcard constructors.
+        // See (MISSING-CTOR) at the top of the file for more details.
         return match *pat.kind {
             PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::empty()),
             _ => None,
@@ -2057,7 +2108,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                             (data, Size::from_bytes(start as u64), (end - start) as u64, t)
                         }
                         ConstValue::ByRef { .. } => {
-                            // FIXME(oli-obk): implement `deref` for `ConstValue`
+                            // FIXME(oli-obk): implement `deref` for `ConstValue`. See #53708
                             return None;
                         }
                         _ => span_bug!(
