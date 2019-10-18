@@ -7,7 +7,7 @@ before name resolution, macros are expanded using these portions of the code.
 The macro parser, in turn, may call the normal Rust parser when it needs to
 bind a metavariable (e.g.  `$my_expr`) while parsing the contents of a macro
 invocation. The code for macro expansion is in
-[`src/libsyntax/ext/mbe/`][code_dir]. This chapter aims to explain how macro
+[`src/libsyntax_expand/mbe/`][code_dir]. This chapter aims to explain how macro
 expansion works.
 
 ### Example
@@ -61,7 +61,7 @@ invocations. Interestingly, both are done by the macro parser.
 Basically, the macro parser is like an NFA-based regex parser. It uses an
 algorithm similar in spirit to the [Earley parsing
 algorithm](https://en.wikipedia.org/wiki/Earley_parser). The macro parser is
-defined in [`src/libsyntax/ext/mbe/macro_parser.rs`][code_mp].
+defined in [`src/libsyntax_expand/mbe/macro_parser.rs`][code_mp].
 
 The interface of the macro parser is as follows (this is slightly simplified):
 
@@ -110,7 +110,7 @@ normal Rust parser.
 As mentioned above, both definitions and invocations of macros are parsed using
 the macro parser. This is extremely non-intuitive and self-referential. The code
 to parse macro _definitions_ is in
-[`src/libsyntax/ext/mbe/macro_rules.rs`][code_mr]. It defines the pattern for
+[`src/libsyntax_expand/mbe/macro_rules.rs`][code_mr]. It defines the pattern for
 matching for a macro definition as `$( $lhs:tt => $rhs:tt );+`. In other words,
 a `macro_rules` definition should have in its body at least one occurrence of a
 token tree followed by `=>` followed by another token tree. When the compiler
@@ -139,7 +139,7 @@ the parse is ambiguous, while if there are no matches at all, there is a syntax
 error.
 
 For more information about the macro parser's implementation, see the comments
-in [`src/libsyntax/ext/mbe/macro_parser.rs`][code_mp].
+in [`src/libsyntax_expand/mbe/macro_parser.rs`][code_mp].
 
 ### Hygiene
 
@@ -205,8 +205,8 @@ TODO
 TODO: maybe something about macros 2.0?
 
 
-[code_dir]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/ext/mbe
-[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ext/mbe/macro_parser
-[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ext/mbe/macro_rules
-[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ext/mbe/macro_parser/fn.parse.html
+[code_dir]: https://github.com/rust-lang/rust/tree/master/src/libsyntax_expand/mbe
+[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_expand/mbe/macro_parser
+[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_expand/mbe/macro_rules
+[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_expand/mbe/macro_parser/fn.parse.html
 [parsing]: ./the-parser.html
