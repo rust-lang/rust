@@ -112,7 +112,7 @@ impl<'a> CommentStyle<'a> {
     }
 }
 
-fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle<'_> {
+pub(crate) fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle<'_> {
     if !normalize_comments {
         if orig.starts_with("/**") && !orig.starts_with("/**/") {
             CommentStyle::DoubleBullet

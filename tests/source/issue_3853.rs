@@ -33,3 +33,20 @@ fn issue_3853() {
 if let Some(ref /*mut*/ state) = foo {
 					}
 }
+
+fn double_slash_comment_between_lhs_and_rhs() {
+    if let Some(e) =
+				 // self.foo.bar(e, tx)
+				 packet.transaction.state.committed
+                {
+            // body
+                            println!(
+                                "a2304712836123");
+                                }
+}
+
+fn block_comment_between_lhs_and_rhs() {
+if let Some(ref     /*def*/  mut     /*abc*/       state)=          /*abc*/foo{
+				println!(
+        "asdfasdfasdf");	}
+}
