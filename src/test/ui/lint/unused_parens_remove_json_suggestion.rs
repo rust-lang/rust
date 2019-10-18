@@ -14,7 +14,7 @@ fn main() {
 
     let _b = false;
 
-    if (_b) { //~ ERROR
+    if (_b) { //~ ERROR unnecessary parentheses
         println!("hello");
     }
 
@@ -25,29 +25,29 @@ fn main() {
 fn f() -> bool {
     let c = false;
 
-    if(c) { //~ ERROR
+    if(c) { //~ ERROR unnecessary parentheses
         println!("next");
     }
 
-    if (c){ //~ ERROR
+    if (c){ //~ ERROR unnecessary parentheses
         println!("prev");
     }
 
     while (false && true){
-        if (c) { //~ ERROR
+        if (c) { //~ ERROR unnecessary parentheses
             println!("norm");
         }
 
     }
 
-    while(true && false) { //~ ERROR
-        for _ in (0 .. 3){ //~ ERROR
+    while(true && false) { //~ ERROR unnecessary parentheses
+        for _ in (0 .. 3){ //~ ERROR unnecessary parentheses
             println!("e~")
         }
     }
 
-    for _ in (0 .. 3) { //~ ERROR
-        while (true && false) { //~ ERROR
+    for _ in (0 .. 3) { //~ ERROR unnecessary parentheses
+        while (true && false) { //~ ERROR unnecessary parentheses
             println!("e~")
         }
     }
