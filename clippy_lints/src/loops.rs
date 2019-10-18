@@ -1461,10 +1461,19 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
             if visitor2.state == VarState::Warn {
                 if let Some(name) = visitor2.name {
                     let mut applicability = Applicability::MachineApplicable;
+
+                    // for some reason this is the only way to get the `Span`
+                    // of the entire `for` loop
+                    let for_span = if let ExprKind::Match(_, arms, _) = &expr.kind {
+                        arms[0].body.span
+                    } else {
+                        unreachable!()
+                    };
+
                     span_lint_and_sugg(
                         cx,
                         EXPLICIT_COUNTER_LOOP,
-                        expr.span,
+                        for_span.with_hi(arg.span.hi()),
                         &format!("the variable `{}` is used as a loop counter.", name),
                         "consider using",
                         format!(
