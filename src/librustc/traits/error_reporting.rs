@@ -406,7 +406,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 },
                 GenericParamDefKind::Lifetime => continue,
             };
-            let name = param.name.as_symbol();
+            let name = param.name;
             flags.push((name, Some(value)));
         }
 

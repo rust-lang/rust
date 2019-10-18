@@ -1682,7 +1682,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .filter_map(|param| match param.kind {
                 ty::GenericParamDefKind::Lifetime => None,
                 ty::GenericParamDefKind::Type { synthetic, .. } => {
-                    if param.name.as_symbol() == kw::SelfUpper {
+                    if param.name == kw::SelfUpper {
                         assert_eq!(param.index, 0);
                         return None;
                     }

@@ -849,7 +849,7 @@ impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime.as_interned_str()
+        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -866,7 +866,7 @@ pub enum GenericParamDefKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericParamDef {
-    pub name: InternedString,
+    pub name: Symbol,
     pub def_id: DefId,
     pub index: u32,
 
