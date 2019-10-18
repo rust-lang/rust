@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -ex
 
+# for faster build, share target dir between subcrates
+CARGO_TARGET_DIR=$(pwd)/target/
+export CARGO_TARGET_DIR
+
 echo "Running clippy base tests"
 
 PATH=$PATH:./node_modules/.bin
@@ -10,9 +14,7 @@ fi
 # build clippy in debug mode and run tests
 cargo build --features "debugging deny-warnings"
 cargo test --features "debugging deny-warnings"
-# for faster build, share target dir between subcrates
-CARGO_TARGET_DIR=$(pwd)/target/
-export CARGO_TARGET_DIR
+
 (cd clippy_lints && cargo test)
 (cd rustc_tools_util && cargo test)
 (cd clippy_dev && cargo test)
