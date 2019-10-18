@@ -93,7 +93,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // First argument: pointer to `main()`.
     let main_ptr = ecx
-        .memory_mut()
+        .memory
         .create_fn_alloc(FnVal::Instance(main_instance));
     let dest = ecx.local_place(args.next().unwrap())?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
@@ -128,7 +128,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let mut arg = arg.into_bytes();
         arg.push(0);
         argvs.push(
-            ecx.memory_mut()
+            ecx.memory
                 .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()),
         );
     }
@@ -142,7 +142,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let place = ecx.mplace_field(argvs_place, idx as u64)?;
         ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
     }
-    ecx.memory_mut()
+    ecx.memory
         .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
     // Write a pointer to that place as the argument.
     let argv = argvs_place.ptr;
@@ -157,7 +157,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     {
         let tcx = &{ ecx.tcx.tcx };
         let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
-        let cmd_ptr = ecx.memory_mut().allocate(
+        let cmd_ptr = ecx.memory.allocate(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
             Align::from_bytes(2).unwrap(),
             MiriMemoryKind::Env.into(),
@@ -165,7 +165,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ecx.machine.cmd_line = Some(cmd_ptr);
         // Store the UTF-16 string.
         let char_size = Size::from_bytes(2);
-        let cmd_alloc = ecx.memory_mut().get_mut(cmd_ptr.alloc_id)?;
+        let cmd_alloc = ecx.memory.get_mut(cmd_ptr.alloc_id)?;
         let mut cur_ptr = cmd_ptr;
         for &c in cmd_utf16.iter() {
             cmd_alloc.write_scalar(
@@ -211,7 +211,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
     // Process the result.
     match res {
         Ok(()) => {
-            let leaks = ecx.memory().leak_report();
+            let leaks = ecx.memory.leak_report();
             // Disable the leak test on some platforms where we do not
             // correctly implement TLS destructors.
             let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();

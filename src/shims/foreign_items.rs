@@ -48,11 +48,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             let align = this.min_align(size, kind);
             let ptr = this
-                .memory_mut()
+                .memory
                 .allocate(Size::from_bytes(size), align, kind.into());
             if zero_init {
                 // We just allocated this, the access cannot fail
-                this.memory_mut()
+                this.memory
                     .get_mut(ptr.alloc_id)
                     .unwrap()
                     .write_repeat(tcx, ptr, 0, Size::from_bytes(size))
@@ -66,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         if !this.is_null(ptr)? {
             let ptr = this.force_ptr(ptr)?;
-            this.memory_mut().deallocate(ptr, None, kind.into())?;
+            this.memory.deallocate(ptr, None, kind.into())?;
         }
         Ok(())
     }
@@ -84,13 +84,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
                 let new_ptr =
-                    this.memory_mut()
+                    this.memory
                         .allocate(Size::from_bytes(new_size), new_align, kind.into());
                 Ok(Scalar::Ptr(new_ptr))
             }
         } else {
             let old_ptr = this.force_ptr(old_ptr)?;
-            let memory = this.memory_mut();
+            let memory = &mut this.memory;
             if new_size == 0 {
                 memory.deallocate(old_ptr, None, kind.into())?;
                 Ok(Scalar::from_int(0, this.pointer_size()))
@@ -179,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if size == 0 {
                     this.write_null(ret.into())?;
                 } else {
-                    let ptr = this.memory_mut().allocate(
+                    let ptr = this.memory.allocate(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::C.into(),
@@ -208,7 +208,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = this.memory_mut().allocate(
+                let ptr = this.memory.allocate(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
@@ -224,13 +224,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if !align.is_power_of_two() {
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = this.memory_mut().allocate(
+                let ptr = this.memory.allocate(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
                 );
                 // We just allocated this, the access cannot fail
-                this.memory_mut()
+                this.memory
                     .get_mut(ptr.alloc_id)
                     .unwrap()
                     .write_repeat(tcx, ptr, 0, Size::from_bytes(size))
@@ -248,7 +248,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = this.force_ptr(ptr)?;
-                this.memory_mut().deallocate(
+                this.memory.deallocate(
                     ptr,
                     Some((
                         Size::from_bytes(old_size),
@@ -269,7 +269,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let align = Align::from_bytes(align).unwrap();
-                let new_ptr = this.memory_mut().reallocate(
+                let new_ptr = this.memory.reallocate(
                     ptr,
                     Some((Size::from_bytes(old_size), align)),
                     Size::from_bytes(new_size),
@@ -304,11 +304,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "dlsym" => {
                 let _handle = this.read_scalar(args[0])?;
                 let symbol = this.read_scalar(args[1])?.not_undef()?;
-                let symbol_name = this.memory().read_c_str(symbol)?;
+                let symbol_name = this.memory.read_c_str(symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
                 if let Some(dlsym) = Dlsym::from_str(symbol_name)? {
-                    let ptr = this.memory_mut().create_fn_alloc(FnVal::Other(dlsym));
+                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;
                 } else {
                     this.write_null(dest)?;
@@ -325,7 +325,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We abort on panic, so not much is going on here, but we still have to call the closure.
                 let f = this.read_scalar(args[0])?.not_undef()?;
                 let data = this.read_scalar(args[1])?.not_undef()?;
-                let f_instance = this.memory().get_fn(f)?.as_instance()?;
+                let f_instance = this.memory.get_fn(f)?.as_instance()?;
                 this.write_null(dest)?;
                 trace!("__rust_maybe_catch_panic: {:?}", f_instance);
 
@@ -369,8 +369,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let n = Size::from_bytes(this.read_scalar(args[2])?.to_usize(this)?);
 
                 let result = {
-                    let left_bytes = this.memory().read_bytes(left, n)?;
-                    let right_bytes = this.memory().read_bytes(right, n)?;
+                    let left_bytes = this.memory.read_bytes(left, n)?;
+                    let right_bytes = this.memory.read_bytes(right, n)?;
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
@@ -388,7 +388,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = this.read_scalar(args[1])?.to_i32()? as u8;
                 let num = this.read_scalar(args[2])?.to_usize(this)?;
                 if let Some(idx) = this
-                    .memory()
+                    .memory
                     .read_bytes(ptr, Size::from_bytes(num))?
                     .iter()
                     .rev()
@@ -406,7 +406,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = this.read_scalar(args[1])?.to_i32()? as u8;
                 let num = this.read_scalar(args[2])?.to_usize(this)?;
                 let idx = this
-                    .memory()
+                    .memory
                     .read_bytes(ptr, Size::from_bytes(num))?
                     .iter()
                     .position(|&c| c == val);
@@ -477,7 +477,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = this.memory().read_bytes(buf, Size::from_bytes(n))?;
+                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(n))?;
                     // We need to flush to make sure this actually appears on the screen
                     let res = if fd == 1 {
                         // Stdout is buffered, flush to make sure it appears on the screen.
@@ -519,7 +519,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "strlen" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let n = this.memory().read_c_str(ptr)?.len();
+                let n = this.memory.read_c_str(ptr)?.len();
                 this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
             }
 
@@ -649,7 +649,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = match this.test_null(this.read_scalar(args[1])?.not_undef()?)? {
-                    Some(dtor_ptr) => Some(this.memory().get_fn(dtor_ptr)?.as_instance()?),
+                    Some(dtor_ptr) => Some(this.memory.get_fn(dtor_ptr)?.as_instance()?),
                     None => None,
                 };
 
@@ -671,10 +671,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
 
                 let key_ptr = this
-                    .memory()
+                    .memory
                     .check_ptr_access(key_ptr, key_layout.size, key_layout.align.abi)?
                     .expect("cannot be a ZST");
-                this.memory_mut().get_mut(key_ptr.alloc_id)?.write_scalar(
+                this.memory.get_mut(key_ptr.alloc_id)?.write_scalar(
                     tcx,
                     key_ptr,
                     Scalar::from_uint(key, key_layout.size).into(),
@@ -859,13 +859,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .check_mplace_access(system_info, None)?
                     .expect("cannot be a ZST");
                 // Initialize with `0`.
-                this.memory_mut()
+                this.memory
                     .get_mut(system_info_ptr.alloc_id)?
                     .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
                 // Set number of processors.
                 let dword_size = Size::from_bytes(4);
                 let offset = 2 * dword_size + 3 * tcx.pointer_size();
-                this.memory_mut()
+                this.memory
                     .get_mut(system_info_ptr.alloc_id)?
                     .write_scalar(
                         tcx,
@@ -920,7 +920,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     use std::io::{self, Write};
 
                     let buf_cont = this
-                        .memory()
+                        .memory
                         .read_bytes(buf, Size::from_bytes(u64::from(n)))?;
                     let res = if handle == -11 {
                         io::stdout().write(buf_cont)
@@ -995,7 +995,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let tcx = &{ this.tcx.tcx };
         let errno_ptr = this.machine.last_error.unwrap();
-        this.memory_mut().get_mut(errno_ptr.alloc_id)?.write_scalar(
+        this.memory.get_mut(errno_ptr.alloc_id)?.write_scalar(
             tcx,
             errno_ptr,
             scalar.into(),
@@ -1007,7 +1007,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let tcx = &{ this.tcx.tcx };
         let errno_ptr = this.machine.last_error.unwrap();
-        this.memory()
+        this.memory
             .get(errno_ptr.alloc_id)?
             .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
             .not_undef()

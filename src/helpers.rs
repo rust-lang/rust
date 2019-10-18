@@ -57,7 +57,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Test if this immediate equals 0.
     fn is_null(&self, val: Scalar<Tag>) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_ref();
-        let null = Scalar::from_int(0, this.memory().pointer_size());
+        let null = Scalar::from_int(0, this.memory.pointer_size());
         this.ptr_eq(val, null)
     }
 
@@ -94,7 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
-        let ptr = this.memory().check_ptr_access(
+        let ptr = this.memory.check_ptr_access(
             ptr,
             Size::from_bytes(len as u64),
             Align::from_bytes(1).unwrap()
@@ -108,12 +108,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 .map_err(|err| err_unsup_format!("getrandom failed: {}", err))?;
         }
         else {
-            let rng = this.memory_mut().extra.rng.get_mut();
+            let rng = this.memory.extra.rng.get_mut();
             rng.fill_bytes(&mut data);
         }
 
         let tcx = &{this.tcx.tcx};
-        this.memory_mut().get_mut(ptr.alloc_id)?.write_bytes(tcx, ptr, &data)
+        this.memory.get_mut(ptr.alloc_id)?.write_bytes(tcx, ptr, &data)
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter

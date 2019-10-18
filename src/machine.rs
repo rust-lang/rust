@@ -164,7 +164,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        ecx.memory().extra.validate
+        ecx.memory.extra.validate
     }
 
     #[inline(always)]
@@ -349,7 +349,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn stack_push(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, stacked_borrows::CallId> {
-        Ok(ecx.memory().extra.stacked_borrows.borrow_mut().new_call())
+        Ok(ecx.memory.extra.stacked_borrows.borrow_mut().new_call())
     }
 
     #[inline(always)]
@@ -358,7 +358,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         extra: stacked_borrows::CallId,
     ) -> InterpResult<'tcx> {
         Ok(ecx
-            .memory()
+            .memory
             .extra
             .stacked_borrows
             .borrow_mut()

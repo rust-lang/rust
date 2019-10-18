@@ -95,7 +95,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         let path_bytes = this
-            .memory()
+            .memory
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
         let path = std::str::from_utf8(path_bytes)
             .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
@@ -171,7 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.remove_handle_and(fd, |mut handle, this| {
             // Don't use `?` to avoid returning before reinserting the handle
             let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
-                this.memory_mut()
+                this.memory
                     .get_mut(buf.alloc_id)?
                     .get_bytes_mut(tcx, buf, Size::from_bytes(count))
                     .map(|buffer| handle.file.read(buffer))
@@ -203,7 +203,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
 
         this.remove_handle_and(fd, |mut handle, this| {
-            let bytes = this.memory().get(buf.alloc_id).and_then(|alloc| {
+            let bytes = this.memory.get(buf.alloc_id).and_then(|alloc| {
                 alloc
                     .get_bytes(tcx, buf, Size::from_bytes(count))
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
@@ -219,7 +219,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("unlink")?;
 
         let path_bytes = this
-            .memory()
+            .memory
             .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
         let path = std::str::from_utf8(path_bytes)
             .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?;
