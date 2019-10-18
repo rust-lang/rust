@@ -72,10 +72,14 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
         let code = source.error_code(res.is_some());
-        let (base_msg, fallback_label, base_span) = if let Some(res) = res {
+        let (base_msg, fallback_label, base_span, is_local) = if let Some(res) = res {
             (format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
                 format!("not a {}", expected),
-                span)
+                span,
+                match res {
+                    Res::Local(_) => true,
+                    _ => false,
+                })
         } else {
             let item_span = path.last().unwrap().ident.span;
             let (mod_prefix, mod_str) = if path.len() == 1 {
@@ -94,7 +98,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             };
             (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                 format!("not found in {}", mod_str),
-                item_span)
+                item_span,
+                false)
         };
 
         let code = DiagnosticId::Error(code.into());
@@ -257,6 +262,20 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if !levenshtein_worked {
             err.span_label(base_span, fallback_label);
             self.type_ascription_suggestion(&mut err, base_span);
+            if let Some(span) = self.current_let_binding.and_then(|(pat_sp, ty_sp)| {
+                if ty_sp.contains(base_span) && is_local {
+                    Some(pat_sp.between(ty_sp))
+                } else {
+                    None
+                }
+            }) {
+                err.span_suggestion(
+                    span,
+                    "maybe you meant to assign a value instead of defining this let binding's type",
+                    " = ".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         (err, candidates)
     }
