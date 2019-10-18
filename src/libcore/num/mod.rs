@@ -1864,7 +1864,7 @@ if `self < 0`, this is equal to round towards +/- infinity.
 
 # Panics
 
-This function will panic if `rhs` is 0.
+This function will panic if `rhs` is 0 or the division results in overflow.
 
 # Examples
 
@@ -1903,7 +1903,7 @@ This is done as if by the Euclidean division algorithm -- given
 
 # Panics
 
-This function will panic if `rhs` is 0.
+This function will panic if `rhs` is 0 or the division results in overflow.
 
 # Examples
 
@@ -3694,6 +3694,10 @@ Since, for the positive integers, all common
 definitions of division are equal, this
 is exactly equal to `self / rhs`.
 
+# Panics
+
+This function will panic if `rhs` is 0.
+
 # Examples
 
 Basic usage:
@@ -3718,6 +3722,10 @@ assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer 
 Since, for the positive integers, all common
 definitions of division are equal, this
 is exactly equal to `self % rhs`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
 
 # Examples
 
