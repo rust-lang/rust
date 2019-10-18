@@ -1,5 +1,5 @@
 use std::iter::{repeat, FromIterator};
-use test::Bencher;
+use test::{black_box, Bencher};
 
 #[bench]
 fn bench_new(b: &mut Bencher) {
@@ -431,3 +431,42 @@ fn bench_clone_from_10_0100_0010(b: &mut Bencher) {
 fn bench_clone_from_10_1000_0100(b: &mut Bencher) {
     do_bench_clone_from(b, 10, 1000, 100)
 }
+
+macro_rules! bench_in_place {
+    (
+        $($fname:ident, $type:ty , $count:expr, $init: expr);*
+    ) => {
+        $(
+            #[bench]
+            fn $fname(b: &mut Bencher) {
+                b.iter(|| {
+                    let src: Vec<$type> = vec![$init; $count];
+                    black_box(src.into_iter()
+                        .enumerate()
+                        .map(|(idx, e)| { (idx as $type) ^ e }).collect::<Vec<$type>>())
+                });
+            }
+        )+
+    };
+}
+
+bench_in_place![
+    bench_in_place_xxu8_i0_0010,     u8,     10, 0;
+    bench_in_place_xxu8_i0_0100,     u8,    100, 0;
+    bench_in_place_xxu8_i0_1000,     u8,   1000, 0;
+    bench_in_place_xxu8_i1_0010,     u8,     10, 1;
+    bench_in_place_xxu8_i1_0100,     u8,    100, 1;
+    bench_in_place_xxu8_i1_1000,     u8,   1000, 1;
+    bench_in_place_xu32_i0_0010,    u32,     10, 0;
+    bench_in_place_xu32_i0_0100,    u32,    100, 0;
+    bench_in_place_xu32_i0_1000,    u32,   1000, 0;
+    bench_in_place_xu32_i1_0010,    u32,     10, 1;
+    bench_in_place_xu32_i1_0100,    u32,    100, 1;
+    bench_in_place_xu32_i1_1000,    u32,   1000, 1;
+    bench_in_place_u128_i0_0010,   u128,     10, 0;
+    bench_in_place_u128_i0_0100,   u128,    100, 0;
+    bench_in_place_u128_i0_1000,   u128,   1000, 0;
+    bench_in_place_u128_i1_0010,   u128,     10, 1;
+    bench_in_place_u128_i1_0100,   u128,    100, 1;
+    bench_in_place_u128_i1_1000,   u128,   1000, 1
+];
