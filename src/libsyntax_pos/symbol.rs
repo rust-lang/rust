@@ -1106,8 +1106,8 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 }
 
 /// An alternative to `Symbol` and `InternedString`, useful when the chars
-/// within the symbol need to be accessed. It is best used for temporary
-/// values.
+/// within the symbol need to be accessed. It deliberately has limited
+/// functionality and should only be used for temporary values.
 ///
 /// Because the interner outlives any thread which uses this type, we can
 /// safely treat `string` which points to interner data, as an immortal string,
@@ -1116,7 +1116,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 // FIXME: ensure that the interner outlives any thread which uses
 // `LocalInternedString`, by creating a new thread right after constructing the
 // interner.
-#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
+#[derive(Eq, PartialOrd, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
 }
