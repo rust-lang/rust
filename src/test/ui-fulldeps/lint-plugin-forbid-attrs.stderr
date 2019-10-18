@@ -7,11 +7,11 @@ LL | #![forbid(test_lint)]
 LL | #[allow(test_lint)]
    |         ^^^^^^^^^ overruled by previous forbid
 
-warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-plugin-forbid-attrs.rs:5:1
    |
 LL | #![plugin(lint_plugin_test)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 
