@@ -361,14 +361,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Sets the last error variable using a `std::io::Error`. It fails if the error cannot be
-    /// transformed to a raw os error succesfully
+    /// transformed to a raw os error succesfully.
     fn set_last_error_from_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
-        self.eval_context_mut().set_last_error(Scalar::from_int(
-            e.raw_os_error().ok_or_else(|| {
-                err_unsup_format!("The {} error cannot be transformed into a raw os error", e)
-            })?,
-            Size::from_bits(32),
-        ))
+        use std::io::ErrorKind::*;
+        let this = self.eval_context_mut();
+        let target = &this.tcx.tcx.sess.target.target;
+        let last_error = if target.options.target_family == Some("unix".to_owned()) {
+            this.eval_libc(match e.kind() {
+                ConnectionRefused => "ECONNREFUSED",
+                ConnectionReset => "ECONNRESET",
+                PermissionDenied => "EPERM",
+                BrokenPipe => "EPIPE",
+                NotConnected => "ENOTCONN",
+                ConnectionAborted => "ECONNABORTED",
+                AddrNotAvailable => "EADDRNOTAVAIL",
+                AddrInUse => "EADDRINUSE",
+                NotFound => "ENOENT",
+                Interrupted => "EINTR",
+                InvalidInput => "EINVAL",
+                TimedOut => "ETIMEDOUT",
+                AlreadyExists => "EEXIST",
+                WouldBlock => "EWOULDBLOCK",
+                _ => throw_unsup_format!("The {} error cannot be transformed into a raw os error", e)
+            })?
+        } else {
+            // FIXME: we have to implement the windows' equivalent of this.
+            throw_unsup_format!("Setting the last OS error from an io::Error is unsupported for {}.", target.target_os)
+        };
+        this.set_last_error(last_error)
     }
 
     /// Helper function that consumes an `std::io::Result<T>` and returns an
