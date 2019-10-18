@@ -249,7 +249,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let usize_layout = self.layout_of(self.tcx.types.usize)?;
                 let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
                 let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
-                let (val, _overflowed, _) = self.overflowing_binary_op(
+                let (val, _overflowed, _ty) = self.overflowing_binary_op(
                     BinOp::Sub, a_offset, b_offset,
                 )?;
                 let pointee_layout = self.layout_of(substs.type_at(0))?;
