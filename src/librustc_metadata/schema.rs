@@ -243,6 +243,7 @@ crate struct LazyPerDefTables<'tcx> {
     pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
     pub predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
     pub predicates_defined_on: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    pub super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 
     pub mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),
     pub promoted_mir: Lazy!(PerDefTable<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
@@ -273,13 +274,13 @@ crate enum EntryKind<'tcx> {
     MacroDef(Lazy<MacroDef>),
     Closure(Lazy!(ClosureData<'tcx>)),
     Generator(Lazy!(GeneratorData<'tcx>)),
-    Trait(Lazy!(TraitData<'tcx>)),
+    Trait(Lazy<TraitData>),
     Impl(Lazy!(ImplData<'tcx>)),
     Method(Lazy!(MethodData<'tcx>)),
     AssocType(AssocContainer),
     AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
-    TraitAlias(Lazy!(TraitAliasData<'tcx>)),
+    TraitAlias,
 }
 
 /// Additional data for EntryKind::Const and EntryKind::AssocConst
@@ -324,17 +325,11 @@ crate struct VariantData<'tcx> {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct TraitData<'tcx> {
+crate struct TraitData {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,
-    pub super_predicates: Lazy!(ty::GenericPredicates<'tcx>),
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct TraitAliasData<'tcx> {
-    pub super_predicates: Lazy!(ty::GenericPredicates<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

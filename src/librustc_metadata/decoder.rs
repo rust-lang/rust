@@ -448,7 +448,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Mod(_) => DefKind::Mod,
             EntryKind::Variant(_) => DefKind::Variant,
             EntryKind::Trait(_) => DefKind::Trait,
-            EntryKind::TraitAlias(_) => DefKind::TraitAlias,
+            EntryKind::TraitAlias => DefKind::TraitAlias,
             EntryKind::Enum(..) => DefKind::Enum,
             EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             EntryKind::ForeignType => DefKind::ForeignTy,
@@ -575,7 +575,7 @@ impl<'a, 'tcx> CrateMetadata {
                                   data.is_marker,
                                   self.def_path_table.def_path_hash(item_id))
             },
-            EntryKind::TraitAlias(_) => {
+            EntryKind::TraitAlias => {
                 ty::TraitDef::new(self.local_def_id(item_id),
                                   hir::Unsafety::Normal,
                                   false,
@@ -680,13 +680,7 @@ impl<'a, 'tcx> CrateMetadata {
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
-        let super_predicates = match self.kind(item_id) {
-            EntryKind::Trait(data) => data.decode(self).super_predicates,
-            EntryKind::TraitAlias(data) => data.decode(self).super_predicates,
-            _ => bug!("def-index does not refer to trait or trait alias"),
-        };
-
-        super_predicates.decode((self, tcx))
+        self.root.per_def.super_predicates.get(self, item_id).unwrap().decode((self, tcx))
     }
 
     crate fn get_generics(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
@@ -1118,7 +1112,7 @@ impl<'a, 'tcx> CrateMetadata {
         def_key.parent.and_then(|parent_index| {
             match self.kind(parent_index) {
                 EntryKind::Trait(_) |
-                EntryKind::TraitAlias(_) => Some(self.local_def_id(parent_index)),
+                EntryKind::TraitAlias => Some(self.local_def_id(parent_index)),
                 _ => None,
             }
         })

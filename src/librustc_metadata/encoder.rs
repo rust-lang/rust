@@ -76,6 +76,7 @@ struct PerDefTables<'tcx> {
     generics: PerDefTable<Lazy<ty::Generics>>,
     predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
     predicates_defined_on: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
+    super_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
 
     mir: PerDefTable<Lazy<mir::Body<'tcx>>>,
     promoted_mir: PerDefTable<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
@@ -513,6 +514,7 @@ impl<'tcx> EncodeContext<'tcx> {
             generics: self.per_def.generics.encode(&mut self.opaque),
             predicates: self.per_def.predicates.encode(&mut self.opaque),
             predicates_defined_on: self.per_def.predicates_defined_on.encode(&mut self.opaque),
+            super_predicates: self.per_def.super_predicates.encode(&mut self.opaque),
 
             mir: self.per_def.mir.encode(&mut self.opaque),
             promoted_mir: self.per_def.promoted_mir.encode(&mut self.opaque),
@@ -833,6 +835,11 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_predicates_defined_on({:?})", def_id);
         record!(self.per_def.predicates_defined_on[def_id] <-
             self.tcx.predicates_defined_on(def_id))
+    }
+
+    fn encode_super_predicates(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_super_predicates({:?})", def_id);
+        record!(self.per_def.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) {
@@ -1166,18 +1173,11 @@ impl EncodeContext<'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: self.tcx.trait_is_auto(def_id),
                     is_marker: trait_def.is_marker,
-                    super_predicates: self.lazy(tcx.super_predicates_of(def_id)),
                 };
 
                 EntryKind::Trait(self.lazy(data))
             }
-            hir::ItemKind::TraitAlias(..) => {
-                let data = TraitAliasData {
-                    super_predicates: self.lazy(tcx.super_predicates_of(def_id)),
-                };
-
-                EntryKind::TraitAlias(self.lazy(data))
-            }
+            hir::ItemKind::TraitAlias(..) => EntryKind::TraitAlias,
             hir::ItemKind::ExternCrate(_) |
             hir::ItemKind::Use(..) => bug!("cannot encode info for item {:?}", item),
         });
@@ -1268,6 +1268,13 @@ impl EncodeContext<'tcx> {
                 self.encode_predicates_defined_on(def_id);
             }
             _ => {} // not *wrong* for other kinds of items, but not needed
+        }
+        match item.kind {
+            hir::ItemKind::Trait(..) |
+            hir::ItemKind::TraitAlias(..) => {
+                self.encode_super_predicates(def_id);
+            }
+            _ => {}
         }
 
         let mir = match item.kind {
