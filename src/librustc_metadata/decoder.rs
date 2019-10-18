@@ -711,7 +711,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    fn get_impl_data(&self, id: DefIndex) -> ImplData<'tcx> {
+    fn get_impl_data(&self, id: DefIndex) -> ImplData {
         match self.kind(id) {
             EntryKind::Impl(data) => data.decode(self),
             _ => bug!(),
@@ -738,7 +738,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     crate fn get_impl_trait(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Option<ty::TraitRef<'tcx>> {
-        self.get_impl_data(id).trait_ref.map(|tr| tr.decode((self, tcx)))
+        self.root.per_def.impl_trait_ref.get(self, id).map(|tr| tr.decode((self, tcx)))
     }
 
     /// Iterates over all the stability attributes in the given crate.

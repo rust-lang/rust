@@ -239,6 +239,7 @@ crate struct LazyPerDefTables<'tcx> {
 
     pub ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
     pub fn_sig: Lazy!(PerDefTable<Lazy!(ty::PolyFnSig<'tcx>)>),
+    pub impl_trait_ref: Lazy!(PerDefTable<Lazy!(ty::TraitRef<'tcx>)>),
     pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
     pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
     pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
@@ -276,7 +277,7 @@ crate enum EntryKind<'tcx> {
     Closure,
     Generator(Lazy!(GeneratorData<'tcx>)),
     Trait(Lazy<TraitData>),
-    Impl(Lazy!(ImplData<'tcx>)),
+    Impl(Lazy<ImplData>),
     Method(Lazy<MethodData>),
     AssocType(AssocContainer),
     AssocOpaqueTy(AssocContainer),
@@ -330,14 +331,14 @@ crate struct TraitData {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct ImplData<'tcx> {
+crate struct ImplData {
     pub polarity: ty::ImplPolarity,
     pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
 
     /// This is `Some` only for impls of `CoerceUnsized`.
+    // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     pub coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
-    pub trait_ref: Option<Lazy!(ty::TraitRef<'tcx>)>,
 }
 
 

@@ -72,6 +72,7 @@ struct PerDefTables<'tcx> {
 
     ty: PerDefTable<Lazy<Ty<'tcx>>>,
     fn_sig: PerDefTable<Lazy<ty::PolyFnSig<'tcx>>>,
+    impl_trait_ref: PerDefTable<Lazy<ty::TraitRef<'tcx>>>,
     inherent_impls: PerDefTable<Lazy<[DefIndex]>>,
     variances: PerDefTable<Lazy<[ty::Variance]>>,
     generics: PerDefTable<Lazy<ty::Generics>>,
@@ -511,6 +512,7 @@ impl<'tcx> EncodeContext<'tcx> {
 
             ty: self.per_def.ty.encode(&mut self.opaque),
             fn_sig: self.per_def.fn_sig.encode(&mut self.opaque),
+            impl_trait_ref: self.per_def.impl_trait_ref.encode(&mut self.opaque),
             inherent_impls: self.per_def.inherent_impls.encode(&mut self.opaque),
             variances: self.per_def.variances.encode(&mut self.opaque),
             generics: self.per_def.generics.encode(&mut self.opaque),
@@ -1152,7 +1154,6 @@ impl EncodeContext<'tcx> {
                     defaultness,
                     parent_impl: parent,
                     coerce_unsized_info,
-                    trait_ref: trait_ref.map(|trait_ref| self.lazy(trait_ref)),
                 };
 
                 EntryKind::Impl(self.lazy(data))
@@ -1225,6 +1226,11 @@ impl EncodeContext<'tcx> {
         }
         if let hir::ItemKind::Fn(..) = item.kind {
             record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
+        }
+        if let hir::ItemKind::Impl(..) = item.kind {
+            if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
+                record!(self.per_def.impl_trait_ref[def_id] <- trait_ref);
+            }
         }
         self.encode_inherent_implementations(def_id);
         match item.kind {
