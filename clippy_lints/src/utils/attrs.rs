@@ -114,3 +114,16 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
         }
     }
 }
+
+/// Return true if the attributes contain any of `proc_macro`,
+/// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
+pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
+    use syntax_pos::Symbol;
+
+    let syms = [
+        Symbol::intern("proc_macro"),
+        Symbol::intern("proc_macro_derive"),
+        Symbol::intern("proc_macro_attribute"),
+    ];
+    attrs.iter().any(|attr| syms.iter().any(move |&s| attr.check_name(s)))
+}
