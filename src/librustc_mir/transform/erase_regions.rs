@@ -25,7 +25,6 @@ impl EraseRegionsVisitor<'tcx> {
 impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         *ty = self.tcx.erase_regions(ty);
-        self.super_ty(ty);
     }
 
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
@@ -38,6 +37,21 @@ impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
 
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, _: Location) {
         *substs = self.tcx.erase_regions(substs);
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        if let PlaceElem::Field(field, ty) = elem {
+            let new_ty = self.tcx.erase_regions(ty);
+
+            if new_ty != *ty {
+                return Some(PlaceElem::Field(*field, new_ty));
+            }
+        }
+
+        None
     }
 }
 
