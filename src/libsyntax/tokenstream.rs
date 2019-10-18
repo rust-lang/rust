@@ -202,9 +202,9 @@ impl From<TokenTree> for TreeAndJoint {
     }
 }
 
-impl<T: Into<TokenStream>> iter::FromIterator<T> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        TokenStream::from_streams(iter.into_iter().map(Into::into).collect::<SmallVec<_>>())
+impl iter::FromIterator<TokenTree> for TokenStream {
+    fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
+        TokenStream::new(iter.into_iter().map(Into::into).collect::<Vec<TreeAndJoint>>())
     }
 }
 
@@ -269,10 +269,6 @@ impl TokenStream {
                 TokenStream(first_stream_lrc)
             }
         }
-    }
-
-    pub fn append_to_tree_and_joint_vec(self, vec: &mut Vec<TreeAndJoint>) {
-        vec.extend(self.0.iter().cloned());
     }
 
     pub fn trees(&self) -> Cursor {
