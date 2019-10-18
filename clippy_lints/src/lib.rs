@@ -949,6 +949,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&arithmetic::INTEGER_ARITHMETIC),
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
+        LintId::of(&exit::EXIT),
         LintId::of(&implicit_return::IMPLICIT_RETURN),
         LintId::of(&indexing_slicing::INDEXING_SLICING),
         LintId::of(&inherent_impl::MULTIPLE_INHERENT_IMPL),

@@ -491,6 +491,13 @@ pub const ALL_LINTS: [Lint; 331] = [
         module: "excessive_precision",
     },
     Lint {
+        name: "exit",
+        group: "restriction",
+        desc: "`std::process::exit` is called, terminating the program",
+        deprecation: None,
+        module: "exit",
+    },
+    Lint {
         name: "expect_fun_call",
         group: "perf",
         desc: "using any `expect` method with a function call",
