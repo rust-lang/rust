@@ -134,6 +134,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                     "`self` value is a keyword only available in methods with a `self` parameter",
                 ),
             });
+            if let Some(span) = &self.current_function {
+                err.span_label(*span, "this function doesn't have a `self` parameter");
+            }
             return (err, Vec::new());
         }
 
