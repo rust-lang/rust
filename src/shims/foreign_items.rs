@@ -42,7 +42,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn malloc(&mut self, size: u64, zero_init: bool, kind: MiriMemoryKind) -> Scalar<Tag> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
         if size == 0 {
             Scalar::from_int(0, this.pointer_size())
         } else {
@@ -55,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.memory
                     .get_mut(ptr.alloc_id)
                     .unwrap()
-                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size))
+                    .write_repeat(&*this.tcx, ptr, 0, Size::from_bytes(size))
                     .unwrap();
             }
             Scalar::Ptr(ptr)
@@ -90,12 +89,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         } else {
             let old_ptr = this.force_ptr(old_ptr)?;
-            let memory = &mut this.memory;
             if new_size == 0 {
-                memory.deallocate(old_ptr, None, kind.into())?;
+                this.memory.deallocate(old_ptr, None, kind.into())?;
                 Ok(Scalar::from_int(0, this.pointer_size()))
             } else {
-                let new_ptr = memory.reallocate(
+                let new_ptr = this.memory.reallocate(
                     old_ptr,
                     None,
                     Size::from_bytes(new_size),
@@ -334,7 +332,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // for the TLS destructors, and of course `eval_main`.
                 let mir = this.load_mir(f_instance.def, None)?;
                 let ret_place =
-                    MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+                    MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
                 this.push_stack_frame(
                     f_instance,
                     mir.span,
@@ -471,7 +469,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "write" => {
                 let fd = this.read_scalar(args[0])?.to_i32()?;
                 let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_usize(&*this.tcx)?;
+                let n = this.read_scalar(args[2])?.to_usize(tcx)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
                     // stdout/stderr
@@ -993,10 +991,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
         let errno_ptr = this.machine.last_error.unwrap();
         this.memory.get_mut(errno_ptr.alloc_id)?.write_scalar(
-            tcx,
+            &*this.tcx,
             errno_ptr,
             scalar.into(),
             Size::from_bits(32),
@@ -1005,11 +1002,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
         let errno_ptr = this.machine.last_error.unwrap();
         this.memory
             .get(errno_ptr.alloc_id)?
-            .read_scalar(tcx, errno_ptr, Size::from_bits(32))?
+            .read_scalar(&*this.tcx, errno_ptr, Size::from_bits(32))?
             .not_undef()
     }
 

@@ -122,10 +122,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("getcwd")?;
 
-        let tcx = &{ this.tcx.tcx };
-
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
-        let size = this.read_scalar(size_op)?.to_usize(&*tcx)?;
+        let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
@@ -142,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // `bytes.len()`, meaning that `bytes` actually fit inside tbe buffer.
                     this.memory
                         .get_mut(buf.alloc_id)?
-                        .write_bytes(tcx, buf, &bytes)?;
+                        .write_bytes(&*this.tcx, buf, &bytes)?;
                     return Ok(Scalar::Ptr(buf));
                 }
                 let erange = this.eval_libc("ERANGE")?;
@@ -150,7 +148,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Err(e) => this.consume_io_error(e)?,
         }
-        Ok(Scalar::ptr_null(&*tcx))
+        Ok(Scalar::ptr_null(&*this.tcx))
     }
 
     fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {

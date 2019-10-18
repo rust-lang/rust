@@ -112,8 +112,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             rng.fill_bytes(&mut data);
         }
 
-        let tcx = &{this.tcx.tcx};
-        this.memory.get_mut(ptr.alloc_id)?.write_bytes(tcx, ptr, &data)
+        this.memory.get_mut(ptr.alloc_id)?.write_bytes(&*this.tcx, ptr, &data)
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter
@@ -311,8 +310,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to get the `TyLayout` of a `libc` type
     fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
-        let ty = this.resolve_path(&["libc", name])?.ty(*tcx);
+        let ty = this.resolve_path(&["libc", name])?.ty(*this.tcx);
         this.layout_of(ty)
     }
 
@@ -325,14 +323,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let tcx = &{ this.tcx.tcx };
-
         let mut offset = Size::from_bytes(0);
 
         for &imm in imms {
             this.write_immediate_to_mplace(
                 *imm,
-                place.offset(offset, None, imm.layout, tcx)?,
+                place.offset(offset, None, imm.layout, &*this.tcx)?,
             )?;
             offset += imm.layout.size;
         }

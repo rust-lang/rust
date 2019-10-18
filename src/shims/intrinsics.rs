@@ -28,7 +28,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // (as opposed to through a place), we have to remember to erase any tag
         // that might still hang around!
 
-        let intrinsic_name = &*this.tcx.item_name(instance.def_id()).as_str();
+        let intrinsic_name = &*tcx.item_name(instance.def_id()).as_str();
         match intrinsic_name {
             "arith_offset" => {
                 let offset = this.read_scalar(args[1])?.to_isize(this)?;
