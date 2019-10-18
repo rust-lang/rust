@@ -128,7 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
-                if this.write_os_str(&OsString::from(cwd), buf, size).is_ok() {
+                if this.write_os_str_to_c_string(&OsString::from(cwd), buf, size).is_ok() {
                     return Ok(Scalar::Ptr(buf));
                 }
                 let erange = this.eval_libc("ERANGE")?;
@@ -144,7 +144,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("chdir")?;
 
-        let path = this.read_os_string(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_os_string_from_c_string(this.read_scalar(path_op)?.not_undef()?)?;
 
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),

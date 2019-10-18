@@ -346,12 +346,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn read_os_string(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
+    fn read_os_string_from_c_string(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
         let bytes = self.eval_context_mut().memory.read_c_str(scalar)?;
         Ok(bytes_to_os_str(bytes)?.into())
     }
 
-    fn write_os_str(&mut self, os_str: &OsStr, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
+    fn write_os_str_to_c_string(&mut self, os_str: &OsStr, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an overflow.
