@@ -2448,14 +2448,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("resolve_type_vars_with_obligations(ty={:?})", ty);
 
         // No Infer()? Nothing needs doing.
-        if !ty.has_infer_types() {
+        if !ty.has_infer_types() && !ty.has_infer_consts() {
             debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.resolve_vars_if_possible(&ty);
-        if !ty.has_infer_types() {
+        if !ty.has_infer_types() && !ty.has_infer_consts()  {
             debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
             return ty;
         }
