@@ -171,7 +171,7 @@ fn trans_const_place<'tcx>(
         let ptr = ecx.allocate(op.layout, MemoryKind::Stack);
         ecx.copy_op(op, ptr.into())?;
         let alloc = ecx
-            .memory()
+            .memory
             .get(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };

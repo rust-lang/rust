@@ -14,6 +14,7 @@ extern crate rustc_index;
 extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
+extern crate syntax_expand;
 
 use std::any::Any;
 
