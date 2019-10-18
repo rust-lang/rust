@@ -155,7 +155,6 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     }
     // Store command line as UTF-16 for Windows `GetCommandLineW`.
     {
-        let tcx = &{ ecx.tcx.tcx };
         let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
         let cmd_ptr = ecx.memory.allocate(
             Size::from_bytes(cmd_utf16.len() as u64 * 2),
@@ -169,12 +168,12 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let mut cur_ptr = cmd_ptr;
         for &c in cmd_utf16.iter() {
             cmd_alloc.write_scalar(
-                tcx,
+                &*ecx.tcx,
                 cur_ptr,
                 Scalar::from_uint(c, char_size).into(),
                 char_size,
             )?;
-            cur_ptr = cur_ptr.offset(char_size, tcx)?;
+            cur_ptr = cur_ptr.offset(char_size, &*ecx.tcx)?;
         }
     }
 

@@ -157,8 +157,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("read")?;
 
-        let tcx = &{ this.tcx.tcx };
-
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
         // Reading zero bytes should not change `buf`
         if count == 0 {
@@ -173,7 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
                 this.memory
                     .get_mut(buf.alloc_id)?
-                    .get_bytes_mut(tcx, buf, Size::from_bytes(count))
+                    .get_bytes_mut(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|buffer| handle.file.read(buffer))
             });
             // Reinsert the file handle
@@ -192,8 +190,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("write")?;
 
-        let tcx = &{ this.tcx.tcx };
-
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
         // Writing zero bytes should not change `buf`
         if count == 0 {
@@ -205,7 +201,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.remove_handle_and(fd, |mut handle, this| {
             let bytes = this.memory.get(buf.alloc_id).and_then(|alloc| {
                 alloc
-                    .get_bytes(tcx, buf, Size::from_bytes(count))
+                    .get_bytes(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
             });
             this.machine.file_handler.handles.insert(fd, handle);
