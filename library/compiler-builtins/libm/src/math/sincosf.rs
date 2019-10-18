@@ -65,11 +65,11 @@ pub fn sincosf(x: f32) -> (f32, f32) {
         /* -sin(x+c) is not correct if x+c could be 0: -0 vs +0 */
         else {
             if sign {
-                s = k_sinf((x + S2PIO2) as f64);
-                c = k_cosf((x + S2PIO2) as f64);
+                s = -k_sinf((x + S2PIO2) as f64);
+                c = -k_cosf((x + S2PIO2) as f64);
             } else {
-                s = k_sinf((x - S2PIO2) as f64);
-                c = k_cosf((x - S2PIO2) as f64);
+                s = -k_sinf((x - S2PIO2) as f64);
+                c = -k_cosf((x - S2PIO2) as f64);
             }
         }
 
@@ -119,5 +119,18 @@ pub fn sincosf(x: f32) -> (f32, f32) {
         _ => unreachable!(),
         #[cfg(not(debug_assertions))]
         _ => (0.0, 1.0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sincosf;
+    use crate::_eqf;
+
+    #[test]
+    fn with_pi() {
+        let (s, c) = sincosf(core::f32::consts::PI);
+        _eqf(s.abs(), 0.0).unwrap();
+        _eqf(c, -1.0).unwrap();
     }
 }
