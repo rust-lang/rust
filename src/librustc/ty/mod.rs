@@ -1018,14 +1018,11 @@ impl<'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Clone, Default, Debug, HashStable)]
+#[derive(Copy, Clone, Default, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: Vec<(Predicate<'tcx>, Span)>,
+    pub predicates: &'tcx [(Predicate<'tcx>, Span)],
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
 
 impl<'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(
@@ -2321,7 +2318,7 @@ impl<'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'tcx>) -> &'tcx GenericPredicates<'tcx> {
+    pub fn predicates(&self, tcx: TyCtxt<'tcx>) -> GenericPredicates<'tcx> {
         tcx.predicates_of(self.did)
     }
 
@@ -2561,7 +2558,7 @@ impl<'tcx> AdtDef {
                     def_id: sized_trait,
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
-                let predicates = &tcx.predicates_of(self.did).predicates;
+                let predicates = tcx.predicates_of(self.did).predicates;
                 if predicates.iter().any(|(p, _)| *p == sized_predicate) {
                     vec![]
                 } else {

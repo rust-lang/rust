@@ -44,7 +44,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
                 drop_impl_did,
-                &dtor_predicates,
+                dtor_predicates,
                 adt_def.did,
                 self_to_impl_substs,
             )
@@ -140,7 +140,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     drop_impl_did: DefId,
-    dtor_predicates: &ty::GenericPredicates<'tcx>,
+    dtor_predicates: ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
     self_to_impl_substs: SubstsRef<'tcx>,
 ) -> Result<(), ErrorReported> {
@@ -199,7 +199,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // just to look for all the predicates directly.
 
     assert_eq!(dtor_predicates.parent, None);
-    for (predicate, _) in &dtor_predicates.predicates {
+    for (predicate, _) in dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of

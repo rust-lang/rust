@@ -193,7 +193,7 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
     let auto_trait = cx.tcx.trait_def(did).has_auto_impl;
     let trait_items = cx.tcx.associated_items(did).map(|item| item.clean(cx)).collect();
     let predicates = cx.tcx.predicates_of(did);
-    let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
+    let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
@@ -220,7 +220,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
     let asyncness =  cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, || {
-        ((cx.tcx.generics_of(did), &predicates).clean(cx), (did, sig).clean(cx))
+        ((cx.tcx.generics_of(did), predicates).clean(cx), (did, sig).clean(cx))
     });
     let (all_types, ret_types) = clean::get_all_types(&generics, &decl, cx);
     clean::Function {
@@ -241,7 +241,7 @@ fn build_enum(cx: &DocContext<'_>, did: DefId) -> clean::Enum {
     let predicates = cx.tcx.explicit_predicates_of(did);
 
     clean::Enum {
-        generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
+        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         variants_stripped: false,
         variants: cx.tcx.adt_def(did).variants.clean(cx),
     }
@@ -257,7 +257,7 @@ fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
             CtorKind::Fn => doctree::Tuple,
             CtorKind::Const => doctree::Unit,
         },
-        generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
+        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,
     }
@@ -269,7 +269,7 @@ fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
 
     clean::Union {
         struct_type: doctree::Plain,
-        generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
+        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
         fields: variant.fields.clean(cx),
         fields_stripped: false,
     }
@@ -280,7 +280,7 @@ fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
 
     clean::Typedef {
         type_: cx.tcx.type_of(did).clean(cx),
-        generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
+        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
     }
 }
 
@@ -376,7 +376,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
                 }
             }).collect::<Vec<_>>(),
             clean::enter_impl_trait(cx, || {
-                (tcx.generics_of(did), &predicates).clean(cx)
+                (tcx.generics_of(did), predicates).clean(cx)
             }),
         )
     };

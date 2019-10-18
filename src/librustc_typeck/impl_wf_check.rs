@@ -114,7 +114,7 @@ fn enforce_impl_params_are_constrained(
 
     let mut input_parameters = cgp::parameters_for_impl(impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
-        tcx, &impl_predicates, impl_trait_ref, &mut input_parameters);
+        tcx, impl_predicates, impl_trait_ref, &mut input_parameters);
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
