@@ -353,22 +353,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn write_os_str_to_c_string(&mut self, os_str: &OsStr, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
         let bytes = os_str_to_bytes(os_str)?;
+        let len = bytes.len();
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an overflow.
-        if (bytes.len() as u64) < size {
+        if (len as u64) < size {
             let this = self.eval_context_mut();
             let tcx = &{ this.tcx.tcx };
+            let buffer = this.memory.get_mut(ptr.alloc_id)?.get_bytes_mut(tcx, ptr, Size::from_bytes(len as u64 + 1))?;
+            buffer[..len].copy_from_slice(bytes);
             // This is ok because the buffer was strictly larger than `bytes`, so after adding the
             // null terminator, the buffer size is larger or equal to `bytes.len()`, meaning that
             // `bytes` actually fit inside tbe buffer.
-            this.memory
-                .get_mut(ptr.alloc_id)?
-                .write_bytes(tcx, ptr, &bytes)?;
-            // We write the `/0` terminator
-            let tail_ptr = ptr.offset(Size::from_bytes(bytes.len() as u64 + 1), this)?;
-            this.memory
-                .get_mut(ptr.alloc_id)?
-                .write_bytes(tcx, tail_ptr, b"0")
+            buffer[len] = 0;
+            Ok(())
         } else {
             throw_unsup_format!("OsString is larger than destination")
         }
@@ -376,13 +373,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 }
 
 #[cfg(target_os = "unix")]
-fn bytes_to_os_str<'tcx, 'a>(bytes: &'a[u8]) -> InterpResult<'tcx, &'a OsStr> {
-    Ok(std::os::unix::ffi::OsStringExt::from_bytes(bytes))
+fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+    std::os::unix::ffi::OsStringExt::into_bytes(os_str)
 }
 
 #[cfg(target_os = "unix")]
-fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-    std::os::unix::ffi::OsStringExt::into_bytes(os_str)
+fn bytes_to_os_str<'tcx, 'a>(bytes: &'a[u8]) -> InterpResult<'tcx, &'a OsStr> {
+    Ok(std::os::unix::ffi::OsStringExt::from_bytes(bytes))
 }
 
 // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
