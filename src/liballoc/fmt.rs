@@ -86,27 +86,74 @@
 //! parameters (corresponding to `format_spec` in the syntax above). These
 //! parameters affect the string representation of what's being formatted.
 //!
+//! ## Width
+//!
+//! ```
+//! // All of these print "Hello x    !"
+//! println!("Hello {:5}!", "x");
+//! println!("Hello {:1$}!", "x", 5);
+//! println!("Hello {1:0$}!", 5, "x");
+//! println!("Hello {:width$}!", "x", width = 5);
+//! ```
+//!
+//! This is a parameter for the "minimum width" that the format should take up.
+//! If the value's string does not fill up this many characters, then the
+//! padding specified by fill/alignment will be used to take up the required
+//! space (see below).
+//!
+//! The value for the width can also be provided as a [`usize`] in the list of
+//! parameters by adding a postfix `$`, indicating that the second argument is
+//! a [`usize`] specifying the width.
+//!
+//! Referring to an argument with the dollar syntax does not affect the "next
+//! argument" counter, so it's usually a good idea to refer to arguments by
+//! position, or use named arguments.
+//!
 //! ## Fill/Alignment
 //!
-//! The fill character is provided normally in conjunction with the
-//! [`width`](#width)
-//! parameter. This indicates that if the value being formatted is smaller than
-//! `width` some extra characters will be printed around it. The extra
-//! characters are specified by `fill`, and the alignment can be one of the
-//! following options:
+//! ```
+//! assert_eq!(format!("Hello {:<5}!", "x"),  "Hello x    !");
+//! assert_eq!(format!("Hello {:-<5}!", "x"), "Hello x----!");
+//! assert_eq!(format!("Hello {:^5}!", "x"),  "Hello   x  !");
+//! assert_eq!(format!("Hello {:>5}!", "x"),  "Hello     x!");
+//! ```
 //!
-//! * `<` - the argument is left-aligned in `width` columns
-//! * `^` - the argument is center-aligned in `width` columns
-//! * `>` - the argument is right-aligned in `width` columns
+//! The optional fill character and alignment is provided normally in conjunction with the
+//! [`width`](#width) parameter. It must be defined before `width`, right after the `:`.
+//! This indicates that if the value being formatted is smaller than
+//! `width` some extra characters will be printed around it.
+//! Filling comes in the following variants for different alignments:
+//!
+//! * `[fill]<` - the argument is left-aligned in `width` columns
+//! * `[fill]^` - the argument is center-aligned in `width` columns
+//! * `[fill]>` - the argument is right-aligned in `width` columns
+//!
+//! The default [fill/alignment](#fillalignment) for non-numerics is a space and
+//! left-aligned. The
+//! defaults for numeric formatters is also a space but with right-alignment. If
+//! the `0` flag (see below) is specified for numerics, then the implicit fill character is
+//! `0`.
 //!
 //! Note that alignment may not be implemented by some types. In particular, it
 //! is not generally implemented for the `Debug` trait.  A good way to ensure
-//! padding is applied is to format your input, then use this resulting string
-//! to pad your output.
+//! padding is applied is to format your input, then pad this resulting string
+//! to obtain your output:
+//!
+//! ```
+//! println!("Hello {:^15}!", format!("{:?}", Some("hi"))); // => "Hello   Some("hi")   !"
+//! ```
 //!
 //! ## Sign/`#`/`0`
 //!
-//! These can all be interpreted as flags for a particular formatter.
+//! ```
+//! assert_eq!(format!("Hello {:+}!", 5), "Hello +5!");
+//! assert_eq!(format!("{:#x}!", 27), "0x1b!");
+//! assert_eq!(format!("Hello {:05}!", 5),  "Hello 00005!");
+//! assert_eq!(format!("Hello {:05}!", -5), "Hello -0005!");
+//! assert_eq!(format!("{:#010x}!", 27), "0x0000001b!");
+//! ```
+//!
+//! These are all flags altering the behavior of the formatter.
 //!
 //! * `+` - This is intended for numeric types and indicates that the sign
 //!         should always be printed. Positive signs are never printed by
@@ -121,7 +168,7 @@
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
 //!     * `#o` - precedes the argument with a `0o`
-//! * `0` - This is used to indicate for integer formats that the padding should
+//! * `0` - This is used to indicate for integer formats that the padding to `width` should
 //!         both be done with a `0` character as well as be sign-aware. A format
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
@@ -129,36 +176,7 @@
 //!         Note that padding zeroes are always placed after the sign (if any)
 //!         and before the digits. When used together with the `#` flag, a similar
 //!         rule applies: padding zeroes are inserted after the prefix but before
-//!         the digits.
-//!
-//! ## Width
-//!
-//! This is a parameter for the "minimum width" that the format should take up.
-//! If the value's string does not fill up this many characters, then the
-//! padding specified by fill/alignment will be used to take up the required
-//! space.
-//!
-//! The default [fill/alignment](#fillalignment) for non-numerics is a space and
-//! left-aligned. The
-//! defaults for numeric formatters is also a space but with right-alignment. If
-//! the `0` flag is specified for numerics, then the implicit fill character is
-//! `0`.
-//!
-//! The value for the width can also be provided as a [`usize`] in the list of
-//! parameters by using the dollar syntax indicating that the second argument is
-//! a [`usize`] specifying the width, for example:
-//!
-//! ```
-//! // All of these print "Hello x    !"
-//! println!("Hello {:5}!", "x");
-//! println!("Hello {:1$}!", "x", 5);
-//! println!("Hello {1:0$}!", 5, "x");
-//! println!("Hello {:width$}!", "x", width = 5);
-//! ```
-//!
-//! Referring to an argument with the dollar syntax does not affect the "next
-//! argument" counter, so it's usually a good idea to refer to arguments by
-//! position, or use named arguments.
+//!         the digits. The prefix is included in the total width.
 //!
 //! ## Precision
 //!
@@ -235,9 +253,14 @@
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
 //!
+//! ```
+//! assert_eq!(format!("Hello {{}}"), "Hello {}");
+//! assert_eq!(format!("{{ Hello"), "{ Hello");
+//! ```
+//!
 //! # Syntax
 //!
-//! To summarize, you can find the full grammar of format strings.
+//! To summarize, here you can find the full grammar of format strings.
 //! The syntax for the formatting language used is drawn from other languages,
 //! so it should not be too alien. Arguments are formatted with Python-like
 //! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
