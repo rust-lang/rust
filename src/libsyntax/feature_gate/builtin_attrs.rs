@@ -286,7 +286,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     (
         sym::plugin_registrar, Normal, template!(Word),
         Gated(
-            Stability::Deprecated("https://github.com/rust-lang/rust/issues/29597", None),
+            Stability::Deprecated(
+                "https://github.com/rust-lang/rust/pull/64675",
+                Some("may be removed in a future compiler version"),
+            ),
             sym::plugin_registrar,
             "compiler plugins are deprecated",
             cfg_fn!(plugin_registrar)
@@ -295,7 +298,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     (
         sym::plugin, CrateLevel, template!(List: "name|name(args)"),
         Gated(
-            Stability::Deprecated("https://github.com/rust-lang/rust/issues/29597", None),
+            Stability::Deprecated(
+                "https://github.com/rust-lang/rust/pull/64675",
+                Some("may be removed in a future compiler version"),
+            ),
             sym::plugin,
             "compiler plugins are deprecated",
             cfg_fn!(plugin)
