@@ -27,6 +27,7 @@ pub const DROP: [&str; 3] = ["core", "mem", "drop"];
 pub const DROP_TRAIT: [&str; 4] = ["core", "ops", "drop", "Drop"];
 pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 pub const EARLY_CONTEXT: [&str; 4] = ["rustc", "lint", "context", "EarlyContext"];
+pub const EXIT: [&str; 3] = ["std", "process", "exit"];
 pub const FMT_ARGUMENTS_NEW_V1: [&str; 4] = ["core", "fmt", "Arguments", "new_v1"];
 pub const FMT_ARGUMENTS_NEW_V1_FORMATTED: [&str; 4] = ["core", "fmt", "Arguments", "new_v1_formatted"];
 pub const FMT_ARGUMENTV1_NEW: [&str; 4] = ["core", "fmt", "ArgumentV1", "new"];

@@ -1,0 +1,10 @@
+error: usage of `process::exit`
+  --> $DIR/exit.rs:3:5
+   |
+LL |     std::process::exit(1);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::exit` implied by `-D warnings`
+
+error: aborting due to previous error
+
