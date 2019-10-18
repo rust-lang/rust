@@ -33,7 +33,15 @@ pub const OFFSET_2: usize = {
     offset as usize
 };
 
+pub const OVERFLOW: isize = {
+    let uninit = std::mem::MaybeUninit::<Struct2>::uninit();
+    let base_ptr: *const Struct2 = &uninit as *const _ as *const Struct2;
+    let field_ptr = unsafe { &(*base_ptr).field as *const u8 };
+    unsafe { (base_ptr as *const u8).offset_from(field_ptr) }
+};
+
 fn main() {
     assert_eq!(OFFSET, 0);
     assert_eq!(OFFSET_2, 1);
+    assert_eq!(OVERFLOW, -1);
 }

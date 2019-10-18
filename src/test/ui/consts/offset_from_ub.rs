@@ -32,13 +32,4 @@ pub const NOT_MULTIPLE_OF_SIZE: usize = {
     offset as usize
 };
 
-pub const OVERFLOW: usize = {
-    //~^ NOTE
-    let uninit = std::mem::MaybeUninit::<Struct>::uninit();
-    let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
-    let field_ptr = unsafe { &(*base_ptr).field as *const u8 };
-    let offset = unsafe { (base_ptr as *const u8).offset_from(field_ptr) };
-    offset as usize
-};
-
 fn main() {}

@@ -57,25 +57,5 @@ LL | |     offset as usize
 LL | | };
    | |__-
 
-error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-   |
-LL |           intrinsics::ptr_offset_from(self, origin)
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |           |
-   |           second argument to `ptr_offset_from` must be smaller than first
-   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:40:27
-   | 
-  ::: $DIR/offset_from_ub.rs:35:1
-   |
-LL | / pub const OVERFLOW: usize = {
-LL | |
-LL | |     let uninit = std::mem::MaybeUninit::<Struct>::uninit();
-LL | |     let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
-...  |
-LL | |     offset as usize
-LL | | };
-   | |__-
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
