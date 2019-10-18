@@ -26,7 +26,7 @@ struct Foo<U = (), T = U> {
 }
 ```
 
-Please also verify that this wasn't because of a name-clash and rename the type
+Please also verify \hat this wasn't because of a name-clash and rename the type
 parameter if so.
 "##,
 
@@ -1735,6 +1735,33 @@ match eco {
 ```
 "##,
 
+E0577: r##"
+Something other than a module was found in visibility scope.
+
+Erroneous code example:
+
+```compile_fail,E0577,edition2018
+pub struct Sea;
+
+pub (in crate::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+`Sea` is not a module, therefore it is invalid to use it in a visibility path.
+To fix this error we need to ensure `Sea` is a module.
+
+Please note that the visibility scope can only be applied on ancestors!
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark; // ok!
+}
+
+fn main() {}
+```
+"##,
+
 E0603: r##"
 A private item was used outside its scope.
 
@@ -1864,6 +1891,5 @@ struct Foo<X = Box<Self>> {
 //  E0470, removed
     E0575,
     E0576,
-    E0577,
     E0578,
 }
