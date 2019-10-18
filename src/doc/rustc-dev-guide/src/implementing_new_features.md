@@ -125,26 +125,26 @@ a new unstable feature:
 2. Pick a name for the feature gate (for RFCs, use the name
    in the RFC).
 
-3. Add a feature gate declaration to `libsyntax/active.rs`
+3. Add a feature gate declaration to `libsyntax/feature_gate/active.rs`
    in the active `declare_features` block:
 
-```rust,ignore
-    // description of feature
-    (active, $feature_name, "$current_nightly_version", Some($tracking_issue_number), $edition)
-```
+   ```rust,ignore
+   // description of feature
+   (active, $feature_name, "$current_nightly_version", Some($tracking_issue_number), $edition)
+   ```
 
-where `$edition` has the type `Option<Edition>`, and is typically
-just `None`.
+   where `$edition` has the type `Option<Edition>`, and is typically
+   just `None`.
 
-For example:
+   For example:
 
-```rust,ignore
-    // allow '|' at beginning of match arms (RFC 1925)
-(   active, match_beginning_vert, "1.21.0", Some(44101), None),
-```
+   ```rust,ignore
+   /// Allows defining identifiers beyond ASCII.
+   (active, non_ascii_idents, "1.0.0", Some(55467), None),
+   ```
 
-When added, the current version should be the one for the current nightly.
-Once the feature is moved to `accepted.rs`, the version is changed to that nightly version.
+   When added, the current version should be the one for the current nightly.
+   Once the feature is moved to `accepted.rs`, the version is changed to that nightly version.
 
 4. Prevent usage of the new feature unless the feature gate is set.
    You can check it in most places in the compiler using the
