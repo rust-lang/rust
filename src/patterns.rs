@@ -89,26 +89,81 @@ impl Rewrite for Pat {
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(binding_mode, ident, ref sub_pat) => {
                 let (prefix, mutability) = match binding_mode {
-                    BindingMode::ByRef(mutability) => ("ref ", mutability),
+                    BindingMode::ByRef(mutability) => ("ref", mutability),
                     BindingMode::ByValue(mutability) => ("", mutability),
                 };
-                let mut_infix = format_mutability(mutability);
+                let mut_infix = format_mutability(mutability).trim();
                 let id_str = rewrite_ident(context, ident);
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
-                        // 3 - ` @ `.
+                        // 2 - `@ `.
                         let width = shape
                             .width
-                            .checked_sub(prefix.len() + mut_infix.len() + id_str.len() + 3)?;
-                        format!(
-                            " @ {}",
-                            p.rewrite(context, Shape::legacy(width, shape.indent))?
-                        )
+                            .checked_sub(prefix.len() + mut_infix.len() + id_str.len() + 2)?;
+                        let lo = context.snippet_provider.span_after(self.span, "@");
+                        combine_strs_with_missing_comments(
+                            context,
+                            "@",
+                            &p.rewrite(context, Shape::legacy(width, shape.indent))?,
+                            mk_sp(lo, p.span.lo()),
+                            shape,
+                            true,
+                        )?
                     }
                     None => "".to_owned(),
                 };
 
-                Some(format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat))
+                // combine prefix and mut
+                let (first_lo, first) = if !prefix.is_empty() && !mut_infix.is_empty() {
+                    let hi = context.snippet_provider.span_before(self.span, "mut");
+                    let lo = context.snippet_provider.span_after(self.span, "ref");
+                    (
+                        context.snippet_provider.span_after(self.span, "mut"),
+                        combine_strs_with_missing_comments(
+                            context,
+                            prefix,
+                            mut_infix,
+                            mk_sp(lo, hi),
+                            shape,
+                            true,
+                        )?,
+                    )
+                } else if !prefix.is_empty() {
+                    (
+                        context.snippet_provider.span_after(self.span, "ref"),
+                        prefix.to_owned(),
+                    )
+                } else if !mut_infix.is_empty() {
+                    (
+                        context.snippet_provider.span_after(self.span, "mut"),
+                        mut_infix.to_owned(),
+                    )
+                } else {
+                    (self.span.lo(), "".to_owned())
+                };
+
+                let next = if !sub_pat.is_empty() {
+                    let hi = context.snippet_provider.span_before(self.span, "@");
+                    combine_strs_with_missing_comments(
+                        context,
+                        id_str,
+                        &sub_pat,
+                        mk_sp(ident.span.hi(), hi),
+                        shape,
+                        true,
+                    )?
+                } else {
+                    id_str.to_owned()
+                };
+
+                combine_strs_with_missing_comments(
+                    context,
+                    &first,
+                    &next,
+                    mk_sp(first_lo, ident.span.lo()),
+                    shape,
+                    true,
+                )
             }
             PatKind::Wild => {
                 if 1 <= shape.width {
