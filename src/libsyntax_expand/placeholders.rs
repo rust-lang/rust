@@ -1,7 +1,7 @@
 use crate::base::ExtCtxt;
 use crate::expand::{AstFragment, AstFragmentKind};
 
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::source_map::{DUMMY_SP, dummy_spanned};
 use syntax::tokenstream::TokenStream;
 use syntax::mut_visit::*;
