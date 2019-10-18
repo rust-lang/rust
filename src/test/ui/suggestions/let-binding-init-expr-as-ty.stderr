@@ -24,18 +24,7 @@ error[E0223]: ambiguous associated type
 LL |     let foo: i32::from_be(num);
    |              ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<i32 as Trait>::from_be`
 
-error[E0308]: mismatched types
-  --> $DIR/let-binding-init-expr-as-ty.rs:1:25
-   |
-LL | pub fn foo(num: i32) -> i32 {
-   |        ---              ^^^ expected i32, found ()
-   |        |
-   |        implicitly returns `()` as its body has no tail or `return` expression
-   |
-   = note: expected type `i32`
-              found type `()`
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0223, E0308, E0573.
+Some errors have detailed explanations: E0223, E0573.
 For more information about an error, try `rustc --explain E0223`.
