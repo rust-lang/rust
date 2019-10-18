@@ -1013,12 +1013,12 @@ fn h1() -> i32 {
 "##,
 
 E0424: r##"
-The `self` keyword was used inside of an associated function instead of inside
-of a method. Associated functions have no "`self` receiver" argument, and are
-equivalent to regular functions which exist in the namespace of a trait.
-Methods, on the other hand, have a `self` reciver argument, like `self`,
-`&self`, `&mut self` or `self: &mut Pin<Self>` (this last one is an example of
-an ["abitrary `self` type"](https://github.com/rust-lang/rust/issues/44874)).
+The `self` keyword was used inside of an associated function without a "`self`
+receiver" parameter. The `self` keyword can only be used inside methods, which
+are associated functions (functions defined inside of a `trait` or `impl` block)
+that have a `self` receiver as its first parameter, like `self`, `&self`,
+`&mut self` or `self: &mut Pin<Self>` (this last one is an example of an
+["abitrary `self` type"](https://github.com/rust-lang/rust/issues/44874)).
 
 Erroneous code example:
 
@@ -1026,17 +1026,18 @@ Erroneous code example:
 struct Foo;
 
 impl Foo {
-    // `bar` is a method, because it has a receiver argument.
+    // `bar` is a method, because it has a receiver parameter.
     fn bar(&self) {}
 
-    // `foo` is an associated function, because it has no receiver argument.
+    // `foo` is not a method, because it has no receiver parameter.
     fn foo() {
-        self.bar(); // error: `self` is not available in an associated function
+        self.bar(); // error: `self` value is a keyword only available in
+                    //        methods with a `self` parameter
     }
 }
 ```
 
-Check if the associated function's argument list should have contained a `self`
+Check if the associated function's parameter list should have contained a `self`
 receiver for it to be a method, and add it if so. Example:
 
 ```
