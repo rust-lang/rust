@@ -350,6 +350,9 @@ struct LateResolutionVisitor<'a, 'b> {
 
     /// Only used for better errors on `fn(): fn()`.
     current_type_ascription: Vec<Span>,
+
+    /// Only used for better errors on `let <pat>: <expr, not type>;`.
+    current_let_binding: Option<(Span, Span)>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -373,7 +376,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.resolve_expr(expr, None);
     }
     fn visit_local(&mut self, local: &'tcx Local) {
+        debug!("visit_local {:?} {:?} {:?}", local, local.pat, local.pat.kind);
+        let val = match local {
+            Local { pat, ty: Some(ty), init: None, .. } => match pat.kind {
+                // We check for this to avoid tuple struct fields.
+                PatKind::Wild => None,
+                _ => Some((pat.span, ty.span)),
+            },
+            _ => None,
+        };
+        let original = replace(&mut self.current_let_binding, val);
         self.resolve_local(local);
+        self.current_let_binding = original;
     }
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.kind {
@@ -533,6 +547,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             current_function: None,
             unused_labels: Default::default(),
             current_type_ascription: Vec::new(),
+            current_let_binding: None,
         }
     }
 
