@@ -697,7 +697,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
             "ptr_offset_from" => {
                 let ty = substs.type_at(0);
-                let pointee_size = self.layout_of(ty).size;
+                let pointee_size = self.size_of(ty);
 
                 // This is the same sequence that Clang emits for pointer subtraction.
                 // It can be neither `nsw` nor `nuw` because the input is treated as
