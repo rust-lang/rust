@@ -200,5 +200,5 @@ LL |     <u8 as Dr>::X::N;
 
 error: aborting due to 32 previous errors
 
-Some errors have detailed explanations: E0223, E0433, E0599.
+Some errors have detailed explanations: E0223, E0433, E0575, E0599.
 For more information about an error, try `rustc --explain E0223`.
