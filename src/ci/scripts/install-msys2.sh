@@ -23,7 +23,7 @@ if isWindows; then
     mkdir -p "${SYSTEM_WORKFOLDER}/msys2/home/${USERNAME}"
 
     ciCommandAddPath "${SYSTEM_WORKFOLDER}/msys2/usr/bin"
-    export PATH="${SYSTEM_WORKFOLDER}/msys2/usr/bin"
+    export PATH="${SYSTEM_WORKFOLDER}/msys2/usr/bin:${PATH}"
 
     pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar
 
