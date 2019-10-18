@@ -10,6 +10,12 @@ note: lint level defined here
 LL | #![deny(exceeding_bitshifts, const_err)]
    |         ^^^^^^^^^^^^^^^^^^^
 
+error: attempt to shift right with overflow
+  --> $DIR/lint-exceeding-bitshifts2.rs:11:15
+   |
+LL |       let n = 1i64 >> [64][0];
+   |               ^^^^^^^^^^^^^^^
+
 error: attempt to shift left with overflow
   --> $DIR/lint-exceeding-bitshifts2.rs:17:15
    |
@@ -22,5 +28,5 @@ error: attempt to shift left with overflow
 LL |       let n = 1_usize << BITS;
    |               ^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

@@ -8,7 +8,7 @@ fn main() {
       let n = 1u8 << (4+3);
       let n = 1u8 << (4+4); //~ ERROR: attempt to shift left with overflow
       let n = 1i64 >> [63][0];
-      let n = 1i64 >> [64][0]; // should be linting, needs to wait for const propagation
+      let n = 1i64 >> [64][0]; //~ ERROR: attempt to shift right with overflow
 
       #[cfg(target_pointer_width = "32")]
       const BITS: usize = 32;
