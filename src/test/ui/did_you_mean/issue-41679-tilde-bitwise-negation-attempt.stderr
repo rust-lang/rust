@@ -2,7 +2,7 @@ error: `~` cannot be used as a unary operator
   --> $DIR/issue-41679-tilde-bitwise-negation-attempt.rs:2:13
    |
 LL |     let x = ~1;
-   |             ^ help: use `!` to perform bitwise negation
+   |             ^ help: use `!` to perform bitwise not
 
 error: aborting due to previous error
 

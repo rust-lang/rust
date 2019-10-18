@@ -423,7 +423,7 @@ impl<'a> Parser<'a> {
                 self.struct_span_err(span_of_tilde, "`~` cannot be used as a unary operator")
                     .span_suggestion_short(
                         span_of_tilde,
-                        "use `!` to perform bitwise negation",
+                        "use `!` to perform bitwise not",
                         "!".to_owned(),
                         Applicability::MachineApplicable
                     )
