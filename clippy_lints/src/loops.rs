@@ -27,9 +27,10 @@ use syntax_pos::{BytePos, Symbol};
 
 use crate::utils::paths;
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, has_iter_method, higher, is_integer_const, is_refutable, last_path_segment,
-    match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq,
+    get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
+    is_integer_const, is_refutable, last_path_segment, match_trait_method, match_type, match_var, multispan_sugg,
+    snippet, snippet_opt, snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg,
+    span_lint_and_then, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1470,22 +1471,45 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
                             "for ({}, {}) in {}.enumerate()",
                             name,
                             snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                            if higher::range(cx, arg).is_some() {
-                                format!(
-                                    "({})",
-                                    snippet_with_applicability(cx, arg.span, "_", &mut applicability)
-                                )
-                            } else {
-                                format!(
-                                    "{}",
-                                    sugg::Sugg::hir_with_applicability(cx, arg, "_", &mut applicability).maybe_par()
-                                )
-                            }
+                            make_iterator_snippet(cx, arg, &mut applicability),
                         ),
                         applicability,
                     );
                 }
             }
+        }
+    }
+}
+
+/// If `arg` was the argument to a `for` loop, return the "cleanest" way of writing the
+/// actual `Iterator` that the loop uses.
+fn make_iterator_snippet(cx: &LateContext<'_, '_>, arg: &Expr, applic_ref: &mut Applicability) -> String {
+    let impls_iterator = get_trait_def_id(cx, &paths::ITERATOR)
+        .map_or(false, |id| implements_trait(cx, cx.tables.expr_ty(arg), id, &[]));
+    if impls_iterator {
+        format!(
+            "{}",
+            sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
+        )
+    } else {
+        // (&x).into_iter() ==> x.iter()
+        // (&mut x).into_iter() ==> x.iter_mut()
+        match &arg.kind {
+            ExprKind::AddrOf(mutability, arg_inner) if has_iter_method(cx, cx.tables.expr_ty(&arg_inner)).is_some() => {
+                let meth_name = match mutability {
+                    MutMutable => "iter_mut",
+                    MutImmutable => "iter",
+                };
+                format!(
+                    "{}.{}()",
+                    sugg::Sugg::hir_with_applicability(cx, &arg_inner, "_", applic_ref).maybe_par(),
+                    meth_name,
+                )
+            },
+            _ => format!(
+                "{}.into_iter()",
+                sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
+            ),
         }
     }
 }
