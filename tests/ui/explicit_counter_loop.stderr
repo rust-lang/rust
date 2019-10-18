@@ -40,7 +40,7 @@ error: the variable `count` is used as a loop counter.
   --> $DIR/explicit_counter_loop.rs:130:9
    |
 LL |         for _i in 3..10 {
-   |         ^^^^^^^^^^^^^^^ help: consider using: `for (count, _i) in 3..10.enumerate()`
+   |         ^^^^^^^^^^^^^^^ help: consider using: `for (count, _i) in (3..10).enumerate()`
 
 error: aborting due to 7 previous errors
 

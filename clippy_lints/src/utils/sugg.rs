@@ -46,7 +46,7 @@ impl<'a> Sugg<'a> {
     pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
-            Self::hir_from_snippet(expr, snippet)
+            Self::hir_from_snippet(cx, expr, snippet)
         })
     }
 
@@ -84,12 +84,20 @@ impl<'a> Sugg<'a> {
     pub fn hir_with_macro_callsite(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str) -> Self {
         let snippet = snippet_with_macro_callsite(cx, expr.span, default);
 
-        Self::hir_from_snippet(expr, snippet)
+        Self::hir_from_snippet(cx, expr, snippet)
     }
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(expr: &hir::Expr, snippet: Cow<'a, str>) -> Self {
+    fn hir_from_snippet(cx: &LateContext<'_, '_>, expr: &hir::Expr, snippet: Cow<'a, str>) -> Self {
+        if let Some(range) = higher::range(cx, expr) {
+            let op = match range.limits {
+                ast::RangeLimits::HalfOpen => AssocOp::DotDot,
+                ast::RangeLimits::Closed => AssocOp::DotDotEq,
+            };
+            return Sugg::BinOp(op, snippet);
+        }
+
         match expr.kind {
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Box(..)
