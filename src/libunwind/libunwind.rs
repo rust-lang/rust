@@ -1,25 +1,6 @@
 #![allow(nonstandard_style)]
 
-#[cfg(not(target_os = "hermit"))]
 use libc::{c_int, c_void, uintptr_t};
-
-#[cfg(target_os = "hermit")]
-pub type c_int = i32;
-
-#[cfg(target_os = "hermit")]
-pub type uintptr_t = usize;
-
-#[cfg(target_os = "hermit")]
-#[repr(u8)]
-#[allow(missing_copy_implementations)]
-#[allow(missing_debug_implementations)]
-pub enum c_void {
-    // Two dummy variants so the #[repr] attribute can be used.
-    #[doc(hidden)]
-    __variant1,
-    #[doc(hidden)]
-    __variant2,
-}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
