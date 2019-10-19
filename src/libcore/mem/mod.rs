@@ -360,6 +360,7 @@ pub const fn align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
     min_align_of_val(val)
 }
