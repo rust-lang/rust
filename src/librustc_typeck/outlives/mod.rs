@@ -97,32 +97,16 @@ fn inferred_outlives_crate(
     let predicates = global_inferred_outlives
         .iter()
         .map(|(&def_id, set)| {
-            let def_span = tcx.def_span(def_id);
-            let generics = tcx.generics_of(def_id);
             let predicates = &*tcx.arena.alloc_from_iter(set
                 .iter()
                 .filter_map(
-                    |ty::OutlivesPredicate(kind1, region2)| match kind1.unpack() {
+                    |(ty::OutlivesPredicate(kind1, region2), &span)| match kind1.unpack() {
                         GenericArgKind::Type(ty1) => {
-                            // FIXME(eddyb) compute `Span`s in `implicit_infer`.
-                            let span = match &ty1.kind {
-                                ty::Param(p) => {
-                                    tcx.def_span(generics.type_param(p, tcx).def_id)
-                                }
-                                _ => def_span,
-                            };
                             Some((ty::Predicate::TypeOutlives(ty::Binder::bind(
                                 ty::OutlivesPredicate(ty1, region2)
                             )), span))
                         }
                         GenericArgKind::Lifetime(region1) => {
-                            // FIXME(eddyb) compute `Span`s in `implicit_infer`.
-                            let span = match region1 {
-                                ty::RegionKind::ReEarlyBound(p) => {
-                                    tcx.def_span(generics.region_param(p, tcx).def_id)
-                                }
-                                _ => def_span,
-                            };
                             Some((ty::Predicate::RegionOutlives(
                                 ty::Binder::bind(ty::OutlivesPredicate(region1, region2))
                             ), span))

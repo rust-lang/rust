@@ -2,12 +2,13 @@ use rustc::ty::outlives::Component;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
 use smallvec::smallvec;
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
+use syntax_pos::Span;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
 pub type RequiredPredicates<'tcx> =
-    BTreeSet<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>>;
+    BTreeMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, Span>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
@@ -15,6 +16,7 @@ pub fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
+    span: Span,
     required_predicates: &mut RequiredPredicates<'tcx>,
 ) {
     // If the `'a` region is bound within the field type itself, we
@@ -53,6 +55,7 @@ pub fn insert_outlives_predicate<'tcx>(
                             tcx,
                             r.into(),
                             outlived_region,
+                            span,
                             required_predicates,
                         );
                     }
@@ -73,7 +76,8 @@ pub fn insert_outlives_predicate<'tcx>(
                         // where clause that `U: 'a`.
                         let ty: Ty<'tcx> = param_ty.to_ty(tcx);
                         required_predicates
-                            .insert(ty::OutlivesPredicate(ty.into(), outlived_region));
+                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                            .or_insert(span);
                     }
 
                     Component::Projection(proj_ty) => {
@@ -88,7 +92,8 @@ pub fn insert_outlives_predicate<'tcx>(
                         // Here we want to add an explicit `where <T as Iterator>::Item: 'a`.
                         let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.item_def_id, proj_ty.substs);
                         required_predicates
-                            .insert(ty::OutlivesPredicate(ty.into(), outlived_region));
+                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                            .or_insert(span);
                     }
 
                     Component::EscapingProjection(_) => {
@@ -117,7 +122,8 @@ pub fn insert_outlives_predicate<'tcx>(
             if !is_free_region(tcx, r) {
                 return;
             }
-            required_predicates.insert(ty::OutlivesPredicate(kind, outlived_region));
+            required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region))
+                .or_insert(span);
         }
 
         GenericArgKind::Const(_) => {
