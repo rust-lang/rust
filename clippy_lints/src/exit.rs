@@ -1,6 +1,6 @@
 use crate::utils::{match_def_path, paths, qpath_res, span_lint};
 use if_chain::if_chain;
-use rustc::hir::{Expr, ExprKind};
+use rustc::hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
@@ -11,8 +11,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Ideally a program is terminated by finishing
     /// the main function.
     ///
-    /// **Known problems:** This can be valid code in main() to return
-    /// errors
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```ignore
@@ -33,7 +32,29 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Exit {
             if let Some(def_id) = qpath_res(cx, path, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::EXIT);
             then {
-                span_lint(cx, EXIT, e.span, "usage of `process::exit`");
+                let mut parent = cx.tcx.hir().get_parent_item(e.hir_id);
+                // We have to traverse the parents upwards until we find a function
+                // otherwise a exit in a let or if in main would still trigger this
+                loop{
+                    match cx.tcx.hir().find(parent) {
+                        Some(Node::Item(Item{ident, kind: ItemKind::Fn(..), ..})) => {
+                            // If we found a function we check it's name if it is
+                            // `main` we emit a lint.
+                            if ident.name.as_str() != "main" {
+                                span_lint(cx, EXIT, e.span, "usage of `process::exit`");
+                            }
+                            // We found any kind of function and can end our loop
+                            break;
+                        }
+                        // If we found anything but a funciton we continue with the
+                        // loop and go one parent up
+                        Some(_) => {
+                            cx.tcx.hir().get_parent_item(parent);
+                        },
+                        // If we found nothing we break.
+                        None => break,
+                    }
+                }
             }
 
         }

@@ -1,7 +1,7 @@
 error: usage of `process::exit`
   --> $DIR/exit.rs:3:5
    |
-LL |     std::process::exit(1);
+LL |     std::process::exit(3);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::exit` implied by `-D warnings`
