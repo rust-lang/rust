@@ -7,24 +7,19 @@ use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
 
 use syntax;
-use syntax::ast::{self, IntTy, UintTy, MetaItemKind};
+use syntax::ast::{self, IntTy, UintTy};
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
-use syntax::parse::new_parser_from_source_str;
-use syntax::parse::token;
-use syntax::sess::ParseSess;
 use syntax::symbol::{sym, Symbol};
 use syntax::feature_gate::UnstableFeatures;
-use syntax::source_map::SourceMap;
 
 use errors::emitter::HumanReadableErrorType;
-use errors::{ColorConfig, FatalError, Handler, SourceMapperDyn};
+use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 
@@ -1854,59 +1849,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     opts
 }
 
-struct NullEmitter;
-
-impl errors::emitter::Emitter for NullEmitter {
-    fn emit_diagnostic(&mut self, _: &errors::Diagnostic) {}
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
-}
-
-// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
-pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    syntax::with_default_globals(move || {
-        let cfg = cfgspecs.into_iter().map(|s| {
-
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let handler = Handler::with_emitter(false, None, Box::new(NullEmitter));
-            let sess = ParseSess::with_span_handler(handler, cm);
-            let filename = FileName::cfg_spec_source_code(&s);
-            let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
-
-            macro_rules! error {($reason: expr) => {
-                early_error(ErrorOutputType::default(),
-                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s));
-            }}
-
-            match &mut parser.parse_meta_item() {
-                Ok(meta_item) if parser.token == token::Eof => {
-                    if meta_item.path.segments.len() != 1 {
-                        error!("argument key must be an identifier");
-                    }
-                    match &meta_item.kind {
-                        MetaItemKind::List(..) => {
-                            error!(r#"expected `key` or `key="value"`"#);
-                        }
-                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
-                            error!("argument value must be a string");
-                        }
-                        MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                            let ident = meta_item.ident().expect("multi-segment cfg key");
-                            return (ident.name, meta_item.value_str());
-                        }
-                    }
-                }
-                Ok(..) => {}
-                Err(err) => err.cancel(),
-            }
-
-            error!(r#"expected `key` or `key="value"`"#);
-        }).collect::<ast::CrateConfig>();
-        cfg.into_iter().map(|(a, b)| {
-            (a.to_string(), b.map(|b| b.to_string()))
-        }).collect()
-    })
-}
-
 pub fn get_cmd_lint_options(matches: &getopts::Matches,
                             error_format: ErrorOutputType)
                             -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
@@ -2877,6 +2819,3 @@ mod dep_tracking {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

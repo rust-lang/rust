@@ -329,7 +329,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: config::parse_cfgspecs(cfgs),
+        crate_cfg: interface::parse_cfgspecs(cfgs),
         input,
         input_path: cpath,
         output_file: None,

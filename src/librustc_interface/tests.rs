@@ -1,25 +1,24 @@
-use getopts;
-use crate::lint;
-use crate::middle::cstore;
-use crate::session::config::{
-    build_configuration,
-    build_session_options,
-    to_crate_config,
-    parse_cfgspecs,
-};
-use crate::session::config::{LtoCli, LinkerPluginLto, SwitchWithOptPath, ExternEntry};
-use crate::session::build_session;
-use crate::session::search_paths::SearchPath;
+extern crate getopts;
+
+use crate::interface::parse_cfgspecs;
+
+use rustc::lint;
+use rustc::middle::cstore;
+use rustc::session::config::{build_configuration, build_session_options, to_crate_config};
+use rustc::session::config::{LtoCli, LinkerPluginLto, SwitchWithOptPath, ExternEntry};
+use rustc::session::config::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
+use rustc::session::config::{rustc_optgroups, Options, ErrorOutputType, Passes};
+use rustc::session::build_session;
+use rustc::session::search_paths::SearchPath;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
-use super::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
 use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
 use syntax::symbol::sym;
 use syntax::edition::{Edition, DEFAULT_EDITION};
 use syntax;
-use super::Options;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{ColorConfig, emitter::HumanReadableErrorType, registry};
 
 pub fn build_session_options_and_crate_config(
     matches: &getopts::Matches,
@@ -30,22 +29,23 @@ pub fn build_session_options_and_crate_config(
     )
 }
 
-impl ExternEntry {
-    fn new_public<S: Into<String>,
-                  I: IntoIterator<Item = Option<S>>>(locations: I) -> ExternEntry {
-        let locations: BTreeSet<_> = locations.into_iter().map(|o| o.map(|s| s.into()))
-            .collect();
+fn new_public_extern_entry<S, I>(locations: I) -> ExternEntry
+where
+    S: Into<String>,
+    I: IntoIterator<Item = Option<S>>,
+{
+    let locations: BTreeSet<_> = locations.into_iter().map(|o| o.map(|s| s.into()))
+        .collect();
 
-        ExternEntry {
-            locations,
-            is_private_dep: false
-        }
+    ExternEntry {
+        locations,
+        is_private_dep: false
     }
 }
 
 fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
-    for group in super::rustc_optgroups() {
+    for group in rustc_optgroups() {
         (group.apply)(&mut opts);
     }
     return opts;
@@ -63,7 +63,7 @@ fn test_switch_implies_cfg_test() {
             Ok(m) => m,
             Err(f) => panic!("test_switch_implies_cfg_test: {}", f),
         };
-        let registry = errors::registry::Registry::new(&[]);
+        let registry = registry::Registry::new(&[]);
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
@@ -81,7 +81,7 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
             Ok(m) => m,
             Err(f) => panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f),
         };
-        let registry = errors::registry::Registry::new(&[]);
+        let registry = registry::Registry::new(&[]);
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
@@ -95,7 +95,7 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 fn test_can_print_warnings() {
     syntax::with_default_globals(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let registry = errors::registry::Registry::new(&[]);
+        let registry = registry::Registry::new(&[]);
         let (sessopts, _) = build_session_options_and_crate_config(&matches);
         let sess = build_session(sessopts, None, registry);
         assert!(!sess.diagnostic().can_emit_warnings());
@@ -105,7 +105,7 @@ fn test_can_print_warnings() {
         let matches = optgroups()
             .parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()])
             .unwrap();
-        let registry = errors::registry::Registry::new(&[]);
+        let registry = registry::Registry::new(&[]);
         let (sessopts, _) = build_session_options_and_crate_config(&matches);
         let sess = build_session(sessopts, None, registry);
         assert!(sess.diagnostic().can_emit_warnings());
@@ -113,7 +113,7 @@ fn test_can_print_warnings() {
 
     syntax::with_default_globals(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let registry = errors::registry::Registry::new(&[]);
+        let registry = registry::Registry::new(&[]);
         let (sessopts, _) = build_session_options_and_crate_config(&matches);
         let sess = build_session(sessopts, None, registry);
         assert!(sess.diagnostic().can_emit_warnings());
@@ -172,33 +172,33 @@ fn test_externs_tracking_hash_different_construction_order() {
     v1.externs = Externs::new(mk_map(vec![
         (
             String::from("a"),
-            ExternEntry::new_public(vec![Some("b"), Some("c")])
+            new_public_extern_entry(vec![Some("b"), Some("c")])
         ),
         (
             String::from("d"),
-            ExternEntry::new_public(vec![Some("e"), Some("f")])
+            new_public_extern_entry(vec![Some("e"), Some("f")])
         ),
     ]));
 
     v2.externs = Externs::new(mk_map(vec![
         (
             String::from("d"),
-            ExternEntry::new_public(vec![Some("e"), Some("f")])
+            new_public_extern_entry(vec![Some("e"), Some("f")])
         ),
         (
             String::from("a"),
-            ExternEntry::new_public(vec![Some("b"), Some("c")])
+            new_public_extern_entry(vec![Some("b"), Some("c")])
         ),
     ]));
 
     v3.externs = Externs::new(mk_map(vec![
         (
             String::from("a"),
-            ExternEntry::new_public(vec![Some("b"), Some("c")])
+            new_public_extern_entry(vec![Some("b"), Some("c")])
         ),
         (
             String::from("d"),
-            ExternEntry::new_public(vec![Some("f"), Some("e")])
+            new_public_extern_entry(vec![Some("f"), Some("e")])
         ),
     ]));
 
@@ -282,9 +282,9 @@ fn test_search_paths_tracking_hash_different_order() {
     let mut v3 = Options::default();
     let mut v4 = Options::default();
 
-    const JSON: super::ErrorOutputType = super::ErrorOutputType::Json {
+    const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
-        json_rendered: super::HumanReadableErrorType::Default(super::ColorConfig::Never),
+        json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
     };
 
     // Reference
@@ -455,7 +455,7 @@ fn test_codegen_options_tracking_hash() {
     opts.cg.codegen_units = Some(42);
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-    opts.cg.remark = super::Passes::Some(vec![String::from("pass1"), String::from("pass2")]);
+    opts.cg.remark = Passes::Some(vec![String::from("pass1"), String::from("pass2")]);
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.save_temps = true;
