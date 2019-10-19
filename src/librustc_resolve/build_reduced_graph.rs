@@ -163,25 +163,15 @@ impl<'a> Resolver<'a> {
         Some(ext)
     }
 
-    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
     crate fn build_reduced_graph(
         &mut self,
         fragment: &AstFragment,
-        extra_placeholders: &[NodeId],
         parent_scope: ParentScope<'a>,
     ) -> LegacyScope<'a> {
         let mut def_collector = DefCollector::new(&mut self.definitions, parent_scope.expansion);
         fragment.visit_with(&mut def_collector);
-        for placeholder in extra_placeholders {
-            def_collector.visit_macro_invoc(*placeholder);
-        }
-
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
-        for placeholder in extra_placeholders {
-            visitor.parent_scope.legacy = visitor.visit_invoc(*placeholder);
-        }
-
         visitor.parent_scope.legacy
     }
 
@@ -1064,8 +1054,17 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         None
     }
 
+    // Mark the given macro as unused unless its name starts with `_`.
+    // Macro uses will remove items from this set, and the remaining
+    // items will be reported as `unused_macros`.
+    fn insert_unused_macro(&mut self, ident: Ident, node_id: NodeId, span: Span) {
+        if !ident.as_str().starts_with("_") {
+            self.r.unused_macros.insert(node_id, span);
+        }
+    }
+
     fn define_macro(&mut self, item: &ast::Item) -> LegacyScope<'a> {
-        let parent_scope = &self.parent_scope;
+        let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
         let (ext, ident, span, is_legacy) = match &item.kind {
             ItemKind::MacroDef(def) => {
@@ -1105,7 +1104,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             (res, vis, span, expansion, IsMacroExport));
             } else {
                 self.r.check_reserved_macro_name(ident, res);
-                self.r.unused_macros.insert(item.id, span);
+                self.insert_unused_macro(ident, item.id, span);
             }
             LegacyScope::Binding(self.r.arenas.alloc_legacy_binding(LegacyBinding {
                 parent_legacy_scope: parent_scope.legacy, binding, ident
@@ -1114,7 +1113,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let module = parent_scope.module;
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
-                self.r.unused_macros.insert(item.id, span);
+                self.insert_unused_macro(ident, item.id, span);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
             self.parent_scope.legacy
