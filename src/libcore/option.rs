@@ -64,7 +64,7 @@
 //!
 //! fn check_optional(optional: Option<Box<i32>>) {
 //!     match optional {
-//!         Some(ref p) => println!("has value {}", p),
+//!         Some(p) => println!("has value {}", p),
 //!         None => println!("has no value"),
 //!     }
 //! }
@@ -83,7 +83,7 @@
 //! let msg = Some("howdy");
 //!
 //! // Take a reference to the contained string
-//! if let Some(ref m) = msg {
+//! if let Some(m) = &msg {
 //!     println!("{}", *m);
 //! }
 //!
