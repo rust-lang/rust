@@ -8,7 +8,7 @@
 #![feature(precise_pointer_size_matching)]
 #![feature(exclusive_range_pattern)]
 
-#![deny(unreachable_patterns)]
+#![deny(unreachable_patterns, overlapping_patterns)]
 
 use std::{usize, isize};
 

@@ -4,10 +4,10 @@ error[E0277]: the trait bound `T: MyHash` is not satisfied
 LL | pub struct MySet<T:MyHash> {
    | -------------------------- required by `MySet`
 ...
+LL | impl<T> Foo for T {
+   |      - help: consider restricting this bound: `T: MyHash`
 LL |     type Bar = MySet<T>;
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `MyHash` is not implemented for `T`
-   |
-   = help: consider adding a `where T: MyHash` bound
 
 error: aborting due to previous error
 

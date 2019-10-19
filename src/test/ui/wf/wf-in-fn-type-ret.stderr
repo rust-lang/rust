@@ -4,10 +4,11 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL | struct MustBeCopy<T:Copy> {
    | ------------------------- required by `MustBeCopy`
 ...
+LL | struct Foo<T> {
+   |            - help: consider restricting this bound: `T: std::marker::Copy`
+LL |     // needs T: 'static
 LL |     x: fn() -> MustBeCopy<T>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
-   |
-   = help: consider adding a `where T: std::marker::Copy` bound
 
 error: aborting due to previous error
 

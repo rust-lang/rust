@@ -4,14 +4,15 @@ error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
 LL |   struct Bar<T:Eq+?Sized> { value: Box<T> }
    |   ----------------------- required by `Bar`
 ...
-LL | /     fn bar(&self, x: &Bar<Self>) {
+LL |       fn bar(&self, x: &Bar<Self>) {
+   |       ^                           - help: consider further restricting `Self`: `where Self: std::cmp::Eq`
+   |  _____|
+   | |
 LL | |
 LL | |         //
 LL | |         // Here, Eq ought to be implemented.
 LL | |     }
    | |_____^ the trait `std::cmp::Eq` is not implemented for `Self`
-   |
-   = help: consider adding a `where Self: std::cmp::Eq` bound
 
 error: aborting due to previous error
 

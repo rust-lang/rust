@@ -1,10 +1,10 @@
 error[E0277]: the trait bound `T: Foo<usize>` is not satisfied
   --> $DIR/associated-types-invalid-trait-ref-issue-18865.rs:10:12
    |
+LL | fn f<T:Foo<isize>>(t: &T) {
+   |      -- help: consider further restricting this bound: `T: Foo<usize> +`
 LL |     let u: <T as Foo<usize>>::Bar = t.get_bar();
    |            ^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo<usize>` is not implemented for `T`
-   |
-   = help: consider adding a `where T: Foo<usize>` bound
 
 error: aborting due to previous error
 

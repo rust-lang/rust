@@ -16,26 +16,30 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
    |
 LL | pub struct Foo<A, B>(A, B);
    | --------------------------- required by `Foo`
+LL | 
+LL | impl<A, B> Foo<A, B> {
+   |      - help: consider restricting this bound: `A: std::marker::Sized`
 ...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `A`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = help: consider adding a `where A: std::marker::Sized` bound
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
   --> $DIR/too_generic_eval_ice.rs:7:13
    |
 LL | pub struct Foo<A, B>(A, B);
    | --------------------------- required by `Foo`
+LL | 
+LL | impl<A, B> Foo<A, B> {
+   |         - help: consider restricting this bound: `B: std::marker::Sized`
 ...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `B`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = help: consider adding a `where B: std::marker::Sized` bound
 
 error: aborting due to 3 previous errors
 
