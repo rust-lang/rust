@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 use rustc::session::Session;
 
@@ -122,8 +123,13 @@ impl WriteDebugInfo for ObjectProduct {
         id: SectionId,
         data: Vec<u8>,
     ) -> (object::write::SectionId, object::write::SymbolId) {
+        let name = if self.object.format() == target_lexicon::BinaryFormat::Macho {
+            id.name().replace('.', "__") // machO expects __debug_info instead of .debug_info
+        } else {
+            id.name().to_string()
+        }.into_bytes();
+
         let segment = self.object.segment_name(StandardSegment::Debug).to_vec();
-        let name = id.name().as_bytes().to_vec();
         let section_id = self.object.add_section(segment, name, SectionKind::Debug);
         self.object.section_mut(section_id).set_data(data, 1);
         let symbol_id = self.object.section_symbol(section_id);
@@ -137,10 +143,19 @@ impl WriteDebugInfo for ObjectProduct {
         from: &Self::SectionId,
         reloc: &DebugReloc,
     ) {
-        let symbol = match reloc.name {
-            DebugRelocName::Section(id) => section_map.get(&id).unwrap().1,
+        let (symbol, symbol_offset) = match reloc.name {
+            DebugRelocName::Section(id) => {
+                (section_map.get(&id).unwrap().1, 0)
+            }
             DebugRelocName::Symbol(id) => {
-                self.function_symbol(*symbol_map.get_index(id).unwrap().0)
+                let symbol_id = self.function_symbol(*symbol_map.get_index(id).unwrap().0);
+                let symbol = self.object.symbol(symbol_id);
+
+                // A symbol gets a section assigned when `add_symbol_data` is called.
+                let section = symbol.section.expect("Symbol not defined");
+                let symbol_offset = symbol.value;
+
+                (self.object.section_symbol(section), symbol_offset)
             }
         };
         self.object.add_relocation(from.0, Relocation {
@@ -149,7 +164,7 @@ impl WriteDebugInfo for ObjectProduct {
             kind: RelocationKind::Absolute,
             encoding: RelocationEncoding::Generic,
             size: reloc.size * 8,
-            addend: reloc.addend,
+            addend: i64::try_from(symbol_offset).unwrap() + reloc.addend,
         }).unwrap();
     }
 }
