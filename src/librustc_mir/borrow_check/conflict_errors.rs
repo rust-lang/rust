@@ -2,9 +2,9 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceRef, ProjectionElem, Rvalue,
-    Statement, StatementKind, TerminatorKind, VarBindingForm,
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
+    FakeReadCause, Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceRef,
+    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
@@ -380,42 +380,38 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let first_borrow_desc;
         let mut err = match (
             gen_borrow_kind,
-            "immutable",
-            "mutable",
             issued_borrow.kind,
-            "immutable",
-            "mutable",
         ) {
-            (BorrowKind::Shared, lft, _, BorrowKind::Mut { .. }, _, rgt) => {
+            (BorrowKind::Shared, BorrowKind::Mut { .. }) => {
                 first_borrow_desc = "mutable ";
                 self.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
                     &msg_place,
-                    lft,
+                    "immutable",
                     issued_span,
                     "it",
-                    rgt,
+                    "mutable",
                     &msg_borrow,
                     None,
                 )
             }
-            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Shared) => {
                 first_borrow_desc = "immutable ";
                 self.cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
                     &msg_place,
-                    lft,
+                    "mutable",
                     issued_span,
                     "it",
-                    rgt,
+                    "immutable",
                     &msg_borrow,
                     None,
                 )
             }
 
-            (BorrowKind::Mut { .. }, _, _, BorrowKind::Mut { .. }, _, _) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Mut { .. }) => {
                 first_borrow_desc = "first ";
                 self.cannot_mutably_borrow_multiply(
                     span,
@@ -427,7 +423,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) => {
+            (BorrowKind::Unique, BorrowKind::Unique) => {
                 first_borrow_desc = "first ";
                 self.cannot_uniquely_borrow_by_two_closures(
                     span,
@@ -437,25 +433,45 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Mut { .. }, _, _, BorrowKind::Shallow, _, _)
-            | (BorrowKind::Unique, _, _, BorrowKind::Shallow, _, _) => {
-                let mut err = self.cannot_mutate_in_match_guard(
-                    span,
-                    issued_span,
-                    &desc_place,
-                    "mutably borrow",
-                );
-                borrow_spans.var_span_label(
-                    &mut err,
-                    format!(
-                        "borrow occurs due to use of `{}`{}", desc_place, borrow_spans.describe()
-                    ),
-                );
+            (BorrowKind::Mut { .. }, BorrowKind::Shallow)
+            | (BorrowKind::Unique, BorrowKind::Shallow) => {
+                if let Some(immutable_section_description) = self.classify_immutable_section(
+                    &issued_borrow.assigned_place,
+                ) {
+                    let mut err = self.cannot_mutate_in_immutable_section(
+                        span,
+                        issued_span,
+                        &desc_place,
+                        immutable_section_description,
+                        "mutably borrow",
+                    );
+                    borrow_spans.var_span_label(
+                        &mut err,
+                        format!(
+                            "borrow occurs due to use of `{}`{}",
+                            desc_place,
+                            borrow_spans.describe(),
+                        ),
+                    );
 
-                return err;
+                    return err;
+                } else {
+                    first_borrow_desc = "immutable ";
+                    self.cannot_reborrow_already_borrowed(
+                        span,
+                        &desc_place,
+                        &msg_place,
+                        "mutable",
+                        issued_span,
+                        "it",
+                        "immutable",
+                        &msg_borrow,
+                        None,
+                    )
+                }
             }
 
-            (BorrowKind::Unique, _, _, _, _, _) => {
+            (BorrowKind::Unique, _) => {
                 first_borrow_desc = "first ";
                 self.cannot_uniquely_borrow_by_one_closure(
                     span,
@@ -469,14 +485,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             },
 
-            (BorrowKind::Shared, lft, _, BorrowKind::Unique, _, _) => {
+            (BorrowKind::Shared, BorrowKind::Unique) => {
                 first_borrow_desc = "first ";
                 self.cannot_reborrow_already_uniquely_borrowed(
                     span,
                     container_name,
                     &desc_place,
                     "",
-                    lft,
+                    "immutable",
                     issued_span,
                     "",
                     None,
@@ -484,14 +500,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Mut { .. }, _, lft, BorrowKind::Unique, _, _) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Unique) => {
                 first_borrow_desc = "first ";
                 self.cannot_reborrow_already_uniquely_borrowed(
                     span,
                     container_name,
                     &desc_place,
                     "",
-                    lft,
+                    "mutable",
                     issued_span,
                     "",
                     None,
@@ -499,12 +515,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _)
-            | (BorrowKind::Shared, _, _, BorrowKind::Shallow, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Unique, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Shared, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Shallow, _, _) => unreachable!(),
+            (BorrowKind::Shared, BorrowKind::Shared)
+            | (BorrowKind::Shared, BorrowKind::Shallow)
+            | (BorrowKind::Shallow, BorrowKind::Mut { .. })
+            | (BorrowKind::Shallow, BorrowKind::Unique)
+            | (BorrowKind::Shallow, BorrowKind::Shared)
+            | (BorrowKind::Shallow, BorrowKind::Shallow) => unreachable!(),
         };
 
         if issued_spans == borrow_spans {
@@ -1429,20 +1445,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         if loan.kind == BorrowKind::Shallow {
-            let mut err = self.cannot_mutate_in_match_guard(
-                span,
-                loan_span,
-                &self.describe_place(place.as_ref()).unwrap_or_else(|| "_".to_owned()),
-                "assign",
-            );
-            loan_spans.var_span_label(
-                &mut err,
-                format!("borrow occurs due to use{}", loan_spans.describe()),
-            );
+            if let Some(section) = self.classify_immutable_section(&loan.assigned_place) {
+                let mut err = self.cannot_mutate_in_immutable_section(
+                    span,
+                    loan_span,
+                    &self.describe_place(place.as_ref()).unwrap_or_else(|| "_".to_owned()),
+                    section,
+                    "assign",
+                );
+                loan_spans.var_span_label(
+                    &mut err,
+                    format!("borrow occurs due to use{}", loan_spans.describe()),
+                );
 
-            err.buffer(&mut self.errors_buffer);
+                err.buffer(&mut self.errors_buffer);
 
-            return;
+                return;
+            }
         }
 
         let mut err = self.cannot_assign_to_borrowed(
@@ -1590,6 +1609,35 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ProjectionElem::Index(_) => base_access,
                 }
             }
+        }
+    }
+
+    /// Describe the reason for the fake borrow that was assigned to `place`.
+    fn classify_immutable_section(&self, place: &Place<'tcx>) -> Option<&'static str> {
+        use rustc::mir::visit::Visitor;
+        struct FakeReadCauseFinder<'a, 'tcx> {
+            place: &'a Place<'tcx>,
+            cause: Option<FakeReadCause>,
+        }
+        impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'_, 'tcx> {
+            fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
+                match statement {
+                    Statement {
+                        kind: StatementKind::FakeRead(cause, box ref place),
+                        ..
+                    } if *place == *self.place => {
+                        self.cause = Some(*cause);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        let mut visitor = FakeReadCauseFinder { place, cause: None };
+        visitor.visit_body(&self.body);
+        match visitor.cause {
+            Some(FakeReadCause::ForMatchGuard) => Some("match guard"),
+            Some(FakeReadCause::ForIndex) => Some("indexing expression"),
+            _ => None,
         }
     }
 

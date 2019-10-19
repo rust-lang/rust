@@ -395,23 +395,25 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         )
     }
 
-    crate fn cannot_mutate_in_match_guard(
+    crate fn cannot_mutate_in_immutable_section(
         &self,
         mutate_span: Span,
-        match_span: Span,
-        match_place: &str,
+        immutable_span: Span,
+        immutable_place: &str,
+        immutable_section: &str,
         action: &str,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
             self,
             mutate_span,
             E0510,
-            "cannot {} `{}` in match guard",
+            "cannot {} `{}` in {}",
             action,
-            match_place,
+            immutable_place,
+            immutable_section,
         );
         err.span_label(mutate_span, format!("cannot {}", action));
-        err.span_label(match_span, String::from("value is immutable in match guard"));
+        err.span_label(immutable_span, format!("value is immutable in {}", immutable_section));
         err
     }
 
