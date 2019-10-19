@@ -64,15 +64,15 @@ rustc-workspace-hack = "1.0.0"
 
 [dependencies.rustc_target]
 package = "rustc-ap-rustc_target"
-version = "606.0.0"
+version = "610.0.0"
 
 [dependencies.syntax]
 package = "rustc-ap-syntax"
-version = "606.0.0"
+version = "610.0.0"
 
 [dependencies.syntax_pos]
 package = "rustc-ap-syntax_pos"
-version = "606.0.0"
+version = "610.0.0"
 
 [dev-dependencies]
 lazy_static = "1.0.0"
