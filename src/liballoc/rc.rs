@@ -25,7 +25,7 @@
 //! to an [`Rc`], but this will return [`None`] if the value stored in the allocation has
 //! already been dropped. In other words, `Weak` pointers do not keep the value
 //! inside the allocation alive; however, they *do* keep the allocation
-//! (the backing store for the value) alive.
+//! (the backing store for the inner value) alive.
 //!
 //! A cycle between [`Rc`] pointers will never be deallocated. For this reason,
 //! [`Weak`] is used to break cycles. For example, a tree could have strong
@@ -44,8 +44,8 @@
 //! Rc::downgrade(&my_rc);
 //! ```
 //!
-//! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the allocation may have
-//! already been destroyed.
+//! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the inner value may have
+//! already been dropped.
 //!
 //! # Cloning references
 //!
@@ -449,7 +449,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     /// # Safety
     ///
     /// As with [`MaybeUninit::assume_init`],
-    /// it is up to the caller to guarantee that the value
+    /// it is up to the caller to guarantee that the inner value
     /// really is in an initialized state.
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
@@ -488,7 +488,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     /// # Safety
     ///
     /// As with [`MaybeUninit::assume_init`],
-    /// it is up to the caller to guarantee that the value
+    /// it is up to the caller to guarantee that the inner value
     /// really is in an initialized state.
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
@@ -883,7 +883,7 @@ impl Rc<dyn Any> {
 
 impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for
-    /// a possibly-unsized value where the value has the layout provided.
+    /// a possibly-unsized inner value where the value has the layout provided.
     ///
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
@@ -913,7 +913,7 @@ impl<T: ?Sized> Rc<T> {
         inner
     }
 
-    /// Allocates an `RcBox<T>` with sufficient space for an unsized value
+    /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
         // Allocate for the `RcBox<T>` using the given value.
         Self::allocate_for_layout(
@@ -1177,6 +1177,8 @@ impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
 /// store large values, that are slow to clone, but also heavy to check for equality, causing this
 /// cost to pay off more easily. It's also more likely to have two `Rc` clones, that point to
 /// the same value, than two `&T`s.
+///
+/// We can only do this when `T: Eq` as a `PartialEq` might be deliberately irreflexive.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> RcEqIdent<T> for Rc<T> {
     #[inline]
@@ -1759,10 +1761,10 @@ pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
 }
 
 impl<T: ?Sized> Weak<T> {
-    /// Attempts to upgrade the `Weak` pointer to an [`Rc`], extending
-    /// the lifetime of the allocation if successful.
+    /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
+    /// dropping of the inner value if successful.
     ///
-    /// Returns [`None`] if the value stored in the allocation has since been dropped.
+    /// Returns [`None`] if the inner value has since been dropped.
     ///
     /// [`Rc`]: struct.Rc.html
     /// [`None`]: ../../std/option/enum.Option.html
