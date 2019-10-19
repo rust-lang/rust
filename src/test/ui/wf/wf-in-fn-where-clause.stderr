@@ -6,11 +6,10 @@ LL |   trait MustBeCopy<T:Copy> {
 ...
 LL | / fn bar<T,U>()
 LL | |     where T: MustBeCopy<U>
+   | |                           - help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
 LL | | {
 LL | | }
    | |_^ the trait `std::marker::Copy` is not implemented for `U`
-   |
-   = help: consider adding a `where U: std::marker::Copy` bound
 
 error: aborting due to previous error
 

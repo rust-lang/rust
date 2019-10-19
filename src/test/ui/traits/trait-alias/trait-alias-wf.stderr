@@ -4,9 +4,10 @@ error[E0277]: the trait bound `T: Foo` is not satisfied
 LL | trait A<T: Foo> {}
    | --------------- required by `A`
 LL | trait B<T> = A<T>;
-   | ^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
-   |
-   = help: consider adding a `where T: Foo` bound
+   | ^^^^^^^^-^^^^^^^^^
+   | |       |
+   | |       help: consider restricting this bound: `T: Foo`
+   | the trait `Foo` is not implemented for `T`
 
 error: aborting due to previous error
 

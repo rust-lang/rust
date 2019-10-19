@@ -4,10 +4,10 @@ error[E0277]: the trait bound `Self: Tr<U>` is not satisfied
 LL |     fn op(_: T) -> Self;
    |     -------------------- required by `Tr::op`
 ...
+LL |     fn test<U>(u: U) -> Self {
+   |                             - help: consider further restricting `Self`: `where Self: Tr<U>`
 LL |         Tr::op(u)
    |         ^^^^^^ the trait `Tr<U>` is not implemented for `Self`
-   |
-   = help: consider adding a `where Self: Tr<U>` bound
 
 error[E0277]: the trait bound `Self: Tr<U>` is not satisfied
   --> $DIR/type-params-in-different-spaces-2.rs:16:9
@@ -15,10 +15,10 @@ error[E0277]: the trait bound `Self: Tr<U>` is not satisfied
 LL |     fn op(_: T) -> Self;
    |     -------------------- required by `Tr::op`
 ...
+LL |     fn test<U>(u: U) -> Self {
+   |                             - help: consider further restricting `Self`: `where Self: Tr<U>`
 LL |         Tr::op(u)
    |         ^^^^^^ the trait `Tr<U>` is not implemented for `Self`
-   |
-   = help: consider adding a `where Self: Tr<U>` bound
 
 error: aborting due to 2 previous errors
 

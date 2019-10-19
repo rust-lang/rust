@@ -5,9 +5,10 @@ LL | struct Bar<T:Eq+?Sized> { value: Box<T> }
    | ----------------------- required by `Bar`
 ...
 LL |     fn bar(&self) where Self: Sized, Bar<Self>: Copy;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `Self`
-   |
-   = help: consider adding a `where Self: std::cmp::Eq` bound
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |                                               |
+   |     |                                               help: consider further restricting `Self`: `, Self: std::cmp::Eq`
+   |     the trait `std::cmp::Eq` is not implemented for `Self`
 
 error: aborting due to previous error
 
