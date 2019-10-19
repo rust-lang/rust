@@ -115,8 +115,10 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if is_self_type(path, ns) {
             syntax::diagnostic_used!(E0411);
             err.code(DiagnosticId::Error("E0411".into()));
-            err.span_label(span, format!("`Self` is only available in impls, traits, \
-                                          and type definitions"));
+            err.span_label(
+                span,
+                format!("`Self` is only available in impls, traits, and type definitions"),
+            );
             return (err, Vec::new());
         }
         if is_self_value(path, ns) {
@@ -125,17 +127,16 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             syntax::diagnostic_used!(E0424);
             err.code(DiagnosticId::Error("E0424".into()));
             err.span_label(span, match source {
-                PathSource::Pat => {
-                    format!("`self` value is a keyword \
-                             and may not be bound to \
-                             variables or shadowed")
-                }
-                _ => {
-                    format!("`self` value is a keyword \
-                             only available in methods \
-                             with `self` parameter")
-                }
+                PathSource::Pat => format!(
+                    "`self` value is a keyword and may not be bound to variables or shadowed",
+                ),
+                _ => format!(
+                    "`self` value is a keyword only available in methods with a `self` parameter",
+                ),
             });
+            if let Some(span) = &self.current_function {
+                err.span_label(*span, "this function doesn't have a `self` parameter");
+            }
             return (err, Vec::new());
         }
 

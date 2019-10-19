@@ -345,6 +345,9 @@ struct LateResolutionVisitor<'a, 'b> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
+    /// The current enclosing funciton (used for better errors).
+    current_function: Option<Span>,
+
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
     unused_labels: FxHashMap<NodeId, Span>,
@@ -415,7 +418,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
             }
         }
     }
-    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, _: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, sp: Span, _: NodeId) {
+        let previous_value = replace(&mut self.current_function, Some(sp));
         debug!("(resolving function) entering function");
         let rib_kind = match fn_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
@@ -441,6 +445,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 debug!("(resolving function) leaving function");
             })
         });
+        self.current_function = previous_value;
     }
 
     fn visit_generics(&mut self, generics: &'tcx Generics) {
@@ -546,6 +551,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             current_trait_assoc_types: Vec::new(),
             current_self_type: None,
             current_self_item: None,
+            current_function: None,
             unused_labels: Default::default(),
             current_type_ascription: Vec::new(),
         }

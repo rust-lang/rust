@@ -1013,7 +1013,8 @@ fn h1() -> i32 {
 "##,
 
 E0424: r##"
-The `self` keyword was used in a static method.
+The `self` keyword was used inside of an associated function without a "`self`
+receiver" parameter.
 
 Erroneous code example:
 
@@ -1021,25 +1022,33 @@ Erroneous code example:
 struct Foo;
 
 impl Foo {
-    fn bar(self) {}
+    // `bar` is a method, because it has a receiver parameter.
+    fn bar(&self) {}
 
+    // `foo` is not a method, because it has no receiver parameter.
     fn foo() {
-        self.bar(); // error: `self` is not available in a static method.
+        self.bar(); // error: `self` value is a keyword only available in
+                    //        methods with a `self` parameter
     }
 }
 ```
 
-Please check if the method's argument list should have contained `self`,
-`&self`, or `&mut self` (in case you didn't want to create a static
-method), and add it if so. Example:
+The `self` keyword can only be used inside methods, which are associated
+functions (functions defined inside of a `trait` or `impl` block) that have a
+`self` receiver as its first parameter, like `self`, `&self`, `&mut self` or
+`self: &mut Pin<Self>` (this last one is an example of an ["abitrary `self`
+type"](https://github.com/rust-lang/rust/issues/44874)).
+
+Check if the associated function's parameter list should have contained a `self`
+receiver for it to be a method, and add it if so. Example:
 
 ```
 struct Foo;
 
 impl Foo {
-    fn bar(self) {}
+    fn bar(&self) {}
 
-    fn foo(self) {
+    fn foo(self) { // `foo` is now a method.
         self.bar(); // ok!
     }
 }
