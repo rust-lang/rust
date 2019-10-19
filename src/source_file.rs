@@ -6,6 +6,7 @@ use syntax::source_map::SourceMap;
 
 use crate::config::FileName;
 use crate::emitter::{self, Emitter};
+use crate::NewlineStyle;
 
 #[cfg(test)]
 use crate::config::Config;
@@ -32,7 +33,14 @@ where
 
     emitter.emit_header(out)?;
     for &(ref filename, ref text) in source_file {
-        write_file(None, filename, text, out, &mut *emitter)?;
+        write_file(
+            None,
+            filename,
+            text,
+            out,
+            &mut *emitter,
+            config.newline_style(),
+        )?;
     }
     emitter.emit_footer(out)?;
 
@@ -45,6 +53,7 @@ pub(crate) fn write_file<T>(
     formatted_text: &str,
     out: &mut T,
     emitter: &mut dyn Emitter,
+    newline_style: NewlineStyle,
 ) -> Result<emitter::EmitterResult, io::Error>
 where
     T: Write,
@@ -65,15 +74,25 @@ where
         }
     }
 
-    // If parse session is around (cfg(not(test))) then try getting source from
-    // there instead of hitting the file system. This also supports getting
+    // SourceFile's in the SourceMap will always have Unix-style line endings
+    // See: https://github.com/rust-lang/rustfmt/issues/3850
+    // So if the user has explicitly overridden the rustfmt `newline_style`
+    // config and `filename` is FileName::Real, then we must check the file system
+    // to get the original file value in order to detect newline_style conflicts.
+    // Otherwise, parse session is around (cfg(not(test))) and newline_style has been
+    // left as the default value, then try getting source from the parse session
+    // source map instead of hitting the file system. This also supports getting
     // original text for `FileName::Stdin`.
-    let original_text = source_map
-        .and_then(|x| x.get_source_file(&filename.into()))
-        .and_then(|x| x.src.as_ref().map(ToString::to_string));
-    let original_text = match original_text {
-        Some(ori) => ori,
-        None => fs::read_to_string(ensure_real_path(filename))?,
+    let original_text = if newline_style != NewlineStyle::Auto && *filename != FileName::Stdin {
+        fs::read_to_string(ensure_real_path(filename))?
+    } else {
+        match source_map
+            .and_then(|x| x.get_source_file(&filename.into()))
+            .and_then(|x| x.src.as_ref().map(ToString::to_string))
+        {
+            Some(ori) => ori,
+            None => fs::read_to_string(ensure_real_path(filename))?,
+        }
     };
 
     let formatted_file = emitter::FormattedFile {

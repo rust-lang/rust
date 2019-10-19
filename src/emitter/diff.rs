@@ -36,6 +36,13 @@ impl Emitter for DiffEmitter {
                     &self.config,
                 );
             }
+        } else if original_text != formatted_text {
+            // This occurs when the only difference between the original and formatted values
+            // is the newline style. This happens because The make_diff function compares the
+            // original and formatted values line by line, independent of line endings.
+            let file_path = ensure_real_path(filename);
+            writeln!(output, "Incorrect newline style in {}", file_path.display())?;
+            return Ok(EmitterResult { has_diff: true });
         }
 
         return Ok(EmitterResult { has_diff });
@@ -106,5 +113,26 @@ mod tests {
             String::from_utf8(writer).unwrap(),
             format!("{}\n{}\n", bin_file, lib_file),
         )
+    }
+
+    #[test]
+    fn prints_newline_message_with_only_newline_style_diff() {
+        let mut writer = Vec::new();
+        let config = Config::default();
+        let mut emitter = DiffEmitter::new(config);
+        let _ = emitter
+            .emit_formatted_file(
+                &mut writer,
+                FormattedFile {
+                    filename: &FileName::Real(PathBuf::from("src/lib.rs")),
+                    original_text: "fn empty() {}\n",
+                    formatted_text: "fn empty() {}\r\n",
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            String::from_utf8(writer).unwrap(),
+            String::from("Incorrect newline style in src/lib.rs\n")
+        );
     }
 }
