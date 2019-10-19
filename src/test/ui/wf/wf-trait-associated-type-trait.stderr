@@ -3,11 +3,12 @@ error[E0277]: the trait bound `<Self as SomeTrait>::Type1: std::marker::Copy` is
    |
 LL | struct IsCopy<T:Copy> { x: T }
    | --------------------- required by `IsCopy`
-...
+LL | 
+LL | trait SomeTrait {
+   |                - help: consider further restricting the associated type: `where <Self as SomeTrait>::Type1: std::marker::Copy`
+LL |     type Type1;
 LL |     type Type2 = IsCopy<Self::Type1>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `<Self as SomeTrait>::Type1`
-   |
-   = help: consider adding a `where <Self as SomeTrait>::Type1: std::marker::Copy` bound
 
 error: aborting due to previous error
 

@@ -6,12 +6,11 @@ LL |   trait ExtraCopy<T:Copy> { }
 LL | 
 LL | / struct SomeStruct<T,U>
 LL | |     where T: ExtraCopy<U>
+   | |                          - help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
 LL | | {
 LL | |     data: (T,U)
 LL | | }
    | |_^ the trait `std::marker::Copy` is not implemented for `U`
-   |
-   = help: consider adding a `where U: std::marker::Copy` bound
 
 error: aborting due to previous error
 
