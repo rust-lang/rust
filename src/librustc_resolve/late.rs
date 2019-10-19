@@ -316,6 +316,7 @@ impl<'a> PathSource<'a> {
     }
 }
 
+#[derive(Default)]
 struct DiagnosticMetadata {
     /// The current trait's associated types' ident, used for diagnostic suggestions.
     current_trait_assoc_types: Vec<Ident>,
@@ -547,15 +548,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             },
             label_ribs: Vec::new(),
             current_trait_ref: None,
-            diagnostic_metadata: DiagnosticMetadata {
-                current_trait_assoc_types: Vec::new(),
-                current_self_type: None,
-                current_self_item: None,
-                current_function: None,
-                unused_labels: Default::default(),
-                current_type_ascription: Vec::new(),
-                current_let_binding: None,
-            }
+            diagnostic_metadata: DiagnosticMetadata::default(),
         }
     }
 
