@@ -414,8 +414,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
-        let llfty =
-            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int());
+        let llfty = if cx.sess().target.target.options.main_needs_argc_argv {
+            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
+        } else {
+            cx.type_func(&[], cx.type_int())
+        };
 
         let main_ret_ty = cx.tcx().fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -445,11 +448,19 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
-        // Params from native main() used as args for rust start function
-        let param_argc = bx.get_param(0);
-        let param_argv = bx.get_param(1);
-        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
-        let arg_argv = param_argv;
+        let (arg_argc, arg_argv) = if cx.sess().target.target.options.main_needs_argc_argv {
+            // Params from native main() used as args for rust start function
+            let param_argc = bx.get_param(0);
+            let param_argv = bx.get_param(1);
+            let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+            let arg_argv = param_argv;
+            (arg_argc, arg_argv)
+        } else {
+            // The Rust start function doesn't need argc and argv, so just pass zeros.
+            let arg_argc = bx.const_int(cx.type_int(), 0);
+            let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
+            (arg_argc, arg_argv)
+        };
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);

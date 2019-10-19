@@ -26,7 +26,6 @@ use errors::{Applicability, FatalError};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, DUMMY_SP, FileName};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::io::ErrorKind;
 use std::{iter, mem, slice};
@@ -75,6 +74,22 @@ macro_rules! ast_fragments {
         }
 
         impl AstFragment {
+            pub fn add_placeholders(&mut self, placeholders: &[NodeId]) {
+                if placeholders.is_empty() {
+                    return;
+                }
+                match self {
+                    $($(AstFragment::$Kind(ast) => ast.extend(placeholders.iter().flat_map(|id| {
+                        // We are repeating through arguments with `many`, to do that we have to
+                        // mention some macro variable from those arguments even if it's not used.
+                        #[cfg_attr(bootstrap, allow(unused_macros))]
+                        macro _repeating($flat_map_ast_elt) {}
+                        placeholder(AstFragmentKind::$Kind, *id).$make_ast()
+                    })),)?)*
+                    _ => panic!("unexpected AST fragment kind")
+                }
+            }
+
             pub fn make_opt_expr(self) -> Option<P<ast::Expr>> {
                 match self {
                     AstFragment::OptExpr(expr) => expr,
@@ -342,7 +357,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Unresolved macros produce dummy outputs as a recovery measure.
         invocations.reverse();
         let mut expanded_fragments = Vec::new();
-        let mut all_derive_placeholders: FxHashMap<ExpnId, Vec<_>> = FxHashMap::default();
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
@@ -420,9 +434,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.resolver.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
                     }
 
-                    let derive_placeholders =
-                        all_derive_placeholders.entry(invoc.expansion_data.id).or_default();
-                    derive_placeholders.reserve(derives.len());
+                    let mut derive_placeholders = Vec::with_capacity(derives.len());
                     invocations.reserve(derives.len());
                     for path in derives {
                         let expn_id = ExpnId::fresh(None);
@@ -438,7 +450,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                     let fragment = invoc.fragment_kind
                         .expect_from_annotatables(::std::iter::once(item));
-                    self.collect_invocations(fragment, derive_placeholders)
+                    self.collect_invocations(fragment, &derive_placeholders)
                 }
             };
 
@@ -457,10 +469,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expanded_fragments) = expanded_fragments.pop() {
             for (expn_id, expanded_fragment) in expanded_fragments.into_iter().rev() {
-                let derive_placeholders =
-                    all_derive_placeholders.remove(&expn_id).unwrap_or_else(Vec::new);
                 placeholder_expander.add(NodeId::placeholder_from_expn_id(expn_id),
-                                         expanded_fragment, derive_placeholders);
+                                         expanded_fragment);
             }
         }
         fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
@@ -493,13 +503,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 monotonic: self.monotonic,
             };
             fragment.mut_visit_with(&mut collector);
+            fragment.add_placeholders(extra_placeholders);
             collector.invocations
         };
 
-        // FIXME: Merge `extra_placeholders` into the `fragment` as regular placeholders.
         if self.monotonic {
             self.cx.resolver.visit_ast_fragment_with_placeholders(
-                self.cx.current_expansion.id, &fragment, extra_placeholders);
+                self.cx.current_expansion.id, &fragment
+            );
         }
 
         (fragment, invocations)

@@ -1055,9 +1055,7 @@ impl<'a> MethodDef<'a> {
                 })
                 .collect()
         } else {
-            cx.span_bug(trait_.span,
-                        "no self arguments to non-static method in generic \
-                         `derive`")
+            cx.span_bug(trait_.span, "no `self` parameter for method in generic `derive`")
         };
 
         // body of the inner most destructuring match

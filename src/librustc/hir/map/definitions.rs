@@ -111,7 +111,7 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,
@@ -162,13 +162,13 @@ impl DefKey {
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have, e.g., two impls for the same type in
 /// the same module, they do get distinct `DefId`s.
-#[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32
 }
 
-#[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct DefPath {
     /// The path leading from the crate root to the item.
     pub data: Vec<DisambiguatedDefPathData>,
