@@ -618,9 +618,8 @@ pub(crate) fn trim_left_preserve_layout(
 
 /// Based on the given line, determine if the next line can be indented or not.
 /// This allows to preserve the indentation of multi-line literals.
-pub(crate) fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
+pub(crate) fn indent_next_line(kind: FullCodeCharKind, _line: &str, config: &Config) -> bool {
     !(kind.is_string() || (config.version() == Version::Two && kind.is_commented_string()))
-        || line.ends_with('\\')
 }
 
 pub(crate) fn is_empty_line(s: &str) -> bool {

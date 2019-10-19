@@ -1187,27 +1187,9 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
             .lines()
             .dropping_back(1)
             .all(|line| line.ends_with('\\'))
+            && context.config.version() == Version::Two
         {
-            let new_indent = shape.visual_indent(1).indent;
-            let indented_string_lit = String::from(
-                string_lit
-                    .lines()
-                    .map(|line| {
-                        format!(
-                            "{}{}",
-                            new_indent.to_string(context.config),
-                            line.trim_start()
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n")
-                    .trim_start(),
-            );
-            return if context.config.version() == Version::Two {
-                Some(indented_string_lit)
-            } else {
-                wrap_str(indented_string_lit, context.config.max_width(), shape)
-            };
+            return Some(string_lit.to_owned());
         } else {
             return wrap_str(string_lit.to_owned(), context.config.max_width(), shape);
         }
