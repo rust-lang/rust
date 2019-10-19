@@ -58,7 +58,7 @@ impl WriteMetadata for object::write::Object {
             value: offset,
             size: data.len() as u64,
             kind: object::SymbolKind::Data,
-            scope: object::SymbolScope::Compilation,
+            scope: object::SymbolScope::Dynamic,
             weak: false,
             section: Some(section_id),
         });
