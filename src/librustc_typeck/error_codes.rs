@@ -3891,6 +3891,33 @@ details.
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
 "##,
 
+E0588: r##"
+A type with `packed` representation hint has a field with `align`
+representation hint.
+
+Erroneous code example:
+
+```compile_fail,E0588
+#[repr(align(16))]
+struct Aligned(i32);
+
+#[repr(packed)] // error!
+struct Packed(Aligned);
+```
+
+Just like you can't have both `align` and `packed` representation hints on a
+same type, a `packed` type can't contain another type with the `align`
+representation hint. However, you can do the opposite:
+
+```
+#[repr(packed)]
+struct Packed(i32);
+
+#[repr(align(16))] // ok!
+struct Aligned(Packed);
+```
+"##,
+
 E0592: r##"
 This error occurs when you defined methods or associated functions with same
 name.
@@ -5043,7 +5070,6 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 //  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
     E0587, // type has conflicting packed and align representation hints
-    E0588, // packed type cannot transitively contain a `[repr(align)]` type
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
