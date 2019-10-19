@@ -65,6 +65,59 @@ use syntax_pos::Span;
 // variant argument) that does not require visiting, as in
 // `is_cleanup` above.
 
+/// `std::ops::Try` with an impl for `()`.
+pub trait TryHarder {
+    type Ok;
+    type Error;
+
+    fn into_result(self) -> Result<Self::Ok, Self::Error>;
+    fn from_error(v: Self::Error) -> Self;
+    fn from_ok(v: Self::Ok) -> Self;
+}
+
+impl TryHarder for () {
+    type Ok = ();
+    type Error = !;
+
+    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
+    }
+
+    fn from_error(_: Self::Error) -> Self {
+        unimplemented!()
+    }
+
+    fn from_ok(v: Self::Ok) -> Self {
+        v
+    }
+}
+
+impl<T, E> TryHarder for Result<T, E> {
+    type Ok = T;
+    type Error = E;
+
+    fn into_result(self) -> Self {
+        self
+    }
+
+    fn from_error(e: E) -> Self {
+        Err(e)
+    }
+
+    fn from_ok(v: T) -> Self {
+        Ok(v)
+    }
+}
+
+macro_rules! yrt { // try backwards
+    ($expr:expr) => {
+        match $expr.into_result() {
+            Ok(v) => R::from_ok(v),
+            Err(e) => return R::from_error(e),
+        }
+    }
+}
+
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         pub trait $visitor_trait_name<'tcx> {
