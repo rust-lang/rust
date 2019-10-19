@@ -8,9 +8,9 @@ use rustc::session::config::{DebugInfo, OutputType};
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
 
-use cranelift_faerie::*;
-
 use crate::prelude::*;
+
+use crate::backend::{Emit, WriteDebugInfo};
 
 pub fn codegen_crate(
     tcx: TyCtxt<'_>,
@@ -147,36 +147,34 @@ fn run_aot(
     need_metadata_module: bool,
 ) -> Box<CodegenResults> {
     let new_module = |name: String| {
-        let module: Module<FaerieBackend> = Module::new(
-            FaerieBuilder::new(
-                crate::build_isa(tcx.sess, true),
-                name + ".o",
-                FaerieTrapCollection::Disabled,
-                cranelift_module::default_libcall_names(),
-            )
-            .unwrap(),
-        );
+        let module = crate::backend::make_module(tcx.sess, name);
         assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
         module
     };
 
-    let emit_module = |kind: ModuleKind,
-                       mut module: Module<FaerieBackend>,
-                       debug: Option<DebugContext>| {
+    fn emit_module<B: Backend>(
+        tcx: TyCtxt<'_>,
+        name: String,
+        kind: ModuleKind,
+        mut module: Module<B>,
+        debug: Option<DebugContext>,
+    ) -> CompiledModule
+        where B::Product: Emit + WriteDebugInfo,
+    {
             module.finalize_definitions();
-            let mut artifact = module.finish().artifact;
+            let mut product = module.finish();
 
             if let Some(mut debug) = debug {
-                debug.emit(&mut artifact);
+                debug.emit(&mut product);
             }
 
             let tmp_file = tcx
                 .output_filenames(LOCAL_CRATE)
-                .temp_path(OutputType::Object, Some(&artifact.name));
-            let obj = artifact.emit().unwrap();
+                .temp_path(OutputType::Object, Some(&name));
+            let obj = product.emit();
             std::fs::write(&tmp_file, obj).unwrap();
             CompiledModule {
-                name: artifact.name,
+                name,
                 kind,
                 object: Some(tmp_file),
                 bytecode: None,
@@ -184,7 +182,7 @@ fn run_aot(
             }
         };
 
-    let mut faerie_module = new_module("some_file".to_string());
+    let mut module = new_module("some_file".to_string());
 
     let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None
         // macOS debuginfo doesn't work yet (see #303)
@@ -192,14 +190,14 @@ fn run_aot(
     {
         let debug = DebugContext::new(
             tcx,
-            faerie_module.target_config().pointer_type().bytes() as u8,
+            module.target_config().pointer_type().bytes() as u8,
         );
         Some(debug)
     } else {
         None
     };
 
-    codegen_cgus(tcx, &mut faerie_module, &mut debug);
+    codegen_cgus(tcx, &mut module, &mut debug);
 
     tcx.sess.abort_if_errors();
 
@@ -221,17 +219,14 @@ fn run_aot(
                 .as_str()
                 .to_string();
 
-            let mut metadata_artifact = faerie::Artifact::new(
-                crate::build_isa(tcx.sess, true).triple().clone(),
-                metadata_cgu_name.clone(),
-            );
-            crate::metadata::write_metadata(tcx, &mut metadata_artifact);
-
             let tmp_file = tcx
                 .output_filenames(LOCAL_CRATE)
                 .temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
 
-            let obj = metadata_artifact.emit().unwrap();
+            let obj = crate::backend::with_object(tcx.sess, &metadata_cgu_name, |object| {
+                crate::metadata::write_metadata(tcx, object);
+            });
+
             std::fs::write(&tmp_file, obj).unwrap();
 
             (metadata_cgu_name, tmp_file)
@@ -251,12 +246,16 @@ fn run_aot(
     Box::new(CodegenResults {
         crate_name: tcx.crate_name(LOCAL_CRATE),
         modules: vec![emit_module(
+            tcx,
+            "some_file".to_string(),
             ModuleKind::Regular,
-            faerie_module,
+            module,
             debug,
         )],
         allocator_module: if created_alloc_shim {
             Some(emit_module(
+                tcx,
+                "allocator_shim".to_string(),
                 ModuleKind::Allocator,
                 allocator_module,
                 None,

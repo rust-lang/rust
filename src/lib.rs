@@ -1,4 +1,4 @@
-#![feature(rustc_private, never_type, decl_macro)]
+#![feature(rustc_private, never_type, decl_macro, type_alias_impl_trait, associated_type_bounds)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate flate2;
@@ -35,6 +35,7 @@ mod allocator;
 mod analyze;
 mod archive;
 mod base;
+mod backend;
 mod cast;
 mod codegen_i128;
 mod common;

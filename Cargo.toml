@@ -9,11 +9,15 @@ edition = "2018"
 [lib]
 crate-type = ["dylib"]
 
+[features]
+backend_object = ["object/write", "cranelift-object"]
+
 [dependencies]
 # These have to be in sync with each other
 cranelift = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-module = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
+cranelift-object = { git = "https://github.com/CraneStation/cranelift.git", optional = true }
 target-lexicon = "0.8.1"
 faerie = "0.11.0"
 
@@ -36,6 +40,7 @@ features = ["compression", "read", "std"] # We don't need WASM support
 #cranelift-module = { path = "../cranelift/cranelift-module" }
 #cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
 #cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
+#cranelift-object = { path = "../cranelift/cranelift-object" }
 
 #[patch.crates-io]
 #gimli = { path = "../" }
