@@ -831,12 +831,12 @@ pub struct Resolver<'a> {
     session: &'a Session,
     cstore: &'a CStore,
 
-    pub definitions: Definitions,
+    definitions: Definitions,
 
-    pub graph_root: Module<'a>,
+    graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
-    pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
+    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -869,9 +869,9 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    pub extern_crate_map: NodeMap<CrateNum>,
-    pub export_map: ExportMap<NodeId>,
-    pub trait_map: TraitMap,
+    extern_crate_map: NodeMap<CrateNum>,
+    export_map: ExportMap<NodeId>,
+    trait_map: TraitMap,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -898,11 +898,11 @@ pub struct Resolver<'a> {
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    pub glob_map: GlobMap,
+    glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
-    pub maybe_unused_trait_imports: NodeSet,
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_trait_imports: NodeSet,
+    maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -920,7 +920,7 @@ pub struct Resolver<'a> {
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
-    pub all_macros: FxHashMap<Name, Res>,
+    all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
@@ -1234,6 +1234,40 @@ impl<'a> Resolver<'a> {
 
     pub fn arenas() -> ResolverArenas<'a> {
         Default::default()
+    }
+
+    pub fn into_outputs(self) -> (Definitions, ty::Resolutions) {
+        (
+            self.definitions,
+            ty::Resolutions {
+                extern_crate_map: self.extern_crate_map,
+                export_map: self.export_map,
+                trait_map: self.trait_map,
+                glob_map: self.glob_map,
+                maybe_unused_trait_imports: self.maybe_unused_trait_imports,
+                maybe_unused_extern_crates: self.maybe_unused_extern_crates,
+                extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                    (ident.name, entry.introduced_by_item)
+                }).collect(),
+            },
+        )
+    }
+
+    pub fn clone_outputs(&self) -> (Definitions, ty::Resolutions) {
+        (
+            self.definitions.clone(),
+            ty::Resolutions {
+                extern_crate_map: self.extern_crate_map.clone(),
+                export_map: self.export_map.clone(),
+                trait_map: self.trait_map.clone(),
+                glob_map: self.glob_map.clone(),
+                maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
+                maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
+                extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                    (ident.name, entry.introduced_by_item)
+                }).collect(),
+            },
+        )
     }
 
     fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
@@ -2807,6 +2841,16 @@ impl<'a> Resolver<'a> {
         let mut seg = ast::PathSegment::from_ident(ident);
         seg.id = self.session.next_node_id();
         seg
+    }
+
+    // For rustdoc.
+    pub fn graph_root(&self) -> Module<'a> {
+        self.graph_root
+    }
+
+    // For rustdoc.
+    pub fn all_macros(&self) -> &FxHashMap<Name, Res> {
+        &self.all_macros
     }
 }
 

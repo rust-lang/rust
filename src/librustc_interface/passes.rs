@@ -6,6 +6,7 @@ use log::{info, warn, log_enabled};
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
+use rustc::hir::map::Definitions;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
@@ -154,7 +155,7 @@ pub fn configure_and_expand(
             }
         };
         box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver));
-        ExpansionResult::from_owned_resolver(resolver)
+        ExpansionResult::from_resolver_outputs(resolver.into_outputs())
     });
     result.map(|k| (k, resolver))
 }
@@ -165,42 +166,8 @@ pub struct ExpansionResult {
 }
 
 impl ExpansionResult {
-    fn from_owned_resolver(
-        resolver: Resolver<'_>,
-    ) -> Self {
-        ExpansionResult {
-            defs: Steal::new(resolver.definitions),
-            resolutions: Steal::new(Resolutions {
-                extern_crate_map: resolver.extern_crate_map,
-                export_map: resolver.export_map,
-                trait_map: resolver.trait_map,
-                glob_map: resolver.glob_map,
-                maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-                maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
-                extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
-            }),
-        }
-    }
-
-    pub fn from_resolver_ref(
-        resolver: &Resolver<'_>,
-    ) -> Self {
-        ExpansionResult {
-            defs: Steal::new(resolver.definitions.clone()),
-            resolutions: Steal::new(Resolutions {
-                extern_crate_map: resolver.extern_crate_map.clone(),
-                export_map: resolver.export_map.clone(),
-                trait_map: resolver.trait_map.clone(),
-                glob_map: resolver.glob_map.clone(),
-                maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
-                maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
-                extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
-            }),
-        }
+    fn from_resolver_outputs((defs, resolutions): (Definitions, Resolutions)) -> Self {
+        ExpansionResult { defs: Steal::new(defs), resolutions: Steal::new(resolutions) }
     }
 }
 
@@ -213,7 +180,7 @@ impl BoxedResolver {
             Err(resolver) => {
                 let resolver = &*resolver;
                 resolver.borrow_mut().access(|resolver| {
-                    ExpansionResult::from_resolver_ref(resolver)
+                    ExpansionResult::from_resolver_outputs(resolver.clone_outputs())
                 })
             }
         }
