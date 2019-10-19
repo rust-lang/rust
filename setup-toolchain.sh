@@ -3,14 +3,10 @@
 
 set -e
 
-cd "$(dirname "$0")" || exit
+cd "$(dirname "$0")"
 
-if ! command -v rustup-toolchain-install-master > /dev/null; then
-  cargo install \
-    -Z install-upgrade \
-    rustup-toolchain-install-master \
-    --bin rustup-toolchain-install-master \
-    --debug
+if [[ "$CI" == true ]] || ! command -v rustup-toolchain-install-master > /dev/null; then
+  cargo install -Z install-upgrade rustup-toolchain-install-master --bin rustup-toolchain-install-master
 fi
 
 rustup-toolchain-install-master -f -n master
