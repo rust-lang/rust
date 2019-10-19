@@ -268,10 +268,10 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
-    #[cfg(boostrap_stdarch_ignore_this)]
+    #[cfg(bootstrap)]
     // SAFETY: going away soon
     unsafe { intrinsics::size_of_val(val) }
-    #[cfg(not(boostrap_stdarch_ignore_this))]
+    #[cfg(not(bootstrap))]
     intrinsics::size_of_val(val)
 }
 
@@ -316,10 +316,10 @@ pub fn min_align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
-    #[cfg(boostrap_stdarch_ignore_this)]
+    #[cfg(bootstrap)]
     // SAFETY: going away soon
     unsafe { intrinsics::min_align_of_val(val) }
-    #[cfg(not(boostrap_stdarch_ignore_this))]
+    #[cfg(not(bootstrap))]
     intrinsics::min_align_of_val(val)
 }
 
@@ -834,11 +834,11 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
-    #[cfg(boostrap_stdarch_ignore_this)]
+    #[cfg(bootstrap)]
     // SAFETY: going away soon
     unsafe {
         Discriminant(intrinsics::discriminant_value(v), PhantomData)
     }
-    #[cfg(not(boostrap_stdarch_ignore_this))]
+    #[cfg(not(bootstrap))]
     Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }

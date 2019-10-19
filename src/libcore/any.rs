@@ -426,10 +426,10 @@ impl TypeId {
     #[rustc_const_unstable(feature="const_type_id")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
-            #[cfg(boostrap_stdarch_ignore_this)]
+            #[cfg(bootstrap)]
             // SAFETY: going away soon
             t: unsafe { intrinsics::type_id::<T>() },
-            #[cfg(not(boostrap_stdarch_ignore_this))]
+            #[cfg(not(bootstrap))]
             t: intrinsics::type_id::<T>(),
         }
     }
