@@ -12,6 +12,23 @@ use ra_syntax::{
 
 const DERIVE_TRAIT: &'static str = "derive";
 
+// Assist: add_custom_impl
+//
+// Adds impl block for derived trait.
+//
+// ```
+// #[derive(Deb<|>ug, Display)]
+// struct S;
+// ```
+// ->
+// ```
+// #[derive(Display)]
+// struct S;
+//
+// impl Debug for S {
+//
+// }
+// ```
 pub(crate) fn add_custom_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let input = ctx.find_node_at_offset::<ast::AttrInput>()?;
     let attr = input.syntax().parent().and_then(ast::Attr::cast)?;

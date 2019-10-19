@@ -3,6 +3,25 @@
 use super::check;
 
 #[test]
+fn doctest_add_custom_impl() {
+    check(
+        "add_custom_impl",
+        r#####"
+#[derive(Deb<|>ug, Display)]
+struct S;
+"#####,
+        r#####"
+#[derive(Display)]
+struct S;
+
+impl Debug for S {
+
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_derive() {
     check(
         "add_derive",
