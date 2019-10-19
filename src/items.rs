@@ -1617,7 +1617,7 @@ pub(crate) fn rewrite_struct_field(
         shape,
         attrs_extendable,
     )?;
-    let overhead = last_line_width(&attr_prefix);
+    let overhead = trimmed_last_line_width(&attr_prefix);
     let lhs_offset = lhs_max_width.saturating_sub(overhead);
     for _ in 0..lhs_offset {
         spacing.push(' ');

@@ -38,12 +38,12 @@ fn main() {
 pub struct Foo {
     #[rustfmt::skip]
     f :   SomeType, // Comment beside a field
-    f: SomeType, // Comment beside a field
+    f:     SomeType, // Comment beside a field
     // Comment on a field
     #[AnAttribute]
-    g: SomeOtherType,
+    g:     SomeOtherType,
     /// A doc comment on a field
-    h: AThirdType,
+    h:     AThirdType,
     pub i: TypeForPublicField,
 }
 
@@ -66,7 +66,7 @@ struct X {
 pub struct Writebatch<K: Key> {
     #[allow(dead_code)] // only used for holding the internal pointer
     writebatch: RawWritebatch,
-    marker: PhantomData<K>,
+    marker:     PhantomData<K>,
 }
 
 struct Bar;
@@ -323,7 +323,7 @@ fn main() {
         // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit
         // amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante
         // hendrerit. Donec et mollis dolor.
-        first: item(),
+        first:  item(),
         // Praesent et diam eget libero egestas mattis sit amet vitae augue.
         // Nam tincidunt congue enim, ut porta lorem lacinia consectetur.
         second: Item,
