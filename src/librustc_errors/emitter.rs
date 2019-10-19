@@ -12,7 +12,7 @@ use Destination::*;
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
 use crate::{
-    Level, CodeSuggestion, Diagnostic, SubDiagnostic,
+    Level, CodeSuggestion, Diagnostic, SubDiagnostic, pluralise,
     SuggestionStyle, SourceMapper, SourceMapperDyn, DiagnosticId,
 };
 use crate::Level::Error;
@@ -1572,7 +1572,8 @@ impl EmitterWriter {
             }
         }
         if suggestions.len() > MAX_SUGGESTIONS {
-            let msg = format!("and {} other candidates", suggestions.len() - MAX_SUGGESTIONS);
+            let others = suggestions.len() - MAX_SUGGESTIONS;
+            let msg = format!("and {} other candidate{}", others, pluralise!(others));
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         } else if notice_capitalization {
             let msg = "notice the capitalization difference";
