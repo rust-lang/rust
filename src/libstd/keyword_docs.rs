@@ -72,8 +72,9 @@ mod as_keyword { }
 /// println!("Bye.");
 ///```
 ///
-/// When associated with `loop`, but not with any other kind of loop expression,
-/// `break` can return a value.  When no value is specified, `break;` returns `()`.
+/// When associated with `loop`, a break expression may be used to return a value from that loop.
+/// This is only valid with `loop` and not with any other type of loop.
+/// If no value is specified, `break;` returns `()`.
 /// Every `break` within a loop must return the same type.
 ///
 /// ```rust
