@@ -31,7 +31,6 @@ use syntax::attr;
 use syntax_expand::base::MacroKind;
 use syntax::source_map::DUMMY_SP;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax::symbol::InternedString;
 use syntax_pos::{self, Pos, FileName};
 
 use std::collections::hash_map::Entry;
@@ -3695,13 +3694,6 @@ impl Clean<String> for Ident {
 }
 
 impl Clean<String> for ast::Name {
-    #[inline]
-    fn clean(&self, _: &DocContext<'_>) -> String {
-        self.to_string()
-    }
-}
-
-impl Clean<String> for InternedString {
     #[inline]
     fn clean(&self, _: &DocContext<'_>) -> String {
         self.to_string()
