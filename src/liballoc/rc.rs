@@ -112,9 +112,9 @@
 //!
 //!     // Despite dropping `gadget_owner`, we're still able to print out the name
 //!     // of the `Owner` of the `Gadget`s. This is because we've only dropped a
-//!     // single `Rc<Owner>`, not the `Owner` allocation it points to. As long as there are
+//!     // single `Rc<Owner>`, not the `Owner` it points to. As long as there are
 //!     // other `Rc<Owner>` pointing at the same `Owner` allocation, it will remain
-//!     // allocated. The field projection `gadget1.owner.name` works because
+//!     // live. The field projection `gadget1.owner.name` works because
 //!     // `Rc<Owner>` automatically dereferences to `Owner`.
 //!     println!("Gadget {} owned by {}", gadget1.id, gadget1.owner.name);
 //!     println!("Gadget {} owned by {}", gadget2.id, gadget2.owner.name);
