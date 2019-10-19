@@ -1,5 +1,5 @@
 // run-pass
-#![allow(unused_imports)]
+#![allow(unused_imports, overlapping_patterns)]
 // pretty-expanded FIXME #23616
 
 use m::{START, END};

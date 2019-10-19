@@ -255,6 +255,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_MUT,
                     UNREACHABLE_CODE,
                     UNREACHABLE_PATTERNS,
+                    OVERLAPPING_PATTERNS,
                     UNUSED_MUST_USE,
                     UNUSED_UNSAFE,
                     PATH_STATEMENTS,

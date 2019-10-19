@@ -1,35 +1,35 @@
 error: unreachable pattern
-  --> $DIR/match-range-fail-dominate.rs:12:7
+  --> $DIR/match-range-fail-dominate.rs:6:7
    |
 LL |       5 ..= 6 => { }
    |       ^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/match-range-fail-dominate.rs:7:9
+  --> $DIR/match-range-fail-dominate.rs:1:9
    |
-LL | #![deny(unreachable_patterns)]
+LL | #![deny(unreachable_patterns, overlapping_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-range-fail-dominate.rs:18:7
+  --> $DIR/match-range-fail-dominate.rs:13:7
    |
 LL |       4 ..= 6 => { }
    |       ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-range-fail-dominate.rs:24:7
+  --> $DIR/match-range-fail-dominate.rs:20:7
    |
 LL |       4 ..= 6 => { }
    |       ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-range-fail-dominate.rs:30:7
+  --> $DIR/match-range-fail-dominate.rs:27:7
    |
 LL |       'a' ..= 'z' => {}
    |       ^^^^^^^^^^^
 
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-range-fail-dominate.rs:35:7
+  --> $DIR/match-range-fail-dominate.rs:33:7
    |
 LL |       0.01f64 ..= 6.5f64 => {}
    |       ^^^^^^^
@@ -39,7 +39,7 @@ LL |       0.01f64 ..= 6.5f64 => {}
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-range-fail-dominate.rs:35:19
+  --> $DIR/match-range-fail-dominate.rs:33:19
    |
 LL |       0.01f64 ..= 6.5f64 => {}
    |                   ^^^^^^
@@ -48,7 +48,7 @@ LL |       0.01f64 ..= 6.5f64 => {}
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-range-fail-dominate.rs:36:7
+  --> $DIR/match-range-fail-dominate.rs:40:7
    |
 LL |       0.02f64 => {}
    |       ^^^^^^^
@@ -57,13 +57,13 @@ LL |       0.02f64 => {}
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: unreachable pattern
-  --> $DIR/match-range-fail-dominate.rs:36:7
+  --> $DIR/match-range-fail-dominate.rs:40:7
    |
 LL |       0.02f64 => {}
    |       ^^^^^^^
 
 warning: floating-point types cannot be used in patterns
-  --> $DIR/match-range-fail-dominate.rs:35:7
+  --> $DIR/match-range-fail-dominate.rs:33:7
    |
 LL |       0.01f64 ..= 6.5f64 => {}
    |       ^^^^^^^

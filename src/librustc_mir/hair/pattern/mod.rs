@@ -312,10 +312,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             }
             PatKind::Range(PatRange { lo, hi, end }) => {
                 write!(f, "{}", lo)?;
-                match end {
-                    RangeEnd::Included => write!(f, "..=")?,
-                    RangeEnd::Excluded => write!(f, "..")?,
-                }
+                write!(f, "{}", end)?;
                 write!(f, "{}", hi)
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } |
