@@ -94,6 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
+        // Don't forget the bounds check.
         let ptr = this.memory.check_ptr_access(
             ptr,
             Size::from_bytes(len as u64),
