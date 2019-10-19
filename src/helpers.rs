@@ -356,12 +356,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let len = bytes.len();
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an overflow.
-        if size <= bytes.len() as u64 {
+        if size <= len as u64 {
             throw_unsup_format!("OsString of length {} is too large for destination buffer of size {}", len, size)
         }
-
+        let actual_len = (len as u64)
+            .checked_add(1)
+            .map(Size::from_bytes)
+            .ok_or_else(|| err_unsup_format!("OsString of length {} is too large", len))?;
         let this = self.eval_context_mut();
-        let buffer = this.memory.get_mut(ptr.alloc_id)?.get_bytes_mut(&*this.tcx, ptr, Size::from_bytes(len as u64 + 1))?;
+        this.memory.check_ptr_access(ptr.into(), actual_len, Align::from_bytes(1).unwrap())?;
+        let buffer = this.memory.get_mut(ptr.alloc_id)?.get_bytes_mut(&*this.tcx, ptr, actual_len)?;
         buffer[..len].copy_from_slice(bytes);
         // This is ok because the buffer was strictly larger than `bytes`, so after adding the
         // null terminator, the buffer size is larger or equal to `bytes.len()`, meaning that
