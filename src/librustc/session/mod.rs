@@ -1296,6 +1296,17 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
                   See https://github.com/rust-lang/rust/issues/61002 for details.");
     }
+
+    // Sanitizers can only be used on some tested platforms.
+    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
+        const SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
+        if !SUPPORTED_TARGETS.contains(&&*sess.opts.target_triple.triple()) {
+            sess.err(&format!("{:?}Sanitizer only works with the `{}` target",
+                sanitizer,
+                SUPPORTED_TARGETS.join("` or `")
+            ));
+        }
+    }
 }
 
 /// Hash value constructed out of all the `-C metadata` arguments passed to the

@@ -10,6 +10,9 @@
 
 all:
 	$(RUSTC) -g -Z sanitizer=address --crate-type staticlib --target $(TARGET) library.rs
-	$(CC) program.c $(call STATICLIB,library) $(call OUT_EXE,program) $(EXTRACFLAGS) $(EXTRACXXFLAGS)
-	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | $(CGREP) stack-buffer-overflow
+	# Verify that linking without sanitizer fails, i.e., runtime is not part of staticlib:
+	$(RUSTC) -g --crate-type bin --target $(TARGET) -L . program.rs && exit 1 || true
+	# Verify that linking with sanitizer succeeds and detects overflow in library:
+	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) -L . program.rs
+	$(TMPDIR)/program 2>&1 | $(CGREP) stack-buffer-overflow
 
