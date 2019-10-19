@@ -523,18 +523,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // local. There's nothing it can do here: taking a reference needs an allocation
             // which needs to know the size. Normally that's okay as during execution
             // (e.g. for CTFE) it can never happen. But here in const_prop
-            // we leave function arguments uninitialized, so if one of these is unsized
+            // unknown data is uninitialized, so if e.g. a function argument is unsized
             // and has a reference taken, we get an ICE.
             Rvalue::Ref(_, _, Place { base: PlaceBase::Local(local), projection: box [] }) => {
                 trace!("checking Ref({:?})", place);
                 let alive =
                     if let LocalValue::Live(_) = self.ecx.frame().locals[*local].value {
                         true
-                    } else { false };
+                    } else {
+                        false
+                    };
 
-                // local 0 is the return place; locals 1..=arg_count are the arguments.
-                if local.as_usize() <= self.ecx.frame().body.arg_count && !alive {
-                    trace!("skipping Ref({:?})", place);
+                if !alive {
+                    trace!("skipping Ref({:?}) to uninitialized local", place);
                     return None;
                 }
             }
