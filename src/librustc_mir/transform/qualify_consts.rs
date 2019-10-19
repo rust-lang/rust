@@ -1024,23 +1024,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             new_errors.dedup();
 
             if self.errors != new_errors {
-                error!("old validator: {:?}", self.errors);
-                error!("new validator: {:?}", new_errors);
-
-                // ICE on nightly if the validators do not emit exactly the same errors.
-                // Users can supress this panic with an unstable compiler flag (hopefully after
-                // filing an issue).
-                let opts = &self.tcx.sess.opts;
-                let trigger_ice = opts.unstable_features.is_nightly_build()
-                    && !opts.debugging_opts.suppress_const_validation_back_compat_ice;
-
-                if trigger_ice {
-                    span_bug!(
-                        body.span,
-                        "{}",
-                        VALIDATOR_MISMATCH_ERR,
-                    );
-                }
+                validator_mismatch(
+                    self.tcx,
+                    body,
+                    std::mem::replace(&mut self.errors, vec![]),
+                    new_errors,
+                );
             }
         }
 
@@ -1868,6 +1857,58 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize
         }
     }
     Some(ret)
+}
+
+fn validator_mismatch(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    mut old_errors: Vec<(Span, String)>,
+    mut new_errors: Vec<(Span, String)>,
+) {
+    error!("old validator: {:?}", old_errors);
+    error!("new validator: {:?}", new_errors);
+
+    // ICE on nightly if the validators do not emit exactly the same errors.
+    // Users can supress this panic with an unstable compiler flag (hopefully after
+    // filing an issue).
+    let opts = &tcx.sess.opts;
+    let strict_validation_enabled = opts.unstable_features.is_nightly_build()
+        && !opts.debugging_opts.suppress_const_validation_back_compat_ice;
+
+    if !strict_validation_enabled {
+        return;
+    }
+
+    // If this difference would cause a regression from the old to the new or vice versa, trigger
+    // the ICE.
+    if old_errors.is_empty() || new_errors.is_empty() {
+        span_bug!(body.span, "{}", VALIDATOR_MISMATCH_ERR);
+    }
+
+    // HACK: Borrows that would allow mutation are forbidden in const contexts, but they cause the
+    // new validator to be more conservative about when a dropped local has been moved out of.
+    //
+    // Supress the mismatch ICE in cases where the validators disagree only on the number of
+    // `LiveDrop` errors and both observe the same sequence of `MutBorrow`s.
+
+    let is_live_drop = |(_, s): &mut (_, String)| s.starts_with("LiveDrop");
+    let is_mut_borrow = |(_, s): &&(_, String)| s.starts_with("MutBorrow");
+
+    let old_live_drops: Vec<_> = old_errors.drain_filter(is_live_drop).collect();
+    let new_live_drops: Vec<_> = new_errors.drain_filter(is_live_drop).collect();
+
+    let only_live_drops_differ = old_live_drops != new_live_drops && old_errors == new_errors;
+
+    let old_mut_borrows = old_errors.iter().filter(is_mut_borrow);
+    let new_mut_borrows = new_errors.iter().filter(is_mut_borrow);
+
+    let at_least_one_mut_borrow = old_mut_borrows.clone().next().is_some();
+
+    if only_live_drops_differ && at_least_one_mut_borrow && old_mut_borrows.eq(new_mut_borrows) {
+        return;
+    }
+
+    span_bug!(body.span, "{}", VALIDATOR_MISMATCH_ERR);
 }
 
 const VALIDATOR_MISMATCH_ERR: &str =
