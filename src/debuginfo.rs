@@ -71,7 +71,7 @@ pub enum DebugRelocName {
 
 pub struct DebugContext<'tcx> {
     endian: RunTimeEndian,
-    symbols: indexmap::IndexSet<(String, FuncId)>,
+    symbols: indexmap::IndexMap<FuncId, String>,
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
@@ -133,7 +133,7 @@ impl<'tcx> DebugContext<'tcx> {
 
         DebugContext {
             endian: target_endian(tcx),
-            symbols: indexmap::IndexSet::new(),
+            symbols: indexmap::IndexMap::new(),
 
             dwarf,
             unit_range_list: RangeList(Vec::new()),
@@ -216,7 +216,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         name: &str,
         _sig: &Signature,
     ) -> Self {
-        let (symbol, _) = debug_context.symbols.insert_full((name.to_string(), func_id));
+        let (symbol, _) = debug_context.symbols.insert_full(func_id, name.to_string());
 
         // FIXME: add to appropriate scope intead of root
         let scope = debug_context.dwarf.unit.root();

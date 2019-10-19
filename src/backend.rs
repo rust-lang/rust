@@ -42,24 +42,21 @@ impl WriteMetadata for faerie::Artifact {
 }
 
 impl WriteMetadata for object::write::Object {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, is_like_osx: bool) {
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
         let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
         let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
         let offset = self.append_section_data(section_id, &data, 1);
-        // FIXME implement faerie elf backend section custom symbols
-        // For MachO this is necessary to prevent the linker from throwing away the .rustc section,
-        // but for ELF it isn't.
-        if is_like_osx {
-            self.add_symbol(object::write::Symbol {
-                name: symbol_name.into_bytes(),
-                value: offset,
-                size: data.len() as u64,
-                kind: object::SymbolKind::Data,
-                scope: object::SymbolScope::Compilation,
-                weak: false,
-                section: Some(section_id),
-            });
-        }
+        // For MachO and probably PE this is necessary to prevent the linker from throwing away the
+        // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
+        self.add_symbol(object::write::Symbol {
+            name: symbol_name.into_bytes(),
+            value: offset,
+            size: data.len() as u64,
+            kind: object::SymbolKind::Data,
+            scope: object::SymbolScope::Compilation,
+            weak: false,
+            section: Some(section_id),
+        });
     }
 }
 
@@ -70,7 +67,7 @@ pub trait WriteDebugInfo {
     fn add_debug_reloc(
         &mut self,
         section_map: &HashMap<SectionId, Self::SectionId>,
-        symbol_map: &indexmap::IndexSet<(String, FuncId)>,
+        symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     );
@@ -87,7 +84,7 @@ impl WriteDebugInfo for FaerieProduct {
     fn add_debug_reloc(
         &mut self,
         _section_map: &HashMap<SectionId, Self::SectionId>,
-        symbol_map: &indexmap::IndexSet<(String, FuncId)>,
+        symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     ) {
@@ -98,7 +95,7 @@ impl WriteDebugInfo for FaerieProduct {
                     from: from.name(),
                     to: match reloc.name {
                         DebugRelocName::Section(id) => id.name(),
-                        DebugRelocName::Symbol(index) => &symbol_map.get_index(index).unwrap().0,
+                        DebugRelocName::Symbol(index) => &symbol_map.get_index(index).unwrap().1,
                     },
                     at: u64::from(reloc.offset),
                 },
@@ -130,15 +127,14 @@ impl WriteDebugInfo for ObjectProduct {
     fn add_debug_reloc(
         &mut self,
         section_map: &HashMap<SectionId, Self::SectionId>,
-        symbol_map: &indexmap::IndexSet<(String, FuncId)>,
+        symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     ) {
         let symbol = match reloc.name {
             DebugRelocName::Section(id) => section_map.get(&id).unwrap().1,
             DebugRelocName::Symbol(id) => {
-                let (_func_name, func_id) = symbol_map.get_index(id).unwrap();
-                self.function_symbol(*func_id)
+                self.function_symbol(*symbol_map.get_index(id).unwrap().0)
             }
         };
         self.object.add_relocation(from.0, Relocation {

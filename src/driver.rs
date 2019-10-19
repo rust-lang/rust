@@ -174,7 +174,7 @@ fn run_aot(
             let obj = product.emit();
             std::fs::write(&tmp_file, obj).unwrap();
             CompiledModule {
-                name: name,
+                name,
                 kind,
                 object: Some(tmp_file),
                 bytecode: None,
