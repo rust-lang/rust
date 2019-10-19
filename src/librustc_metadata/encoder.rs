@@ -243,11 +243,11 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext<'tcx> {
+impl<'tcx> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self,
-                          predicates: &ty::GenericPredicates<'tcx>)
+                          predicates: &&'tcx [(ty::Predicate<'tcx>, Span)])
                           -> Result<(), Self::Error> {
-        ty_codec::encode_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
+        ty_codec::encode_spanned_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
     }
 }
 
@@ -826,13 +826,13 @@ impl EncodeContext<'tcx> {
 
     fn encode_predicates(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_predicates({:?})", def_id);
-        record!(self.per_def.predicates[def_id] <- &*self.tcx.predicates_of(def_id));
+        record!(self.per_def.predicates[def_id] <- self.tcx.predicates_of(def_id));
     }
 
     fn encode_predicates_defined_on(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_predicates_defined_on({:?})", def_id);
         record!(self.per_def.predicates_defined_on[def_id] <-
-            &*self.tcx.predicates_defined_on(def_id))
+            self.tcx.predicates_defined_on(def_id))
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) {
@@ -1166,14 +1166,14 @@ impl EncodeContext<'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: self.tcx.trait_is_auto(def_id),
                     is_marker: trait_def.is_marker,
-                    super_predicates: self.lazy(&*tcx.super_predicates_of(def_id)),
+                    super_predicates: self.lazy(tcx.super_predicates_of(def_id)),
                 };
 
                 EntryKind::Trait(self.lazy(data))
             }
             hir::ItemKind::TraitAlias(..) => {
                 let data = TraitAliasData {
-                    super_predicates: self.lazy(&*tcx.super_predicates_of(def_id)),
+                    super_predicates: self.lazy(tcx.super_predicates_of(def_id)),
                 };
 
                 EntryKind::TraitAlias(self.lazy(data))

@@ -19,8 +19,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use smallvec::SmallVec;
 use std::fmt;
 use syntax_pos::Span;
 
@@ -304,8 +304,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        self.iterate_until_fixed_point(|constraint| {
-            debug!("expansion: constraint={:?}", constraint);
+        let mut process_constraint = |constraint: &Constraint<'tcx>| {
             let (a_region, b_vid, b_data, retain) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
@@ -331,7 +330,33 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             let changed = self.expand_node(a_region, b_vid, b_data);
             (changed, retain)
-        })
+        };
+
+        // Using bitsets to track the remaining elements is faster than using a
+        // `Vec` by itself (which requires removing elements, which requires
+        // element shuffling, which is slow).
+        let constraints: Vec<_> = self.data.constraints.keys().collect();
+        let mut live_indices: BitSet<usize> = BitSet::new_filled(constraints.len());
+        let mut killed_indices: BitSet<usize> = BitSet::new_empty(constraints.len());
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for index in live_indices.iter() {
+                let constraint = constraints[index];
+                let (edge_changed, retain) = process_constraint(constraint);
+                if edge_changed {
+                    changed = true;
+                }
+                if !retain {
+                    let changed = killed_indices.insert(index);
+                    debug_assert!(changed);
+                }
+            }
+            live_indices.subtract(&killed_indices);
+
+            // We could clear `killed_indices` here, but we don't need to and
+            // it's cheaper not to.
+        }
     }
 
     // This function is very hot in some workloads. There's a single callsite
@@ -864,29 +889,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 }
             }
         }
-    }
-
-    fn iterate_until_fixed_point<F>(&self, mut body: F)
-    where
-        F: FnMut(&Constraint<'tcx>) -> (bool, bool),
-    {
-        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.keys().collect();
-        let mut iteration = 0;
-        let mut changed = true;
-        while changed {
-            changed = false;
-            iteration += 1;
-            debug!("---- Expansion iteration {}", iteration);
-            constraints.retain(|constraint| {
-                let (edge_changed, retain) = body(constraint);
-                if edge_changed {
-                    debug!("updated due to constraint {:?}", constraint);
-                    changed = true;
-                }
-                retain
-            });
-        }
-        debug!("---- Expansion complete after {} iteration(s)", iteration);
     }
 
     fn bound_is_met(

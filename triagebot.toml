@@ -8,3 +8,14 @@ allow-unauthenticated = [
 ]
 
 [assign]
+
+[ping.icebreakers-llvm]
+message = """\
+Hey LLVM ICE-breakers! This bug has been identified as a good
+"LLVM ICE-breaking candidate". In case it's useful, here are some
+[instructions] for tackling these sorts of bugs. Maybe take a look?
+Thanks! <3
+
+[instructions]: https://rust-lang.github.io/rustc-guide/ice-breaker/llvm.html
+"""
+label = "ICEBreaker-LLVM"

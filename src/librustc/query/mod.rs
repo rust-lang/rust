@@ -61,7 +61,7 @@ rustc_queries! {
         /// predicate gets in the way of some checks, which are intended
         /// to operate over only the actual where-clauses written by the
         /// user.)
-        query predicates_of(key: DefId) -> &'tcx ty::GenericPredicates<'tcx> {
+        query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
             cache_on_disk_if { key.is_local() }
         }
 
@@ -184,12 +184,10 @@ rustc_queries! {
         /// predicates (where-clauses) directly defined on it. This is
         /// equal to the `explicit_predicates_of` predicates plus the
         /// `inferred_outlives_of` predicates.
-        query predicates_defined_on(_: DefId)
-            -> &'tcx ty::GenericPredicates<'tcx> {}
+        query predicates_defined_on(_: DefId) -> ty::GenericPredicates<'tcx> {}
 
         /// Returns the predicates written explicitly by the user.
-        query explicit_predicates_of(_: DefId)
-            -> &'tcx ty::GenericPredicates<'tcx> {}
+        query explicit_predicates_of(_: DefId) -> ty::GenericPredicates<'tcx> {}
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
@@ -201,14 +199,13 @@ rustc_queries! {
         /// evaluate them even during type conversion, often before the
         /// full predicates are available (note that supertraits have
         /// additional acyclicity requirements).
-        query super_predicates_of(key: DefId) -> &'tcx ty::GenericPredicates<'tcx> {
+        query super_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
             desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key) }
         }
 
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
-        query type_param_predicates(key: (DefId, DefId))
-            -> &'tcx ty::GenericPredicates<'tcx> {
+        query type_param_predicates(key: (DefId, DefId)) -> ty::GenericPredicates<'tcx> {
             no_force
             desc { |tcx| "computing the bounds for type parameter `{}`", {
                 let id = tcx.hir().as_local_hir_id(key.1).unwrap();

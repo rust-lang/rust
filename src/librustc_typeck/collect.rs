@@ -182,8 +182,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx
     }
 
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> &'tcx ty::GenericPredicates<'tcx> {
+    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         self.tcx
             .at(span)
             .type_param_predicates((self.item_def_id, def_id))
@@ -254,7 +253,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
     (item_def_id, def_id): (DefId, DefId),
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
@@ -275,10 +274,10 @@ fn type_param_predicates(
         tcx.generics_of(item_def_id).parent
     };
 
-    let result = parent.map_or(&tcx.common.empty_predicates, |parent| {
+    let mut result = parent.map(|parent| {
         let icx = ItemCtxt::new(tcx, parent);
         icx.get_type_parameter_bounds(DUMMY_SP, def_id)
-    });
+    }).unwrap_or_default();
     let mut extend = None;
 
     let item_hir_id = tcx.hir().as_local_hir_id(item_def_id).unwrap();
@@ -321,9 +320,7 @@ fn type_param_predicates(
     };
 
     let icx = ItemCtxt::new(tcx, item_def_id);
-    let mut result = (*result).clone();
-    result.predicates.extend(extend.into_iter());
-    result.predicates.extend(
+    let extra_predicates = extend.into_iter().chain(
         icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
             .into_iter()
             .filter(|(predicate, _)| {
@@ -331,9 +328,12 @@ fn type_param_predicates(
                     ty::Predicate::Trait(ref data) => data.skip_binder().self_ty().is_param(index),
                     _ => false,
                 }
-            })
+            }),
     );
-    tcx.arena.alloc(result)
+    result.predicates = tcx.arena.alloc_from_iter(
+        result.predicates.iter().copied().chain(extra_predicates),
+    );
+    result
 }
 
 impl ItemCtxt<'tcx> {
@@ -698,7 +698,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
 fn super_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_hir_id = tcx.hir().as_local_hir_id(trait_def_id).unwrap();
 
@@ -732,21 +732,23 @@ fn super_predicates_of(
         generics, item.hir_id, self_param_ty, OnlySelfBounds(!is_trait_alias));
 
     // Combine the two lists to form the complete set of superbounds:
-    let superbounds: Vec<_> = superbounds1.into_iter().chain(superbounds2).collect();
+    let superbounds = &*tcx.arena.alloc_from_iter(
+        superbounds1.into_iter().chain(superbounds2)
+    );
 
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
-    for &(pred, span) in &superbounds {
+    for &(pred, span) in superbounds {
         debug!("superbound: {:?}", pred);
         if let ty::Predicate::Trait(bound) = pred {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
     }
 
-    tcx.arena.alloc(ty::GenericPredicates {
+    ty::GenericPredicates {
         parent: None,
         predicates: superbounds,
-    })
+    }
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
@@ -1958,7 +1960,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
 fn predicates_defined_on(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     debug!("predicates_defined_on({:?})", def_id);
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!(
@@ -1974,9 +1976,13 @@ fn predicates_defined_on(
             def_id,
             inferred_outlives,
         );
-        let mut predicates = (*result).clone();
-        predicates.predicates.extend(inferred_outlives.iter().map(|&p| (p, span)));
-        result = tcx.arena.alloc(predicates);
+        result.predicates = tcx.arena.alloc_from_iter(
+            result.predicates.iter().copied().chain(
+                // FIXME(eddyb) use better spans - maybe add `Span`s
+                // to `inferred_outlives_of` predicates as well?
+                inferred_outlives.iter().map(|&p| (p, span)),
+            ),
+        );
     }
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
@@ -1985,7 +1991,7 @@ fn predicates_defined_on(
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
 /// `Self: Trait` predicates for traits.
-fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::GenericPredicates<'_> {
+fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     let mut result = tcx.predicates_defined_on(def_id);
 
     if tcx.is_trait(def_id) {
@@ -2002,9 +2008,11 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::GenericPredicates<'_> {
         // used, and adding the predicate into this list ensures
         // that this is done.
         let span = tcx.def_span(def_id);
-        let mut predicates = (*result).clone();
-        predicates.predicates.push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
-        result = tcx.arena.alloc(predicates);
+        result.predicates = tcx.arena.alloc_from_iter(
+            result.predicates.iter().copied().chain(
+                std::iter::once((ty::TraitRef::identity(tcx, def_id).to_predicate(), span))
+            ),
+        );
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -2015,7 +2023,7 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::GenericPredicates<'_> {
 fn explicit_predicates_of(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     use rustc::hir::*;
     use rustc_data_structures::fx::FxHashSet;
 
@@ -2024,6 +2032,7 @@ fn explicit_predicates_of(
     /// A data structure with unique elements, which preserves order of insertion.
     /// Preserving the order of insertion is important here so as not to break
     /// compile-fail UI tests.
+    // FIXME(eddyb) just use `IndexSet` from `indexmap`.
     struct UniquePredicates<'tcx> {
         predicates: Vec<(ty::Predicate<'tcx>, Span)>,
         uniques: FxHashSet<(ty::Predicate<'tcx>, Span)>,
@@ -2133,10 +2142,10 @@ fn explicit_predicates_of(
                     let bounds_predicates = bounds.predicates(tcx, opaque_ty);
                     if impl_trait_fn.is_some() {
                         // opaque types
-                        return tcx.arena.alloc(ty::GenericPredicates {
+                        return ty::GenericPredicates {
                             parent: None,
-                            predicates: bounds_predicates,
-                        });
+                            predicates: tcx.arena.alloc_from_iter(bounds_predicates),
+                        };
                     } else {
                         // named opaque types
                         predicates.extend(bounds_predicates);
@@ -2339,10 +2348,10 @@ fn explicit_predicates_of(
         );
     }
 
-    let result = tcx.arena.alloc(ty::GenericPredicates {
+    let result = ty::GenericPredicates {
         parent: generics.parent,
-        predicates,
-    });
+        predicates: tcx.arena.alloc_from_iter(predicates),
+    };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
 }
