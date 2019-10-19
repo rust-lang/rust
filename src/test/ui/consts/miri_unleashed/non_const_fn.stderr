@@ -4,8 +4,22 @@ warning: skipping const checks
 LL | const C: () = foo();
    |               ^^^^^
 
+warning: any use of this value will cause an error
+  --> $DIR/non_const_fn.rs:8:15
+   |
+LL | const C: () = foo();
+   | --------------^^^^^-
+   |               |
+   |               calling non-const function `foo`
+   |
+note: lint level defined here
+  --> $DIR/non_const_fn.rs:2:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
+
 error[E0080]: evaluation of constant expression failed
-  --> $DIR/non_const_fn.rs:11:22
+  --> $DIR/non_const_fn.rs:12:22
    |
 LL |     println!("{:?}", C);
    |                      ^ referenced constant has errors
