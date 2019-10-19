@@ -54,7 +54,7 @@ build_sysroot() {
     # Build once, for the user to see.
     cargo run $CARGO_BUILD_FLAGS --bin cargo-miri -- miri setup "$@"
     # Call again, to just set env var.
-    eval $(cargo run $CARGO_BUILD_FLAGS -q --bin cargo-miri -- miri setup --env "$@")
+    export MIRI_SYSROOT="$(cargo run $CARGO_BUILD_FLAGS -q --bin cargo-miri -- miri setup --print-sysroot "$@")"
 }
 
 # Prepare and set MIRI_SYSROOT.  Respects `MIRI_TEST_TARGET` and takes into account

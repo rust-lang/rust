@@ -310,7 +310,7 @@ path = "lib.rs"
     File::create(dir.join("lib.rs")).unwrap();
     // Prepare xargo invocation.
     let target = get_arg_flag_value("--target");
-    let print_env = !ask_user && has_arg_flag("--env"); // whether we just print the necessary environment variable
+    let print_sysroot = !ask_user && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     let mut command = xargo();
     command.arg("build").arg("-q");
     command.current_dir(&dir);
@@ -339,13 +339,9 @@ path = "lib.rs"
     };
     let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
-    if print_env {
-        // Escape an arbitrary string for the shell: by wrapping it in `'`, the only special
-        // character we have to worry about is `'` itself. Everything else is taken literally
-        // in these strings. `'` is encoded as `'"'"'`: the outer `'` end and being a
-        // `'`-quoted string, respectively; the `"'"` in the middle represents a single `'`.
-        // (We could use `'\''` instead of `'"'"'` if we wanted but let's avoid backslashes.)
-        println!("MIRI_SYSROOT='{}'", sysroot.display().to_string().replace('\'', r#"'"'"'"#));
+    if print_sysroot {
+        // Print just the sysroot and nothing else; this way we do not need any escaping.
+        println!("{}", sysroot.display());
     } else if !ask_user {
         println!("A libstd for Miri is now available in `{}`.", sysroot.display());
     }
