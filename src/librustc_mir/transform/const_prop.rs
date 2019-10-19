@@ -518,12 +518,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
             }
 
-            // Work around: avoid ICE in miri.
-            // FIXME(wesleywiser) we don't currently handle the case where we try to make a ref
-            // from a function argument that hasn't been assigned to in this function. The main
-            // issue is if an arg is a fat-pointer, miri `expects()` to be able to read the value
-            // of that pointer to get size info. However, since this is `ConstProp`, that argument
-            // doesn't actually have a backing value and so this causes an ICE.
+            // Work around: avoid ICE in miri. FIXME(wesleywiser)
+            // The Miri engine ICEs when taking a reference to an uninitialized unsized
+            // local. There's nothing it can do here: taking a reference needs an allocation
+            // which needs to know the size. Normally that's okay as during execution
+            // (e.g. for CTFE) it can never happen. But here in const_prop
+            // we leave function arguments uninitialized, so if one of these is unsized
+            // and has a reference taken, we get an ICE.
             Rvalue::Ref(_, _, Place { base: PlaceBase::Local(local), projection: box [] }) => {
                 trace!("checking Ref({:?})", place);
                 let alive =
@@ -531,14 +532,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         true
                     } else { false };
 
+                // local 0 is the return place; locals 1..=arg_count are the arguments.
                 if local.as_usize() <= self.ecx.frame().body.arg_count && !alive {
                     trace!("skipping Ref({:?})", place);
                     return None;
                 }
             }
 
-            // Work around: avoid extra unnecessary locals.
-            // FIXME(wesleywiser): const eval will turn this into a `const Scalar(<ZST>)` that
+            // Work around: avoid extra unnecessary locals. FIXME(wesleywiser)
+            // Const eval will turn this into a `const Scalar(<ZST>)` that
             // `SimplifyLocals` doesn't know it can remove.
             Rvalue::Aggregate(_, operands) if operands.len() == 0 => {
                 return None;
