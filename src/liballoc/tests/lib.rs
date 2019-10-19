@@ -2,6 +2,7 @@
 #![feature(box_syntax)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
+#![feature(new_uninit)]
 #![feature(option_flattening)]
 #![feature(pattern)]
 #![feature(trusted_len)]
@@ -14,6 +15,7 @@ use std::collections::hash_map::DefaultHasher;
 
 mod arc;
 mod binary_heap;
+mod boxed;
 mod btree;
 mod cow_str;
 mod fmt;
