@@ -50,7 +50,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 .memory
                 .allocate(Size::from_bytes(size), align, kind.into());
             if zero_init {
-                // We just allocated this, the access cannot fail
+                // We just allocated this, the access is definitely in-bounds.
                 this.memory
                     .get_mut(ptr.alloc_id)
                     .unwrap()
@@ -227,7 +227,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
                 );
-                // We just allocated this, the access cannot fail
+                // We just allocated this, the access is definitely in-bounds.
                 this.memory
                     .get_mut(ptr.alloc_id)
                     .unwrap()
@@ -643,7 +643,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Hook pthread calls that go to the thread-local storage memory subsystem.
             "pthread_key_create" => {
-                let key_ptr = this.read_scalar(args[0])?.not_undef()?;
+                let key_place = this.deref_operand(args[0])?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = match this.test_null(this.read_scalar(args[1])?.not_undef()?)? {
@@ -668,16 +668,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_unsup!(OutOfTls);
                 }
 
-                let key_ptr = this
-                    .memory
-                    .check_ptr_access(key_ptr, key_layout.size, key_layout.align.abi)?
-                    .expect("cannot be a ZST");
-                this.memory.get_mut(key_ptr.alloc_id)?.write_scalar(
-                    tcx,
-                    key_ptr,
-                    Scalar::from_uint(key, key_layout.size).into(),
-                    key_layout.size,
-                )?;
+                this.write_scalar(Scalar::from_uint(key, key_layout.size), key_place.into())?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -856,6 +847,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let system_info_ptr = this
                     .check_mplace_access(system_info, None)?
                     .expect("cannot be a ZST");
+                // We rely on `deref_operand` doing bounds checks for us.
                 // Initialize with `0`.
                 this.memory
                     .get_mut(system_info_ptr.alloc_id)?
@@ -992,6 +984,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let errno_ptr = this.machine.last_error.unwrap();
+        // We allocated this during machine initialziation so the bounds are fine.
         this.memory.get_mut(errno_ptr.alloc_id)?.write_scalar(
             &*this.tcx,
             errno_ptr,

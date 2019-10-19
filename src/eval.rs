@@ -162,7 +162,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             MiriMemoryKind::Env.into(),
         );
         ecx.machine.cmd_line = Some(cmd_ptr);
-        // Store the UTF-16 string.
+        // Store the UTF-16 string. We just allocated so we know the bounds are fine.
         let char_size = Size::from_bytes(2);
         let cmd_alloc = ecx.memory.get_mut(cmd_ptr.alloc_id)?;
         let mut cur_ptr = cmd_ptr;
