@@ -346,14 +346,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    /// Sets the last error variable
+    /// Sets the last error variable.
     fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let errno_place = this.machine.last_error.unwrap();
         this.write_scalar(scalar, errno_place.into())
     }
 
-    /// Gets the last error variable
+    /// Gets the last error variable.
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         let errno_place = this.machine.last_error.unwrap();
