@@ -5,9 +5,13 @@ use rustc::session::Session;
 use cranelift_module::{FuncId, Module};
 
 use faerie::*;
+#[cfg(feature = "backend_object")]
 use object::{SectionKind, RelocationKind, RelocationEncoding};
+#[cfg(feature = "backend_object")]
 use object::write::*;
 use cranelift_faerie::{FaerieBackend, FaerieBuilder, FaerieProduct, FaerieTrapCollection};
+
+#[cfg(feature = "backend_object")]
 use cranelift_object::*;
 
 use gimli::SectionId;
@@ -41,6 +45,7 @@ impl WriteMetadata for faerie::Artifact {
     }
 }
 
+#[cfg(feature = "backend_object")]
 impl WriteMetadata for object::write::Object {
     fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
         let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
@@ -108,6 +113,7 @@ impl WriteDebugInfo for FaerieProduct {
     }
 }
 
+#[cfg(feature = "backend_object")]
 impl WriteDebugInfo for ObjectProduct {
     type SectionId = (object::write::SectionId, object::write::SymbolId);
 
@@ -158,6 +164,7 @@ impl Emit for FaerieProduct {
     }
 }
 
+#[cfg(feature = "backend_object")]
 impl Emit for ObjectProduct {
     fn emit(self) -> Vec<u8> {
         self.object.write().unwrap()
