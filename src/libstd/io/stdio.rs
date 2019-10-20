@@ -762,7 +762,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// otherwise. `label` identifies the stream in a panic message.
 ///
 /// This function is used to print error messages, so it takes extra
-/// care to avoid causing a panic when `local_stream` is unusable.
+/// care to avoid causing a panic when `local_s` is unusable.
 /// For instance, if the TLS key for the local stream is
 /// already destroyed, or if the local stream is locked by another
 /// thread, it will just fall back to the global stream.

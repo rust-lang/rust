@@ -202,7 +202,7 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// assert_eq!(socket.peer_addr().unwrap_err().kind(),
-    ///            ::std::io::ErrorKind::NotConnected);
+    ///            std::io::ErrorKind::NotConnected);
     /// ```
     #[stable(feature = "udp_peer_addr", since = "1.40.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
