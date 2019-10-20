@@ -1,12 +1,13 @@
+// run-fail
 // error-pattern:index out of bounds: the len is 5 but the index is 10
 
-const C: &'static [u8; 5] = b"hello";
+const C: [u32; 5] = [0; 5];
 
 #[allow(const_err)]
-fn mir() -> u8 {
+fn test() -> u32 {
     C[10]
 }
 
 fn main() {
-    mir();
+    test();
 }

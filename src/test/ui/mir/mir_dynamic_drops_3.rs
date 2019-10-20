@@ -1,3 +1,7 @@
+// run-fail
+// error-pattern:unwind happens
+// error-pattern:drop 3
+// error-pattern:drop 2
 // error-pattern:drop 1
 // ignore-cloudabi no std::process
 
@@ -14,15 +18,17 @@ impl<'a> Drop for Droppable<'a> {
     }
 }
 
+fn may_panic<'a>() -> Droppable<'a> {
+    panic!("unwind happens");
+}
+
 fn mir<'a>(d: Droppable<'a>) {
-    loop {
-        let x = d;
-        break;
-    }
+    let (mut a, mut b) = (false, false);
+    let y = Droppable(&mut a, 2);
+    let x = [Droppable(&mut b, 1), y, d, may_panic()];
 }
 
 fn main() {
-    let mut xv = false;
-    mir(Droppable(&mut xv, 1));
-    panic!();
+    let mut c = false;
+    mir(Droppable(&mut c, 3));
 }

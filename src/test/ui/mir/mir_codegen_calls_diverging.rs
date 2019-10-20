@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:diverging_fn called
 
 fn diverging_fn() -> ! {

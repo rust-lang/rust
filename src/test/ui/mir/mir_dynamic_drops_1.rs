@@ -1,7 +1,6 @@
-// error-pattern:unwind happens
-// error-pattern:drop 3
-// error-pattern:drop 2
+// run-fail
 // error-pattern:drop 1
+// error-pattern:drop 2
 // ignore-cloudabi no std::process
 
 /// Structure which will not allow to be dropped twice.
@@ -17,17 +16,16 @@ impl<'a> Drop for Droppable<'a> {
     }
 }
 
-fn may_panic<'a>() -> Droppable<'a> {
-    panic!("unwind happens");
-}
-
-fn mir<'a>(d: Droppable<'a>) {
-    let (mut a, mut b) = (false, false);
-    let y = Droppable(&mut a, 2);
-    let x = [Droppable(&mut b, 1), y, d, may_panic()];
+fn mir() {
+    let (mut xv, mut yv) = (false, false);
+    let x = Droppable(&mut xv, 1);
+    let y = Droppable(&mut yv, 2);
+    let mut z = x;
+    let k = y;
+    z = k;
 }
 
 fn main() {
-    let mut c = false;
-    mir(Droppable(&mut c, 3));
+    mir();
+    panic!();
 }

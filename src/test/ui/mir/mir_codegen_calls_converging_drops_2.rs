@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:complex called
 // error-pattern:dropped
 // error-pattern:exit

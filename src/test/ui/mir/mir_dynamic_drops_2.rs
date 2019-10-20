@@ -1,5 +1,5 @@
+// run-fail
 // error-pattern:drop 1
-// error-pattern:drop 2
 // ignore-cloudabi no std::process
 
 /// Structure which will not allow to be dropped twice.
@@ -15,16 +15,15 @@ impl<'a> Drop for Droppable<'a> {
     }
 }
 
-fn mir() {
-    let (mut xv, mut yv) = (false, false);
-    let x = Droppable(&mut xv, 1);
-    let y = Droppable(&mut yv, 2);
-    let mut z = x;
-    let k = y;
-    z = k;
+fn mir<'a>(d: Droppable<'a>) {
+    loop {
+        let x = d;
+        break;
+    }
 }
 
 fn main() {
-    mir();
+    let mut xv = false;
+    mir(Droppable(&mut xv, 1));
     panic!();
 }

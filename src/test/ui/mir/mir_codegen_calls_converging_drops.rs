@@ -1,5 +1,7 @@
-// error-pattern:diverging_fn called
+// run-fail
+// error-pattern:converging_fn called
 // error-pattern:0 dropped
+// error-pattern:exit
 
 struct Droppable(u8);
 impl Drop for Droppable {
@@ -8,15 +10,16 @@ impl Drop for Droppable {
     }
 }
 
-fn diverging_fn() -> ! {
-    panic!("diverging_fn called")
+fn converging_fn() {
+    eprintln!("converging_fn called");
 }
 
 fn mir(d: Droppable) {
-    diverging_fn();
+    converging_fn();
 }
 
 fn main() {
     let d = Droppable(0);
     mir(d);
+    panic!("exit");
 }
