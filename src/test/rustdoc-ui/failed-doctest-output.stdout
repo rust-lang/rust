@@ -7,10 +7,10 @@ failures:
 
 ---- $DIR/failed-doctest-output.rs - OtherStruct (line 21) stdout ----
 error[E0425]: cannot find value `no` in this scope
- --> $DIR/failed-doctest-output.rs:22:1
-  |
-3 | no
-  | ^^ not found in this scope
+  --> $DIR/failed-doctest-output.rs:22:1
+   |
+LL | no
+   | ^^ not found in this scope
 
 error: aborting due to previous error
 

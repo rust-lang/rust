@@ -280,6 +280,9 @@ fn run_test(
     for codegen_options_str in &options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
+    for debugging_option_str in &options.debugging_options_strs {
+        compiler.arg("-Z").arg(&debugging_option_str);
+    }
     if no_run {
         compiler.arg("--emit=metadata");
     }
