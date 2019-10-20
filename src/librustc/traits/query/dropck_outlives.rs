@@ -5,6 +5,7 @@ use std::iter::FromIterator;
 use syntax::source_map::Span;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::query::Providers;
 
 impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
@@ -33,7 +34,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
         // Quick check: there are a number of cases that we know do not require
         // any destructor.
         let tcx = self.infcx.tcx;
-        if trivial_dropck_outlives(tcx, ty) {
+        if tcx.trivial_dropck_outlives(ty) {
             return InferOk {
                 value: vec![],
                 obligations: vec![],
@@ -207,15 +208,15 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Error => true,
 
         // [T; N] and [T] have same properties as T.
-        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),
+        ty::Array(ty, _) | ty::Slice(ty) => tcx.trivial_dropck_outlives(ty),
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *any* of those are trivial.
-        ty::Tuple(ref tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t.expect_ty())),
+        ty::Tuple(ref tys) => tys.iter().all(|t| tcx.trivial_dropck_outlives(t.expect_ty())),
         ty::Closure(def_id, ref substs) => substs
             .as_closure()
             .upvar_tys(def_id, tcx)
-            .all(|t| trivial_dropck_outlives(tcx, t)),
+            .all(|t| tcx.trivial_dropck_outlives(t)),
 
         ty::Adt(def, _) => {
             if Some(def.did) == tcx.lang_items().manually_drop() {
@@ -242,4 +243,11 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
     }
+}
+
+crate fn provide(p: &mut Providers<'_>) {
+    *p = Providers {
+        trivial_dropck_outlives,
+        ..*p
+    };
 }

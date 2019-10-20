@@ -4,14 +4,15 @@
 #![feature(box_syntax, rustc_private)]
 
 extern crate syntax;
+extern crate syntax_expand;
 extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_driver;
 
 use std::borrow::ToOwned;
 use syntax::ast;
-use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
-use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager};
+use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use syntax_expand::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager};
 use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;

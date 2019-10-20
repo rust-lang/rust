@@ -10,11 +10,11 @@ note: consider marking `mac` as `pub` in the imported module
 LL | pub use mac as reexport;
    |         ^^^^^^^^^^^^^^^
 
-warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/plugin-reexport.rs:6:1
    |
 LL | #![plugin(attr_plugin_test)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 

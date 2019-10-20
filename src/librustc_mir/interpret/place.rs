@@ -1031,9 +1031,13 @@ where
         variant_index: VariantIdx,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
+        let variant_scalar = Scalar::from_u32(variant_index.as_u32()).into();
+
         match dest.layout.variants {
             layout::Variants::Single { index } => {
-                assert_eq!(index, variant_index);
+                if index != variant_index {
+                    throw_ub!(InvalidDiscriminant(variant_scalar));
+                }
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
@@ -1041,7 +1045,9 @@ where
                 discr_index,
                 ..
             } => {
-                assert!(dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index));
+                if !dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index) {
+                    throw_ub!(InvalidDiscriminant(variant_scalar));
+                }
                 let discr_val =
                     dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
 
@@ -1064,9 +1070,9 @@ where
                 discr_index,
                 ..
             } => {
-                assert!(
-                    variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len(),
-                );
+                if !variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len() {
+                    throw_ub!(InvalidDiscriminant(variant_scalar));
+                }
                 if variant_index != dataful_variant {
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index.as_u32()

@@ -2,7 +2,7 @@ use crate::hir::map::definitions::*;
 use crate::hir::def_id::DefIndex;
 
 use syntax::ast::*;
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::hygiene::ExpnId;
 use syntax::visit;
 use syntax::symbol::{kw, sym};
 use syntax::parse::token::{self, Token};
@@ -90,7 +90,7 @@ impl<'a> DefCollector<'a> {
         }
     }
 
-    pub fn visit_macro_invoc(&mut self, id: NodeId) {
+    fn visit_macro_invoc(&mut self, id: NodeId) {
         self.definitions.set_invocation_parent(id.placeholder_to_expn_id(), self.parent_def);
     }
 }

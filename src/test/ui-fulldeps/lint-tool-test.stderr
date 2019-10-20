@@ -32,11 +32,11 @@ warning: lint name `test_lint` is deprecated and may not have an effect in the f
 LL | #![cfg_attr(foo, warn(test_lint))]
    |                       ^^^^^^^^^ help: change it to: `clippy::test_lint`
 
-warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/lint-tool-test.rs:6:1
    |
 LL | #![plugin(lint_tool_test)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 

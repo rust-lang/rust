@@ -13,8 +13,9 @@ pub type Word = u64;
 pub const WORD_BYTES: usize = mem::size_of::<Word>();
 pub const WORD_BITS: usize = WORD_BYTES * 8;
 
-/// A fixed-size bitset type with a dense representation. It does not support
-/// resizing after creation; use `GrowableBitSet` for that.
+/// A fixed-size bitset type with a dense representation.
+///
+/// NOTE: Use [`GrowableBitSet`] if you need support for resizing after creation.
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
@@ -22,6 +23,8 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
+///
+/// [`GrowableBitSet`]: struct.GrowableBitSet.html
 #[derive(Clone, Eq, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct BitSet<T: Idx> {
     domain_size: usize,

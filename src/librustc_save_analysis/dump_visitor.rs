@@ -669,15 +669,18 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
             }
         }
-        self.visit_ty(&typ);
-        if let &Some(ref trait_ref) = trait_ref {
-            self.process_path(trait_ref.ref_id, &trait_ref.path);
-        }
-        self.process_generic_params(generics, "", item.id);
-        for impl_item in impl_items {
-            let map = &self.tcx.hir();
-            self.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
-        }
+
+        let map = &self.tcx.hir();
+        self.nest_tables(item.id, |v| {
+            v.visit_ty(&typ);
+            if let &Some(ref trait_ref) = trait_ref {
+                v.process_path(trait_ref.ref_id, &trait_ref.path);
+            }
+            v.process_generic_params(generics, "", item.id);
+            for impl_item in impl_items {
+                v.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
+            }
+        });
     }
 
     fn process_trait(

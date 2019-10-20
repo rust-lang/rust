@@ -22,7 +22,7 @@ use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
-use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
+use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
 
 use log::debug;
@@ -280,7 +280,7 @@ impl Attribute {
         self.item.meta(self.span)
     }
 
-    pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
+    crate fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let mut parser = Parser::new(
@@ -298,24 +298,11 @@ impl Attribute {
         Ok(result)
     }
 
-    pub fn parse_list<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, Vec<T>>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    {
+    pub fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
         if self.tokens.is_empty() {
             return Ok(Vec::new());
         }
-        self.parse(sess, |parser| {
-            parser.expect(&token::OpenDelim(token::Paren))?;
-            let mut list = Vec::new();
-            while !parser.eat(&token::CloseDelim(token::Paren)) {
-                list.push(f(parser)?);
-                if !parser.eat(&token::Comma) {
-                   parser.expect(&token::CloseDelim(token::Paren))?;
-                    break
-                }
-            }
-            Ok(list)
-        })
+        self.parse(sess, |p| p.parse_derive_paths())
     }
 
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
@@ -476,7 +463,7 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option
 }
 
 impl MetaItem {
-    fn tokens(&self) -> TokenStream {
+    fn token_trees_and_joints(&self) -> Vec<TreeAndJoint> {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
         for (i, segment) in self.path.segments.iter().enumerate() {
@@ -490,8 +477,8 @@ impl MetaItem {
             idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());
             last_pos = segment.ident.span.hi();
         }
-        self.kind.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);
-        TokenStream::new(idents)
+        idents.extend(self.kind.token_trees_and_joints(self.span));
+        idents
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
@@ -550,13 +537,14 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    pub fn tokens(&self, span: Span) -> TokenStream {
+    pub fn token_trees_and_joints(&self, span: Span) -> Vec<TreeAndJoint> {
         match *self {
-            MetaItemKind::Word => TokenStream::default(),
+            MetaItemKind::Word => vec![],
             MetaItemKind::NameValue(ref lit) => {
-                let mut vec = vec![TokenTree::token(token::Eq, span).into()];
-                lit.tokens().append_to_tree_and_joint_vec(&mut vec);
-                TokenStream::new(vec)
+                vec![
+                    TokenTree::token(token::Eq, span).into(),
+                    lit.token_tree().into(),
+                ]
             }
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
@@ -564,15 +552,24 @@ impl MetaItemKind {
                     if i > 0 {
                         tokens.push(TokenTree::token(token::Comma, span).into());
                     }
-                    item.tokens().append_to_tree_and_joint_vec(&mut tokens);
+                    tokens.extend(item.token_trees_and_joints())
                 }
-                TokenTree::Delimited(
-                    DelimSpan::from_single(span),
-                    token::Paren,
-                    TokenStream::new(tokens).into(),
-                ).into()
+                vec![
+                    TokenTree::Delimited(
+                        DelimSpan::from_single(span),
+                        token::Paren,
+                        TokenStream::new(tokens).into(),
+                    ).into()
+                ]
             }
         }
+    }
+
+    // Premature conversions of `TokenTree`s to `TokenStream`s can hurt
+    // performance. Do not use this function if `token_trees_and_joints()` can
+    // be used instead.
+    pub fn tokens(&self, span: Span) -> TokenStream {
+        TokenStream::new(self.token_trees_and_joints(span))
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItemKind>
@@ -616,10 +613,10 @@ impl NestedMetaItem {
         }
     }
 
-    fn tokens(&self) -> TokenStream {
+    fn token_trees_and_joints(&self) -> Vec<TreeAndJoint> {
         match *self {
-            NestedMetaItem::MetaItem(ref item) => item.tokens(),
-            NestedMetaItem::Literal(ref lit) => lit.tokens(),
+            NestedMetaItem::MetaItem(ref item) => item.token_trees_and_joints(),
+            NestedMetaItem::Literal(ref lit) => vec![lit.token_tree().into()],
         }
     }
 

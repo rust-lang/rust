@@ -1,7 +1,7 @@
 #![feature(precise_pointer_size_matching)]
 #![feature(exclusive_range_pattern)]
-
 #![deny(unreachable_patterns)]
+#![deny(overlapping_patterns)]
 
 use std::{char, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128};
 
@@ -41,7 +41,8 @@ fn main() {
     match x { //~ ERROR non-exhaustive patterns
         -7 => {}
         -5..=120 => {}
-        -2..=20 => {} //~ ERROR unreachable pattern
+        -2..=20 => {}
+        //~^ ERROR unreachable pattern
         125 => {}
     }
 
@@ -135,9 +136,9 @@ fn main() {
         (125 .. 128, false) => {}
     }
 
-    match 0u8 { // ok
+    match 0u8 {
         0 .. 2 => {}
-        1 ..= 2 => {}
+        1 ..= 2 => {} //~ ERROR multiple patterns covering the same range
         _ => {}
     }
 

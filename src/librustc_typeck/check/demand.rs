@@ -350,11 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the span is from a macro, then it's hard to extract the text
         // and make a good suggestion, so don't bother.
-        let is_desugaring = match sp.desugaring_kind() {
-            Some(k) => sp.is_desugaring(k),
-            None => false
-        };
-        let is_macro = sp.from_expansion() && !is_desugaring;
+        let is_macro = sp.from_expansion() && sp.desugaring_kind().is_none();
 
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();

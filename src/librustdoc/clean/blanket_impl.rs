@@ -107,7 +107,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),
-                            &self.cx.tcx.explicit_predicates_of(impl_def_id),
+                            self.cx.tcx.explicit_predicates_of(impl_def_id),
                         ).clean(self.cx),
                         provided_trait_methods,
                         // FIXME(eddyb) compute both `trait_` and `for_` from

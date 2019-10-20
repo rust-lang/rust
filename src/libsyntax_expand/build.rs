@@ -1,10 +1,11 @@
-use crate::ast::{self, Ident, Expr, BlockCheckMode, UnOp, PatKind};
-use crate::attr;
-use crate::source_map::{respan, Spanned};
-use crate::ext::base::ExtCtxt;
-use crate::ptr::P;
-use crate::symbol::{kw, sym, Symbol};
-use crate::ThinVec;
+use crate::base::ExtCtxt;
+
+use syntax::ast::{self, Ident, Expr, BlockCheckMode, UnOp, PatKind};
+use syntax::attr;
+use syntax::source_map::{respan, Spanned};
+use syntax::ptr::P;
+use syntax::symbol::{kw, sym, Symbol};
+use syntax::ThinVec;
 
 use syntax_pos::{Pos, Span};
 

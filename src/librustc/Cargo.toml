@@ -29,6 +29,7 @@ rustc_index = { path = "../librustc_index" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
+syntax_expand = { path = "../libsyntax_expand" }
 syntax_pos = { path = "../libsyntax_pos" }
 backtrace = "0.3.3"
 parking_lot = "0.9"

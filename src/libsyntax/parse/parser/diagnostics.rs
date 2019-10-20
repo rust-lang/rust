@@ -1,9 +1,11 @@
+use super::{
+    BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType,
+    SeqSep, PResult, Parser
+};
 use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::parse::{SeqSep, PResult, Parser};
-use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
@@ -17,8 +19,9 @@ use log::{debug, trace};
 use std::mem;
 
 const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
+
 /// Creates a placeholder argument.
-crate fn dummy_arg(ident: Ident) -> Param {
+pub(super) fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
@@ -121,7 +124,7 @@ impl Error {
     }
 }
 
-pub trait RecoverQPath: Sized + 'static {
+pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
     fn to_ty(&self) -> Option<P<Ty>>;
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self;
@@ -173,39 +176,43 @@ impl<'a> Parser<'a> {
         self.span_fatal(self.token.span, m)
     }
 
-    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+    crate fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(sp, m)
     }
 
-    pub fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
+    pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        err: Error,
+    ) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
     }
 
-    pub fn bug(&self, m: &str) -> ! {
+    pub(super) fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.token.span, m)
     }
 
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
+    pub(super) fn span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
 
-    crate fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
-    crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
-    crate fn diagnostic(&self) -> &'a errors::Handler {
+    pub(super) fn diagnostic(&self) -> &'a errors::Handler {
         &self.sess.span_diagnostic
     }
 
-    crate fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
+    pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
         self.sess.source_map().span_to_snippet(span)
     }
 
-    crate fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
         let mut err = self.struct_span_err(
             self.token.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
@@ -236,7 +243,7 @@ impl<'a> Parser<'a> {
         err
     }
 
-    pub fn expected_one_of_not_found(
+    pub(super) fn expected_one_of_not_found(
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
@@ -423,7 +430,7 @@ impl<'a> Parser<'a> {
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
-    crate fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
+    pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
         if let Err(ref mut err) = self.parse_seq_to_before_tokens(
             kets,
             SeqSep::none(),
@@ -441,7 +448,7 @@ impl<'a> Parser<'a> {
     /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
     ///                                                        ^^ help: remove extra angle brackets
     /// ```
-    crate fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: TokenKind) {
+    pub(super) fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: TokenKind) {
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
@@ -560,7 +567,7 @@ impl<'a> Parser<'a> {
     ///     inner_op   r2
     ///        /  \
     ///     l1    r1
-    crate fn check_no_chained_comparison(
+    pub(super) fn check_no_chained_comparison(
         &mut self,
         lhs: &Expr,
         outer_op: &AssocOp,
@@ -695,7 +702,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn maybe_report_ambiguous_plus(
+    pub(super) fn maybe_report_ambiguous_plus(
         &mut self,
         allow_plus: bool,
         impl_dyn_multi: bool,
@@ -768,7 +775,7 @@ impl<'a> Parser<'a> {
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
     /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
-    crate fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
+    pub(super) fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
         base: P<T>,
         allow_recovery: bool,
@@ -784,7 +791,7 @@ impl<'a> Parser<'a> {
 
     /// Given an already parsed `Ty`, parses the `::AssocItem` tail and
     /// combines them into a `<Ty>::AssocItem` expression/pattern/type.
-    crate fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
+    pub(super) fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
         &mut self,
         ty_span: Span,
         ty: P<Ty>,
@@ -823,7 +830,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    crate fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
+    pub(super) fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
         if self.eat(&token::Semi) {
             let mut err = self.struct_span_err(self.prev_span, "expected item, found `;`");
             err.span_suggestion_short(
@@ -859,7 +866,7 @@ impl<'a> Parser<'a> {
 
     /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
-    pub fn unexpected_try_recover(
+    pub(super) fn unexpected_try_recover(
         &mut self,
         t: &TokenKind,
     ) -> PResult<'a, bool /* recovered */> {
@@ -909,7 +916,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    crate fn parse_semi_or_incorrect_foreign_fn_body(
+    pub(super) fn parse_semi_or_incorrect_foreign_fn_body(
         &mut self,
         ident: &Ident,
         extern_sp: Span,
@@ -947,7 +954,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
-    crate fn parse_incorrect_await_syntax(
+    pub(super) fn parse_incorrect_await_syntax(
         &mut self,
         lo: Span,
         await_sp: Span,
@@ -999,7 +1006,7 @@ impl<'a> Parser<'a> {
     }
 
     /// If encountering `future.await()`, consumes and emits an error.
-    crate fn recover_from_await_method_call(&mut self) {
+    pub(super) fn recover_from_await_method_call(&mut self) {
         if self.token == token::OpenDelim(token::Paren) &&
             self.look_ahead(1, |t| t == &token::CloseDelim(token::Paren))
         {
@@ -1022,7 +1029,7 @@ impl<'a> Parser<'a> {
     /// and suggest writing `for $pat in $expr` instead.
     ///
     /// This should be called before parsing the `$block`.
-    crate fn recover_parens_around_for_head(
+    pub(super) fn recover_parens_around_for_head(
         &mut self,
         pat: P<Pat>,
         expr: &Expr,
@@ -1060,7 +1067,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
+    pub(super) fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
         self.token.is_ident() &&
             if let ast::ExprKind::Path(..) = node { true } else { false } &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
@@ -1074,7 +1081,7 @@ impl<'a> Parser<'a> {
              self.look_ahead(2, |t| t == &token::Lt))  // `foo:bar::<baz>`
     }
 
-    crate fn recover_seq_parse_error(
+    pub(super) fn recover_seq_parse_error(
         &mut self,
         delim: token::DelimToken,
         lo: Span,
@@ -1091,7 +1098,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn recover_closing_delimiter(
+    pub(super) fn recover_closing_delimiter(
         &mut self,
         tokens: &[TokenKind],
         mut err: DiagnosticBuilder<'a>,
@@ -1142,7 +1149,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
-    crate fn eat_bad_pub(&mut self) {
+    pub(super) fn eat_bad_pub(&mut self) {
         if self.token.is_keyword(kw::Pub) {
             match self.parse_visibility(false) {
                 Ok(vis) => {
@@ -1160,7 +1167,7 @@ impl<'a> Parser<'a> {
     /// statement. This is something of a best-effort heuristic.
     ///
     /// We terminate when we find an unmatched `}` (without consuming it).
-    crate fn recover_stmt(&mut self) {
+    pub(super) fn recover_stmt(&mut self) {
         self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore)
     }
 
@@ -1171,7 +1178,11 @@ impl<'a> Parser<'a> {
     ///
     /// If `break_on_block` is `Break`, then we will stop consuming tokens
     /// after finding (and consuming) a brace-delimited block.
-    crate fn recover_stmt_(&mut self, break_on_semi: SemiColonMode, break_on_block: BlockMode) {
+    pub(super) fn recover_stmt_(
+        &mut self,
+        break_on_semi: SemiColonMode,
+        break_on_block: BlockMode,
+    ) {
         let mut brace_depth = 0;
         let mut bracket_depth = 0;
         let mut in_block = false;
@@ -1239,7 +1250,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_for_for_in_in_typo(&mut self, in_span: Span) {
+    pub(super) fn check_for_for_in_in_typo(&mut self, in_span: Span) {
         if self.eat_keyword(kw::In) {
             // a common typo: `for _ in in bar {}`
             self.struct_span_err(self.prev_span, "expected iterable, found keyword `in`")
@@ -1253,14 +1264,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
+    pub(super) fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
         let token_str = self.this_token_descr();
         let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
         err.span_label(self.token.span, "expected `;` or `{`");
         Err(err)
     }
 
-    crate fn eat_incorrect_doc_comment_for_param_type(&mut self) {
+    pub(super) fn eat_incorrect_doc_comment_for_param_type(&mut self) {
         if let token::DocComment(_) = self.token.kind {
             self.struct_span_err(
                 self.token.span,
@@ -1288,7 +1299,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn parameter_without_type(
+    pub(super) fn parameter_without_type(
         &mut self,
         err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
@@ -1351,7 +1362,7 @@ impl<'a> Parser<'a> {
         None
     }
 
-    crate fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
+    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
         let pat = self.parse_pat(Some("argument name"))?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
@@ -1379,7 +1390,7 @@ impl<'a> Parser<'a> {
         Ok((pat, ty))
     }
 
-    crate fn recover_bad_self_param(
+    pub(super) fn recover_bad_self_param(
         &mut self,
         mut param: ast::Param,
         is_trait_item: bool,
@@ -1397,7 +1408,7 @@ impl<'a> Parser<'a> {
         Ok(param)
     }
 
-    crate fn consume_block(&mut self, delim: token::DelimToken) {
+    pub(super) fn consume_block(&mut self, delim: token::DelimToken) {
         let mut brace_depth = 0;
         loop {
             if self.eat(&token::OpenDelim(delim)) {
@@ -1417,7 +1428,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.token.span);
@@ -1462,7 +1473,7 @@ impl<'a> Parser<'a> {
     /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
     /// we deduplicate them to not complain about duplicated parameter names.
-    crate fn deduplicate_recovered_params_names(&self, fn_inputs: &mut Vec<Param>) {
+    pub(super) fn deduplicate_recovered_params_names(&self, fn_inputs: &mut Vec<Param>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (

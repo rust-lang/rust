@@ -791,7 +791,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                         "check_opaque_types: may define, predicates={:#?}",
                         predicates,
                     );
-                    for &(pred, _) in predicates.predicates.iter() {
+                    for &(pred, _) in predicates.predicates {
                         let substituted_pred = pred.subst(fcx.tcx, substs);
                         // Avoid duplication of predicates that contain no parameters, for example.
                         if !predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
@@ -1011,7 +1011,7 @@ fn check_variances_for_type_defn<'tcx>(
 
     identify_constrained_generic_params(
         tcx,
-        &ty_predicates,
+        ty_predicates,
         None,
         &mut constrained_parameters,
     );

@@ -186,43 +186,43 @@ LL |     mod inner { #![macro_escape] }
    |
    = help: consider an outer attribute, `#[macro_use]` mod ...
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:219:17
    |
 LL |     mod inner { #![plugin_registrar] }
-   |                 ^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |                 ^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:224:5
    |
 LL |     #[plugin_registrar] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |     ^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:227:5
    |
 LL |     #[plugin_registrar] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |     ^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:230:5
    |
 LL |     #[plugin_registrar] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |     ^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:216:1
    |
 LL | #[plugin_registrar]
-   | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
 
-warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/issues/29597
+warning: use of deprecated attribute `plugin_registrar`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:40:1
    |
 LL | #![plugin_registrar]
-   | ^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   | ^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
 
 warning: use of deprecated attribute `crate_id`: no longer used.
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:90:1

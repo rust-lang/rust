@@ -14,11 +14,11 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
-use syntax::ext::base::{self, InvocationRes, Indeterminate, SpecialDerives};
-use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
-use syntax::ext::compile_declarative_macro;
+use syntax_expand::base::{self, InvocationRes, Indeterminate, SpecialDerives};
+use syntax_expand::base::{MacroKind, SyntaxExtension};
+use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
+use syntax_expand::hygiene::{self, ExpnId, ExpnData, ExpnKind};
+use syntax_expand::compile_declarative_macro;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
 use syntax::print::pprust;
@@ -108,15 +108,11 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
-    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
-    fn visit_ast_fragment_with_placeholders(
-        &mut self, expansion: ExpnId, fragment: &AstFragment, extra_placeholders: &[NodeId]
-    ) {
+    fn visit_ast_fragment_with_placeholders(&mut self, expansion: ExpnId, fragment: &AstFragment) {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let output_legacy_scope =
-            self.build_reduced_graph(fragment, extra_placeholders, parent_scope);
+        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
 
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);

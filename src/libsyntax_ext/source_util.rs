@@ -1,5 +1,6 @@
-use syntax::{ast, panictry};
-use syntax::ext::base::{self, *};
+use syntax_expand::panictry;
+use syntax_expand::base::{self, *};
+use syntax::ast;
 use syntax::parse::{self, token, DirectoryOwnership};
 use syntax::print::pprust;
 use syntax::ptr::P;

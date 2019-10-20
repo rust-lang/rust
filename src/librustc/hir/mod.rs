@@ -669,6 +669,12 @@ impl WhereClause {
             Some(self.span)
         }
     }
+
+    /// The `WhereClause` under normal circumstances points at either the predicates or the empty
+    /// space where the `where` clause should be. Only of use for diagnostic suggestions.
+    pub fn span_for_predicates_or_empty_place(&self) -> Span {
+        self.span
+    }
 }
 
 /// A single predicate in a where-clause.
@@ -987,6 +993,15 @@ pub enum BindingAnnotation {
 pub enum RangeEnd {
     Included,
     Excluded,
+}
+
+impl fmt::Display for RangeEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            RangeEnd::Included => "..=",
+            RangeEnd::Excluded => "..",
+        })
+    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]

@@ -210,7 +210,7 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
-        let ty = P(Ty { kind, span, id: ast::DUMMY_NODE_ID });
+        let ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    crate fn parse_generic_bounds(&mut self,
+    pub(super) fn parse_generic_bounds(&mut self,
                                   colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
         self.parse_generic_bounds_common(true, colon_span)
     }
@@ -433,13 +433,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_lifetime(&mut self) -> bool {
+    pub fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
     }
 
     /// Parses a single lifetime `'a` or panics.
-    crate fn expect_lifetime(&mut self) -> Lifetime {
+    pub fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
             let span = self.token.span;
             self.bump();
@@ -447,5 +447,9 @@ impl<'a> Parser<'a> {
         } else {
             self.span_bug(self.token.span, "not a lifetime")
         }
+    }
+
+    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> P<Ty> {
+        P(Ty { kind, span, id: ast::DUMMY_NODE_ID })
     }
 }

@@ -186,12 +186,12 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{Symbol, kw, sym};
+use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax_pos::{Span};
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -1055,9 +1055,7 @@ impl<'a> MethodDef<'a> {
                 })
                 .collect()
         } else {
-            cx.span_bug(trait_.span,
-                        "no self arguments to non-static method in generic \
-                         `derive`")
+            cx.span_bug(trait_.span, "no `self` parameter for method in generic `derive`")
         };
 
         // body of the inner most destructuring match

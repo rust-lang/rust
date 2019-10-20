@@ -1,0 +1,83 @@
+error[E0277]: `impl Sync` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:4:13
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |    -------    ---- required by this bound in `is_send`
+LL | 
+LL | fn use_impl_sync(val: impl Sync) {
+   |                       --------- help: consider further restricting this bound: `impl Sync + std::marker::Send`
+LL |     is_send(val);
+   |             ^^^ `impl Sync` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `impl Sync`
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:8:13
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |    -------    ---- required by this bound in `is_send`
+...
+LL | fn use_where<S>(val: S) where S: Sync {
+   |                                      - help: consider further restricting type parameter `S`: `, S: std::marker::Send`
+LL |     is_send(val);
+   |             ^^^ `S` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `S`
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:12:13
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |    -------    ---- required by this bound in `is_send`
+...
+LL | fn use_bound<S: Sync>(val: S) {
+   |              -- help: consider further restricting this bound: `S: std::marker::Send +`
+LL |     is_send(val);
+   |             ^^^ `S` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `S`
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:20:13
+   |
+LL |   fn is_send<T: Send>(val: T) {}
+   |      -------    ---- required by this bound in `is_send`
+...
+LL | /     S // Make sure we can synthezise a correct suggestion span for this case
+LL | |     :
+   | |_____- help: consider further restricting this bound: `S: std::marker::Send +`
+...
+LL |       is_send(val);
+   |               ^^^ `S` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `S`
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:24:13
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |    -------    ---- required by this bound in `is_send`
+...
+LL | fn use_bound_and_where<S: Sync>(val: S) where S: std::fmt::Debug {
+   |                                                                 - help: consider further restricting type parameter `S`: `, S: std::marker::Send`
+LL |     is_send(val);
+   |             ^^^ `S` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `S`
+
+error[E0277]: `S` cannot be sent between threads safely
+  --> $DIR/restrict-type-argument.rs:28:13
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |    -------    ---- required by this bound in `is_send`
+...
+LL | fn use_unbound<S>(val: S) {
+   |                - help: consider restricting this bound: `S: std::marker::Send`
+LL |     is_send(val);
+   |             ^^^ `S` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `S`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

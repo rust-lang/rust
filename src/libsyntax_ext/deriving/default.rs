@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{Expr, MetaItem};
-use syntax::ext::base::{Annotatable, DummyResult, ExtCtxt};
+use syntax_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax::span_err;
@@ -75,6 +75,6 @@ fn default_substructure(cx: &mut ExtCtxt<'_>,
             // let compilation continue
             DummyResult::raw_expr(trait_span, true)
         }
-        _ => cx.span_bug(trait_span, "Non-static method in `derive(Default)`"),
+        _ => cx.span_bug(trait_span, "method in `derive(Default)`"),
     };
 }

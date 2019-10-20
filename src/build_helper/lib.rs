@@ -21,6 +21,13 @@ macro_rules! t {
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
         }
     };
+    // it can show extra info in the second parameter
+    ($e:expr, $extra:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
+        }
+    };
 }
 
 // Because Cargo adds the compiler's dylib path to our library search path, llvm-config may

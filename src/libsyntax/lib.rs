@@ -13,16 +13,11 @@
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
-#![feature(proc_macro_diagnostic)]
-#![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
 #![feature(try_trait)]
 #![feature(slice_patterns)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
-
-extern crate proc_macro;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -34,26 +29,7 @@ use syntax_pos::edition::Edition;
 #[cfg(test)]
 mod tests;
 
-const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
-
-// A variant of 'try!' that panics on an Err. This is used as a crutch on the
-// way towards a non-panic!-prone parser. It should be used for fatal parsing
-// errors; eventually we plan to convert all code using panictry to just use
-// normal try.
-#[macro_export]
-macro_rules! panictry {
-    ($e:expr) => ({
-        use std::result::Result::{Ok, Err};
-        use errors::FatalError;
-        match $e {
-            Ok(e) => e,
-            Err(mut e) => {
-                e.emit();
-                FatalError.raise()
-            }
-        }
-    })
-}
+pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 // A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
 macro_rules! panictry_buffer {
@@ -155,21 +131,6 @@ pub mod print {
     pub mod pp;
     pub mod pprust;
     mod helpers;
-}
-
-pub mod ext {
-    mod placeholders;
-    mod proc_macro_server;
-
-    pub use syntax_pos::hygiene;
-    pub use mbe::macro_rules::compile_declarative_macro;
-    pub mod allocator;
-    pub mod base;
-    pub mod build;
-    pub mod expand;
-    pub mod proc_macro;
-
-    crate mod mbe;
 }
 
 pub mod early_buffered_lints;

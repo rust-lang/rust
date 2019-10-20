@@ -22,7 +22,7 @@ const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here"
 
 /// Whether or not an or-pattern should be gated when occurring in the current context.
 #[derive(PartialEq)]
-pub enum GateOr { Yes, No }
+pub(super) enum GateOr { Yes, No }
 
 /// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]

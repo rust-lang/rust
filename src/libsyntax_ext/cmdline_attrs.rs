@@ -2,9 +2,9 @@
 
 use syntax::ast::{self, AttrItem, AttrStyle};
 use syntax::attr::mk_attr;
-use syntax::panictry;
 use syntax::parse::{self, token};
 use syntax::sess::ParseSess;
+use syntax_expand::panictry;
 use syntax_pos::FileName;
 
 pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {

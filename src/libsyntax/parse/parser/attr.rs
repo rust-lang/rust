@@ -1,13 +1,11 @@
+use super::{SeqSep, PResult, Parser, TokenType, PathStyle};
 use crate::attr;
 use crate::ast;
-use crate::parse::{SeqSep, PResult};
 use crate::parse::token::{self, Nonterminal, DelimToken};
-use crate::parse::parser::{Parser, TokenType, PathStyle};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::source_map::Span;
 
 use log::debug;
-use smallvec::smallvec;
 
 #[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -20,7 +18,7 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
 
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
-    crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
@@ -84,9 +82,10 @@ impl<'a> Parser<'a> {
 
     /// The same as `parse_attribute`, except it takes in an `InnerAttributeParsePolicy`
     /// that prescribes how to handle inner attributes.
-    fn parse_attribute_with_inner_parse_policy(&mut self,
-                                               inner_parse_policy: InnerAttributeParsePolicy<'_>)
-                                               -> PResult<'a, ast::Attribute> {
+    fn parse_attribute_with_inner_parse_policy(
+        &mut self,
+        inner_parse_policy: InnerAttributeParsePolicy<'_>
+    ) -> PResult<'a, ast::Attribute> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);
@@ -193,15 +192,15 @@ impl<'a> Parser<'a> {
                         is_interpolated_expr = true;
                     }
                 }
-                let tokens = if is_interpolated_expr {
+                let token_tree = if is_interpolated_expr {
                     // We need to accept arbitrary interpolated expressions to continue
                     // supporting things like `doc = $expr` that work on stable.
                     // Non-literal interpolated expressions are rejected after expansion.
-                    self.parse_token_tree().into()
+                    self.parse_token_tree()
                 } else {
-                    self.parse_unsuffixed_lit()?.tokens()
+                    self.parse_unsuffixed_lit()?.token_tree()
                 };
-                TokenStream::from_streams(smallvec![eq.into(), tokens])
+                TokenStream::new(vec![eq.into(), token_tree.into()])
             } else {
                 TokenStream::default()
             };
@@ -258,6 +257,27 @@ impl<'a> Parser<'a> {
         }
 
         Ok(lit)
+    }
+
+    /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
+    crate fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
+        self.expect(&token::OpenDelim(token::Paren))?;
+
+        let cfg_predicate = self.parse_meta_item()?;
+        self.expect(&token::Comma)?;
+
+        // Presumably, the majority of the time there will only be one attr.
+        let mut expanded_attrs = Vec::with_capacity(1);
+
+        while !self.check(&token::CloseDelim(token::Paren)) {
+            let lo = self.token.span.lo();
+            let item = self.parse_attr_item()?;
+            expanded_attrs.push((item, self.prev_span.with_lo(lo)));
+            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;
+        }
+
+        self.expect(&token::CloseDelim(token::Paren))?;
+        Ok((cfg_predicate, expanded_attrs))
     }
 
     /// Matches the following grammar (per RFC 1559).
