@@ -346,11 +346,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
+    /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
+    /// the Unix APIs usually handle.
     fn read_os_string_from_c_string(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
         let bytes = self.eval_context_mut().memory.read_c_str(scalar)?;
         Ok(bytes_to_os_str(bytes)?.into())
     }
 
+    /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
+    /// the Unix APIs usually handle.
     fn write_os_str_to_c_string(&mut self, os_str: &OsStr, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
         let bytes = os_str_to_bytes(os_str)?;
         let len = bytes.len();
