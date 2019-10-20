@@ -131,6 +131,33 @@ impl Completions {
         self.add_function_with_name(ctx, None, func)
     }
 
+    fn guess_macro_braces(&self, macro_name: &str, docs: &str) -> &'static str {
+        let mut votes = [0, 0, 0];
+        for (idx, s) in docs.match_indices(&macro_name) {
+            let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
+            // Ensure to match the full word
+            if after.starts_with("!")
+                && before
+                    .chars()
+                    .rev()
+                    .next()
+                    .map_or(true, |c| c != '_' && !c.is_ascii_alphanumeric())
+            {
+                // It may have spaces before the braces like `foo! {}`
+                match after[1..].chars().find(|&c| !c.is_whitespace()) {
+                    Some('{') => votes[0] += 1,
+                    Some('[') => votes[1] += 1,
+                    Some('(') => votes[2] += 1,
+                    _ => {}
+                }
+            }
+        }
+
+        // Insert a space before `{}`.
+        // We prefer the last one when some votes equal.
+        *votes.iter().zip(&[" {$0}", "[$0]", "($0)"]).max_by_key(|&(&vote, _)| vote).unwrap().1
+    }
+
     pub(crate) fn add_macro(
         &mut self,
         ctx: &CompletionContext,
@@ -141,10 +168,9 @@ impl Completions {
         if let Some(name) = name {
             let detail = macro_label(&ast_node);
 
-            let macro_braces_to_insert = match name.as_str() {
-                "vec" => "[$0]",
-                _ => "($0)",
-            };
+            let docs = macro_.docs(ctx.db);
+            let macro_braces_to_insert =
+                self.guess_macro_braces(&name, docs.as_ref().map_or("", |s| s.as_str()));
             let macro_declaration = name + "!";
 
             let builder = CompletionItem::new(
@@ -153,7 +179,7 @@ impl Completions {
                 &macro_declaration,
             )
             .kind(CompletionItemKind::Macro)
-            .set_documentation(macro_.docs(ctx.db))
+            .set_documentation(docs)
             .detail(detail)
             .insert_snippet(macro_declaration + macro_braces_to_insert);
 
