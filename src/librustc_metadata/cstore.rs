@@ -97,7 +97,7 @@ crate struct CrateMetadata {
 
 #[derive(Clone)]
 pub struct CStore {
-    metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
+    metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
 }
 
 pub enum LoadedMacro {
@@ -112,34 +112,31 @@ impl Default for CStore {
             // order to make array indices in `metas` match with the
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
-            metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
+            metas: IndexVec::from_elem_n(None, 1),
         }
     }
 }
 
 impl CStore {
-    crate fn alloc_new_crate_num(&self) -> CrateNum {
-        let mut metas = self.metas.borrow_mut();
-        let cnum = CrateNum::new(metas.len());
-        metas.push(None);
-        cnum
+    crate fn alloc_new_crate_num(&mut self) -> CrateNum {
+        self.metas.push(None);
+        CrateNum::new(self.metas.len() - 1)
     }
 
     crate fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
-        self.metas.borrow()[cnum].clone()
+        self.metas[cnum].clone()
             .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
     }
 
-    crate fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
-        let mut metas = self.metas.borrow_mut();
-        assert!(metas[cnum].is_none(), "Overwriting crate metadata entry");
-        metas[cnum] = Some(data);
+    crate fn set_crate_data(&mut self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
+        assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
+        self.metas[cnum] = Some(data);
     }
 
     crate fn iter_crate_data<I>(&self, mut i: I)
         where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
     {
-        for (k, v) in self.metas.borrow().iter_enumerated() {
+        for (k, v) in self.metas.iter_enumerated() {
             if let &Some(ref v) = v {
                 i(k, v);
             }
@@ -170,7 +167,7 @@ impl CStore {
 
     crate fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
-        for (num, v) in self.metas.borrow().iter_enumerated() {
+        for (num, v) in self.metas.iter_enumerated() {
             if let &Some(_) = v {
                 self.push_dependencies_in_postorder(&mut ordering, num);
             }

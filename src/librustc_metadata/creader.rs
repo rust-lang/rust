@@ -179,7 +179,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn register_crate(
-        &self,
+        &mut self,
         host_lib: Option<Library>,
         root: Option<&CratePaths>,
         span: Span,
@@ -319,7 +319,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn resolve_crate<'b>(
-        &'b self,
+        &'b mut self,
         name: Symbol,
         span: Span,
         dep_kind: DepKind,
@@ -329,7 +329,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn maybe_resolve_crate<'b>(
-        &'b self,
+        &'b mut self,
         name: Symbol,
         span: Span,
         mut dep_kind: DepKind,
@@ -458,7 +458,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     // Go through the crate metadata and load any crates that it references
-    fn resolve_crate_deps(&self,
+    fn resolve_crate_deps(&mut self,
                           root: &CratePaths,
                           crate_root: &CrateRoot<'_>,
                           metadata: &MetadataBlob,
@@ -519,7 +519,7 @@ impl<'a> CrateLoader<'a> {
         decls
     }
 
-    fn inject_panic_runtime(&self, krate: &ast::Crate) {
+    fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
         let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| {
@@ -600,7 +600,7 @@ impl<'a> CrateLoader<'a> {
                                   &|data| data.root.needs_panic_runtime);
     }
 
-    fn inject_sanitizer_runtime(&self) {
+    fn inject_sanitizer_runtime(&mut self) {
         if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
             // Sanitizers can only be used on some tested platforms with
             // executables linked to `std`
@@ -698,7 +698,7 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn inject_profiler_runtime(&self) {
+    fn inject_profiler_runtime(&mut self) {
         if self.sess.opts.debugging_opts.profile ||
            self.sess.opts.cg.profile_generate.enabled()
         {
@@ -852,7 +852,7 @@ impl<'a> CrateLoader<'a> {
         });
     }
 
-    pub fn postprocess(&self, krate: &ast::Crate) {
+    pub fn postprocess(&mut self, krate: &ast::Crate) {
         self.inject_sanitizer_runtime();
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
@@ -863,7 +863,11 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    pub fn process_extern_crate(&self, item: &ast::Item, definitions: &Definitions) -> CrateNum {
+    pub fn process_extern_crate(
+        &mut self,
+        item: &ast::Item,
+        definitions: &Definitions,
+    ) -> CrateNum {
         match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
@@ -902,7 +906,7 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    pub fn process_path_extern(&self, name: Symbol, span: Span) -> CrateNum {
+    pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
         let cnum = self.resolve_crate(name, span, DepKind::Explicit, None).0;
 
         self.update_extern_crate(
@@ -920,7 +924,7 @@ impl<'a> CrateLoader<'a> {
         cnum
     }
 
-    pub fn maybe_process_path_extern(&self, name: Symbol, span: Span) -> Option<CrateNum> {
+    pub fn maybe_process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
         let cnum = self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()?.0;
 
         self.update_extern_crate(
