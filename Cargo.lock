@@ -3556,6 +3556,7 @@ dependencies = [
  "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_resolve",
+ "rustc_target",
  "rustc_traits",
  "rustc_typeck",
  "serialize",
