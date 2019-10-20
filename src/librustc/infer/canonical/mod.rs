@@ -73,7 +73,7 @@ pub struct CanonicalVarValues<'tcx> {
 /// various parts of it with canonical variables. This struct stores
 /// those replaced bits to remember for when we process the query
 /// result.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct OriginalQueryValues<'tcx> {
     /// Map from the universes that appear in the query to the
     /// universes in the caller context. For the time being, we only

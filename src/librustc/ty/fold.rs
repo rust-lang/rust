@@ -718,7 +718,6 @@ impl<'tcx> TyCtxt<'tcx> {
 // vars. See comment on `shift_vars_through_binders` method in
 // `subst.rs` for more details.
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 enum Direction {
     In,
     Out,

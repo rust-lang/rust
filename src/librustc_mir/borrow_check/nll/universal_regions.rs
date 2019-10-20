@@ -146,7 +146,7 @@ struct UniversalRegionIndices<'tcx> {
     indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq)]
 pub enum RegionClassification {
     /// A **global** region is one that can be named from
     /// anywhere. There is only one, `'static`.

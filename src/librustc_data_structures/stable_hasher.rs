@@ -169,7 +169,7 @@ pub trait HashStable<CTX> {
 /// example, for DefId that can be converted to a DefPathHash. This is used for
 /// bringing maps into a predictable order before hashing them.
 pub trait ToStableHashKey<HCX> {
-    type KeyType: Ord + Clone + Sized + HashStable<HCX>;
+    type KeyType: Ord + Sized + HashStable<HCX>;
     fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType;
 }
 
@@ -516,7 +516,7 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
     where K: Eq,
           V: HashStable<HCX>,
           R: BuildHasher,
-          SK: HashStable<HCX> + Ord + Clone,
+          SK: HashStable<HCX> + Ord,
           F: Fn(&K, &HCX) -> SK,
 {
     let mut entries: Vec<_> = map.iter()

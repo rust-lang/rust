@@ -35,7 +35,7 @@ impl DepNodeIndex {
     pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(PartialEq)]
 pub enum DepNodeColor {
     Red,
     Green(DepNodeIndex)

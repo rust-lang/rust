@@ -73,7 +73,7 @@ impl KleeneToken {
 
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
 /// for token sequences.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 enum KleeneOp {
     /// Kleene star (`*`) for zero or more repetitions
     ZeroOrMore,

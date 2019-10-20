@@ -71,8 +71,7 @@ mod riscv_base;
 mod wasm32_base;
 mod vxworks_base;
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
-         RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
     Em,
     Gcc,
@@ -82,8 +81,7 @@ pub enum LinkerFlavor {
     PtxLinker,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
-         RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LldFlavor {
     Wasm,
     Ld64,

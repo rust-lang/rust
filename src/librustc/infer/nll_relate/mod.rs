@@ -32,7 +32,7 @@ use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq)]
 pub enum NormalizationStrategy {
     Lazy,
     Eager,

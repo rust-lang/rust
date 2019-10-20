@@ -22,7 +22,7 @@ use super::{
     Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg,
 };
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
     /// Error if deallocated except during a stack pop
     Stack,

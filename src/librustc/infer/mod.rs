@@ -407,7 +407,7 @@ pub enum RegionVariableOrigin {
     NLL(NLLRegionVariableOrigin),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug)]
 pub enum NLLRegionVariableOrigin {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
