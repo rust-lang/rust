@@ -556,7 +556,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         let is_float = input_ty.is_floating_point();
         let is_signed = input_ty.is_signed();
-        let is_unit = input_ty.is_unit();
         match op {
             mir::BinOp::Add => if is_float {
                 bx.fadd(lhs, rhs)
@@ -594,13 +593,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
-            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_unit {
-                bx.cx().const_bool(match op {
-                    mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
-                    mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
-                    _ => unreachable!()
-                })
-            } else if is_float {
+            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_float {
                 bx.fcmp(
                     base::bin_op_to_fcmp_predicate(op.to_hir_binop()),
                     lhs, rhs
