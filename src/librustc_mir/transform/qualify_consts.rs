@@ -292,8 +292,8 @@ trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let box [proj_base @ .., elem] = &place.projection {
-                    if ProjectionElem::Deref == *elem {
+                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                    if ProjectionElem::Deref == elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, PlaceRef {
@@ -1041,26 +1041,24 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             match *candidate {
                 Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
                     if let StatementKind::Assign(box(_, Rvalue::Repeat(
-                        Operand::Move(Place {
-                            base: PlaceBase::Local(index),
-                            projection: box [],
-                        }),
+                        Operand::Move(place),
                         _
-                    ))) = self.body[bb].statements[stmt_idx].kind {
-                        promoted_temps.insert(index);
+                    ))) = &self.body[bb].statements[stmt_idx].kind {
+                        if let Some(index) = place.as_local() {
+                            promoted_temps.insert(index);
+                        }
                     }
                 }
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     if let StatementKind::Assign(
                         box(
                             _,
-                            Rvalue::Ref(_, _, Place {
-                                base: PlaceBase::Local(index),
-                                projection: box [],
-                            })
+                            Rvalue::Ref(_, _, place)
                         )
-                    ) = self.body[bb].statements[stmt_idx].kind {
-                        promoted_temps.insert(index);
+                    ) = &self.body[bb].statements[stmt_idx].kind {
+                        if let Some(index) = place.as_local() {
+                            promoted_temps.insert(index);
+                        }
                     }
                 }
                 Candidate::Argument { .. } => {}
@@ -1237,10 +1235,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match *operand {
             Operand::Move(ref place) => {
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = *place {
+                if let Some(local) = place.as_local() {
                     self.cx.per_local[NeedsDrop].remove(local);
                 }
             }
@@ -1256,8 +1251,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut reborrow_place = None;
-            if let box [proj_base @ .., elem] = &place.projection {
-                if *elem == ProjectionElem::Deref {
+            if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                if elem == ProjectionElem::Deref {
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         reborrow_place = Some(proj_base);
@@ -1568,10 +1563,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = *place {
+                let needs_drop = if let Some(local) = place.as_local() {
                     if NeedsDrop::in_local(self, local) {
                         Some(self.body.local_decls[local].source_info.span)
                     } else {
@@ -1817,16 +1809,17 @@ fn remove_drop_and_storage_dead_on_promoted_locals(
             }
         });
         let terminator = block.terminator_mut();
-        match terminator.kind {
+        match &terminator.kind {
             TerminatorKind::Drop {
-                location: Place {
-                    base: PlaceBase::Local(index),
-                    projection: box [],
-                },
+                location,
                 target,
                 ..
-            } if promoted_temps.contains(index) => {
-                terminator.kind = TerminatorKind::Goto { target };
+            } => {
+                if let Some(index) = location.as_local() {
+                    if promoted_temps.contains(index) {
+                        terminator.kind = TerminatorKind::Goto { target: *target };
+                    }
+                }
             }
             _ => {}
         }

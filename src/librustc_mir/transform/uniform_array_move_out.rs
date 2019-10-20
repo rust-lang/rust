@@ -61,7 +61,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Use(Operand::Move(ref src_place)) = rvalue {
-            if let box [proj_base @ .., elem] = &src_place.projection {
+            if let &[ref proj_base @ .., elem] = src_place.projection.as_ref() {
                 if let ProjectionElem::ConstantIndex{offset: _,
                                                      min_length: _,
                                                      from_end: false} = elem {
@@ -203,18 +203,17 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
                 if let StatementKind::Assign(box(ref dst_place, ref rval)) = statement.kind {
                     if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
                         let items : Vec<_> = items.iter().map(|item| {
-                            if let Operand::Move(Place {
-                                base: PlaceBase::Local(local),
-                                projection: box [],
-                            }) = item {
-                                let local_use = &visitor.locals_use[*local];
-                                let opt_index_and_place =
-                                    Self::try_get_item_source(local_use, body);
-                                // each local should be used twice:
-                                //  in assign and in aggregate statements
-                                if local_use.use_count == 2 && opt_index_and_place.is_some() {
-                                    let (index, src_place) = opt_index_and_place.unwrap();
-                                    return Some((local_use, index, src_place));
+                            if let Operand::Move(place) = item {
+                                if let Some(local) = place.as_local() {
+                                    let local_use = &visitor.locals_use[local];
+                                    let opt_index_and_place =
+                                        Self::try_get_item_source(local_use, body);
+                                    // each local should be used twice:
+                                    //  in assign and in aggregate statements
+                                    if local_use.use_count == 2 && opt_index_and_place.is_some() {
+                                        let (index, src_place) = opt_index_and_place.unwrap();
+                                        return Some((local_use, index, src_place));
+                                    }
                                 }
                             }
                             None
@@ -293,33 +292,27 @@ impl RestoreSubsliceArrayMoveOut {
             if block.statements.len() > location.statement_index {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
-                    box(
-                        Place {
-                            base: PlaceBase::Local(_),
-                            projection: box [],
-                        },
-                        Rvalue::Use(Operand::Move(Place {
-                            base: _,
-                            projection: box [.., ProjectionElem::ConstantIndex {
-                                offset, min_length: _, from_end: false
-                            }],
-                        })),
-                    )
+                    box(place, Rvalue::Use(Operand::Move(src_place)))
                 ) = &statement.kind {
-                    // FIXME remove once we can use slices patterns
-                    if let StatementKind::Assign(
-                        box(
-                            _,
-                            Rvalue::Use(Operand::Move(Place {
+                    if let (Some(_), PlaceRef {
+                        base: _,
+                        projection: &[.., ProjectionElem::ConstantIndex {
+                            offset, min_length: _, from_end: false
+                        }],
+                    }) = (place.as_local(), src_place.as_ref()) {
+                        if let StatementKind::Assign(
+                            box(_, Rvalue::Use(Operand::Move(place)))
+                        ) = &statement.kind {
+                            if let PlaceRef {
                                 base,
-                                projection: box [proj_base @ .., _],
-                            })),
-                        )
-                    ) = &statement.kind {
-                        return Some((*offset, PlaceRef {
-                            base,
-                            projection: proj_base,
-                        }))
+                                projection: &[ref proj_base @ .., _],
+                            } = place.as_ref() {
+                                return Some((offset, PlaceRef {
+                                    base,
+                                    projection: proj_base,
+                                }))
+                            }
+                        }
                     }
                 }
             }

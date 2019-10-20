@@ -496,14 +496,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let arg_place = unpack!(block = this.as_place(block, arg));
 
-        let mutability = match arg_place {
-            Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
+        let mutability = match arg_place.as_ref() {
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: &[],
             } => this.local_decls[local].mutability,
-            Place {
-                base: PlaceBase::Local(local),
-                projection: box [ProjectionElem::Deref],
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: &[ProjectionElem::Deref],
             } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
@@ -511,13 +511,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 this.local_decls[local].mutability
             }
-            Place {
+            PlaceRef {
                 ref base,
-                projection: box [ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
+                projection: &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             }
-            | Place {
+            | PlaceRef {
                 ref base,
-                projection: box [
+                projection: &[
                     ref proj_base @ ..,
                     ProjectionElem::Field(upvar_index, _),
                     ProjectionElem::Deref

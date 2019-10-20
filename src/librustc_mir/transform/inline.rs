@@ -587,13 +587,12 @@ impl Inliner<'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place {
-            base: PlaceBase::Local(local),
-            projection: box [],
-        }) = arg {
-            if caller_body.local_kind(local) == LocalKind::Temp {
-                // Reuse the operand if it's a temporary already
-                return local;
+        if let Operand::Move(place) = &arg {
+            if let Some(local) = place.as_local() {
+                if caller_body.local_kind(local) == LocalKind::Temp {
+                    // Reuse the operand if it's a temporary already
+                    return local;
+                }
             }
         }
 
@@ -650,14 +649,9 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 
     fn make_integrate_local(&self, local: &Local) -> Local {
         if *local == RETURN_PLACE {
-            match self.destination {
-                Place {
-                    base: PlaceBase::Local(l),
-                    projection: box [],
-                } => {
-                    return l;
-                },
-                ref place => bug!("Return place is {:?}, not local", place)
+            match self.destination.as_local() {
+                Some(l) => return l,
+                ref place => bug!("Return place is {:?}, not local", place),
             }
         }
 
@@ -686,17 +680,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         context: PlaceContext,
         location: Location,
     ) {
-        match place {
-            Place {
-                base: PlaceBase::Local(RETURN_PLACE),
-                projection: box [],
-            } => {
-                // Return pointer; update the place itself
-                *place = self.destination.clone();
-            },
-            _ => {
-                self.super_place(place, context, location);
-            }
+        if let Some(RETURN_PLACE) = place.as_local() {
+            // Return pointer; update the place itself
+            *place = self.destination.clone();
+        } else {
+            self.super_place(place, context, location);
         }
     }
 

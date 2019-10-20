@@ -19,9 +19,7 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use rustc::mir::{
-    Constant, Local, LocalKind, Location, Place, PlaceBase, Body, Operand, Rvalue, StatementKind
-};
+use rustc::mir::{Constant, Local, LocalKind, Location, Place, Body, Operand, Rvalue, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use crate::transform::{MirPass, MirSource};
@@ -92,28 +90,32 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     };
 
                     // That use of the source must be an assignment.
-                    match statement.kind {
-                        StatementKind::Assign(
-                            box(
-                                Place {
-                                    base: PlaceBase::Local(local),
-                                    projection: box [],
-                                },
-                                Rvalue::Use(ref operand)
-                            )
-                        ) if local == dest_local => {
-                            let maybe_action = match *operand {
-                                Operand::Copy(ref src_place) |
-                                Operand::Move(ref src_place) => {
-                                    Action::local_copy(&body, &def_use_analysis, src_place)
+                    match &statement.kind {
+                        StatementKind::Assign(box(place, Rvalue::Use(operand))) => {
+                            if let Some(local) = place.as_local() {
+                                if local == dest_local {
+                                    let maybe_action = match operand {
+                                        Operand::Copy(ref src_place) |
+                                        Operand::Move(ref src_place) => {
+                                            Action::local_copy(&body, &def_use_analysis, src_place)
+                                        }
+                                        Operand::Constant(ref src_constant) => {
+                                            Action::constant(src_constant)
+                                        }
+                                    };
+                                    match maybe_action {
+                                        Some(this_action) => action = this_action,
+                                        None => continue,
+                                    }
+                                } else {
+                                    debug!("  Can't copy-propagate local: source use is not an \
+                                    assignment");
+                                    continue
                                 }
-                                Operand::Constant(ref src_constant) => {
-                                    Action::constant(src_constant)
-                                }
-                            };
-                            match maybe_action {
-                                Some(this_action) => action = this_action,
-                                None => continue,
+                            } else {
+                                debug!("  Can't copy-propagate local: source use is not an \
+                                    assignment");
+                                continue
                             }
                         }
                         _ => {
@@ -148,31 +150,20 @@ fn eliminate_self_assignments(
         for def in dest_use_info.defs_not_including_drop() {
             let location = def.location;
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
-                match stmt.kind {
-                    StatementKind::Assign(
-                        box(
-                            Place {
-                                base: PlaceBase::Local(local),
-                                projection: box [],
-                            },
-                            Rvalue::Use(Operand::Copy(Place {
-                                base: PlaceBase::Local(src_local),
-                                projection: box [],
-                            })),
-                        )
-                    ) |
-                    StatementKind::Assign(
-                        box(
-                            Place {
-                                base: PlaceBase::Local(local),
-                                projection: box [],
-                            },
-                            Rvalue::Use(Operand::Move(Place {
-                                base: PlaceBase::Local(src_local),
-                                projection: box [],
-                            })),
-                        )
-                    ) if local == dest_local && dest_local == src_local => {}
+                match &stmt.kind {
+                    StatementKind::Assign(box (place, Rvalue::Use(Operand::Copy(src_place))))
+                    | StatementKind::Assign(box (place, Rvalue::Use(Operand::Move(src_place)))) => {
+                        if let (Some(local), Some(src_local)) =
+                            (place.as_local(), src_place.as_local())
+                        {
+                            if local == dest_local && dest_local == src_local {
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    }
                     _ => {
                         continue;
                     }
@@ -198,10 +189,7 @@ impl<'tcx> Action<'tcx> {
     fn local_copy(body: &Body<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
-        let src_local = if let Place {
-            base: PlaceBase::Local(local),
-            projection: box [],
-        } = *src_place {
+        let src_local = if let Some(local) = src_place.as_local() {
             local
         } else {
             debug!("  Can't copy-propagate local: source is not a local");
@@ -354,15 +342,18 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
 
-        match *operand {
-            Operand::Copy(Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
-            }) |
-            Operand::Move(Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
-            }) if local == self.dest_local => {}
+        match operand {
+            Operand::Copy(place) |
+            Operand::Move(place) => {
+                if let Some(local) = place.as_local() {
+                    if local == self.dest_local {
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
             _ => return,
         }
 

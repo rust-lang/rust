@@ -864,17 +864,24 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
 
     for (block, block_data) in body.basic_blocks().iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
-            &Terminator {
+            Terminator {
                 source_info,
                 kind: TerminatorKind::Drop {
-                    location: Place {
-                        base: PlaceBase::Local(local),
-                        projection: box [],
-                    },
+                    location,
                     target,
                     unwind
                 }
-            } if local == gen => (target, unwind, source_info),
+            } => {
+                if let Some(local) = location.as_local() {
+                    if local == gen {
+                        (target, unwind, source_info)
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
             _ => continue,
         };
         let unwind = if block_data.is_cleanup {
@@ -884,10 +891,10 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
         };
         elaborate_drop(
             &mut elaborator,
-            source_info,
+            *source_info,
             &Place::from(gen),
             (),
-            target,
+            *target,
             unwind,
             block,
         );

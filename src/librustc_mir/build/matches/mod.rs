@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows
         {
-            let mut cursor = &*place.projection;
+            let mut cursor = place.projection.as_ref();
             while let [proj_base @ .., elem] = cursor {
                 cursor = proj_base;
 
