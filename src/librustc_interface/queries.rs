@@ -164,7 +164,7 @@ impl Compiler {
             passes::configure_and_expand(
                 self.sess.clone(),
                 lint_store.clone(),
-                self.cstore().clone(),
+                self.codegen_backend().metadata_loader(),
                 krate,
                 &crate_name,
                 plugin_info,
@@ -202,7 +202,6 @@ impl Compiler {
                 passes::lower_to_hir(
                     self.session(),
                     lint_store,
-                    self.cstore(),
                     resolver,
                     &*self.dep_graph()?.peek(),
                     &krate
@@ -214,11 +213,11 @@ impl Compiler {
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
         self.queries.prepare_outputs.compute(|| {
-            let krate = self.expansion()?;
-            let krate = krate.peek();
+            let expansion_result = self.expansion()?;
+            let (krate, boxed_resolver) = &*expansion_result.peek();
             let crate_name = self.crate_name()?;
             let crate_name = crate_name.peek();
-            passes::prepare_outputs(self.session(), self, &krate.0, &*crate_name)
+            passes::prepare_outputs(self.session(), self, &krate, &boxed_resolver, &crate_name)
         })
     }
 

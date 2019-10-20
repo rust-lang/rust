@@ -29,7 +29,6 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map;
-use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::source_map::Spanned;
@@ -411,10 +410,6 @@ impl cstore::CStore {
         }
     }
 
-    pub fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition {
-        self.get_crate_data(cnum).root.edition
-    }
-
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }
@@ -470,7 +465,7 @@ impl cstore::CStore {
             }),
             vis: source_map::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             tokens: None,
-        })
+        }, data.root.edition)
     }
 
     pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {

@@ -21,7 +21,7 @@ use Determinacy::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
-use rustc::middle::cstore::CrateStore;
+use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
@@ -829,7 +829,6 @@ pub struct ExternPreludeEntry<'a> {
 /// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
-    cstore: &'a CStore,
 
     definitions: Definitions,
 
@@ -916,7 +915,7 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: &'a CrateLoader<'a>,
+    crate_loader: CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
@@ -1015,7 +1014,7 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
-            _ => self.cstore.def_key(id).parent,
+            _ => self.cstore().def_key(id).parent,
         }.map(|index| DefId { index, ..id })
     }
 }
@@ -1023,6 +1022,10 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
+    fn cstore(&self) -> &dyn CrateStore {
+        self.cstore()
+    }
+
     fn resolve_str_path(
         &mut self,
         span: Span,
@@ -1083,10 +1086,9 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
-               cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               crate_loader: &'a CrateLoader<'a>,
+               metadata_loader: &'a MetadataLoaderDyn,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
@@ -1147,8 +1149,6 @@ impl<'a> Resolver<'a> {
         Resolver {
             session,
 
-            cstore,
-
             definitions,
 
             // The outermost module has def ID 0; this is not reflected in the
@@ -1202,7 +1202,7 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
 
-            crate_loader,
+            crate_loader: CrateLoader::new(session, metadata_loader, crate_name),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             macro_use_prelude: FxHashMap::default(),
@@ -1239,6 +1239,7 @@ impl<'a> Resolver<'a> {
     pub fn into_outputs(self) -> ResolverOutputs {
         ResolverOutputs {
             definitions: self.definitions,
+            cstore: Box::new(self.crate_loader.into_cstore()),
             extern_crate_map: self.extern_crate_map,
             export_map: self.export_map,
             trait_map: self.trait_map,
@@ -1254,6 +1255,7 @@ impl<'a> Resolver<'a> {
     pub fn clone_outputs(&self) -> ResolverOutputs {
         ResolverOutputs {
             definitions: self.definitions.clone(),
+            cstore: Box::new(self.cstore().clone()),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
             trait_map: self.trait_map.clone(),
@@ -1264,6 +1266,10 @@ impl<'a> Resolver<'a> {
                 (ident.name, entry.introduced_by_item)
             }).collect(),
         }
+    }
+
+    pub fn cstore(&self) -> &CStore {
+        self.crate_loader.cstore()
     }
 
     fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {

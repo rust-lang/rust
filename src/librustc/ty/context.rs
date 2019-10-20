@@ -1027,7 +1027,7 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
-    cstore: &'tcx CrateStoreDyn,
+    cstore: Box<CrateStoreDyn>,
 
     pub sess: &'tcx Session,
 
@@ -1195,7 +1195,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_global_ctxt(
         s: &'tcx Session,
         lint_store: Lrc<lint::LintStore>,
-        cstore: &'tcx CrateStoreDyn,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
@@ -1213,6 +1212,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
         let dep_graph = hir.dep_graph.clone();
+        let cstore = resolutions.cstore;
         let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
@@ -1428,7 +1428,7 @@ impl<'tcx> TyCtxt<'tcx> {
         StableHashingContext::new(self.sess,
                                   krate,
                                   self.hir().definitions(),
-                                  self.cstore)
+                                  &*self.cstore)
     }
 
     // This method makes sure that we have a DepNode and a Fingerprint for

@@ -14,7 +14,7 @@ use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
-use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource};
+use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
@@ -38,9 +38,12 @@ crate struct Library {
 }
 
 pub struct CrateLoader<'a> {
+    // Immutable configuration.
     sess: &'a Session,
-    cstore: &'a CStore,
+    metadata_loader: &'a MetadataLoaderDyn,
     local_crate_name: Symbol,
+    // Mutable output.
+    cstore: CStore,
 }
 
 fn dump_crates(cstore: &CStore) {
@@ -75,12 +78,25 @@ impl<'a> LoadError<'a> {
 }
 
 impl<'a> CrateLoader<'a> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore, local_crate_name: &str) -> Self {
+    pub fn new(
+        sess: &'a Session,
+        metadata_loader: &'a MetadataLoaderDyn,
+        local_crate_name: &str,
+    ) -> Self {
         CrateLoader {
             sess,
-            cstore,
+            metadata_loader,
             local_crate_name: Symbol::intern(local_crate_name),
+            cstore: Default::default(),
         }
+    }
+
+    pub fn cstore(&self) -> &CStore {
+        &self.cstore
+    }
+
+    pub fn into_cstore(self) -> CStore {
+        self.cstore
     }
 
     fn existing_match(&self, name: Symbol, hash: Option<&Svh>, kind: PathKind)
@@ -346,7 +362,7 @@ impl<'a> CrateLoader<'a> {
                 rejected_via_filename: vec![],
                 should_match_name: true,
                 is_proc_macro: Some(false),
-                metadata_loader: &*self.cstore.metadata_loader,
+                metadata_loader: self.metadata_loader,
             };
 
             self.load(&mut locate_ctxt).map(|r| (r, None)).or_else(|| {
