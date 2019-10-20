@@ -3393,9 +3393,15 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     fn_like.asyncness()
 }
 
+pub enum NonStructuralMatchTy<'tcx> {
+    Adt(&'tcx AdtDef),
+    Param,
+}
+
 /// This method traverses the structure of `ty`, trying to find an
 /// instance of an ADT (i.e. struct or enum) that was declared without
-/// the `#[structural_match]` attribute.
+/// the `#[structural_match]` attribute, or a generic type parameter
+/// (which cannot be determined to be `structural_match`).
 ///
 /// The "structure of a type" includes all components that would be
 /// considered when doing a pattern match on a constant of that
@@ -3417,10 +3423,10 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 /// For more background on why Rust has this requirement, and issues
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
-pub fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
-                                                 ty: Ty<'tcx>)
-                                                 -> Option<&'tcx AdtDef>
-{
+pub fn search_for_structural_match_violation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<NonStructuralMatchTy<'tcx>> {
     let mut search = Search { tcx, found: None, seen: FxHashSet::default() };
     ty.visit_with(&mut search);
     return search.found;
@@ -3428,11 +3434,11 @@ pub fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
     struct Search<'tcx> {
         tcx: TyCtxt<'tcx>,
 
-        // records the first ADT we find without `#[structural_match`
-        found: Option<&'tcx AdtDef>,
+        // Records the first ADT or type parameter we find without `#[structural_match`.
+        found: Option<NonStructuralMatchTy<'tcx>>,
 
-        // tracks ADT's previously encountered during search, so that
-        // we will not recur on them again.
+        // Tracks ADTs previously encountered during search, so that
+        // we will not recurse on them again.
         seen: FxHashSet<hir::def_id::DefId>,
     }
 
@@ -3442,6 +3448,10 @@ pub fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
 
             let (adt_def, substs) = match ty.kind {
                 ty::Adt(adt_def, substs) => (adt_def, substs),
+                ty::Param(_) => {
+                    self.found = Some(NonStructuralMatchTy::Param);
+                    return true; // Stop visiting.
+                }
                 ty::RawPtr(..) => {
                     // `#[structural_match]` ignores substructure of
                     // `*const _`/`*mut _`, so skip super_visit_with
@@ -3468,9 +3478,9 @@ pub fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
             };
 
             if !self.tcx.has_attr(adt_def.did, sym::structural_match) {
-                self.found = Some(&adt_def);
+                self.found = Some(NonStructuralMatchTy::Adt(&adt_def));
                 debug!("Search found adt_def: {:?}", adt_def);
-                return true // Halt visiting!
+                return true; // Stop visiting.
             }
 
             if !self.seen.insert(adt_def.did) {

@@ -999,15 +999,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if self.include_lint_checks && !saw_error {
             // If we were able to successfully convert the const to some pat, double-check
             // that the type of the const obeys `#[structural_match]` constraint.
-            if let Some(adt_def) = ty::search_for_adt_without_structural_match(self.tcx, cv.ty) {
-
-                let path = self.tcx.def_path_str(adt_def.did);
-                let msg = format!(
-                    "to use a constant of type `{}` in a pattern, \
-                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                    path,
-                    path,
-                );
+            if let Some(non_sm_ty) = ty::search_for_structural_match_violation(self.tcx, cv.ty) {
+                let msg = match non_sm_ty {
+                    ty::NonStructuralMatchTy::Adt(adt_def) => {
+                        let path = self.tcx.def_path_str(adt_def.did);
+                        format!(
+                            "to use a constant of type `{}` in a pattern, \
+                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                            path,
+                            path,
+                        )
+                    }
+                    ty::NonStructuralMatchTy::Param => {
+                        bug!("use of constant whose type is a parameter inside a pattern");
+                    }
+                };
 
                 // before issuing lint, double-check there even *is* a
                 // semantic PartialEq for us to dispatch to.
