@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:explicit panic
 
 use std::sync::Arc;

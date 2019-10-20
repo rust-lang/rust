@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:beep boop
 
 #![allow(unused_variables)]

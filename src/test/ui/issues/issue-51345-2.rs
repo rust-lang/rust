@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern: thread 'main' panicked at 'explicit panic'
 
 fn main() {

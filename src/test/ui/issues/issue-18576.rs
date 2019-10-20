@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:stop
 
 // #18576

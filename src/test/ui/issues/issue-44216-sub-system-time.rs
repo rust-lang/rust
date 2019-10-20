@@ -1,8 +1,9 @@
+// run-fail
 // error-pattern:overflow
 
-use std::time::{Instant, Duration};
+use std::time::{Duration, SystemTime};
 
 fn main() {
-    let now = Instant::now();
+    let now = SystemTime::now();
     let _ = now - Duration::from_secs(u64::max_value());
 }

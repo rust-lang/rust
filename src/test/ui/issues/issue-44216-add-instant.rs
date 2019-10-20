@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:overflow
 
 use std::time::{Instant, Duration};

@@ -3,6 +3,7 @@
 #![allow(unused_variables)]
 
 
+// run-fail
 // error-pattern:so long
 fn main() {
     let mut x = Vec::new();

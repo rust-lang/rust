@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:custom message
 
 fn main() {

@@ -1,5 +1,6 @@
 // Regression test for Issue #20971.
 
+// run-fail
 // error-pattern:Hello, world!
 
 pub trait Parser {

@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:bad input
 
 fn main() {

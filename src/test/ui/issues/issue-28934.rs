@@ -1,6 +1,7 @@
 // Regression test: issue had to do with "givens" in region inference,
 // which were not being considered during the contraction phase.
 
+// run-fail
 // error-pattern:explicit panic
 
 struct Parser<'i: 't, 't>(&'i u8, &'t u8);
