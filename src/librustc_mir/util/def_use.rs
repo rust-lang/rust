@@ -2,6 +2,7 @@
 
 use rustc::mir::{Body, Local, Location, PlaceElem};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
+use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
 use std::mem;
 
@@ -47,20 +48,26 @@ impl DefUseAnalysis {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses(&self, local: Local, body: &mut Body<'_>, new_local: Local) {
+    fn mutate_defs_and_uses(
+        &self,
+        local: Local,
+        body: &mut Body<'tcx>,
+        new_local: Local,
+        tcx: TyCtxt<'tcx>,
+    ) {
         for place_use in &self.info[local].defs_and_uses {
-            MutateUseVisitor::new(local,
-                                  new_local,
-                                  body).visit_location(body, place_use.location)
+            MutateUseVisitor::new(local, new_local, body, tcx)
+                .visit_location(body, place_use.location)
         }
     }
 
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          body: &mut Body<'_>,
-                                          new_local: Local) {
-        self.mutate_defs_and_uses(local, body, new_local)
+                                          body: &mut Body<'tcx>,
+                                          new_local: Local,
+                                          tcx: TyCtxt<'tcx>) {
+        self.mutate_defs_and_uses(local, body, new_local, tcx)
     }
 }
 
@@ -114,21 +121,28 @@ impl Info {
     }
 }
 
-struct MutateUseVisitor {
+struct MutateUseVisitor<'tcx> {
     query: Local,
     new_local: Local,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl MutateUseVisitor {
-    fn new(query: Local, new_local: Local, _: &Body<'_>) -> MutateUseVisitor {
-        MutateUseVisitor {
-            query,
-            new_local,
-        }
+impl MutateUseVisitor<'tcx> {
+    fn new(
+        query: Local,
+        new_local: Local,
+        _: &Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> MutateUseVisitor<'tcx> {
+        MutateUseVisitor { query, new_local, tcx }
     }
 }
 
-impl MutVisitor<'_> for MutateUseVisitor {
+impl MutVisitor<'tcx> for MutateUseVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_local(&mut self,
                     local: &mut Local,
                     _context: PlaceContext,

@@ -29,29 +29,32 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         };
 
         // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations }, body);
+        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
     }
 }
 
 pub struct InstCombineVisitor<'tcx> {
     optimizations: OptimizationList<'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
                     if let &[ref proj_l @ .., proj_r] = place.projection.as_ref() {
-                        let new_projection = proj_l.to_vec().into_boxed_slice();
-
-                        place.projection = vec![proj_r.clone()].into_boxed_slice();
+                        place.projection = self.tcx().intern_place_elems(&vec![proj_r.clone()]);
 
                         Place {
                             // Replace with dummy
                             base: mem::replace(&mut place.base, PlaceBase::Local(Local::new(0))),
-                            projection: new_projection,
+                            projection: self.tcx().intern_place_elems(proj_l),
                         }
                     } else {
                         unreachable!();

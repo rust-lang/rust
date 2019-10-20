@@ -687,6 +687,10 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
 }
 
 impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_constant(
         &mut self,
         constant: &mut Constant<'tcx>,

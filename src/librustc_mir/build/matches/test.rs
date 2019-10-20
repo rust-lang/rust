@@ -749,13 +749,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem = ProjectionElem::Downcast(
             Some(adt_def.variants[variant_index].ident.name), variant_index);
-        let downcast_place = match_pair.place.elem(elem); // `(x as Variant)`
+        let downcast_place = match_pair.place.elem(elem, self.hir.tcx()); // `(x as Variant)`
         let consequent_match_pairs =
             subpatterns.iter()
                        .map(|subpattern| {
                            // e.g., `(x as Variant).0`
                            let place = downcast_place.clone().field(subpattern.field,
-                                                                      subpattern.pattern.ty);
+                                                                    subpattern.pattern.ty,
+                                                                    self.hir.tcx());
                            // e.g., `(x as Variant).0 @ P1`
                            MatchPair::new(place, &subpattern.pattern)
                        });

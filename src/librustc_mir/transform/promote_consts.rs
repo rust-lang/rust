@@ -17,7 +17,7 @@ use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::subst::InternalSubsts;
-use rustc::ty::TyCtxt;
+use rustc::ty::{List, TyCtxt};
 use syntax_pos::Span;
 
 use rustc_index::vec::{IndexVec, Idx};
@@ -321,7 +321,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         ty,
                         def_id,
                     }),
-                    projection: box [],
+                    projection: List::empty(),
                 }
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                     &mut place.base,
                                     promoted_place(ty, span).base,
                                 ),
-                                projection: box [],
+                                projection: List::empty(),
                             })
                         }
                         _ => bug!()
@@ -396,6 +396,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
 /// Replaces all temporaries with their promoted counterparts.
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext,

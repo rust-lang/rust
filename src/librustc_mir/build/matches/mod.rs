@@ -948,7 +948,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     fake_borrows.insert(Place {
                         base: source.base.clone(),
-                        projection: proj_base.to_vec().into_boxed_slice(),
+                        projection: self.hir.tcx().intern_place_elems(proj_base),
                     });
                 }
             }
@@ -1488,7 +1488,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shallow,
                     Place {
                         base: place.base.clone(),
-                        projection: place.projection.to_vec().into_boxed_slice(),
+                        projection: tcx.intern_place_elems(place.projection),
                     },
                 );
                 self.cfg.push_assign(

@@ -461,7 +461,7 @@ impl Inliner<'tcx> {
                     };
                     caller_body[callsite.bb]
                         .statements.push(stmt);
-                    tmp.deref()
+                    tmp.deref(self.tcx)
                 } else {
                     destination.0
                 };
@@ -481,6 +481,7 @@ impl Inliner<'tcx> {
                     return_block,
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
+                    tcx: self.tcx,
                 };
 
 
@@ -562,6 +563,7 @@ impl Inliner<'tcx> {
                     let tuple_field = Operand::Move(tuple.clone().field(
                         Field::new(i),
                         ty.expect_ty(),
+                        tcx,
                     ));
 
                     // Spill to a local to make e.g., `tmp0`.
@@ -638,6 +640,7 @@ struct Integrator<'a, 'tcx> {
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -665,6 +668,10 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_local(
         &mut self,
         local: &mut Local,

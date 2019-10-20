@@ -15,8 +15,7 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, Region, Ty, TyCtxt,
-    UserTypeAnnotationIndex,
+    self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
 
 use polonius_engine::Atom;
@@ -1712,14 +1711,16 @@ impl Debug for Statement<'_> {
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
+    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, HashStable,
 )]
 pub struct Place<'tcx> {
     pub base: PlaceBase<'tcx>,
 
     /// projection out of a place (access a field, deref a pointer, etc)
-    pub projection: Box<[PlaceElem<'tcx>]>,
+    pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
+
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for Place<'tcx> {}
 
 #[derive(
     Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
@@ -1848,50 +1849,56 @@ pub struct PlaceRef<'a, 'tcx> {
 }
 
 impl<'tcx> Place<'tcx> {
-    // FIXME change this back to a const when projection is a shared slice.
-    //
-    // pub const RETURN_PLACE: Place<'tcx> = Place {
-    //     base: PlaceBase::Local(RETURN_PLACE),
-    //     projection: &[],
-    // };
+    // FIXME change this to a const fn by also making List::empty a const fn.
     pub fn return_place() -> Place<'tcx> {
         Place {
             base: PlaceBase::Local(RETURN_PLACE),
-            projection: Box::new([]),
+            projection: List::empty(),
         }
     }
 
-    pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
-        self.elem(ProjectionElem::Field(f, ty))
+    pub fn field(self, f: Field, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        self.elem(ProjectionElem::Field(f, ty), tcx)
     }
 
-    pub fn deref(self) -> Place<'tcx> {
-        self.elem(ProjectionElem::Deref)
+    pub fn deref(self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        self.elem(ProjectionElem::Deref, tcx)
     }
 
-    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Place<'tcx> {
-        self.elem(ProjectionElem::Downcast(
-            Some(adt_def.variants[variant_index].ident.name),
-            variant_index,
-        ))
+    pub fn downcast(
+        self,
+        adt_def: &'tcx AdtDef,
+        variant_index: VariantIdx,
+        tcx: TyCtxt<'tcx>,
+    ) -> Place<'tcx> {
+        self.elem(
+            ProjectionElem::Downcast(
+                Some(adt_def.variants[variant_index].ident.name),
+                variant_index,
+            ),
+            tcx,
+        )
     }
 
-    pub fn downcast_unnamed(self, variant_index: VariantIdx) -> Place<'tcx> {
-        self.elem(ProjectionElem::Downcast(None, variant_index))
+    pub fn downcast_unnamed(self, variant_index: VariantIdx, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        self.elem(ProjectionElem::Downcast(None, variant_index), tcx)
     }
 
-    pub fn index(self, index: Local) -> Place<'tcx> {
-        self.elem(ProjectionElem::Index(index))
+    pub fn index(self, index: Local, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        self.elem(ProjectionElem::Index(index), tcx)
     }
 
-    pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        // FIXME(spastorino): revisit this again once projection is not a Box<[T]> anymore
-        let mut projection = self.projection.into_vec();
+    /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
+    /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
+    /// flight.
+    // FIXME: It may be a better idea to move all these methods to `PlaceBuilder`
+    pub fn elem(self, elem: PlaceElem<'tcx>, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
+        let mut projection = self.projection.to_vec();
         projection.push(elem);
 
         Place {
             base: self.base,
-            projection: projection.into_boxed_slice(),
+            projection: tcx.intern_place_elems(&projection),
         }
     }
 
@@ -1939,7 +1946,7 @@ impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
         Place {
             base: local.into(),
-            projection: Box::new([]),
+            projection: List::empty(),
         }
     }
 }
@@ -3187,6 +3194,17 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
             PlaceBase::Local(local) => local.visit_with(visitor),
             PlaceBase::Static(static_) => (**static_).visit_with(visitor),
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<Vec<_>>();
+        folder.tcx().intern_place_elems(&v)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|t| t.visit_with(visitor))
     }
 }
 

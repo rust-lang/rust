@@ -116,16 +116,13 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                             min_length: size,
                             from_end: false,
                         });
-                        self.patch.add_assign(location,
-                                              Place::from(temp),
-                                              Rvalue::Use(
-                                                  Operand::Move(
-                                                      Place {
-                                                          base: base.clone(),
-                                                          projection: projection.into_boxed_slice(),
-                                                      }
-                                                  )
-                                              )
+                        self.patch.add_assign(
+                            location,
+                            Place::from(temp),
+                            Rvalue::Use(Operand::Move(Place {
+                                base: base.clone(),
+                                projection: self.tcx.intern_place_elems(&projection),
+                            })),
                         );
                         temp
                     }).collect();
@@ -153,16 +150,13 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                         min_length: size,
                         from_end: false,
                     });
-                    self.patch.add_assign(location,
-                                          dst_place.clone(),
-                                          Rvalue::Use(
-                                              Operand::Move(
-                                                  Place {
-                                                      base: base.clone(),
-                                                      projection: projection.into_boxed_slice(),
-                                                  }
-                                              )
-                                          )
+                    self.patch.add_assign(
+                        location,
+                        dst_place.clone(),
+                        Rvalue::Use(Operand::Move(Place {
+                            base: base.clone(),
+                            projection: self.tcx.intern_place_elems(&projection),
+                        })),
                     );
                 }
                 _ => {}
@@ -185,9 +179,11 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
 //
 // replaced by _10 = move _2[:-1];
 
-pub struct RestoreSubsliceArrayMoveOut;
+pub struct RestoreSubsliceArrayMoveOut<'tcx> {
+    tcx: TyCtxt<'tcx>
+}
 
-impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
+impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);
         let param_env = tcx.param_env(src.def_id());
@@ -229,7 +225,9 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
                                 None
                             }
                         });
-                        Self::check_and_patch(*candidate, &items, opt_size, &mut patch, dst_place);
+                        let restore_subslice = RestoreSubsliceArrayMoveOut { tcx };
+                        restore_subslice
+                            .check_and_patch(*candidate, &items, opt_size, &mut patch, dst_place);
                     }
                 }
             }
@@ -238,15 +236,20 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
     }
 }
 
-impl RestoreSubsliceArrayMoveOut {
+impl RestoreSubsliceArrayMoveOut<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        RestoreSubsliceArrayMoveOut { tcx }
+    }
+
     // Checks that source has size, all locals are inited from same source place and
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
-    fn check_and_patch<'tcx>(candidate: Location,
-                             items: &[Option<(&LocalUse, u32, PlaceRef<'_, 'tcx>)>],
-                             opt_size: Option<u64>,
-                             patch: &mut MirPatch<'tcx>,
-                             dst_place: &Place<'tcx>) {
+    fn check_and_patch(&self,
+                       candidate: Location,
+                       items: &[Option<(&LocalUse, u32, PlaceRef<'_, 'tcx>)>],
+                       opt_size: Option<u64>,
+                       patch: &mut MirPatch<'tcx>,
+                       dst_place: &Place<'tcx>) {
         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
 
         if opt_size.is_some() && items.iter().all(
@@ -279,14 +282,14 @@ impl RestoreSubsliceArrayMoveOut {
                 dst_place.clone(),
                 Rvalue::Use(Operand::Move(Place {
                     base: src_place.base.clone(),
-                    projection: projection.into_boxed_slice(),
+                    projection: self.tcx.intern_place_elems(&projection),
                 })),
             );
         }
     }
 
-    fn try_get_item_source<'a, 'tcx>(local_use: &LocalUse,
-                                     body: &'a Body<'tcx>) -> Option<(u32, PlaceRef<'a, 'tcx>)> {
+    fn try_get_item_source<'a>(local_use: &LocalUse,
+                               body: &'a Body<'tcx>) -> Option<(u32, PlaceRef<'a, 'tcx>)> {
         if let Some(location) = local_use.first_use {
             let block = &body[location.block];
             if block.statements.len() > location.statement_index {

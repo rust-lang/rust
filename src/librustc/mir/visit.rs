@@ -784,6 +784,8 @@ macro_rules! make_mir_visitor {
 
 macro_rules! visit_place_fns {
     (mut) => (
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+
         fn super_place(
             &mut self,
             place: &mut Place<'tcx>,
@@ -793,19 +795,21 @@ macro_rules! visit_place_fns {
             self.visit_place_base(&mut place.base, context, location);
 
             if let Some(new_projection) = self.process_projection(&place.projection) {
-                place.projection = new_projection;
+                place.projection = self.tcx().intern_place_elems(&new_projection);
             }
         }
 
         fn process_projection(
             &mut self,
             projection: &'a [PlaceElem<'tcx>],
-        ) -> Option<Box<[PlaceElem<'tcx>]>> {
+        ) -> Option<Vec<PlaceElem<'tcx>>> {
             let mut projection = Cow::Borrowed(projection);
 
             for i in 0..projection.len() {
                 if let Some(elem) = projection.get(i) {
                     if let Some(elem) = self.process_projection_elem(elem) {
+                        // This converts the borrowed projection into `Cow::Owned(_)` and returns a
+                        // clone of the projection so we can mutate and reintern later.
                         let vec = projection.to_mut();
                         vec[i] = elem;
                     }
@@ -814,7 +818,7 @@ macro_rules! visit_place_fns {
 
             match projection {
                 Cow::Borrowed(_) => None,
-                Cow::Owned(vec) => Some(vec.into_boxed_slice()),
+                Cow::Owned(vec) => Some(vec),
             }
         }
 

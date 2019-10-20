@@ -206,7 +206,7 @@ where
                 self.elaborator.param_env(),
                 f.ty(self.tcx(), substs),
             );
-            (base_place.clone().field(field, field_ty), subpath)
+            (base_place.clone().field(field, field_ty, self.tcx()), subpath)
         }).collect()
     }
 
@@ -323,7 +323,7 @@ where
         debug!("open_drop_for_tuple({:?}, {:?})", self, tys);
 
         let fields = tys.iter().enumerate().map(|(i, &ty)| {
-            (self.place.clone().field(Field::new(i), ty),
+            (self.place.clone().field(Field::new(i), ty, self.tcx()),
              self.elaborator.field_subpath(self.path, Field::new(i)))
         }).collect();
 
@@ -334,7 +334,7 @@ where
     fn open_drop_for_box(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
-        let interior = self.place.clone().deref();
+        let interior = self.place.clone().deref(self.tcx());
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.succ; // FIXME(#43234)
@@ -413,7 +413,7 @@ where
             if let Some(variant_path) = subpath {
                 let base_place = self.place.clone().elem(
                     ProjectionElem::Downcast(Some(adt.variants[variant_index].ident.name),
-                                             variant_index));
+                                             variant_index), self.tcx());
                 let fields = self.move_paths_for_fields(
                     &base_place,
                     variant_path,
@@ -586,7 +586,7 @@ where
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 Place {
                     base: PlaceBase::Local(cur),
-                    projection: Box::new([ProjectionElem::Deref]),
+                    projection: self.tcx().intern_place_elems(&vec![ProjectionElem::Deref]),
                 }
              ),
              Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
@@ -594,7 +594,7 @@ where
             (Rvalue::Ref(
                  tcx.lifetimes.re_erased,
                  BorrowKind::Mut { allow_two_phase_borrow: false },
-                 self.place.clone().index(cur)),
+                 self.place.clone().index(cur, self.tcx())),
              Rvalue::BinaryOp(BinOp::Add, move_(&Place::from(cur)), one))
         };
 
@@ -627,7 +627,7 @@ where
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
         self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
-            location: ptr.clone().deref(),
+            location: ptr.clone().deref(tcx),
             target: loop_block,
             unwind: unwind.into_option()
         });
@@ -653,7 +653,7 @@ where
                     offset: i,
                     min_length: size,
                     from_end: false
-                }),
+                }, self.tcx()),
                  self.elaborator.array_subpath(self.path, i, size))
             }).collect();
 
@@ -901,7 +901,7 @@ where
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let field_ty = f.ty(self.tcx(), substs);
-            Operand::Move(self.place.clone().field(field, field_ty))
+            Operand::Move(self.place.clone().field(field, field_ty, self.tcx()))
         }).collect();
 
         let call = TerminatorKind::Call {

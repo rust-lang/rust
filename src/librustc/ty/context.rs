@@ -2711,6 +2711,11 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 
+    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>],
+                          &'tcx List<PlaceElem<'tcx>>>>(self, iter: I) -> I::Output {
+        iter.intern_with(|xs| self.intern_place_elems(xs))
+    }
+
     pub fn mk_substs_trait(self,
                      self_ty: Ty<'tcx>,
                      rest: &[GenericArg<'tcx>])

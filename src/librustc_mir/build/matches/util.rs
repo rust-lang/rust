@@ -13,7 +13,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns.iter()
                    .map(|fieldpat| {
                        let place = place.clone().field(fieldpat.field,
-                                                       fieldpat.pattern.ty);
+                                                       fieldpat.pattern.ty,
+                                                       self.hir.tcx());
                        MatchPair::new(place, &fieldpat.pattern)
                    })
                    .collect()
@@ -37,7 +38,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                           min_length,
                           from_end: false,
                       };
-                      let place = place.clone().elem(elem);
+                      let place = place.clone().elem(elem, self.hir.tcx());
                       MatchPair::new(place, subpattern)
                   })
         );
@@ -46,7 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let subslice = place.clone().elem(ProjectionElem::Subslice {
                 from: prefix.len() as u32,
                 to: suffix.len() as u32
-            });
+            }, self.hir.tcx());
             match_pairs.push(MatchPair::new(subslice, subslice_pat));
         }
 
@@ -60,7 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                           min_length,
                           from_end: true,
                       };
-                      let place = place.clone().elem(elem);
+                      let place = place.clone().elem(elem, self.hir.tcx());
                       MatchPair::new(place, subpattern)
                   })
         );

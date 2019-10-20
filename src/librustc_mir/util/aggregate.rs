@@ -1,5 +1,5 @@
 use rustc::mir::*;
-use rustc::ty::Ty;
+use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
 use rustc_index::vec::Idx;
 
@@ -17,6 +17,7 @@ pub fn expand_aggregate<'tcx>(
     operands: impl Iterator<Item=(Operand<'tcx>, Ty<'tcx>)> + TrustedLen,
     kind: AggregateKind<'tcx>,
     source_info: SourceInfo,
+    tcx: TyCtxt<'tcx>,
 ) -> impl Iterator<Item=Statement<'tcx>> + TrustedLen {
     let mut set_discriminant = None;
     let active_field_index = match kind {
@@ -29,7 +30,7 @@ pub fn expand_aggregate<'tcx>(
                     },
                     source_info,
                 });
-                lhs = lhs.downcast(adt_def, variant_index);
+                lhs = lhs.downcast(adt_def, variant_index, tcx);
             }
             active_field_index
         }
@@ -63,10 +64,10 @@ pub fn expand_aggregate<'tcx>(
                 // FIXME(eddyb) `min_length` doesn't appear to be used.
                 min_length: offset + 1,
                 from_end: false
-            })
+            }, tcx)
         } else {
             let field = Field::new(active_field_index.unwrap_or(i));
-            lhs.clone().field(field, ty)
+            lhs.clone().field(field, ty, tcx)
         };
         Statement {
             source_info,

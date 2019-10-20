@@ -707,10 +707,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             _ => drop_span,
         };
 
+        let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
+
         if self.access_place_error_reported
             .contains(&(Place {
                 base: root_place.base.clone(),
-                projection: root_place.projection.to_vec().into_boxed_slice(),
+                projection: root_place_projection,
             }, borrow_span))
         {
             debug!(
@@ -723,7 +725,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.access_place_error_reported
             .insert((Place {
                 base: root_place.base.clone(),
-                projection: root_place.projection.to_vec().into_boxed_slice(),
+                projection: root_place_projection,
             }, borrow_span));
 
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
