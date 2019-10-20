@@ -1,8 +1,8 @@
-error: expected `;`, found keyword `as`
+error: expected `;`, found `as`
   --> $DIR/import-glob-rename.rs:3:12
    |
 LL | use foo::* as baz;
-   |            ^^ expected `;`
+   |            ^^ expected `;` here
 
 error: aborting due to previous error
 

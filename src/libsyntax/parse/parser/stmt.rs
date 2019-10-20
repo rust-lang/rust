@@ -432,6 +432,7 @@ impl<'a> Parser<'a> {
             None => return Ok(None),
         };
 
+        let mut eat_semi = true;
         match stmt.kind {
             StmtKind::Expr(ref expr) if self.token != token::Eof => {
                 // expression without semicolon
@@ -453,13 +454,14 @@ impl<'a> Parser<'a> {
                 if macro_legacy_warnings && self.token != token::Semi {
                     self.warn_missing_semicolon();
                 } else {
-                    self.expect_one_of(&[], &[token::Semi])?;
+                    self.expect_semi()?;
+                    eat_semi = false;
                 }
             }
             _ => {}
         }
 
-        if self.eat(&token::Semi) {
+        if eat_semi && self.eat(&token::Semi) {
             stmt = stmt.add_trailing_semicolon();
         }
         stmt.span = stmt.span.to(self.prev_span);

@@ -1,13 +1,13 @@
 fn main() {
     let _: usize = ()
     //~^ ERROR mismatched types
+    //~| ERROR expected `;`
     let _ = 3;
-    //~^ ERROR expected one of
 }
 
 fn foo() -> usize {
     let _: usize = ()
     //~^ ERROR mismatched types
+    //~| ERROR expected `;`
     return 3;
-    //~^ ERROR expected one of
 }

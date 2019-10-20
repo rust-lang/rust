@@ -2,7 +2,7 @@ error: expected `;`, found `::`
   --> $DIR/import-glob-path.rs:2:11
    |
 LL | use foo::*::bar
-   |           ^^ expected `;`
+   |           ^^ expected `;` here
 
 error: aborting due to previous error
 
