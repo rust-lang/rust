@@ -4,21 +4,9 @@ use crate::time::Duration;
 use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use core::hash::{Hash, Hasher};
-
-const NSEC_PER_SEC: u64 = 1_000_000_000;
-const CLOCK_REALTIME: u64 = 1;
-const CLOCK_MONOTONIC: u64 = 4;
-
-extern "C" {
-    fn sys_clock_gettime(clock_id: u64, tp: *mut timespec) -> i32;
-}
-
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct timespec {
-    pub tv_sec: i64,
-    pub tv_nsec: i64,
-}
+use crate::sys::hermit::abi;
+use crate::sys::hermit::abi::{CLOCK_REALTIME, CLOCK_MONOTONIC, NSEC_PER_SEC};
+use crate::sys::hermit::abi::timespec;
 
 #[derive(Copy, Clone, Debug)]
 struct Timespec {
@@ -131,7 +119,7 @@ pub struct Instant {
 impl Instant {
     pub fn now() -> Instant {
         let mut time: Timespec = Timespec::zero();
-        let _ = unsafe { sys_clock_gettime(CLOCK_MONOTONIC, &mut time.t as *mut timespec) };
+        let _ = unsafe { abi::clock_gettime(CLOCK_MONOTONIC, &mut time.t as *mut timespec) };
 
         Instant { t: time }
     }
@@ -169,7 +157,7 @@ pub const UNIX_EPOCH: SystemTime = SystemTime {
 impl SystemTime {
     pub fn now() -> SystemTime {
         let mut time: Timespec = Timespec::zero();
-        let _ = unsafe { sys_clock_gettime(CLOCK_REALTIME, &mut time.t as *mut timespec) };
+        let _ = unsafe { abi::clock_gettime(CLOCK_REALTIME, &mut time.t as *mut timespec) };
 
         SystemTime { t: time }
     }

@@ -3,13 +3,8 @@
 use crate::io::{self, Read, ErrorKind};
 use crate::mem;
 use crate::sys::cvt;
+use crate::sys::hermit::abi;
 use crate::sys_common::AsInner;
-
-extern {
-    fn sys_read(fd: i32, buf: *mut u8, len: usize) -> isize;
-    fn sys_write(fd: i32, buf: *const u8, len: usize) -> isize;
-    fn sys_close(fd: i32) -> i32;
-}
 
 #[derive(Debug)]
 pub struct FileDesc {
@@ -31,7 +26,7 @@ impl FileDesc {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let result = unsafe { sys_read(self.fd, buf.as_mut_ptr(), buf.len()) };
+        let result = unsafe { abi::read(self.fd, buf.as_mut_ptr(), buf.len()) };
         cvt(result as i32)
     }
 
@@ -41,7 +36,7 @@ impl FileDesc {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let result = unsafe { sys_write(self.fd, buf.as_ptr(), buf.len()) };
+        let result = unsafe { abi::write(self.fd, buf.as_ptr(), buf.len()) };
         cvt(result as i32)
     }
 
@@ -82,6 +77,6 @@ impl Drop for FileDesc {
         // the file descriptor was closed or not, and if we retried (for
         // something like EINTR), we might close another valid file descriptor
         // (opened after we closed ours.
-        let _ = unsafe { sys_close(self.fd) };
+        let _ = unsafe { abi::close(self.fd) };
     }
 }

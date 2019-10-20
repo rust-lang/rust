@@ -6,17 +6,13 @@ use crate::io::{SeekFrom, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, Void};
+use crate::sys::hermit::abi;
 use crate::sys::hermit::fd::FileDesc;
 use crate::sys::cvt;
 use crate::sys_common::os_str_bytes::OsStrExt;
 
 pub use crate::sys_common::fs::copy;
 //pub use crate::sys_common::fs::remove_dir_all;
-
-extern {
-    fn sys_open(name: *const i8, flags: i32, mode: i32) -> i32;
-    fn sys_unlink(name: *const i8) -> i32;
-}
 
 fn cstr(path: &Path) -> io::Result<CString> {
     Ok(CString::new(path.as_os_str().as_bytes())?)
@@ -272,7 +268,7 @@ impl File {
             mode = 0;
         }
 
-        let fd = unsafe { cvt(sys_open(path.as_ptr(), flags, mode))? };
+        let fd = unsafe { cvt(abi::open(path.as_ptr(), flags, mode))? };
         Ok(File(FileDesc::new(fd as i32)))
     }
 
@@ -345,7 +341,7 @@ pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
 
 pub fn unlink(path: &Path) -> io::Result<()> {
     let name = cstr(path)?;
-    let _ = unsafe { cvt(sys_unlink(name.as_ptr()))? };
+    let _ = unsafe { cvt(abi::unlink(name.as_ptr()))? };
     Ok(())
 }
 

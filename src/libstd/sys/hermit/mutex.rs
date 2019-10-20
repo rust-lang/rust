@@ -1,17 +1,6 @@
 use crate::ptr;
 use crate::ffi::c_void;
-
-extern "C" {
-    fn sys_sem_init(sem: *mut *const c_void, value: u32) -> i32;
-    fn sys_sem_destroy(sem: *const c_void) -> i32;
-    fn sys_sem_post(sem: *const c_void) -> i32;
-    fn sys_sem_trywait(sem: *const c_void) -> i32;
-    fn sys_sem_timedwait(sem: *const c_void, ms: u32) -> i32;
-    fn sys_recmutex_init(recmutex: *mut *const c_void) -> i32;
-    fn sys_recmutex_destroy(recmutex: *const c_void) -> i32;
-    fn sys_recmutex_lock(recmutex: *const c_void) -> i32;
-    fn sys_recmutex_unlock(recmutex: *const c_void) -> i32;
-}
+use crate::sys::hermit::abi;
 
 pub struct Mutex {
     inner: *const c_void
@@ -27,28 +16,28 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn init(&mut self) {
-        let _ = sys_sem_init(&mut self.inner as *mut *const c_void, 1);
+        let _ = abi::sem_init(&mut self.inner as *mut *const c_void, 1);
     }
 
     #[inline]
     pub unsafe fn lock(&self) {
-        let _ = sys_sem_timedwait(self.inner, 0);
+        let _ = abi::sem_timedwait(self.inner, 0);
     }
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let _ = sys_sem_post(self.inner);
+        let _ = abi::sem_post(self.inner);
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        let result = sys_sem_trywait(self.inner);
+        let result = abi::sem_trywait(self.inner);
         result == 0
     }
 
     #[inline]
     pub unsafe fn destroy(&self) {
-        let _ = sys_sem_destroy(self.inner);
+        let _ = abi::sem_destroy(self.inner);
     }
 }
 
@@ -63,12 +52,12 @@ impl ReentrantMutex {
 
     #[inline]
     pub unsafe fn init(&mut self) {
-        let _ = sys_recmutex_init(&mut self.inner as *mut *const c_void);
+        let _ = abi::recmutex_init(&mut self.inner as *mut *const c_void);
     }
 
     #[inline]
     pub unsafe fn lock(&self) {
-        let _ = sys_recmutex_lock(self.inner);
+        let _ = abi::recmutex_lock(self.inner);
     }
 
     #[inline]
@@ -78,11 +67,11 @@ impl ReentrantMutex {
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let _ = sys_recmutex_unlock(self.inner);
+        let _ = abi::recmutex_unlock(self.inner);
     }
 
     #[inline]
     pub unsafe fn destroy(&self) {
-        let _ = sys_recmutex_destroy(self.inner);
+        let _ = abi::recmutex_destroy(self.inner);
     }
 }

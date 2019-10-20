@@ -1,9 +1,6 @@
 use crate::io;
 use crate::io::{IoSlice, IoSliceMut};
-
-extern "C" {
-    fn sys_write(fd: i32, buf: *const u8, len: usize) -> isize;
-}
+use crate::sys::hermit::abi;
 
 pub struct Stdin;
 pub struct Stdout;
@@ -35,7 +32,7 @@ impl Stdout {
         let len;
 
         unsafe {
-            len = sys_write(1, data.as_ptr() as *const u8, data.len())
+            len = abi::write(1, data.as_ptr() as *const u8, data.len())
         }
 
         if len < 0 {
@@ -49,7 +46,7 @@ impl Stdout {
         let len;
 
         unsafe {
-            len = sys_write(1, data.as_ptr() as *const u8, data.len())
+            len = abi::write(1, data.as_ptr() as *const u8, data.len())
         }
 
         if len < 0 {
@@ -73,7 +70,7 @@ impl Stderr {
         let len;
 
         unsafe {
-            len = sys_write(2, data.as_ptr() as *const u8, data.len())
+            len = abi::write(2, data.as_ptr() as *const u8, data.len())
         }
 
         if len < 0 {
@@ -87,7 +84,7 @@ impl Stderr {
         let len;
 
         unsafe {
-            len = sys_write(2, data.as_ptr() as *const u8, data.len())
+            len = abi::write(2, data.as_ptr() as *const u8, data.len())
         }
 
         if len < 0 {

@@ -2,6 +2,7 @@
 
 use crate::ffi::CStr;
 use crate::io;
+use crate::sys::hermit::abi;
 use crate::time::Duration;
 use crate::mem;
 use crate::fmt;
@@ -9,7 +10,7 @@ use core::u32;
 
 use crate::sys_common::thread::*;
 
-pub type Tid = u32;
+pub type Tid = abi::Tid;
 
 /// Priority of a task
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
@@ -33,14 +34,6 @@ impl fmt::Display for Priority {
 
 pub const NORMAL_PRIO: Priority = Priority::from(2);
 
-extern "C" {
-    fn sys_usleep(usecs: u64);
-    fn sys_spawn(id: *mut Tid, func: extern "C" fn(usize),
-                 arg: usize, prio: u8, core_id: isize) -> i32;
-    fn sys_join(id: Tid) -> i32;
-    fn sys_yield();
-}
-
 pub struct Thread {
     tid: Tid
 }
@@ -56,7 +49,7 @@ impl Thread {
     {
         let p = box p;
         let mut tid: Tid = u32::MAX;
-        let ret = sys_spawn(&mut tid as *mut Tid, thread_start,
+        let ret = abi::spawn(&mut tid as *mut Tid, thread_start,
                             &*p as *const _ as *const u8 as usize,
                             Priority::into(NORMAL_PRIO), core_id);
 
@@ -83,7 +76,7 @@ impl Thread {
     #[inline]
     pub fn yield_now() {
         unsafe {
-            sys_yield();
+            abi::yield_now();
         }
     }
 
@@ -95,13 +88,13 @@ impl Thread {
     #[inline]
     pub fn sleep(dur: Duration) {
         unsafe {
-            sys_usleep(dur.as_micros() as u64);
+            abi::usleep(dur.as_micros() as u64);
         }
     }
 
     pub fn join(self) {
         unsafe {
-            let _ = sys_join(self.tid);
+            let _ = abi::join(self.tid);
         }
     }
 

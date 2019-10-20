@@ -12,11 +12,7 @@ use crate::collections::HashMap;
 use crate::vec;
 use crate::sync::Mutex;
 use crate::sys_common::os_str_bytes::*;
-
-extern "C" {
-    fn sys_getpid() -> u32;
-    fn sys_exit(arg: i32) ->!;
-}
+use crate::sys::hermit::abi;
 
 pub fn errno() -> i32 {
     0
@@ -167,12 +163,12 @@ pub fn home_dir() -> Option<PathBuf> {
 
 pub fn exit(code: i32) -> ! {
     unsafe {
-        sys_exit(code);
+        abi::exit(code);
     }
 }
 
 pub fn getpid() -> u32 {
     unsafe {
-        sys_getpid()
+        abi::getpid()
     }
 }

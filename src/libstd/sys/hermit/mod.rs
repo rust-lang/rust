@@ -42,6 +42,9 @@ pub mod fast_thread_local;
 pub use crate::sys_common::os_str_bytes as os_str;
 use crate::io::ErrorKind;
 
+#[allow(unused_extern_crates)]
+pub extern crate hermit_abi as abi;
+
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
 }
@@ -74,11 +77,7 @@ pub extern "C" fn floor(x: f64) -> f64 {
 }
 
 pub unsafe fn abort_internal() -> ! {
-    extern "C" {
-        fn sys_abort() ->!;
-    }
-
-    sys_abort();
+    abi::abort();
 }
 
 // FIXME: just a workaround to test the system
@@ -108,7 +107,6 @@ pub unsafe extern "C" fn runtime_entry(argc: i32, argv: *const *const c_char,
                                        env: *const *const c_char) -> ! {
     extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
-        fn sys_exit(arg: i32) ->!;
     }
 
     // initialize environment
@@ -116,7 +114,7 @@ pub unsafe extern "C" fn runtime_entry(argc: i32, argv: *const *const c_char,
 
     let result = main(argc as isize, argv);
 
-    sys_exit(result);
+    abi::exit(result);
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
