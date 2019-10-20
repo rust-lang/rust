@@ -16,12 +16,14 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-MIRROR="https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2019-07-27-awscli.tar"
+source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
+
+MIRROR="${MIRRORS_BASE}/2019-07-27-awscli.tar"
 DEPS_DIR="/tmp/awscli-deps"
 
 pip="pip"
 pipflags=""
-if [[ "${AGENT_OS}" == "Linux" ]]; then
+if isLinux; then
     pip="pip3"
     pipflags="--user"
 
