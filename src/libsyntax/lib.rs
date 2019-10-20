@@ -67,7 +67,7 @@ pub struct Globals {
 impl Globals {
     fn new(edition: Edition) -> Globals {
         Globals {
-            // We have no idea how many attributes their will be, so just
+            // We have no idea how many attributes there will be, so just
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
