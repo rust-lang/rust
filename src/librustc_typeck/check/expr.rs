@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let flds = expected.only_has_type(self).and_then(|ty| {
-            let ty = self.resolve_type_vars_with_obligations(ty);
+            let ty = self.resolve_vars_with_obligations(ty);
             match ty.kind {
                 ty::Tuple(ref flds) => Some(&flds[..]),
                 _ => None
