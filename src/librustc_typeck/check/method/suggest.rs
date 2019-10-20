@@ -919,7 +919,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This occurs for UFCS desugaring of `T::method`, where there is no
         // receiver expression for the method call, and thus no autoderef.
         if let SelfSource::QPath(_) = source {
-            return is_local(self.resolve_type_vars_with_obligations(rcvr_ty));
+            return is_local(self.resolve_vars_with_obligations(rcvr_ty));
         }
 
         self.autoderef(span, rcvr_ty).any(|(ty, _)| is_local(ty))
