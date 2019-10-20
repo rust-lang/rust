@@ -1,11 +1,11 @@
 error[E0017]: references in constants may only refer to immutable values
-  --> $DIR/issue-65394.rs:8:13
+  --> $DIR/issue-65394.rs:5:13
    |
 LL |     let r = &mut x;
    |             ^^^^^^ constants require immutable values
 
-[ERROR rustc_mir::transform::qualify_consts] old validator: [($DIR/issue-65394.rs:8:13: 8:19, "MutBorrow(Mut { allow_two_phase_borrow: false })")]
-[ERROR rustc_mir::transform::qualify_consts] new validator: [($DIR/issue-65394.rs:8:13: 8:19, "MutBorrow(Mut { allow_two_phase_borrow: false })"), ($DIR/issue-65394.rs:7:9: 7:14, "LiveDrop")]
+[ERROR rustc_mir::transform::qualify_consts] old validator: [($DIR/issue-65394.rs:5:13: 5:19, "MutBorrow(Mut { allow_two_phase_borrow: false })")]
+[ERROR rustc_mir::transform::qualify_consts] new validator: [($DIR/issue-65394.rs:5:13: 5:19, "MutBorrow(Mut { allow_two_phase_borrow: false })"), ($DIR/issue-65394.rs:4:9: 4:14, "LiveDrop")]
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0017`.
