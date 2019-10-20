@@ -76,7 +76,13 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let file = cx.resolve_path(file, sp);
+    let file = match cx.resolve_path(file, sp) {
+        Ok(f) => f,
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::any(sp);
+        },
+    };
     let directory_ownership = DirectoryOwnership::Owned { relative: None };
     let p = parse::new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
 
@@ -122,7 +128,13 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         Some(f) => f,
         None => return DummyResult::any(sp)
     };
-    let file = cx.resolve_path(file, sp);
+    let file = match cx.resolve_path(file, sp) {
+        Ok(f) => f,
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::any(sp);
+        },
+    };
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
@@ -147,7 +159,13 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         Some(f) => f,
         None => return DummyResult::any(sp)
     };
-    let file = cx.resolve_path(file, sp);
+    let file = match cx.resolve_path(file, sp) {
+        Ok(f) => f,
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::any(sp);
+        },
+    };
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => {
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
