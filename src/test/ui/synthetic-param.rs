@@ -17,12 +17,12 @@ impl<S> Bar<S> {
 }
 
 fn main() {
-    func::<u8>(42); //~ ERROR cannot provide explicit type parameters
+    func::<u8>(42); //~ ERROR cannot provide explicit generic arguments
     func(42); // Ok
 
-    Foo::func::<u8>(42); //~ ERROR cannot provide explicit type parameters
+    Foo::func::<u8>(42); //~ ERROR cannot provide explicit generic arguments
     Foo::func(42); // Ok
 
-    Bar::<i8>::func::<u8>(42); //~ ERROR cannot provide explicit type parameters
+    Bar::<i8>::func::<u8>(42); //~ ERROR cannot provide explicit generic arguments
     Bar::<i8>::func(42); // Ok
 }
