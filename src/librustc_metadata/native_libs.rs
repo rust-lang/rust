@@ -198,12 +198,10 @@ impl Collector<'tcx> {
                     self.tcx.sess.err(&format!("renaming of the library `{}` was specified, \
                                                 however this crate contains no `#[link(...)]` \
                                                 attributes referencing this library.", name));
-                } else if renames.contains(name) {
+                } else if !renames.insert(name) {
                     self.tcx.sess.err(&format!("multiple renamings were \
                                                 specified for library `{}` .",
                                                name));
-                } else {
-                    renames.insert(name);
                 }
             }
         }

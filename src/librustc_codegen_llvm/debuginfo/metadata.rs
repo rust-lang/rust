@@ -2069,11 +2069,9 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
     {
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
-        if composite_types_completed.contains(&composite_type_metadata) {
+        if !composite_types_completed.insert(&composite_type_metadata) {
             bug!("debuginfo::set_members_of_composite_type() - \
                   Already completed forward declaration re-encountered.");
-        } else {
-            composite_types_completed.insert(composite_type_metadata);
         }
     }
 

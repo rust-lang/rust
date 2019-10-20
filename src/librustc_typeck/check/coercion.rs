@@ -811,7 +811,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
@@ -829,7 +829,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Same as `try_coerce()`, but without side-effects.
     pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
-        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can({:?} -> {:?})", source, target);
 
         let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
@@ -853,8 +853,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 -> RelateResult<'tcx, Ty<'tcx>>
         where E: AsCoercionSite
     {
-        let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_type_vars_with_obligations(new_ty);
+        let prev_ty = self.resolve_vars_with_obligations(prev_ty);
+        let new_ty = self.resolve_vars_with_obligations(new_ty);
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
 
         // Special-case that coercion alone cannot handle:
@@ -1333,7 +1333,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             err.span_label(return_sp, "expected because this return type...");
             err.span_label( *sp, format!(
                 "...is found to be `{}` here",
-                fcx.resolve_type_vars_with_obligations(expected),
+                fcx.resolve_vars_with_obligations(expected),
             ));
         }
         err

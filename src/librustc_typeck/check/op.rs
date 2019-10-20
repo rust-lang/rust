@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_with_needs(lhs_expr, Needs::MutPlace)
             }
         };
-        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
+        let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
 
         // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
-        let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
+        let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
             Ok(method) => {
