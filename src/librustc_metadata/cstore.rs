@@ -54,7 +54,7 @@ crate struct CrateMetadata {
     /// hashmap, which gives the reverse mapping. This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
-    crate def_path_table: Lrc<DefPathTable>,
+    crate def_path_table: DefPathTable,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
@@ -123,18 +123,18 @@ impl CStore {
         CrateNum::new(self.metas.len() - 1)
     }
 
-    crate fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
-        self.metas[cnum].clone()
+    crate fn get_crate_data(&self, cnum: CrateNum) -> &CrateMetadata {
+        self.metas[cnum].as_ref()
             .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
     }
 
-    crate fn set_crate_data(&mut self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
+    crate fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
-        self.metas[cnum] = Some(data);
+        self.metas[cnum] = Some(Lrc::new(data));
     }
 
     crate fn iter_crate_data<I>(&self, mut i: I)
-        where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
+        where I: FnMut(CrateNum, &CrateMetadata)
     {
         for (k, v) in self.metas.iter_enumerated() {
             if let &Some(ref v) = v {
