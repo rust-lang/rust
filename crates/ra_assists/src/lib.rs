@@ -108,6 +108,7 @@ mod assists {
     mod add_missing_impl_members;
     mod move_guard;
     mod move_bounds;
+    mod early_return;
 
     pub(crate) fn all<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
         &[
@@ -135,6 +136,7 @@ mod assists {
             raw_string::make_raw_string,
             raw_string::make_usual_string,
             raw_string::remove_hash,
+            early_return::convert_to_guarded_return,
         ]
     }
 }
