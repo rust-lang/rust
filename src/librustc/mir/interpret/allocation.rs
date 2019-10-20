@@ -346,11 +346,16 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        src: &[u8],
+        src: impl IntoIterator<Item=u8, IntoIter: iter::ExactSizeIterator>,
     ) -> InterpResult<'tcx>
     {
+        let mut src = src.into_iter();
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
-        bytes.clone_from_slice(src);
+        // `zip` would stop when the first iterator ends; we want to definitely
+        // cover all of `bytes`.
+        for dest in bytes {
+            *dest = src.next().expect("iterator was shorter than it said it would be");
+        }
         Ok(())
     }
 
