@@ -245,6 +245,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// as a slice.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to use the `PlaceTy` and `OperandTy`-based methods
+    /// on `InterpCx` instead.
     #[inline]
     pub fn get_bytes(
         &self,
@@ -275,6 +277,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// so be sure to actually put data there!
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to use the `PlaceTy` and `OperandTy`-based methods
+    /// on `InterpCx` instead.
     pub fn get_bytes_mut(
         &mut self,
         cx: &impl HasDataLayout,
@@ -297,6 +301,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Reads bytes until a `0` is encountered. Will error if the end of the allocation is reached
     /// before a `0` is found.
+    ///
+    /// Most likely, you want to call `Memory::read_c_str` instead of this method.
     pub fn read_c_str(
         &self,
         cx: &impl HasDataLayout,
@@ -342,6 +348,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Writes `src` to the memory starting at `ptr.offset`.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to call `Memory::write_bytes` instead of this method.
     pub fn write_bytes(
         &mut self,
         cx: &impl HasDataLayout,
@@ -363,6 +370,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to call `Memory::write_bytes` instead of this method.
     pub fn write_repeat(
         &mut self,
         cx: &impl HasDataLayout,
@@ -386,6 +394,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ///   pointers being valid for ZSTs.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to call `InterpCx::read_scalar` instead of this method.
     pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
@@ -424,6 +433,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Reads a pointer-sized scalar.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to call `InterpCx::read_scalar` instead of this method.
     pub fn read_ptr_sized(
         &self,
         cx: &impl HasDataLayout,
@@ -441,6 +451,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ///   pointers being valid for ZSTs.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to call `InterpCx::write_scalar` instead of this method.
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
@@ -483,6 +494,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Writes a pointer-sized scalar.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
+    /// Most likely, you want to call `InterpCx::write_scalar` instead of this method.
     pub fn write_ptr_sized(
         &mut self,
         cx: &impl HasDataLayout,
