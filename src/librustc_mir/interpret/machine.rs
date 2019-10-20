@@ -18,7 +18,7 @@ use super::{
 
 /// Data returned by Machine::stack_pop,
 /// to provide further control over the popping of the stack frame
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum StackPopInfo {
     /// Indicates that we have just started unwinding
     /// as the result of panic

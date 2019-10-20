@@ -49,7 +49,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(false);
         }
 
-        let block = self.frame().block;
+        let block = match self.frame().block {
+            Some(block) => block,
+            None => {
+                // We are unwinding and this fn has no cleanup code.
+                // Just go on unwinding.
+                trace!("unwinding: skipping frame");
+                self.pop_stack_frame(/* unwinding */ true)?;
+                return Ok(true)
+            }
+        };
         let stmt_id = self.frame().stmt;
         let body = self.body();
         let basic_block = &body.basic_blocks()[block];

@@ -15,7 +15,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
-            self.frame_mut().block = target;
+            self.frame_mut().block = Some(target);
             self.frame_mut().stmt = 0;
             Ok(())
         } else {

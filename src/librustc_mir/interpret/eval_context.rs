@@ -60,6 +60,9 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     /// The span of the call site.
     pub span: source_map::Span,
 
+    /// Extra data for the machine.
+    pub extra: Extra,
+
     ////////////////////////////////////////////////////////////////////////////////
     // Return place and locals
     ////////////////////////////////////////////////////////////////////////////////
@@ -82,13 +85,12 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     /// The block that is currently executed (or will be executed after the above call stacks
     /// return).
-    pub block: mir::BasicBlock,
+    /// If this is `None`, we are unwinding and this function doesn't need any clean-up.
+    /// Just continue the same as with
+    pub block: Option<mir::BasicBlock>,
 
     /// The index of the currently evaluated statement.
     pub stmt: usize,
-
-    /// Extra data for the machine.
-    pub extra: Extra,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)] // Miri debug-prints these
@@ -491,7 +493,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let extra = M::stack_push(self)?;
         self.stack.push(Frame {
             body,
-            block: mir::START_BLOCK,
+            block: Some(mir::START_BLOCK),
             return_to_block,
             return_place,
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -549,51 +551,75 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn pop_stack_frame_internal(
+    pub(super) fn pop_stack_frame(
         &mut self,
         unwinding: bool
-    ) -> InterpResult<'tcx, (StackPopCleanup, StackPopInfo)> {
+    ) -> InterpResult<'tcx> {
         info!("LEAVING({}) {} (unwinding = {})",
             self.cur_frame(), self.frame().instance, unwinding);
+
+        // Sanity check `unwinding`.
+        assert_eq!(
+            unwinding,
+            match self.frame().block {
+                None => true,
+                Some(block) => self.body().basic_blocks()[block].is_cleanup
+            }
+        );
 
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
         let stack_pop_info = M::stack_pop(self, frame.extra)?;
-
-        // Abort early if we do not want to clean up: We also avoid validation in that case,
-        // because this is CTFE and the final value will be thoroughly validated anyway.
-        match frame.return_to_block {
-            StackPopCleanup::Goto{ .. } => {},
-            StackPopCleanup::None { cleanup, .. } => {
-                assert!(!unwinding, "Encountered StackPopCleanup::None while unwinding");
-
-                if !cleanup {
-                    assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
-                    // Leak the locals, skip validation.
-                    return Ok((frame.return_to_block, stack_pop_info));
-                }
-            }
+        match (unwinding, stack_pop_info) {
+            (true, StackPopInfo::StartUnwinding) =>
+                bug!("Attempted to start unwinding while already unwinding!"),
+            (false, StackPopInfo::StopUnwinding) =>
+                bug!("Attempted to stop unwinding while there is no unwinding!"),
+            _ => {}
         }
-        // Deallocate all locals that are backed by an allocation.
+
+        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
+        // In that case, we return early. We also avoid validation in that case,
+        // because this is CTFE and the final value will be thoroughly validated anyway.
+        let cleanup = unwinding || match frame.return_to_block {
+            StackPopCleanup::Goto{ .. } => true,
+            StackPopCleanup::None { cleanup, .. } => {
+                cleanup
+            }
+        };
+        if !cleanup {
+            assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
+            // Leak the locals, skip validation.
+            return Ok(());
+        }
+
+        // Cleanup: deallocate all locals that are backed by an allocation.
         for local in frame.locals {
             self.deallocate_local(local.value)?;
         }
 
-        // If we're popping frames due to unwinding, and we didn't just exit
-        // unwinding, we skip a bunch of validation and cleanup logic (including
-        // jumping to the regular return block specified in the StackPopCleanup)
+        // Now where do we jump next?
+
+        // Determine if we leave this function normally or via unwinding.
         let cur_unwinding = unwinding && stack_pop_info != StackPopInfo::StopUnwinding;
-
-        info!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
+        trace!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
                frame.return_to_block, stack_pop_info, cur_unwinding);
-
-
-        // When we're popping a stack frame for unwinding purposes,
-        // we don't care at all about returning-related stuff (i.e. return_place
-        // and return_to_block), because we're not performing a return from this frame.
-        if !cur_unwinding  {
+        if cur_unwinding {
+            // Follow the unwind edge.
+            match frame.return_to_block {
+                StackPopCleanup::Goto { unwind, .. } => {
+                    let next_frame = self.frame_mut();
+                    // If `unwind` is `None`, we'll leave that function immediately again.
+                    next_frame.block = unwind;
+                    next_frame.stmt = 0;
+                },
+                StackPopCleanup::None { .. } =>
+                    bug!("Encountered StackPopCleanup::None while unwinding"),
+            }
+        } else {
+            // Follow the normal return edge.
             // Validate the return value. Do this after deallocating so that we catch dangling
             // references.
             if let Some(return_place) = frame.return_place {
@@ -625,70 +651,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-
-        Ok((frame.return_to_block, stack_pop_info))
-    }
-
-    pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
-        let (mut cleanup, mut stack_pop_info) = self.pop_stack_frame_internal(unwinding)?;
-
-        // There are two cases where we want to unwind the stack:
-        // * The caller explicitly told us (i.e. we hit a Resume terminator)
-        // * The machine indicated that we've just started unwinding (i.e.
-        // a panic has just occured)
-        if unwinding || stack_pop_info == StackPopInfo::StartUnwinding {
-            trace!("unwinding: starting stack unwind...");
-            // Overwrite our current stack_pop_info, so that the check
-            // below doesn't fail.
-            stack_pop_info = StackPopInfo::Normal;
-            // There are three posible ways that we can exit the loop:
-            // 1) We find an unwind block - we jump to it to allow cleanup
-            // to occur for that frame
-            // 2) pop_stack_frame_internal reports that we're no longer unwinding
-            //    - this means that the panic has been caught, and that execution
-            //    should continue as normal
-            // 3) We pop all of our frames off the stack - this should never happen.
-            while !self.stack.is_empty() {
-                match stack_pop_info {
-                    // We tried to start unwinding while we were already
-                    // unwinding. Note that this **is not** the same thing
-                    // as a double panic, which will be intercepted by
-                    // libcore/libstd before we actually attempt to unwind.
-                    StackPopInfo::StartUnwinding => {
-                        throw_ub_format!("Attempted to start unwinding while already unwinding!");
-                    },
-                    StackPopInfo::StopUnwinding => {
-                        trace!("unwinding: no longer unwinding!");
-                        break;
-                    }
-                    StackPopInfo::Normal => {}
-                }
-
-                match cleanup {
-                    StackPopCleanup::Goto { unwind, .. } if unwind.is_some() => {
-
-                        info!("unwind: found cleanup block {:?}", unwind);
-                        self.goto_block(unwind)?;
-                        break;
-                    },
-                    _ => {}
-                }
-
-                info!("unwinding: popping frame!");
-                let res = self.pop_stack_frame_internal(true)?;
-                cleanup = res.0;
-                stack_pop_info = res.1;
-            }
-            if self.stack.is_empty() {
-                // We should never get here:
-                // The 'start_fn' lang item should always install a panic handler
-                throw_ub!(Unreachable);
-            }
-
-        }
-
         if self.stack.len() > 0 {
-            info!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("CONTINUING({}) {} (unwinding = {})",
+                self.cur_frame(), self.frame().instance, cur_unwinding);
         }
 
         Ok(())
@@ -833,16 +798,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             } else {
                 last_span = Some(span);
             }
-            let block = &body.basic_blocks()[block];
-            let source_info = if stmt < block.statements.len() {
-                block.statements[stmt].source_info
-            } else {
-                block.terminator().source_info
-            };
-            let lint_root = match body.source_scope_local_data {
-                mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
-                mir::ClearCrossCrate::Clear => None,
-            };
+
+            let lint_root = block.and_then(|block| {
+                let block = &body.basic_blocks()[block];
+                let source_info = if stmt < block.statements.len() {
+                    block.statements[stmt].source_info
+                } else {
+                    block.terminator().source_info
+                };
+                match body.source_scope_local_data {
+                    mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
+                    mir::ClearCrossCrate::Clear => None,
+                }
+            });
+
             frames.push(FrameInfo { call_site: span, instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
