@@ -785,8 +785,6 @@ impl File {
             SeekFrom::End(off) => (libc::SEEK_END, off),
             SeekFrom::Current(off) => (libc::SEEK_CUR, off),
         };
-        #[cfg(target_os = "emscripten")]
-        let pos = pos as i32;
         let n = cvt(unsafe { lseek64(self.0.raw(), pos, whence) })?;
         Ok(n as u64)
     }
