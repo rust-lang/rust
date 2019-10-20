@@ -673,13 +673,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     self.throw_unresolved_import_error(errors, None);
                     errors = vec![];
                 }
-                if !seen_spans.contains(&err.span) {
+                if seen_spans.insert(err.span) {
                     let path = import_path_to_string(
                         &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
                         &import.subclass,
                         err.span,
                     );
-                    seen_spans.insert(err.span);
                     errors.push((path, err));
                     prev_root_id = import.root_id;
                 }
