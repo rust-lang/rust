@@ -1,0 +1,8 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/panic-macro-any.rs:7:27
+   |
+LL |     panic!(box 413 as Box<::std::any::Any + Send>);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn ::std::any::Any + Send`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+

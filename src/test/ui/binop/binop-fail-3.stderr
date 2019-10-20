@@ -1,0 +1,8 @@
+warning: lint `resolve_trait_on_defaulted_unit` has been removed: `converted into hard error, see https://github.com/rust-lang/rust/issues/48950`
+  --> $DIR/binop-fail-3.rs:7:9
+   |
+LL | #[allow(resolve_trait_on_defaulted_unit)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
