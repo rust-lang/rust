@@ -104,7 +104,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // regardless of the choice of `T`.
                     let params = (
                         self.cx.tcx.generics_of(param_env_def_id),
-                        &&self.cx.tcx.common.empty_predicates,
+                        ty::GenericPredicates::default(),
                     ).clean(self.cx).params;
 
                     Generics {
@@ -489,7 +489,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
         let mut generic_params = (
             tcx.generics_of(param_env_def_id),
-            &tcx.explicit_predicates_of(param_env_def_id),
+            tcx.explicit_predicates_of(param_env_def_id),
         ).clean(self.cx).params;
 
         let mut has_sized = FxHashSet::default();

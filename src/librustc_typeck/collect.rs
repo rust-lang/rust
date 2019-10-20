@@ -182,8 +182,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx
     }
 
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> &'tcx ty::GenericPredicates<'tcx> {
+    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         self.tcx
             .at(span)
             .type_param_predicates((self.item_def_id, def_id))
@@ -254,7 +253,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
     (item_def_id, def_id): (DefId, DefId),
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
@@ -275,10 +274,10 @@ fn type_param_predicates(
         tcx.generics_of(item_def_id).parent
     };
 
-    let result = parent.map_or(&tcx.common.empty_predicates, |parent| {
+    let mut result = parent.map(|parent| {
         let icx = ItemCtxt::new(tcx, parent);
         icx.get_type_parameter_bounds(DUMMY_SP, def_id)
-    });
+    }).unwrap_or_default();
     let mut extend = None;
 
     let item_hir_id = tcx.hir().as_local_hir_id(item_def_id).unwrap();
@@ -321,9 +320,7 @@ fn type_param_predicates(
     };
 
     let icx = ItemCtxt::new(tcx, item_def_id);
-    let mut result = (*result).clone();
-    result.predicates.extend(extend.into_iter());
-    result.predicates.extend(
+    let extra_predicates = extend.into_iter().chain(
         icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
             .into_iter()
             .filter(|(predicate, _)| {
@@ -331,9 +328,12 @@ fn type_param_predicates(
                     ty::Predicate::Trait(ref data) => data.skip_binder().self_ty().is_param(index),
                     _ => false,
                 }
-            })
+            }),
     );
-    tcx.arena.alloc(result)
+    result.predicates = tcx.arena.alloc_from_iter(
+        result.predicates.iter().copied().chain(extra_predicates),
+    );
+    result
 }
 
 impl ItemCtxt<'tcx> {
@@ -698,7 +698,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
 fn super_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_hir_id = tcx.hir().as_local_hir_id(trait_def_id).unwrap();
 
@@ -732,21 +732,23 @@ fn super_predicates_of(
         generics, item.hir_id, self_param_ty, OnlySelfBounds(!is_trait_alias));
 
     // Combine the two lists to form the complete set of superbounds:
-    let superbounds: Vec<_> = superbounds1.into_iter().chain(superbounds2).collect();
+    let superbounds = &*tcx.arena.alloc_from_iter(
+        superbounds1.into_iter().chain(superbounds2)
+    );
 
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
-    for &(pred, span) in &superbounds {
+    for &(pred, span) in superbounds {
         debug!("superbound: {:?}", pred);
         if let ty::Predicate::Trait(bound) = pred {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
     }
 
-    tcx.arena.alloc(ty::GenericPredicates {
+    ty::GenericPredicates {
         parent: None,
         predicates: superbounds,
-    })
+    }
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
@@ -1508,9 +1510,29 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
         }
 
         Node::GenericParam(param) => match &param.kind {
-            hir::GenericParamKind::Type { default: Some(ref ty), .. } |
-            hir::GenericParamKind::Const { ref ty, .. } => {
-                icx.to_ty(ty)
+            hir::GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
+            hir::GenericParamKind::Const { ty: ref hir_ty, .. } => {
+                let ty = icx.to_ty(hir_ty);
+                if !tcx.features().const_compare_raw_pointers {
+                    let err = match ty.peel_refs().kind {
+                        ty::FnPtr(_) => Some("function pointers"),
+                        ty::RawPtr(_) => Some("raw pointers"),
+                        _ => None,
+                    };
+                    if let Some(unsupported_type) = err {
+                        feature_gate::emit_feature_err(
+                            &tcx.sess.parse_sess,
+                            sym::const_compare_raw_pointers,
+                            hir_ty.span,
+                            feature_gate::GateIssue::Language,
+                            &format!(
+                                "using {} as const generic parameters is unstable",
+                                unsupported_type
+                            ),
+                        );
+                    };
+                }
+                ty
             }
             x => {
                 if !fail {
@@ -1938,7 +1960,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
 fn predicates_defined_on(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     debug!("predicates_defined_on({:?})", def_id);
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!(
@@ -1954,9 +1976,13 @@ fn predicates_defined_on(
             def_id,
             inferred_outlives,
         );
-        let mut predicates = (*result).clone();
-        predicates.predicates.extend(inferred_outlives.iter().map(|&p| (p, span)));
-        result = tcx.arena.alloc(predicates);
+        result.predicates = tcx.arena.alloc_from_iter(
+            result.predicates.iter().copied().chain(
+                // FIXME(eddyb) use better spans - maybe add `Span`s
+                // to `inferred_outlives_of` predicates as well?
+                inferred_outlives.iter().map(|&p| (p, span)),
+            ),
+        );
     }
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
@@ -1965,7 +1991,7 @@ fn predicates_defined_on(
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
 /// `Self: Trait` predicates for traits.
-fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::GenericPredicates<'_> {
+fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     let mut result = tcx.predicates_defined_on(def_id);
 
     if tcx.is_trait(def_id) {
@@ -1982,9 +2008,11 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::GenericPredicates<'_> {
         // used, and adding the predicate into this list ensures
         // that this is done.
         let span = tcx.def_span(def_id);
-        let mut predicates = (*result).clone();
-        predicates.predicates.push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
-        result = tcx.arena.alloc(predicates);
+        result.predicates = tcx.arena.alloc_from_iter(
+            result.predicates.iter().copied().chain(
+                std::iter::once((ty::TraitRef::identity(tcx, def_id).to_predicate(), span))
+            ),
+        );
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -1995,7 +2023,7 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::GenericPredicates<'_> {
 fn explicit_predicates_of(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> &ty::GenericPredicates<'_> {
+) -> ty::GenericPredicates<'_> {
     use rustc::hir::*;
     use rustc_data_structures::fx::FxHashSet;
 
@@ -2004,6 +2032,7 @@ fn explicit_predicates_of(
     /// A data structure with unique elements, which preserves order of insertion.
     /// Preserving the order of insertion is important here so as not to break
     /// compile-fail UI tests.
+    // FIXME(eddyb) just use `IndexSet` from `indexmap`.
     struct UniquePredicates<'tcx> {
         predicates: Vec<(ty::Predicate<'tcx>, Span)>,
         uniques: FxHashSet<(ty::Predicate<'tcx>, Span)>,
@@ -2113,10 +2142,10 @@ fn explicit_predicates_of(
                     let bounds_predicates = bounds.predicates(tcx, opaque_ty);
                     if impl_trait_fn.is_some() {
                         // opaque types
-                        return tcx.arena.alloc(ty::GenericPredicates {
+                        return ty::GenericPredicates {
                             parent: None,
-                            predicates: bounds_predicates,
-                        });
+                            predicates: tcx.arena.alloc_from_iter(bounds_predicates),
+                        };
                     } else {
                         // named opaque types
                         predicates.extend(bounds_predicates);
@@ -2319,10 +2348,10 @@ fn explicit_predicates_of(
         );
     }
 
-    let result = tcx.arena.alloc(ty::GenericPredicates {
+    let result = ty::GenericPredicates {
         parent: generics.parent,
-        predicates,
-    });
+        predicates: tcx.arena.alloc_from_iter(predicates),
+    };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
 }
@@ -2560,6 +2589,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
 
     let mut inline_span = None;
+    let mut link_ordinal_span = None;
     for attr in attrs.iter() {
         if attr.check_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
@@ -2593,6 +2623,16 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
         } else if attr.check_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
+        } else if attr.check_name(sym::track_caller) {
+            if tcx.fn_sig(id).abi() != abi::Abi::Rust {
+                struct_span_err!(
+                    tcx.sess,
+                    attr.span,
+                    E0737,
+                    "rust ABI is required to use `#[track_caller]`"
+                ).emit();
+            }
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
         } else if attr.check_name(sym::export_name) {
             if let Some(s) = attr.value_str() {
                 if s.as_str().contains("\0") {
@@ -2641,6 +2681,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             }
         } else if attr.check_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
+        } else if attr.check_name(sym::link_ordinal) {
+            link_ordinal_span = Some(attr.span);
+            if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
+                codegen_fn_attrs.link_ordinal = ordinal;
+            }
         }
     }
 
@@ -2718,6 +2763,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
+
     if codegen_fn_attrs.target_features.len() > 0 {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
@@ -2742,6 +2788,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.export_name = Some(name);
         codegen_fn_attrs.link_name = Some(name);
     }
+    check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
 
     // Internal symbols to the standard library all have no_mangle semantics in
     // that they have defined symbol names present in the function name. This
@@ -2751,4 +2798,49 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs
+}
+
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
+    use syntax::ast::{Lit, LitIntType, LitKind};
+    let meta_item_list = attr.meta_item_list();
+    let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
+    let sole_meta_list = match meta_item_list {
+        Some([item]) => item.literal(),
+        _ => None,
+    };
+    if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
+        if *ordinal <= std::usize::MAX as u128 {
+            Some(*ordinal as usize)
+        } else {
+            let msg = format!(
+                "ordinal value in `link_ordinal` is too large: `{}`",
+                &ordinal
+            );
+            tcx.sess.struct_span_err(attr.span, &msg)
+                .note("the value may not exceed `std::usize::MAX`")
+                .emit();
+            None
+        }
+    } else {
+        tcx.sess.struct_span_err(attr.span, "illegal ordinal format in `link_ordinal`")
+            .note("an unsuffixed integer value, e.g., `1`, is expected")
+            .emit();
+        None
+    }
+}
+
+fn check_link_name_xor_ordinal(
+    tcx: TyCtxt<'_>,
+    codegen_fn_attrs: &CodegenFnAttrs,
+    inline_span: Option<Span>,
+) {
+    if codegen_fn_attrs.link_name.is_none() || codegen_fn_attrs.link_ordinal.is_none() {
+        return;
+    }
+    let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
+    if let Some(span) = inline_span {
+        tcx.sess.span_err(span, msg);
+    } else {
+        tcx.sess.err(msg);
+    }
 }

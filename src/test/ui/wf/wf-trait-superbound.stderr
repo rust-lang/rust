@@ -4,11 +4,12 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL |   trait ExtraCopy<T:Copy> { }
    |   ----------------------- required by `ExtraCopy`
 LL | 
-LL | / trait SomeTrait<T>: ExtraCopy<T> {
+LL |   trait SomeTrait<T>: ExtraCopy<T> {
+   |   ^               - help: consider restricting this bound: `T: std::marker::Copy`
+   |  _|
+   | |
 LL | | }
    | |_^ the trait `std::marker::Copy` is not implemented for `T`
-   |
-   = help: consider adding a `where T: std::marker::Copy` bound
 
 error: aborting due to previous error
 

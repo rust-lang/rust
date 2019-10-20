@@ -5,7 +5,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::{self, Lift, List, Ty, TyCtxt, InferConst, ParamConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::mir::interpret::ConstValue;
-use crate::ty::sty::ClosureSubsts;
+use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
 
 use rustc_serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
@@ -192,6 +192,14 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
         ClosureSubsts {
             substs: self,
         }
+    }
+
+    /// Interpret these substitutions as the substitutions of a generator type.
+    /// Closure substitutions have a particular structure controlled by the
+    /// compiler that encodes information like the signature and generator kind;
+    /// see `ty::GeneratorSubsts` struct for more comments.
+    pub fn as_generator(&'tcx self) -> GeneratorSubsts<'tcx> {
+        GeneratorSubsts { substs: self }
     }
 
     /// Creates a `InternalSubsts` that maps each generic parameter to itself.
@@ -394,14 +402,41 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let params: SmallVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
-
-        // If folding doesn't change the substs, it's faster to avoid
-        // calling `mk_substs` and instead reuse the existing substs.
-        if params[..] == self[..] {
-            self
-        } else {
-            folder.tcx().intern_substs(&params)
+        // This code is hot enough that it's worth specializing for the most
+        // common length lists, to avoid the overhead of `SmallVec` creation.
+        // The match arms are in order of frequency. The 1, 2, and 0 cases are
+        // typically hit in 90--99.99% of cases. When folding doesn't change
+        // the substs, it's faster to reuse the existing substs rather than
+        // calling `intern_substs`.
+        match self.len() {
+            1 => {
+                let param0 = self[0].fold_with(folder);
+                if param0 == self[0] {
+                    self
+                } else {
+                    folder.tcx().intern_substs(&[param0])
+                }
+            }
+            2 => {
+                let param0 = self[0].fold_with(folder);
+                let param1 = self[1].fold_with(folder);
+                if param0 == self[0] && param1 == self[1] {
+                    self
+                } else {
+                    folder.tcx().intern_substs(&[param0, param1])
+                }
+            }
+            0 => {
+                self
+            }
+            _ => {
+                let params: SmallVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
+                if params[..] == self[..] {
+                    self
+                } else {
+                    folder.tcx().intern_substs(&params)
+                }
+            }
         }
     }
 

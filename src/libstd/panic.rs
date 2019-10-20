@@ -12,7 +12,9 @@ use crate::ops::{Deref, DerefMut};
 use crate::panicking;
 use crate::ptr::{Unique, NonNull};
 use crate::rc::Rc;
-use crate::sync::{Arc, Mutex, RwLock, atomic};
+use crate::sync::{Arc, Mutex, RwLock};
+#[cfg(not(bootstrap))]
+use crate::sync::atomic;
 use crate::task::{Context, Poll};
 use crate::thread::Result;
 
@@ -240,49 +242,49 @@ impl<T: ?Sized> RefUnwindSafe for Mutex<T> {}
 #[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicIsize {}
-#[cfg(target_has_atomic = "8")]
+#[cfg(target_has_atomic_load_store = "8")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI8 {}
-#[cfg(target_has_atomic = "16")]
+#[cfg(target_has_atomic_load_store = "16")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI16 {}
-#[cfg(target_has_atomic = "32")]
+#[cfg(target_has_atomic_load_store = "32")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI32 {}
-#[cfg(target_has_atomic = "64")]
+#[cfg(target_has_atomic_load_store = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI64 {}
-#[cfg(target_has_atomic = "128")]
+#[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicI128 {}
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicUsize {}
-#[cfg(target_has_atomic = "8")]
+#[cfg(target_hastarget_has_atomic_load_store_atomic = "8")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU8 {}
-#[cfg(target_has_atomic = "16")]
+#[cfg(target_has_atomic_load_store = "16")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU16 {}
-#[cfg(target_has_atomic = "32")]
+#[cfg(target_has_atomic_load_store = "32")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU32 {}
-#[cfg(target_has_atomic = "64")]
+#[cfg(target_has_atomic_load_store = "64")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU64 {}
-#[cfg(target_has_atomic = "128")]
+#[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU128 {}
 
-#[cfg(target_has_atomic = "8")]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicBool {}
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl<T> RefUnwindSafe for atomic::AtomicPtr<T> {}
 

@@ -28,6 +28,7 @@ use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::builtin::parser::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
+use crate::lint::builtin::parser::INCOMPLETE_INCLUDE;
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
@@ -38,7 +39,7 @@ use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 
@@ -83,6 +84,7 @@ impl Lint {
         match lint_id {
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
             BufferedEarlyLintId::MetaVariableMisuse => META_VARIABLE_MISUSE,
+            BufferedEarlyLintId::IncompleteInclude => INCOMPLETE_INCLUDE,
         }
     }
 

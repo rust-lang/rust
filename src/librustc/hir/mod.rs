@@ -669,6 +669,12 @@ impl WhereClause {
             Some(self.span)
         }
     }
+
+    /// The `WhereClause` under normal circumstances points at either the predicates or the empty
+    /// space where the `where` clause should be. Only of use for diagnostic suggestions.
+    pub fn span_for_predicates_or_empty_place(&self) -> Span {
+        self.span
+    }
 }
 
 /// A single predicate in a where-clause.
@@ -989,6 +995,15 @@ pub enum RangeEnd {
     Excluded,
 }
 
+impl fmt::Display for RangeEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            RangeEnd::Included => "..=",
+            RangeEnd::Excluded => "..",
+        })
+    }
+}
+
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum PatKind {
     /// Represents a wildcard pattern (i.e., `_`).
@@ -1051,6 +1066,13 @@ impl Mutability {
         match self {
             MutMutable => other,
             MutImmutable => MutImmutable,
+        }
+    }
+
+    pub fn invert(self) -> Self {
+        match self {
+            MutMutable => MutImmutable,
+            MutImmutable => MutMutable,
         }
     }
 }
@@ -1359,6 +1381,10 @@ impl Body {
             hir_id: self.value.hir_id,
         }
     }
+
+    pub fn generator_kind(&self) -> Option<GeneratorKind> {
+        self.generator_kind
+    }
 }
 
 /// The type of source expression that caused this generator to be created.
@@ -1547,6 +1573,19 @@ impl Expr {
                 false
             }
         }
+    }
+
+    /// If `Self.kind` is `ExprKind::DropTemps(expr)`, drill down until we get a non-`DropTemps`
+    /// `Expr`. This is used in suggestions to ignore this `ExprKind` as it is semantically
+    /// silent, only signaling the ownership system. By doing this, suggestions that check the
+    /// `ExprKind` of any given `Expr` for presentation don't have to care about `DropTemps`
+    /// beyond remembering to call this function before doing analysis on it.
+    pub fn peel_drop_temps(&self) -> &Self {
+        let mut expr = self;
+        while let ExprKind::DropTemps(inner) = &expr.kind {
+            expr = inner;
+        }
+        expr
     }
 }
 
@@ -2669,6 +2708,11 @@ pub struct CodegenFnAttrs {
     /// probably isn't set when this is set, this is for foreign items while
     /// `#[export_name]` is for Rust-defined functions.
     pub link_name: Option<Symbol>,
+    /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
+    /// imported function has in the dynamic library. Note that this must not
+    /// be set when `link_name` is set. This is for foreign items with the
+    /// "raw-dylib" kind.
+    pub link_ordinal: Option<usize>,
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
     pub target_features: Vec<Symbol>,
@@ -2716,7 +2760,9 @@ bitflags! {
         const USED                      = 1 << 9;
         /// #[ffi_returns_twice], indicates that an extern function can return
         /// multiple times
-        const FFI_RETURNS_TWICE = 1 << 10;
+        const FFI_RETURNS_TWICE         = 1 << 10;
+        /// #[track_caller]: allow access to the caller location
+        const TRACK_CALLER              = 1 << 11;
     }
 }
 
@@ -2728,6 +2774,7 @@ impl CodegenFnAttrs {
             optimize: OptimizeAttr::None,
             export_name: None,
             link_name: None,
+            link_ordinal: None,
             target_features: vec![],
             linkage: None,
             link_section: None,

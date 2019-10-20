@@ -163,6 +163,25 @@ fn the_banished() {} // ok!
 ```
 "##,
 
+E0551: r##"
+An invalid meta-item was used inside an attribute.
+
+Erroneous code example:
+
+```compile_fail,E0551
+#[deprecated(note)] // error!
+fn i_am_deprecated() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. To fix this issue,
+you need to give a value to the `note` key. Example:
+
+```
+#[deprecated(note = "because")] // ok!
+fn i_am_deprecated() {}
+```
+"##,
+
 E0552: r##"
 A unrecognized representation attribute was used.
 
@@ -274,6 +293,33 @@ Please be sure that a file corresponding to the module exists. If you
 want to use a module named `file_that_doesnt_exist`, you need to have a file
 named `file_that_doesnt_exist.rs` or `file_that_doesnt_exist/mod.rs` in the
 same directory.
+"##,
+
+E0584: r##"
+A doc comment that is not attached to anything has been encountered.
+
+Erroneous code example:
+
+```compile_fail,E0584
+trait Island {
+    fn lost();
+
+    /// I'm lost!
+}
+```
+
+A little reminder: a doc comment has to be placed before the item it's supposed
+to document. So if you want to document the `Island` trait, you need to put a
+doc comment before it, not inside it. Same goes for the `lost` method: the doc
+comment needs to be before it:
+
+```
+/// I'm THE island!
+trait Island {
+    /// I'm lost!
+    fn lost();
+}
+```
 "##,
 
 E0585: r##"
@@ -473,10 +519,8 @@ features in the `-Z allow_features` flag.
     // rustc_deprecated attribute must be paired with either stable or unstable
     // attribute
     E0549,
-    E0551, // incorrect meta item
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
-    E0584, // file for module `..` found at both .. and ..
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable
     // attribute

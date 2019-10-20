@@ -1,3 +1,17 @@
+warning: multiple patterns covering the same range
+  --> $DIR/issue-43253.rs:16:9
+   |
+LL |         1..10 => {},
+   |         ----- this range overlaps on `9i32`
+LL |         9..=10 => {},
+   |         ^^^^^^ overlapping patterns
+   |
+note: lint level defined here
+  --> $DIR/issue-43253.rs:4:9
+   |
+LL | #![warn(overlapping_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
 warning: unreachable pattern
   --> $DIR/issue-43253.rs:29:9
    |
@@ -5,7 +19,7 @@ LL |         9 => {},
    |         ^
    |
 note: lint level defined here
-  --> $DIR/issue-43253.rs:4:9
+  --> $DIR/issue-43253.rs:3:9
    |
 LL | #![warn(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -19,6 +33,18 @@ LL |         8..=9 => {},
 warning: unreachable pattern
   --> $DIR/issue-43253.rs:41:9
    |
+LL |         6 => {},
+   |         ^
+
+warning: unreachable pattern
+  --> $DIR/issue-43253.rs:43:9
+   |
 LL |         9..=9 => {},
    |         ^^^^^
+
+warning: unreachable pattern
+  --> $DIR/issue-43253.rs:44:9
+   |
+LL |         6 => {},
+   |         ^
 

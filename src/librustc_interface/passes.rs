@@ -35,7 +35,7 @@ use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::{self, ast, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
-use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
+use syntax_expand::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
@@ -130,7 +130,7 @@ pub fn configure_and_expand(
     let crate_name = crate_name.to_string();
     let (result, resolver) = BoxedResolver::new(static move || {
         let sess = &*sess;
-        let mut crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
+        let crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
             sess,
@@ -138,7 +138,7 @@ pub fn configure_and_expand(
             krate,
             &crate_name,
             &resolver_arenas,
-            &mut crate_loader,
+            &crate_loader,
             plugin_info,
         );
         let mut resolver = match res {
@@ -169,6 +169,7 @@ impl ExpansionResult {
         ExpansionResult {
             defs: Steal::new(resolver.definitions),
             resolutions: Steal::new(Resolutions {
+                extern_crate_map: resolver.extern_crate_map,
                 export_map: resolver.export_map,
                 trait_map: resolver.trait_map,
                 glob_map: resolver.glob_map,
@@ -187,6 +188,7 @@ impl ExpansionResult {
         ExpansionResult {
             defs: Steal::new(resolver.definitions.clone()),
             resolutions: Steal::new(Resolutions {
+                extern_crate_map: resolver.extern_crate_map.clone(),
                 export_map: resolver.export_map.clone(),
                 trait_map: resolver.trait_map.clone(),
                 glob_map: resolver.glob_map.clone(),
@@ -250,6 +252,8 @@ pub fn register_plugins<'a>(
 
     if sess.opts.incremental.is_some() {
         time(sess, "garbage-collect incremental cache directory", || {
+            let _prof_timer =
+                sess.prof.generic_activity("incr_comp_garbage_collect_session_directories");
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!(
                     "Error while trying to garbage collect incremental \
@@ -317,7 +321,7 @@ fn configure_and_expand_inner<'a>(
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
-    crate_loader: &'a mut CrateLoader<'a>,
+    crate_loader: &'a CrateLoader<'a>,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {
@@ -393,12 +397,12 @@ fn configure_and_expand_inner<'a>(
 
         // Create the config for macro expansion
         let features = sess.features_untracked();
-        let cfg = syntax::ext::expand::ExpansionConfig {
+        let cfg = syntax_expand::expand::ExpansionConfig {
             features: Some(&features),
             recursion_limit: *sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
-            ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())
+            ..syntax_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
         let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
@@ -539,7 +543,8 @@ pub fn lower_to_hir(
 ) -> Result<hir::map::Forest> {
     // Lower AST to HIR.
     let hir_forest = time(sess, "lowering AST -> HIR", || {
-        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver);
+        let nt_to_tokenstream = syntax::parse::nt_to_tokenstream;
+        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver, nt_to_tokenstream);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
@@ -554,7 +559,7 @@ pub fn lower_to_hir(
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
-        syntax::ext::hygiene::clear_syntax_context_map();
+        syntax_expand::hygiene::clear_syntax_context_map();
     }
 
     Ok(hir_forest)
@@ -660,16 +665,15 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
         if sess.binary_dep_depinfo() {
             for cnum in compiler.cstore.crates_untracked() {
-                let metadata = compiler.cstore.crate_data_as_rc_any(cnum);
-                let metadata = metadata.downcast_ref::<cstore::CrateMetadata>().unwrap();
-                if let Some((path, _)) = &metadata.source.dylib {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                let source = compiler.cstore.crate_source_untracked(cnum);
+                if let Some((path, _)) = source.dylib {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
-                if let Some((path, _)) = &metadata.source.rlib {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                if let Some((path, _)) = source.rlib {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
-                if let Some((path, _)) = &metadata.source.rmeta {
-                    files.push(escape_dep_filename(&FileName::Real(path.clone())));
+                if let Some((path, _)) = source.rmeta {
+                    files.push(escape_dep_filename(&FileName::Real(path)));
                 }
             }
         }
@@ -780,20 +784,20 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     ty::provide(providers);
     traits::provide(providers);
     stability::provide(providers);
-    middle::intrinsicck::provide(providers);
-    middle::liveness::provide(providers);
     reachable::provide(providers);
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     middle::region::provide(providers);
-    middle::entry::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);
+    rustc_codegen_utils::provide(providers);
+    rustc_codegen_ssa::provide(providers);
 }
 
 pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     cstore::provide_extern(providers);
+    rustc_codegen_ssa::provide_extern(providers);
 }
 
 declare_box_region_type!(
@@ -892,7 +896,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     time(sess, "misc checking 1", || {
         parallel!({
             entry_point = time(sess, "looking for entry point", || {
-                middle::entry::find_entry_point(tcx)
+                rustc_passes::entry::find_entry_point(tcx)
             });
 
             time(sess, "looking for plugin registrar", || {
@@ -973,7 +977,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                     tcx.ensure().check_private_in_public(LOCAL_CRATE);
                 });
             }, {
-                time(sess, "death checking", || middle::dead::check_crate(tcx));
+                time(sess, "death checking", || rustc_passes::dead::check_crate(tcx));
             },  {
                 time(sess, "unused lib feature checking", || {
                     stability::check_unused_or_stable_features(tcx)

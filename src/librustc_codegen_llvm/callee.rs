@@ -33,7 +33,7 @@ pub fn get_fn(
     assert!(!instance.substs.has_param_types());
 
     let sig = instance.fn_sig(cx.tcx());
-    if let Some(&llfn) = cx.instances().borrow().get(&instance) {
+    if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
     }
 

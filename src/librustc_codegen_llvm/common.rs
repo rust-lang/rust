@@ -2,7 +2,7 @@
 
 //! Code that is useful in various codegen modules.
 
-use crate::llvm::{self, True, False, Bool, BasicBlock, OperandBundleDef};
+use crate::llvm::{self, True, False, Bool, BasicBlock, OperandBundleDef, ConstantInt};
 use crate::abi;
 use crate::consts;
 use crate::type_::Type;
@@ -86,6 +86,8 @@ impl Funclet<'ll> {
 
 impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type Value = &'ll Value;
+    type Function = &'ll Value;
+
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Funclet = Funclet<'ll>;
@@ -243,33 +245,23 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         struct_in_context(self.llcx, elts, packed)
     }
 
-    fn const_to_uint(&self, v: &'ll Value) -> u64 {
-        unsafe {
+    fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {
+        try_as_const_integral(v).map(|v| unsafe {
             llvm::LLVMConstIntGetZExtValue(v)
-        }
-    }
-
-    fn is_const_integral(&self, v: &'ll Value) -> bool {
-        unsafe {
-            llvm::LLVMIsAConstantInt(v).is_some()
-        }
+        })
     }
 
     fn const_to_opt_u128(&self, v: &'ll Value, sign_ext: bool) -> Option<u128> {
-        unsafe {
-            if self.is_const_integral(v) {
-                let (mut lo, mut hi) = (0u64, 0u64);
-                let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
-                                                           &mut hi, &mut lo);
-                if success {
-                    Some(hi_lo_to_u128(lo, hi))
-                } else {
-                    None
-                }
+        try_as_const_integral(v).and_then(|v| unsafe {
+            let (mut lo, mut hi) = (0u64, 0u64);
+            let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
+                                                        &mut hi, &mut lo);
+            if success {
+                Some(hi_lo_to_u128(lo, hi))
             } else {
                 None
             }
-        }
+        })
     }
 
     fn scalar_to_backend(
@@ -305,7 +297,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         }
                     }
                     Some(GlobalAlloc::Function(fn_instance)) => {
-                        self.get_fn(fn_instance)
+                        self.get_fn_addr(fn_instance)
                     }
                     Some(GlobalAlloc::Static(def_id)) => {
                         assert!(self.tcx.is_static(def_id));
@@ -385,4 +377,10 @@ pub fn struct_in_context(
 #[inline]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
+}
+
+fn try_as_const_integral(v: &'ll Value) -> Option<&'ll ConstantInt> {
+    unsafe {
+        llvm::LLVMIsAConstantInt(v)
+    }
 }

@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
     /// a trailing comma and erroneous trailing attributes.
-    crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
+    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
         let mut params = Vec::new();
         loop {
             let attrs = self.parse_outer_attributes()?;

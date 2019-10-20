@@ -196,6 +196,7 @@ symbols! {
         console,
         const_compare_raw_pointers,
         const_constructor,
+        const_extern_fn,
         const_fn,
         const_fn_union,
         const_generics,
@@ -388,6 +389,7 @@ symbols! {
         link_cfg,
         link_llvm_intrinsics,
         link_name,
+        link_ordinal,
         link_section,
         LintPass,
         lint_reasons,
@@ -530,6 +532,7 @@ symbols! {
         RangeInclusive,
         RangeTo,
         RangeToInclusive,
+        raw_dylib,
         raw_identifiers,
         Ready,
         reason,
@@ -655,6 +658,7 @@ symbols! {
         suggestion,
         target_feature,
         target_has_atomic,
+        target_has_atomic_load_store,
         target_thread_local,
         task,
         tbm_target_feature,
@@ -671,6 +675,7 @@ symbols! {
         tool_attributes,
         tool_lints,
         trace_macros,
+        track_caller,
         trait_alias,
         transmute,
         transparent,
@@ -803,25 +808,13 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
-    /// Transforms an underscore identifier into one with the same name, but
-    /// gensymed. Leaves non-underscore identifiers unchanged.
-    pub fn gensym_if_underscore(self) -> Ident {
-        if self.name == kw::Underscore {
-            let name = with_interner(|interner| interner.gensymed(self.name));
-            Ident::new(name, self.span)
-        } else {
-            self
-        }
-    }
-
     /// Convert the name to a `LocalInternedString`. This is a slowish
     /// operation because it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
     }
 
-    /// Convert the name to an `InternedString`. This is a slowish operation
-    /// because it requires locking the symbol interner.
+    /// Convert the name to an `InternedString`.
     pub fn as_interned_str(self) -> InternedString {
         self.name.as_interned_str()
     }
@@ -876,26 +869,9 @@ impl UseSpecializedDecodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string. A gensym is a symbol that is
-/// never equal to any other symbol.
+/// An interned string.
 ///
-/// Conceptually, a gensym can be thought of as a normal symbol with an
-/// invisible unique suffix. Gensyms are useful when creating new identifiers
-/// that must not match any existing identifiers, e.g. during macro expansion
-/// and syntax desugaring. Because gensyms should always be identifiers, all
-/// gensym operations are on `Ident` rather than `Symbol`. (Indeed, in the
-/// future the gensym-ness may be moved from `Symbol` to hygiene data.)
-///
-/// Examples:
-/// ```
-/// assert_eq!(Ident::from_str("_"), Ident::from_str("_"))
-/// assert_ne!(Ident::from_str("_").gensym_if_underscore(), Ident::from_str("_"))
-/// assert_ne!(
-///     Ident::from_str("_").gensym_if_underscore(),
-///     Ident::from_str("_").gensym_if_underscore(),
-/// )
-/// ```
-/// Internally, a symbol is implemented as an index, and all operations
+/// Internally, a `Symbol` is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
 /// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
 /// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
@@ -946,12 +922,9 @@ impl Symbol {
         })
     }
 
-    /// Convert to an `InternedString`. This is a slowish operation because it
-    /// requires locking the symbol interner.
+    /// Convert to an `InternedString`.
     pub fn as_interned_str(self) -> InternedString {
-        with_interner(|interner| InternedString {
-            symbol: interner.interned(self)
-        })
+        InternedString { symbol: self }
     }
 
     pub fn as_u32(self) -> u32 {
@@ -961,24 +934,19 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_gensymed = with_interner(|interner| interner.is_gensymed(*self));
-        if is_gensymed {
-            write!(f, "{}({:?})", self, self.0)
-        } else {
-            write!(f, "{}", self)
-        }
+        self.with(|str| fmt::Debug::fmt(&str, f))
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
+        self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
 
 impl Encodable for Symbol {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
+        self.with(|string| s.emit_str(string))
     }
 }
 
@@ -989,15 +957,11 @@ impl Decodable for Symbol {
 }
 
 // The `&'static str`s in this type actually point into the arena.
-//
-// Note that normal symbols are indexed upward from 0, and gensyms are indexed
-// downward from SymbolIndex::MAX_AS_U32.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
     names: FxHashMap<&'static str, Symbol>,
     strings: Vec<&'static str>,
-    gensyms: Vec<Symbol>,
 }
 
 impl Interner {
@@ -1030,34 +994,10 @@ impl Interner {
         self.names.insert(string, name);
         name
     }
-
-    fn interned(&self, symbol: Symbol) -> Symbol {
-        if (symbol.0.as_usize()) < self.strings.len() {
-            symbol
-        } else {
-            self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]
-        }
-    }
-
-    fn gensymed(&mut self, symbol: Symbol) -> Symbol {
-        self.gensyms.push(symbol);
-        Symbol::new(SymbolIndex::MAX_AS_U32 - self.gensyms.len() as u32 + 1)
-    }
-
-    fn is_gensymed(&mut self, symbol: Symbol) -> bool {
-        symbol.0.as_usize() >= self.strings.len()
-    }
-
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
-        match self.strings.get(symbol.0.as_usize()) {
-            Some(string) => string,
-            None => {
-                let symbol = self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize];
-                self.strings[symbol.0.as_usize()]
-            }
-        }
+        self.strings[symbol.0.as_usize()]
     }
 }
 
@@ -1166,8 +1106,8 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 }
 
 /// An alternative to `Symbol` and `InternedString`, useful when the chars
-/// within the symbol need to be accessed. It is best used for temporary
-/// values.
+/// within the symbol need to be accessed. It deliberately has limited
+/// functionality and should only be used for temporary values.
 ///
 /// Because the interner outlives any thread which uses this type, we can
 /// safely treat `string` which points to interner data, as an immortal string,
@@ -1176,7 +1116,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 // FIXME: ensure that the interner outlives any thread which uses
 // `LocalInternedString`, by creating a new thread right after constructing the
 // interner.
-#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
+#[derive(Eq, PartialOrd, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
 }
@@ -1194,30 +1134,6 @@ where
 impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for LocalInternedString {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
-    }
-}
-
-impl std::cmp::PartialEq<LocalInternedString> for str {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a str {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        *self == other.string
-    }
-}
-
-impl std::cmp::PartialEq<LocalInternedString> for String {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a String {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        *self == other.string
     }
 }
 
@@ -1242,19 +1158,12 @@ impl fmt::Display for LocalInternedString {
     }
 }
 
-/// An alternative to `Symbol` that is focused on string contents. It has two
-/// main differences to `Symbol`.
+/// An alternative to `Symbol` that is focused on string contents.
 ///
-/// First, its implementations of `Hash`, `PartialOrd` and `Ord` work with the
+/// Its implementations of `Hash`, `PartialOrd` and `Ord` work with the
 /// string chars rather than the symbol integer. This is useful when hash
 /// stability is required across compile sessions, or a guaranteed sort
 /// ordering is required.
-///
-/// Second, gensym-ness is irrelevant. E.g.:
-/// ```
-/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
-/// assert_eq!(Symbol::gensym("x").as_interned_str(), Symbol::gensym("x").as_interned_str())
-/// ```
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct InternedString {
     symbol: Symbol,

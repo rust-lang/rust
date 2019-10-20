@@ -55,8 +55,9 @@ trait Bar {
 //                   /  \
 //            Vec<i32>  $Vec<i64>
 
-// use the provided method
-impl<T> Bar for T {}
+impl<T> Bar for T {
+    default fn bar(&self) -> i32 { 0 }
+}
 
 impl Bar for i32 {
     fn bar(&self) -> i32 { 1 }

@@ -13,7 +13,7 @@ use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, GenericArg, GenericArgKind};
 use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
-use crate::ty::layout::{Size, Integer, IntegerExt, VariantIdx};
+use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, GlobalId};
 
@@ -24,7 +24,6 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::attr::{SignedInt, UnsignedInt};
 use syntax::symbol::{kw, InternedString};
 
 use self::InferTy::*;
@@ -163,7 +162,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -512,7 +511,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// variant indices.
     #[inline]
     pub fn discriminants(
-        &'tcx self,
+        self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
@@ -524,7 +523,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
     #[inline]
-    pub fn variant_name(&self, v: VariantIdx) -> Cow<'static, str> {
+    pub fn variant_name(self, v: VariantIdx) -> Cow<'static, str> {
         match v.as_usize() {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
             Self::RETURNED => Cow::from(Self::RETURNED_NAME),
@@ -570,7 +569,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub enum UpvarSubsts<'tcx> {
     Closure(SubstsRef<'tcx>),
-    Generator(GeneratorSubsts<'tcx>),
+    Generator(SubstsRef<'tcx>),
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
@@ -582,7 +581,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
     ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
             UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
-            UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Generator(substs) => substs.as_generator().split(def_id, tcx).upvar_kinds,
         };
         upvar_kinds.iter().map(|t| {
             if let GenericArgKind::Type(ty) = t.unpack() {
@@ -1776,6 +1775,10 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_bool(&self) -> bool { self.kind == Bool }
 
+    /// Returns `true` if this type is a `str`.
+    #[inline]
+    pub fn is_str(&self) -> bool { self.kind == Str }
+
     #[inline]
     pub fn is_param(&self, index: u32) -> bool {
         match self.kind {
@@ -2109,7 +2112,8 @@ impl<'tcx> TyS<'tcx> {
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Generator(def_id, substs, _) => Some(substs.variant_range(def_id, tcx)),
+            TyKind::Generator(def_id, substs, _) =>
+                Some(substs.as_generator().variant_range(def_id, tcx)),
             _ => None,
         }
     }
@@ -2126,7 +2130,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
             TyKind::Generator(def_id, substs, _) =>
-                Some(substs.discriminant_for_variant(def_id, tcx, variant_index)),
+                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index)),
             _ => None,
         }
     }
@@ -2149,7 +2153,7 @@ impl<'tcx> TyS<'tcx> {
                 out.extend(substs.regions())
             }
             Closure(_, ref substs ) |
-            Generator(_, GeneratorSubsts { ref substs }, _) => {
+            Generator(_, ref substs, _) => {
                 out.extend(substs.regions())
             }
             Projection(ref data) | UnnormalizedProjection(ref data) => {
@@ -2199,7 +2203,9 @@ impl<'tcx> TyS<'tcx> {
                 _ => bug!("cannot convert type `{:?}` to a closure kind", self),
             },
 
-            Infer(_) => None,
+            // "Bound" types appear in canonical queries when the
+            // closure type is not yet known
+            Bound(..) | Infer(_) => None,
 
             Error => Some(ty::ClosureKind::Fn),
 
@@ -2299,20 +2305,7 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<u128> {
         assert_eq!(self.ty, ty);
-        // This is purely an optimization -- layout_of is a pretty expensive operation,
-        // but if we can determine the size without calling it, we don't need all that complexity
-        // (hashing, caching, etc.). As such, try to skip it.
-        let size = match ty.kind {
-            ty::Bool => Size::from_bytes(1),
-            ty::Char => Size::from_bytes(4),
-            ty::Int(ity) => {
-                Integer::from_attr(&tcx, SignedInt(ity)).size()
-            }
-            ty::Uint(uty) => {
-                Integer::from_attr(&tcx, UnsignedInt(uty)).size()
-            }
-            _ => tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size,
-        };
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
         self.eval(tcx, param_env).val.try_to_bits(size)
     }

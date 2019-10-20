@@ -1,0 +1,53 @@
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/issue-65035-static-with-parent-generics.rs:6:26
+   |
+LL | fn f<T>() {
+   |      - type parameter from outer function
+LL |     extern "C" {
+LL |         static a: *const T;
+   |                          ^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/issue-65035-static-with-parent-generics.rs:12:22
+   |
+LL | fn g<T: Default>() {
+   |      - type parameter from outer function
+LL |     static a: *const T = Default::default();
+   |                      ^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/issue-65035-static-with-parent-generics.rs:18:24
+   |
+LL | fn h<const N: usize>() {
+   |            - const parameter from outer function
+LL |     extern "C" {
+LL |         static a: [u8; N];
+   |                        ^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/issue-65035-static-with-parent-generics.rs:24:20
+   |
+LL | fn i<const N: usize>() {
+   |            - const parameter from outer function
+LL |     static a: [u8; N] = [0; N];
+   |                    ^ use of generic parameter from outer function
+
+error[E0401]: can't use generic parameters from outer function
+  --> $DIR/issue-65035-static-with-parent-generics.rs:24:29
+   |
+LL | fn i<const N: usize>() {
+   |            - const parameter from outer function
+LL |     static a: [u8; N] = [0; N];
+   |                             ^ use of generic parameter from outer function
+
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-65035-static-with-parent-generics.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

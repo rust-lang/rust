@@ -12,8 +12,8 @@ error[E0308]: mismatched types
 LL |     let _: ConstString<"Hello"> = ConstString::<"World">;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^ expected `"Hello"`, found `"World"`
    |
-   = note: expected type `ConstString<>`
-              found type `ConstString<>`
+   = note: expected type `ConstString<"Hello">`
+              found type `ConstString<"World">`
 
 error[E0308]: mismatched types
   --> $DIR/slice-const-param-mismatch.rs:11:33
@@ -21,8 +21,8 @@ error[E0308]: mismatched types
 LL |     let _: ConstString<"ℇ㇈↦"> = ConstString::<"ℇ㇈↥">;
    |                                  ^^^^^^^^^^^^^^^^^^^^^ expected `"ℇ㇈↦"`, found `"ℇ㇈↥"`
    |
-   = note: expected type `ConstString<>`
-              found type `ConstString<>`
+   = note: expected type `ConstString<"ℇ㇈↦">`
+              found type `ConstString<"ℇ㇈↥">`
 
 error[E0308]: mismatched types
   --> $DIR/slice-const-param-mismatch.rs:13:33
@@ -30,8 +30,8 @@ error[E0308]: mismatched types
 LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
    |                                 ^^^^^^^^^^^^^^^^^^^^ expected `b"AAA"`, found `b"BBB"`
    |
-   = note: expected type `ConstBytes<>`
-              found type `ConstBytes<>`
+   = note: expected type `ConstBytes<b"AAA">`
+              found type `ConstBytes<b"BBB">`
 
 error: aborting due to 3 previous errors
 

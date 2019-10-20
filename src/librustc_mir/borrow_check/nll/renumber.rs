@@ -1,6 +1,6 @@
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, GeneratorSubsts, Ty, TypeFoldable};
-use rustc::mir::{Location, Body, Promoted};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::mir::{Body, Location, PlaceElem, Promoted};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_index::vec::IndexVec;
@@ -62,6 +62,21 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
         debug!("visit_ty: ty={:?}", ty);
     }
 
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        if let PlaceElem::Field(field, ty) = elem {
+            let new_ty = self.renumber_regions(ty);
+
+            if new_ty != *ty {
+                return Some(PlaceElem::Field(*field, new_ty));
+            }
+        }
+
+        None
+    }
+
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
         debug!("visit_substs(substs={:?}, location={:?})", substs, location);
 
@@ -81,19 +96,5 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
 
     fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
         *constant = self.renumber_regions(&*constant);
-    }
-
-    fn visit_generator_substs(&mut self,
-                              substs: &mut GeneratorSubsts<'tcx>,
-                              location: Location) {
-        debug!(
-            "visit_generator_substs(substs={:?}, location={:?})",
-            substs,
-            location,
-        );
-
-        *substs = self.renumber_regions(substs);
-
-        debug!("visit_generator_substs: substs={:?}", substs);
     }
 }

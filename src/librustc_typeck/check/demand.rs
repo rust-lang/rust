@@ -115,6 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(e) => e
         };
 
+        let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
@@ -349,7 +350,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the span is from a macro, then it's hard to extract the text
         // and make a good suggestion, so don't bother.
-        let is_macro = sp.from_expansion();
+        let is_macro = sp.from_expansion() && sp.desugaring_kind().is_none();
+
+        // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
+        let expr = expr.peel_drop_temps();
 
         match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {

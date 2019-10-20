@@ -20,7 +20,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;
@@ -1222,6 +1222,8 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
                        forest: &'hir Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
+    let _prof_timer = sess.prof.generic_activity("build_hir_map");
+
     // Build the reverse mapping of `node_to_hir_id`.
     let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();

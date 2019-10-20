@@ -65,7 +65,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             if let (&ty::Generator(_, substs, _), &layout::Variants::Single { index })
                  = (&layout.ty.kind, &layout.variants)
             {
-                write!(&mut name, "::{}", substs.variant_name(index)).unwrap();
+                write!(&mut name, "::{}", substs.as_generator().variant_name(index)).unwrap();
             }
             Some(name)
         }

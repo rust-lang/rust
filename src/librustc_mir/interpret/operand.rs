@@ -647,7 +647,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits_discr = raw_discr
                     .not_undef()
                     .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
-                    .map_err(|_| err_unsup!(InvalidDiscriminant(raw_discr.erase_tag())))?;
+                    .map_err(|_| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the discriminant layout
@@ -664,16 +664,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     bits_discr
                 };
                 // Make sure we catch invalid discriminants
-                let index = match &rval.layout.ty.kind {
+                let index = match rval.layout.ty.kind {
                     ty::Adt(adt, _) => adt
                         .discriminants(self.tcx.tcx)
                         .find(|(_, var)| var.val == real_discr),
-                    ty::Generator(def_id, substs, _) => substs
-                        .discriminants(*def_id, self.tcx.tcx)
-                        .find(|(_, var)| var.val == real_discr),
+                    ty::Generator(def_id, substs, _) => {
+                        let substs = substs.as_generator();
+                        substs
+                            .discriminants(def_id, self.tcx.tcx)
+                            .find(|(_, var)| var.val == real_discr)
+                    }
                     _ => bug!("tagged layout for non-adt non-generator"),
+
                 }.ok_or_else(
-                    || err_unsup!(InvalidDiscriminant(raw_discr.erase_tag()))
+                    || err_ub!(InvalidDiscriminant(raw_discr.erase_tag()))
                 )?;
                 (real_discr, index.0)
             },
@@ -685,7 +689,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
                 let raw_discr = raw_discr.not_undef().map_err(|_| {
-                    err_unsup!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
+                    err_ub!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
                 })?;
                 match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
                     Err(ptr) => {
@@ -693,7 +697,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            throw_unsup!(InvalidDiscriminant(raw_discr.erase_tag().into()))
+                            throw_ub!(InvalidDiscriminant(raw_discr.erase_tag().into()))
                         }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },

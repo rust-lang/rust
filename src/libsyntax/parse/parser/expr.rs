@@ -1,18 +1,18 @@
-use super::{
-    Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode, SemiColonMode,
-    SeqSep, TokenExpectType,
-};
+use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
+use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
+use super::diagnostics::Error;
+
+use crate::parse::literal::LitError;
 
 use crate::ast::{
     self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
     Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind,
-    FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field,
+    FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::parse::classify;
-use crate::parse::token::{self, Token};
-use crate::parse::diagnostics::Error;
+use crate::parse::token::{self, Token, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};
@@ -20,6 +20,7 @@ use crate::symbol::{kw, sym};
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
 use errors::Applicability;
+use syntax_pos::Symbol;
 use std::mem;
 use rustc_data_structures::thin_vec::ThinVec;
 
@@ -238,7 +239,9 @@ impl<'a> Parser<'a> {
 
             self.bump();
             if op.is_comparison() {
-                self.check_no_chained_comparison(&lhs, &op)?;
+                if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
+                    return Ok(expr);
+                }
             }
             // Special cases:
             if op == AssocOp::As {
@@ -420,7 +423,7 @@ impl<'a> Parser<'a> {
                 self.struct_span_err(span_of_tilde, "`~` cannot be used as a unary operator")
                     .span_suggestion_short(
                         span_of_tilde,
-                        "use `!` to perform bitwise negation",
+                        "use `!` to perform bitwise not",
                         "!".to_owned(),
                         Applicability::MachineApplicable
                     )
@@ -550,8 +553,11 @@ impl<'a> Parser<'a> {
 
                         // Report non-fatal diagnostics, keep `x as usize` as an expression
                         // in AST and continue parsing.
-                        let msg = format!("`<` is interpreted as a start of generic \
-                                           arguments for `{}`, not a {}", path, op_noun);
+                        let msg = format!(
+                            "`<` is interpreted as a start of generic arguments for `{}`, not a {}",
+                            pprust::path_to_string(&path),
+                            op_noun,
+                        );
                         let span_after_type = parser_snapshot_after_type.token.span;
                         let expr = mk_expr(self, P(Ty {
                             span: path.span,
@@ -1067,8 +1073,167 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
+    /// Matches `lit = true | false | token_lit`.
+    pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
+        let mut recovered = None;
+        if self.token == token::Dot {
+            // Attempt to recover `.4` as `0.4`.
+            recovered = self.look_ahead(1, |next_token| {
+                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
+                        = next_token.kind {
+                    if self.token.span.hi() == next_token.span.lo() {
+                        let s = String::from("0.") + &symbol.as_str();
+                        let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
+                        return Some(Token::new(kind, self.token.span.to(next_token.span)));
+                    }
+                }
+                None
+            });
+            if let Some(token) = &recovered {
+                self.bump();
+                self.struct_span_err(token.span, "float literals must have an integer part")
+                    .span_suggestion(
+                        token.span,
+                        "must have an integer part",
+                        pprust::token_to_string(token),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            }
+        }
+
+        let token = recovered.as_ref().unwrap_or(&self.token);
+        match Lit::from_token(token) {
+            Ok(lit) => {
+                self.bump();
+                Ok(lit)
+            }
+            Err(LitError::NotLiteral) => {
+                let msg = format!("unexpected token: {}", self.this_token_descr());
+                Err(self.span_fatal(token.span, &msg))
+            }
+            Err(err) => {
+                let (lit, span) = (token.expect_lit(), token.span);
+                self.bump();
+                self.error_literal_from_token(err, lit, span);
+                // Pack possible quotes and prefixes from the original literal into
+                // the error literal's symbol so they can be pretty-printed faithfully.
+                let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
+                let symbol = Symbol::intern(&suffixless_lit.to_string());
+                let lit = token::Lit::new(token::Err, symbol, lit.suffix);
+                Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
+            }
+        }
+    }
+
+    fn error_literal_from_token(&self, err: LitError, lit: token::Lit, span: Span) {
+        // Checks if `s` looks like i32 or u1234 etc.
+        fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+            s.len() > 1
+            && s.starts_with(first_chars)
+            && s[1..].chars().all(|c| c.is_ascii_digit())
+        }
+
+        let token::Lit { kind, suffix, .. } = lit;
+        match err {
+            // `NotLiteral` is not an error by itself, so we don't report
+            // it and give the parser opportunity to try something else.
+            LitError::NotLiteral => {}
+            // `LexerError` *is* an error, but it was already reported
+            // by lexer, so here we don't report it the second time.
+            LitError::LexerError => {}
+            LitError::InvalidSuffix => {
+                self.expect_no_suffix(
+                    span,
+                    &format!("{} {} literal", kind.article(), kind.descr()),
+                    suffix,
+                );
+            }
+            LitError::InvalidIntSuffix => {
+                let suf = suffix.expect("suffix error with no suffix").as_str();
+                if looks_like_width_suffix(&['i', 'u'], &suf) {
+                    // If it looks like a width, try to be helpful.
+                    let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
+                    self.struct_span_err(span, &msg)
+                        .help("valid widths are 8, 16, 32, 64 and 128")
+                        .emit();
+                } else {
+                    let msg = format!("invalid suffix `{}` for integer literal", suf);
+                    self.struct_span_err(span, &msg)
+                        .span_label(span, format!("invalid suffix `{}`", suf))
+                        .help("the suffix must be one of the integral types (`u32`, `isize`, etc)")
+                        .emit();
+                }
+            }
+            LitError::InvalidFloatSuffix => {
+                let suf = suffix.expect("suffix error with no suffix").as_str();
+                if looks_like_width_suffix(&['f'], &suf) {
+                    // If it looks like a width, try to be helpful.
+                    let msg = format!("invalid width `{}` for float literal", &suf[1..]);
+                    self.struct_span_err(span, &msg)
+                        .help("valid widths are 32 and 64")
+                        .emit();
+                } else {
+                    let msg = format!("invalid suffix `{}` for float literal", suf);
+                    self.struct_span_err(span, &msg)
+                        .span_label(span, format!("invalid suffix `{}`", suf))
+                        .help("valid suffixes are `f32` and `f64`")
+                        .emit();
+                }
+            }
+            LitError::NonDecimalFloat(base) => {
+                let descr = match base {
+                    16 => "hexadecimal",
+                    8 => "octal",
+                    2 => "binary",
+                    _ => unreachable!(),
+                };
+                self.struct_span_err(span, &format!("{} float literal is not supported", descr))
+                    .span_label(span, "not supported")
+                    .emit();
+            }
+            LitError::IntTooLarge => {
+                self.struct_span_err(span, "integer literal is too large")
+                    .emit();
+            }
+        }
+    }
+
+    pub(super) fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<Symbol>) {
+        if let Some(suf) = suffix {
+            let mut err = if kind == "a tuple index"
+                && [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suf)
+            {
+                // #59553: warn instead of reject out of hand to allow the fix to percolate
+                // through the ecosystem when people fix their macros
+                let mut err = self.sess.span_diagnostic.struct_span_warn(
+                    sp,
+                    &format!("suffixes on {} are invalid", kind),
+                );
+                err.note(&format!(
+                    "`{}` is *temporarily* accepted on tuple index fields as it was \
+                        incorrectly accepted on stable for a few releases",
+                    suf,
+                ));
+                err.help(
+                    "on proc macros, you'll want to use `syn::Index::from` or \
+                        `proc_macro::Literal::*_unsuffixed` for code that will desugar \
+                        to tuple field access",
+                );
+                err.note(
+                    "for more context, see https://github.com/rust-lang/rust/issues/60210",
+                );
+                err
+            } else {
+                self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+            };
+            err.span_label(sp, format!("invalid suffix `{}`", suf));
+            err.emit();
+        }
+    }
+
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
-    crate fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
         let minus_lo = self.token.span;
@@ -1088,7 +1253,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block or unsafe block.
-    crate fn parse_block_expr(
+    pub(super) fn parse_block_expr(
         &mut self,
         opt_label: Option<Label>,
         lo: Span,
@@ -1393,7 +1558,7 @@ impl<'a> Parser<'a> {
         return Ok(self.mk_expr(lo.to(hi), ExprKind::Match(discriminant, arms), attrs));
     }
 
-    crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
+    pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let pat = self.parse_top_pat(GateOr::No)?;
@@ -1501,7 +1666,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `async move? {...}` expression.
-    pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let span_lo = self.token.span;
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause();
@@ -1780,5 +1945,9 @@ impl<'a> Parser<'a> {
 
     crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
+    }
+
+    pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
+        self.mk_expr(span, ExprKind::Err, ThinVec::new())
     }
 }

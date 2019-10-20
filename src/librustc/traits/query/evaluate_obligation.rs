@@ -56,7 +56,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     // Helper function that canonicalizes and runs the query. If an
     // overflow results, we re-run it in the local context so we can
     // report a nice error.
-    fn evaluate_obligation_no_overflow(
+    crate fn evaluate_obligation_no_overflow(
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> EvaluationResult {

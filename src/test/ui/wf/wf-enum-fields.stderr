@@ -4,10 +4,10 @@ error[E0277]: the trait bound `A: std::marker::Copy` is not satisfied
 LL | struct IsCopy<T:Copy> {
    | --------------------- required by `IsCopy`
 ...
+LL | enum SomeEnum<A> {
+   |               - help: consider restricting this bound: `A: std::marker::Copy`
 LL |     SomeVariant(IsCopy<A>)
    |                 ^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
-   |
-   = help: consider adding a `where A: std::marker::Copy` bound
 
 error: aborting due to previous error
 

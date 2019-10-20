@@ -1126,7 +1126,7 @@ impl Build {
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp));
+        let contents = t!(fs::read(stamp), &stamp);
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {

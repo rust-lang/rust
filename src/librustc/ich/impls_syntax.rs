@@ -59,7 +59,7 @@ impl_stable_hash_for!(enum ::syntax::ast::AsmDialect {
     Intel
 });
 
-impl_stable_hash_for!(enum ::syntax::ext::base::MacroKind {
+impl_stable_hash_for!(enum ::syntax_expand::base::MacroKind {
     Bang,
     Attr,
     Derive,

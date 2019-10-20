@@ -38,13 +38,13 @@ error[E0412]: cannot find type `first` in module `m`
   --> $DIR/levenshtein.rs:28:15
    |
 LL |     let b: m::first = m::second; // Misspelled item in module.
-   |               ^^^^^ help: a struct with a similar name exists: `First`
+   |               ^^^^^ help: a struct with a similar name exists (notice the capitalization): `First`
 
 error[E0425]: cannot find value `second` in module `m`
   --> $DIR/levenshtein.rs:28:26
    |
 LL |     let b: m::first = m::second; // Misspelled item in module.
-   |                          ^^^^^^ help: a unit struct with a similar name exists: `Second`
+   |                          ^^^^^^ help: a unit struct with a similar name exists (notice the capitalization): `Second`
 
 error: aborting due to 8 previous errors
 

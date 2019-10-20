@@ -4,7 +4,6 @@
 // left-hand side of a macro definition behave as if they had unique spans, and in particular that
 // they don't crash the compiler.
 
-#![feature(proc_macro_hygiene)]
 #![allow(unused_macros)]
 
 extern crate proc_macro_sequence;

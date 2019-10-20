@@ -35,7 +35,6 @@
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(inner_deref)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
@@ -57,9 +56,8 @@
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![feature(proc_macro_hygiene)]
+#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(log_syntax)]
-#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 
@@ -102,16 +100,12 @@ pub mod lint;
 pub mod middle {
     pub mod expr_use_visitor;
     pub mod cstore;
-    pub mod dead;
     pub mod dependency_format;
     pub mod diagnostic_items;
-    pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;
-    pub mod intrinsicck;
     pub mod lib_features;
     pub mod lang_items;
-    pub mod liveness;
     pub mod mem_categorization;
     pub mod privacy;
     pub mod reachable;

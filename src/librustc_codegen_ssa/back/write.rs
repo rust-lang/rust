@@ -22,11 +22,12 @@ use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
 use rustc::util::profiling::SelfProfilerRef;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Handler, Level, FatalError, DiagnosticId, SourceMapperDyn};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::hygiene::ExpnId;
 use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
 
@@ -320,8 +321,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
-
-    sess.prof.generic_activity_start("codegen_and_optimize_crate");
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
@@ -1665,13 +1664,13 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, db: &rustc_errors::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msg: db.message(),
-            code: db.code.clone(),
-            lvl: db.level,
+            msg: diag.message(),
+            code: diag.code.clone(),
+            lvl: diag.level,
         })));
-        for child in &db.children {
+        for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
                 msg: child.message(),
                 code: None,
@@ -1679,6 +1678,9 @@ impl Emitter for SharedEmitter {
             })));
         }
         drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
+    }
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+        None
     }
 }
 
@@ -1773,8 +1775,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         if sess.codegen_units() == 1 && sess.time_llvm_passes() {
             self.backend.print_pass_timings()
         }
-
-        sess.prof.generic_activity_end("codegen_and_optimize_crate");
 
         (CodegenResults {
             crate_name: self.crate_name,

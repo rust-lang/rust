@@ -116,7 +116,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 info!("adding bytecode {}", name);
                 let bc_encoded = data.data();
 
-                let (bc, id) = time_ext(cgcx.time_passes, None, &format!("decode {}", name), || {
+                let (bc, id) = time_ext(cgcx.time_passes, &format!("decode {}", name), || {
                     match DecodedBytecode::new(bc_encoded) {
                         Ok(b) => Ok((b.bytecode(), b.identifier().to_string())),
                         Err(e) => Err(diag_handler.fatal(&e)),
@@ -295,7 +295,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         for (bc_decoded, name) in serialized_modules {
             let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_link_module");
             info!("linking {:?}", name);
-            time_ext(cgcx.time_passes, None, &format!("ll link {:?}", name), || {
+            time_ext(cgcx.time_passes, &format!("ll link {:?}", name), || {
                 let data = bc_decoded.data();
                 linker.add(&data).map_err(|()| {
                     let msg = format!("failed to load bc of {:?}", name);
@@ -546,7 +546,7 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
         llvm::LLVMRustAddAnalysisPasses(module.module_llvm.tm, pm, module.module_llvm.llmod());
 
         if config.verify_llvm_ir {
-            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr().cast());
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
@@ -581,16 +581,16 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // We always generate bitcode through ThinLTOBuffers,
         // which do not support anonymous globals
         if config.bitcode_needed() {
-            let pass = llvm::LLVMRustFindAndCreatePass("name-anon-globals\0".as_ptr() as *const _);
+            let pass = llvm::LLVMRustFindAndCreatePass("name-anon-globals\0".as_ptr().cast());
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
         if config.verify_llvm_ir {
-            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr().cast());
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
-        time_ext(cgcx.time_passes, None, "LTO passes", ||
+        time_ext(cgcx.time_passes, "LTO passes", ||
              llvm::LLVMRunPassManager(pm, module.module_llvm.llmod()));
 
         llvm::LLVMDisposePassManager(pm);

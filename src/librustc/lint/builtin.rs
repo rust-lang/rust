@@ -21,7 +21,8 @@ declare_lint! {
 declare_lint! {
     pub CONST_ERR,
     Deny,
-    "constant evaluation detected erroneous expression"
+    "constant evaluation detected erroneous expression",
+    report_in_external_macro: true
 }
 
 declare_lint! {
@@ -77,6 +78,12 @@ declare_lint! {
     pub UNREACHABLE_PATTERNS,
     Warn,
     "detects unreachable patterns"
+}
+
+declare_lint! {
+    pub OVERLAPPING_PATTERNS,
+    Warn,
+    "detects overlapping patterns"
 }
 
 declare_lint! {
@@ -368,6 +375,12 @@ pub mod parser {
         Allow,
         "possible meta-variable misuse at macro definition"
     }
+
+    declare_lint! {
+        pub INCOMPLETE_INCLUDE,
+        Deny,
+        "trailing content in included file"
+    }
 }
 
 declare_lint! {
@@ -416,6 +429,7 @@ declare_lint_pass! {
         DEAD_CODE,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
+        OVERLAPPING_PATTERNS,
         UNUSED_MACROS,
         WARNINGS,
         UNUSED_FEATURES,

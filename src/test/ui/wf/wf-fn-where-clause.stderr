@@ -4,12 +4,13 @@ error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
 LL |   trait ExtraCopy<T:Copy> { }
    |   ----------------------- required by `ExtraCopy`
 LL | 
-LL | / fn foo<T,U>() where T: ExtraCopy<U>
+LL |   fn foo<T,U>() where T: ExtraCopy<U>
+   |   ^                                  - help: consider further restricting type parameter `U`: `, U: std::marker::Copy`
+   |  _|
+   | |
 LL | | {
 LL | | }
    | |_^ the trait `std::marker::Copy` is not implemented for `U`
-   |
-   = help: consider adding a `where U: std::marker::Copy` bound
 
 error[E0277]: the size for values of type `(dyn std::marker::Copy + 'static)` cannot be known at compilation time
   --> $DIR/wf-fn-where-clause.rs:12:1

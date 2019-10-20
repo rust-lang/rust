@@ -142,6 +142,9 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        if layout.size() == 0 {
+            return Box(NonNull::dangling().into())
+        }
         let ptr = unsafe {
             Global.alloc(layout)
                 .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
@@ -182,9 +185,16 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = unsafe { alloc::alloc(layout) };
-        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
-        let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
+        let ptr = if layout.size() == 0 {
+            NonNull::dangling()
+        } else {
+            unsafe {
+                Global.alloc(layout)
+                    .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+                    .cast()
+            }
+        };
+        let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
         Box(Unique::from(slice))
     }
 }
@@ -871,11 +881,33 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth(n)
     }
+    fn last(self) -> Option<I::Item> {
+        BoxIter::last(self)
+    }
 }
 
+trait BoxIter {
+    type Item;
+    fn last(self) -> Option<Self::Item>;
+}
+
+impl<I: Iterator + ?Sized> BoxIter for Box<I> {
+    type Item = I::Item;
+    default fn last(self) -> Option<I::Item> {
+        #[inline]
+        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+            Some(x)
+        }
+
+        self.fold(None, some)
+    }
+}
+
+/// Specialization for sized `I`s that uses `I`s implementation of `last()`
+/// instead of the default.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator + Sized> Iterator for Box<I> {
-    fn last(self) -> Option<I::Item> where I: Sized {
+impl<I: Iterator> BoxIter for Box<I> {
+    fn last(self) -> Option<I::Item> {
         (*self).last()
     }
 }

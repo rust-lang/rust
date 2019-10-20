@@ -94,7 +94,7 @@ impl FlagComputation {
             &ty::Generator(_, ref substs, _) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
-                self.add_substs(&substs.substs);
+                self.add_substs(substs);
             }
 
             &ty::GeneratorWitness(ref ts) => {
@@ -250,7 +250,9 @@ impl FlagComputation {
             ConstValue::Placeholder(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_CT_PLACEHOLDER);
             }
-            _ => {},
+            ConstValue::Scalar(_) => { }
+            ConstValue::Slice { data: _, start: _, end: _ } => { }
+            ConstValue::ByRef { alloc: _, offset: _ } => { }
         }
     }
 

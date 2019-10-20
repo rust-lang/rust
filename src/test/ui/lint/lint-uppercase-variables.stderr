@@ -21,7 +21,7 @@ error: structure field `X` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:10:5
    |
 LL |     X: usize
-   |     ^ help: convert the identifier to snake case: `x`
+   |     ^ help: convert the identifier to snake case (notice the capitalization): `x`
    |
 note: lint level defined here
   --> $DIR/lint-uppercase-variables.rs:3:9
@@ -33,7 +33,7 @@ error: variable `Xx` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:13:9
    |
 LL | fn test(Xx: usize) {
-   |         ^^ help: convert the identifier to snake case: `xx`
+   |         ^^ help: convert the identifier to snake case (notice the capitalization): `xx`
 
 error: variable `Test` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:18:9
@@ -45,7 +45,7 @@ error: variable `Foo` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:22:9
    |
 LL |         Foo => {}
-   |         ^^^ help: convert the identifier to snake case: `foo`
+   |         ^^^ help: convert the identifier to snake case (notice the capitalization): `foo`
 
 error: aborting due to 4 previous errors
 

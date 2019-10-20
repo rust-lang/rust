@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
     /// Like `parse_path`, but also supports parsing `Word` meta items into paths for
     /// backwards-compatibility. This is used when parsing derive macro paths in `#[derive]`
     /// attributes.
-    pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, Path> {
+    fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, Path> {
         let meta_ident = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref item) => match item.tokens.is_empty() {
@@ -129,7 +129,22 @@ impl<'a> Parser<'a> {
         self.parse_path(style)
     }
 
-    crate fn parse_path_segments(
+    /// Parse a list of paths inside `#[derive(path_0, ..., path_n)]`.
+    crate fn parse_derive_paths(&mut self) -> PResult<'a, Vec<Path>> {
+        self.expect(&token::OpenDelim(token::Paren))?;
+        let mut list = Vec::new();
+        while !self.eat(&token::CloseDelim(token::Paren)) {
+            let path = self.parse_path_allowing_meta(PathStyle::Mod)?;
+            list.push(path);
+            if !self.eat(&token::Comma) {
+                self.expect(&token::CloseDelim(token::Paren))?;
+                break
+            }
+        }
+        Ok(list)
+    }
+
+    pub(super) fn parse_path_segments(
         &mut self,
         segments: &mut Vec<PathSegment>,
         style: PathStyle,

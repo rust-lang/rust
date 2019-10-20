@@ -344,7 +344,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match self.walk_value(op) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
-                err_unsup!(InvalidDiscriminant(val)) =>
+                err_ub!(InvalidDiscriminant(val)) =>
                     throw_validation_failure!(
                         val, self.path, "a valid enum discriminant"
                     ),

@@ -17,13 +17,13 @@ pub trait DeclareMethods<'tcx>: BackendTypes {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    fn declare_cfn(&self, name: &str, fn_type: Self::Type) -> Self::Value;
+    fn declare_cfn(&self, name: &str, fn_type: Self::Type) -> Self::Function;
 
     /// Declare a Rust function.
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    fn declare_fn(&self, name: &str, sig: ty::PolyFnSig<'tcx>) -> Self::Value;
+    fn declare_fn(&self, name: &str, sig: ty::PolyFnSig<'tcx>) -> Self::Function;
 
     /// Declare a global with an intention to define it.
     ///

@@ -236,7 +236,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// ```
 ///
 /// [alignment]: ./fn.align_of.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 pub const fn size_of<T>() -> usize {
@@ -328,7 +328,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, mem::align_of::<i32>());
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 pub const fn align_of<T>() -> usize {
@@ -520,8 +520,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
-/// #![feature(mem_take)]
-///
 /// use std::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
@@ -552,8 +550,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// #![feature(mem_take)]
-///
 /// use std::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
@@ -572,7 +568,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 #[inline]
-#[unstable(feature = "mem_take", issue = "61129")]
+#[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
     replace(dest, T::default())
 }

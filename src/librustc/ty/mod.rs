@@ -28,7 +28,7 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use crate::ty::util::{IntTypeExt, Discr};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
-use crate::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use crate::util::nodemap::{NodeMap, NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
 use crate::session::DataTypeKind;
 
@@ -45,7 +45,7 @@ use std::{mem, ptr};
 use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
-use syntax::ext::hygiene::ExpnId;
+use syntax_expand::hygiene::ExpnId;
 use syntax::symbol::{kw, sym, Symbol, InternedString};
 use syntax_pos::Span;
 
@@ -121,6 +121,7 @@ mod sty;
 
 #[derive(Clone)]
 pub struct Resolutions {
+    pub extern_crate_map: NodeMap<CrateNum>,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
@@ -700,6 +701,13 @@ impl<T> Deref for List<T> {
     type Target = [T];
     #[inline(always)]
     fn deref(&self) -> &[T] {
+        self.as_ref()
+    }
+}
+
+impl<T> AsRef<[T]> for List<T> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[T] {
         unsafe {
             slice::from_raw_parts(self.data.as_ptr(), self.len)
         }
@@ -1010,14 +1018,11 @@ impl<'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Clone, Default, Debug, HashStable)]
+#[derive(Copy, Clone, Default, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: Vec<(Predicate<'tcx>, Span)>,
+    pub predicates: &'tcx [(Predicate<'tcx>, Span)],
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
 
 impl<'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(
@@ -2313,7 +2318,7 @@ impl<'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'tcx>) -> &'tcx GenericPredicates<'tcx> {
+    pub fn predicates(&self, tcx: TyCtxt<'tcx>) -> GenericPredicates<'tcx> {
         tcx.predicates_of(self.did)
     }
 
@@ -2553,7 +2558,7 @@ impl<'tcx> AdtDef {
                     def_id: sized_trait,
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
-                let predicates = &tcx.predicates_of(self.did).predicates;
+                let predicates = tcx.predicates_of(self.did).predicates;
                 if predicates.iter().any(|(p, _)| *p == sized_predicate) {
                     vec![]
                 } else {
@@ -3026,6 +3031,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.optimized_mir(did)
             }
             ty::InstanceDef::VtableShim(..) |
+            ty::InstanceDef::ReifyShim(..) |
             ty::InstanceDef::Intrinsic(..) |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::Virtual(..) |
@@ -3394,6 +3400,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     layout::provide(providers);
     util::provide(providers);
     constness::provide(providers);
+    crate::traits::query::dropck_outlives::provide(providers);
     *providers = ty::query::Providers {
         asyncness,
         associated_item,

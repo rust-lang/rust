@@ -15,7 +15,7 @@ use crate::ty::layout::VariantIdx;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{
-    self, AdtDef, CanonicalUserTypeAnnotations, GeneratorSubsts, Region, Ty, TyCtxt,
+    self, AdtDef, CanonicalUserTypeAnnotations, Region, Ty, TyCtxt,
     UserTypeAnnotationIndex,
 };
 
@@ -2189,7 +2189,7 @@ pub enum AggregateKind<'tcx> {
     Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
     Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
@@ -2602,7 +2602,14 @@ impl<'tcx> Debug for Constant<'tcx> {
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(fmt, "const ")?;
-        write!(fmt, "{}", self.literal)
+        // FIXME make the default pretty printing of raw pointers more detailed. Here we output the
+        // debug representation of raw pointers, so that the raw pointers in the mir dump output are
+        // detailed and just not '{pointer}'.
+        if let ty::RawPtr(_) = self.literal.ty.kind {
+            write!(fmt, "{:?} : {}", self.literal.val, self.literal.ty)
+        } else {
+            write!(fmt, "{}", self.literal)
+        }
     }
 }
 

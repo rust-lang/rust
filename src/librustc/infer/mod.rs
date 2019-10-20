@@ -814,16 +814,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Executes `f` and commit the bindings.
     pub fn commit_unconditionally<R, F>(&self, f: F) -> R
     where
-        F: FnOnce() -> R,
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
-        debug!("commit()");
+        debug!("commit_unconditionally()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         self.commit_from(snapshot);
         r
     }
 
-    /// Executes `f` and commit the bindings if closure `f` returns `Ok(_)`.
+    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
@@ -843,19 +843,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
-    /// Execute `f` in a snapshot, and commit the bindings it creates.
-    pub fn in_snapshot<T, F>(&self, f: F) -> T
-    where
-        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T,
-    {
-        debug!("in_snapshot()");
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.commit_from(snapshot);
-        r
-    }
-
-    /// Executes `f` then unroll any bindings it creates.
+    /// Execute `f` then unroll any bindings it creates.
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,

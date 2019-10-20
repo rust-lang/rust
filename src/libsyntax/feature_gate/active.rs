@@ -519,6 +519,15 @@ declare_features! (
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (active, or_patterns, "1.38.0", Some(54883), None),
 
+    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
+    (active, const_extern_fn, "1.40.0", Some(64926), None),
+
+    // Allows the use of raw-dylibs (RFC 2627).
+    (active, raw_dylib, "1.40.0", Some(58713), None),
+
+    /// Enable accurate caller location reporting during panic (RFC 2091).
+    (active, track_caller, "1.40.0", Some(47809), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -533,4 +542,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::or_patterns,
     sym::let_chains,
+    sym::raw_dylib,
+    sym::track_caller,
 ];

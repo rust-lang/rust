@@ -1,5 +1,5 @@
-use crate::parse::ParseSess;
 use crate::parse::token::{self, Token, TokenKind};
+use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 

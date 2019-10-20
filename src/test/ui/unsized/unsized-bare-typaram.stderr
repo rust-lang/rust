@@ -4,11 +4,12 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
 LL | fn bar<T: Sized>() { }
    |    --- - required by this bound in `bar`
 LL | fn foo<T: ?Sized>() { bar::<T>() }
-   |                             ^ doesn't have a size known at compile-time
+   |        --                   ^ doesn't have a size known at compile-time
+   |        |
+   |        help: consider further restricting this bound: `T: std::marker::Sized +`
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = help: consider adding a `where T: std::marker::Sized` bound
 
 error: aborting due to previous error
 

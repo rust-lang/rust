@@ -882,15 +882,16 @@ where
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<ty::GenericPredicates<'tcx>> for CacheEncoder<'a, 'tcx, E>
+impl<'a, 'tcx, E> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
+    for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
 {
     #[inline]
     fn specialized_encode(&mut self,
-                          predicates: &ty::GenericPredicates<'tcx>)
+                          predicates: &&'tcx [(ty::Predicate<'tcx>, Span)])
                           -> Result<(), Self::Error> {
-        ty_codec::encode_predicates(self, predicates,
+        ty_codec::encode_spanned_predicates(self, predicates,
             |encoder| &mut encoder.predicate_shorthands)
     }
 }
@@ -1075,7 +1076,7 @@ where
     let desc = &format!("encode_query_results for {}",
         ::std::any::type_name::<Q>());
 
-    time_ext(tcx.sess.time_extended(), Some(tcx.sess), desc, || {
+    time_ext(tcx.sess.time_extended(), desc, || {
         let shards = Q::query_cache(tcx).lock_shards();
         assert!(shards.iter().all(|shard| shard.active.is_empty()));
         for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {

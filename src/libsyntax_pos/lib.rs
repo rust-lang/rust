@@ -12,7 +12,7 @@
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
-#![feature(proc_macro_hygiene)]
+#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(specialization)]
 #![feature(step_trait)]
 

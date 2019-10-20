@@ -45,7 +45,7 @@ use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
-use syntax::print::pprust::expr_to_string;
+use syntax::print::pprust::{self, expr_to_string};
 use syntax::visit::FnKind;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
@@ -701,7 +701,8 @@ impl EarlyLintPass for DeprecatedAttr {
             }
         }
         if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
-            let msg = format!("use of deprecated attribute `{}`: no longer used.", attr.path);
+            let path_str = pprust::path_to_string(&attr.path);
+            let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
             lint_deprecated_attr(cx, attr, &msg, None);
         }
     }
@@ -1240,7 +1241,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
-            for &(predicate, span) in &predicates.predicates {
+            for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |

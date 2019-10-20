@@ -241,6 +241,8 @@ fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduc
 
 fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
     time(tcx.sess, "serialize query result cache", || {
+        let _timer = tcx.prof.generic_activity("incr_comp_serialize_result_cache");
+
         tcx.serialize_query_result_cache(encoder).unwrap();
     })
 }

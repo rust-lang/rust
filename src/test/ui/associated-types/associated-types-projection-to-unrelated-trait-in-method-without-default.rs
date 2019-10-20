@@ -1,3 +1,4 @@
+// run-rustfix
 // Check that we get an error when you use `<Self as Get>::Value` in
 // the trait definition even if there is no default method.
 

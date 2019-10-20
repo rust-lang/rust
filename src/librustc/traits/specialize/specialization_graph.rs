@@ -7,7 +7,6 @@ use crate::traits;
 use crate::ty::{self, TyCtxt, TypeFoldable};
 use crate::ty::fast_reject::{self, SimplifiedType};
 use syntax::ast::Ident;
-use crate::util::captures::Captures;
 use crate::util::nodemap::{DefIdMap, FxHashMap};
 
 /// A per-trait graph of impls in specialization order. At the moment, this
@@ -419,6 +418,35 @@ impl<'tcx> Node {
         tcx.associated_items(self.def_id())
     }
 
+    /// Finds an associated item defined in this node.
+    ///
+    /// If this returns `None`, the item can potentially still be found in
+    /// parents of this node.
+    pub fn item(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        trait_item_name: Ident,
+        trait_item_kind: ty::AssocKind,
+        trait_def_id: DefId,
+    ) -> Option<ty::AssocItem> {
+        use crate::ty::AssocKind::*;
+
+        tcx.associated_items(self.def_id())
+            .find(move |impl_item| match (trait_item_kind, impl_item.kind) {
+                | (Const, Const)
+                | (Method, Method)
+                | (Type, Type)
+                | (Type, OpaqueTy)  // assoc. types can be made opaque in impls
+                => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
+
+                | (Const, _)
+                | (Method, _)
+                | (Type, _)
+                | (OpaqueTy, _)
+                => false,
+            })
+    }
+
     pub fn def_id(&self) -> DefId {
         match *self {
             Node::Impl(did) => did,
@@ -427,6 +455,7 @@ impl<'tcx> Node {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Ancestors<'tcx> {
     trait_def_id: DefId,
     specialization_graph: &'tcx Graph,
@@ -465,32 +494,18 @@ impl<T> NodeItem<T> {
 }
 
 impl<'tcx> Ancestors<'tcx> {
-    /// Search the items from the given ancestors, returning each definition
-    /// with the given name and the given kind.
-    // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
-    #[inline]
-    pub fn defs(
-        self,
+    /// Finds the bottom-most (ie. most specialized) definition of an associated
+    /// item.
+    pub fn leaf_def(
+        mut self,
         tcx: TyCtxt<'tcx>,
         trait_item_name: Ident,
         trait_item_kind: ty::AssocKind,
-        trait_def_id: DefId,
-    ) -> impl Iterator<Item = NodeItem<ty::AssocItem>> + Captures<'tcx> + 'tcx {
-        self.flat_map(move |node| {
-            use crate::ty::AssocKind::*;
-            node.items(tcx).filter(move |impl_item| match (trait_item_kind, impl_item.kind) {
-                | (Const, Const)
-                | (Method, Method)
-                | (Type, Type)
-                | (Type, OpaqueTy)
-                => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
-
-                | (Const, _)
-                | (Method, _)
-                | (Type, _)
-                | (OpaqueTy, _)
-                => false,
-            }).map(move |item| NodeItem { node: node, item: item })
+    ) -> Option<NodeItem<ty::AssocItem>> {
+        let trait_def_id = self.trait_def_id;
+        self.find_map(|node| {
+            node.item(tcx, trait_item_name, trait_item_kind, trait_def_id)
+                .map(|item| NodeItem { node, item })
         })
     }
 }

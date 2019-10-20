@@ -12,7 +12,7 @@ LL |       drop::<Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
 LL | |         x
 LL | |     }));
    | |_____^
-note: ...but the borrowed content is only valid for the lifetime 'x as defined on the function body at 1:9
+note: ...but the borrowed content is only valid for the lifetime `'x` as defined on the function body at 1:9
   --> $DIR/issue-10291.rs:1:9
    |
 LL | fn test<'x>(x: &'x isize) {

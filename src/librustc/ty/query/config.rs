@@ -73,6 +73,17 @@ impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
             format!("processing {:?} with query `{}`", def_id, name).into()
         }
     }
+
+    default fn cache_on_disk(_: TyCtxt<'tcx>, _: Self::Key, _: Option<&Self::Value>) -> bool {
+        false
+    }
+
+    default fn try_load_from_disk(
+        _: TyCtxt<'tcx>,
+        _: SerializedDepNodeIndex,
+    ) -> Option<Self::Value> {
+        bug!("QueryDescription::load_from_disk() called for an unsupported query.")
+    }
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {

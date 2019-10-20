@@ -30,7 +30,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
             let mut required_predicates = RequiredPredicates::default();
 
             // process predicates and convert to `RequiredPredicates` entry, see below
-            for (pred, _) in predicates.predicates.iter() {
+            for (pred, _) in predicates.predicates {
                 match pred {
                     ty::Predicate::TypeOutlives(predicate) => {
                         let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();

@@ -761,6 +761,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
                 Some(ty::InstanceDef::Item(def_id)),
             ty::InstanceDef::VtableShim(def_id) =>
                 Some(ty::InstanceDef::VtableShim(def_id)),
+            ty::InstanceDef::ReifyShim(def_id) =>
+                Some(ty::InstanceDef::ReifyShim(def_id)),
             ty::InstanceDef::Intrinsic(def_id) =>
                 Some(ty::InstanceDef::Intrinsic(def_id)),
             ty::InstanceDef::FnPtrShim(def_id, ref ty) =>
@@ -966,6 +968,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
             def: match self.def {
                 Item(did) => Item(did.fold_with(folder)),
                 VtableShim(did) => VtableShim(did.fold_with(folder)),
+                ReifyShim(did) => ReifyShim(did.fold_with(folder)),
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),
                 FnPtrShim(did, ty) => FnPtrShim(
                     did.fold_with(folder),
@@ -994,7 +997,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor) ||
         match self.def {
-            Item(did) | VtableShim(did) | Intrinsic(did) | Virtual(did, _) => {
+            Item(did) | VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
                 did.visit_with(visitor)
             },
             FnPtrShim(did, ty) | CloneShim(did, ty) => {
@@ -1215,16 +1218,23 @@ EnumTypeFoldableImpl! {
     }
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
-        parent, predicates
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-        folder.tcx().intern_predicates(&v)
+        // This code is hot enough that it's worth specializing for a list of
+        // length 0. (No other length is common enough to be worth singling
+        // out).
+        if self.len() == 0 {
+            self
+        } else {
+            // Don't bother interning if nothing changed, which is the common
+            // case.
+            let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+            if v[..] == self[..] {
+                self
+            } else {
+                folder.tcx().intern_predicates(&v)
+            }
+        }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {

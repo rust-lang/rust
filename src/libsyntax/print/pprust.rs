@@ -6,10 +6,11 @@ use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
 use crate::parse::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::parse::lexer::comments;
-use crate::parse::{self, ParseSess};
+use crate::parse;
 use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
+use crate::sess::ParseSess;
 use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
@@ -2381,7 +2382,8 @@ impl<'a> State<'a> {
                 }
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
-                    self.s.word("@");
+                    self.s.space();
+                    self.s.word_space("@");
                     self.print_pat(p);
                 }
             }

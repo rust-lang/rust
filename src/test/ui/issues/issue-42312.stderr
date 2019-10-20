@@ -2,11 +2,12 @@ error[E0277]: the size for values of type `<Self as std::ops::Deref>::Target` ca
   --> $DIR/issue-42312.rs:4:29
    |
 LL |     fn baz(_: Self::Target) where Self: Deref {}
-   |                             ^ doesn't have a size known at compile-time
+   |                             ^                - help: consider further restricting the associated type: `, <Self as std::ops::Deref>::Target: std::marker::Sized`
+   |                             |
+   |                             doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `<Self as std::ops::Deref>::Target`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = help: consider adding a `where <Self as std::ops::Deref>::Target: std::marker::Sized` bound
    = note: all function arguments must have a statically known size
    = help: unsized locals are gated as an unstable feature
 

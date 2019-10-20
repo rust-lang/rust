@@ -115,15 +115,17 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         F: FnOnce(&mut Self),
     {
         let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
-        if self.tcx.has_typeck_tables(item_def_id) {
-            let tables = self.tcx.typeck_tables_of(item_def_id);
-            let old_tables = self.save_ctxt.tables;
-            self.save_ctxt.tables = tables;
-            f(self);
-            self.save_ctxt.tables = old_tables;
+
+        let tables = if self.tcx.has_typeck_tables(item_def_id) {
+            self.tcx.typeck_tables_of(item_def_id)
         } else {
-            f(self);
-        }
+            self.save_ctxt.empty_tables
+        };
+
+        let old_tables = self.save_ctxt.tables;
+        self.save_ctxt.tables = tables;
+        f(self);
+        self.save_ctxt.tables = old_tables;
     }
 
     fn span_from_span(&self, span: Span) -> SpanData {
@@ -530,12 +532,14 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             );
         }
 
-        for field in def.fields() {
-            self.process_struct_field_def(field, item.id);
-            self.visit_ty(&field.ty);
-        }
+        self.nest_tables(item.id, |v| {
+            for field in def.fields() {
+                v.process_struct_field_def(field, item.id);
+                v.visit_ty(&field.ty);
+            }
 
-        self.process_generic_params(ty_params, &qualname, item.id);
+            v.process_generic_params(ty_params, &qualname, item.id);
+        });
     }
 
     fn process_enum(
@@ -665,15 +669,18 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
             }
         }
-        self.visit_ty(&typ);
-        if let &Some(ref trait_ref) = trait_ref {
-            self.process_path(trait_ref.ref_id, &trait_ref.path);
-        }
-        self.process_generic_params(generics, "", item.id);
-        for impl_item in impl_items {
-            let map = &self.tcx.hir();
-            self.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
-        }
+
+        let map = &self.tcx.hir();
+        self.nest_tables(item.id, |v| {
+            v.visit_ty(&typ);
+            if let &Some(ref trait_ref) = trait_ref {
+                v.process_path(trait_ref.ref_id, &trait_ref.path);
+            }
+            v.process_generic_params(generics, "", item.id);
+            for impl_item in impl_items {
+                v.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
+            }
+        });
     }
 
     fn process_trait(

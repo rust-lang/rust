@@ -2,14 +2,13 @@ use super::{Parser, PResult, Restrictions, PrevTokenKind, SemiColonMode, BlockMo
 use super::expr::LhsExpr;
 use super::path::PathStyle;
 use super::pat::GateOr;
+use super::diagnostics::Error;
 
 use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
-use crate::ext::base::DummyResult;
 use crate::parse::{classify, DirectoryOwnership};
-use crate::parse::diagnostics::Error;
 use crate::parse::token;
 use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};
@@ -373,7 +372,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. Inner attributes are allowed.
-    crate fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+    pub(super) fn parse_inner_attrs_and_block(
+        &mut self
+    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         let lo = self.token.span;
@@ -400,7 +401,7 @@ impl<'a> Parser<'a> {
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(Stmt {
                         id: DUMMY_NODE_ID,
-                        kind: StmtKind::Expr(DummyResult::raw_expr(self.token.span, true)),
+                        kind: StmtKind::Expr(self.mk_expr_err(self.token.span)),
                         span: self.token.span,
                     })
                 }
@@ -422,7 +423,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a statement, including the trailing semicolon.
-    crate fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
+    pub fn parse_full_stmt(&mut self, macro_legacy_warnings: bool) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 
@@ -443,7 +444,7 @@ impl<'a> Parser<'a> {
                         self.recover_stmt();
                         // Don't complain about type errors in body tail after parse error (#57383).
                         let sp = expr.span.to(self.prev_span);
-                        stmt.kind = StmtKind::Expr(DummyResult::raw_expr(sp, true));
+                        stmt.kind = StmtKind::Expr(self.mk_expr_err(sp));
                     }
                 }
             }

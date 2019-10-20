@@ -36,7 +36,6 @@ use crate::mir::place::PlaceRef;
 use crate::back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
     submit_post_lto_module_to_llvm};
 use crate::{MemFlags, CrateInfo};
-use crate::callee;
 use crate::common::{RealPredicate, TypeKind, IntPredicate};
 use crate::meth;
 use crate::mir;
@@ -169,12 +168,6 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
-        }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
@@ -197,6 +190,8 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+            // FIXME(eddyb) move these out of this `match` arm, so they're always
+            // applied, uniformly, no matter the source/destination types.
             (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true)),
              bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true)))
         }
@@ -213,31 +208,27 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
-    let mut coerce_ptr = || {
-        let (base, info) = match bx.load_operand(src).val {
-            OperandValue::Pair(base, info) => {
-                // fat-ptr to fat-ptr unsize preserves the vtable
-                // i.e., &'a fmt::Debug+Send => &'a fmt::Debug
-                // So we need to pointercast the base to ensure
-                // the types match up.
-                let thin_ptr = dst.layout.field(bx.cx(), FAT_PTR_ADDR);
-                (bx.pointercast(base, bx.cx().backend_type(thin_ptr)), info)
-            }
-            OperandValue::Immediate(base) => {
-                unsize_thin_ptr(bx, base, src_ty, dst_ty)
-            }
-            OperandValue::Ref(..) => bug!()
-        };
-        OperandValue::Pair(base, info).store(bx, dst);
-    };
     match (&src_ty.kind, &dst_ty.kind) {
         (&ty::Ref(..), &ty::Ref(..)) |
         (&ty::Ref(..), &ty::RawPtr(..)) |
         (&ty::RawPtr(..), &ty::RawPtr(..)) => {
-            coerce_ptr()
-        }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            coerce_ptr()
+            let (base, info) = match bx.load_operand(src).val {
+                OperandValue::Pair(base, info) => {
+                    // fat-ptr to fat-ptr unsize preserves the vtable
+                    // i.e., &'a fmt::Debug+Send => &'a fmt::Debug
+                    // So we need to pointercast the base to ensure
+                    // the types match up.
+                    // FIXME(eddyb) use `scalar_pair_element_backend_type` here,
+                    // like `unsize_thin_ptr` does.
+                    let thin_ptr = dst.layout.field(bx.cx(), FAT_PTR_ADDR);
+                    (bx.pointercast(base, bx.cx().backend_type(thin_ptr)), info)
+                }
+                OperandValue::Immediate(base) => {
+                    unsize_thin_ptr(bx, base, src_ty, dst_ty)
+                }
+                OperandValue::Ref(..) => bug!()
+            };
+            OperandValue::Pair(base, info).store(bx, dst);
         }
 
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -377,8 +368,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let sig = instance.fn_sig(cx.tcx());
     let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
-    let lldecl = cx.instances().borrow().get(&instance).cloned().unwrap_or_else(||
-        bug!("Instance `{:?}` not already declared", instance));
+    let lldecl = cx.get_fn(instance);
 
     let mir = cx.tcx().instance_mir(instance.def);
     mir::codegen_mir::<Bx>(cx, lldecl, &mir, instance, sig);
@@ -400,7 +390,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         return;
     }
 
-    let main_llfn = cx.get_fn(instance);
+    let main_llfn = cx.get_fn_addr(instance);
 
     let et = cx.tcx().entry_fn(LOCAL_CRATE).map(|e| e.1);
     match et {
@@ -416,8 +406,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
-        let llfty =
-            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int());
+        let llfty = if cx.sess().target.target.options.main_needs_argc_argv {
+            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
+        } else {
+            cx.type_func(&[], cx.type_int())
+        };
 
         let main_ret_ty = cx.tcx().fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -447,18 +440,29 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
-        // Params from native main() used as args for rust start function
-        let param_argc = bx.get_param(0);
-        let param_argv = bx.get_param(1);
-        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
-        let arg_argv = param_argv;
+        let (arg_argc, arg_argv) = if cx.sess().target.target.options.main_needs_argc_argv {
+            // Params from native main() used as args for rust start function
+            let param_argc = bx.get_param(0);
+            let param_argv = bx.get_param(1);
+            let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+            let arg_argv = param_argv;
+            (arg_argc, arg_argv)
+        } else {
+            // The Rust start function doesn't need argc and argv, so just pass zeros.
+            let arg_argc = bx.const_int(cx.type_int(), 0);
+            let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
+            (arg_argc, arg_argv)
+        };
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
-            let start_fn = callee::resolve_and_get_fn(
-                cx,
-                start_def_id,
-                cx.tcx().intern_substs(&[main_ret_ty.into()]),
+            let start_fn = cx.get_fn_addr(
+                ty::Instance::resolve(
+                    cx.tcx(),
+                    ty::ParamEnv::reveal_all(),
+                    start_def_id,
+                    cx.tcx().intern_substs(&[main_ret_ty.into()]),
+                ).unwrap()
             );
             (start_fn, vec![bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())),
                             arg_argc, arg_argv])

@@ -605,8 +605,8 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!(write("str")),
             ty::Generator(did, substs, movability) => {
-                let upvar_tys = substs.upvar_tys(did, self.tcx());
-                let witness = substs.witness(did, self.tcx());
+                let upvar_tys = substs.as_generator().upvar_tys(did, self.tcx());
+                let witness = substs.as_generator().witness(did, self.tcx());
                 if movability == hir::GeneratorMovability::Movable {
                     p!(write("[generator"));
                 } else {
@@ -689,7 +689,7 @@ pub trait PrettyPrinter<'tcx>:
                 if self.tcx().sess.verbose() {
                     p!(write(
                         " closure_kind_ty={:?} closure_sig_ty={:?}",
-                        substs.as_closure().kind(did, self.tcx()),
+                        substs.as_closure().kind_ty(did, self.tcx()),
                         substs.as_closure().sig_ty(did, self.tcx())
                     ));
                 }
@@ -698,7 +698,9 @@ pub trait PrettyPrinter<'tcx>:
             },
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));
-                if let ConstValue::Unevaluated(..) = sz.val {
+                if self.tcx().sess.verbose() {
+                    p!(write("{:?}", sz));
+                } else if let ConstValue::Unevaluated(..) = sz.val {
                     // do not try to evalute unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
@@ -855,126 +857,127 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        let u8 = self.tcx().types.u8;
-        if let ty::FnDef(did, substs) = ct.ty.kind {
-            p!(print_value_path(did, substs));
+        if self.tcx().sess.verbose() {
+            p!(write("Const({:?}: {:?})", ct.val, ct.ty));
             return Ok(self);
         }
-        if let ConstValue::Unevaluated(did, substs) = ct.val {
-            match self.tcx().def_kind(did) {
-                | Some(DefKind::Static)
-                | Some(DefKind::Const)
-                | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
-                _ => if did.is_local() {
-                    let span = self.tcx().def_span(did);
-                    if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
-                        p!(write("{}", snip))
+
+        let u8 = self.tcx().types.u8;
+
+        match (ct.val, &ct.ty.kind) {
+            (_,  ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
+            (ConstValue::Unevaluated(did, substs), _) => {
+                match self.tcx().def_kind(did) {
+                    | Some(DefKind::Static)
+                    | Some(DefKind::Const)
+                    | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
+                    _ => if did.is_local() {
+                        let span = self.tcx().def_span(did);
+                        if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
+                            p!(write("{}", snip))
+                        } else {
+                            p!(write("_: "), print(ct.ty))
+                        }
                     } else {
                         p!(write("_: "), print(ct.ty))
+                    },
+                }
+            },
+            (ConstValue::Infer(..), _) =>  p!(write("_: "), print(ct.ty)),
+            (ConstValue::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
+            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Bool) =>
+                p!(write("{}", if data == 0 { "false" } else { "true" })),
+            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Float(ast::FloatTy::F32)) =>
+                p!(write("{}f32", Single::from_bits(data))),
+            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Float(ast::FloatTy::F64)) =>
+                p!(write("{}f64", Double::from_bits(data))),
+            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Uint(ui)) => {
+                let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
+                let max = truncate(u128::max_value(), bit_size);
+
+                if data == max {
+                    p!(write("std::{}::MAX", ui))
+                } else {
+                    p!(write("{}{}", data, ui))
+                };
+            },
+            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Int(i)) => {
+                let bit_size = Integer::from_attr(&self.tcx(), SignedInt(*i))
+                    .size().bits() as u128;
+                let min = 1u128 << (bit_size - 1);
+                let max = min - 1;
+
+                let ty = self.tcx().lift(&ct.ty).unwrap();
+                let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
+                    .unwrap()
+                    .size;
+                match data {
+                    d if d == min => p!(write("std::{}::MIN", i)),
+                    d if d == max => p!(write("std::{}::MAX", i)),
+                    _ => p!(write("{}{}", sign_extend(data, size) as i128, i))
+                }
+            },
+            (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Char) =>
+                p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap())),
+            (ConstValue::Scalar(_), ty::RawPtr(_)) => p!(write("{{pointer}}")),
+            (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::FnPtr(_)) => {
+                let instance = {
+                    let alloc_map = self.tcx().alloc_map.lock();
+                    alloc_map.unwrap_fn(ptr.alloc_id)
+                };
+                p!(print_value_path(instance.def_id(), instance.substs));
+            },
+            _ => {
+                let printed = if let ty::Ref(_, ref_ty, _) = ct.ty.kind {
+                    let byte_str = match (ct.val, &ref_ty.kind) {
+                        (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
+                            let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
+                            Some(self.tcx()
+                                .alloc_map.lock()
+                                .unwrap_memory(ptr.alloc_id)
+                                .get_bytes(&self.tcx(), ptr, Size::from_bytes(n)).unwrap())
+                        },
+                        (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
+                            // The `inspect` here is okay since we checked the bounds, and there are
+                            // no relocations (we have an active slice reference here). We don't use
+                            // this result to affect interpreter execution.
+                            Some(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
+                        },
+                        _ => None,
+                    };
+
+                    if let Some(byte_str) = byte_str {
+                        p!(write("b\""));
+                        for &c in byte_str {
+                            for e in std::ascii::escape_default(c) {
+                                self.write_char(e as char)?;
+                            }
+                        }
+                        p!(write("\""));
+                        true
+                    } else if let (ConstValue::Slice { data, start, end }, ty::Str) =
+                        (ct.val, &ref_ty.kind)
+                    {
+                        // The `inspect` here is okay since we checked the bounds, and there are no
+                        // relocations (we have an active `str` reference here). We don't use this
+                        // result to affect interpreter execution.
+                        let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                        let s = ::std::str::from_utf8(slice)
+                            .expect("non utf8 str from miri");
+                        p!(write("{:?}", s));
+                        true
+                    } else {
+                        false
                     }
                 } else {
-                    p!(write("_: "), print(ct.ty))
-                },
-            }
-            return Ok(self);
-        }
-        if let ConstValue::Infer(..) = ct.val {
-            p!(write("_: "), print(ct.ty));
-            return Ok(self);
-        }
-        if let ConstValue::Param(ParamConst { name, .. }) = ct.val {
-            p!(write("{}", name));
-            return Ok(self);
-        }
-        if let ConstValue::Scalar(Scalar::Raw { data, .. }) = ct.val {
-            match ct.ty.kind {
-                ty::Bool => {
-                    p!(write("{}", if data == 0 { "false" } else { "true" }));
-                    return Ok(self);
-                },
-                ty::Float(ast::FloatTy::F32) => {
-                    p!(write("{}f32", Single::from_bits(data)));
-                    return Ok(self);
-                },
-                ty::Float(ast::FloatTy::F64) => {
-                    p!(write("{}f64", Double::from_bits(data)));
-                    return Ok(self);
-                },
-                ty::Uint(ui) => {
-                    let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(ui)).size();
-                    let max = truncate(u128::max_value(), bit_size);
-
-                    if data == max {
-                        p!(write("std::{}::MAX", ui))
-                    } else {
-                        p!(write("{}{}", data, ui))
-                    };
-                    return Ok(self);
-                },
-                ty::Int(i) =>{
-                    let bit_size = Integer::from_attr(&self.tcx(), SignedInt(i))
-                        .size().bits() as u128;
-                    let min = 1u128 << (bit_size - 1);
-                    let max = min - 1;
-
-                    let ty = self.tcx().lift(&ct.ty).unwrap();
-                    let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
-                        .unwrap()
-                        .size;
-                    match data {
-                        d if d == min => p!(write("std::{}::MIN", i)),
-                        d if d == max => p!(write("std::{}::MAX", i)),
-                        _ => p!(write("{}{}", sign_extend(data, size) as i128, i))
-                    }
-                    return Ok(self);
-                },
-                ty::Char => {
-                    p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap()));
-                    return Ok(self);
+                    false
+                };
+                if !printed {
+                    // fallback
+                    p!(write("{:?} : ", ct.val), print(ct.ty))
                 }
-                _ => {},
             }
-        }
-        if let ty::Ref(_, ref_ty, _) = ct.ty.kind {
-            let byte_str = match (ct.val, &ref_ty.kind) {
-                (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                    let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
-                    Some(self.tcx()
-                        .alloc_map.lock()
-                        .unwrap_memory(ptr.alloc_id)
-                        .get_bytes(&self.tcx(), ptr, Size::from_bytes(n)).unwrap())
-                },
-                (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
-                    // The `inspect` here is okay since we checked the bounds, and there are no
-                    // relocations (we have an active slice reference here). We don't use this
-                    // result to affect interpreter execution.
-                    Some(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
-                },
-                (ConstValue::Slice { data, start, end }, ty::Str) => {
-                    // The `inspect` here is okay since we checked the bounds, and there are no
-                    // relocations (we have an active `str` reference here). We don't use this
-                    // result to affect interpreter execution.
-                    let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
-                    let s = ::std::str::from_utf8(slice)
-                        .expect("non utf8 str from miri");
-                    p!(write("{:?}", s));
-                    return Ok(self);
-                },
-                _ => None,
-            };
-            if let Some(byte_str) = byte_str {
-                p!(write("b\""));
-                for &c in byte_str {
-                    for e in std::ascii::escape_default(c) {
-                        self.write_char(e as char)?;
-                    }
-                }
-                p!(write("\""));
-                return Ok(self);
-            }
-        }
-        p!(write("{:?} : ", ct.val), print(ct.ty));
-
+        };
         Ok(self)
     }
 }
@@ -1480,7 +1483,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         }
 
         // Replace any anonymous late-bound regions with named
-        // variants, using gensym'd identifiers, so that we can
+        // variants, using new unique identifiers, so that we can
         // clearly differentiate between named and unnamed regions in
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.

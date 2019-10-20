@@ -113,21 +113,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
         if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
-            let substs = ty::GeneratorSubsts { substs };
+            let generator_substs = substs.as_generator();
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
-                substs.yield_ty(expr_def_id, self.tcx),
+                generator_substs.yield_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
                 expr.span,
                 liberated_sig.output(),
-                substs.return_ty(expr_def_id, self.tcx),
+                generator_substs.return_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
                 expr.span,
                 interior,
-                substs.witness(expr_def_id, self.tcx),
+                generator_substs.witness(expr_def_id, self.tcx),
             );
             return self.tcx.mk_generator(expr_def_id, substs, movability);
         }
@@ -611,6 +611,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
                     debug!("supplied_sig_of_closure: closure is async fn body");
                     self.deduce_future_output_from_obligations(expr_def_id)
+                        .unwrap_or_else(|| {
+                            // AFAIK, deducing the future output
+                            // always succeeds *except* in error cases
+                            // like #65159. I'd like to return Error
+                            // here, but I can't because I can't
+                            // easily (and locally) prove that we
+                            // *have* reported an
+                            // error. --nikomatsakis
+                            astconv.ty_infer(None, decl.output.span())
+                        })
                 }
 
                 _ => astconv.ty_infer(None, decl.output.span()),
@@ -645,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_obligations(
         &self,
         expr_def_id: DefId,
-    ) -> Ty<'tcx> {
+    ) -> Option<Ty<'tcx>> {
         debug!("deduce_future_output_from_obligations(expr_def_id={:?})", expr_def_id);
 
         let ret_coercion =
@@ -688,8 +698,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     None
                 }
-            })
-            .unwrap();
+            });
 
         debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
         output_ty

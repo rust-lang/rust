@@ -495,7 +495,11 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 dep_node_force_stream.extend(quote! {
                     DepKind::#name => {
                         if let Some(key) = RecoverKey::recover($tcx, $dep_node) {
-                            force_ex!($tcx, #name, key);
+                            $tcx.force_query::<crate::ty::query::queries::#name<'_>>(
+                                key,
+                                DUMMY_SP,
+                                *$dep_node
+                            );
                         } else {
                             return false;
                         }

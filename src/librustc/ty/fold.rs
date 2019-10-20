@@ -911,13 +911,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 
     fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
-        if let ty::Const {
-            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, _)),
-            ..
-        } = *ct {
-            debruijn >= self.outer_index
-        } else {
-            false
+        // we don't have a `visit_infer_const` callback, so we have to
+        // hook in here to catch this case (annoying...), but
+        // otherwise we do want to remember to visit the rest of the
+        // const, as it has types/regions embedded in a lot of other
+        // places.
+        match ct.val {
+            ConstValue::Infer(ty::InferConst::Canonical(debruijn, _))
+                if debruijn >= self.outer_index => true,
+            _ => ct.super_visit_with(self),
         }
     }
 }

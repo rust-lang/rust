@@ -7,11 +7,10 @@ use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::session::config::{OutputType, PrintRequest, SwitchWithOptPath};
+use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
-use crate::util::common::ProfileQueriesMsg;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
@@ -25,11 +24,11 @@ use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
-use syntax::ext::allocator::AllocatorKind;
+use syntax_expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
-use syntax::parse::{self, ParseSess};
+use syntax::sess::ParseSess;
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
@@ -46,7 +45,7 @@ use std::fmt;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::sync::{Arc, mpsc};
+use std::sync::Arc;
 
 mod code_stats;
 pub mod config;
@@ -124,9 +123,6 @@ pub struct Session {
     /// Used for incremental compilation tests. Will only be populated if
     /// `-Zquery-dep-graph` is specified.
     pub cgu_reuse_tracker: CguReuseTracker,
-
-    /// Used by `-Z profile-queries` in `util::common`.
-    pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -509,13 +505,6 @@ impl Session {
     pub fn time_extended(&self) -> bool {
         self.opts.debugging_opts.time_passes
     }
-    pub fn profile_queries(&self) -> bool {
-        self.opts.debugging_opts.profile_queries
-            || self.opts.debugging_opts.profile_queries_and_keys
-    }
-    pub fn profile_queries_and_keys(&self) -> bool {
-        self.opts.debugging_opts.profile_queries_and_keys
-    }
     pub fn instrument_mcount(&self) -> bool {
         self.opts.debugging_opts.instrument_mcount
     }
@@ -637,6 +626,14 @@ impl Session {
             .output_types
             .contains_key(&OutputType::LlvmAssembly)
             || self.opts.output_types.contains_key(&OutputType::Bitcode);
+
+        // Address sanitizer and memory sanitizer use alloca name when reporting an issue.
+        let more_names = match self.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => true,
+            Some(Sanitizer::Memory) => true,
+            _ => more_names,
+        };
+
         self.opts.debugging_opts.fewer_names || !more_names
     }
 
@@ -1162,7 +1159,7 @@ fn build_session_(
     );
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
-    let parse_sess = parse::ParseSess::with_span_handler(
+    let parse_sess = ParseSess::with_span_handler(
         span_diagnostic,
         source_map,
     );
@@ -1234,7 +1231,6 @@ fn build_session_(
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof: SelfProfilerRef::new(self_profiler),
-        profile_channel: Lock::new(None),
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),
             decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),

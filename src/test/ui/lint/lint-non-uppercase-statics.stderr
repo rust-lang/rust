@@ -2,7 +2,7 @@ error: static variable `foo` should have an upper case name
   --> $DIR/lint-non-uppercase-statics.rs:4:8
    |
 LL | static foo: isize = 1;
-   |        ^^^ help: convert the identifier to upper case: `FOO`
+   |        ^^^ help: convert the identifier to upper case (notice the capitalization): `FOO`
    |
 note: lint level defined here
   --> $DIR/lint-non-uppercase-statics.rs:1:11

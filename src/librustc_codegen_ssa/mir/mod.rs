@@ -30,7 +30,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     debug_context: FunctionDebugContext<Bx::DIScope>,
 
-    llfn: Bx::Value,
+    llfn: Bx::Function,
 
     cx: &'a Bx::CodegenCx,
 
@@ -183,7 +183,7 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
-    llfn: Bx::Value,
+    llfn: Bx::Function,
     mir: &'a Body<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
@@ -199,6 +199,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
     }
+
+    bx.sideeffect();
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     // Allocate a `Block` for every basic block, except
@@ -636,7 +638,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                         ty::Generator(def_id, substs, _) => (def_id, substs),
                         _ => bug!("generator layout without generator substs"),
                     };
-                    let state_tys = gen_substs.state_tys(def_id, tcx);
+                    let state_tys = gen_substs.as_generator().state_tys(def_id, tcx);
 
                     generator_layout.variant_fields.iter()
                         .zip(state_tys)

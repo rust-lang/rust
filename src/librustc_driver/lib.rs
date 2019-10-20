@@ -166,7 +166,8 @@ pub fn run_compiler(
         None => return Ok(()),
     };
 
-    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
+    let sopts = config::build_session_options(&matches);
+    let cfg = config::parse_cfgspecs(matches.opt_strs("cfg"));
 
     let mut dummy_config = |sopts, cfg, diagnostic_output| {
         let mut config = interface::Config {
@@ -615,7 +616,7 @@ impl RustcDefaultCalls {
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
-                                                &*cstore.metadata_loader,
+                                                cstore,
                                                 &mut v)
                             .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());

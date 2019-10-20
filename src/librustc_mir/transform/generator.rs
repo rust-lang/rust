@@ -88,6 +88,18 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
             *local = self.to;
         }
     }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        match elem {
+            PlaceElem::Index(local) if *local == self.from => {
+                Some(PlaceElem::Index(self.to))
+            }
+            _ => None,
+        }
+    }
 }
 
 struct DerefArgVisitor;
@@ -110,7 +122,13 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                 projection: Box::new([ProjectionElem::Deref]),
             });
         } else {
-            self.super_place(place, context, location);
+            self.visit_place_base(&mut place.base, context, location);
+
+            for elem in place.projection.iter() {
+                if let PlaceElem::Index(local) = elem {
+                    assert_ne!(*local, self_arg());
+                }
+            }
         }
     }
 }
@@ -137,7 +155,13 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 projection: Box::new([ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
             });
         } else {
-            self.super_place(place, context, location);
+            self.visit_place_base(&mut place.base, context, location);
+
+            for elem in place.projection.iter() {
+                if let PlaceElem::Index(local) = elem {
+                    assert_ne!(*local, self_arg());
+                }
+            }
         }
     }
 }
@@ -247,17 +271,25 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         assert_eq!(self.remap.get(local), None);
     }
 
-    fn visit_place(&mut self,
-                    place: &mut Place<'tcx>,
-                    context: PlaceContext,
-                    location: Location) {
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
         if let PlaceBase::Local(l) = place.base {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, variant_index, idx)) = self.remap.get(&l) {
                 replace_base(place, self.make_field(variant_index, idx, ty));
             }
         } else {
-            self.super_place(place, context, location);
+            self.visit_place_base(&mut place.base, context, location);
+
+            for elem in place.projection.iter() {
+                if let PlaceElem::Index(local) = elem {
+                    assert_ne!(*local, self_arg());
+                }
+            }
         }
     }
 
@@ -508,10 +540,7 @@ fn locals_live_across_suspend_points(
             storage_liveness_map.insert(block, storage_liveness.clone());
 
             requires_storage_cursor.seek(loc);
-            let mut storage_required = requires_storage_cursor.get().clone();
-
-            // Mark locals without storage statements as always requiring storage
-            storage_required.union(&ignored.0);
+            let storage_required = requires_storage_cursor.get().clone();
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
@@ -1126,6 +1155,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Get the interior types and substs which typeck computed
         let (upvars, interior, discr_ty, movable) = match gen_ty.kind {
             ty::Generator(_, substs, movability) => {
+                let substs = substs.as_generator();
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
                  substs.discr_ty(tcx),
