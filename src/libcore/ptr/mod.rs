@@ -188,7 +188,7 @@ unsafe fn real_drop_in_place<T: ?Sized>(to_drop: &mut T) {
 /// let p: *const i32 = ptr::null();
 /// assert!(p.is_null());
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 pub const fn null<T>() -> *const T { 0 as *const T }
@@ -203,7 +203,7 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// let p: *mut i32 = ptr::null_mut();
 /// assert!(p.is_null());
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
