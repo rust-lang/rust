@@ -598,6 +598,121 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+    /// Returns the first key-value pair in the map.
+    /// The key in this pair is the minimum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.first_key_value(), None);
+    /// map.insert(1, "b");
+    /// map.insert(2, "a");
+    /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn first_key_value<T: ?Sized>(&self) -> Option<(&K, &V)>
+        where T: Ord, K: Borrow<T>
+    {
+        let front = first_leaf_edge(self.root.as_ref());
+        front.right_kv().ok().map(Handle::into_kv)
+    }
+
+    /// Returns the first entry in the map for in-place manipulation.
+    /// The key of this entry is the minimum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// Contrived way to `clear` a map:
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// while let Some(entry) = map.first_entry() {
+    ///     let (key, val) = entry.remove_entry();
+    ///     assert!(!map.contains_key(&key));
+    /// }
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn first_entry<T: ?Sized>(&mut self) -> Option<OccupiedEntry<'_, K, V>>
+        where T: Ord, K: Borrow<T>
+    {
+        match self.length {
+            0 => None,
+            _ => Some(OccupiedEntry {
+                          handle: self.root.as_mut().first_kv(),
+                          length: &mut self.length,
+                          _marker: PhantomData,
+                      }),
+        }
+    }
+
+    /// Returns the last key-value pair in the map.
+    /// The key in this pair is the maximum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "b");
+    /// map.insert(2, "a");
+    /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn last_key_value<T: ?Sized>(&self) -> Option<(&K, &V)>
+        where T: Ord, K: Borrow<T>
+    {
+        let back = last_leaf_edge(self.root.as_ref());
+        back.left_kv().ok().map(Handle::into_kv)
+    }
+
+    /// Returns the last entry in the map for in-place manipulation.
+    /// The key of this entry is the maximum key in the map.
+    ///
+    /// # Examples
+    ///
+    /// Contrived way to `clear` a map:
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// while let Some(entry) = map.last_entry() {
+    ///     let (key, val) = entry.remove_entry();
+    ///     assert!(!map.contains_key(&key));
+    /// }
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn last_entry<T: ?Sized>(&mut self) -> Option<OccupiedEntry<'_, K, V>>
+        where T: Ord, K: Borrow<T>
+    {
+        match self.length {
+            0 => None,
+            _ => Some(OccupiedEntry {
+                          handle: self.root.as_mut().last_kv(),
+                          length: &mut self.length,
+                          _marker: PhantomData,
+                      }),
+        }
+    }
+
     /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
