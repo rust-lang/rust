@@ -367,16 +367,6 @@ impl<'a> Resolver<'a> {
                     span, "`Self` in type parameter default".to_string());
                 err
             }
-            ResolutionError::ConstParamDependentOnTypeParam => {
-                let mut err = struct_span_err!(
-                    self.session,
-                    span,
-                    E0671,
-                    "const parameters cannot depend on type parameters"
-                );
-                err.span_label(span, format!("const parameter depends on type parameter"));
-                err
-            }
         }
     }
 
