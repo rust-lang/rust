@@ -177,10 +177,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
     }
 
-    assert!(
-        args.next().is_none(),
-        "start lang item has more arguments than expected"
-    );
+    args.next().expect_none("start lang item has more arguments than expected");
 
     // Set the last_error to 0
     let errno_layout = ecx.layout_of(ecx.tcx.types.u32)?;

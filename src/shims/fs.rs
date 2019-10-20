@@ -7,6 +7,7 @@ use rustc::ty::layout::Size;
 use crate::stacked_borrows::Tag;
 use crate::*;
 
+#[derive(Debug)]
 pub struct FileHandle {
     file: File,
 }
@@ -103,7 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file });
+            fh.handles.insert(fh.low, FileHandle { file }).unwrap_none();
             fh.low
         });
 
@@ -175,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .map(|buffer| handle.file.read(buffer))
             });
             // Reinsert the file handle
-            this.machine.file_handler.handles.insert(fd, handle);
+            this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
             this.consume_result(bytes?.map(|bytes| bytes as i64))
         })
     }
@@ -204,7 +205,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .get_bytes(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
             });
-            this.machine.file_handler.handles.insert(fd, handle);
+            this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
             this.consume_result(bytes?)
         })
     }

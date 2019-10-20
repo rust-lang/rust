@@ -53,7 +53,7 @@ impl<'tcx> TlsData<'tcx> {
                 data: None,
                 dtor,
             },
-        );
+        ).unwrap_none();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
         new_key
     }
