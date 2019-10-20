@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:capacity overflow
 
 use std::collections::hash_map::HashMap;
