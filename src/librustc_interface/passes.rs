@@ -6,12 +6,11 @@ use log::{info, warn, log_enabled};
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
-use rustc::hir::map::Definitions;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::middle::cstore::{CrateStore, MetadataLoader};
-use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
+use rustc::ty::{self, AllArenas, ResolverOutputs, TyCtxt, GlobalCtxt};
 use rustc::ty::steal::Steal;
 use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
@@ -47,12 +46,10 @@ use syntax_ext;
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
 
+use std::{env, fs, iter, mem};
 use std::any::Any;
-use std::env;
 use std::ffi::OsString;
-use std::fs;
 use std::io::{self, Write};
-use std::iter;
 use std::path::PathBuf;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -161,13 +158,12 @@ pub fn configure_and_expand(
 }
 
 pub struct ExpansionResult {
-    pub defs: Steal<hir::map::Definitions>,
-    pub resolutions: Steal<Resolutions>,
+    pub resolver_outputs: Steal<ResolverOutputs>,
 }
 
 impl ExpansionResult {
-    fn from_resolver_outputs((defs, resolutions): (Definitions, Resolutions)) -> Self {
-        ExpansionResult { defs: Steal::new(defs), resolutions: Steal::new(resolutions) }
+    fn from_resolver_outputs(resolver_outputs: ResolverOutputs) -> Self {
+        ExpansionResult { resolver_outputs: Steal::new(resolver_outputs) }
     }
 }
 
@@ -789,8 +785,7 @@ pub fn create_global_ctxt(
     compiler: &Compiler,
     lint_store: Lrc<lint::LintStore>,
     mut hir_forest: hir::map::Forest,
-    defs: hir::map::Definitions,
-    resolutions: Resolutions,
+    mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
 ) -> BoxedGlobalCtxt {
@@ -798,6 +793,7 @@ pub fn create_global_ctxt(
     let cstore = compiler.cstore.clone();
     let codegen_backend = compiler.codegen_backend().clone();
     let crate_name = crate_name.to_string();
+    let defs = mem::take(&mut resolver_outputs.definitions);
 
     let ((), result) = BoxedGlobalCtxt::new(static move || {
         let sess = &*sess;
@@ -830,7 +826,7 @@ pub fn create_global_ctxt(
             local_providers,
             extern_providers,
             &arenas,
-            resolutions,
+            resolver_outputs,
             hir_map,
             query_result_on_disk_cache,
             &crate_name,

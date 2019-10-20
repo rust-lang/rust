@@ -119,8 +119,8 @@ mod sty;
 
 // Data types
 
-#[derive(Clone)]
-pub struct Resolutions {
+pub struct ResolverOutputs {
+    pub definitions: hir_map::Definitions,
     pub extern_crate_map: NodeMap<CrateNum>,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,

@@ -234,8 +234,7 @@ impl Compiler {
                 self,
                 lint_store,
                 hir_forest.steal(),
-                expansion.defs.steal(),
-                expansion.resolutions.steal(),
+                expansion.resolver_outputs.steal(),
                 outputs,
                 &crate_name))
         })

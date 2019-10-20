@@ -28,7 +28,7 @@ use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrK
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::{TraitMap, GlobMap};
-use rustc::ty::{self, DefIdTree};
+use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::span_bug;
 
@@ -1236,38 +1236,34 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(self) -> (Definitions, ty::Resolutions) {
-        (
-            self.definitions,
-            ty::Resolutions {
-                extern_crate_map: self.extern_crate_map,
-                export_map: self.export_map,
-                trait_map: self.trait_map,
-                glob_map: self.glob_map,
-                maybe_unused_trait_imports: self.maybe_unused_trait_imports,
-                maybe_unused_extern_crates: self.maybe_unused_extern_crates,
-                extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
-            },
-        )
+    pub fn into_outputs(self) -> ResolverOutputs {
+        ResolverOutputs {
+            definitions: self.definitions,
+            extern_crate_map: self.extern_crate_map,
+            export_map: self.export_map,
+            trait_map: self.trait_map,
+            glob_map: self.glob_map,
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates,
+            extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
+        }
     }
 
-    pub fn clone_outputs(&self) -> (Definitions, ty::Resolutions) {
-        (
-            self.definitions.clone(),
-            ty::Resolutions {
-                extern_crate_map: self.extern_crate_map.clone(),
-                export_map: self.export_map.clone(),
-                trait_map: self.trait_map.clone(),
-                glob_map: self.glob_map.clone(),
-                maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
-                maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
-                extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
-            },
-        )
+    pub fn clone_outputs(&self) -> ResolverOutputs {
+        ResolverOutputs {
+            definitions: self.definitions.clone(),
+            extern_crate_map: self.extern_crate_map.clone(),
+            export_map: self.export_map.clone(),
+            trait_map: self.trait_map.clone(),
+            glob_map: self.glob_map.clone(),
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
+            extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
+        }
     }
 
     fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
