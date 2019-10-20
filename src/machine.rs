@@ -244,10 +244,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 
         // No more arguments.
-        assert!(
-            args.next().is_none(),
-            "`exchange_malloc` lang item has more arguments than expected"
-        );
+        args.next().expect_none("`exchange_malloc` lang item has more arguments than expected");
         Ok(())
     }
 

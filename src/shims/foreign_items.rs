@@ -349,10 +349,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let arg_dest = this.local_place(arg_local)?;
                 this.write_scalar(data, arg_dest)?;
 
-                assert!(
-                    args.next().is_none(),
-                    "__rust_maybe_catch_panic argument has more arguments than expected"
-                );
+                args.next().expect_none("__rust_maybe_catch_panic argument has more arguments than expected");
 
                 // We ourselves will return `0`, eventually (because we will not return if we paniced).
                 this.write_null(dest)?;
