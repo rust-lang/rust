@@ -5048,8 +5048,8 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0627, // yield statement outside of generator literal
-    E0632, // cannot provide explicit type parameters when `impl Trait` is used
-           // in argument position.
+    E0632, // cannot provide explicit generic arguments when `impl Trait` is
+           // used in argument position
     E0634, // type has conflicting packed representaton hints
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
