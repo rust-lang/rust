@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:index out of bounds: the len is 5 but the index is 5
 fn main() {
     let s: String = "hello".to_string();

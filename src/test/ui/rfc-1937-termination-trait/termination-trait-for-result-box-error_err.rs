@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:returned Box<Error> from main()
 // failure-status: 1
 

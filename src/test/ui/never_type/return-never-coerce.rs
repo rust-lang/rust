@@ -1,5 +1,6 @@
 // Test that ! coerces to other types.
 
+// run-fail
 // error-pattern:aah!
 
 fn call_another_fn<T, F: FnOnce() -> T>(f: F) -> T {

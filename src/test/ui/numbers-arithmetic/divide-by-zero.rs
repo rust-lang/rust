@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:attempt to divide by zero
 
 fn main() {

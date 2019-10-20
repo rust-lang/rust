@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:oops
 
 fn main() {

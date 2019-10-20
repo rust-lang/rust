@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:returned Box<dyn Error> from main()
 // failure-status: 1
 

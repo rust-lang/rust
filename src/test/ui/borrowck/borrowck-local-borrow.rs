@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:panic 1
 
 // revisions: migrate mir

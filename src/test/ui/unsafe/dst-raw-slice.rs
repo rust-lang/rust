@@ -1,4 +1,5 @@
 // Test bounds checking for DST raw slices
+// run-fail
 // error-pattern:index out of bounds
 
 fn main() {

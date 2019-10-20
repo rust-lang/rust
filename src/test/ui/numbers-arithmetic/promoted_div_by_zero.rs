@@ -1,5 +1,6 @@
 #![allow(const_err)]
 
+// run-fail
 // error-pattern: attempt to divide by zero
 
 fn main() {
