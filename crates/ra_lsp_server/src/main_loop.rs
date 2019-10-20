@@ -111,6 +111,21 @@ pub fn main_loop(
             connection.sender.send(request.into()).unwrap();
         }
 
+        let options = {
+            let text_document_caps = client_caps.text_document.as_ref();
+            Options {
+                publish_decorations: config.publish_decorations,
+                supports_location_link: text_document_caps
+                    .and_then(|it| it.definition)
+                    .and_then(|it| it.link_support)
+                    .unwrap_or(false),
+                line_folding_only: text_document_caps
+                    .and_then(|it| it.folding_range.as_ref())
+                    .and_then(|it| it.line_folding_only)
+                    .unwrap_or(false),
+            }
+        };
+
         let feature_flags = {
             let mut ff = FeatureFlags::default();
             for (flag, value) in config.feature_flags {
@@ -133,14 +148,7 @@ pub fn main_loop(
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            Options {
-                publish_decorations: config.publish_decorations,
-                supports_location_link: client_caps
-                    .text_document
-                    .and_then(|it| it.definition)
-                    .and_then(|it| it.link_support)
-                    .unwrap_or(false),
-            },
+            options,
             feature_flags,
         )
     };
