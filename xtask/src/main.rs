@@ -8,8 +8,11 @@ use pico_args::Arguments;
 use std::{env, path::PathBuf};
 use xtask::{
     gen_tests, generate_boilerplate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt,
-    Cmd, Overwrite, Result,
+    run_with_output, Cmd, Overwrite, Result,
 };
+
+// Latest stable, feel free to send a PR if this lags behind.
+const REQUIRED_RUST_VERSION: u32 = 38;
 
 struct InstallOpt {
     client: Option<ClientOpt>,
@@ -210,9 +213,44 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 }
 
 fn install_server(opts: ServerOpt) -> Result<()> {
-    if opts.jemalloc {
+    let mut old_rust = false;
+    if let Ok(output) = run_with_output("cargo --version", ".") {
+        if let Ok(stdout) = String::from_utf8(output.stdout) {
+            if !check_version(&stdout, REQUIRED_RUST_VERSION) {
+                old_rust = true;
+            }
+        }
+    }
+
+    if old_rust {
+        eprintln!(
+            "\nWARNING: at least rust 1.{}.0 is required to compile rust-analyzer\n",
+            REQUIRED_RUST_VERSION
+        )
+    }
+
+    let res = if opts.jemalloc {
         run("cargo install --path crates/ra_lsp_server --locked --force --features jemalloc", ".")
     } else {
         run("cargo install --path crates/ra_lsp_server --locked --force", ".")
+    };
+
+    if res.is_err() && old_rust {
+        eprintln!(
+            "\nWARNING: at least rust 1.{}.0 is required to compile rust-analyzer\n",
+            REQUIRED_RUST_VERSION
+        )
+    }
+
+    res
+}
+
+fn check_version(version_output: &str, min_minor_version: u32) -> bool {
+    // Parse second the number out of
+    //      cargo 1.39.0-beta (1c6ec66d5 2019-09-30)
+    let minor: Option<u32> = version_output.split('.').nth(1).and_then(|it| it.parse().ok());
+    match minor {
+        None => true,
+        Some(minor) => minor >= min_minor_version,
     }
 }
