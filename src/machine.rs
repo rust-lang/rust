@@ -91,8 +91,8 @@ pub struct Evaluator<'tcx> {
     pub(crate) argv: Option<Pointer<Tag>>,
     pub(crate) cmd_line: Option<Pointer<Tag>>,
 
-    /// Last OS error.
-    pub(crate) last_error: Option<Pointer<Tag>>,
+    /// Last OS error location in memory. It is a 32-bit integer
+    pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
