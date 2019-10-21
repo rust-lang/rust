@@ -11,7 +11,7 @@ use syntax_pos::Span;
 /// indexed by the region `R0`.
 crate struct MemberConstraintSet<'tcx, R>
 where
-    R: Copy + Hash + Eq,
+    R: Copy + Eq,
 {
     /// Stores the first "member" constraint for a given `R0`. This is an
     /// index into the `constraints` vector below.
@@ -191,7 +191,7 @@ where
 
 impl<'tcx, R> Index<NllMemberConstraintIndex> for MemberConstraintSet<'tcx, R>
 where
-    R: Copy + Hash + Eq,
+    R: Copy + Eq,
 {
     type Output = NllMemberConstraint<'tcx>;
 

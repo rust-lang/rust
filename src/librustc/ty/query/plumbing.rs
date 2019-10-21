@@ -801,7 +801,7 @@ macro_rules! define_queries_inner {
         }
 
         #[allow(nonstandard_style)]
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        #[derive(Clone, Copy)]
         pub enum QueryName {
             $($name),*
         }
@@ -819,7 +819,7 @@ macro_rules! define_queries_inner {
         }
 
         #[allow(nonstandard_style)]
-        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+        #[derive(Clone, Debug)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
         }

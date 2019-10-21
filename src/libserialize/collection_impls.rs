@@ -143,7 +143,7 @@ impl<T> Decodable for BTreeSet<T>
 }
 
 impl<K, V, S> Encodable for HashMap<K, V, S>
-    where K: Encodable + Hash + Eq,
+    where K: Encodable + Eq,
           V: Encodable,
           S: BuildHasher,
 {
@@ -180,7 +180,7 @@ impl<K, V, S> Decodable for HashMap<K, V, S>
 }
 
 impl<T, S> Encodable for HashSet<T, S>
-    where T: Encodable + Hash + Eq,
+    where T: Encodable + Eq,
           S: BuildHasher,
 {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
