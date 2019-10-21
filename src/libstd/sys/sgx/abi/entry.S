@@ -121,6 +121,16 @@ sgx_entry:
     fnstcw %gs:tcsls_user_fcw
 /*  reset user state */
     cld /* x86-64 ABI requires DF to be unset at function entry/exit */
+
+/*  making sure AC flag is not set in rflags */
+/*  avoid using the 'clac' instruction to be compatible with older compilers */
+    push %rcx
+    pushfq
+    popq %rcx
+    and $0xFFFFFFFFFFFBFFFF, %rcx
+    push %rcx
+    popfq
+
 /*  check for debug buffer pointer */
     testb  $0xff,DEBUG(%rip)
     jz .Lskip_debug_init
