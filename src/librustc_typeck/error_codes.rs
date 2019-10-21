@@ -4863,6 +4863,10 @@ assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
 ```
 "##,
 
+E0740: r##"
+A `union` cannot have fields with destructors.
+"##,
+
 E0733: r##"
 Recursion in an `async fn` requires boxing. For example, this will not compile:
 

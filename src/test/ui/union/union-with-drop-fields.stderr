@@ -1,0 +1,39 @@
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/union-with-drop-fields.rs:9:5
+   |
+LL |     a: String,
+   |     ^^^^^^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/union-with-drop-fields.rs:9:5
+   |
+LL |     a: String,
+   |     ^^^^^^^^^
+
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/union-with-drop-fields.rs:17:5
+   |
+LL |     a: S,
+   |     ^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/union-with-drop-fields.rs:17:5
+   |
+LL |     a: S,
+   |     ^^^^
+
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/union-with-drop-fields.rs:22:5
+   |
+LL |     a: T,
+   |     ^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/union-with-drop-fields.rs:22:5
+   |
+LL |     a: T,
+   |     ^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0740`.

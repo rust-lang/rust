@@ -1387,7 +1387,35 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
     check_transparent(tcx, span, def_id);
+    check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def_id);
+}
+
+/// When the `#![feature(untagged_unions)]` gate is active,
+/// check that the fields of the `union` does not contain fields that need dropping.
+fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: DefId) -> bool {
+    let item_type = tcx.type_of(item_def_id);
+    if let ty::Adt(def, substs) = item_type.kind {
+        assert!(def.is_union());
+        let fields = &def.non_enum_variant().fields;
+        for field in fields {
+            let field_ty = field.ty(tcx, substs);
+            // We are currently checking the type this field came from, so it must be local.
+            let field_span = tcx.hir().span_if_local(field.did).unwrap();
+            let param_env = tcx.param_env(field.did);
+            if field_ty.needs_drop(tcx, param_env) {
+                struct_span_err!(tcx.sess, field_span, E0740,
+                                    "unions may not contain fields that need dropping")
+                            .span_note(field_span,
+                                        "`std::mem::ManuallyDrop` can be used to wrap the type")
+                            .emit();
+                return false;
+            }
+        }
+    } else {
+        span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind);
+    }
+    return true;
 }
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`

@@ -596,30 +596,6 @@ warning: function cannot return without recursing
   |
 ```
 
-## unions-with-drop-fields
-
-This lint detects use of unions that contain fields with possibly non-trivial drop code. Some
-example code that triggers this lint:
-
-```rust
-#![feature(untagged_unions)]
-
-union U {
-    s: String,
-}
-```
-
-This will produce:
-
-```text
-warning: union contains a field with possibly non-trivial drop code, drop code of union fields is ignored when dropping the union
- --> src/main.rs:4:5
-  |
-4 |     s: String,
-  |     ^^^^^^^^^
-  |
-```
-
 ## unknown-lints
 
 This lint detects unrecognized lint attribute. Some

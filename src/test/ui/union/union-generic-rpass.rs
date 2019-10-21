@@ -1,37 +1,33 @@
 // run-pass
 #![allow(dead_code)]
-#![allow(unions_with_drop_fields)]
 
 #![feature(untagged_unions)]
 
+use std::mem::ManuallyDrop;
+
 union MaybeItem<T: Iterator> {
-    elem: T::Item,
+    elem: ManuallyDrop<T::Item>,
     none: (),
 }
 
-union U<A, B> {
+union U<A, B> where A: Copy, B: Copy {
     a: A,
     b: B,
 }
 
-unsafe fn union_transmute<A, B>(a: A) -> B {
+unsafe fn union_transmute<A, B>(a: A) -> B where A: Copy, B: Copy {
     U { a: a }.b
 }
 
 fn main() {
     unsafe {
-        let u = U::<String, Vec<u8>> { a: String::from("abcd") };
-
-        assert_eq!(u.b.len(), 4);
-        assert_eq!(u.b[0], b'a');
-
         let b = union_transmute::<(u8, u8), u16>((1, 1));
         assert_eq!(b, (1 << 8) + 1);
 
         let v: Vec<u8> = vec![1, 2, 3];
         let mut i = v.iter();
         i.next();
-        let mi = MaybeItem::<std::slice::Iter<_>> { elem: i.next().unwrap() };
-        assert_eq!(*mi.elem, 2);
+        let mi = MaybeItem::<std::slice::Iter<_>> { elem: ManuallyDrop::new(i.next().unwrap()) };
+        assert_eq!(**mi.elem, 2);
     }
 }
