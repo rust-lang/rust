@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, paths, qpath_res, span_lint};
+use crate::utils::{is_entrypoint_fn, match_def_path, paths, qpath_res, span_lint};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -40,7 +40,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Exit {
                         Some(Node::Item(Item{ident, kind: ItemKind::Fn(..), ..})) => {
                             // If we found a function we check it's name if it is
                             // `main` we emit a lint.
-                            if ident.name.as_str() != "main" {
+                            let def_id = cx.tcx.hir().local_def_id(parent);
+                            if !is_entrypoint_fn(cx, def_id) {
                                 span_lint(cx, EXIT, e.span, "usage of `process::exit`");
                             }
                             // We found any kind of function and can end our loop
@@ -49,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Exit {
                         // If we found anything but a funciton we continue with the
                         // loop and go one parent up
                         Some(_) => {
-                            cx.tcx.hir().get_parent_item(parent);
+                            parent = cx.tcx.hir().get_parent_item(parent);
                         },
                         // If we found nothing we break.
                         None => break,
