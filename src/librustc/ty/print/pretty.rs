@@ -384,7 +384,7 @@ pub trait PrettyPrinter<'tcx>:
                 let reexport = self.tcx().item_children(visible_parent)
                     .iter()
                     .find(|child| child.res.def_id() == def_id)
-                    .map(|child| child.ident.as_interned_str());
+                    .map(|child| child.ident.name);
                 if let Some(reexport) = reexport {
                     *name = reexport;
                 }
@@ -392,7 +392,7 @@ pub trait PrettyPrinter<'tcx>:
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
                 data = DefPathData::TypeNs(
-                    self.tcx().original_crate_name(def_id.krate).as_interned_str(),
+                    self.tcx().original_crate_name(def_id.krate),
                 );
             }
             _ => {}
@@ -1222,7 +1222,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        let name = disambiguated_data.data.as_interned_str().as_str();
+        let name = disambiguated_data.data.as_symbol().as_str();
         if !name.is_empty() {
             if !self.empty_path {
                 write!(self, "::")?;

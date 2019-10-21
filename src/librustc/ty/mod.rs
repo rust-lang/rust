@@ -3019,7 +3019,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }),
                 _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
                     bug!("item_name: no name for {:?}", self.def_path(id));
-                }).as_symbol(),
+                }),
             }
         }
     }

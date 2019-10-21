@@ -792,15 +792,15 @@ impl<'a> LoweringContext<'a> {
         // really show up for end-user.
         let (str_name, kind) = match hir_name {
             ParamName::Plain(ident) => (
-                ident.as_interned_str(),
+                ident.name,
                 hir::LifetimeParamKind::InBand,
             ),
             ParamName::Fresh(_) => (
-                kw::UnderscoreLifetime.as_interned_str(),
+                kw::UnderscoreLifetime,
                 hir::LifetimeParamKind::Elided,
             ),
             ParamName::Error => (
-                kw::UnderscoreLifetime.as_interned_str(),
+                kw::UnderscoreLifetime,
                 hir::LifetimeParamKind::Error,
             ),
         };
@@ -1590,7 +1590,7 @@ impl<'a> LoweringContext<'a> {
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
-                        DefPathData::LifetimeNs(name.ident().as_interned_str()),
+                        DefPathData::LifetimeNs(name.ident().name),
                         ExpnId::root(),
                         lifetime.span);
 

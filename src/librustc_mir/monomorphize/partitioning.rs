@@ -762,7 +762,7 @@ fn compute_codegen_unit_name(
         let components = def_path
             .data
             .iter()
-            .map(|part| part.data.as_interned_str());
+            .map(|part| part.data.as_symbol());
 
         let volatile_suffix = if volatile {
             Some("volatile")
