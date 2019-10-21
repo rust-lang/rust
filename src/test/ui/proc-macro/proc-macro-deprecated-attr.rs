@@ -1,4 +1,6 @@
 // check-pass
+// force-host
+// no-prefer-dynamic
 
 #![deny(deprecated)]
 
