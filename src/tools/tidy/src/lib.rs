@@ -31,6 +31,7 @@ macro_rules! tidy_error {
 
 pub mod bins;
 pub mod style;
+pub mod debug_artifacts;
 pub mod errors;
 pub mod features;
 pub mod cargo;

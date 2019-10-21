@@ -22,6 +22,7 @@ fn main() {
     let verbose = args.iter().any(|s| *s == "--verbose");
     bins::check(&path, &mut bad);
     style::check(&path, &mut bad);
+    debug_artifacts::check(&path, &mut bad);
     errors::check(&path, &mut bad);
     cargo::check(&path, &mut bad);
     edition::check(&path, &mut bad);
