@@ -1833,9 +1833,9 @@ impl fmt::Display for YieldSource {
     }
 }
 
-impl core::convert::From<GeneratorKind> for YieldSource {
-    fn from(gen_kind: GeneratorKind) -> Self {
-        match gen_kind {
+impl From<GeneratorKind> for YieldSource {
+    fn from(kind: GeneratorKind) -> Self {
+        match kind {
             // Guess based on the kind of the current generator.
             GeneratorKind::Gen => Self::Yield,
             GeneratorKind::Async(_) => Self::Await,
