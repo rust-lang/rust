@@ -60,7 +60,7 @@ pub fn set_debug_location(
             let col_used =  if bx.sess().target.target.options.is_like_msvc {
                 UNKNOWN_COLUMN_NUMBER
             } else {
-                col as c_uint
+                (col + 1) as c_uint
             };
             debug!("setting debug location to {} {}", line, col);
 
