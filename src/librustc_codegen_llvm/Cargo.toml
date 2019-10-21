@@ -12,9 +12,3 @@ test = false
 
 [dependencies]
 rustc_llvm = { path = "../librustc_llvm" }
-
-[features]
-# This is used to convince Cargo to separately cache builds of `rustc_codegen_llvm`
-# when this option is enabled or not. That way we can build two, cache two
-# artifacts, and have nice speedy rebuilds.
-emscripten = ["rustc_llvm/emscripten"]

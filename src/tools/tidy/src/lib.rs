@@ -46,7 +46,6 @@ pub mod error_codes_check;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
-        "src/llvm-emscripten",
         "src/llvm-project",
         "src/stdarch",
         "src/tools/cargo",
