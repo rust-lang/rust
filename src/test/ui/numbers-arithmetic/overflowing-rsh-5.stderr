@@ -1,0 +1,12 @@
+warning: attempt to shift right with overflow
+  --> $DIR/overflowing-rsh-5.rs:9:14
+   |
+LL |     let _n = 1i64 >> [64][0];
+   |              ^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/overflowing-rsh-5.rs:6:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
+

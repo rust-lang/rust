@@ -1,0 +1,12 @@
+warning: attempt to shift left with overflow
+  --> $DIR/overflowing-lsh-3.rs:9:14
+   |
+LL |     let _x = 1_u64 << 64;
+   |              ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/overflowing-lsh-3.rs:6:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
+
