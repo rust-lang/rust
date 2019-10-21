@@ -249,9 +249,8 @@ the source code.
 - Runtime
   - `start`: `libstd/rt.rs`
   - `eh_personality`: `libpanic_unwind/emcc.rs` (EMCC)
-  - `eh_personality`: `libpanic_unwind/seh64_gnu.rs` (SEH64 GNU)
+  - `eh_personality`: `libpanic_unwind/gcc.rs` (GNU)
   - `eh_personality`: `libpanic_unwind/seh.rs` (SEH)
-  - `eh_unwind_resume`: `libpanic_unwind/seh64_gnu.rs` (SEH64 GNU)
   - `eh_unwind_resume`: `libpanic_unwind/gcc.rs` (GCC)
   - `msvc_try_filter`: `libpanic_unwind/seh.rs` (SEH)
   - `panic`: `libcore/panicking.rs`

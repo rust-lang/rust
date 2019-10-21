@@ -51,7 +51,7 @@ pub enum EHAction {
 
 pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>)
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>, foreign_exception: bool)
     -> Result<EHAction, ()>
 {
     if lsda.is_null() {
@@ -96,7 +96,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>)
                     return Ok(EHAction::None)
                 } else {
                     let lpad = lpad_base + cs_lpad;
-                    return Ok(interpret_cs_action(cs_action, lpad))
+                    return Ok(interpret_cs_action(cs_action, lpad, foreign_exception))
                 }
             }
         }
@@ -121,16 +121,23 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>)
                 // Can never have null landing pad for sjlj -- that would have
                 // been indicated by a -1 call site index.
                 let lpad = (cs_lpad + 1) as usize;
-                return Ok(interpret_cs_action(cs_action, lpad))
+                return Ok(interpret_cs_action(cs_action, lpad, foreign_exception))
             }
         }
     }
 }
 
-fn interpret_cs_action(cs_action: u64, lpad: usize) -> EHAction {
+fn interpret_cs_action(cs_action: u64, lpad: usize, foreign_exception: bool) -> EHAction {
     if cs_action == 0 {
+        // If cs_action is 0 then this is a cleanup (Drop::drop). We run these
+        // for both Rust panics and foriegn exceptions.
         EHAction::Cleanup(lpad)
+    } else if foreign_exception {
+        // catch_unwind should not catch foreign exceptions, only Rust panics.
+        // Instead just continue unwinding.
+        EHAction::None
     } else {
+        // Stop unwinding Rust panics at catch_unwind.
         EHAction::Catch(lpad)
     }
 }
