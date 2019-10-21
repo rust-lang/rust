@@ -551,6 +551,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Pops the current frame from the stack, deallocating the
+    /// memory for allocated locals.
+    ///
+    /// If `unwinding` is `false`, then we are performing a normal return
+    /// from a function. In this case, we jump back into the frame of the caller,
+    /// and continue execution as normal.
+    ///
+    /// If `unwinding` is `true`, then we are in the middle of a panic,
+    /// and need to unwind this frame. In this case, we jump to the
+    /// `cleanup` block for the function, which is responsible for running
+    /// `Drop` impls for any locals that have been initialized at this point.
+    /// The cleanup block ends with a special `Resume` terminator, which will
+    /// cause us to continue unwinding where we left off.
     pub(super) fn pop_stack_frame(
         &mut self,
         unwinding: bool
