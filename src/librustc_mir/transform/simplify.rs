@@ -31,7 +31,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
+use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext, MutatingUseContext};
 use rustc::session::config::DebugInfo;
 use std::borrow::Cow;
 use crate::transform::{MirPass, MirSource};
@@ -293,23 +293,31 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
 pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()) };
-        marker.visit_body(body);
-        // Return pointer and arguments are always live
-        marker.locals.insert(RETURN_PLACE);
-        for arg in body.args_iter() {
-            marker.locals.insert(arg);
-        }
-
-        // We may need to keep dead user variables live for debuginfo.
-        if tcx.sess.opts.debuginfo == DebugInfo::Full {
-            for local in body.vars_iter() {
-                marker.locals.insert(local);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        trace!("running SimplifyLocals on {:?}", source);
+        let locals = {
+            let mut marker = DeclMarker {
+                locals: BitSet::new_empty(body.local_decls.len()),
+                body,
+            };
+            marker.visit_body(body);
+            // Return pointer and arguments are always live
+            marker.locals.insert(RETURN_PLACE);
+            for arg in body.args_iter() {
+                marker.locals.insert(arg);
             }
-        }
 
-        let map = make_local_map(&mut body.local_decls, marker.locals);
+            // We may need to keep dead user variables live for debuginfo.
+            if tcx.sess.opts.debuginfo == DebugInfo::Full {
+                for local in body.vars_iter() {
+                    marker.locals.insert(local);
+                }
+            }
+
+            marker.locals
+        };
+
+        let map = make_local_map(&mut body.local_decls, locals);
         // Update references to all vars and tmps now
         LocalUpdater { map }.visit_body(body);
         body.local_decls.shrink_to_fit();
@@ -334,18 +342,35 @@ fn make_local_map<V>(
     map
 }
 
-struct DeclMarker {
+struct DeclMarker<'a, 'tcx> {
     pub locals: BitSet<Local>,
+    pub body: &'a Body<'tcx>,
 }
 
-impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: Location) {
+impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
+    fn visit_local(&mut self, local: &Local, ctx: PlaceContext, location: Location) {
         // Ignore storage markers altogether, they get removed along with their otherwise unused
         // decls.
         // FIXME: Extend this to all non-uses.
-        if !ctx.is_storage_marker() {
-            self.locals.insert(*local);
+        if ctx.is_storage_marker() {
+            return;
         }
+
+        // Ignore stores of constants because `ConstProp` and `CopyProp` can remove uses of many
+        // of these locals. However, if the local is still needed, then it will be referenced in
+        // another place and we'll mark it as being used there.
+        if ctx == PlaceContext::MutatingUse(MutatingUseContext::Store) {
+            let stmt =
+                &self.body.basic_blocks()[location.block].statements[location.statement_index];
+            if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(c)))) = &stmt.kind {
+                if p.as_local().is_some() {
+                    trace!("skipping store of const value {:?} to {:?}", c, local);
+                    return;
+                }
+            }
+        }
+
+        self.locals.insert(*local);
     }
 }
 
@@ -357,9 +382,16 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         // Remove unnecessary StorageLive and StorageDead annotations.
         data.statements.retain(|stmt| {
-            match stmt.kind {
+            match &stmt.kind {
                 StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                    self.map[l].is_some()
+                    self.map[*l].is_some()
+                }
+                StatementKind::Assign(box (place, _)) => {
+                    if let Some(local) = place.as_local() {
+                        self.map[local].is_some()
+                    } else {
+                        true
+                    }
                 }
                 _ => true
             }

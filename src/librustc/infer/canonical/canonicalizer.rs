@@ -701,7 +701,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.tcx().mk_const(
                 ty::Const {
                     val: ConstValue::Infer(InferConst::Canonical(self.binder_index, var.into())),
-                    ty: const_var.ty,
+                    ty: self.fold_ty(const_var.ty),
                 }
             )
         }
