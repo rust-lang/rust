@@ -1,0 +1,8 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-20971.rs:16:22
+   |
+LL | pub fn many() -> Box<Parser<Input = <() as Parser>::Input> + 'static> {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn Parser<Input = <() as Parser>::Input> + 'static`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+

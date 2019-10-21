@@ -1,0 +1,14 @@
+warning: type `e` should have an upper camel case name
+  --> $DIR/issue-2444.rs:6:6
+   |
+LL | enum e<T> {
+   |      ^ help: convert the identifier to upper camel case: `E`
+   |
+   = note: `#[warn(non_camel_case_types)]` on by default
+
+warning: variant `ee` should have an upper camel case name
+  --> $DIR/issue-2444.rs:7:5
+   |
+LL |     ee(Arc<T>),
+   |     ^^ help: convert the identifier to upper camel case: `Ee`
+
