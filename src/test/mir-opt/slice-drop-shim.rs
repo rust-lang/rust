@@ -1,5 +1,7 @@
+// compile-flags: -Zmir-opt-level=0
+
 fn main() {
-    std::ptr::drop_in_place::<[String]> as unsafe fn(_);
+    let _fn = std::ptr::drop_in_place::<[String]> as unsafe fn(_);
 }
 
 // END RUST SOURCE

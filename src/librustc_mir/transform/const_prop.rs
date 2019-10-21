@@ -431,7 +431,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         place_layout: TyLayout<'tcx>,
         source_info: SourceInfo,
         place: &Place<'tcx>,
-    ) -> Option<Const<'tcx>> {
+    ) -> Option<()> {
         let span = source_info.span;
 
         let overflow_check = self.tcx.sess.overflow_checks();
@@ -540,20 +540,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
             }
 
-            // Work around: avoid extra unnecessary locals. FIXME(wesleywiser)
-            // Const eval will turn this into a `const Scalar(<ZST>)` that
-            // `SimplifyLocals` doesn't know it can remove.
-            Rvalue::Aggregate(_, operands) if operands.len() == 0 => {
-                return None;
-            }
-
             _ => { }
         }
 
         self.use_ecx(source_info, |this| {
             trace!("calling eval_rvalue_into_place(rvalue = {:?}, place = {:?})", rvalue, place);
             this.ecx.eval_rvalue_into_place(rvalue, place)?;
-            this.ecx.eval_place_to_op(place, Some(place_layout))
+            Ok(())
         })
     }
 
@@ -717,16 +710,15 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     base: PlaceBase::Local(local),
                     projection: box [],
                 } = *place {
-                    if let Some(value) = self.const_prop(rval,
-                                                         place_layout,
-                                                         statement.source_info,
-                                                         place) {
-                        trace!("checking whether {:?} can be stored to {:?}", value, local);
+                    let source = statement.source_info;
+                    if let Some(()) = self.const_prop(rval, place_layout, source, place) {
                         if self.can_const_prop[local] {
-                            trace!("stored {:?} to {:?}", value, local);
-                            assert_eq!(self.get_const(local), Some(value));
+                            trace!("propagated into {:?}", local);
 
                             if self.should_const_prop() {
+                                let value =
+                                    self.get_const(local).expect("local was dead/uninitialized");
+                                trace!("replacing {:?} with {:?}", rval, value);
                                 self.replace_with_const(
                                     rval,
                                     value,
@@ -734,7 +726,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                 );
                             }
                         } else {
-                            trace!("can't propagate {:?} to {:?}", value, local);
+                            trace!("can't propagate into {:?}", local);
                             self.remove_const(local);
                         }
                     }
