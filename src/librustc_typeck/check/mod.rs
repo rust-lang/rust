@@ -1394,11 +1394,6 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
 /// When the `#![feature(untagged_unions)]` gate is active,
 /// check that the fields of the `union` does not contain fields that need dropping.
 fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: DefId) -> bool {
-    // Without the feature we check that all fields are `Copy` in our stability checking
-    // infrastructure.
-    if !tcx.features().untagged_unions {
-        return true;
-    }
     let item_type = tcx.type_of(item_def_id);
     if let ty::Adt(def, substs) = item_type.kind {
         assert!(def.is_union());
