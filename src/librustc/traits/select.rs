@@ -2208,6 +2208,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
+                ty::Generator(..)
+                    if self.tcx().lang_items().freeze_trait() == Some(def_id) =>
+                {
+                    // Generators are always Freeze - it's impossible to do anything
+                    // with them unless you have a mutable reference, so any interior
+                    // mutability of types 'inside' them is not observable from
+                    // outside the generator
+                    candidates.vec.push(BuiltinCandidate { has_nested: false });
+                }
 
                 _ => candidates.vec.push(AutoImplCandidate(def_id.clone())),
             }
