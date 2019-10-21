@@ -2,7 +2,6 @@
 // patterns, the test fails.
 
 // revisions: foo bar
-// run-fail
 // should-fail
 //[foo] error-pattern:bar
 //[bar] error-pattern:foo

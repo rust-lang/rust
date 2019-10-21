@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:squirrelcupcake
 fn cmp() -> isize {
     match (Some('a'), None::<char>) {

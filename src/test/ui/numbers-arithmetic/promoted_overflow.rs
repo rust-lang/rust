@@ -1,5 +1,6 @@
 #![allow(const_err)]
 
+// run-fail
 // error-pattern: overflow
 // compile-flags: -C overflow-checks=yes
 

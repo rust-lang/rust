@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:explicit panic
 
 #![allow(unreachable_code)]

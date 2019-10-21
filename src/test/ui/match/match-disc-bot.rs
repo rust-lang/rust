@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:quux
 fn f() -> ! {
     panic!("quux")

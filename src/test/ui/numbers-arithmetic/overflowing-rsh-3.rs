@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:thread 'main' panicked at 'attempt to shift right with overflow'
 // compile-flags: -C debug-assertions
 
@@ -5,5 +6,5 @@
 #![warn(const_err)]
 
 fn main() {
-    let _x = -1_i32 >> 32;
+    let _x = -1_i64 >> 64;
 }

@@ -2,7 +2,6 @@
 // patterns, the test passes. See all `meta-revision-bad.rs`.
 
 // revisions: foo bar
-// run-fail
 //[foo] error-pattern:foo
 //[bar] error-pattern:bar
 
