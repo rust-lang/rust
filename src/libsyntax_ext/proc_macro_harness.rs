@@ -337,6 +337,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          use proc_macro::bridge::client::ProcMacro;
 //
 //          #[rustc_proc_macro_decls]
+//          #[allow(deprecated)]
 //          static DECLS: &[ProcMacro] = &[
 //              ProcMacro::custom_derive($name_trait1, &[], ::$name1);
 //              ProcMacro::custom_derive($name_trait2, &["attribute_name"], ::$name2);
