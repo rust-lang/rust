@@ -98,7 +98,7 @@ pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
     /// we can validate it at that layout.
-    /// 'ret' stores the block we jump to on a normal return, while 'unwind'
+    /// `ret` stores the block we jump to on a normal return, while 'unwind'
     /// stores the block used for cleanup during unwinding
     Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
     /// Just do nohing: Used by Main and for the box_alloc hook in miri.
