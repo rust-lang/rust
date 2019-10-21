@@ -43,6 +43,7 @@
 #![feature(nll)]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
+#![feature(option_expect_none)]
 #![feature(range_is_empty)]
 #![feature(slice_patterns)]
 #![feature(specialization)]

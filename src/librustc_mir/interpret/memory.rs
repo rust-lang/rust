@@ -7,7 +7,7 @@
 //! short-circuiting the empty case!
 
 use std::collections::VecDeque;
-use std::ptr;
+use std::{ptr, iter};
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
@@ -783,6 +783,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn read_c_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
         let ptr = self.force_ptr(ptr)?; // We need to read at least 1 byte, so we *need* a ptr.
         self.get(ptr.alloc_id)?.read_c_str(self, ptr)
+    }
+
+    /// Writes the given stream of bytes into memory.
+    ///
+    /// Performs appropriate bounds checks.
+    pub fn write_bytes(
+        &mut self,
+        ptr: Scalar<M::PointerTag>,
+        src: impl IntoIterator<Item=u8, IntoIter: iter::ExactSizeIterator>,
+    ) -> InterpResult<'tcx>
+    {
+        let src = src.into_iter();
+        let size = Size::from_bytes(src.len() as u64);
+        let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
+            Some(ptr) => ptr,
+            None => return Ok(()), // zero-sized access
+        };
+        let tcx = self.tcx.tcx;
+        self.get_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
     }
 
     /// Expects the caller to have checked bounds and alignment.
