@@ -52,6 +52,3 @@ config.stamp
 Session.vim
 .cargo
 no_llvm_build
-# Generated when dumping Graphviz output for debugging:
-/mir_dump/
-/*.dot
