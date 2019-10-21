@@ -1,6 +1,6 @@
 use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use crate::hir::HirId;
-use syntax::symbol::InternedString;
+use syntax::symbol::{InternedString, Symbol};
 use syntax::attr::InlineAttr;
 use syntax::source_map::Span;
 use crate::ty::{Instance, InstanceDef, TyCtxt, SymbolName, subst::InternalSubsts};
@@ -80,7 +80,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id(hir_id);
                 SymbolName {
-                    name: InternedString::intern(&format!("global_asm_{:?}", def_id))
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id))
                 }
             }
         }

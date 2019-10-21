@@ -46,7 +46,7 @@ use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{kw, sym, Symbol, InternedString};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 
 use smallvec;
@@ -3429,11 +3429,11 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.
-    pub name: InternedString
+    pub name: Symbol
 }
 
 impl_stable_hash_for!(struct self::SymbolName {
@@ -3443,8 +3443,21 @@ impl_stable_hash_for!(struct self::SymbolName {
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {
         SymbolName {
-            name: InternedString::intern(name)
+            name: Symbol::intern(name)
         }
+    }
+}
+
+impl PartialOrd for SymbolName {
+    fn partial_cmp(&self, other: &SymbolName) -> Option<Ordering> {
+        self.name.as_str().partial_cmp(&other.name.as_str())
+    }
+}
+
+/// Ordering must use the chars to ensure reproducible builds.
+impl Ord for SymbolName {
+    fn cmp(&self, other: &SymbolName) -> Ordering {
+        self.name.as_str().cmp(&other.name.as_str())
     }
 }
 
