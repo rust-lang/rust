@@ -274,7 +274,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     // Box starts out uninitialized - need to create a separate
                     // move-path for the interior so it will be separate from
                     // the exterior.
-                    self.create_move_path(&place.clone().deref(self.builder.tcx));
+                    self.create_move_path(&self.builder.tcx.mk_place_deref(place.clone()));
                     self.gather_init(place.as_ref(), InitKind::Shallow);
                 } else {
                     self.gather_init(place.as_ref(), InitKind::Deep);

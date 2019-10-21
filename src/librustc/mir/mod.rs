@@ -1857,51 +1857,6 @@ impl<'tcx> Place<'tcx> {
         }
     }
 
-    pub fn field(self, f: Field, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        self.elem(ProjectionElem::Field(f, ty), tcx)
-    }
-
-    pub fn deref(self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        self.elem(ProjectionElem::Deref, tcx)
-    }
-
-    pub fn downcast(
-        self,
-        adt_def: &'tcx AdtDef,
-        variant_index: VariantIdx,
-        tcx: TyCtxt<'tcx>,
-    ) -> Place<'tcx> {
-        self.elem(
-            ProjectionElem::Downcast(
-                Some(adt_def.variants[variant_index].ident.name),
-                variant_index,
-            ),
-            tcx,
-        )
-    }
-
-    pub fn downcast_unnamed(self, variant_index: VariantIdx, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        self.elem(ProjectionElem::Downcast(None, variant_index), tcx)
-    }
-
-    pub fn index(self, index: Local, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        self.elem(ProjectionElem::Index(index), tcx)
-    }
-
-    /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
-    /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
-    /// flight.
-    // FIXME: It may be a better idea to move all these methods to `PlaceBuilder`
-    pub fn elem(self, elem: PlaceElem<'tcx>, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        let mut projection = self.projection.to_vec();
-        projection.push(elem);
-
-        Place {
-            base: self.base,
-            projection: tcx.intern_place_elems(&projection),
-        }
-    }
-
     /// Returns `true` if this `Place` contains a `Deref` projection.
     ///
     /// If `Place::is_indirect` returns false, the caller knows that the `Place` refers to the

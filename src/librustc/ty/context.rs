@@ -21,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, interpret, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{Body, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -2595,6 +2595,48 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
+    }
+
+    pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Field(f, ty))
+    }
+
+    pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Deref)
+    }
+
+    pub fn mk_place_downcast(
+        self,
+        place: Place<'tcx>,
+        adt_def: &'tcx AdtDef,
+        variant_index: VariantIdx,
+    ) -> Place<'tcx> {
+        self.mk_place_elem(
+            place,
+            PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index),
+        )
+    }
+
+    pub fn mk_place_downcast_unnamed(
+        self,
+        place: Place<'tcx>,
+        variant_index: VariantIdx,
+    ) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Downcast(None, variant_index))
+    }
+
+    pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Index(index))
+    }
+
+    /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
+    /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
+    /// flight.
+    pub fn mk_place_elem(self, place: Place<'tcx>, elem: PlaceElem<'tcx>) -> Place<'tcx> {
+        let mut projection = place.projection.to_vec();
+        projection.push(elem);
+
+        Place { base: place.base, projection: self.intern_place_elems(&projection) }
     }
 
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])

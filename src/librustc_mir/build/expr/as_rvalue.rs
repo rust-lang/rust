@@ -139,7 +139,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // initialize the box contents:
                 unpack!(
                     block = this.into(
-                        &Place::from(result).deref(this.hir.tcx()),
+                        &this.hir.tcx().mk_place_deref(Place::from(result)),
                         block, value
                     )
                 );
@@ -296,10 +296,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .zip(field_types.into_iter())
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
-                            None => this.consume_by_copy_or_move(base.clone().field(
+                            None => this.consume_by_copy_or_move(this.hir.tcx().mk_place_field(
+                                base.clone(),
                                 n,
                                 ty,
-                                this.hir.tcx(),
                             )),
                         })
                         .collect()
@@ -402,8 +402,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
 
-            let val = result_value.clone().field(val_fld, ty, self.hir.tcx());
-            let of = result_value.field(of_fld, bool_ty, self.hir.tcx());
+            let tcx = self.hir.tcx();
+            let val = tcx.mk_place_field(result_value.clone(), val_fld, ty);
+            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
             let err = PanicInfo::Overflow(op);
 

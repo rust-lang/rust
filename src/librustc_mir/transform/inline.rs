@@ -461,7 +461,7 @@ impl Inliner<'tcx> {
                     };
                     caller_body[callsite.bb]
                         .statements.push(stmt);
-                    tmp.deref(self.tcx)
+                    self.tcx.mk_place_deref(tmp)
                 } else {
                     destination.0
                 };
@@ -560,10 +560,10 @@ impl Inliner<'tcx> {
             let tuple_tmp_args =
                 tuple_tys.iter().enumerate().map(|(i, ty)| {
                     // This is e.g., `tuple_tmp.0` in our example above.
-                    let tuple_field = Operand::Move(tuple.clone().field(
+                    let tuple_field = Operand::Move(tcx.mk_place_field(
+                        tuple.clone(),
                         Field::new(i),
                         ty.expect_ty(),
-                        tcx,
                     ));
 
                     // Spill to a local to make e.g., `tmp0`.

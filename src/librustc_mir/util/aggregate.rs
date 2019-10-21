@@ -30,7 +30,7 @@ pub fn expand_aggregate<'tcx>(
                     },
                     source_info,
                 });
-                lhs = lhs.downcast(adt_def, variant_index, tcx);
+                lhs = tcx.mk_place_downcast(lhs, adt_def, variant_index);
             }
             active_field_index
         }
@@ -59,15 +59,15 @@ pub fn expand_aggregate<'tcx>(
             // FIXME(eddyb) `offset` should be u64.
             let offset = i as u32;
             assert_eq!(offset as usize, i);
-            lhs.clone().elem(ProjectionElem::ConstantIndex {
+            tcx.mk_place_elem(lhs.clone(), ProjectionElem::ConstantIndex {
                 offset,
                 // FIXME(eddyb) `min_length` doesn't appear to be used.
                 min_length: offset + 1,
                 from_end: false
-            }, tcx)
+            })
         } else {
             let field = Field::new(active_field_index.unwrap_or(i));
-            lhs.clone().field(field, ty, tcx)
+            tcx.mk_place_field(lhs.clone(), field, ty)
         };
         Statement {
             source_info,

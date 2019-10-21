@@ -246,7 +246,7 @@ impl TransformVisitor<'tcx> {
     // Create a Place referencing a generator struct field
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
         let self_place = Place::from(self_arg());
-        let base = self_place.downcast_unnamed(variant_index, self.tcx);
+        let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
         let mut projection = base.projection.to_vec();
         projection.push(ProjectionElem::Field(Field::new(idx), ty));
 
