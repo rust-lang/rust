@@ -367,25 +367,6 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(())
     }
 
-    /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
-    ///
-    /// It is the caller's responsibility to check bounds and alignment beforehand.
-    /// Most likely, you want to call `Memory::write_bytes` instead of this method.
-    pub fn write_repeat(
-        &mut self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        val: u8,
-        count: Size
-    ) -> InterpResult<'tcx>
-    {
-        let bytes = self.get_bytes_mut(cx, ptr, count)?;
-        for b in bytes {
-            *b = val;
-        }
-        Ok(())
-    }
-
     /// Reads a *non-ZST* scalar.
     ///
     /// ZSTs can't be read for two reasons:
