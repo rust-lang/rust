@@ -589,8 +589,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.tag_static_base_pointer(Pointer::new(id, offset));
                 Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
             },
-            ConstValue::Scalar(x) =>
-                Operand::Immediate(tag_scalar(x).into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x).into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
@@ -606,6 +605,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ConstValue::Param(..) |
             ConstValue::Infer(..) |
+            ConstValue::Bound(..) |
             ConstValue::Placeholder(..) |
             ConstValue::Unevaluated(..) =>
                 bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
