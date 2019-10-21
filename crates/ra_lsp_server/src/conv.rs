@@ -547,3 +547,46 @@ where
         self.map(|it| it.try_conv_with(ctx)).collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_utils::extract_ranges;
+
+    #[test]
+    fn conv_fold_line_folding_only_fixup() {
+        let text = r#"<fold>mod a;
+mod b;
+mod c;</fold>
+
+fn main() <fold>{
+    if cond <fold>{
+        a::do_a();
+    }</fold> else <fold>{
+        b::do_b();
+    }</fold>
+}</fold>"#;
+
+        let (ranges, text) = extract_ranges(text, "fold");
+        assert_eq!(ranges.len(), 4);
+        let folds = vec![
+            Fold { range: ranges[0], kind: FoldKind::Mods },
+            Fold { range: ranges[1], kind: FoldKind::Block },
+            Fold { range: ranges[2], kind: FoldKind::Block },
+            Fold { range: ranges[3], kind: FoldKind::Block },
+        ];
+
+        let line_index = LineIndex::new(&text);
+        let ctx = FoldConvCtx { text: &text, line_index: &line_index, line_folding_only: true };
+        let converted: Vec<_> = folds.into_iter().map_conv_with(&ctx).collect();
+
+        let expected_lines = [(0, 2), (4, 10), (5, 6), (7, 9)];
+        assert_eq!(converted.len(), expected_lines.len());
+        for (folding_range, (start_line, end_line)) in converted.iter().zip(expected_lines.iter()) {
+            assert_eq!(folding_range.start_line, *start_line);
+            assert_eq!(folding_range.start_character, None);
+            assert_eq!(folding_range.end_line, *end_line);
+            assert_eq!(folding_range.end_character, None);
+        }
+    }
+}
