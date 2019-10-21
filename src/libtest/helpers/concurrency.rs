@@ -2,9 +2,6 @@
 //! during tests execution.
 use std::env;
 
-#[cfg(any(unix, target_os = "cloudabi"))]
-use libc;
-
 #[allow(deprecated)]
 pub fn get_concurrency() -> usize {
     return match env::var("RUST_TEST_THREADS") {
@@ -12,10 +9,7 @@ pub fn get_concurrency() -> usize {
             let opt_n: Option<usize> = s.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => panic!(
-                    "RUST_TEST_THREADS is `{}`, should be a positive integer.",
-                    s
-                ),
+                _ => panic!("RUST_TEST_THREADS is `{}`, should be a positive integer.", s),
             }
         }
         Err(..) => num_cpus(),
@@ -82,11 +76,7 @@ pub fn get_concurrency() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
     }
 
-    #[cfg(any(
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "netbsd"
-    ))]
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))]
     fn num_cpus() -> usize {
         use std::ptr;
 
