@@ -3382,7 +3382,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
     // either in std or core, i.e. has either a `::std::ops::Range` or
     // `::core::ops::Range` prefix.
     fn is_range_path(path: &Path) -> bool {
-        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.as_str().to_string()).collect();
+        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.to_string()).collect();
         let segs: Vec<_> = segs.iter().map(|seg| &**seg).collect();
 
         // "{{root}}" is the equivalent of `::` prefix in `Path`.

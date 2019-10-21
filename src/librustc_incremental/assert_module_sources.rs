@@ -94,8 +94,8 @@ impl AssertModuleSource<'tcx> {
             return;
         }
 
-        let user_path = self.field(attr, sym::module).as_str().to_string();
-        let crate_name = self.tcx.crate_name(LOCAL_CRATE).as_str().to_string();
+        let user_path = self.field(attr, sym::module).to_string();
+        let crate_name = self.tcx.crate_name(LOCAL_CRATE).to_string();
 
         if !user_path.starts_with(&crate_name) {
             let msg = format!("Found malformed codegen unit name `{}`. \
@@ -131,7 +131,7 @@ impl AssertModuleSource<'tcx> {
                     cgu_name,
                     self.available_cgus
                         .iter()
-                        .map(|cgu| cgu.as_str().to_string())
+                        .map(|cgu| cgu.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")));
         }

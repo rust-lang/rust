@@ -623,7 +623,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
         self.maybe_print_comment(attr.span.lo());
         if attr.is_sugared_doc {
-            self.word(attr.value_str().unwrap().as_str().to_string());
+            self.word(attr.value_str().unwrap().to_string());
             self.hardbreak()
         } else {
             match attr.style {
@@ -1234,7 +1234,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
-                self.s.word(ga.asm.as_str().to_string());
+                self.s.word(ga.asm.to_string());
                 self.end();
             }
             ast::ItemKind::TyAlias(ref ty, ref generics) => {
@@ -2335,7 +2335,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_name(&mut self, name: ast::Name) {
-        self.s.word(name.as_str().to_string());
+        self.s.word(name.to_string());
         self.ann.post(self, AnnNode::Name(&name))
     }
 

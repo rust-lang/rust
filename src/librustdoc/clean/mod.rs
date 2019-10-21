@@ -1167,7 +1167,7 @@ fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, ha
         global: false,
         res: Res::Err,
         segments: vec![PathSegment {
-            name: name.as_str().to_string(),
+            name: name.to_string(),
             args: external_generic_args(cx, trait_did, has_self, bindings, substs)
         }],
     }
