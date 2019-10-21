@@ -102,7 +102,7 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 declare_box_region_type!(
     pub BoxedResolver,
     for(),
-    (&mut Resolver<'_>) -> (Result<ast::Crate>, ExpansionResult)
+    (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
 );
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing,
@@ -149,33 +149,16 @@ pub fn configure_and_expand(
             }
         };
         box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver));
-        ExpansionResult::from_resolver_outputs(resolver.into_outputs())
+        resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
 }
 
-pub struct ExpansionResult {
-    pub resolver_outputs: Steal<ResolverOutputs>,
-}
-
-impl ExpansionResult {
-    fn from_resolver_outputs(resolver_outputs: ResolverOutputs) -> Self {
-        ExpansionResult { resolver_outputs: Steal::new(resolver_outputs) }
-    }
-}
-
 impl BoxedResolver {
-    pub fn to_expansion_result(
-        resolver: Rc<RefCell<BoxedResolver>>,
-    ) -> ExpansionResult {
+    pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
         match Rc::try_unwrap(resolver) {
             Ok(resolver) => resolver.into_inner().complete(),
-            Err(resolver) => {
-                let resolver = &*resolver;
-                resolver.borrow_mut().access(|resolver| {
-                    ExpansionResult::from_resolver_outputs(resolver.clone_outputs())
-                })
-            }
+            Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
         }
     }
 }
