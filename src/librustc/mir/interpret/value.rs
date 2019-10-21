@@ -5,6 +5,7 @@ use rustc_apfloat::{Float, ieee::{Double, Single}};
 use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
 use crate::ty::PlaceholderConst;
 use crate::hir::def_id::DefId;
+use crate::ty::{BoundVar, DebruijnIndex};
 
 use super::{InterpResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
@@ -27,6 +28,9 @@ pub enum ConstValue<'tcx> {
 
     /// Infer the value of the const.
     Infer(InferConst<'tcx>),
+
+    /// Bound const variable, used only when preparing a trait query.
+    Bound(DebruijnIndex, BoundVar),
 
     /// A placeholder const - universally quantified higher-ranked const.
     Placeholder(PlaceholderConst),
@@ -66,8 +70,9 @@ impl<'tcx> ConstValue<'tcx> {
         match *self {
             ConstValue::Param(_) |
             ConstValue::Infer(_) |
+            ConstValue::Bound(..) |
             ConstValue::Placeholder(_) |
-            ConstValue::ByRef{ .. } |
+            ConstValue::ByRef { .. } |
             ConstValue::Unevaluated(..) |
             ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),

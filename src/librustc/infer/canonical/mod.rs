@@ -33,7 +33,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, InferConst, Lift, List, Region, TyCtxt};
+use crate::ty::{self, BoundVar, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -510,9 +510,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Const(ct) => {
                         tcx.mk_const(ty::Const {
                             ty: ct.ty,
-                            val: ConstValue::Infer(
-                                InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from_u32(i))
-                            ),
+                            val: ConstValue::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
                         }).into()
                     }
                 })

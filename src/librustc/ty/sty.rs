@@ -2371,6 +2371,4 @@ pub enum InferConst<'tcx> {
     Var(ConstVid<'tcx>),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
-    /// Canonicalized const variable, used only when preparing a trait query.
-    Canonical(DebruijnIndex, BoundVar),
 }
