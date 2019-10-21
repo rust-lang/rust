@@ -15,7 +15,7 @@ use std::fmt;
 use std::hash::Hash;
 
 /// Describes how a monomorphization will be instantiated in object files.
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq)]
 pub enum InstantiationMode {
     /// There will be exactly one instance of the given MonoItem. It will have
     /// external linkage so that it can be linked to from other codegen units.
@@ -251,7 +251,7 @@ pub struct CodegenUnit<'tcx> {
     size_estimate: Option<usize>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum Linkage {
     External,
     AvailableExternally,
@@ -280,7 +280,7 @@ impl_stable_hash_for!(enum self::Linkage {
     Common
 });
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Visibility {
     Default,
     Hidden,

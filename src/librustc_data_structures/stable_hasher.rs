@@ -169,7 +169,7 @@ pub trait HashStable<CTX> {
 /// example, for DefId that can be converted to a DefPathHash. This is used for
 /// bringing maps into a predictable order before hashing them.
 pub trait ToStableHashKey<HCX> {
-    type KeyType: Ord + Clone + Sized + HashStable<HCX>;
+    type KeyType: Ord + Sized + HashStable<HCX>;
     fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType;
 }
 
@@ -460,7 +460,7 @@ impl_stable_hash_via_hash!(::std::path::Path);
 impl_stable_hash_via_hash!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
-    where K: ToStableHashKey<HCX> + Eq + Hash,
+    where K: ToStableHashKey<HCX> + Eq,
           V: HashStable<HCX>,
           R: BuildHasher,
 {
@@ -471,7 +471,7 @@ impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
 }
 
 impl<K, R, HCX> HashStable<HCX> for ::std::collections::HashSet<K, R>
-    where K: ToStableHashKey<HCX> + Eq + Hash,
+    where K: ToStableHashKey<HCX> + Eq,
           R: BuildHasher,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
@@ -513,10 +513,10 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
     hasher: &mut StableHasher,
     map: &::std::collections::HashMap<K, V, R>,
     to_stable_hash_key: F)
-    where K: Eq + Hash,
+    where K: Eq,
           V: HashStable<HCX>,
           R: BuildHasher,
-          SK: HashStable<HCX> + Ord + Clone,
+          SK: HashStable<HCX> + Ord,
           F: Fn(&K, &HCX) -> SK,
 {
     let mut entries: Vec<_> = map.iter()

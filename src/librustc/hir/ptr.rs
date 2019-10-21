@@ -11,7 +11,7 @@ use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 /// An owned smart pointer.
-#[derive(Hash, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct P<T: ?Sized> {
     ptr: Box<T>
 }
