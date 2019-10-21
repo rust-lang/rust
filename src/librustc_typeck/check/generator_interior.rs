@@ -19,6 +19,7 @@ struct InteriorVisitor<'a, 'tcx> {
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
     kind: hir::GeneratorKind,
+    prev_unresolved_span: Option<Span>,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -69,9 +70,12 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                                    yield_data.source);
 
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
+                let span = self.prev_unresolved_span.unwrap_or_else(
+                    || unresolved_type_span.unwrap_or(source_span)
+                );
                 self.fcx.need_type_info_err_in_generator(
                     self.kind,
-                    unresolved_type_span.unwrap_or(source_span),
+                    span,
                     unresolved_type,
                 )
                     .span_note(yield_data.span, &*note)
@@ -90,9 +94,11 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             debug!("no type in expr = {:?}, count = {:?}, span = {:?}",
                    expr, self.expr_count, expr.map(|e| e.span));
             let ty = self.fcx.resolve_vars_if_possible(&ty);
-            if let Some((unresolved_type, unresolved_type_span)) = self.fcx.unresolved_type_vars(&ty) {
+            if let Some((unresolved_type, unresolved_type_span))
+                = self.fcx.unresolved_type_vars(&ty) {
                 debug!("remained unresolved_type = {:?}, unresolved_type_span: {:?}",
                     unresolved_type, unresolved_type_span);
+                self.prev_unresolved_span = unresolved_type_span;
             }
         }
     }
@@ -112,6 +118,7 @@ pub fn resolve_interior<'a, 'tcx>(
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
         expr_count: 0,
         kind,
+        prev_unresolved_span: None,
     };
     intravisit::walk_body(&mut visitor, body);
 
