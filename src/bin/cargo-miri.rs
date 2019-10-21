@@ -259,6 +259,10 @@ fn setup(ask_user: bool) {
 
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < (0, 3, 16)) {
+        if std::env::var("XARGO").is_ok() {
+            // The user manually gave us a xargo binary; don't do anything automatically.
+            show_error(format!("Your xargo is too old; please upgrade to the latest version"))
+        }
         let mut cmd = cargo();
         cmd.args(&["install", "xargo", "-f"]);
         ask_to_run(cmd, ask_user, "install a recent enough xargo");
