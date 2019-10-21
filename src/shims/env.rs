@@ -134,7 +134,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let erange = this.eval_libc("ERANGE")?;
                 this.set_last_error(erange)?;
             }
-            Err(e) => this.consume_io_error(e)?,
+            Err(e) => this.set_last_error_from_io_error(e)?,
         }
         Ok(Scalar::ptr_null(&*this.tcx))
     }
@@ -149,7 +149,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),
             Err(e) => {
-                this.consume_io_error(e)?;
+                this.set_last_error_from_io_error(e)?;
                 Ok(-1)
             }
         }

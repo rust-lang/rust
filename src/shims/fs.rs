@@ -7,6 +7,7 @@ use rustc::ty::layout::Size;
 use crate::stacked_borrows::Tag;
 use crate::*;
 
+#[derive(Debug)]
 pub struct FileHandle {
     file: File,
 }
@@ -20,7 +21,7 @@ impl Default for FileHandler {
     fn default() -> Self {
         FileHandler {
             handles: Default::default(),
-            // 0, 1 and 2 are reserved for stdin, stdout and stderr
+            // 0, 1 and 2 are reserved for stdin, stdout and stderr.
             low: 3,
         }
     }
@@ -99,11 +100,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
-            fh.handles.insert(fh.low, FileHandle { file });
+            fh.handles.insert(fh.low, FileHandle { file }).unwrap_none();
             fh.low
         });
 
-        this.consume_result(fd)
+        this.try_unwrap_io_result(fd)
     }
 
     fn fcntl(
@@ -118,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
-        // We only support getting the flags for a descriptor
+        // We only support getting the flags for a descriptor.
         if cmd == this.eval_libc_i32("F_GETFD")? {
             // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
@@ -139,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         this.remove_handle_and(fd, |handle, this| {
-            this.consume_result(handle.file.sync_all().map(|_| 0i32))
+            this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32))
         })
     }
 
@@ -154,25 +155,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("read")?;
 
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
-        // Reading zero bytes should not change `buf`
+        // Reading zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
         }
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf_scalar = this.read_scalar(buf_op)?.not_undef()?;
 
-        // Remove the file handle to avoid borrowing issues
+        // Remove the file handle to avoid borrowing issues.
         this.remove_handle_and(fd, |mut handle, this| {
-            // Don't use `?` to avoid returning before reinserting the handle
+            // Don't use `?` to avoid returning before reinserting the handle.
             let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
                 this.memory
                     .get_mut(buf.alloc_id)?
                     .get_bytes_mut(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|buffer| handle.file.read(buffer))
             });
-            // Reinsert the file handle
-            this.machine.file_handler.handles.insert(fd, handle);
-            this.consume_result(bytes?.map(|bytes| bytes as i64))
+            this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
+            this.try_unwrap_io_result(bytes?.map(|bytes| bytes as i64))
         })
     }
 
@@ -187,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("write")?;
 
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
-        // Writing zero bytes should not change `buf`
+        // Writing zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
         }
@@ -200,8 +200,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .get_bytes(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
             });
-            this.machine.file_handler.handles.insert(fd, handle);
-            this.consume_result(bytes?)
+            this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
+            this.try_unwrap_io_result(bytes?)
         })
     }
 
@@ -214,7 +214,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let result = remove_file(path).map(|_| 0);
 
-        this.consume_result(result)
+        this.try_unwrap_io_result(result)
     }
 
     /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
@@ -224,7 +224,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
+    /// functions return different integer types (like `read`, that returns an `i64`).
     fn get_handle_and<F, T: From<i32>>(&mut self, fd: i32, f: F) -> InterpResult<'tcx, T>
     where
         F: Fn(&FileHandle) -> InterpResult<'tcx, T>,
@@ -248,7 +248,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
+    /// functions return different integer types (like `read`, that returns an `i64`).
     fn remove_handle_and<F, T: From<i32>>(&mut self, fd: i32, mut f: F) -> InterpResult<'tcx, T>
     where
         F: FnMut(FileHandle, &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, T>,
@@ -260,25 +260,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ebadf = this.eval_libc("EBADF")?;
             this.set_last_error(ebadf)?;
             Ok((-1).into())
-        }
-    }
-
-    /// Helper function that consumes an `std::io::Result<T>` and returns an
-    /// `InterpResult<'tcx,T>::Ok` instead. It is expected that the result can be converted to an
-    /// OS error using `std::io::Error::raw_os_error`.
-    ///
-    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
-    fn consume_result<T: From<i32>>(
-        &mut self,
-        result: std::io::Result<T>,
-    ) -> InterpResult<'tcx, T> {
-        match result {
-            Ok(ok) => Ok(ok),
-            Err(e) => {
-                self.eval_context_mut().consume_io_error(e)?;
-                Ok((-1).into())
-            }
         }
     }
 }

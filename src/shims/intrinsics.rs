@@ -356,9 +356,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         _ => {
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
-                            assert!(mplace.meta.is_none());
+                            mplace.meta.unwrap_none();
                             // not a zst, must be valid pointer
                             let ptr = mplace.ptr.to_ptr()?;
+                            // we know the return place is in-bounds
                             this.memory.get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, dest.layout.size)?;
                         }
                     }
@@ -546,8 +547,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         _ => {
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
-                            assert!(mplace.meta.is_none());
+                            mplace.meta.unwrap_none();
                             let ptr = mplace.ptr.to_ptr()?;
+                            // We know the return place is in-bounds
                             this.memory
                                 .get_mut(ptr.alloc_id)?
                                 .mark_definedness(ptr, dest.layout.size, false);

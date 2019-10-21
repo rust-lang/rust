@@ -95,6 +95,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
+        // Don't forget the bounds check.
         let ptr = this.memory.check_ptr_access(
             ptr,
             Size::from_bytes(len as u64),
@@ -344,6 +345,70 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("`{}` not available when isolation is enabled. Pass the flag `-Zmiri-disable-isolation` to disable it.", name)
         }
         Ok(())
+    }
+
+    /// Sets the last error variable.
+    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let errno_place = this.machine.last_error.unwrap();
+        this.write_scalar(scalar, errno_place.into())
+    }
+
+    /// Gets the last error variable.
+    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        let errno_place = this.machine.last_error.unwrap();
+        this.read_scalar(errno_place.into())?.not_undef()
+    }
+
+    /// Sets the last OS error using a `std::io::Error`. This function tries to produce the most
+    /// similar OS error from the `std::io::ErrorKind` and sets it as the last OS error.
+    fn set_last_error_from_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
+        use std::io::ErrorKind::*;
+        let this = self.eval_context_mut();
+        let target = &this.tcx.tcx.sess.target.target;
+        let last_error = if target.options.target_family == Some("unix".to_owned()) {
+            this.eval_libc(match e.kind() {
+                ConnectionRefused => "ECONNREFUSED",
+                ConnectionReset => "ECONNRESET",
+                PermissionDenied => "EPERM",
+                BrokenPipe => "EPIPE",
+                NotConnected => "ENOTCONN",
+                ConnectionAborted => "ECONNABORTED",
+                AddrNotAvailable => "EADDRNOTAVAIL",
+                AddrInUse => "EADDRINUSE",
+                NotFound => "ENOENT",
+                Interrupted => "EINTR",
+                InvalidInput => "EINVAL",
+                TimedOut => "ETIMEDOUT",
+                AlreadyExists => "EEXIST",
+                WouldBlock => "EWOULDBLOCK",
+                _ => throw_unsup_format!("The {} error cannot be transformed into a raw os error", e)
+            })?
+        } else {
+            // FIXME: we have to implement the windows' equivalent of this.
+            throw_unsup_format!("Setting the last OS error from an io::Error is unsupported for {}.", target.target_os)
+        };
+        this.set_last_error(last_error)
+    }
+
+    /// Helper function that consumes an `std::io::Result<T>` and returns an
+    /// `InterpResult<'tcx,T>::Ok` instead. In case the result is an error, this function returns
+    /// `Ok(-1)` and sets the last OS error accordingly.
+    ///
+    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
+    /// functions return different integer types (like `read`, that returns an `i64`)
+    fn try_unwrap_io_result<T: From<i32>>(
+        &mut self,
+        result: std::io::Result<T>,
+    ) -> InterpResult<'tcx, T> {
+        match result {
+            Ok(ok) => Ok(ok),
+            Err(e) => {
+                self.eval_context_mut().set_last_error_from_io_error(e)?;
+                Ok((-1).into())
+            }
+        }
     }
 
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what

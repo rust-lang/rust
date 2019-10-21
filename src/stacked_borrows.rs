@@ -172,7 +172,7 @@ impl GlobalState {
     pub fn new_call(&mut self) -> CallId {
         let id = self.next_call_id;
         trace!("new_call: Assigning ID {}", id);
-        self.active_calls.insert(id);
+        assert!(self.active_calls.insert(id));
         self.next_call_id = NonZeroU64::new(id.get() + 1).unwrap();
         id
     }
@@ -189,7 +189,7 @@ impl GlobalState {
         self.base_ptr_ids.get(&id).copied().unwrap_or_else(|| {
             let tag = Tag::Tagged(self.new_ptr());
             trace!("New allocation {:?} has base tag {:?}", id, tag);
-            self.base_ptr_ids.insert(id, tag);
+            self.base_ptr_ids.insert(id, tag).unwrap_none();
             tag
         })
     }

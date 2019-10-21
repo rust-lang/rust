@@ -162,7 +162,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             MiriMemoryKind::Env.into(),
         );
         ecx.machine.cmd_line = Some(cmd_ptr);
-        // Store the UTF-16 string.
+        // Store the UTF-16 string. We just allocated so we know the bounds are fine.
         let char_size = Size::from_bytes(2);
         let cmd_alloc = ecx.memory.get_mut(cmd_ptr.alloc_id)?;
         let mut cur_ptr = cmd_ptr;
@@ -177,17 +177,13 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
     }
 
-    assert!(
-        args.next().is_none(),
-        "start lang item has more arguments than expected"
-    );
+    args.next().expect_none("start lang item has more arguments than expected");
 
     // Set the last_error to 0
     let errno_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Static.into());
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
-    let errno_ptr = ecx.check_mplace_access(errno_place.into(), Some(Size::from_bits(32)))?;
-    ecx.machine.last_error = errno_ptr;
+    ecx.machine.last_error = Some(errno_place);
 
     Ok(ecx)
 }

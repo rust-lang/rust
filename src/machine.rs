@@ -91,8 +91,8 @@ pub struct Evaluator<'tcx> {
     pub(crate) argv: Option<Pointer<Tag>>,
     pub(crate) cmd_line: Option<Pointer<Tag>>,
 
-    /// Last OS error.
-    pub(crate) last_error: Option<Pointer<Tag>>,
+    /// Last OS error location in memory. It is a 32-bit integer.
+    pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
@@ -244,10 +244,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 
         // No more arguments.
-        assert!(
-            args.next().is_none(),
-            "`exchange_malloc` lang item has more arguments than expected"
-        );
+        args.next().expect_none("`exchange_malloc` lang item has more arguments than expected");
         Ok(())
     }
 
