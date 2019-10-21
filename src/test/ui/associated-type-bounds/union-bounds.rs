@@ -3,13 +3,13 @@
 #![feature(associated_type_bounds)]
 #![feature(untagged_unions)]
 
-#![allow(unions_with_drop_fields, unused_assignments)]
+#![allow(unused_assignments)]
 
-trait Tr1 { type As1; }
-trait Tr2 { type As2; }
-trait Tr3 { type As3; }
-trait Tr4<'a> { type As4; }
-trait Tr5 { type As5; }
+trait Tr1: Copy { type As1: Copy; }
+trait Tr2: Copy { type As2: Copy; }
+trait Tr3: Copy { type As3: Copy; }
+trait Tr4<'a>: Copy { type As4: Copy; }
+trait Tr5: Copy { type As5: Copy; }
 
 impl Tr1 for &str { type As1 = bool; }
 impl Tr2 for bool { type As2 = u8; }
@@ -71,7 +71,8 @@ where
     let _: &'a T = &x.f0;
 }
 
-union UnSelf<T> where Self: Tr1<As1: Tr2> {
+#[derive(Copy, Clone)]
+union UnSelf<T> where Self: Tr1<As1: Tr2>, T: Copy {
     f0: T,
     f1: <Self as Tr1>::As1,
     f2: <<Self as Tr1>::As1 as Tr2>::As2,

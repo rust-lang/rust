@@ -164,9 +164,6 @@ macro_rules! late_lint_mod_passes {
             // Depends on referenced function signatures in expressions
             MutableTransmutes: MutableTransmutes,
 
-            // Depends on types of fields, checks if they implement Drop
-            UnionsWithDropFields: UnionsWithDropFields,
-
             TypeAliasBounds: TypeAliasBounds,
 
             TrivialConstraints: TrivialConstraints,
