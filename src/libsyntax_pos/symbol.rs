@@ -1079,7 +1079,6 @@ impl Ident {
     }
 }
 
-// If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
