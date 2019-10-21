@@ -6,13 +6,6 @@ LL | trait Foo: Iterator<Item = i32> {}
 LL | trait Bar: Foo<Item = u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0282]: type annotations needed
-  --> $DIR/associated-types-overridden-binding.rs:7:1
-   |
-LL | trait U32Iterator = I32Iterator<Item = u32>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0282, E0284.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0284`.

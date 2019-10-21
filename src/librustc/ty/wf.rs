@@ -53,7 +53,7 @@ pub fn trait_obligations<'a, 'tcx>(
     item: Option<&'tcx hir::Item>,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item };
-    wf.compute_trait_ref(trait_ref, Elaborate::All);
+    wf.compute_trait_ref(trait_ref, Elaborate::All, false);
     wf.normalize()
 }
 
@@ -69,7 +69,7 @@ pub fn predicate_obligations<'a, 'tcx>(
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
         ty::Predicate::Trait(ref t) => {
-            wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
+            wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None, false); // (*)
         }
         ty::Predicate::RegionOutlives(..) => {
         }
@@ -163,14 +163,18 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
-    fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
+    fn compute_trait_ref(
+        &mut self,
+        trait_ref: &ty::TraitRef<'tcx>,
+        elaborate: Elaborate,
+        is_proj: bool,
+    ) {
         let tcx = self.infcx.tcx;
-        let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
 
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
 
-        let item = &self.item;
+        let item = self.item;
         let extend_cause_with_original_assoc_item_obligation = |
             cause: &mut traits::ObligationCause<'_>,
             pred: &ty::Predicate<'_>,
@@ -313,26 +317,30 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             }
         };
 
-        if let Elaborate::All = elaborate {
-            let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
+        if !is_proj {
+            let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
 
-            let predicates = obligations.iter()
-                .map(|obligation| obligation.predicate.clone())
-                .collect();
-            let implied_obligations = traits::elaborate_predicates(tcx, predicates);
-            let implied_obligations = implied_obligations.map(|pred| {
-                let mut cause = cause.clone();
-                extend_cause_with_original_assoc_item_obligation(
-                    &mut cause,
-                    &pred,
-                    trait_assoc_items.clone(),
-                );
-                traits::Obligation::new(cause, param_env, pred)
-            });
-            self.out.extend(implied_obligations);
+            if let Elaborate::All = elaborate {
+                let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
+
+                let predicates = obligations.iter()
+                    .map(|obligation| obligation.predicate.clone())
+                    .collect();
+                let implied_obligations = traits::elaborate_predicates(tcx, predicates);
+                let implied_obligations = implied_obligations.map(|pred| {
+                    let mut cause = cause.clone();
+                    extend_cause_with_original_assoc_item_obligation(
+                        &mut cause,
+                        &pred,
+                        trait_assoc_items.clone(),
+                    );
+                    traits::Obligation::new(cause, param_env, pred)
+                });
+                self.out.extend(implied_obligations);
+            }
+
+            self.out.extend(obligations);
         }
-
-        self.out.extend(obligations);
 
         self.out.extend(trait_ref.substs.types()
             .filter(|ty| !ty.has_escaping_bound_vars())
@@ -350,7 +358,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         // WF and (b) the trait-ref holds.  (It may also be
         // normalizable and be WF that way.)
         let trait_ref = data.trait_ref(self.infcx.tcx);
-        self.compute_trait_ref(&trait_ref, Elaborate::None);
+        self.compute_trait_ref(&trait_ref, Elaborate::None, true);
 
         if !data.has_escaping_bound_vars() {
             let predicate = trait_ref.to_predicate();
