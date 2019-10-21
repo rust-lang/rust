@@ -25,11 +25,12 @@ use syntax::ast::LitKind;
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{IndexVec, Idx};
 use rustc_target::spec::abi::Abi;
 
 use std::{iter, mem, usize};
+
+use crate::transform::check_consts::{qualifs, Item as ConstCx};
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -231,9 +232,9 @@ struct Validator<'a, 'tcx> {
     is_static_mut: bool,
     is_non_const_fn: bool,
     temps: &'a IndexVec<Local, TempState>,
-    // FIXME(eddyb) compute these 2 on the fly.
-    has_mut_interior: &'a BitSet<Local>,
-    needs_drop: &'a BitSet<Local>,
+
+    // FIXME(eddyb) deduplicate the data in this vs other fields.
+    const_cx: ConstCx<'a, 'tcx>,
 
     /// Explicit promotion happens e.g. for constant arguments declared via
     /// `rustc_args_required_const`.
@@ -276,15 +277,17 @@ impl<'tcx> Validator<'_, 'tcx> {
                             PlaceBase::Local(local) => local,
                             _ => return Err(Unpromotable),
                         };
+                        self.validate_local(base)?;
+
                         if place.projection.contains(&ProjectionElem::Deref) {
                             return Err(Unpromotable);
                         }
 
-                        // FIXME(eddyb) compute this on the fly.
-                        let mut has_mut_interior = self.has_mut_interior.contains(base);
+                        let mut has_mut_interior =
+                            self.qualif_local::<qualifs::HasMutInterior>(base);
                         // HACK(eddyb) this should compute the same thing as
                         // `<HasMutInterior as Qualif>::in_projection` from
-                        // `qualify_consts` but without recursion.
+                        // `check_consts::qualifs` but without recursion.
                         if has_mut_interior {
                             // This allows borrowing fields which don't have
                             // `HasMutInterior`, from a type that does, e.g.:
@@ -311,8 +314,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if has_mut_interior {
                             return Err(Unpromotable);
                         }
-                        // FIXME(eddyb) compute this on the fly.
-                        if self.needs_drop.contains(base) {
+                        if self.qualif_local::<qualifs::NeedsDrop>(base) {
                             return Err(Unpromotable);
                         }
                         if let BorrowKind::Mut { .. } = kind {
@@ -339,7 +341,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             }
                         }
 
-                        self.validate_local(base)
+                        Ok(())
                     }
                     _ => bug!()
                 }
@@ -370,6 +372,42 @@ impl<'tcx> Validator<'_, 'tcx> {
                     _ => bug!()
                 }
             }
+        }
+    }
+
+    // FIXME(eddyb) maybe cache this?
+    fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> bool {
+        let per_local = &|l| self.qualif_local::<Q>(l);
+
+        if let TempState::Defined { location: loc, .. } = self.temps[local] {
+            let num_stmts = self.body[loc.block].statements.len();
+
+            if loc.statement_index < num_stmts {
+                let statement = &self.body[loc.block].statements[loc.statement_index];
+                match &statement.kind {
+                    StatementKind::Assign(box(_, rhs)) => {
+                        Q::in_rvalue(&self.const_cx, per_local, rhs)
+                    }
+                    _ => {
+                        span_bug!(statement.source_info.span, "{:?} is not an assignment",
+                                statement);
+                    }
+                }
+            } else {
+                let terminator = self.body[loc.block].terminator();
+                match &terminator.kind {
+                    TerminatorKind::Call { func, args, .. } => {
+                        let return_ty = self.body.local_decls[local].ty;
+                        Q::in_call(&self.const_cx, per_local, func, args, return_ty)
+                    }
+                    kind => {
+                        span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
+                    }
+                }
+            }
+        } else {
+            let span = self.body.local_decls[local].source_info.span;
+            span_bug!(span, "{:?} not promotable, qualif_local shouldn't have been called", local);
         }
     }
 
@@ -593,13 +631,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
                 }
 
+                self.validate_place(place)?;
+
                 // HACK(eddyb) this should compute the same thing as
                 // `<HasMutInterior as Qualif>::in_projection` from
-                // `qualify_consts` but without recursion.
+                // `check_consts::qualifs` but without recursion.
                 let mut has_mut_interior = match place.base {
                     PlaceBase::Local(local) => {
-                        // FIXME(eddyb) compute this on the fly.
-                        self.has_mut_interior.contains(*local)
+                        self.qualif_local::<qualifs::HasMutInterior>(*local)
                     }
                     PlaceBase::Static(_) => false,
                 };
@@ -624,7 +663,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     return Err(Unpromotable);
                 }
 
-                self.validate_place(place)
+                Ok(())
             }
 
             Rvalue::Aggregate(_, ref operands) => {
@@ -680,9 +719,6 @@ pub fn validate_candidates(
     body: &Body<'tcx>,
     def_id: DefId,
     temps: &IndexVec<Local, TempState>,
-    // FIXME(eddyb) compute these 2 on the fly.
-    has_mut_interior: &BitSet<Local>,
-    needs_drop: &BitSet<Local>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
     let mut validator = Validator {
@@ -693,9 +729,8 @@ pub fn validate_candidates(
         is_static_mut: false,
         is_non_const_fn: false,
         temps,
-        // FIXME(eddyb) compute these 2 on the fly.
-        has_mut_interior,
-        needs_drop,
+
+        const_cx: ConstCx::for_promotion(tcx, def_id, body),
 
         explicit: false,
     };

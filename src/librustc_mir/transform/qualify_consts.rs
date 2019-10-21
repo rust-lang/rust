@@ -1118,8 +1118,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             self.body,
             self.def_id,
             &self.temp_promotion_state,
-            &self.per_local.0[HasMutInterior::IDX],
-            &self.per_local.0[NeedsDrop::IDX],
             &self.unchecked_promotion_candidates,
         );
 
