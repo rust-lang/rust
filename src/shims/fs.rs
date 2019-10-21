@@ -21,7 +21,7 @@ impl Default for FileHandler {
     fn default() -> Self {
         FileHandler {
             handles: Default::default(),
-            // 0, 1 and 2 are reserved for stdin, stdout and stderr
+            // 0, 1 and 2 are reserved for stdin, stdout and stderr.
             low: 3,
         }
     }
@@ -123,7 +123,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let cmd = this.read_scalar(cmd_op)?.to_i32()?;
-        // We only support getting the flags for a descriptor
+        // We only support getting the flags for a descriptor.
         if cmd == this.eval_libc_i32("F_GETFD")? {
             // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
@@ -159,16 +159,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("read")?;
 
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
-        // Reading zero bytes should not change `buf`
+        // Reading zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
         }
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf_scalar = this.read_scalar(buf_op)?.not_undef()?;
 
-        // Remove the file handle to avoid borrowing issues
+        // Remove the file handle to avoid borrowing issues.
         this.remove_handle_and(fd, |mut handle, this| {
-            // Don't use `?` to avoid returning before reinserting the handle
+            // Don't use `?` to avoid returning before reinserting the handle.
             let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
                 this.memory
                     .get_mut(buf.alloc_id)?
@@ -191,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("write")?;
 
         let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
-        // Writing zero bytes should not change `buf`
+        // Writing zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
         }
@@ -232,7 +232,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
+    /// functions return different integer types (like `read`, that returns an `i64`).
     fn get_handle_and<F, T: From<i32>>(&mut self, fd: i32, f: F) -> InterpResult<'tcx, T>
     where
         F: Fn(&FileHandle) -> InterpResult<'tcx, T>,
@@ -256,7 +256,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
+    /// functions return different integer types (like `read`, that returns an `i64`).
     fn remove_handle_and<F, T: From<i32>>(&mut self, fd: i32, mut f: F) -> InterpResult<'tcx, T>
     where
         F: FnMut(FileHandle, &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, T>,
