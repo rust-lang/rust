@@ -13,6 +13,6 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
 fi
 
 BUILD_DIR=$PWD/target/debug/test_build_base
-MY_DIR=$(dirname $0)
-cd $MY_DIR
-find . -name '*.rs' | xargs ./update-references.sh $BUILD_DIR
+MY_DIR=$(dirname "$0")
+cd "$MY_DIR" || exit
+find . -name '*.rs' -exec ./update-references.sh "$BUILD_DIR" {} +
