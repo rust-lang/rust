@@ -10,7 +10,7 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use std::sync::Arc;
 use std::sync::mpsc;
 use syntax_expand::allocator::AllocatorKind;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -50,7 +50,7 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
     fn compile_codegen_unit(
         &self,
         tcx: TyCtxt<'_>,
-        cgu_name: InternedString,
+        cgu_name: Symbol,
         tx_to_llvm_workers: &mpsc::Sender<Box<dyn std::any::Any + Send>>,
     );
     // If find_features is true this won't access `sess.crate_types` by assuming
