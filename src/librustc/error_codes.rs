@@ -2135,13 +2135,13 @@ Erroneous code examples:
 # use std::pin::Pin;
 # use std::future::Future;
 # use std::task::{Context, Poll};
-
+#
 # struct WakeOnceThenComplete(bool);
-
+#
 # fn wake_and_yield_once() -> WakeOnceThenComplete {
 #     WakeOnceThenComplete(false)
 # }
-
+#
 # impl Future for WakeOnceThenComplete {
 #     type Output = ();
 #     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
@@ -2154,7 +2154,7 @@ Erroneous code examples:
 #         }
 #     }
 # }
-
+#
 fn foo() {
     wake_and_yield_once().await // `await` is used outside `async` context
 }
@@ -2168,13 +2168,13 @@ an async context, like an `async fn` or an `async` block.
 # use std::pin::Pin;
 # use std::future::Future;
 # use std::task::{Context, Poll};
-
+#
 # struct WakeOnceThenComplete(bool);
-
+#
 # fn wake_and_yield_once() -> WakeOnceThenComplete {
 #     WakeOnceThenComplete(false)
 # }
-
+#
 # impl Future for WakeOnceThenComplete {
 #     type Output = ();
 #     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
@@ -2187,9 +2187,16 @@ an async context, like an `async fn` or an `async` block.
 #         }
 #     }
 # }
-
+#
 async fn foo() {
-    wake_and_yield_once().await // `await` is used within `async` context
+    wake_and_yield_once().await // `await` is used within `async` function
+}
+
+fn bar(x: u8) -> impl Future<Output = u8> {
+    async move {
+        wake_and_yield_once().await; // `await` is used within `async` block
+        x
+    }
 }
 ```
 "##,
