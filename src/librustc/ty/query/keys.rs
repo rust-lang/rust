@@ -8,14 +8,12 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::mir;
 
-use std::fmt::Debug;
-use std::hash::Hash;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
-pub(super) trait Key: Clone + Hash + Eq + Debug {
+pub(super) trait Key {
     /// Given an instance of this key, what crate is it referring to?
     /// This is used to find the provider.
     fn query_crate(&self) -> CrateNum;
@@ -201,10 +199,7 @@ impl Key for InternedString {
 
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
-impl<'tcx, T> Key for Canonical<'tcx, T>
-where
-    T: Debug + Hash + Clone + Eq,
-{
+impl<'tcx, T> Key for Canonical<'tcx, T> {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

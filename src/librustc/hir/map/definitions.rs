@@ -599,7 +599,6 @@ macro_rules! define_global_metadata_kind {
     (pub enum GlobalMetaDataKind {
         $($variant:ident),*
     }) => (
-        #[derive(Clone, Copy, Debug, Hash, RustcEncodable, RustcDecodable)]
         pub enum GlobalMetaDataKind {
             $($variant),*
         }

@@ -25,7 +25,7 @@ use crate::util::nodemap::{FxHashSet, FxHashMap};
 use std::mem::replace;
 use std::cmp::Ordering;
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
     Unstable,
     Stable,

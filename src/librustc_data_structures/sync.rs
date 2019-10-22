@@ -738,7 +738,7 @@ impl<T: Clone> Clone for RwLock<T> {
 
 /// A type which only allows its inner value to be used in one thread.
 /// It will panic if it is used on multiple threads.
-#[derive(Copy, Clone, Hash, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct OneThread<T> {
     #[cfg(parallel_compiler)]
     thread: thread::ThreadId,

@@ -102,7 +102,7 @@ pub struct Upvar {
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PointerKind<'tcx> {
     /// `Box<T>`
     Unique,
@@ -116,7 +116,7 @@ pub enum PointerKind<'tcx> {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g., a field
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq)]
 pub enum InteriorKind {
     InteriorField(FieldIndex),
     InteriorElement(InteriorOffsetKind),
@@ -139,13 +139,13 @@ impl Hash for FieldIndex {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq)]
 pub enum InteriorOffsetKind {
     Index,   // e.g., `array_expr[index_expr]`
     Pattern, // e.g., `fn foo([_, a, _, _]: [A; 4]) { ... }`
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.

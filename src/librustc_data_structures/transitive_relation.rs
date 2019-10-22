@@ -11,7 +11,7 @@ use std::mem;
 mod tests;
 
 #[derive(Clone, Debug)]
-pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
+pub struct TransitiveRelation<T: Eq + Hash> {
     // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
 
@@ -35,7 +35,7 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
 }
 
 // HACK(eddyb) manual impl avoids `Default` bound on `T`.
-impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
+impl<T: Eq + Hash> Default for TransitiveRelation<T> {
     fn default() -> Self {
         TransitiveRelation {
             elements: Default::default(),
@@ -46,7 +46,7 @@ impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, RustcEncodable, RustcDecodable, Debug)]
 struct Index(usize);
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]

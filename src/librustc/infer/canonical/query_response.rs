@@ -26,7 +26,7 @@ use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, BoundVar, InferConst, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
@@ -493,10 +493,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::Const {
-                        val: ConstValue::Infer(InferConst::Canonical(debrujin, b)),
-                        ..
-                    } = result_value {
+                    if let ty::Const { val: ConstValue::Bound(debrujin, b), .. } = result_value {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
