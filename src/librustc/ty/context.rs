@@ -3015,6 +3015,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
     };
+    providers.crate_host_hash = |tcx, cnum| {
+        assert_ne!(cnum, LOCAL_CRATE);
+        tcx.cstore.crate_host_hash_untracked(cnum)
+    };
     providers.postorder_cnums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.postorder_cnums_untracked())

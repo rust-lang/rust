@@ -191,6 +191,7 @@ impl<'a> CrateLoader<'a> {
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
+        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash);
         self.verify_no_symbol_conflicts(span, &crate_root);
 
         let private_dep = self.sess.opts.externs.get(&name.as_str())
@@ -245,6 +246,7 @@ impl<'a> CrateLoader<'a> {
             def_path_table,
             trait_impls,
             root: crate_root,
+            host_hash,
             blob: metadata,
             cnum_map,
             cnum,
@@ -283,9 +285,7 @@ impl<'a> CrateLoader<'a> {
                 LoadResult::Previous(cnum) => return Some((LoadResult::Previous(cnum), None)),
                 LoadResult::Loaded(library) => Some(LoadResult::Loaded(library))
             };
-            // Don't look for a matching hash when looking for the host crate.
-            // It won't be the same as the target crate hash
-            locate_ctxt.hash = None;
+            locate_ctxt.hash = locate_ctxt.host_hash;
             // Use the locate_ctxt when looking for the host proc macro crate, as that is required
             // so we want it to affect the error message
             (locate_ctxt, result)
@@ -334,10 +334,15 @@ impl<'a> CrateLoader<'a> {
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
     ) -> Result<CrateNum, LoadError<'b>> {
         info!("resolving crate `{}`", name);
-        let (root, hash, extra_filename, path_kind) = match dep {
-            Some((root, dep)) =>
-                (Some(root), Some(&dep.hash), Some(&dep.extra_filename[..]), PathKind::Dependency),
-            None => (None, None, None, PathKind::Crate),
+        let (root, hash, host_hash, extra_filename, path_kind) = match dep {
+            Some((root, dep)) => (
+                Some(root),
+                Some(&dep.hash),
+                dep.host_hash.as_ref(),
+                Some(&dep.extra_filename[..]),
+                PathKind::Dependency
+            ),
+            None => (None, None, None, None, PathKind::Crate),
         };
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
@@ -348,6 +353,7 @@ impl<'a> CrateLoader<'a> {
                 span,
                 crate_name: name,
                 hash,
+                host_hash,
                 extra_filename,
                 filesearch: self.sess.target_filesearch(path_kind),
                 target: &self.sess.target.target,

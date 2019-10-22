@@ -754,6 +754,10 @@ rustc_queries! {
             eval_always
             desc { "looking up the hash a crate" }
         }
+        query crate_host_hash(_: CrateNum) -> Option<Svh> {
+            eval_always
+            desc { "looking up the hash of a host version of a crate" }
+        }
         query original_crate_name(_: CrateNum) -> Symbol {
             eval_always
             desc { "looking up the original name a crate" }

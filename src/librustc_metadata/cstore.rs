@@ -10,6 +10,7 @@ use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::sync::{Lrc, Lock, MetadataRef, Once, AtomicCell};
+use rustc_data_structures::svh::Svh;
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax_expand::base::SyntaxExtension;
@@ -87,6 +88,8 @@ crate struct CrateMetadata {
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
     crate private_dep: bool,
+    /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
+    crate host_hash: Option<Svh>,
 
     // --- Data used only for improving diagnostics ---
 

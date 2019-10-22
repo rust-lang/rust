@@ -258,6 +258,7 @@ crate struct Context<'a> {
     pub span: Span,
     pub crate_name: Symbol,
     pub hash: Option<&'a Svh>,
+    pub host_hash: Option<&'a Svh>,
     pub extra_filename: Option<&'a str>,
     // points to either self.sess.target.target or self.sess.host, must match triple
     pub target: &'a Target,
@@ -929,6 +930,7 @@ pub fn find_plugin_registrar(
         span,
         crate_name: name,
         hash: None,
+        host_hash: None,
         extra_filename: None,
         filesearch: sess.host_filesearch(PathKind::Crate),
         target: &sess.host,
