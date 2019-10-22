@@ -6,6 +6,8 @@ use rustc_target::spec::Target;
 
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_codegen_ssa::METADATA_FILENAME;
+use log::debug;
+use rustc_data_structures::rustc_erase_owner;
 
 use std::path::Path;
 use std::slice;

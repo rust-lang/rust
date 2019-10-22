@@ -379,9 +379,6 @@
 # and currently the only standard option supported is `"llvm"`
 #codegen-backends = ["llvm"]
 
-# This is the name of the directory in which codegen backends will get installed
-#codegen-backends-dir = "codegen-backends"
-
 # Indicates whether LLD will be compiled and made available in the sysroot for
 # rustc to execute.
 #lld = false
