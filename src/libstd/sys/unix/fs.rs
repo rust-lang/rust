@@ -105,11 +105,14 @@ cfg_has_statx! {{
         flags: i32,
         mask: u32,
     ) -> Option<io::Result<FileAttr>> {
-        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sync::atomic::{AtomicU8, Ordering};
 
         // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`
-        // We store the availability in a global to avoid unnecessary syscalls
-        static HAS_STATX: AtomicBool = AtomicBool::new(true);
+        // We store the availability in global to avoid unnecessary syscalls.
+        // 0: Unknown
+        // 1: Not available
+        // 2: Available
+        static STATX_STATE: AtomicU8 = AtomicU8::new(0);
         syscall! {
             fn statx(
                 fd: c_int,
@@ -120,21 +123,36 @@ cfg_has_statx! {{
             ) -> c_int
         }
 
-        if !HAS_STATX.load(Ordering::Relaxed) {
-            return None;
-        }
-
-        let mut buf: libc::statx = mem::zeroed();
-        let ret = cvt(statx(fd, path, flags, mask, &mut buf));
-        match ret {
-            Err(err) => match err.raw_os_error() {
-                Some(libc::ENOSYS) => {
-                    HAS_STATX.store(false, Ordering::Relaxed);
-                    return None;
+        match STATX_STATE.load(Ordering::Relaxed) {
+            // For the first time, we try to call on current working directory
+            // to check if it is available.
+            0 => {
+                let mut buf: libc::statx = mem::zeroed();
+                let err = cvt(statx(
+                    libc::AT_FDCWD,
+                    b".\0".as_ptr().cast(),
+                    0,
+                    libc::STATX_ALL,
+                    &mut buf,
+                ))
+                    .err()
+                    .and_then(|e| e.raw_os_error());
+                // `seccomp` will emit `EPERM` on denied syscall.
+                // See: https://github.com/rust-lang/rust/issues/65662
+                if err == Some(libc::ENOSYS) || err == Some(libc::EPERM) {
+                    STATX_STATE.store(1, Ordering::Relaxed);
+                } else {
+                    STATX_STATE.store(2, Ordering::Relaxed);
                 }
-                _ => return Some(Err(err)),
+                try_statx(fd, path, flags, mask)
             }
-            Ok(_) => {
+            1 => None,
+            _ => {
+                let mut buf: libc::statx = mem::zeroed();
+                if let Err(err) = cvt(statx(fd, path, flags, mask, &mut buf)) {
+                    return Some(Err(err));
+                }
+
                 // We cannot fill `stat64` exhaustively because of private padding fields.
                 let mut stat: stat64 = mem::zeroed();
                 // `c_ulong` on gnu-mips, `dev_t` otherwise
