@@ -194,7 +194,10 @@ use crate::vec::Vec;
 /// ```
 /// use std::mem;
 ///
-/// let mut story = String::from("Once upon a time...");
+/// let story = String::from("Once upon a time...");
+///
+/// // Prevent automatically dropping the String's data
+/// let mut story = mem::ManuallyDrop::new(story);
 ///
 /// let ptr = story.as_mut_ptr();
 /// let len = story.len();
@@ -202,9 +205,6 @@ use crate::vec::Vec;
 ///
 /// // story has nineteen bytes
 /// assert_eq!(19, len);
-///
-/// // Now that we have our parts, we throw the story away.
-/// mem::forget(story);
 ///
 /// // We can re-build a String out of ptr, len, and capacity. This is all
 /// // unsafe because we are responsible for making sure the components are
@@ -676,12 +676,14 @@ impl String {
     /// use std::mem;
     ///
     /// unsafe {
-    ///     let mut s = String::from("hello");
+    ///     let s = String::from("hello");
+    ///
+    ///     // Prevent automatically dropping the String's data
+    ///     let mut s = mem::ManuallyDrop::new(s);
+    ///
     ///     let ptr = s.as_mut_ptr();
     ///     let len = s.len();
     ///     let capacity = s.capacity();
-    ///
-    ///     mem::forget(s);
     ///
     ///     let s = String::from_raw_parts(ptr, len, capacity);
     ///

@@ -389,7 +389,11 @@ impl<T> Vec<T> {
     /// use std::ptr;
     /// use std::mem;
     ///
-    /// let mut v = vec![1, 2, 3];
+    /// let v = vec![1, 2, 3];
+    ///
+    /// // Prevent running `v`'s destructor so we are in complete control
+    /// // of the allocation.
+    /// let mut v = mem::ManuallyDrop::new(v);
     ///
     /// // Pull out the various important pieces of information about `v`
     /// let p = v.as_mut_ptr();
@@ -397,10 +401,6 @@ impl<T> Vec<T> {
     /// let cap = v.capacity();
     ///
     /// unsafe {
-    ///     // Cast `v` into the void: no destructor run, so we are in
-    ///     // complete control of the allocation to which `p` points.
-    ///     mem::forget(v);
-    ///
     ///     // Overwrite memory with 4, 5, 6
     ///     for i in 0..len as isize {
     ///         ptr::write(p.offset(i), 4 + i);
