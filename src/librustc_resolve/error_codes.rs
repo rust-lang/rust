@@ -1822,7 +1822,7 @@ An item usage is ambiguous.
 
 Erroneous code example:
 
-```compile_fail,E0659
+```compile_fail,edition2018,E0659
 pub mod moon {
     pub fn foo() {}
 }
@@ -1832,12 +1832,12 @@ pub mod earth {
 }
 
 mod collider {
-    pub use moon::*;
-    pub use earth::*;
+    pub use crate::moon::*;
+    pub use crate::earth::*;
 }
 
 fn main() {
-    collider::foo(); // ERROR: `foo` is ambiguous
+    crate::collider::foo(); // ERROR: `foo` is ambiguous
 }
 ```
 
@@ -1849,7 +1849,7 @@ functions collide.
 To solve this error, the best solution is generally to keep the path before the
 item when using it. Example:
 
-```
+```edition2018
 pub mod moon {
     pub fn foo() {}
 }
@@ -1859,13 +1859,13 @@ pub mod earth {
 }
 
 mod collider {
-    pub use moon;
-    pub use earth;
+    pub use crate::moon;
+    pub use crate::earth;
 }
 
 fn main() {
-    collider::moon::foo(); // ok!
-    collider::earth::foo(); // ok!
+    crate::collider::moon::foo(); // ok!
+    crate::collider::earth::foo(); // ok!
 }
 ```
 "##,
