@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:quux
 
 use std::marker::PhantomData;

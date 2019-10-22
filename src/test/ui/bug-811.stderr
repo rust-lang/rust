@@ -1,0 +1,20 @@
+warning: type `task_id` should have an upper camel case name
+  --> $DIR/bug-811.rs:10:6
+   |
+LL | type task_id = isize;
+   |      ^^^^^^^ help: convert the identifier to upper camel case: `TaskId`
+   |
+   = note: `#[warn(non_camel_case_types)]` on by default
+
+warning: type `port_id` should have an upper camel case name
+  --> $DIR/bug-811.rs:11:6
+   |
+LL | type port_id = isize;
+   |      ^^^^^^^ help: convert the identifier to upper camel case: `PortId`
+
+warning: type `chan_t` should have an upper camel case name
+  --> $DIR/bug-811.rs:13:8
+   |
+LL | struct chan_t<T> {
+   |        ^^^^^^ help: convert the identifier to upper camel case: `ChanT`
+

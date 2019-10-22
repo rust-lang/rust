@@ -1,3 +1,4 @@
+// run-fail
 // Meta test for compiletest: check that when we give the wrong error
 // patterns, the test fails.
 

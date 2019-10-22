@@ -1,3 +1,4 @@
+// run-fail
 // Meta test for compiletest: check that when we give the right error
 // patterns, the test passes. See all `meta-revision-bad.rs`.
 
