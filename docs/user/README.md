@@ -61,6 +61,25 @@ for details.
 For updates, pull the latest changes from the master branch, run `cargo xtask install` again, and **restart** VS Code instance.
 See [microsoft/vscode#72308](https://github.com/microsoft/vscode/issues/72308) for why a full restart is needed.
 
+### VS Code Remote
+
+You can also use `rust-analyzer` with the Visual Studio Code Remote extensions
+(Remote SSH, Remote WSL, Remote Containers). In this case, however, you have to
+manually install the `.vsix` package:
+
+1. Build the extension on the remote host using the instructions above (ignore the
+   error if `code` cannot be found in your PATH: VSCode doesn't need to be installed
+   on the remote host).
+2. In Visual Studio Code open a connection to the remote host.
+3. Open the Extensions View (`View > Extensions`, keyboard shortcut: `Ctrl+Shift+X`).
+4. From the top-right kebab menu (`···`) select `Install from VSIX...`
+5. Inside the `rust-analyzer` directory find the `editors/code` subdirectory and choose
+   the `ra-lsp-0.0.1.vsix` file.
+6. Restart Visual Studio Code and re-establish the connection to the remote host.
+
+In case of errors please make sure that `~/.cargo/bin` is in your `PATH` on the remote
+host.
+
 ### Settings
 
 * `rust-analyzer.highlightingOn`: enables experimental syntax highlighting
