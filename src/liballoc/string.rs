@@ -196,6 +196,7 @@ use crate::vec::Vec;
 ///
 /// let story = String::from("Once upon a time...");
 ///
+// FIXME Update this when vec_into_raw_parts is stabilized
 /// // Prevent automatically dropping the String's data
 /// let mut story = mem::ManuallyDrop::new(story);
 ///
@@ -647,6 +648,37 @@ impl String {
         decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
     }
 
+    /// Decomposes a `String` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the string (in bytes), and the allocated capacity of the data
+    /// (in bytes). These are the same arguments in the same order as
+    /// the arguments to [`from_raw_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `String`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `String` with the [`from_raw_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts`]: #method.from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// let s = String::from("hello");
+    ///
+    /// let (ptr, len, cap) = s.into_raw_parts();
+    ///
+    /// let rebuilt = unsafe { String::from_raw_parts(ptr, len, cap) };
+    /// assert_eq!(rebuilt, "hello");
+    /// ```
+    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
+        self.vec.into_raw_parts()
+    }
+
     /// Creates a new `String` from a length, capacity, and pointer.
     ///
     /// # Safety
@@ -678,6 +710,7 @@ impl String {
     /// unsafe {
     ///     let s = String::from("hello");
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Prevent automatically dropping the String's data
     ///     let mut s = mem::ManuallyDrop::new(s);
     ///
