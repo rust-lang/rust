@@ -602,19 +602,15 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        match c {
-            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
+        match c.val {
+            ConstValue::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
-                match variable_table.probe_value(*vid).val.known() {
-                    Some(u) => {
-                        self.relate(&u, &u)
-                    }
+                match variable_table.probe_value(vid).val.known() {
+                    Some(u) => self.relate(&u, &u),
                     None => Ok(c),
                 }
             }
-            _ => {
-                relate::super_relate_consts(self, c, c)
-            }
+            _ => relate::super_relate_consts(self, c, c),
         }
     }
 }
