@@ -1241,6 +1241,7 @@ fn settings(root_path: &str, suffix: &str) -> String {
         ("go-to-only-result", "Directly go to item in search if there is only one result",
             false),
         ("line-numbers", "Show line numbers on code examples", false),
+        ("disable-shortcuts", "Disable keyboard shortcuts", false),
     ];
     format!(
 "<h1 class='fqn'>\
