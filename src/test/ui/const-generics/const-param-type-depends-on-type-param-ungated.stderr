@@ -7,7 +7,7 @@ LL | struct B<T, const N: T>(PhantomData<[T; N]>);
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
-error[E0740]: the types of const generic parameters must derive `PartialEq` and `Eq`
+error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
   --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:22
    |
 LL | struct B<T, const N: T>(PhantomData<[T; N]>);
@@ -15,5 +15,5 @@ LL | struct B<T, const N: T>(PhantomData<[T; N]>);
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0658, E0740.
+Some errors have detailed explanations: E0658, E0741.
 For more information about an error, try `rustc --explain E0658`.

@@ -6,7 +6,7 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0740]: the types of const generic parameters must derive `PartialEq` and `Eq`
+error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
   --> $DIR/const-param-type-depends-on-type-param.rs:9:34
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
@@ -14,4 +14,4 @@ LL | pub struct Dependent<T, const X: T>([(); X]);
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0740`.
+For more information about this error, try `rustc --explain E0741`.

@@ -1884,7 +1884,7 @@ E0671: r##"
 
 Const parameters cannot depend on type parameters.
 The following is therefore invalid:
-```compile_fail,E0740
+```compile_fail,E0741
 #![feature(const_generics)]
 
 fn const_id<T, const N: T>() -> T { // error

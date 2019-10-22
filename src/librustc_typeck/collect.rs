@@ -1536,7 +1536,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                     struct_span_err!(
                         tcx.sess,
                         hir_ty.span,
-                        E0740,
+                        E0741,
                         "the types of const generic parameters must derive `PartialEq` and `Eq`",
                     ).span_label(
                         hir_ty.span,

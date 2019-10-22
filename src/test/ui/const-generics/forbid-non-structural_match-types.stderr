@@ -6,7 +6,7 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0740]: the types of const generic parameters must derive `PartialEq` and `Eq`
+error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
   --> $DIR/forbid-non-structural_match-types.rs:11:19
    |
 LL | struct D<const X: C>;
@@ -14,4 +14,4 @@ LL | struct D<const X: C>;
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0740`.
+For more information about this error, try `rustc --explain E0741`.
