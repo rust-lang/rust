@@ -1,13 +1,16 @@
 use self::InternalDebugLocation::*;
 
-use super::utils::{debug_context, span_start};
+use super::utils::debug_context;
 use super::metadata::UNKNOWN_COLUMN_NUMBER;
 use rustc_codegen_ssa::mir::debuginfo::FunctionDebugContext;
 
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 use crate::builder::Builder;
+use crate::common::CodegenCx;
 use rustc_codegen_ssa::traits::*;
+
+use std::num::NonZeroUsize;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};
@@ -23,8 +26,7 @@ pub fn set_source_location<D>(
 ) {
     let dbg_loc = if debug_context.source_locations_enabled {
         debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
-        let loc = span_start(bx.cx(), span);
-        InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
+        InternalDebugLocation::from_span(bx.cx(), scope, span)
     } else {
         UnknownLocation
     };
@@ -34,17 +36,42 @@ pub fn set_source_location<D>(
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum InternalDebugLocation<'ll> {
-    KnownLocation { scope: &'ll DIScope, line: usize, col: usize },
+    KnownLocation {
+        scope: &'ll DIScope,
+        line: usize,
+        col: Option<NonZeroUsize>,
+    },
     UnknownLocation
 }
 
 impl InternalDebugLocation<'ll> {
-    pub fn new(scope: &'ll DIScope, line: usize, col: usize) -> Self {
+    pub fn new(scope: &'ll DIScope, line: usize, col: Option<NonZeroUsize>) -> Self {
         KnownLocation {
             scope,
             line,
             col,
         }
+    }
+
+    pub fn from_span(cx: &CodegenCx<'ll, '_>, scope: &'ll DIScope, span: Span) -> Self {
+        let pos = cx.sess().source_map().lookup_char_pos(span.lo());
+
+        // FIXME: Rust likes to emit zero-width spans just after the end of a function. For now,
+        // zero-width spans to the preceding column to avoid emitting a column that points past the
+        // end of a line. E.g.,
+        //   |xyz = None
+        //   x|yz = 1
+        //   xy|z = 2
+        //
+        // See discussion in https://github.com/rust-lang/rust/issues/65437
+        let col0 = pos.col.to_usize();
+        let col1 = if span.is_empty() {
+            NonZeroUsize::new(col0)
+        } else {
+            NonZeroUsize::new(col0 + 1)
+        };
+
+        Self::new(scope, pos.line, col1)
     }
 }
 
@@ -60,9 +87,9 @@ pub fn set_debug_location(
             let col_used =  if bx.sess().target.target.options.is_like_msvc {
                 UNKNOWN_COLUMN_NUMBER
             } else {
-                (col + 1) as c_uint
+                col.map_or(UNKNOWN_COLUMN_NUMBER, |c| c.get() as c_uint)
             };
-            debug!("setting debug location to {} {}", line, col);
+            debug!("setting debug location to {} {}", line, col_used);
 
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateDebugLocation(

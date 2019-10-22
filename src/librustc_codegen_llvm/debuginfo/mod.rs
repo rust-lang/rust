@@ -35,7 +35,7 @@ use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 
 use smallvec::SmallVec;
-use syntax_pos::{self, BytePos, Span, Pos};
+use syntax_pos::{self, BytePos, Span};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Size};
@@ -209,8 +209,10 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 align.bytes() as u32,
             )
         };
-        source_loc::set_debug_location(self,
-            InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
+
+        let debug_loc = InternalDebugLocation::from_span(cx, scope_metadata, span);
+        source_loc::set_debug_location(self, debug_loc);
+
         unsafe {
             let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
             let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
