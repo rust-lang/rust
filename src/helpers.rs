@@ -412,16 +412,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
-    /// the Unix APIs usually handle.
-    fn write_os_str_to_c_string(&mut self, os_str: &OsStr, scalar: Scalar<Tag>, size: u64) -> InterpResult<'tcx> {
+    /// the Unix APIs usually handle. This function returns `Ok(false)` without trying to write if
+    /// `size` is not large enough to fit the contents of `os_string` plus a null terminator. It
+    /// returns `Ok(true)` if the writing process was successful. Otherwise it returns an
+    /// `InterpError`.
+    fn write_os_str_to_c_string(
+        &mut self,
+        os_str: &OsStr,
+        scalar: Scalar<Tag>,
+        size: u64
+    ) -> InterpResult<'tcx, bool> {
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an overflow.
         if size <= bytes.len() as u64 {
-            throw_unsup_format!("OsString of length {} is too large for destination buffer of size {}", bytes.len(), size)
+            return Ok(false);
         }
         // FIXME: We should use `Iterator::chain` instead when rust-lang/rust#65704 lands.
-        self.eval_context_mut().memory.write_bytes(scalar, [bytes, &[0]].concat())
+        self.eval_context_mut().memory.write_bytes(scalar, [bytes, &[0]].concat())?;
+        Ok(true)
     }
 }
 
