@@ -81,13 +81,14 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
                                       &loc.file.name,
                                       debug_context.defining_crate);
 
+    let col1 = loc.col.to_usize() + 1; // One-based column index
     let scope_metadata = unsafe {
         Some(llvm::LLVMRustDIBuilderCreateLexicalBlock(
             DIB(cx),
             parent_scope.scope_metadata.unwrap(),
             file_metadata,
             loc.line as c_uint,
-            loc.col.to_usize() as c_uint))
+            col1 as c_uint))
     };
     debug_context.scopes[scope] = DebugScope {
         scope_metadata,
