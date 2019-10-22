@@ -194,9 +194,9 @@ use crate::vec::Vec;
 /// ```
 /// use std::mem;
 ///
-/// let story = String::from("Once upon a time...");
+/// let mut story = String::from("Once upon a time...");
 ///
-/// let ptr = story.as_ptr();
+/// let ptr = story.as_mut_ptr();
 /// let len = story.len();
 /// let capacity = story.capacity();
 ///
@@ -209,7 +209,7 @@ use crate::vec::Vec;
 /// // We can re-build a String out of ptr, len, and capacity. This is all
 /// // unsafe because we are responsible for making sure the components are
 /// // valid:
-/// let s = unsafe { String::from_raw_parts(ptr as *mut _, len, capacity) } ;
+/// let s = unsafe { String::from_raw_parts(ptr, len, capacity) } ;
 ///
 /// assert_eq!(String::from("Once upon a time..."), s);
 /// ```
@@ -676,14 +676,14 @@ impl String {
     /// use std::mem;
     ///
     /// unsafe {
-    ///     let s = String::from("hello");
-    ///     let ptr = s.as_ptr();
+    ///     let mut s = String::from("hello");
+    ///     let ptr = s.as_mut_ptr();
     ///     let len = s.len();
     ///     let capacity = s.capacity();
     ///
     ///     mem::forget(s);
     ///
-    ///     let s = String::from_raw_parts(ptr as *mut _, len, capacity);
+    ///     let s = String::from_raw_parts(ptr, len, capacity);
     ///
     ///     assert_eq!(String::from("hello"), s);
     /// }
