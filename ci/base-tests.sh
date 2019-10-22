@@ -51,7 +51,7 @@ cargo test --features "debugging deny-warnings"
 
   # Run a lint and make sure it produces the expected output. It's also expected to exit with code 1
   # FIXME: How to match the clippy invocation in compile-test.rs?
-  ! ./target/debug/clippy-driver -Dwarnings -Aunused -Zui-testing --emit metadata --crate-type bin tests/ui/cstring.rs 2> cstring.stderr
+  ./target/debug/clippy-driver -Dwarnings -Aunused -Zui-testing --emit metadata --crate-type bin tests/ui/cstring.rs 2> cstring.stderr && exit 1
   sed -e 's,tests/ui,$DIR,' -e '/= help/d' cstring.stderr > normalized.stderr
   diff normalized.stderr tests/ui/cstring.stderr
 
