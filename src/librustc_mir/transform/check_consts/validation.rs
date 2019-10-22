@@ -1,10 +1,9 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc::hir::{self, def_id::DefId};
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
 use rustc::ty::cast::CastTy;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty;
 use rustc_index::bit_set::BitSet;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::sym;
@@ -15,7 +14,7 @@ use std::fmt;
 use std::ops::Deref;
 
 use crate::dataflow as old_dataflow;
-use super::{Item, Qualif, is_lang_panic_fn};
+use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
 use super::resolver::{FlowSensitiveResolver, IndirectlyMutableResults, QualifResolver};
 use super::qualifs::{HasMutInterior, NeedsDrop};
 use super::ops::{self, NonConstOp};
@@ -25,70 +24,6 @@ pub enum CheckOpResult {
     Forbidden,
     Unleashed,
     Allowed,
-}
-
-/// What kind of item we are in.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Mode {
-    /// A `static` item.
-    Static,
-    /// A `static mut` item.
-    StaticMut,
-    /// A `const fn` item.
-    ConstFn,
-    /// A `const` item or an anonymous constant (e.g. in array lengths).
-    Const,
-}
-
-impl Mode {
-    /// Returns the validation mode for the item with the given `DefId`, or `None` if this item
-    /// does not require validation (e.g. a non-const `fn`).
-    pub fn for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Self> {
-        use hir::BodyOwnerKind as HirKind;
-
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-
-        let mode = match tcx.hir().body_owner_kind(hir_id) {
-            HirKind::Closure => return None,
-
-            HirKind::Fn if tcx.is_const_fn(def_id) => Mode::ConstFn,
-            HirKind::Fn => return None,
-
-            HirKind::Const => Mode::Const,
-
-            HirKind::Static(hir::MutImmutable) => Mode::Static,
-            HirKind::Static(hir::MutMutable) => Mode::StaticMut,
-        };
-
-        Some(mode)
-    }
-
-    pub fn is_static(self) -> bool {
-        match self {
-            Mode::Static | Mode::StaticMut => true,
-            Mode::ConstFn | Mode::Const => false,
-        }
-    }
-
-    /// Returns `true` if the value returned by this item must be `Sync`.
-    ///
-    /// This returns false for `StaticMut` since all accesses to one are `unsafe` anyway.
-    pub fn requires_sync(self) -> bool {
-        match self {
-            Mode::Static => true,
-            Mode::ConstFn | Mode::Const |  Mode::StaticMut => false,
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Mode::Const => write!(f, "constant"),
-            Mode::Static | Mode::StaticMut => write!(f, "static"),
-            Mode::ConstFn => write!(f, "constant function"),
-        }
-    }
 }
 
 pub struct Qualifs<'a, 'mir, 'tcx> {
@@ -343,7 +278,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let is_thread_local = self.tcx.has_attr(*def_id, sym::thread_local);
                 if is_thread_local {
                     self.check_op(ops::ThreadLocalAccess);
-                } else if self.mode == Mode::Static && context.is_mutating_use() {
+                } else if self.const_kind() == ConstKind::Static && context.is_mutating_use() {
                     // this is not strictly necessary as miri will also bail out
                     // For interior mutability we can't really catch this statically as that
                     // goes through raw pointers and intermediate temporaries, so miri has

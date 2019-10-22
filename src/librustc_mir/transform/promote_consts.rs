@@ -730,7 +730,7 @@ pub fn validate_candidates(
         is_non_const_fn: false,
         temps,
 
-        const_cx: ConstCx::for_promotion(tcx, def_id, body),
+        const_cx: ConstCx::new(tcx, def_id, body),
 
         explicit: false,
     };
