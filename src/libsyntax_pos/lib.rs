@@ -280,6 +280,13 @@ impl Span {
         self.data().with_ctxt(ctxt)
     }
 
+    #[inline]
+    /// Returns `true` if this `Span` contains no text.
+    pub fn is_empty(self) -> bool {
+        let span = self.data();
+        span.lo == span.hi
+    }
+
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
