@@ -18,7 +18,7 @@ use serde_json::to_value;
 
 use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
-    conv::{to_location, Conv, ConvWith, MapConvWith, TryConvWith, TryConvWithToVec},
+    conv::{to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith, TryConvWithToVec},
     req::{self, Decoration, InlayHint, InlayHintsParams, InlayKind},
     world::WorldSnapshot,
     LspError, Result,
@@ -383,8 +383,14 @@ pub fn handle_folding_range(
 ) -> Result<Option<Vec<FoldingRange>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let folds = world.analysis().folding_ranges(file_id)?;
+    let text = world.analysis().file_text(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let res = Some(folds.into_iter().map_conv_with(&*line_index).collect());
+    let ctx = FoldConvCtx {
+        text: &text,
+        line_index: &line_index,
+        line_folding_only: world.options.line_folding_only,
+    };
+    let res = Some(folds.into_iter().map_conv_with(&ctx).collect());
     Ok(res)
 }
 

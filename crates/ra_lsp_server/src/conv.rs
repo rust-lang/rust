@@ -227,22 +227,57 @@ impl ConvWith<(&LineIndex, LineEndings)> for &AtomTextEdit {
     }
 }
 
-impl ConvWith<&LineIndex> for Fold {
+pub(crate) struct FoldConvCtx<'a> {
+    pub(crate) text: &'a str,
+    pub(crate) line_index: &'a LineIndex,
+    pub(crate) line_folding_only: bool,
+}
+
+impl ConvWith<&FoldConvCtx<'_>> for Fold {
     type Output = lsp_types::FoldingRange;
 
-    fn conv_with(self, line_index: &LineIndex) -> lsp_types::FoldingRange {
-        let range = self.range.conv_with(&line_index);
-        lsp_types::FoldingRange {
-            start_line: range.start.line,
-            start_character: Some(range.start.character),
-            end_line: range.end.line,
-            end_character: Some(range.end.character),
-            kind: match self.kind {
-                FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
-                FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
-                FoldKind::Mods => None,
-                FoldKind::Block => None,
-            },
+    fn conv_with(self, ctx: &FoldConvCtx) -> lsp_types::FoldingRange {
+        let kind = match self.kind {
+            FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
+            FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
+            FoldKind::Mods => None,
+            FoldKind::Block => None,
+        };
+
+        let range = self.range.conv_with(&ctx.line_index);
+
+        if ctx.line_folding_only {
+            // Clients with line_folding_only == true (such as VSCode) will fold the whole end line
+            // even if it contains text not in the folding range. To prevent that we exclude
+            // range.end.line from the folding region if there is more text after range.end
+            // on the same line.
+            let has_more_text_on_end_line = ctx.text
+                [TextRange::from_to(self.range.end(), TextUnit::of_str(ctx.text))]
+            .chars()
+            .take_while(|it| *it != '\n')
+            .any(|it| !it.is_whitespace());
+
+            let end_line = if has_more_text_on_end_line {
+                range.end.line.saturating_sub(1)
+            } else {
+                range.end.line
+            };
+
+            lsp_types::FoldingRange {
+                start_line: range.start.line,
+                start_character: None,
+                end_line,
+                end_character: None,
+                kind,
+            }
+        } else {
+            lsp_types::FoldingRange {
+                start_line: range.start.line,
+                start_character: Some(range.start.character),
+                end_line: range.end.line,
+                end_character: Some(range.end.character),
+                kind,
+            }
         }
     }
 }
@@ -510,5 +545,48 @@ where
 
     fn try_conv_with_to_vec(self, ctx: CTX) -> Result<Vec<Self::Output>> {
         self.map(|it| it.try_conv_with(ctx)).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_utils::extract_ranges;
+
+    #[test]
+    fn conv_fold_line_folding_only_fixup() {
+        let text = r#"<fold>mod a;
+mod b;
+mod c;</fold>
+
+fn main() <fold>{
+    if cond <fold>{
+        a::do_a();
+    }</fold> else <fold>{
+        b::do_b();
+    }</fold>
+}</fold>"#;
+
+        let (ranges, text) = extract_ranges(text, "fold");
+        assert_eq!(ranges.len(), 4);
+        let folds = vec![
+            Fold { range: ranges[0], kind: FoldKind::Mods },
+            Fold { range: ranges[1], kind: FoldKind::Block },
+            Fold { range: ranges[2], kind: FoldKind::Block },
+            Fold { range: ranges[3], kind: FoldKind::Block },
+        ];
+
+        let line_index = LineIndex::new(&text);
+        let ctx = FoldConvCtx { text: &text, line_index: &line_index, line_folding_only: true };
+        let converted: Vec<_> = folds.into_iter().map_conv_with(&ctx).collect();
+
+        let expected_lines = [(0, 2), (4, 10), (5, 6), (7, 9)];
+        assert_eq!(converted.len(), expected_lines.len());
+        for (folding_range, (start_line, end_line)) in converted.iter().zip(expected_lines.iter()) {
+            assert_eq!(folding_range.start_line, *start_line);
+            assert_eq!(folding_range.start_character, None);
+            assert_eq!(folding_range.end_line, *end_line);
+            assert_eq!(folding_range.end_character, None);
+        }
     }
 }
