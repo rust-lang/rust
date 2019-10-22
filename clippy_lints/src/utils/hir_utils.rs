@@ -2,10 +2,11 @@ use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
 use rustc::hir::ptr::P;
 use rustc::hir::*;
+use rustc::ich::StableHashingContextProvider;
 use rustc::lint::LateContext;
 use rustc::ty::TypeckTables;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use std::hash::Hash;
 use syntax::ast::Name;
 
 /// Type used to check whether two ast are the same. This is different from the
@@ -348,7 +349,7 @@ pub struct SpanlessHash<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
     tables: &'a TypeckTables<'tcx>,
-    s: DefaultHasher,
+    s: StableHasher,
 }
 
 impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
@@ -356,11 +357,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         Self {
             cx,
             tables,
-            s: DefaultHasher::new(),
+            s: StableHasher::new(),
         }
     }
 
-    pub fn finish(&self) -> u64 {
+    pub fn finish(self) -> u64 {
         self.s.finish()
     }
 
@@ -411,7 +412,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(r);
             },
             ExprKind::AssignOp(ref o, ref l, ref r) => {
-                o.node.hash(&mut self.s);
+                o.node
+                    .hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -419,7 +421,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_block(b);
             },
             ExprKind::Binary(op, ref l, ref r) => {
-                op.node.hash(&mut self.s);
+                op.node
+                    .hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -519,7 +522,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_exprs(v);
             },
             ExprKind::Unary(lop, ref le) => {
-                lop.hash(&mut self.s);
+                lop.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
                 self.hash_expr(le);
             },
         }
