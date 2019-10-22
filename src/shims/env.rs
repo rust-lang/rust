@@ -123,13 +123,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("getcwd")?;
 
-        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+        let buf = this.read_scalar(buf_op)?.not_undef()?;
         let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
                 if this.write_os_str_to_c_string(&OsString::from(cwd), buf, size).is_ok() {
-                    return Ok(Scalar::Ptr(buf));
+                    return Ok(buf);
                 }
                 let erange = this.eval_libc("ERANGE")?;
                 this.set_last_error(erange)?;

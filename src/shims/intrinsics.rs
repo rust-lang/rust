@@ -356,11 +356,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         _ => {
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
-                            mplace.meta.unwrap_none();
-                            // not a zst, must be valid pointer
-                            let ptr = mplace.ptr.to_ptr()?;
-                            // we know the return place is in-bounds
-                            this.memory.get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, dest.layout.size)?;
+                            mplace.meta.unwrap_none(); // must be sized
+                            this.memory.write_bytes(mplace.ptr, itertools::repeat_n(0, dest.layout.size.bytes() as usize))?;
                         }
                     }
                 }
@@ -565,16 +562,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let count = this.read_scalar(args[2])?.to_usize(this)?;
                 let byte_count = ty_layout.size * count;
-                match this.memory.check_ptr_access(ptr, byte_count, ty_layout.align.abi)? {
-                    Some(ptr) => {
-                        this.memory
-                            .get_mut(ptr.alloc_id)?
-                            .write_repeat(tcx, ptr, val_byte, byte_count)?;
-                    }
-                    None => {
-                        // Size is 0, nothing to do.
-                    }
-                }
+                this.memory.write_bytes(ptr, itertools::repeat_n(val_byte, byte_count.bytes() as usize))?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),

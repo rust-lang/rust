@@ -5,7 +5,7 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
-    layout::{self, Align, LayoutOf, Size, TyLayout},
+    layout::{self, LayoutOf, Size, TyLayout},
 };
 
 use rand::RngCore;
@@ -95,13 +95,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
-        // Don't forget the bounds check.
-        let ptr = this.memory.check_ptr_access(
-            ptr,
-            Size::from_bytes(len as u64),
-            Align::from_bytes(1).unwrap()
-        )?.expect("we already checked for size 0");
-
         let mut data = vec![0; len];
 
         if this.machine.communicate {
@@ -114,7 +107,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             rng.fill_bytes(&mut data);
         }
 
-        this.memory.get_mut(ptr.alloc_id)?.write_bytes(&*this.tcx, ptr, &data)
+        this.memory.write_bytes(ptr, data.iter().copied())
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter
@@ -420,27 +413,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
-    fn write_os_str_to_c_string(&mut self, os_str: &OsStr, ptr: Pointer<Tag>, size: u64) -> InterpResult<'tcx> {
+    fn write_os_str_to_c_string(&mut self, os_str: &OsStr, scalar: Scalar<Tag>, size: u64) -> InterpResult<'tcx> {
         let bytes = os_str_to_bytes(os_str)?;
-        let len = bytes.len();
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an overflow.
-        if size <= len as u64 {
-            throw_unsup_format!("OsString of length {} is too large for destination buffer of size {}", len, size)
+        if size <= bytes.len() as u64 {
+            throw_unsup_format!("OsString of length {} is too large for destination buffer of size {}", bytes.len(), size)
         }
-        let actual_len = (len as u64)
-            .checked_add(1)
-            .map(Size::from_bytes)
-            .ok_or_else(|| err_unsup_format!("OsString of length {} is too large", len))?;
-        let this = self.eval_context_mut();
-        this.memory.check_ptr_access(ptr.into(), actual_len, Align::from_bytes(1).unwrap())?;
-        let buffer = this.memory.get_mut(ptr.alloc_id)?.get_bytes_mut(&*this.tcx, ptr, actual_len)?;
-        buffer[..len].copy_from_slice(bytes);
-        // This is ok because the buffer was strictly larger than `bytes`, so after adding the
-        // null terminator, the buffer size is larger or equal to `bytes.len()`, meaning that
-        // `bytes` actually fit inside tbe buffer.
-        buffer[len] = 0;
-        Ok(())
+        // FIXME: We should use `Iterator::chain` instead when rust-lang/rust#65704 lands.
+        self.eval_context_mut().memory.write_bytes(scalar, [bytes, &[0]].concat())
     }
 }
 
