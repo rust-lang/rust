@@ -10,6 +10,7 @@ use crate::type_::Type;
 use crate::context::{is_pie_binary, get_reloc_model};
 use crate::common;
 use crate::LlvmCodegenBackend;
+use rustc::bug;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
 use rustc_codegen_ssa::traits::*;
@@ -20,7 +21,8 @@ use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, CompiledModule};
 use rustc::util::common::time_ext;
 use rustc_fs_util::{path_to_c_string, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
-use errors::{Handler, FatalError};
+use rustc_errors::{Handler, FatalError};
+use log::debug;
 
 use std::ffi::CString;
 use std::fs;
@@ -55,7 +57,7 @@ pub const TLS_MODEL_ARGS : [(&str, llvm::ThreadLocalMode); 4] = [
     ("local-exec", llvm::ThreadLocalMode::LocalExec),
 ];
 
-pub fn llvm_err(handler: &errors::Handler, msg: &str) -> FatalError {
+pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
     match llvm::last_error() {
         Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
         None => handler.fatal(&msg),
@@ -63,7 +65,7 @@ pub fn llvm_err(handler: &errors::Handler, msg: &str) -> FatalError {
 }
 
 pub fn write_output_file(
-        handler: &errors::Handler,
+        handler: &rustc_errors::Handler,
         target: &'ll llvm::TargetMachine,
         pm: &llvm::PassManager<'ll>,
         m: &'ll llvm::Module,

@@ -498,16 +498,6 @@ impl Step for Rustc {
                 }
             }
 
-            // Copy over the codegen backends
-            let backends_src = builder.sysroot_codegen_backends(compiler);
-            let backends_rel = backends_src.strip_prefix(&src).unwrap()
-                .strip_prefix(builder.sysroot_libdir_relative(compiler)).unwrap();
-            // Don't use custom libdir here because ^lib/ will be resolved again with installer
-            let backends_dst = image.join("lib").join(&backends_rel);
-
-            t!(fs::create_dir_all(&backends_dst));
-            builder.cp_r(&backends_src, &backends_dst);
-
             // Copy libLLVM.so to the lib dir as well, if needed. While not
             // technically needed by rustc itself it's needed by lots of other
             // components like the llvm tools and LLD. LLD is included below and

@@ -9,6 +9,7 @@ use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::{TypeFoldable, Instance};
 use rustc::ty::layout::{FnAbiExt, LayoutOf};
 use rustc_codegen_ssa::traits::*;
+use log::debug;
 
 pub use rustc::mir::mono::MonoItem;
 

@@ -12,7 +12,7 @@ use syntax_pos::Span;
 
 use std::ffi::{CStr, CString};
 use libc::{c_uint, c_char};
-
+use log::debug;
 
 impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_inline_asm(

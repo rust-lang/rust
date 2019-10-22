@@ -35,10 +35,13 @@ use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path_to_c_string;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::const_cstr;
 use rustc_target::abi::HasDataLayout;
 use syntax::ast;
 use syntax::symbol::{Interner, Symbol};
 use syntax_pos::{self, Span, FileName};
+use rustc::{bug, span_bug};
+use log::debug;
 
 use libc::{c_uint, c_longlong};
 use std::collections::hash_map::Entry;

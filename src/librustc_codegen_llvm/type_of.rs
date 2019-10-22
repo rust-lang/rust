@@ -6,6 +6,8 @@ use rustc::ty::layout::{self, Align, LayoutOf, FnAbiExt, PointeeInfo, Size, TyLa
 use rustc_target::abi::TyLayoutMethods;
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
+use log::debug;
+use rustc::bug;
 
 use std::fmt::Write;
 

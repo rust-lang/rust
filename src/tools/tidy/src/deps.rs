@@ -135,6 +135,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("polonius-engine"),
     Crate("ppv-lite86"),
     Crate("proc-macro2"),
+    Crate("punycode"),
     Crate("quick-error"),
     Crate("quote"),
     Crate("rand"),

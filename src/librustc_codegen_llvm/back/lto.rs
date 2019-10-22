@@ -4,11 +4,12 @@ use crate::back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitc
 use crate::llvm::archive_ro::ArchiveRO;
 use crate::llvm::{self, True, False};
 use crate::{ModuleLlvm, LlvmCodegenBackend};
+use rustc::bug;
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{ModuleConfig, CodegenContext, FatLTOInput};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinShared, ThinModule};
 use rustc_codegen_ssa::traits::*;
-use errors::{FatalError, Handler};
+use rustc_errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -17,6 +18,7 @@ use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, ModuleKind};
+use log::{info, debug};
 
 use std::ffi::{CStr, CString};
 use std::ptr;

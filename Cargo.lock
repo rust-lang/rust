@@ -3435,7 +3435,25 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
+ "flate2",
+ "libc",
+ "log",
+ "rustc",
+ "rustc-demangle",
+ "rustc_codegen_ssa",
+ "rustc_codegen_utils",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_fs_util",
+ "rustc_incremental",
+ "rustc_index",
  "rustc_llvm",
+ "rustc_target",
+ "smallvec 0.6.10",
+ "syntax",
+ "syntax_expand",
+ "syntax_pos",
 ]
 
 [[package]]
@@ -3596,7 +3614,12 @@ dependencies = [
  "log",
  "once_cell",
  "rustc",
+<<<<<<< HEAD
  "rustc-rayon",
+=======
+ "rustc-rayon 0.3.0",
+ "rustc_codegen_llvm",
+>>>>>>> rustc: Link LLVM directly into rustc again
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",

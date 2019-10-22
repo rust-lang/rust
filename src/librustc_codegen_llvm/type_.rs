@@ -5,6 +5,7 @@ use crate::llvm::{Bool, False, True};
 use crate::context::CodegenCx;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
+use rustc::bug;
 
 use crate::common;
 use crate::type_of::LayoutLlvmExt;

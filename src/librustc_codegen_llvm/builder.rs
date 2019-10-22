@@ -23,6 +23,8 @@ use std::ffi::CStr;
 use std::ops::{Deref, Range};
 use std::ptr;
 use std::iter::TrustedLen;
+use rustc_data_structures::const_cstr;
+use log::debug;
 
 // All Builders must have an llfn associated with them
 #[must_use]

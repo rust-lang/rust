@@ -12,6 +12,7 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::call::Conv;
+use rustc_data_structures::const_cstr;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
