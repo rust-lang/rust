@@ -1,4 +1,4 @@
-error: expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`, found `pub`
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`, found keyword `pub`
   --> $DIR/default.rs:22:13
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() }

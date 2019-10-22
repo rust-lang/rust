@@ -1,4 +1,4 @@
-error: expected one of `crate`, `fn`, `pub`, `static`, or `type`, found `let`
+error: expected one of `crate`, `fn`, `pub`, `static`, or `type`, found keyword `let`
   --> $DIR/issue-54441.rs:3:9
    |
 LL |         let

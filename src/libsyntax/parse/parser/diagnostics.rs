@@ -274,23 +274,23 @@ impl<'a> Parser<'a> {
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
         let expect = tokens_to_string(&expected[..]);
-        let actual = self.this_token_to_string();
+        let actual = self.this_token_descr();
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
             let short_expect = if expected.len() > 6 {
                 format!("{} possible tokens", expected.len())
             } else {
                 expect.clone()
             };
-            (format!("expected one of {}, found `{}`", expect, actual),
+            (format!("expected one of {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
                 format!("expected one of {} here", short_expect)))
         } else if expected.is_empty() {
-            (format!("unexpected token: `{}`", actual),
+            (format!("unexpected token: {}", actual),
                 (self.prev_span, "unexpected token after this".to_string()))
         } else {
-            (format!("expected {}, found `{}`", expect, actual),
+            (format!("expected {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
-                format!("expected {} here", expect)))
+                format!("expected {}", expect)))
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.fatal(&msg_exp);
