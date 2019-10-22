@@ -20,11 +20,11 @@ pub mod validation;
 /// Information about the item currently being const-checked, as well as a reference to the global
 /// context.
 pub struct Item<'mir, 'tcx> {
-    body: &'mir mir::Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    param_env: ty::ParamEnv<'tcx>,
-    const_kind: Option<ConstKind>,
+    pub body: &'mir mir::Body<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
+    pub def_id: DefId,
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub const_kind: Option<ConstKind>,
 }
 
 impl Item<'mir, 'tcx> {
