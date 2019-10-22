@@ -1109,6 +1109,8 @@ where
     }
 }
 
+// This impl allows a `SymbolStr` to be directly equated with a `String` or
+// `&str`.
 impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
@@ -1118,6 +1120,11 @@ impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
 impl !Send for SymbolStr {}
 impl !Sync for SymbolStr {}
 
+/// This impl means that if `ss` is a `SymbolStr`:
+/// - `*ss` is a `str`;
+/// - `&*ss` is a `&str`;
+/// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
+///   function expecting a `&str`.
 impl std::ops::Deref for SymbolStr {
     type Target = str;
     #[inline]
