@@ -47,3 +47,20 @@ cargo run add-person $your_user_name
 Example PRs:
 
 * [Example of adding yourself to the LLVM ICE-breakers.](https://github.com/rust-lang/team/pull/140)
+
+## Tagging an issue for an ICE-breaker group
+
+To tag an issue as appropriate for an ICE-breaker group, you give
+[rustbot] a [`ping`] command with the name of the ICE-breakers
+team. For example:
+
+```text
+@rustbot ping icebreakers-llvm
+```
+
+**Note though that this should only be done by compiler team members
+or contributors, and is typically done as part of compiler team
+triage.**
+
+[rustbot]: https://github.com/rust-lang/triagebot/
+[`ping`]: https://github.com/rust-lang/triagebot/wiki/Pinging
