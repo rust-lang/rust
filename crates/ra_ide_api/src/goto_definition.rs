@@ -206,7 +206,7 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
 
 #[cfg(test)]
 mod tests {
-    // use test_utils::covers;
+    use test_utils::covers;
 
     use crate::mock_analysis::analysis_and_position;
 
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_macros() {
-        // covers!(goto_definition_works_for_macros);
+        covers!(goto_definition_works_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_macros_from_other_crates() {
-        // covers!(goto_definition_works_for_macros);
+        covers!(goto_definition_works_for_macros);
         check_goto(
             "
             //- /lib.rs
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_methods() {
-        // covers!(goto_definition_works_for_methods);
+        covers!(goto_definition_works_for_methods);
         check_goto(
             "
             //- /lib.rs
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_fields() {
-        // covers!(goto_definition_works_for_fields);
+        covers!(goto_definition_works_for_fields);
         check_goto(
             "
             //- /lib.rs
@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn goto_definition_works_for_record_fields() {
-        // covers!(goto_definition_works_for_record_fields);
+        covers!(goto_definition_works_for_record_fields);
         check_goto(
             "
             //- /lib.rs

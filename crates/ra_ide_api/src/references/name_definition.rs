@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! `NameDefinition` keeps information about the element we want to search references for.
+//! The element is represented by `NameKind`. It's located inside some `container` and
+//! has a `visibility`, which defines a search scope.
+//! Note that the reference search is possible for not all of the classified items.
 
 use hir::{
     db::AstDatabase, Adt, AssocItem, DefWithBody, FromSource, HasSource, HirFileId, MacroDef,

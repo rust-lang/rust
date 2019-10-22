@@ -1,8 +1,9 @@
-//! FIXME: write short doc here
+//! Functions that are used to classify an element from its definition or reference.
 
 use hir::{Either, FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
 use ra_db::FileId;
 use ra_syntax::{ast, match_ast, AstNode, AstPtr};
+use test_utils::tested_by;
 
 use super::{
     name_definition::{from_assoc_item, from_module_def, from_pat, from_struct_field},
@@ -111,18 +112,21 @@ pub(crate) fn classify_name_ref(
     let analyzer = SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
+        tested_by!(goto_definition_works_for_methods);
         if let Some(func) = analyzer.resolve_method_call(&method_call) {
             return Some(from_assoc_item(db, func.into()));
         }
     }
 
     if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
+        tested_by!(goto_definition_works_for_fields);
         if let Some(field) = analyzer.resolve_field(&field_expr) {
             return Some(from_struct_field(db, field));
         }
     }
 
     if let Some(record_field) = ast::RecordField::cast(parent.clone()) {
+        tested_by!(goto_definition_works_for_record_fields);
         if let Some(record_lit) = record_field.syntax().ancestors().find_map(ast::RecordLit::cast) {
             let variant_def = analyzer.resolve_record_literal(&record_lit)?;
             let hir_path = Path::from_name_ref(name_ref);
@@ -139,6 +143,7 @@ pub(crate) fn classify_name_ref(
     let visibility = None;
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
+        tested_by!(goto_definition_works_for_macros);
         if let Some(macro_def) = analyzer.resolve_macro_call(db, &macro_call) {
             let kind = NameKind::Macro(macro_def);
             return Some(NameDefinition { kind, container, visibility });
@@ -152,7 +157,6 @@ pub(crate) fn classify_name_ref(
         AssocItem(item) => Some(from_assoc_item(db, item)),
         LocalBinding(Either::A(pat)) => from_pat(db, file_id, pat),
         LocalBinding(Either::B(par)) => {
-            // Not really supported
             let kind = NameKind::SelfParam(par);
             Some(NameDefinition { kind, container, visibility })
         }

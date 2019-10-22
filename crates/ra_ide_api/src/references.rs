@@ -1,4 +1,13 @@
-//! FIXME: write short doc here
+//! This module implements a reference search.
+//! First, the element at the cursor position must be either an `ast::Name`
+//! or `ast::NameRef`. If it's a `ast::NameRef`, at the classification step we
+//! try to resolve the direct tree parent of this element, otherwise we
+//! already have a definition and just need to get its HIR together with
+//! some information that is needed for futher steps of searching.
+//! After that, we collect files that might contain references and look
+//! for text occurrences of the identifier. If there's an `ast::NameRef`
+//! at the index that the match starts at and its tree parent is
+//! resolved to the search element definition, we get a reference.
 
 mod classify;
 mod name_definition;
@@ -9,7 +18,7 @@ use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode, TextUnit};
 
-use crate::{db::RootDatabase, FileId, FilePosition, FileRange, NavigationTarget, RangeInfo};
+use crate::{db::RootDatabase, FilePosition, FileRange, NavigationTarget, RangeInfo};
 
 pub(crate) use self::{
     classify::{classify_name, classify_name_ref},
@@ -102,16 +111,7 @@ fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> V
     let scope = def.search_scope(db);
     let mut refs = vec![];
 
-    let is_match = |file_id: FileId, name_ref: &ast::NameRef| -> bool {
-        let classified = classify_name_ref(db, file_id, &name_ref);
-        if let Some(d) = classified {
-            d == def
-        } else {
-            false
-        }
-    };
-
-    for (file_id, text_range) in scope {
+    for (file_id, search_range) in scope {
         let text = db.file_text(file_id);
         let parse = Lazy::new(|| SourceFile::parse(&text));
 
@@ -122,19 +122,20 @@ fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> V
                 find_node_at_offset::<ast::NameRef>(parse.tree().syntax(), offset)
             {
                 let range = name_ref.syntax().text_range();
-
-                if let Some(text_range) = text_range {
-                    if range.is_subrange(&text_range) && is_match(file_id, &name_ref) {
+                if let Some(search_range) = search_range {
+                    if !range.is_subrange(&search_range) {
+                        continue;
+                    }
+                }
+                if let Some(d) = classify_name_ref(db, file_id, &name_ref) {
+                    if d == def {
                         refs.push(FileRange { file_id, range });
                     }
-                } else if is_match(file_id, &name_ref) {
-                    refs.push(FileRange { file_id, range });
                 }
             }
         }
     }
-
-    return refs;
+    refs
 }
 
 #[cfg(test)]
