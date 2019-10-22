@@ -1,0 +1,14 @@
+error: invalid variable declaration
+  --> $DIR/issue-65257--var-instead-of-let-recovery.rs:4:5
+   |
+LL |     var n = 0;
+   |     ^^^ help: to introduce a variable, write `let` instead of `var`
+
+error: invalid variable declaration
+  --> $DIR/issue-65257--var-instead-of-let-recovery.rs:6:5
+   |
+LL |     var m;
+   |     ^^^ help: to introduce a variable, write `let` instead of `var`
+
+error: aborting due to 2 previous errors
+

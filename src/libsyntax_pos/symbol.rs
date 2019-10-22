@@ -725,6 +725,7 @@ symbols! {
         usize,
         v1,
         val,
+        var,
         vec,
         Vec,
         vis,

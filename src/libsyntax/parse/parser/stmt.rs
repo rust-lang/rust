@@ -10,8 +10,9 @@ use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMo
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
 use crate::parse::{classify, DirectoryOwnership};
 use crate::parse::token;
-use crate::source_map::{respan, Span};
+use crate::source_map::respan;
 use crate::symbol::{kw, sym};
+use syntax_pos::Span;
 
 use std::mem;
 use errors::Applicability;
@@ -41,11 +42,29 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
 
         Ok(Some(if self.eat_keyword(kw::Let) {
-            Stmt {
-                id: DUMMY_NODE_ID,
-                kind: StmtKind::Local(self.parse_local(attrs.into())?),
-                span: lo.to(self.prev_span),
-            }
+            let local = self.parse_local(attrs.into())?;
+            self.mk_dummy_stmt(lo.to(self.prev_span), local)
+
+        } else if self.is_ident_mut() {
+            return self.recover_stmt_local(
+                lo,
+                attrs,
+                "missing `let`",
+            );
+        } else if self.is_var_sym() {
+            self.bump();
+            return self.recover_stmt_local(
+                lo,
+                attrs,
+                "to introduce a variable, write `let` instead of `var`",
+            );
+        } else if self.is_auto_for_let() {
+            self.bump();
+            return self.recover_stmt_local(
+                lo,
+                attrs,
+                "to introduce a variable, write `let` instead of `auto`",
+            );
         } else if let Some(macro_def) = self.eat_macro_def(
             &attrs,
             &respan(lo, VisibilityKind::Inherited),
@@ -472,5 +491,60 @@ impl<'a> Parser<'a> {
         }).note({
             "this was erroneously allowed and will become a hard error in a future release"
         }).emit();
+    }
+
+    fn recover_stmt_local(
+        &mut self,
+        span: Span,
+        attrs: Vec<Attribute>,
+        msg: &str,
+    ) -> PResult<'a, Option<Stmt>> {
+        let local = self.parse_local(attrs.into())?;
+        self.struct_span_err(span, "invalid variable declaration")
+            .span_suggestion_short(
+                span,
+                msg,
+                "let".to_string(),
+                Applicability::MachineApplicable
+            ).emit();
+        return Ok(Some(self.mk_dummy_stmt(span, local)));
+    }
+
+    fn mk_dummy_stmt(&mut self, span: Span, kind: P<Local>) -> Stmt {
+        Stmt {
+            id: DUMMY_NODE_ID,
+            kind: StmtKind::Local(kind),
+            span,
+        }
+    }
+
+    /// Returns `true` if the next token is Brace
+    fn is_next_brace(&self) -> bool { self.look_ahead(1, |t|  t.eq(&token::OpenDelim(token::Brace))) }
+
+    /// Returns `true` if the token is kw::Mut and next one is an Ident
+    fn is_ident_mut(&self) -> bool {
+        self.token.is_keyword(kw::Mut) &&
+            self.look_ahead(1, |t| t.is_ident())
+    }
+
+    /// Returns `true` if the token is sym::var.
+    fn is_var_sym(&self) -> bool {
+        self.token.is_non_raw_ident_where(|ident| ident.name == sym::var) &&
+            self.is_malformed_declr()
+    }
+
+    fn has_equals(&self) -> bool {
+        self.look_ahead(2, |t|  t.eq(&token::Eq))
+    }
+
+    fn is_auto_for_let(&self) -> bool {
+        self.token.is_keyword(kw::Auto) && self.is_malformed_declr()
+    }
+
+    fn is_malformed_declr(&self) -> bool {
+        (self.has_equals() && !self.is_next_brace()) ||
+            (self.look_ahead(1, |t| t.is_ident()) &&
+                self.look_ahead(2, |t|  t.eq(&token::Semi))
+            )
     }
 }

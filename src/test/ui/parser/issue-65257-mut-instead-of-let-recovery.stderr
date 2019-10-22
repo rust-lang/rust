@@ -1,0 +1,14 @@
+error: invalid variable declaration
+  --> $DIR/issue-65257-mut-instead-of-let-recovery.rs:4:5
+   |
+LL |     mut n = 0;
+   |     ^^^ help: missing `let`
+
+error: invalid variable declaration
+  --> $DIR/issue-65257-mut-instead-of-let-recovery.rs:6:5
+   |
+LL |     mut var;
+   |     ^^^ help: missing `let`
+
+error: aborting due to 2 previous errors
+

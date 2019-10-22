@@ -1,0 +1,14 @@
+error: invalid variable declaration
+  --> $DIR/issue-65257--auto-instead-of-let-recovery.rs:4:5
+   |
+LL |     auto n = 0;
+   |     ^^^^ help: to introduce a variable, write `let` instead of `auto`
+
+error: invalid variable declaration
+  --> $DIR/issue-65257--auto-instead-of-let-recovery.rs:6:5
+   |
+LL |     auto m;
+   |     ^^^^ help: to introduce a variable, write `let` instead of `auto`
+
+error: aborting due to 2 previous errors
+
