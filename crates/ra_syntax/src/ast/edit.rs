@@ -284,6 +284,34 @@ impl IndentLevel {
             .collect();
         algo::replace_descendants(&node, &replacements)
     }
+
+    pub fn decrease_indent<N: AstNode>(self, node: N) -> N {
+        N::cast(self._decrease_indent(node.syntax().clone())).unwrap()
+    }
+
+    fn _decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
+        let replacements: FxHashMap<SyntaxElement, SyntaxElement> = node
+            .descendants_with_tokens()
+            .filter_map(|el| el.into_token())
+            .filter_map(ast::Whitespace::cast)
+            .filter(|ws| {
+                let text = ws.syntax().text();
+                text.contains('\n')
+            })
+            .map(|ws| {
+                (
+                    ws.syntax().clone().into(),
+                    make::tokens::whitespace(
+                        &ws.syntax()
+                            .text()
+                            .replace(&format!("\n{:1$}", "", self.0 as usize * 4), "\n"),
+                    )
+                    .into(),
+                )
+            })
+            .collect();
+        algo::replace_descendants(&node, &replacements)
+    }
 }
 
 // FIXME: replace usages with IndentLevel above

@@ -128,6 +128,14 @@ pub fn where_clause(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereCl
     }
 }
 
+pub fn if_expression(condition: &ast::Expr, statement: &str) -> ast::IfExpr {
+    return ast_from_text(&format!(
+        "fn f() {{ if !{} {{\n    {}\n}}\n}}",
+        condition.syntax().text(),
+        statement
+    ));
+}
+
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let res = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
