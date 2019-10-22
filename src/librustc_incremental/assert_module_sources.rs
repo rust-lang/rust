@@ -67,7 +67,7 @@ impl AssertModuleSource<'tcx> {
         } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
             (CguReuse::No, ComparisonKind::Exact)
         } else if attr.check_name(ATTR_EXPECTED_CGU_REUSE) {
-            match &self.field(attr, sym::kind).as_str()[..] {
+            match &*self.field(attr, sym::kind).as_str() {
                 "no" => (CguReuse::No, ComparisonKind::Exact),
                 "pre-lto" => (CguReuse::PreLto, ComparisonKind::Exact),
                 "post-lto" => (CguReuse::PostLto, ComparisonKind::Exact),

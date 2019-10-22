@@ -90,7 +90,7 @@ impl fmt::Debug for Lifetime {
 
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ident.name.as_str())
+        write!(f, "{}", self.ident.name)
     }
 }
 

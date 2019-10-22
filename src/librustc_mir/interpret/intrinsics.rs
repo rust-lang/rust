@@ -95,7 +95,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
 
-        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
+        let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
         match intrinsic_name {
             "caller_location" => {
                 let caller = self.tcx.sess.source_map().lookup_char_pos(span.lo());

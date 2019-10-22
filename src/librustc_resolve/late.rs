@@ -1876,7 +1876,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                     None
                                 }
                             });
-                            find_best_match_for_name(names, &*ident.as_str(), None)
+                            find_best_match_for_name(names, &ident.as_str(), None)
                         });
                         self.r.record_partial_res(expr.id, PartialRes::new(Res::Err));
                         self.r.report_error(

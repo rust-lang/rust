@@ -978,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     // we don't want to throw `E0027` in case we have thrown `E0026` for them
-                    unmentioned_fields.retain(|&x| x.as_str() != suggested_name.as_str());
+                    unmentioned_fields.retain(|&x| x.name != suggested_name);
                 }
             }
         }

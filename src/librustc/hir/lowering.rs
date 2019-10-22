@@ -3423,7 +3423,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
         ExprKind::Call(ref func, _) => {
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
                 if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
-                    let new_call = segment.ident.as_str() == "new";
+                    let new_call = segment.ident.name == sym::new;
                     return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;
                 }
             }

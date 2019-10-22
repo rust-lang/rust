@@ -3704,7 +3704,7 @@ fn qpath_to_string(p: &hir::QPath) -> String {
             s.push_str("::");
         }
         if seg.ident.name != kw::PathRoot {
-            s.push_str(&*seg.ident.as_str());
+            s.push_str(&seg.ident.as_str());
         }
     }
     s

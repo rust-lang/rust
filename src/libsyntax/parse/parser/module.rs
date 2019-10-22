@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
         // `./<id>.rs` and `./<id>/mod.rs`.
         let relative_prefix_string;
         let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident.as_str(), path::MAIN_SEPARATOR);
+            relative_prefix_string = format!("{}{}", ident, path::MAIN_SEPARATOR);
             &relative_prefix_string
         } else {
             ""
