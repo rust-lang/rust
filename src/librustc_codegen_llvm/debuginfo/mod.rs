@@ -225,7 +225,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
-    fn set_var_name(&mut self, value: &'ll Value, name: impl ToString) {
+    fn set_var_name(&mut self, value: &'ll Value, name: &str) {
         // Avoid wasting time if LLVM value names aren't even enabled.
         if self.sess().fewer_names() {
             return;
@@ -255,7 +255,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             Err(_) => return,
         }
 
-        let cname = CString::new(name.to_string()).unwrap();
+        let cname = SmallCStr::new(name);
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }

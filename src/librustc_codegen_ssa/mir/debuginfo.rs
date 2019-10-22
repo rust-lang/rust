@@ -7,7 +7,6 @@ use rustc::ty::layout::HasTyCtxt;
 use rustc_target::abi::{Variants, VariantIdx};
 use crate::traits::*;
 
-use std::fmt;
 use syntax_pos::{DUMMY_SP, BytePos, Span};
 use syntax::symbol::kw;
 
@@ -89,29 +88,6 @@ pub struct DebugScope<D> {
 impl<D> DebugScope<D> {
     pub fn is_valid(&self) -> bool {
         !self.scope_metadata.is_none()
-    }
-}
-
-// HACK(eddyb) helpers for `set_var_name` calls, move elsewhere?
-enum Either<T, U> {
-    Left(T),
-    Right(U),
-}
-
-impl<T: fmt::Display, U: fmt::Display> fmt::Display for Either<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Either::Left(x) => x.fmt(f),
-            Either::Right(x) => x.fmt(f),
-        }
-    }
-}
-
-struct DisplayViaDebug<T>(T);
-
-impl<T: fmt::Debug> fmt::Display for DisplayViaDebug<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 
@@ -207,26 +183,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let local_ref = &self.locals[local];
 
-        {
+        if !bx.sess().fewer_names() {
             let name = match name {
-                Some(name) if name != kw::Invalid => Either::Left(name),
-                _ => Either::Right(DisplayViaDebug(local)),
+                Some(name) if name != kw::Invalid => name.to_string(),
+                _ => format!("{:?}", local),
             };
             match local_ref {
                 LocalRef::Place(place) |
                 LocalRef::UnsizedPlace(place) => {
-                    bx.set_var_name(place.llval, name);
+                    bx.set_var_name(place.llval, &name);
                 }
                 LocalRef::Operand(Some(operand)) => match operand.val {
                     OperandValue::Ref(x, ..) |
                     OperandValue::Immediate(x) => {
-                        bx.set_var_name(x, name);
+                        bx.set_var_name(x, &name);
                     }
                     OperandValue::Pair(a, b) => {
                         // FIXME(eddyb) these are scalar components,
                         // maybe extract the high-level fields?
-                        bx.set_var_name(a, format_args!("{}.0", name));
-                        bx.set_var_name(b, format_args!("{}.1", name));
+                        bx.set_var_name(a, &(name.clone() + ".0"));
+                        bx.set_var_name(b, &(name + ".1"));
                     }
                 }
                 LocalRef::Operand(None) => {}
