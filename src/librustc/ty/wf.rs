@@ -170,6 +170,53 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
 
+        let item = &self.item;
+        let extend_cause_with_original_assoc_item_obligation = |
+            cause: &mut traits::ObligationCause<'_>,
+            pred: &ty::Predicate<'_>,
+            trait_assoc_items: ty::AssocItemsIterator<'_>,
+        | {
+            let item_span = item.map(|i| tcx.sess.source_map().def_span(i.span));
+            match pred {
+                ty::Predicate::Projection(proj) => {
+                    if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
+                        let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
+                        if let Some(impl_item) = impl_items.iter().filter(|item| {
+                            item.ident == trait_assoc_item.ident
+                        }).next() {
+                            cause.span = impl_item.span;
+                            cause.code = traits::AssocTypeBound(
+                                item_span,
+                                trait_assoc_item.ident.span,
+                            );
+                        }
+                    }
+                }
+                ty::Predicate::Trait(proj) => {
+                    if let (
+                        ty::Projection(ty::ProjectionTy { item_def_id, .. }),
+                        Some(hir::ItemKind::Impl(.., impl_items)),
+                    ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind)) {
+                        if let Some((impl_item, trait_assoc_item)) = trait_assoc_items
+                            .filter(|i| i.def_id == *item_def_id)
+                            .next()
+                            .and_then(|trait_assoc_item| impl_items.iter()
+                                .filter(|i| i.ident == trait_assoc_item.ident)
+                                .next()
+                                .map(|impl_item| (impl_item, trait_assoc_item)))
+                        {
+                            cause.span = impl_item.span;
+                            cause.code = traits::AssocTypeBound(
+                                item_span,
+                                trait_assoc_item.ident.span,
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        };
+
         if let Elaborate::All = elaborate {
             let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
 
@@ -177,48 +224,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 .map(|obligation| obligation.predicate.clone())
                 .collect();
             let implied_obligations = traits::elaborate_predicates(tcx, predicates);
-            let item_span: Option<Span> = self.item.map(|i| i.span);
-            let item = &self.item;
             let implied_obligations = implied_obligations.map(|pred| {
                 let mut cause = cause.clone();
-                match &pred {
-                    ty::Predicate::Projection(proj) => {
-                        if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
-                            let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
-                            if let Some(impl_item) = impl_items.iter().filter(|item| {
-                                item.ident == trait_assoc_item.ident
-                            }).next() {
-                                cause.span = impl_item.span;
-                                cause.code = traits::AssocTypeBound(
-                                    item_span,
-                                    trait_assoc_item.ident.span,
-                                );
-                            }
-                        }
-                    }
-                    ty::Predicate::Trait(proj) => {
-                    if let (
-                        ty::Projection(ty::ProjectionTy { item_def_id, .. }),
-                            Some(hir::ItemKind::Impl(.., impl_items)),
-                     ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind)) {
-                            if let Some((impl_item, trait_assoc_item)) = trait_assoc_items.clone()
-                            .filter(|i| i.def_id == *item_def_id)
-                            .next()
-                                .and_then(|trait_assoc_item| impl_items.iter()
-                                    .filter(|i| i.ident == trait_assoc_item.ident)
-                                    .next()
-                                    .map(|impl_item| (impl_item, trait_assoc_item)))
-                        {
-                                cause.span = impl_item.span;
-                                cause.code = traits::AssocTypeBound(
-                                    item_span,
-                                    trait_assoc_item.ident.span,
-                                );
-                            }
-                        }
-                    }
-                    _ => {}
-                }
+                extend_cause_with_original_assoc_item_obligation(
+                    &mut cause,
+                    &pred,
+                    trait_assoc_items.clone(),
+                );
                 traits::Obligation::new(cause, param_env, pred)
             });
             self.out.extend(implied_obligations);
