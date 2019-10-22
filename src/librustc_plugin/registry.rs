@@ -25,6 +25,7 @@ pub struct Registry<'a> {
     /// from the plugin registrar.
     pub sess: &'a Session,
 
+    /// The `LintStore` allows plugins to register new lints.
     pub lint_store: &'a mut LintStore,
 
     #[doc(hidden)]

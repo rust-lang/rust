@@ -82,6 +82,11 @@ pub struct Config {
     pub crate_name: Option<String>,
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
+    /// This is a callback from the driver that is called when we're registering lints;
+    /// it is called during plugin registration when we have the LintStore in a non-shared state.
+    ///
+    /// Note that if you find a Some here you probably want to call that function in the new
+    /// function being registered.
     pub register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
 }
 

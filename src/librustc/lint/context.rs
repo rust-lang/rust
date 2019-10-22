@@ -155,23 +155,31 @@ impl LintStore {
             .collect()
     }
 
-    pub fn register_early_pass(&mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync) {
+    pub fn register_early_pass(
+        &mut self,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync
+    ) {
         self.early_passes.push(Box::new(pass));
     }
 
-    pub fn register_pre_expansion_pass(&mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync) {
+    pub fn register_pre_expansion_pass(
+        &mut self,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
+    ) {
         self.pre_expansion_passes.push(Box::new(pass));
     }
 
-    pub fn register_late_pass(&mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync) {
+    pub fn register_late_pass(
+        &mut self,
+        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+    ) {
         self.late_passes.push(Box::new(pass));
     }
 
-    pub fn register_late_mod_pass(&mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync) {
+    pub fn register_late_mod_pass(
+        &mut self,
+        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+    ) {
         self.late_module_passes.push(Box::new(pass));
     }
 
