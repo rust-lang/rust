@@ -2,4 +2,5 @@
 ; RUN: make clean-loops-enzyme3 ENZYME_PLUGIN=%loadEnzyme
 ; RUN: make build/loops-enzyme3 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
 ; RUN: build/loops-enzyme3
+; RUN: make clean-loops-enzyme3 ENZYME_PLUGIN=%loadEnzyme
 

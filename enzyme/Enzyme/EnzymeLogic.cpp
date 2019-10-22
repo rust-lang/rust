@@ -426,9 +426,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
                 gutils->erase(op);
         } else if(LoadInst* li = dyn_cast<LoadInst>(inst)) {
-          if (gutils->isConstantInstruction(inst)) continue;
-
+          if (gutils->isConstantInstruction(inst) || gutils->isConstantValue(inst)) continue;
           if (cachereads) {
+            llvm::errs() << "Forcibly caching reads " << *li << "\n"; 
             IRBuilder<> BuilderZ(li);
             gutils->addMalloc(BuilderZ, li);
           }
@@ -1217,7 +1217,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
       else
         llvm::errs() << " choosing to replace function " << (*op->getCalledValue()) << " and do both forward/reverse\n";
-
       replaceFunction = true;
       modifyPrimal = false;
     } else {
@@ -1951,16 +1950,34 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif2) addToDiffe(op->getOperand(2), dif2);
     } else if(auto op = dyn_cast<LoadInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
-      
+
+
+
+      auto op_operand = op->getPointerOperand();
+      auto op_type = op->getType();
+
       if (cachereads) {
-        inst = cast<Instruction>(gutils->addMalloc(Builder2, inst));
+        llvm::errs() << "Forcibly loading cached reads " << *op << "\n";
+        IRBuilder<> BuilderZ(op->getNextNode());
+        inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst));
+        llvm::errs() << "before cast inst :" << *inst << "\n";
+        llvm::errs() << "Cast successful " << "\n";
+        //llvm::errs() << "Forcibly loading cached reads after addmalloc " << *op << "\n";
+        // NOTE(TFK): changes here.
+        if (inst != op) {
+          op = nullptr;//cast<LoadInst>(inst);
+          gutils->nonconstant_values.insert(inst);
+          gutils->nonconstant.insert(inst);
+          gutils->originalInstructions.insert(inst);
+          assert(inst->getType() == op_type);
+        }
       }
 
-       //TODO IF OP IS POINTER
-      if (!op->getType()->isPointerTy()) {
+      // TODO IF OP IS POINTER
+      if (!op_type->isPointerTy()) {
         auto prediff = diffe(inst);
-        setDiffe(inst, Constant::getNullValue(inst->getType()));
-        gutils->addToPtrDiffe(op->getOperand(0), prediff, Builder2);
+        setDiffe(inst, Constant::getNullValue(op_type));
+        gutils->addToPtrDiffe(op_operand, prediff, Builder2);
       } else {
         //Builder2.CreateStore(diffe(inst), invertPointer(op->getOperand(0)));//, op->getName()+"'psweird");
         //addToNPtrDiffe(op->getOperand(0), diffe(inst));
@@ -1968,6 +1985,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         //assert(op);
         //llvm::errs() << "ignoring load bc pointer of " << *op << "\n";
       }
+
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;
 

@@ -18,7 +18,7 @@ OBJ := $(wildcard *.c)
 
 all: $(patsubst %.c,build/%-enzyme0,$(OBJ)) $(patsubst %.c,build/%-enzyme1,$(OBJ)) $(patsubst %.c,build/%-enzyme2,$(OBJ)) $(patsubst %.c,build/%-enzyme3,$(OBJ))
 
-POST_ENZYME_FLAGS := -mem2reg -sroa -adce -simplifycfg
+POST_ENZYME_FLAGS := -mem2reg -sroa -adce -simplifycfg -enzyme_cachereads=true
 
 #all: $(patsubst %.c,build/%-enzyme1,$(OBJ)) $(patsubst %.c,build/%-enzyme2,$(OBJ)) $(patsubst %.c,build/%-enzyme3,$(OBJ))
 #clean:
@@ -34,19 +34,19 @@ POST_ENZYME_FLAGS := -mem2reg -sroa -adce -simplifycfg
 # NOTE(TFK): Optimization level 0 is broken right now.
 build/%-enzyme0: %.c
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 -O1 $(patsubst %.c,%,$<).c -S -emit-llvm -o $@.ll
-	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme -o $@.bc
+	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme $(POST_ENZYME_FLAGS) -o $@.bc
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 $@.bc -S -emit-llvm -o $@-final.ll
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 $@.bc -o $@
 
 build/%-enzyme1: %.c
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 -O1 $(patsubst %.c,%,$<).c -S -emit-llvm -o $@.ll
-	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme -o $@.bc
+	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme $(POST_ENZYME_FLAGS) -o $@.bc
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 $@.bc -S -emit-llvm -o $@-final.ll
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 $@.bc -o $@
 
 build/%-enzyme2: %.c
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 -O2 $(patsubst %.c,%,$<).c -S -emit-llvm -o $@.ll
-	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme -o $@.bc
+	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme $(POST_ENZYME_FLAGS) -o $@.bc
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 $@.bc -S -emit-llvm -o $@-final.ll
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 $@.bc -o $@
 
@@ -69,7 +69,7 @@ build/%-enzyme3: %.c
 %-enzyme-test3: build/%-enzyme3
 	@./$< 2> /dev/null 1> /dev/null && echo "success" || echo "FAILURE"
 
-test: $(patsubst %.c,%-enzyme-test0,$(OBJ)) $(patsubst %.c,%-enzyme-test1,$(OBJ)) $(patsubst %.c,%-enzyme-test2,$(OBJ)) $(patsubst %.c,%-enzyme-test3,$(OBJ))
+#test: $(patsubst %.c,%-enzyme-test0,$(OBJ)) $(patsubst %.c,%-enzyme-test1,$(OBJ)) $(patsubst %.c,%-enzyme-test2,$(OBJ)) $(patsubst %.c,%-enzyme-test3,$(OBJ))
 #test: $(patsubst %.c,%-enzyme-test1,$(OBJ)) $(patsubst %.c,%-enzyme-test2,$(OBJ)) $(patsubst %.c,%-enzyme-test3,$(OBJ))
 
 generate-testfiles:
@@ -79,8 +79,12 @@ generate-testfiles:
 	python gentests.py $(patsubst %.c,%-enzyme2,$(OBJ))
 	python gentests.py $(patsubst %.c,%-enzyme3,$(OBJ))
 
+
 clean-%:
-	rm -f build/%*
+	@rm -f build/$(patsubst clean-%,%,$@)
+	@rm -f build/$(patsubst clean-%,%,$@).ll
+	@rm -f build/$(patsubst clean-%,%,$@).bc
+	@rm -f build/$(patsubst clean-%,%,$@)-final.ll
 
 clean:
 	rm -f build/*

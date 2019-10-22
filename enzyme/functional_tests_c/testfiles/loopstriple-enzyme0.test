@@ -2,4 +2,5 @@
 ; RUN: make clean-loopstriple-enzyme0 ENZYME_PLUGIN=%loadEnzyme
 ; RUN: make build/loopstriple-enzyme0 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
 ; RUN: build/loopstriple-enzyme0
+; RUN: make clean-loopstriple-enzyme0 ENZYME_PLUGIN=%loadEnzyme
 

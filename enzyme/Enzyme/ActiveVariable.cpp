@@ -552,6 +552,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 		      llvm::errs() << " VALUE nonconst from arg nonconst " << *val << "\n";
             return false;
         }
+        llvm::errs() << *(cast<Argument>(val)->getParent()) << "\n";
+	llvm::errs() << *val << "\n";
         assert(0 && "must've put arguments in constant/nonconstant");
     }
     

@@ -539,6 +539,8 @@ public:
       addedMallocs.push_back(lastScopeAlloc[malloc]);
       return malloc;
     }
+    llvm::errs() << "Fell through on addMalloc. This should never happen.\n";
+    assert(false); 
   }
 
   const SmallVectorImpl<Value*> & getMallocs() const {
@@ -1446,7 +1448,19 @@ public:
   }
 
   void addToPtrDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM) {
+      if (!(val->getType()->isPointerTy()) || !(cast<PointerType>(val->getType())->getElementType() == dif->getType())) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << "Val: " << *val << "\n";
+        llvm::errs() << "Diff: " << *dif << "\n";
+      }
+      assert(val->getType()->isPointerTy());
+      assert(cast<PointerType>(val->getType())->getElementType() == dif->getType());
+
       auto ptr = invertPointerM(val, BuilderM);
+      assert(ptr->getType()->isPointerTy());
+      assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
+
       Value* res;
       Value* old = BuilderM.CreateLoad(ptr);
       if (old->getType()->isIntOrIntVectorTy()) {
