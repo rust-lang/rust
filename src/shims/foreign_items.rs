@@ -842,7 +842,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .write_bytes(system_info.ptr, itertools::repeat_n(0, system_info.layout.size.bytes() as usize))?;
                 // Set number of processors.
                 let dword_size = Size::from_bytes(4);
-                let num_cpus = this.mplace_field(system_info, 5)?;
+                let num_cpus = this.mplace_field(system_info, 6)?;
                 this.write_scalar(
                     Scalar::from_int(NUM_CPUS, dword_size),
                     num_cpus.into(),
