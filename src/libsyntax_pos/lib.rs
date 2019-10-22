@@ -1311,7 +1311,7 @@ pub struct BytePos(pub u32);
 /// A character offset. Because of multibyte UTF-8 characters, a byte offset
 /// is not equivalent to a character offset. The `SourceMap` will convert `BytePos`
 /// values to `CharPos` values as necessary.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct CharPos(pub usize);
 
 // FIXME: lots of boilerplate in these impls, but so far my attempts to fix

@@ -1,9 +1,21 @@
-use super::*;
+use std::{
+    io,
+    io::prelude::Write,
+};
+
+use crate::{
+    types::TestDesc,
+    time,
+    test_result::TestResult,
+    console::{ConsoleTestState, OutputLocation},
+    bench::fmt_bench_samples,
+};
+use super::OutputFormatter;
 
 pub(crate) struct PrettyFormatter<T> {
     out: OutputLocation<T>,
     use_color: bool,
-    time_options: Option<TestTimeOptions>,
+    time_options: Option<time::TestTimeOptions>,
 
     /// Number of columns to fill when aligning names
     max_name_len: usize,
@@ -17,7 +29,7 @@ impl<T: Write> PrettyFormatter<T> {
         use_color: bool,
         max_name_len: usize,
         is_multithreaded: bool,
-        time_options: Option<TestTimeOptions>,
+        time_options: Option<time::TestTimeOptions>,
     ) -> Self {
         PrettyFormatter {
             out,
@@ -67,7 +79,7 @@ impl<T: Write> PrettyFormatter<T> {
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self.out {
-            Pretty(ref mut term) => {
+            OutputLocation::Pretty(ref mut term) => {
                 if self.use_color {
                     term.fg(color)?;
                 }
@@ -77,7 +89,7 @@ impl<T: Write> PrettyFormatter<T> {
                 }
                 term.flush()
             }
-            Raw(ref mut stdout) => {
+            OutputLocation::Raw(ref mut stdout) => {
                 stdout.write_all(word.as_bytes())?;
                 stdout.flush()
             }
@@ -93,7 +105,7 @@ impl<T: Write> PrettyFormatter<T> {
     fn write_time(
         &mut self,
         desc: &TestDesc,
-        exec_time: Option<&TestExecTime>
+        exec_time: Option<&time::TestExecTime>
     ) -> io::Result<()> {
         if let (Some(opts), Some(time)) = (self.time_options, exec_time) {
             let time_str = format!(" <{}>", time);
@@ -194,7 +206,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        exec_time: Option<&TestExecTime>,
+        exec_time: Option<&time::TestExecTime>,
         _: &[u8],
         _: &ConsoleTestState,
     ) -> io::Result<()> {
@@ -203,15 +215,15 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         }
 
         match *result {
-            TrOk => self.write_ok()?,
-            TrFailed | TrFailedMsg(_) => self.write_failed()?,
-            TrIgnored => self.write_ignored()?,
-            TrAllowedFail => self.write_allowed_fail()?,
-            TrBench(ref bs) => {
+            TestResult::TrOk => self.write_ok()?,
+            TestResult::TrFailed | TestResult::TrFailedMsg(_) => self.write_failed()?,
+            TestResult::TrIgnored => self.write_ignored()?,
+            TestResult::TrAllowedFail => self.write_allowed_fail()?,
+            TestResult::TrBench(ref bs) => {
                 self.write_bench()?;
                 self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;
             }
-            TrTimedFail => self.write_time_failed()?,
+            TestResult::TrTimedFail => self.write_time_failed()?,
         }
 
         self.write_time(desc, exec_time)?;
@@ -225,7 +237,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
 
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
-            desc.name, TEST_WARN_TIMEOUT_S
+            desc.name, time::TEST_WARN_TIMEOUT_S
         ))
     }
 

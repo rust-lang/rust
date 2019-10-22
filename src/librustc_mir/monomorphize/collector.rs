@@ -199,7 +199,7 @@ use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
 use std::iter;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
     Eager,
     Lazy

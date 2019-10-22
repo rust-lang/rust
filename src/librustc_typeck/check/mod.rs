@@ -1387,7 +1387,35 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
     check_transparent(tcx, span, def_id);
+    check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def_id);
+}
+
+/// When the `#![feature(untagged_unions)]` gate is active,
+/// check that the fields of the `union` does not contain fields that need dropping.
+fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: DefId) -> bool {
+    let item_type = tcx.type_of(item_def_id);
+    if let ty::Adt(def, substs) = item_type.kind {
+        assert!(def.is_union());
+        let fields = &def.non_enum_variant().fields;
+        for field in fields {
+            let field_ty = field.ty(tcx, substs);
+            // We are currently checking the type this field came from, so it must be local.
+            let field_span = tcx.hir().span_if_local(field.did).unwrap();
+            let param_env = tcx.param_env(field.did);
+            if field_ty.needs_drop(tcx, param_env) {
+                struct_span_err!(tcx.sess, field_span, E0740,
+                                    "unions may not contain fields that need dropping")
+                            .span_note(field_span,
+                                        "`std::mem::ManuallyDrop` can be used to wrap the type")
+                            .emit();
+                return false;
+            }
+        }
+    } else {
+        span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind);
+    }
+    return true;
 }
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
@@ -2440,23 +2468,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.cause(span, ObligationCauseCode::MiscObligation)
     }
 
-    /// Resolves type variables in `ty` if possible. Unlike the infcx
+    /// Resolves type and const variables in `ty` if possible. Unlike the infcx
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
-    fn resolve_type_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("resolve_type_vars_with_obligations(ty={:?})", ty);
+    fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        debug!("resolve_vars_with_obligations(ty={:?})", ty);
 
         // No Infer()? Nothing needs doing.
-        if !ty.has_infer_types() {
-            debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
+        if !ty.has_infer_types() && !ty.has_infer_consts() {
+            debug!("resolve_vars_with_obligations: ty={:?}", ty);
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.resolve_vars_if_possible(&ty);
-        if !ty.has_infer_types() {
-            debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
+        if !ty.has_infer_types() && !ty.has_infer_consts()  {
+            debug!("resolve_vars_with_obligations: ty={:?}", ty);
             return ty;
         }
 
@@ -2467,7 +2495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(false, |_| {});
         ty = self.resolve_vars_if_possible(&ty);
 
-        debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
+        debug!("resolve_vars_with_obligations: ty={:?}", ty);
         ty
     }
 
@@ -3668,7 +3696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                            formal_ret: Ty<'tcx>,
                                            formal_args: &[Ty<'tcx>])
                                            -> Vec<Ty<'tcx>> {
-        let formal_ret = self.resolve_type_vars_with_obligations(formal_ret);
+        let formal_ret = self.resolve_vars_with_obligations(formal_ret);
         let ret_ty = match expected_ret.only_has_type(self) {
             Some(ret) => ret,
             None => return Vec::new()
@@ -4517,7 +4545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
-                    format!("-> {} ", self.resolve_type_vars_with_obligations(found)),
+                    format!("-> {} ", self.resolve_vars_with_obligations(found)),
                     Applicability::MachineApplicable);
                 true
             }
@@ -4993,7 +5021,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // If no resolution is possible, then an error is reported.
     // Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.resolve_type_vars_with_obligations(ty);
+        let ty = self.resolve_vars_with_obligations(ty);
         if !ty.is_ty_var() {
             ty
         } else {

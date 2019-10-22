@@ -202,11 +202,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let meta = unwrap_or!(attr.meta(), continue);
             attr::mark_used(attr);
 
-            let mut metas = if let Some(metas) = meta.meta_item_list() {
-                metas
-            } else {
-                continue;
-            };
+            let mut metas = unwrap_or!(meta.meta_item_list(), continue);
 
             if metas.is_empty() {
                 // FIXME (#55112): issue unused-attributes lint for `#[level()]`

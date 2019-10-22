@@ -818,6 +818,8 @@ impl<'tcx> ty::TyS<'tcx> {
     ///
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `needs_drop` will definitely return `true` for `ty`.)
+    ///
+    /// Note that this method is used to check eligible types in unions.
     #[inline]
     pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         tcx.needs_drop_raw(param_env.and(self)).0

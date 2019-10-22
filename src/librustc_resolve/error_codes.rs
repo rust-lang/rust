@@ -1682,7 +1682,7 @@ enum Wizard {
 }
 
 trait Isengard {
-    fn wizard(w: Wizard) { // error!
+    fn wizard(w: Wizard) { // ok!
         match w {
             Wizard::Saruman => {
                 // do something

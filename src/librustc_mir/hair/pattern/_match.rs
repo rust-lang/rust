@@ -189,8 +189,8 @@ use std::ops::RangeInclusive;
 use std::u128;
 use std::convert::TryInto;
 
-pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> &'a Pat<'tcx> {
-    cx.pattern_arena.alloc(LiteralExpander { tcx: cx.tcx }.fold_pattern(&pat))
+pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pat<'tcx>) -> Pat<'tcx> {
+    LiteralExpander { tcx: cx.tcx }.fold_pattern(&pat)
 }
 
 struct LiteralExpander<'tcx> {

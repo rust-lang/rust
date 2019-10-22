@@ -27,12 +27,12 @@ use crate::ty::error::TypeError;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, Ty, TyCtxt, InferConst};
+use crate::ty::{self, Ty, TyCtxt};
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq)]
 pub enum NormalizationStrategy {
     Lazy,
     Eager,
@@ -618,7 +618,7 @@ where
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Canonical(_, _)), .. } = a {
+        if let ty::Const { val: ConstValue::Bound(..), .. } = a {
             // FIXME(const_generics): I'm unsure how this branch should actually be handled,
             // so this is probably not correct.
             self.infcx.super_combine_consts(self, a, b)
@@ -993,7 +993,7 @@ where
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         debug!("TypeGeneralizer::consts(a={:?})", a);
 
-        if let ty::Const { val: ConstValue::Infer(InferConst::Canonical(_, _)), .. } = a {
+        if let ty::Const { val: ConstValue::Bound(..), .. } = a {
             bug!(
                 "unexpected inference variable encountered in NLL generalization: {:?}",
                 a

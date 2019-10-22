@@ -304,8 +304,7 @@ static_assert_size!(TyKind<'_>, 24);
 /// type parameters is similar, but the role of CK and CS are
 /// different. CK represents the "yield type" and CS represents the
 /// "return type" of the generator.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
@@ -392,8 +391,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -1035,7 +1033,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug)]
 pub struct GenSig<'tcx> {
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
@@ -2373,6 +2371,4 @@ pub enum InferConst<'tcx> {
     Var(ConstVid<'tcx>),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
-    /// Canonicalized const variable, used only when preparing a trait query.
-    Canonical(DebruijnIndex, BoundVar),
 }

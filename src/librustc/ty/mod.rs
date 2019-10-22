@@ -159,7 +159,7 @@ impl AssocItemContainer {
 /// The "header" of an impl is everything outside the body: a Self type, a trait
 /// ref (in the case of a trait impl), and a set of predicates (from the
 /// bounds / where-clauses).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub struct ImplHeader<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
@@ -195,7 +195,7 @@ pub struct AssocItem {
     pub method_has_self_argument: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum AssocKind {
     Const,
     Method,
@@ -331,7 +331,7 @@ impl Visibility {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, RustcDecodable, RustcEncodable, HashStable)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -752,7 +752,7 @@ pub struct UpvarId {
     pub closure_expr_id: LocalDefId,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,

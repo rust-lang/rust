@@ -33,7 +33,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, InferConst, Lift, List, Region, TyCtxt};
+use crate::ty::{self, BoundVar, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -73,7 +73,7 @@ pub struct CanonicalVarValues<'tcx> {
 /// various parts of it with canonical variables. This struct stores
 /// those replaced bits to remember for when we process the query
 /// result.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct OriginalQueryValues<'tcx> {
     /// Map from the universes that appear in the query to the
     /// universes in the caller context. For the time being, we only
@@ -510,9 +510,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Const(ct) => {
                         tcx.mk_const(ty::Const {
                             ty: ct.ty,
-                            val: ConstValue::Infer(
-                                InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from_u32(i))
-                            ),
+                            val: ConstValue::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
                         }).into()
                     }
                 })

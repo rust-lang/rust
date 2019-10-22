@@ -3,7 +3,8 @@ use crate::util;
 pub use crate::passes::BoxedResolver;
 
 use rustc::lint;
-use rustc::session::config::{self, Input};
+use rustc::session::early_error;
+use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::session::{DiagnosticOutput, Session};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -14,9 +15,13 @@ use rustc_metadata::cstore::CStore;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
-use syntax;
-use syntax::source_map::{FileLoader, SourceMap};
+use syntax::{self, parse};
+use syntax::ast::{self, MetaItemKind};
+use syntax::parse::token;
+use syntax::source_map::{FileName, FilePathMapping, FileLoader, SourceMap};
+use syntax::sess::ParseSess;
 use syntax_pos::edition;
+use rustc_errors::{Diagnostic, emitter::Emitter, Handler, SourceMapperDyn};
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
@@ -58,6 +63,58 @@ impl Compiler {
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.output_file
     }
+}
+
+/// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
+pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
+    struct NullEmitter;
+    impl Emitter for NullEmitter {
+        fn emit_diagnostic(&mut self, _: &Diagnostic) {}
+        fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
+    }
+
+    syntax::with_default_globals(move || {
+        let cfg = cfgspecs.into_iter().map(|s| {
+
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let handler = Handler::with_emitter(false, None, Box::new(NullEmitter));
+            let sess = ParseSess::with_span_handler(handler, cm);
+            let filename = FileName::cfg_spec_source_code(&s);
+            let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
+
+            macro_rules! error {($reason: expr) => {
+                early_error(ErrorOutputType::default(),
+                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s));
+            }}
+
+            match &mut parser.parse_meta_item() {
+                Ok(meta_item) if parser.token == token::Eof => {
+                    if meta_item.path.segments.len() != 1 {
+                        error!("argument key must be an identifier");
+                    }
+                    match &meta_item.kind {
+                        MetaItemKind::List(..) => {
+                            error!(r#"expected `key` or `key="value"`"#);
+                        }
+                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
+                            error!("argument value must be a string");
+                        }
+                        MetaItemKind::NameValue(..) | MetaItemKind::Word => {
+                            let ident = meta_item.ident().expect("multi-segment cfg key");
+                            return (ident.name, meta_item.value_str());
+                        }
+                    }
+                }
+                Ok(..) => {}
+                Err(err) => err.cancel(),
+            }
+
+            error!(r#"expected `key` or `key="value"`"#);
+        }).collect::<ast::CrateConfig>();
+        cfg.into_iter().map(|(a, b)| {
+            (a.to_string(), b.map(|b| b.to_string()))
+        }).collect()
+    })
 }
 
 /// The compiler configuration

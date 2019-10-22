@@ -53,9 +53,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
     let symbol_filter = &|&(ref name, level): &(String, SymbolExportLevel)| {
         if level.is_below_threshold(export_threshold) {
-            let mut bytes = Vec::with_capacity(name.len() + 1);
-            bytes.extend(name.bytes());
-            Some(CString::new(bytes).unwrap())
+            Some(CString::new(name.as_str()).unwrap())
         } else {
             None
         }

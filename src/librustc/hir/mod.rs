@@ -1077,7 +1077,7 @@ impl Mutability {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum BinOpKind {
     /// The `+` operator (addition).
     Add,
@@ -1211,7 +1211,7 @@ impl Into<ast::BinOpKind> for BinOpKind {
 
 pub type BinOp = Spanned<BinOpKind>;
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum UnOp {
     /// The `*` operator (deferencing).
     UnDeref,
@@ -1388,8 +1388,7 @@ impl Body {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1412,8 +1411,7 @@ impl fmt::Display for GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,

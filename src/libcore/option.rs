@@ -64,7 +64,7 @@
 //!
 //! fn check_optional(optional: Option<Box<i32>>) {
 //!     match optional {
-//!         Some(ref p) => println!("has value {}", p),
+//!         Some(p) => println!("has value {}", p),
 //!         None => println!("has no value"),
 //!     }
 //! }
@@ -83,7 +83,7 @@
 //! let msg = Some("howdy");
 //!
 //! // Take a reference to the contained string
-//! if let Some(ref m) = msg {
+//! if let Some(m) = &msg {
 //!     println!("{}", *m);
 //! }
 //!
@@ -395,10 +395,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, def: T) -> T {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Some(x) => x,
-            None => def,
+            None => default,
         }
     }
 

@@ -264,7 +264,7 @@ impl RefUnwindSafe for atomic::AtomicI128 {}
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicUsize {}
-#[cfg(target_hastarget_has_atomic_load_store_atomic = "8")]
+#[cfg(target_has_atomic_load_store = "8")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
 impl RefUnwindSafe for atomic::AtomicU8 {}
 #[cfg(target_has_atomic_load_store = "16")]

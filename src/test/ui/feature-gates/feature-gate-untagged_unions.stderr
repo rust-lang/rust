@@ -31,6 +31,31 @@ LL | | }
    = note: for more information, see https://github.com/rust-lang/rust/issues/32836
    = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/feature-gate-untagged_unions.rs:10:5
+   |
+LL |     a: String,
+   |     ^^^^^^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/feature-gate-untagged_unions.rs:10:5
+   |
+LL |     a: String,
+   |     ^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/feature-gate-untagged_unions.rs:14:5
+   |
+LL |     a: T,
+   |     ^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/feature-gate-untagged_unions.rs:14:5
+   |
+LL |     a: T,
+   |     ^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0658, E0740.
+For more information about an error, try `rustc --explain E0658`.

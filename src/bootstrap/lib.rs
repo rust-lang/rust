@@ -232,7 +232,6 @@ pub struct Build {
     miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
     in_tree_llvm_info: channel::GitInfo,
-    emscripten_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     doc_tests: DocTests,
@@ -351,7 +350,6 @@ impl Build {
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
-        let emscripten_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-emscripten"));
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -376,7 +374,6 @@ impl Build {
             miri_info,
             rustfmt_info,
             in_tree_llvm_info,
-            emscripten_llvm_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
@@ -551,10 +548,6 @@ impl Build {
     /// will likely be empty.
     fn llvm_out(&self, target: Interned<String>) -> PathBuf {
         self.out.join(&*target).join("llvm")
-    }
-
-    fn emscripten_llvm_out(&self, target: Interned<String>) -> PathBuf {
-        self.out.join(&*target).join("llvm-emscripten")
     }
 
     fn lld_out(&self, target: Interned<String>) -> PathBuf {

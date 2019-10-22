@@ -14,7 +14,7 @@
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Hash, Debug, PartialEq)]
+#[derive(Clone)]
 pub struct TinyList<T: PartialEq> {
     head: Option<Element<T>>
 }
@@ -80,7 +80,7 @@ impl<T: PartialEq> TinyList<T> {
     }
 }
 
-#[derive(Clone, Hash, Debug, PartialEq)]
+#[derive(Clone)]
 struct Element<T: PartialEq> {
     data: T,
     next: Option<Box<Element<T>>>,

@@ -1418,7 +1418,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         return noop_visit_attribute(at, self);
                     }
 
-                    let filename = self.cx.resolve_path(&*file.as_str(), it.span());
+                    let filename = match self.cx.resolve_path(&*file.as_str(), it.span()) {
+                        Ok(filename) => filename,
+                        Err(mut err) => {
+                            err.emit();
+                            continue;
+                        }
+                    };
+
                     match self.cx.source_map().load_file(&filename) {
                         Ok(source_file) => {
                             let src = source_file.src.as_ref()

@@ -327,7 +327,31 @@ impl CString {
     /// [`NulError`]: struct.NulError.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
-        Self::_new(t.into())
+        trait SpecIntoVec {
+            fn into_vec(self) -> Vec<u8>;
+        }
+        impl<T: Into<Vec<u8>>> SpecIntoVec for T {
+            default fn into_vec(self) -> Vec<u8> {
+                self.into()
+            }
+        }
+        // Specialization for avoiding reallocation.
+        impl SpecIntoVec for &'_ [u8] {
+            fn into_vec(self) -> Vec<u8> {
+                let mut v = Vec::with_capacity(self.len() + 1);
+                v.extend(self);
+                v
+            }
+        }
+        impl SpecIntoVec for &'_ str {
+            fn into_vec(self) -> Vec<u8> {
+                let mut v = Vec::with_capacity(self.len() + 1);
+                v.extend(self.as_bytes());
+                v
+            }
+        }
+
+        Self::_new(SpecIntoVec::into_vec(t))
     }
 
     fn _new(bytes: Vec<u8>) -> Result<CString, NulError> {

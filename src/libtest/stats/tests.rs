@@ -4,7 +4,7 @@ extern crate test;
 use std::f64;
 use std::io::prelude::*;
 use std::io;
-use self::test::Bencher;
+use self::test::test::Bencher;
 
 // Test vectors generated from R, using the script src/etc/stat-test-vectors.r.
 

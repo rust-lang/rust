@@ -981,35 +981,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
 }
 
 declare_lint! {
-    UNIONS_WITH_DROP_FIELDS,
-    Warn,
-    "use of unions that contain fields with possibly non-trivial drop code"
-}
-
-declare_lint_pass!(
-    /// Lint for unions that contain fields with possibly non-trivial destructors.
-    UnionsWithDropFields => [UNIONS_WITH_DROP_FIELDS]
-);
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
-    fn check_item(&mut self, ctx: &LateContext<'_, '_>, item: &hir::Item) {
-        if let hir::ItemKind::Union(ref vdata, _) = item.kind {
-            for field in vdata.fields() {
-                let field_ty = ctx.tcx.type_of(
-                    ctx.tcx.hir().local_def_id(field.hir_id));
-                if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
-                    ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
-                                  field.span,
-                                  "union contains a field with possibly non-trivial drop code, \
-                                   drop code of union fields is ignored when dropping the union");
-                    return;
-                }
-            }
-        }
-    }
-}
-
-declare_lint! {
     pub UNREACHABLE_PUB,
     Allow,
     "`pub` items not reachable from crate root"
@@ -1288,7 +1259,6 @@ declare_lint_pass!(
         NO_MANGLE_GENERIC_ITEMS,
         MUTABLE_TRANSMUTES,
         UNSTABLE_FEATURES,
-        UNIONS_WITH_DROP_FIELDS,
         UNREACHABLE_PUB,
         TYPE_ALIAS_BOUNDS,
         TRIVIAL_BOUNDS

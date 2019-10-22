@@ -232,8 +232,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.sess,
                 span,
                 E0632,
-                "cannot provide explicit type parameters when `impl Trait` is \
-                 used in argument position."
+                "cannot provide explicit generic arguments when `impl Trait` is \
+                 used in argument position"
             };
 
             err.emit();

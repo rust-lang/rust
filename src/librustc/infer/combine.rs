@@ -53,7 +53,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub obligations: PredicateObligations<'tcx>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo
 }

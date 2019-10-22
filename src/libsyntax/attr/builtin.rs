@@ -84,7 +84,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -92,7 +92,7 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum OptimizeAttr {
     None,
     Speed,
@@ -624,8 +624,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
     }
 }
 
-
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     pub note: Option<Symbol>,
@@ -749,7 +748,7 @@ pub enum ReprAttr {
     ReprAlign(u32),
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

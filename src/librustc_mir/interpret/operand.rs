@@ -26,7 +26,7 @@ pub use rustc::mir::interpret::ScalarMaybeUndef;
 /// operations and fat pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Immediate<Tag=(), Id=AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
@@ -123,7 +123,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Operand<Tag=(), Id=AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
@@ -153,7 +153,7 @@ impl<Tag> Operand<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OpTy<'tcx, Tag=()> {
     op: Operand<Tag>, // Keep this private, it helps enforce invariants
     pub layout: TyLayout<'tcx>,
@@ -589,8 +589,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.tag_static_base_pointer(Pointer::new(id, offset));
                 Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
             },
-            ConstValue::Scalar(x) =>
-                Operand::Immediate(tag_scalar(x).into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x).into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
@@ -606,6 +605,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ConstValue::Param(..) |
             ConstValue::Infer(..) |
+            ConstValue::Bound(..) |
             ConstValue::Placeholder(..) |
             ConstValue::Unevaluated(..) =>
                 bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
