@@ -52,9 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if zero_init {
                 // We just allocated this, the access is definitely in-bounds.
                 this.memory
-                    .get_mut(ptr.alloc_id)
-                    .unwrap()
-                    .write_repeat(&*this.tcx, ptr, 0, Size::from_bytes(size))
+                    .write_bytes(ptr.into(), itertools::repeat_n(0u8, size as usize))
                     .unwrap();
             }
             Scalar::Ptr(ptr)
@@ -229,9 +227,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 );
                 // We just allocated this, the access is definitely in-bounds.
                 this.memory
-                    .get_mut(ptr.alloc_id)
-                    .unwrap()
-                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size))
+                    .write_bytes(ptr.into(), itertools::repeat_n(0u8, size as usize))
                     .unwrap();
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
@@ -841,25 +837,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "GetSystemInfo" => {
                 let system_info = this.deref_operand(args[0])?;
-                let system_info_ptr = this
-                    .check_mplace_access(system_info, None)?
-                    .expect("cannot be a ZST");
-                // We rely on `deref_operand` doing bounds checks for us.
                 // Initialize with `0`.
                 this.memory
-                    .get_mut(system_info_ptr.alloc_id)?
-                    .write_repeat(tcx, system_info_ptr, 0, system_info.layout.size)?;
+                    .write_bytes(system_info.ptr, itertools::repeat_n(0, system_info.layout.size.bytes() as usize))?;
                 // Set number of processors.
                 let dword_size = Size::from_bytes(4);
-                let offset = 2 * dword_size + 3 * tcx.pointer_size();
-                this.memory
-                    .get_mut(system_info_ptr.alloc_id)?
-                    .write_scalar(
-                        tcx,
-                        system_info_ptr.offset(offset, tcx)?,
-                        Scalar::from_int(NUM_CPUS, dword_size).into(),
-                        dword_size,
-                    )?;
+                let num_cpus = this.mplace_field(system_info, 6)?;
+                this.write_scalar(
+                    Scalar::from_int(NUM_CPUS, dword_size),
+                    num_cpus.into(),
+                )?;
             }
 
             "TlsAlloc" => {

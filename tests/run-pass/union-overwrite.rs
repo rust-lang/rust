@@ -1,19 +1,20 @@
 #![feature(untagged_unions)]
-#![allow(unions_with_drop_fields)]
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct Pair<T, U>(T, U);
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct Triple<T>(T, T, T);
 
 #[repr(C)]
-union U<A, B> {
+union U<A: Copy, B: Copy> {
     a: Pair<A, A>,
     b: B,
 }
 
 #[repr(C)]
-union W<A, B> {
+union W<A: Copy, B: Copy> {
     a: A,
     b: B,
 }
