@@ -80,6 +80,7 @@ ifdef IS_MSVC
 	EXTRACFLAGS := ws2_32.lib userenv.lib advapi32.lib
 else
 	EXTRACFLAGS := -lws2_32 -luserenv
+	EXTRACXXFLAGS := -lstdc++
 endif
 else
 ifeq ($(UNAME),Darwin)
