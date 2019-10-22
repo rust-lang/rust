@@ -179,6 +179,47 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let item_span = item.map(|i| tcx.sess.source_map().def_span(i.span));
             match pred {
                 ty::Predicate::Projection(proj) => {
+                    // The obligation comes not from the current `impl` nor the `trait` being
+                    // implemented, but rather from a "second order" obligation, like in
+                    // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs`:
+                    //
+                    //   error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
+                    //     --> $DIR/point-at-type-on-obligation-failure.rs:13:5
+                    //      |
+                    //   LL |     type Ok;
+                    //      |          -- associated type defined here
+                    //   ...
+                    //   LL | impl Bar for Foo {
+                    //      | ---------------- in this `impl` item
+                    //   LL |     type Ok = ();
+                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //      |
+                    //      = note: expected type `u32`
+                    //                 found type `()`
+                    //
+                    // FIXME: we would want to point a span to all places that contributed to this
+                    // obligation. In the case above, it should be closer to:
+                    //
+                    //   error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
+                    //     --> $DIR/point-at-type-on-obligation-failure.rs:13:5
+                    //      |
+                    //   LL |     type Ok;
+                    //      |          -- associated type defined here
+                    //   LL |     type Sibling: Bar2<Ok=Self::Ok>;
+                    //      |     -------------------------------- obligation set here
+                    //   ...
+                    //   LL | impl Bar for Foo {
+                    //      | ---------------- in this `impl` item
+                    //   LL |     type Ok = ();
+                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //   ...
+                    //   LL | impl Bar2 for Foo2 {
+                    //      | ---------------- in this `impl` item
+                    //   LL |     type Ok = u32;
+                    //      |     -------------- obligation set here
+                    //      |
+                    //      = note: expected type `u32`
+                    //                 found type `()`
                     if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
                         let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
                         if let Some(impl_item) = impl_items.iter().filter(|item| {
@@ -193,6 +234,38 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     }
                 }
                 ty::Predicate::Trait(proj) => {
+                    // An associated item obligation born out of the `trait` failed to be met.
+                    // Point at the `impl` that failed the obligation, the associated item that
+                    // needed to meet the obligation, and the definition of that associated item,
+                    // which should hold the obligation in most cases. An example can be seen in
+                    // `src/test/ui/associated-types/point-at-type-on-obligation-failure-2.rs`:
+                    //
+                    //   error[E0277]: the trait bound `bool: Bar` is not satisfied
+                    //     --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
+                    //      |
+                    //   LL |     type Assoc: Bar;
+                    //      |          ----- associated type defined here
+                    //   ...
+                    //   LL | impl Foo for () {
+                    //      | --------------- in this `impl` item
+                    //   LL |     type Assoc = bool;
+                    //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+                    //
+                    // FIXME: if the obligation comes from the where clause in the `trait`, we
+                    // should point at it:
+                    //
+                    //   error[E0277]: the trait bound `bool: Bar` is not satisfied
+                    //     --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
+                    //      |
+                    //      | trait Foo where <Self as Foo>>::Assoc: Bar {
+                    //      |                 -------------------------- obligation set here
+                    //   LL |     type Assoc;
+                    //      |          ----- associated type defined here
+                    //   ...
+                    //   LL | impl Foo for () {
+                    //      | --------------- in this `impl` item
+                    //   LL |     type Assoc = bool;
+                    //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
                     if let (
                         ty::Projection(ty::ProjectionTy { item_def_id, .. }),
                         Some(hir::ItemKind::Impl(.., impl_items)),
