@@ -480,7 +480,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     report_fatal_error("cannot find deal with ptr that isnt arg");
 }
 
-std::pair<PHINode*,Value*> insertNewCanonicalIV(Loop* L, Type* Ty) {
+std::pair<PHINode*,Instruction*> insertNewCanonicalIV(Loop* L, Type* Ty) {
     assert(L);
     assert(Ty);
 
@@ -490,7 +490,7 @@ std::pair<PHINode*,Value*> insertNewCanonicalIV(Loop* L, Type* Ty) {
     PHINode *CanonicalIV = B.CreatePHI(Ty, 1, "iv");
 
     B.SetInsertPoint(Header->getFirstNonPHIOrDbg());
-    auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1), "iv.next");
+    Instruction* inc = cast<Instruction>(B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1), "iv.next"));
 
 
     for (BasicBlock *Pred : predecessors(Header)) {
@@ -501,10 +501,10 @@ std::pair<PHINode*,Value*> insertNewCanonicalIV(Loop* L, Type* Ty) {
             CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
         }
     }
-    return std::pair<PHINode*,Value*>(CanonicalIV,inc);
+    return std::pair<PHINode*,Instruction*>(CanonicalIV,inc);
 }
 
-void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader, PHINode* CanonicalIV, ScalarEvolution &SE, GradientUtils &gutils, Value* increment, const SmallVectorImpl<BasicBlock*>&& latches) {
+void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader, PHINode* CanonicalIV, ScalarEvolution &SE, GradientUtils &gutils, Instruction* increment, const SmallVectorImpl<BasicBlock*>&& latches) {
     assert(Header);
     assert(CanonicalIV);
 
@@ -595,6 +595,7 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
 
     // Replace previous increment usage with new increment value
     if (increment) {
+      increment->moveAfter(CanonicalIV->getParent()->getFirstNonPHI());
       std::vector<Instruction*> toerase;
       for(auto use : CanonicalIV->users()) {
         auto bo = dyn_cast<BinaryOperator>(use);
