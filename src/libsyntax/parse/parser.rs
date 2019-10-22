@@ -86,13 +86,6 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     }
 }
 
-fn maybe_append(mut lhs: Vec<Attribute>, mut rhs: Option<Vec<Attribute>>) -> Vec<Attribute> {
-    if let Some(ref mut rhs) = rhs {
-        lhs.append(rhs);
-    }
-    lhs
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum PrevTokenKind {
     DocComment,
