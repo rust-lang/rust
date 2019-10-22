@@ -1,0 +1,6 @@
+; RUN: cd %desired_wd
+; RUN: make clean-insertsort_sum_alt-enzyme1 ENZYME_PLUGIN=%loadEnzyme
+; RUN: make build/insertsort_sum_alt-enzyme1 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
+; RUN: build/insertsort_sum_alt-enzyme1
+; RUN: make clean-insertsort_sum_alt-enzyme1 ENZYME_PLUGIN=%loadEnzyme
+
