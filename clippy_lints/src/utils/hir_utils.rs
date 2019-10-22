@@ -411,7 +411,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(r);
             },
             ExprKind::AssignOp(ref o, ref l, ref r) => {
-                o.hash(&mut self.s);
+                o.node.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -460,7 +460,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             ExprKind::InlineAsm(..) | ExprKind::Err => {},
             ExprKind::Lit(ref l) => {
-                l.hash(&mut self.s);
+                l.node.hash(&mut self.s);
             },
             ExprKind::Loop(ref b, ref i, _) => {
                 self.hash_block(b);
