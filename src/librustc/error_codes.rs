@@ -2127,7 +2127,7 @@ static X: u32 = 42;
 "##,
 
 E0728: r##"
-`await` has been used outside `async` function or block.
+[`await`] has been used outside [`async`] function or block.
 
 Erroneous code examples:
 
@@ -2160,9 +2160,9 @@ fn foo() {
 }
 ```
 
-`await` is used to suspend the current computation until the given
+[`await`] is used to suspend the current computation until the given
 future is ready to produce a value. So it is legal only within
-an async context, like an `async fn` or an `async` block.
+an [`async`] context, like an `async fn` or an `async` block.
 
 ```edition2018
 # use std::pin::Pin;
@@ -2199,6 +2199,9 @@ fn bar(x: u8) -> impl Future<Output = u8> {
     }
 }
 ```
+
+[`async`]: https://doc.rust-lang.org/std/keyword.async.html
+[`await`]: https://doc.rust-lang.org/std/keyword.await.html
 "##,
 
 E0734: r##"
