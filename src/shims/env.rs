@@ -122,7 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("getcwd")?;
 
-        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+        let buf = this.read_scalar(buf_op)?.not_undef()?;
         let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
@@ -138,10 +138,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // This is ok because the buffer was strictly larger than `bytes`, so after
                     // adding the null terminator, the buffer size is larger or equal to
                     // `bytes.len()`, meaning that `bytes` actually fit inside tbe buffer.
-                    this.memory
-                        .get_mut(buf.alloc_id)?
-                        .write_bytes(&*this.tcx, buf, &bytes)?;
-                    return Ok(Scalar::Ptr(buf));
+                    this.memory.write_bytes(buf, bytes.iter().copied())?;
+                    return Ok(buf);
                 }
                 let erange = this.eval_libc("ERANGE")?;
                 this.set_last_error(erange)?;

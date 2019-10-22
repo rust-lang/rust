@@ -4,7 +4,7 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
-    layout::{self, Align, LayoutOf, Size, TyLayout},
+    layout::{self, LayoutOf, Size, TyLayout},
 };
 
 use rand::RngCore;
@@ -94,13 +94,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
-        // Don't forget the bounds check.
-        let ptr = this.memory.check_ptr_access(
-            ptr,
-            Size::from_bytes(len as u64),
-            Align::from_bytes(1).unwrap()
-        )?.expect("we already checked for size 0");
-
         let mut data = vec![0; len];
 
         if this.machine.communicate {
@@ -113,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             rng.fill_bytes(&mut data);
         }
 
-        this.memory.get_mut(ptr.alloc_id)?.write_bytes(&*this.tcx, ptr, &data)
+        this.memory.write_bytes(ptr, data.iter().copied())
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter

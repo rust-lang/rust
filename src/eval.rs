@@ -257,8 +257,9 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
                 trace!("-------------------");
                 trace!("Frame {}", i);
                 trace!("    return: {:?}", frame.return_place.map(|p| *p));
-                for (i, local) in frame.locals.iter().enumerate() {
-                    trace!("    local {}: {:?}", i, local.value);
+                for (_i, _local) in frame.locals.iter().enumerate() {
+                    //trace!("    local {}: {:?}", i, local.value);
+                    //FIXME: enable this again when the LocalValue Debug impl is back
                 }
             }
         }
