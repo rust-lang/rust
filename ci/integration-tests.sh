@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+set -ex
 
 if [[ -z "$INTEGRATION" ]]; then
     exit 0
