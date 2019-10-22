@@ -1,6 +1,5 @@
 //! Internal `#[repr(simd)]` types
 
-#![rustfmt::skip]
 #![allow(non_camel_case_types)]
 
 macro_rules! simd_ty {
