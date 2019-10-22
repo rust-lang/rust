@@ -1099,16 +1099,6 @@ pub struct SymbolStr {
     string: &'static str,
 }
 
-impl<U: ?Sized> std::convert::AsRef<U> for SymbolStr
-where
-    str: std::convert::AsRef<U>
-{
-    #[inline]
-    fn as_ref(&self) -> &U {
-        self.string.as_ref()
-    }
-}
-
 // This impl allows a `SymbolStr` to be directly equated with a `String` or
 // `&str`.
 impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
