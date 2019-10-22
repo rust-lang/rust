@@ -29,7 +29,7 @@ use rustc_target::spec::abi::Abi;
 
 use std::{iter, mem, usize};
 
-use crate::transform::check_consts::{qualifs, Item, ConstKind};
+use crate::transform::check_consts::{qualifs, Item, ConstKind, is_lang_panic_fn};
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -250,11 +250,6 @@ impl std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
-    fn is_const_panic_fn(&self, def_id: DefId) -> bool {
-        Some(def_id) == self.tcx.lang_items().panic_fn() ||
-        Some(def_id) == self.tcx.lang_items().begin_panic_fn()
-    }
-
     fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
         match candidate {
             Candidate::Ref(loc) => {
@@ -700,7 +695,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             ty::FnDef(def_id, _) => {
                 self.tcx.is_const_fn(def_id) ||
                 self.tcx.is_unstable_const_fn(def_id).is_some() ||
-                self.is_const_panic_fn(def_id)
+                is_lang_panic_fn(self.tcx, self.def_id)
             }
             _ => false,
         };
