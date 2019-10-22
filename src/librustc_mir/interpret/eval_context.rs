@@ -91,7 +91,7 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     pub extra: Extra,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
@@ -113,7 +113,7 @@ pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
 }
 
 /// Current value of a local variable
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)] // Miri debug-prints these
 pub enum LocalValue<Tag=(), Id=AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
