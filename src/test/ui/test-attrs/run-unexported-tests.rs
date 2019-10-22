@@ -1,3 +1,4 @@
+// run-fail
 // error-pattern:ran an unexported test
 // compile-flags:--test
 // check-stdout

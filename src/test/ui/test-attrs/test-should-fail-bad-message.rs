@@ -1,3 +1,4 @@
+// run-fail
 // check-stdout
 // error-pattern:thread 'test_foo' panicked at
 // compile-flags: --test
