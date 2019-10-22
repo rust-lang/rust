@@ -117,7 +117,7 @@ pub struct NativeLibrary {
     pub wasm_import_module: Option<Symbol>,
 }
 
-#[derive(Clone, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,

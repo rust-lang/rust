@@ -72,12 +72,10 @@ fn check_fn_for_unconditional_recursion(
     let caller_substs = &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count];
 
     while let Some(bb) = reachable_without_self_call_queue.pop() {
-        if visited.contains(bb) {
+        if !visited.insert(bb) {
             //already done
             continue;
         }
-
-        visited.insert(bb);
 
         let block = &basic_blocks[bb];
 

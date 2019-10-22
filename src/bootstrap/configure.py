@@ -55,7 +55,6 @@ o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, lsan, m
 o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball")
 o("cargo-native-static", "build.cargo-native-static", "static native libraries in cargo")
 o("profiler", "build.profiler", "build the profiler runtime")
-o("emscripten", None, "compile the emscripten backend as well as LLVM")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
 o("lldb", "rust.lldb", "build lldb")
@@ -335,10 +334,8 @@ for key in known_args:
         set('build.host', value.split(','))
     elif option.name == 'target':
         set('build.target', value.split(','))
-    elif option.name == 'emscripten':
-        set('rust.codegen-backends', ['llvm', 'emscripten'])
     elif option.name == 'full-tools':
-        set('rust.codegen-backends', ['llvm', 'emscripten'])
+        set('rust.codegen-backends', ['llvm'])
         set('rust.lld', True)
         set('rust.llvm-tools', True)
         set('build.extended', True)

@@ -2,7 +2,7 @@
 
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
-use crate::ty::{self, Lift, List, Ty, TyCtxt, InferConst, ParamConst};
+use crate::ty::{self, Lift, List, Ty, TyCtxt, ParamConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::mir::interpret::ConstValue;
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
@@ -234,9 +234,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 
                 ty::GenericParamDefKind::Const => {
                     tcx.mk_const(ty::Const {
-                        val: ConstValue::Infer(
-                            InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from(param.index))
-                        ),
+                        val: ConstValue::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                         ty: tcx.type_of(def_id),
                     }).into()
                 }

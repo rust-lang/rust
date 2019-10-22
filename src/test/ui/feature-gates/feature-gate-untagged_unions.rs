@@ -7,11 +7,11 @@ union U2<T: Copy> { // OK
 }
 
 union U3 { //~ ERROR unions with non-`Copy` fields are unstable
-    a: String,
+    a: String, //~ ERROR unions may not contain fields that need dropping
 }
 
 union U4<T> { //~ ERROR unions with non-`Copy` fields are unstable
-    a: T,
+    a: T, //~ ERROR unions may not contain fields that need dropping
 }
 
 union U5 { //~ ERROR unions with `Drop` implementations are unstable

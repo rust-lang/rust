@@ -4863,6 +4863,10 @@ assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
 ```
 "##,
 
+E0740: r##"
+A `union` cannot have fields with destructors.
+"##,
+
 E0733: r##"
 Recursion in an `async fn` requires boxing. For example, this will not compile:
 
@@ -5048,8 +5052,8 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0627, // yield statement outside of generator literal
-    E0632, // cannot provide explicit type parameters when `impl Trait` is used
-           // in argument position.
+    E0632, // cannot provide explicit generic arguments when `impl Trait` is
+           // used in argument position
     E0634, // type has conflicting packed representaton hints
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind

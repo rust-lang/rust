@@ -1,12 +1,11 @@
 // run-pass
 
-#![feature(core_intrinsics)]
 #![feature(untagged_unions)]
 
-#![allow(unions_with_drop_fields)]
 #![allow(dead_code)]
 
-use std::intrinsics::needs_drop;
+use std::mem::needs_drop;
+use std::mem::ManuallyDrop;
 
 struct NeedDrop;
 
@@ -16,10 +15,14 @@ impl Drop for NeedDrop {
 
 // Constant expressios allow `NoDrop` to go out of scope,
 // unlike a value of the interior type implementing `Drop`.
-static X: () = (NoDrop { inner: NeedDrop }, ()).1;
+static X: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
+
+const Y: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
+
+const fn _f() { (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1 }
 
 // A union that scrubs the drop glue from its inner type
-union NoDrop<T> {inner: T}
+union NoDrop<T> { inner: ManuallyDrop<T> }
 
 // Copy currently can't be implemented on drop-containing unions,
 // this may change later
@@ -40,7 +43,7 @@ struct Baz {
     y: Box<u8>,
 }
 
-union ActuallyDrop<T> {inner: T}
+union ActuallyDrop<T> { inner: ManuallyDrop<T> }
 
 impl<T> Drop for ActuallyDrop<T> {
     fn drop(&mut self) {}

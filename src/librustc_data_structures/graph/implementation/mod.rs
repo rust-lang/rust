@@ -60,10 +60,10 @@ impl<N> SnapshotVecDelegate for Edge<N> {
     fn reverse(_: &mut Vec<Edge<N>>, _: ()) {}
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct NodeIndex(pub usize);
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct EdgeIndex(pub usize);
 
 pub const INVALID_EDGE_INDEX: EdgeIndex = EdgeIndex(usize::MAX);

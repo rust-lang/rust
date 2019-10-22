@@ -176,7 +176,7 @@ Section: Creating a string
 /// ```
 /// fn from_utf8_lossy<F>(mut input: &[u8], mut push: F) where F: FnMut(&str) {
 ///     loop {
-///         match ::std::str::from_utf8(input) {
+///         match std::str::from_utf8(input) {
 ///             Ok(valid) => {
 ///                 push(valid);
 ///                 break
@@ -184,7 +184,7 @@ Section: Creating a string
 ///             Err(error) => {
 ///                 let (valid, after_valid) = input.split_at(error.valid_up_to());
 ///                 unsafe {
-///                     push(::std::str::from_utf8_unchecked(valid))
+///                     push(std::str::from_utf8_unchecked(valid))
 ///                 }
 ///                 push("\u{FFFD}");
 ///

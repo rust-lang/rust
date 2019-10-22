@@ -90,7 +90,7 @@ impl<T> Sharded<T> {
 
 pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
 
-impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
+impl<K: Eq, V> ShardedHashMap<K, V> {
     pub fn len(&self) -> usize {
         self.lock_shards().iter().map(|shard| shard.len()).sum()
     }

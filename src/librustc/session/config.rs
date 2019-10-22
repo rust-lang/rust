@@ -62,7 +62,7 @@ impl_stable_hash_via_hash!(OptLevel);
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
 /// and taking other command line options into account.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq)]
 pub enum Lto {
     /// Don't do any LTO whatsoever
     No,
@@ -296,10 +296,10 @@ impl OutputTypes {
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` or `BTreeSet` out for an unsorted container type! That
 /// would break dependency tracking for command-line arguments.
-#[derive(Clone, Hash)]
+#[derive(Clone)]
 pub struct Externs(BTreeMap<String, ExternEntry>);
 
-#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ExternEntry {
     pub locations: BTreeSet<Option<String>>,
     pub is_private_dep: bool
@@ -459,7 +459,7 @@ pub enum PrintRequest {
     NativeStaticLibs,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone)]
 pub enum BorrowckMode {
     Mir,
     Migrate,

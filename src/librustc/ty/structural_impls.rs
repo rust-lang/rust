@@ -1379,27 +1379,23 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstValue::ByRef { alloc, offset } =>
-                ConstValue::ByRef { alloc, offset },
             ConstValue::Infer(ic) => ConstValue::Infer(ic.fold_with(folder)),
             ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
-            ConstValue::Placeholder(p) => ConstValue::Placeholder(p),
-            ConstValue::Scalar(a) => ConstValue::Scalar(a),
-            ConstValue::Slice { data, start, end } => ConstValue::Slice { data, start, end },
             ConstValue::Unevaluated(did, substs)
                 => ConstValue::Unevaluated(did, substs.fold_with(folder)),
+            ConstValue::ByRef { .. } | ConstValue::Bound(..) | ConstValue::Placeholder(..)
+            | ConstValue::Scalar(..) | ConstValue::Slice { .. } => *self,
+
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstValue::ByRef { .. } => false,
             ConstValue::Infer(ic) => ic.visit_with(visitor),
             ConstValue::Param(p) => p.visit_with(visitor),
-            ConstValue::Placeholder(_) => false,
-            ConstValue::Scalar(_) => false,
-            ConstValue::Slice { .. } => false,
             ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ConstValue::ByRef { .. } | ConstValue::Bound(..) | ConstValue::Placeholder(_)
+            | ConstValue::Scalar(_) | ConstValue::Slice { .. } => false,
         }
     }
 }

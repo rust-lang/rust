@@ -210,7 +210,6 @@ pub fn std_cargo(builder: &Builder<'_>,
             // config.toml equivalent) is used
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
-                emscripten: false,
             });
             cargo.env("LLVM_CONFIG", llvm_config);
             cargo.env("RUSTC_BUILD_SANITIZERS", "1");
@@ -615,36 +614,27 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                              compiler: &Compiler,
                              target: Interned<String>,
                              backend: Interned<String>) -> String {
-    let mut features = String::new();
-
     match &*backend {
-        "llvm" | "emscripten" => {
+        "llvm" => {
             // Build LLVM for our target. This will implicitly build the
             // host LLVM if necessary.
             let llvm_config = builder.ensure(native::Llvm {
                 target,
-                emscripten: backend == "emscripten",
             });
-
-            if backend == "emscripten" {
-                features.push_str(" emscripten");
-            }
 
             builder.info(&format!("Building stage{} codegen artifacts ({} -> {}, {})",
                      compiler.stage, &compiler.host, target, backend));
 
             // Pass down configuration from the LLVM build into the build of
             // librustc_llvm and librustc_codegen_llvm.
-            if builder.is_rust_llvm(target) && backend != "emscripten" {
+            if builder.is_rust_llvm(target) {
                 cargo.env("LLVM_RUSTLLVM", "1");
             }
 
             cargo.env("LLVM_CONFIG", &llvm_config);
-            if backend != "emscripten" {
-                let target_config = builder.config.target_config.get(&target);
-                if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-                    cargo.env("CFG_LLVM_ROOT", s);
-                }
+            let target_config = builder.config.target_config.get(&target);
+            if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+                cargo.env("CFG_LLVM_ROOT", s);
             }
             // Some LLVM linker flags (-L and -l) may be needed to link librustc_llvm.
             if let Some(ref s) = builder.config.llvm_ldflags {
@@ -662,9 +652,7 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                                          "libstdc++.a");
                 cargo.env("LLVM_STATIC_STDCPP", file);
             }
-            if builder.config.llvm_link_shared ||
-                (builder.config.llvm_thin_lto && backend != "emscripten")
-            {
+            if builder.config.llvm_link_shared || builder.config.llvm_thin_lto {
                 cargo.env("LLVM_LINK_SHARED", "1");
             }
             if builder.config.llvm_use_libcxx {
@@ -676,8 +664,7 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
         }
         _ => panic!("unknown backend: {}", backend),
     }
-
-    features
+    String::new()
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be

@@ -395,10 +395,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, def: T) -> T {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Some(x) => x,
-            None => def,
+            None => default,
         }
     }
 
