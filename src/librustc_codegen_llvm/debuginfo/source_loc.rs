@@ -8,6 +8,7 @@ use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
 use crate::builder::Builder;
 use rustc_codegen_ssa::traits::*;
+use log::debug;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};

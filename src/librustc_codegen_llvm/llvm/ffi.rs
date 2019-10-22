@@ -544,6 +544,7 @@ pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_voi
 
 pub mod debuginfo {
     use super::{InvariantOpaque, Metadata};
+    use bitflags::bitflags;
 
     #[repr(C)]
     pub struct DIBuilder<'a>(InvariantOpaque<'a>);

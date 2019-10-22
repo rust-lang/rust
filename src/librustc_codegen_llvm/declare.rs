@@ -23,6 +23,7 @@ use rustc::ty::layout::{FnTypeExt, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
+use log::debug;
 
 /// Declare a function.
 ///

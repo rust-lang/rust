@@ -33,6 +33,7 @@ use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, Variable
 use libc::c_uint;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
+use log::debug;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;

@@ -541,7 +541,7 @@ impl Step for Rustc {
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
         cargo.env("RUSTDOCFLAGS", "--document-private-items --passes strip-hidden");
-        compile::rustc_cargo(builder, &mut cargo);
+        compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
         cargo.arg("--no-deps");
