@@ -194,7 +194,7 @@ a guard.
 ```compile_fail,E0029
 let string = "salutations !";
 
-// The ordering relation for strings can't be evaluated at compile time,
+// The ordering relation for strings cannot be evaluated at compile time,
 // so this doesn't work:
 match string {
     "hello" ..= "world" => {}
@@ -348,7 +348,7 @@ fn main() {
 "##,
 
 E0044: r##"
-You can't use type or const parameters on foreign items.
+You cannot use type or const parameters on foreign items.
 Example of erroneous code:
 
 ```compile_fail,E0044
@@ -788,7 +788,7 @@ fn some_other_func() {}
 fn some_function() {
     SOME_CONST = 14; // error : a constant value cannot be changed!
     1 = 3; // error : 1 isn't a valid place!
-    some_other_func() = 4; // error : we can't assign value to a function!
+    some_other_func() = 4; // error : we cannot assign value to a function!
     SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
                        // like a variable!
 }
@@ -3905,8 +3905,8 @@ struct Aligned(i32);
 struct Packed(Aligned);
 ```
 
-Just like you can't have both `align` and `packed` representation hints on a
-same type, a `packed` type can't contain another type with the `align`
+Just like you cannot have both `align` and `packed` representation hints on a
+same type, a `packed` type cannot contain another type with the `align`
 representation hint. However, you can do the opposite:
 
 ```
@@ -4326,7 +4326,7 @@ extern {
 
 unsafe {
     printf(::std::ptr::null(), 0f32);
-    // error: can't pass an `f32` to variadic function, cast to `c_double`
+    // error: cannot pass an `f32` to variadic function, cast to `c_double`
 }
 ```
 
@@ -5023,7 +5023,7 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 //  E0174,
 //  E0182, // merged into E0229
     E0183,
-//  E0187, // can't infer the kind of the closure
+//  E0187, // cannot infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
