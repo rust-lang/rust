@@ -2124,6 +2124,16 @@ impl<'a> LoweringContext<'a> {
         impl_trait_return_allow: bool,
         make_ret_async: Option<NodeId>,
     ) -> P<hir::FnDecl> {
+        debug!("lower_fn_decl(\
+            fn_decl: {:?}, \
+            in_band_ty_params: {:?}, \
+            impl_trait_return_allow: {}, \
+            make_ret_async: {:?})",
+            decl,
+            in_band_ty_params,
+            impl_trait_return_allow,
+            make_ret_async,
+        );
         let lt_mode = if make_ret_async.is_some() {
             // In `async fn`, argument-position elided lifetimes
             // must be transformed into fresh generic parameters so that
@@ -2416,7 +2426,7 @@ impl<'a> LoweringContext<'a> {
 
         hir::FunctionRetTy::Return(P(hir::Ty {
             kind: opaque_ty_ref,
-            span,
+            span: opaque_ty_span,
             hir_id: self.next_id(),
         }))
     }
@@ -2526,7 +2536,7 @@ impl<'a> LoweringContext<'a> {
         hir::Lifetime {
             hir_id: self.lower_node_id(id),
             span,
-            name: name,
+            name,
         }
     }
 

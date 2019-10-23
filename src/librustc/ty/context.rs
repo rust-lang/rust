@@ -1559,7 +1559,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn return_type_impl_trait(
         &self,
         scope_def_id: DefId,
-    ) -> Option<(Ty<'tcx>, bool)> {
+    ) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
         match self.hir().get(hir_id) {
@@ -1579,10 +1579,9 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
-                let is_async_fn =
-                    hir::IsAsync::Async == self.asyncness(scope_def_id);
                 if output.is_impl_trait() {
-                    Some((output, is_async_fn))
+                    let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
+                    Some((output, fn_decl.output.span()))
                 } else {
                     None
                 }
