@@ -2,10 +2,10 @@
 
 use std::process::Command;
 
-use xtask::{project_root, run, run_rustfmt, Overwrite, Result};
+use xtask::{codegen::Mode, project_root, run, run_rustfmt, Result};
 
 fn main() -> Result<()> {
-    run_rustfmt(Overwrite)?;
+    run_rustfmt(Mode::Overwrite)?;
     update_staged()
 }
 

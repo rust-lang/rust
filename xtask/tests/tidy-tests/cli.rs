@@ -1,23 +1,26 @@
 use walkdir::WalkDir;
-use xtask::{gen_tests, generate_boilerplate, project_root, run_rustfmt, Verify};
+use xtask::{
+    codegen::{self, Mode},
+    project_root, run_rustfmt,
+};
 
 #[test]
 fn generated_grammar_is_fresh() {
-    if let Err(error) = generate_boilerplate(Verify) {
+    if let Err(error) = codegen::generate_syntax(Mode::Verify) {
         panic!("{}. Please update it by running `cargo xtask codegen`", error);
     }
 }
 
 #[test]
 fn generated_tests_are_fresh() {
-    if let Err(error) = gen_tests(Verify) {
-        panic!("{}. Please update tests by running `cargo xtask gen-tests`", error);
+    if let Err(error) = codegen::generate_parser_tests(Mode::Verify) {
+        panic!("{}. Please update tests by running `cargo xtask codegen`", error);
     }
 }
 
 #[test]
 fn check_code_formatting() {
-    if let Err(error) = run_rustfmt(Verify) {
+    if let Err(error) = run_rustfmt(Mode::Verify) {
         panic!("{}. Please format the code by running `cargo format`", error);
     }
 }
