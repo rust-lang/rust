@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.6.2] - 2019-10-23
+
+### Added
+- Added an `inline-more` feature (enabled by default) which allows choosing a tradeoff between 
+  runtime performance and compilation time. (#119)
+
 ## [v0.6.1] - 2019-10-04
 
 ### Added
@@ -152,7 +158,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.2...HEAD
+[v0.6.2]: https://github.com/rust-lang/hashbrown/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/rust-lang/hashbrown/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/rust-lang/hashbrown/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/rust-lang/hashbrown/compare/v0.5.0...v0.5.1
