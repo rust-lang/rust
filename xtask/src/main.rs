@@ -7,8 +7,8 @@ use core::str;
 use pico_args::Arguments;
 use std::{env, path::PathBuf};
 use xtask::{
-    gen_tests, generate_boilerplate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt,
-    run_with_output, Cmd, Overwrite, Result,
+    codegen::{self, Mode},
+    install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt, run_with_output, Cmd, Result,
 };
 
 // Latest stable, feel free to send a PR if this lags behind.
@@ -62,21 +62,21 @@ fn main() -> Result<()> {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
             }
-            gen_tests(Overwrite)?
+            codegen::generate_parser_tests(Mode::Overwrite)?
         }
         "codegen" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
             }
-            generate_boilerplate(Overwrite)?
+            codegen::generate_syntax(Mode::Overwrite)?
         }
         "format" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
             }
-            run_rustfmt(Overwrite)?
+            run_rustfmt(Mode::Overwrite)?
         }
         "format-hook" => {
             if matches.contains(["-h", "--help"]) {

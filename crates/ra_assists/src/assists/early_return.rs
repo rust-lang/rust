@@ -2,7 +2,7 @@
 //!
 //! Replace a large conditional with a guarded return.
 //!
-//! ```notrust
+//! ```text
 //! fn <|>main() {
 //!     if cond {
 //!         foo();
@@ -11,7 +11,7 @@
 //! }
 //! ```
 //! ->
-//! ```notrust
+//! ```text
 //! fn main() {
 //!     if !cond {
 //!         return;

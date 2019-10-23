@@ -1,9 +1,8 @@
 //! FIXME: write short doc here
 
-mod boilerplate_gen;
+pub mod codegen;
 
 use std::{
-    collections::HashMap,
     error::Error,
     fs,
     io::{Error as IoError, ErrorKind},
@@ -11,71 +10,11 @@ use std::{
     process::{Command, Output, Stdio},
 };
 
-use itertools::Itertools;
-
-pub use self::boilerplate_gen::generate_boilerplate;
+use crate::codegen::Mode;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
-const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
-const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
-const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
-
-pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
-pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs";
 const TOOLCHAIN: &str = "stable";
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Mode {
-    Overwrite,
-    Verify,
-}
-pub use Mode::*;
-
-#[derive(Debug)]
-pub struct Test {
-    pub name: String,
-    pub text: String,
-    pub ok: bool,
-}
-
-pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
-    let mut res = vec![];
-    let prefix = "// ";
-    let comment_blocks = s
-        .lines()
-        .map(str::trim_start)
-        .enumerate()
-        .group_by(|(_idx, line)| line.starts_with(prefix));
-
-    'outer: for (is_comment, block) in comment_blocks.into_iter() {
-        if !is_comment {
-            continue;
-        }
-        let mut block = block.map(|(idx, line)| (idx, &line[prefix.len()..]));
-
-        let mut ok = true;
-        let (start_line, name) = loop {
-            match block.next() {
-                Some((idx, line)) if line.starts_with("test ") => {
-                    break (idx, line["test ".len()..].to_string());
-                }
-                Some((idx, line)) if line.starts_with("test_err ") => {
-                    ok = false;
-                    break (idx, line["test_err ".len()..].to_string());
-                }
-                Some(_) => (),
-                None => continue 'outer,
-            }
-        };
-        let text: String =
-            itertools::join(block.map(|(_, line)| line).chain(::std::iter::once("")), "\n");
-        assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        res.push((start_line, Test { name, text, ok }))
-    }
-    res
-}
 
 pub fn project_root() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(1).unwrap().to_path_buf()
@@ -126,7 +65,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
         _ => install_rustfmt()?,
     };
 
-    if mode == Verify {
+    if mode == Mode::Verify {
         run(&format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN), ".")?;
     } else {
         run(&format!("rustup run {} -- cargo fmt", TOOLCHAIN), ".")?;
@@ -206,37 +145,6 @@ pub fn run_fuzzer() -> Result<()> {
     run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
 }
 
-pub fn gen_tests(mode: Mode) -> Result<()> {
-    let tests = tests_from_dir(&project_root().join(Path::new(GRAMMAR_DIR)))?;
-    fn install_tests(tests: &HashMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
-        let tests_dir = project_root().join(into);
-        if !tests_dir.is_dir() {
-            fs::create_dir_all(&tests_dir)?;
-        }
-        // ok is never actually read, but it needs to be specified to create a Test in existing_tests
-        let existing = existing_tests(&tests_dir, true)?;
-        for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
-            panic!("Test is deleted: {}", t);
-        }
-
-        let mut new_idx = existing.len() + 1;
-        for (name, test) in tests {
-            let path = match existing.get(name) {
-                Some((path, _test)) => path.clone(),
-                None => {
-                    let file_name = format!("{:04}_{}.rs", new_idx, name);
-                    new_idx += 1;
-                    tests_dir.join(file_name)
-                }
-            };
-            update(&path, &test.text, mode)?;
-        }
-        Ok(())
-    }
-    install_tests(&tests.ok, OK_INLINE_TESTS_DIR, mode)?;
-    install_tests(&tests.err, ERR_INLINE_TESTS_DIR, mode)
-}
-
 fn do_run<F>(cmdline: &str, dir: &str, mut f: F) -> Result<Output>
 where
     F: FnMut(&mut Command),
@@ -252,81 +160,4 @@ where
         Err(format!("`{}` exited with {}", cmdline, output.status))?;
     }
     Ok(output)
-}
-
-#[derive(Default, Debug)]
-struct Tests {
-    pub ok: HashMap<String, Test>,
-    pub err: HashMap<String, Test>,
-}
-
-fn tests_from_dir(dir: &Path) -> Result<Tests> {
-    let mut res = Tests::default();
-    for entry in ::walkdir::WalkDir::new(dir) {
-        let entry = entry.unwrap();
-        if !entry.file_type().is_file() {
-            continue;
-        }
-        if entry.path().extension().unwrap_or_default() != "rs" {
-            continue;
-        }
-        process_file(&mut res, entry.path())?;
-    }
-    let grammar_rs = dir.parent().unwrap().join("grammar.rs");
-    process_file(&mut res, &grammar_rs)?;
-    return Ok(res);
-    fn process_file(res: &mut Tests, path: &Path) -> Result<()> {
-        let text = fs::read_to_string(path)?;
-
-        for (_, test) in collect_tests(&text) {
-            if test.ok {
-                if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
-                    Err(format!("Duplicate test: {}", old_test.name))?
-                }
-            } else {
-                if let Some(old_test) = res.err.insert(test.name.clone(), test) {
-                    Err(format!("Duplicate test: {}", old_test.name))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test)>> {
-    let mut res = HashMap::new();
-    for file in fs::read_dir(dir)? {
-        let file = file?;
-        let path = file.path();
-        if path.extension().unwrap_or_default() != "rs" {
-            continue;
-        }
-        let name = {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            file_name[5..file_name.len() - 3].to_string()
-        };
-        let text = fs::read_to_string(&path)?;
-        let test = Test { name: name.clone(), text, ok };
-        if let Some(old) = res.insert(name, (path, test)) {
-            println!("Duplicate test: {:?}", old);
-        }
-    }
-    Ok(res)
-}
-
-/// A helper to update file on disk if it has changed.
-/// With verify = false,
-pub fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
-    match fs::read_to_string(path) {
-        Ok(ref old_contents) if old_contents == contents => {
-            return Ok(());
-        }
-        _ => (),
-    }
-    if mode == Verify {
-        Err(format!("`{}` is not up-to-date", path.display()))?;
-    }
-    eprintln!("updating {}", path.display());
-    fs::write(path, contents)?;
-    Ok(())
 }
