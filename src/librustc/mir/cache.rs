@@ -47,8 +47,7 @@ impl Cache {
     }
 
     #[inline]
-    /// This will recompute the predecessors cache if it is not available
-    pub fn predecessors(&mut self, body: &Body<'_>) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+    pub fn ensure_predecessors(&mut self, body: &Body<'_>) {
         if self.predecessors.is_none() {
             let mut result = IndexVec::from_elem(vec![], body.basic_blocks());
             for (bb, data) in body.basic_blocks().iter_enumerated() {
@@ -61,13 +60,23 @@ impl Cache {
 
             self.predecessors = Some(result)
         }
+    }
 
+    #[inline]
+    /// This will recompute the predecessors cache if it is not available
+    pub fn predecessors(&mut self, body: &Body<'_>) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+        self.ensure_predecessors(body);
         self.predecessors.as_ref().unwrap()
     }
 
     #[inline]
     pub fn predecessors_for(&mut self, bb: BasicBlock, body: &Body<'_>) -> &[BasicBlock] {
         &self.predecessors(body)[bb]
+    }
+
+    #[inline]
+    fn unwrap_predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
+        &self.predecessors.as_ref().unwrap()[bb]
     }
 
     #[inline]
@@ -137,13 +146,17 @@ impl<'a, 'tcx> BodyCache<&'a Body<'tcx>> {
     }
 
     #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        &self.body.basic_blocks
+    pub fn read_only(mut self) -> ReadOnlyBodyCache<'a, 'tcx> {
+        self.cache.ensure_predecessors(self.body);
+        ReadOnlyBodyCache {
+            cache: self.cache,
+            body: self.body,
+        }
     }
 
     #[inline]
-    pub fn dominators(&mut self) -> Dominators<BasicBlock> {
-        dominators(self)
+    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        &self.body.basic_blocks
     }
 }
 
@@ -162,50 +175,6 @@ impl<'a, 'tcx> Index<BasicBlock> for BodyCache<&'a Body<'tcx>> {
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.body[index]
     }
-}
-
-impl<'a, 'tcx> graph::DirectedGraph for BodyCache<&'a Body<'tcx>> {
-    type Node = BasicBlock;
-}
-
-impl<'a, 'graph, 'tcx> graph::GraphPredecessors<'graph> for BodyCache<&'a Body<'tcx>> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
-}
-
-impl<'a, 'tcx> graph::WithPredecessors for BodyCache<&'a Body<'tcx>> {
-    fn predecessors(
-        &mut self,
-        node: Self::Node,
-    ) -> <Self as GraphPredecessors<'_>>::Iter {
-        self.predecessors_for(node).to_vec().into_iter()
-    }
-}
-
-impl<'a, 'tcx> graph::WithNumNodes for BodyCache<&'a Body<'tcx>> {
-    fn num_nodes(&self) -> usize {
-        self.body.num_nodes()
-    }
-}
-
-impl<'a, 'tcx> graph::WithStartNode for BodyCache<&'a Body<'tcx>> {
-    fn start_node(&self) -> Self::Node {
-        self.body.start_node()
-    }
-}
-
-impl<'a, 'tcx> graph::WithSuccessors for BodyCache<&'a Body<'tcx>> {
-    fn successors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphSuccessors<'_>>::Iter {
-        self.body.successors(node)
-    }
-}
-
-impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for BodyCache<&'a Body<'tcx>> {
-    type Item = BasicBlock;
-    type Iter = iter::Cloned<Successors<'b>>;
 }
 
 impl<'a, 'tcx> BodyCache<&'a mut Body<'tcx>> {
@@ -257,5 +226,101 @@ impl<'a, 'tcx> IndexMut<BasicBlock> for BodyCache<&'a mut Body<'tcx>> {
     fn index_mut(&mut self, index: BasicBlock) -> &mut Self::Output {
         self.cache.invalidate_predecessors();
         &mut self.body.basic_blocks[index]
+    }
+}
+
+pub struct ReadOnlyBodyCache<'a, 'tcx> {
+    cache: Cache,
+    body: &'a Body<'tcx>,
+}
+
+impl ReadOnlyBodyCache<'a, 'tcx> {
+    #[inline]
+    pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
+        self.cache.unwrap_predecessors_for(bb)
+    }
+
+    #[inline]
+    pub fn body(&self) -> &'a Body<'tcx> {
+        self.body
+    }
+
+    #[inline]
+    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        &self.body.basic_blocks
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        dominators(self)
+    }
+
+    pub fn to_owned(self) -> BodyCache<&'a Body<'tcx>> {
+        BodyCache {
+            cache: self.cache,
+            body: self.body,
+        }
+    }
+}
+
+impl graph::DirectedGraph for ReadOnlyBodyCache<'a, 'tcx> {
+    type Node = BasicBlock;
+}
+
+impl graph::GraphPredecessors<'graph> for ReadOnlyBodyCache<'a, 'tcx> {
+    type Item = BasicBlock;
+    type Iter = IntoIter<BasicBlock>;
+}
+
+impl graph::WithPredecessors for ReadOnlyBodyCache<'a, 'tcx> {
+    fn predecessors(
+        &self,
+        node: Self::Node,
+    ) -> <Self as GraphPredecessors<'_>>::Iter {
+        self.cache.unwrap_predecessors_for(node).to_vec().into_iter()
+    }
+}
+
+impl graph::WithNumNodes for ReadOnlyBodyCache<'a, 'tcx> {
+    fn num_nodes(&self) -> usize {
+        self.body.num_nodes()
+    }
+}
+
+impl graph::WithStartNode for ReadOnlyBodyCache<'a, 'tcx> {
+    fn start_node(&self) -> Self::Node {
+        self.body.start_node()
+    }
+}
+
+impl graph::WithSuccessors for ReadOnlyBodyCache<'a, 'tcx> {
+    fn successors(
+        &self,
+        node: Self::Node,
+    ) -> <Self as GraphSuccessors<'_>>::Iter {
+        self.body.successors(node)
+    }
+}
+
+impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for ReadOnlyBodyCache<'a, 'tcx> {
+    type Item = BasicBlock;
+    type Iter = iter::Cloned<Successors<'b>>;
+}
+
+
+impl Deref for ReadOnlyBodyCache<'a, 'tcx> {
+    type Target = Body<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.body
+    }
+}
+
+impl Index<BasicBlock> for ReadOnlyBodyCache<'a, 'tcx> {
+    type Output = BasicBlockData<'tcx>;
+
+    #[inline]
+    fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
+        &self.body[index]
     }
 }

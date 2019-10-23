@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'b mir::Body<'tcx>,
+    mir: &'b mir::ReadOnlyBodyCache<'a, 'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -156,10 +156,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }).collect();
 
     let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
-
+    let mir_body = mir.body();
+    let readonly_mir = mir.read_only();
     let mut fx = FunctionCx {
         instance,
-        mir: mir.body(),
+        mir: &readonly_mir,
         llfn,
         fn_abi,
         cx,
@@ -174,14 +175,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir),
     };
 
-    let memory_locals = analyze::non_ssa_locals(&fx, &mut mir);
+    let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
         let args = arg_local_refs(&mut bx, &fx, &memory_locals);
 
         let mut allocate_local = |local| {
-            let decl = &mir.local_decls[local];
+            let decl = &mir_body.local_decls[local];
             let layout = bx.layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
@@ -207,7 +208,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let retptr = allocate_local(mir::RETURN_PLACE);
         iter::once(retptr)
             .chain(args.into_iter())
-            .chain(mir.vars_and_temps_iter().map(allocate_local))
+            .chain(mir_body.vars_and_temps_iter().map(allocate_local))
             .collect()
     };
 
@@ -226,8 +227,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context.source_locations_enabled = true;
     }
 
-    let rpo = traversal::reverse_postorder(&mir);
-    let mut visited = BitSet::new_empty(mir.basic_blocks().len());
+    let rpo = traversal::reverse_postorder(&mir_body);
+    let mut visited = BitSet::new_empty(mir_body.basic_blocks().len());
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
@@ -237,7 +238,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Remove blocks that haven't been visited, or have no
     // predecessors.
-    for bb in mir.basic_blocks().indices() {
+    for bb in mir_body.basic_blocks().indices() {
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("codegen_mir: block {:?} was not visited", bb);

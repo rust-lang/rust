@@ -38,7 +38,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
-pub use crate::mir::cache::BodyCache;
+pub use crate::mir::cache::{BodyCache, ReadOnlyBodyCache};
 
 pub mod cache;
 pub mod interpret;
@@ -2600,7 +2600,7 @@ impl Location {
     pub fn is_predecessor_of<'tcx>(
         &self,
         other: Location,
-        mut body_cache: BodyCache<&'_ Body<'tcx>>
+        body_cache: &ReadOnlyBodyCache<'_, 'tcx>
     ) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.

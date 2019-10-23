@@ -65,6 +65,15 @@ use syntax_pos::Span;
 // variant argument) that does not require visiting, as in
 // `is_cleanup` above.
 
+macro_rules! body_cache_type {
+    (mut $a:lifetime, $tcx:lifetime) => {
+        &mut BodyCache<& $a mut Body<$tcx>>
+    };
+    ($a:lifetime, $tcx:lifetime) => {
+        &ReadOnlyBodyCache<$a, $tcx>
+    };
+}
+
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         pub trait $visitor_trait_name<'tcx> {
@@ -73,7 +82,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_body(
                 &mut self,
-                body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>
+                body_cache: body_cache_type!($($mutability)? '_, 'tcx)
             ) {
                 self.super_body(body_cache);
             }
@@ -245,7 +254,7 @@ macro_rules! make_mir_visitor {
 
             fn super_body(
                 &mut self,
-                body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>
+                body_cache: body_cache_type!($($mutability)? '_, 'tcx)
             ) {
                 macro_rules! body {
                     (mut) => (body_cache.body_mut());
