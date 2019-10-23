@@ -414,8 +414,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle. This function returns `Ok(false)` without trying to write if
     /// `size` is not large enough to fit the contents of `os_string` plus a null terminator. It
-    /// returns `Ok(true)` if the writing process was successful. Otherwise it returns an
-    /// `InterpError`.
+    /// returns `Ok(true)` if the writing process was successful.
     fn write_os_str_to_c_string(
         &mut self,
         os_str: &OsStr,
