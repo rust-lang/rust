@@ -86,7 +86,7 @@ impl EarlyLintPass for CargoCommonMetadata {
                 missing_warning(cx, &package, "package.repository");
             }
 
-            if is_empty_str(&package.readme) {
+            if is_empty_path(&package.readme) {
                 missing_warning(cx, &package, "package.readme");
             }
 
