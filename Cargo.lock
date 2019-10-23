@@ -3483,6 +3483,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_interface",
+ "rustc_lint",
  "rustc_metadata",
  "rustc_mir",
  "rustc_plugin",

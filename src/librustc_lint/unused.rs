@@ -25,7 +25,7 @@ declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
     "unused result of a type flagged as `#[must_use]`",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {

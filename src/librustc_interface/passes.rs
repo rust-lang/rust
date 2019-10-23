@@ -117,6 +117,7 @@ declare_box_region_type!(
 /// Returns `None` if we're aborting after handling -W help.
 pub fn configure_and_expand(
     sess: Lrc<Session>,
+    lint_store: Lrc<lint::LintStore>,
     cstore: Lrc<CStore>,
     krate: ast::Crate,
     crate_name: &str,
@@ -134,6 +135,7 @@ pub fn configure_and_expand(
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
             sess,
+            &lint_store,
             &*cstore,
             krate,
             &crate_name,
@@ -225,9 +227,10 @@ pub struct PluginInfo {
 pub fn register_plugins<'a>(
     sess: &'a Session,
     cstore: &'a CStore,
+    register_lints: impl Fn(&Session, &mut lint::LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, PluginInfo)> {
+) -> Result<(ast::Crate, PluginInfo, Lrc<lint::LintStore>)> {
     krate = time(sess, "attributes injection", || {
         syntax_ext::cmdline_attrs::inject(
             krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr
@@ -278,7 +281,14 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let mut registry = Registry::new(sess, krate.span);
+    let mut lint_store = rustc_lint::new_lint_store(
+        sess.opts.debugging_opts.no_interleave_lints,
+        sess.unstable_options(),
+    );
+
+    (register_lints)(&sess, &mut lint_store);
+
+    let mut registry = Registry::new(sess, &mut lint_store, krate.span);
 
     time(sess, "plugin registration", || {
         for registrar in registrars {
@@ -289,34 +299,20 @@ pub fn register_plugins<'a>(
 
     let Registry {
         syntax_exts,
-        early_lint_passes,
-        late_lint_passes,
-        lint_groups,
         llvm_passes,
         attributes,
         ..
     } = registry;
 
-    let mut ls = sess.lint_store.borrow_mut();
-    for pass in early_lint_passes {
-        ls.register_early_pass(Some(sess), true, false, pass);
-    }
-    for pass in late_lint_passes {
-        ls.register_late_pass(Some(sess), true, false, false, pass);
-    }
-
-    for (name, (to, deprecated_name)) in lint_groups {
-        ls.register_group(Some(sess), true, name, deprecated_name, to);
-    }
-
     *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
     *sess.plugin_attributes.borrow_mut() = attributes;
 
-    Ok((krate, PluginInfo { syntax_exts }))
+    Ok((krate, PluginInfo { syntax_exts }, Lrc::new(lint_store)))
 }
 
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
+    lint_store: &'a lint::LintStore,
     cstore: &'a CStore,
     mut krate: ast::Crate,
     crate_name: &str,
@@ -327,6 +323,7 @@ fn configure_and_expand_inner<'a>(
     time(sess, "pre-AST-expansion lint checks", || {
         lint::check_ast_crate(
             sess,
+            lint_store,
             &krate,
             true,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new());
@@ -536,6 +533,7 @@ fn configure_and_expand_inner<'a>(
 
 pub fn lower_to_hir(
     sess: &Session,
+    lint_store: &lint::LintStore,
     cstore: &CStore,
     resolver: &mut Resolver<'_>,
     dep_graph: &DepGraph,
@@ -554,7 +552,13 @@ pub fn lower_to_hir(
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate, false, rustc_lint::BuiltinCombinedEarlyLintPass::new())
+        lint::check_ast_crate(
+            sess,
+            lint_store,
+            &krate,
+            false,
+            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+        )
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.
@@ -817,6 +821,7 @@ impl BoxedGlobalCtxt {
 
 pub fn create_global_ctxt(
     compiler: &Compiler,
+    lint_store: Lrc<lint::LintStore>,
     mut hir_forest: hir::map::Forest,
     defs: hir::map::Definitions,
     resolutions: Resolutions,
@@ -854,6 +859,7 @@ pub fn create_global_ctxt(
 
         let gcx = TyCtxt::create_global_ctxt(
             sess,
+            lint_store,
             cstore,
             local_providers,
             extern_providers,

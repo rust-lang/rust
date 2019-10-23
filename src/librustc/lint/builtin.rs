@@ -4,11 +4,12 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::lint::{LintPass, LateLintPass, LintArray};
+use crate::lint::{LintPass, LateLintPass, LintArray, FutureIncompatibleInfo};
 use crate::middle::stability;
 use crate::session::Session;
 use errors::{Applicability, DiagnosticBuilder, pluralise};
 use syntax::ast;
+use syntax::edition::Edition;
 use syntax::source_map::Span;
 use syntax::symbol::Symbol;
 
@@ -22,7 +23,7 @@ declare_lint! {
     pub CONST_ERR,
     Deny,
     "constant evaluation detected erroneous expression",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -71,7 +72,7 @@ declare_lint! {
     pub UNREACHABLE_CODE,
     Warn,
     "detects unreachable code paths",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -131,7 +132,11 @@ declare_lint! {
 declare_lint! {
     pub PRIVATE_IN_PUBLIC,
     Warn,
-    "detect private items in public interfaces not caught by the old implementation"
+    "detect private items in public interfaces not caught by the old implementation",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+        edition: None,
+    };
 }
 
 declare_lint! {
@@ -143,13 +148,21 @@ declare_lint! {
 declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
-    "detect public re-exports of private extern crates"
+    "detect public re-exports of private extern crates",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub INVALID_TYPE_PARAM_DEFAULT,
     Deny,
-    "type parameter default erroneously allowed in invalid location"
+    "type parameter default erroneously allowed in invalid location",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
+        edition: None,
+    };
 }
 
 declare_lint! {
@@ -161,63 +174,99 @@ declare_lint! {
 declare_lint! {
     pub SAFE_EXTERN_STATICS,
     Deny,
-    "safe access to extern statics was erroneously allowed"
+    "safe access to extern statics was erroneously allowed",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #36247 <https://github.com/rust-lang/rust/issues/36247>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub SAFE_PACKED_BORROWS,
     Warn,
-    "safe borrows of fields of packed structs were was erroneously allowed"
+    "safe borrows of fields of packed structs were was erroneously allowed",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub PATTERNS_IN_FNS_WITHOUT_BODY,
     Warn,
-    "patterns in functions without body were erroneously allowed"
+    "patterns in functions without body were erroneously allowed",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub LEGACY_DIRECTORY_OWNERSHIP,
     Deny,
     "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
-     not named `mod.rs`"
+     not named `mod.rs`",
+     @future_incompatible = FutureIncompatibleInfo {
+         reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
+         edition: None,
+     };
 }
 
 declare_lint! {
     pub LEGACY_CONSTRUCTOR_VISIBILITY,
     Deny,
-    "detects use of struct constructors that would be invisible with new visibility rules"
+    "detects use of struct constructors that would be invisible with new visibility rules",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub MISSING_FRAGMENT_SPECIFIER,
     Deny,
-    "detects missing fragment specifiers in unused `macro_rules!` patterns"
+    "detects missing fragment specifiers in unused `macro_rules!` patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
     Deny,
-    "detects parenthesized generic parameters in type and module names"
+    "detects parenthesized generic parameters in type and module names",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub LATE_BOUND_LIFETIME_ARGUMENTS,
     Warn,
-    "detects generic lifetime arguments in path segments with late bound lifetime parameters"
+    "detects generic lifetime arguments in path segments with late bound lifetime parameters",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub ORDER_DEPENDENT_TRAIT_OBJECTS,
     Deny,
-    "trait-object types were treated as different depending on marker-trait order"
+    "trait-object types were treated as different depending on marker-trait order",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -253,7 +302,11 @@ declare_lint! {
 declare_lint! {
     pub TYVAR_BEHIND_RAW_POINTER,
     Warn,
-    "raw pointer to an inference variable"
+    "raw pointer to an inference variable",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
+        edition: Some(Edition::Edition2018),
+    };
 }
 
 declare_lint! {
@@ -272,19 +325,33 @@ declare_lint! {
     pub ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
     Allow,
     "fully qualified paths that start with a module name \
-     instead of `crate`, `self`, or an extern crate name"
+     instead of `crate`, `self`, or an extern crate name",
+     @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #53130 <https://github.com/rust-lang/rust/issues/53130>",
+        edition: Some(Edition::Edition2018),
+     };
 }
 
 declare_lint! {
     pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
     Warn,
-    "floating-point literals cannot be used in patterns"
+    "floating-point literals cannot be used in patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub UNSTABLE_NAME_COLLISIONS,
     Warn,
-    "detects name collision with an existing but unstable method"
+    "detects name collision with an existing but unstable method",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
+        edition: None,
+        // Note: this item represents future incompatibility of all unstable functions in the
+        //       standard library, and thus should never be removed or changed to an error.
+    };
 }
 
 declare_lint! {
@@ -302,7 +369,11 @@ declare_lint! {
 declare_lint! {
     pub DUPLICATE_MACRO_EXPORTS,
     Deny,
-    "detects duplicate macro exports"
+    "detects duplicate macro exports",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
+        edition: Some(Edition::Edition2018),
+    };
 }
 
 declare_lint! {
@@ -326,13 +397,21 @@ declare_lint! {
 declare_lint! {
     pub WHERE_CLAUSES_OBJECT_SAFETY,
     Warn,
-    "checks the object safety of where clauses"
+    "checks the object safety of where clauses",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
     Warn,
-    "detects proc macro derives using inaccessible names from parent modules"
+    "detects proc macro derives using inaccessible names from parent modules",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #50504 <https://github.com/rust-lang/rust/issues/50504>",
+        edition: None,
+    };
 }
 
 declare_lint! {
@@ -346,7 +425,11 @@ declare_lint! {
     pub MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
     Deny,
     "macro-expanded `macro_export` macros from the current crate \
-     cannot be referred to by absolute paths"
+     cannot be referred to by absolute paths",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
+        edition: None,
+    };
 }
 
 declare_lint! {
@@ -359,7 +442,11 @@ declare_lint! {
     pub INDIRECT_STRUCTURAL_MATCH,
     // defaulting to allow until rust-lang/rust#62614 is fixed.
     Allow,
-    "pattern with const indirectly referencing non-`#[structural_match]` type"
+    "pattern with const indirectly referencing non-`#[structural_match]` type",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
+        edition: None,
+    };
 }
 
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
@@ -367,7 +454,11 @@ pub mod parser {
     declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
         Warn,
-        "ill-formed attribute inputs that were previously accepted and used in practice"
+        "ill-formed attribute inputs that were previously accepted and used in practice",
+        @future_incompatible = super::FutureIncompatibleInfo {
+            reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
+            edition: None,
+        };
     }
 
     declare_lint! {
@@ -387,31 +478,47 @@ declare_lint! {
     pub DEPRECATED_IN_FUTURE,
     Allow,
     "detects use of items that will be deprecated in a future version",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
     Deny,
-    "ambiguous associated items"
+    "ambiguous associated items",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #57644 <https://github.com/rust-lang/rust/issues/57644>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub NESTED_IMPL_TRAIT,
     Warn,
-    "nested occurrence of `impl Trait` type"
+    "nested occurrence of `impl Trait` type",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #59014 <https://github.com/rust-lang/rust/issues/59014>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub MUTABLE_BORROW_RESERVATION_CONFLICT,
     Warn,
-    "reservation of a two-phased borrow conflicts with other shared borrows"
+    "reservation of a two-phased borrow conflicts with other shared borrows",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
+        edition: None,
+    };
 }
 
 declare_lint! {
     pub SOFT_UNSTABLE,
     Deny,
-    "a feature gate that doesn't break dependent crates"
+    "a feature gate that doesn't break dependent crates",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #64266 <https://github.com/rust-lang/rust/issues/64266>",
+        edition: None,
+    };
 }
 
 declare_lint_pass! {

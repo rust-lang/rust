@@ -5,7 +5,7 @@ use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{Ty, TyCtxt};
-use rustc::lint::{self, LintPass};
+use rustc::lint;
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -273,10 +273,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints
-            .get_lints()
+        lint::builtin::HardwiredLints::get_lints()
             .into_iter()
-            .chain(rustc_lint::SoftLints.get_lints().into_iter())
+            .chain(rustc_lint::SoftLints::get_lints().into_iter())
     };
 
     let lint_opts = lints().filter_map(|lint| {
@@ -339,6 +338,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         stderr: None,
         crate_name,
         lint_caps,
+        register_lints: None,
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {

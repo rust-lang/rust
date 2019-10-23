@@ -39,6 +39,7 @@ pub struct Compiler {
     pub(crate) queries: Queries,
     pub(crate) cstore: Lrc<CStore>,
     pub(crate) crate_name: Option<String>,
+    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
 }
 
 impl Compiler {
@@ -137,6 +138,13 @@ pub struct Config {
 
     pub crate_name: Option<String>,
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
+
+    /// This is a callback from the driver that is called when we're registering lints;
+    /// it is called during plugin registration when we have the LintStore in a non-shared state.
+    ///
+    /// Note that if you find a Some here you probably want to call that function in the new
+    /// function being registered.
+    pub register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
 }
 
 pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
@@ -165,6 +173,7 @@ where
         output_file: config.output_file,
         queries: Default::default(),
         crate_name: config.crate_name,
+        register_lints: config.register_lints,
     };
 
     let _sess_abort_error = OnDrop(|| {
