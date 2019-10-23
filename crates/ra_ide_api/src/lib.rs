@@ -19,7 +19,6 @@ mod feature_flags;
 mod status;
 mod completion;
 mod runnables;
-mod name_ref_kind;
 mod goto_definition;
 mod goto_type_definition;
 mod extend_selection;

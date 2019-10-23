@@ -481,7 +481,6 @@ pub fn handle_references(
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
     let position = params.text_document_position.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(position.file_id)?;
 
     let refs = match world.analysis().find_all_refs(position)? {
         None => return Ok(None),
@@ -490,13 +489,19 @@ pub fn handle_references(
 
     let locations = if params.context.include_declaration {
         refs.into_iter()
-            .filter_map(|r| to_location(r.file_id, r.range, &world, &line_index).ok())
+            .filter_map(|r| {
+                let line_index = world.analysis().file_line_index(r.file_id).ok()?;
+                to_location(r.file_id, r.range, &world, &line_index).ok()
+            })
             .collect()
     } else {
         // Only iterate over the references if include_declaration was false
         refs.references()
             .iter()
-            .filter_map(|r| to_location(r.file_id, r.range, &world, &line_index).ok())
+            .filter_map(|r| {
+                let line_index = world.analysis().file_line_index(r.file_id).ok()?;
+                to_location(r.file_id, r.range, &world, &line_index).ok()
+            })
             .collect()
     };
 
@@ -746,6 +751,7 @@ pub fn handle_document_highlight(
 
     Ok(Some(
         refs.into_iter()
+            .filter(|r| r.file_id == file_id)
             .map(|r| DocumentHighlight { range: r.range.conv_with(&line_index), kind: None })
             .collect(),
     ))

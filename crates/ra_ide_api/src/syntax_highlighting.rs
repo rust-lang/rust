@@ -14,7 +14,7 @@ use ra_syntax::{
 
 use crate::{
     db::RootDatabase,
-    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    references::{classify_name_ref, NameKind::*},
     FileId,
 };
 
@@ -101,12 +101,10 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     continue;
                 }
                 if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
-                    // FIXME: try to reuse the SourceAnalyzers
-                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                    match classify_name_ref(db, &analyzer, &name_ref) {
-                        Some(Method(_)) => "function",
+                    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
+                    match name_kind {
                         Some(Macro(_)) => "macro",
-                        Some(FieldAccess(_)) => "field",
+                        Some(Field(_)) => "field",
                         Some(AssocItem(hir::AssocItem::Function(_))) => "function",
                         Some(AssocItem(hir::AssocItem::Const(_))) => "constant",
                         Some(AssocItem(hir::AssocItem::TypeAlias(_))) => "type",
@@ -120,7 +118,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(Def(hir::ModuleDef::TypeAlias(_))) => "type",
                         Some(Def(hir::ModuleDef::BuiltinType(_))) => "type",
                         Some(SelfType(_)) => "type",
-                        Some(Pat(ptr)) => {
+                        Some(Pat((_, ptr))) => {
                             let pat = ptr.to_node(&root);
                             if let Some(name) = pat.name() {
                                 let text = name.text();
@@ -130,6 +128,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                     Some(calc_binding_hash(file_id, &text, *shadow_count))
                             }
 
+                            let analyzer =
+                                hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                             if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
                                 "variable.mut"
                             } else {

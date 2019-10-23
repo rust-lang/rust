@@ -14,7 +14,7 @@ use crate::{
         description_from_symbol, docs_from_symbol, macro_label, rust_code_markup,
         rust_code_markup_with_doc, ShortLabel,
     },
-    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    references::{classify_name_ref, NameKind::*},
     FilePosition, FileRange, RangeInfo,
 };
 
@@ -99,17 +99,14 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-
         let mut no_fallback = false;
-
-        match classify_name_ref(db, &analyzer, &name_ref) {
-            Some(Method(it)) => res.extend(from_def_source(db, it)),
+        let name_kind = classify_name_ref(db, position.file_id, &name_ref).map(|d| d.kind);
+        match name_kind {
             Some(Macro(it)) => {
                 let src = it.source(db);
                 res.extend(hover_text(src.ast.doc_comment_text(), Some(macro_label(&src.ast))));
             }
-            Some(FieldAccess(it)) => {
+            Some(Field(it)) => {
                 let src = it.source(db);
                 if let hir::FieldSource::Named(it) = src.ast {
                     res.extend(hover_text(it.doc_comment_text(), it.short_label()));

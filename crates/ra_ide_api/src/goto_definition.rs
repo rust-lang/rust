@@ -10,7 +10,7 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     display::ShortLabel,
-    name_ref_kind::{classify_name_ref, NameRefKind::*},
+    references::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -54,13 +54,11 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-
-    match classify_name_ref(db, &analyzer, name_ref) {
+    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
+    match name_kind {
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
-        Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
+        Some(Field(field)) => return Exact(NavigationTarget::from_field(db, field)),
         Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_assoc_item(db, assoc)),
-        Some(Method(func)) => return Exact(NavigationTarget::from_def_source(db, func)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
@@ -70,7 +68,7 @@ pub(crate) fn reference_definition(
                 return Exact(NavigationTarget::from_adt_def(db, def_id));
             }
         }
-        Some(Pat(pat)) => return Exact(NavigationTarget::from_pat(db, file_id, pat)),
+        Some(Pat((_, pat))) => return Exact(NavigationTarget::from_pat(db, file_id, pat)),
         Some(SelfParam(par)) => return Exact(NavigationTarget::from_self_param(file_id, par)),
         Some(GenericParam(_)) => {
             // FIXME: go to the generic param def
