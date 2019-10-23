@@ -1817,7 +1817,7 @@ impl<T> VecDeque<T> {
             }
         }
 
-        return elem;
+        elem
     }
 
     /// Splits the `VecDeque` into two at the given index.
