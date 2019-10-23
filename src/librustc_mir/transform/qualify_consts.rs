@@ -1065,30 +1065,23 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         } else {
             self.valid_promotion_candidates()
         };
+
         debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
         for candidate in promotion_candidates {
-            let promoted_place = match candidate {
-                Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
-                    match &self.body[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(box(_, Rvalue::Repeat(Operand::Move(place), _)))
-                            => place,
-                        _ => continue,
-                    }
-                }
+            match candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    match &self.body[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(box( _, Rvalue::Ref(_, _, place))) => place,
-                        _ => continue,
+                    if let StatementKind::Assign(box( _, Rvalue::Ref(_, _, place)))
+                        = &self.body[bb].statements[stmt_idx].kind
+                    {
+                        if let PlaceBase::Local(local) = place.base {
+                            promoted_temps.insert(local);
+                        }
                     }
                 }
-                Candidate::Argument { .. } => continue,
-            };
 
-            match promoted_place.base {
-                PlaceBase::Local(local) if !promoted_place.is_indirect() => {
-                    promoted_temps.insert(local);
-                }
-                _ => {}
+                // Only rvalue-static promotion requires extending the lifetime of the promoted
+                // local.
+                Candidate::Argument { .. } | Candidate::Repeat(_) => {}
             }
         }
 
