@@ -238,7 +238,10 @@ macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
 }
 
-/// Returns whether the given expression matches (any of) the given pattern(s).
+/// Returns whether the given expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
 ///
 /// # Examples
 ///
