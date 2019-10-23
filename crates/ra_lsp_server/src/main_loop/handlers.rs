@@ -438,6 +438,7 @@ pub fn handle_prepare_rename(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
+    let _p = profile("handle_prepare_rename");
     let position = params.try_conv_with(&world)?;
 
     // We support renaming references like handle_rename does.
@@ -455,6 +456,7 @@ pub fn handle_prepare_rename(
 }
 
 pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+    let _p = profile("handle_rename");
     let position = params.text_document_position.try_conv_with(&world)?;
 
     if params.new_name.is_empty() {
@@ -480,6 +482,7 @@ pub fn handle_references(
     world: WorldSnapshot,
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
+    let _p = profile("handle_references");
     let position = params.text_document_position.try_conv_with(&world)?;
 
     let refs = match world.analysis().find_all_refs(position)? {
@@ -741,6 +744,7 @@ pub fn handle_document_highlight(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
+    let _p = profile("handle_document_highlight");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
