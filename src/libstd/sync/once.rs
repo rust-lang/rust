@@ -52,6 +52,7 @@
 // You'll find a few more details in the implementation, but that's the gist of
 // it!
 
+use crate::cell::Cell;
 use crate::fmt;
 use crate::marker;
 use crate::ptr;
@@ -132,9 +133,14 @@ const COMPLETE: usize = 0x3;
 // this is in the RUNNING state.
 const STATE_MASK: usize = 0x3;
 
-// Representation of a node in the linked list of waiters in the RUNNING state.
+// Representation of a node in the linked list of waiters, used while in the
+// RUNNING state.
+// Note: `Waiter` can't hold a mutable pointer to the next thread, because then
+// `wait` would both hand out a mutable reference to its `Waiter` node, and keep
+// a shared reference to check `signaled`. Instead we hold shared references and
+// use interior mutability.
 struct Waiter {
-    thread: Thread,
+    thread: Cell<Option<Thread>>,
     signaled: AtomicBool,
     next: *const Waiter,
 }
@@ -400,7 +406,7 @@ fn wait(state_and_queue: &AtomicUsize, current_state: usize) {
     // Create the node for our current thread that we are going to try to slot
     // in at the head of the linked list.
     let mut node = Waiter {
-        thread: thread::current(),
+        thread: Cell::new(Some(thread::current())),
         signaled: AtomicBool::new(false),
         next: ptr::null(),
     };
@@ -453,18 +459,22 @@ impl Drop for WaiterQueue<'_> {
         // We should only ever see an old state which was RUNNING.
         assert_eq!(state_and_queue & STATE_MASK, RUNNING);
 
-        // Decode the RUNNING to a list of waiters, then walk that entire list
-        // and wake them up. Note that it is crucial that after we store `true`
-        // in the node it can be free'd! As a result we load the `thread` to
-        // signal ahead of time and then unpark it after the store.
+        // Walk the entire linked list of waiters and wake them up (in lifo
+        // order, last to register is first to wake up).
         unsafe {
+            // Right after setting `node.signaled = true` the other thread may
+            // free `node` if there happens to be has a spurious wakeup.
+            // So we have to take out the `thread` field and copy the pointer to
+            // `next` first.
             let mut queue = (state_and_queue & !STATE_MASK) as *const Waiter;
             while !queue.is_null() {
                 let next = (*queue).next;
-                let thread = (*queue).thread.clone();
+                let thread = (*queue).thread.replace(None).unwrap();
                 (*queue).signaled.store(true, Ordering::SeqCst);
-                thread.unpark();
+                // ^- FIXME (maybe): This is another case of issue #55005
+                // `store()` has a potentially dangling ref to `signaled`.
                 queue = next;
+                thread.unpark();
             }
         }
     }
