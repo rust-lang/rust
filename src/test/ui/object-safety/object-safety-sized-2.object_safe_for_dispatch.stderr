@@ -1,0 +1,13 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/object-safety-sized-2.rs:16:5
+   |
+LL |     t
+   |     ^ the trait `Bar` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Bar>` for `&T`
+   = note: required by cast to type `&dyn Bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

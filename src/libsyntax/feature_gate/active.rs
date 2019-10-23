@@ -528,6 +528,9 @@ declare_features! (
     /// Enable accurate caller location reporting during panic (RFC 2091).
     (active, track_caller, "1.40.0", Some(47809), None),
 
+    /// Non-object safe trait objects safe to use but cannot be created in safe rust
+    (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
