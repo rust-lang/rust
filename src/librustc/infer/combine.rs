@@ -494,7 +494,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    return Err(TypeError::CyclicTy(self.root_ty));
+                    Err(TypeError::CyclicTy(self.root_ty))
                 } else {
                     match variables.probe(vid) {
                         TypeVariableValue::Known { value: u } => {
@@ -527,7 +527,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             let u = self.tcx().mk_ty_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
                                    vid, u);
-                            return Ok(u);
+                            Ok(u)
                         }
                     }
                 }
@@ -616,8 +616,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            let u = self.tcx().mk_const_var(new_var_id, c.ty);
-                            return Ok(u);
+                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
                         }
                     }
                 }

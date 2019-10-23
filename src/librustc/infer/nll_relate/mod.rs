@@ -28,6 +28,7 @@ use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt, InferConst};
+use crate::infer::{ConstVariableValue, ConstVarValue};
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
@@ -324,7 +325,7 @@ where
         let vid = pair.vid();
         let value_ty = pair.value_ty();
 
-        // FIXME -- this logic assumes invariance, but that is wrong.
+        // FIXME(invariance) -- this logic assumes invariance, but that is wrong.
         // This only presently applies to chalk integration, as NLL
         // doesn't permit type variables to appear on both sides (and
         // doesn't use lazy norm).
@@ -629,6 +630,7 @@ where
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
             }
+            // FIXME(invariance): see the related FIXME above.
             _ => self.infcx.super_combine_consts(self, a, b)
         }
     }
@@ -997,11 +999,24 @@ where
         _: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         match a.val {
+            ConstValue::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+                bug!(
+                    "unexpected inference variable encountered in NLL generalization: {:?}",
+                    a
+                );
+            }
             ConstValue::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
-                match variable_table.probe_value(vid).val.known() {
+                let var_value = variable_table.probe_value(vid);
+                match var_value.val.known() {
                     Some(u) => self.relate(&u, &u),
-                    None => Ok(a),
+                    None => {
+                        let new_var_id = variable_table.new_key(ConstVarValue {
+                            origin: var_value.origin,
+                            val: ConstVariableValue::Unknown { universe: self.universe },
+                        });
+                        Ok(self.tcx().mk_const_var(new_var_id, a.ty))
+                    }
                 }
             }
             _ => relate::super_relate_consts(self, a, a),
