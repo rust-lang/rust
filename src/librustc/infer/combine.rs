@@ -605,9 +605,21 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         match c.val {
             ConstValue::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
-                match variable_table.probe_value(vid).val.known() {
-                    Some(u) => self.relate(&u, &u),
-                    None => Ok(c),
+                let var_value = variable_table.probe_value(vid);
+                match var_value.val {
+                    ConstVariableValue::Known { value: u } => self.relate(&u, &u),
+                    ConstVariableValue::Unknown { universe } => {
+                        if self.for_universe.can_name(universe) {
+                            Ok(c)
+                        } else {
+                            let new_var_id = variable_table.new_key(ConstVarValue {
+                                origin: var_value.origin,
+                                val: ConstVariableValue::Unknown { universe: self.for_universe },
+                            });
+                            let u = self.tcx().mk_const_var(new_var_id, c.ty);
+                            return Ok(u);
+                        }
+                    }
                 }
             }
             _ => relate::super_relate_consts(self, c, c),
