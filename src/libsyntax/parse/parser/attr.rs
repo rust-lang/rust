@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
                     just_parsed_doc_comment = false;
                 }
                 token::DocComment(s) => {
-                    let attr = attr::mk_sugared_doc_attr(s, self.token.span);
+                    let attr = attr::mk_doc_comment(s, self.token.span);
                     if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
                         err.note("inner doc comments like this (starting with \
@@ -150,10 +150,9 @@ impl<'a> Parser<'a> {
         };
 
         Ok(ast::Attribute {
-            item,
+            kind: ast::AttrKind::Normal(item),
             id: attr::mk_attr_id(),
             style,
-            is_sugared_doc: false,
             span,
         })
     }
@@ -229,7 +228,7 @@ impl<'a> Parser<'a> {
                 }
                 token::DocComment(s) => {
                     // We need to get the position of this token before we bump.
-                    let attr = attr::mk_sugared_doc_attr(s, self.token.span);
+                    let attr = attr::mk_doc_comment(s, self.token.span);
                     if attr.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
                         self.bump();

@@ -179,7 +179,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         let (path, kind, derives, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
-                (&attr.item.path,
+                (&attr.get_normal_item().path,
                  MacroKind::Attr,
                  self.arenas.alloc_ast_paths(derives),
                  after_derive),

@@ -622,16 +622,19 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.hardbreak_if_not_bol();
         }
         self.maybe_print_comment(attr.span.lo());
-        if attr.is_sugared_doc {
-            self.word(attr.value_str().unwrap().to_string());
-            self.hardbreak()
-        } else {
-            match attr.style {
-                ast::AttrStyle::Inner => self.word("#!["),
-                ast::AttrStyle::Outer => self.word("#["),
+        match attr.kind {
+            ast::AttrKind::Normal(ref item) => {
+                match attr.style {
+                    ast::AttrStyle::Inner => self.word("#!["),
+                    ast::AttrStyle::Outer => self.word("#["),
+                }
+                self.print_attr_item(&item, attr.span);
+                self.word("]");
             }
-            self.print_attr_item(&attr.item, attr.span);
-            self.word("]");
+            ast::AttrKind::DocComment(comment) => {
+                self.word(comment.to_string());
+                self.hardbreak()
+            }
         }
     }
 

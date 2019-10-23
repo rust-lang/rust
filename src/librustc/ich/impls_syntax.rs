@@ -177,7 +177,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         let filtered: SmallVec<[&ast::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_sugared_doc &&
+                !attr.is_doc_comment() &&
                 !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
@@ -207,19 +207,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!self.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name)));
-        debug_assert!(!self.is_sugared_doc);
+        debug_assert!(!self.is_doc_comment());
 
-        let ast::Attribute {
-            ref item,
-            id: _,
-            style,
-            is_sugared_doc: _,
-            span,
-        } = *self;
-
-        item.hash_stable(hcx, hasher);
-        style.hash_stable(hcx, hasher);
-        span.hash_stable(hcx, hasher);
+        let ast::Attribute { kind, id: _, style, span } = self;
+        if let ast::AttrKind::Normal(item) = kind {
+            item.hash_stable(hcx, hasher);
+            style.hash_stable(hcx, hasher);
+            span.hash_stable(hcx, hasher);
+        } else {
+            unreachable!();
+        }
     }
 }
 
