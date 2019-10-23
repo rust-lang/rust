@@ -585,7 +585,6 @@ checksum = "8ff012e225ce166d4422e0e78419d901719760f62ae2b7969ca6b564d1b54a9e"
 name = "core"
 version = "0.0.0"
 dependencies = [
- "matches_macro",
  "rand 0.7.0",
 ]
 
@@ -1900,10 +1899,6 @@ name = "matches"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
-
-[[package]]
-name = "matches_macro"
-version = "0.0.0"
 
 [[package]]
 name = "mdbook"

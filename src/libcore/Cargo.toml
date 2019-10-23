@@ -20,9 +20,6 @@ path = "../libcore/tests/lib.rs"
 name = "corebenches"
 path = "../libcore/benches/lib.rs"
 
-[dependencies]
-matches_macro = { path = "../libmatches_macro" }
-
 [dev-dependencies]
 rand = "0.7"
 

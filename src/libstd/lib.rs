@@ -354,16 +354,7 @@ extern crate cfg_if;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
-#[path = "macros.rs"]
-mod prelude_macros;
-
-/// Macros that are not in the prelude and need to be imported explicitly
-#[unstable(feature = "matches_macro", issue = "0")]
-pub mod macros {
-    #[unstable(feature = "matches_macro", issue = "0")]
-    #[doc(inline)]
-    pub use core::macros::matches;
-}
+mod macros;
 
 // The Rust prelude
 pub mod prelude;
@@ -537,6 +528,7 @@ pub use core::{
     writeln,
     // Unstable
     todo,
+    matches,
 };
 
 // Re-export built-in macros defined through libcore.

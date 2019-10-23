@@ -85,7 +85,6 @@
 #![feature(iter_once_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
-#![feature(matches_macro)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
@@ -135,16 +134,7 @@
 use prelude::v1::*;
 
 #[macro_use]
-#[path = "macros.rs"]
-mod prelude_macros;
-
-/// Macros that are not in the prelude and need to be imported explicitly
-#[unstable(feature = "matches_macro", issue = "0")]
-pub mod macros {
-    #[unstable(feature = "matches_macro", issue = "0")]
-    #[doc(inline)]
-    pub use matches_macro::matches;
-}
+mod macros;
 
 #[macro_use]
 mod internal_macros;
