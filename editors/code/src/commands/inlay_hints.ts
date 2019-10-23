@@ -85,13 +85,29 @@ export class HintsUpdater {
         if (newHints !== null) {
             const newDecorations = newHints.map(hint => ({
                 range: hint.range,
-                renderOptions: { after: { contentText: `: ${hint.label}` } }
+                renderOptions: {
+                    after: {
+                        contentText: `: ${this.truncateHint(hint.label)}`
+                    }
+                }
             }));
             return editor.setDecorations(
                 typeHintDecorationType,
                 newDecorations
             );
         }
+    }
+
+    private truncateHint(label: string): string {
+        if (!Server.config.maxInlayHintLength) {
+            return label;
+        }
+
+        let newLabel = label.substring(0, Server.config.maxInlayHintLength);
+        if (label.length > Server.config.maxInlayHintLength) {
+            newLabel += '…';
+        }
+        return newLabel;
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
