@@ -181,6 +181,7 @@ impl Module {
     ) -> Option<Self> {
         let decl_id = match src.ast {
             ModuleSource::Module(ref module) => {
+                assert!(!module.has_semi());
                 let ast_id_map = db.ast_id_map(src.file_id);
                 let item_id = ast_id_map.ast_id(module).with_file_id(src.file_id);
                 Some(item_id)
