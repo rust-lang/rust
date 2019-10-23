@@ -1067,30 +1067,28 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         };
         debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
         for candidate in promotion_candidates {
-            match candidate {
+            let promoted_place = match candidate {
                 Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(box(_, Rvalue::Repeat(
-                        Operand::Move(place),
-                        _
-                    ))) = &self.body[bb].statements[stmt_idx].kind {
-                        if let Some(index) = place.as_local() {
-                            promoted_temps.insert(index);
-                        }
+                    match &self.body[bb].statements[stmt_idx].kind {
+                        StatementKind::Assign(box(_, Rvalue::Repeat(Operand::Move(place), _)))
+                            => place,
+                        _ => continue,
                     }
                 }
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(
-                        box(
-                            _,
-                            Rvalue::Ref(_, _, place)
-                        )
-                    ) = &self.body[bb].statements[stmt_idx].kind {
-                        if let Some(index) = place.as_local() {
-                            promoted_temps.insert(index);
-                        }
+                    match &self.body[bb].statements[stmt_idx].kind {
+                        StatementKind::Assign(box( _, Rvalue::Ref(_, _, place))) => place,
+                        _ => continue,
                     }
                 }
-                Candidate::Argument { .. } => {}
+                Candidate::Argument { .. } => continue,
+            };
+
+            match promoted_place.base {
+                PlaceBase::Local(local) if !promoted_place.is_indirect() => {
+                    promoted_temps.insert(local);
+                }
+                _ => {}
             }
         }
 
