@@ -6,7 +6,7 @@
 extern crate rustc;
 
 use rustc::lint::{LintArray, LintPass};
-use rustc::{declare_lint, declare_lint_pass, impl_lint_pass, lint_array};
+use rustc::{declare_lint, declare_lint_pass, impl_lint_pass};
 
 declare_lint! {
     pub TEST_LINT,
@@ -17,10 +17,6 @@ declare_lint! {
 struct Foo;
 
 impl LintPass for Foo { //~ERROR implementing `LintPass` by hand
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TEST_LINT)
-    }
-
     fn name(&self) -> &'static str {
         "Foo"
     }
@@ -31,10 +27,6 @@ macro_rules! custom_lint_pass_macro {
         struct Custom;
 
         impl LintPass for Custom { //~ERROR implementing `LintPass` by hand
-            fn get_lints(&self) -> LintArray {
-                lint_array!(TEST_LINT)
-            }
-
             fn name(&self) -> &'static str {
                 "Custom"
             }

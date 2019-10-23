@@ -45,7 +45,7 @@ use syntax_pos::Span;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, late_lint_mod, CheckLintNameResult,
-                        FutureIncompatibleInfo, BufferedEarlyLint,};
+                        BufferedEarlyLint,};
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -76,9 +76,35 @@ pub struct Lint {
 
     /// `true` if this lint is reported even inside expansions of external macros.
     pub report_in_external_macro: bool,
+
+    pub future_incompatible: Option<FutureIncompatibleInfo>,
+
+    pub is_plugin: bool,
+}
+
+/// Extra information for a future incompatibility lint.
+#[derive(Copy, Clone, Debug)]
+pub struct FutureIncompatibleInfo {
+    /// e.g., a URL for an issue/PR/RFC or error code
+    pub reference: &'static str,
+    /// If this is an edition fixing lint, the edition in which
+    /// this lint becomes obsolete
+    pub edition: Option<Edition>,
 }
 
 impl Lint {
+    pub const fn default_fields_for_macro() -> Self {
+        Lint {
+            name: "",
+            default_level: Level::Forbid,
+            desc: "",
+            edition_lint_opts: None,
+            is_plugin: false,
+            report_in_external_macro: false,
+            future_incompatible: None,
+        }
+    }
+
     /// Returns the `rust::lint::Lint` for a `syntax::early_buffered_lints::BufferedEarlyLintId`.
     pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
         match lint_id {
@@ -105,18 +131,21 @@ impl Lint {
 #[macro_export]
 macro_rules! declare_lint {
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
-        declare_lint!{$vis $NAME, $Level, $desc, false}
+        declare_lint!(
+            $vis $NAME, $Level, $desc,
+        );
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, report_in_external_macro: $rep: expr) => (
-        declare_lint!{$vis $NAME, $Level, $desc, $rep}
-    );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $(@future_incompatible = $fi:expr;)? $($v:ident),*) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
             desc: $desc,
             edition_lint_opts: None,
-            report_in_external_macro: $external,
+            is_plugin: false,
+            $($v: true,)*
+            $(future_incompatible: Some($fi),)*
+            ..$crate::lint::Lint::default_fields_for_macro()
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
@@ -128,6 +157,7 @@ macro_rules! declare_lint {
             desc: $desc,
             edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
             report_in_external_macro: false,
+            is_plugin: false,
         };
     );
 }
@@ -156,6 +186,8 @@ macro_rules! declare_tool_lint {
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
+            future_incompatible: None,
+            is_plugin: true,
         };
     );
 }
@@ -173,14 +205,6 @@ pub type LintArray = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
-
-    /// Gets descriptions of the lints this `LintPass` object can emit.
-    ///
-    /// N.B., there is no enforcement that the object only emits lints it registered.
-    /// And some `rustc` internal `LintPass`es register lints to be emitted by other
-    /// parts of the compiler. If you want enforced access restrictions for your
-    /// `Lint`, make it a private `static` item in its own module.
-    fn get_lints(&self) -> LintArray;
 }
 
 /// Implements `LintPass for $name` with the given list of `Lint` statics.
@@ -189,7 +213,9 @@ macro_rules! impl_lint_pass {
     ($name:ident => [$($lint:expr),* $(,)?]) => {
         impl LintPass for $name {
             fn name(&self) -> &'static str { stringify!($name) }
-            fn get_lints(&self) -> LintArray { $crate::lint_array!($($lint),*) }
+        }
+        impl $name {
+            pub fn get_lints() -> LintArray { $crate::lint_array!($($lint),*) }
         }
     };
 }
@@ -287,9 +313,6 @@ macro_rules! expand_lint_pass_methods {
 macro_rules! declare_late_lint_pass {
     ([], [$hir:tt], [$($methods:tt)*]) => (
         pub trait LateLintPass<'a, $hir>: LintPass {
-            fn fresh_late_pass(&self) -> LateLintPassObject {
-                panic!()
-            }
             expand_lint_pass_methods!(&LateContext<'a, $hir>, [$($methods)*]);
         }
     )
@@ -327,6 +350,12 @@ macro_rules! declare_combined_late_lint_pass {
                     $($passes: $constructor,)*
                 }
             }
+
+            $v fn get_lints() -> LintArray {
+                let mut lints = Vec::new();
+                $(lints.extend_from_slice(&$passes::get_lints());)*
+                lints
+            }
         }
 
         impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $name {
@@ -336,12 +365,6 @@ macro_rules! declare_combined_late_lint_pass {
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
-            }
-
-            fn get_lints(&self) -> LintArray {
-                let mut lints = Vec::new();
-                $(lints.extend_from_slice(&self.$passes.get_lints());)*
-                lints
             }
         }
     )
@@ -454,6 +477,12 @@ macro_rules! declare_combined_early_lint_pass {
                     $($passes: $constructor,)*
                 }
             }
+
+            $v fn get_lints() -> LintArray {
+                let mut lints = Vec::new();
+                $(lints.extend_from_slice(&$passes::get_lints());)*
+                lints
+            }
         }
 
         impl EarlyLintPass for $name {
@@ -463,12 +492,6 @@ macro_rules! declare_combined_early_lint_pass {
         impl LintPass for $name {
             fn name(&self) -> &'static str {
                 panic!()
-            }
-
-            fn get_lints(&self) -> LintArray {
-                let mut lints = Vec::new();
-                $(lints.extend_from_slice(&self.$passes.get_lints());)*
-                lints
             }
         }
     )
@@ -649,9 +672,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
-    let lints = sess.lint_store.borrow();
     let lint_id = LintId::of(lint);
-    let future_incompatible = lints.future_incompatible(lint_id);
+    let future_incompatible = lint.future_incompatible;
 
     // If this code originates in a foreign macro, aka something that this crate
     // did not itself author, then it's likely that there's nothing this crate
@@ -755,13 +777,15 @@ pub fn maybe_lint_level_root(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 
 fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
+    let store = &tcx.lint_store;
     let mut builder = LintLevelMapBuilder {
-        levels: LintLevelSets::builder(tcx.sess),
+        levels: LintLevelSets::builder(tcx.sess, &store),
         tcx: tcx,
+        store: store,
     };
     let krate = tcx.hir().krate();
 
-    let push = builder.levels.push(&krate.attrs);
+    let push = builder.levels.push(&krate.attrs, &store);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in &krate.exported_macros {
        builder.levels.register_id(macro_def.hir_id);
@@ -772,19 +796,20 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     tcx.arena.alloc(builder.levels.build_map())
 }
 
-struct LintLevelMapBuilder<'tcx> {
+struct LintLevelMapBuilder<'a, 'tcx> {
     levels: levels::LintLevelsBuilder<'tcx>,
     tcx: TyCtxt<'tcx>,
+    store: &'a LintStore,
 }
 
-impl LintLevelMapBuilder<'tcx> {
+impl LintLevelMapBuilder<'_, '_> {
     fn with_lint_attrs<F>(&mut self,
                           id: hir::HirId,
                           attrs: &[ast::Attribute],
                           f: F)
         where F: FnOnce(&mut Self)
     {
-        let push = self.levels.push(attrs);
+        let push = self.levels.push(attrs, self.store);
         if push.changed {
             self.levels.register_id(id);
         }
@@ -793,7 +818,7 @@ impl LintLevelMapBuilder<'tcx> {
     }
 }
 
-impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
+impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }

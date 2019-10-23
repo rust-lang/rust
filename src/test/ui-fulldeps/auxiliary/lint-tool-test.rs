@@ -8,7 +8,7 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_driver;
 
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass, LintId};
 use rustc_driver::plugin::Registry;
 use syntax::ast;
 declare_tool_lint!(pub clippy::TEST_LINT, Warn, "Warn about stuff");
@@ -40,6 +40,8 @@ impl EarlyLintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_early_lint_pass(box Pass);
-    reg.register_lint_group("clippy::group", Some("clippy_group"), vec![TEST_LINT, TEST_GROUP]);
+    reg.lint_store.register_lints(&[&TEST_RUSTC_TOOL_LINT, &TEST_LINT, &TEST_GROUP]);
+    reg.lint_store.register_early_pass(|| box Pass);
+    reg.lint_store.register_group(true, "clippy::group", Some("clippy_group"),
+        vec![LintId::of(&TEST_LINT), LintId::of(&TEST_GROUP)]);
 }

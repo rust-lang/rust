@@ -2,9 +2,13 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
 
 use rustc_incremental::DepGraphFuture;
+use rustc_data_structures::sync::Lrc;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
 use rustc::hir;
+use rustc::lint;
+use rustc::session::Session;
+use rustc::lint::LintStore;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
@@ -74,8 +78,8 @@ pub(crate) struct Queries {
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
-    register_plugins: Query<(ast::Crate, PluginInfo)>,
-    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>)>,
+    register_plugins: Query<(ast::Crate, PluginInfo, Lrc<LintStore>)>,
+    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(Steal<hir::map::Forest>, ExpansionResult)>,
     prepare_outputs: Query<OutputFilenames>,
@@ -106,14 +110,19 @@ impl Compiler {
         })
     }
 
-    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, PluginInfo)>> {
+    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, PluginInfo, Lrc<LintStore>)>> {
         self.queries.register_plugins.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
+            let empty: &(dyn Fn(&Session, &mut lint::LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
                 self.cstore(),
+                self.register_lints
+                    .as_ref()
+                    .map(|p| &**p)
+                    .unwrap_or_else(|| empty),
                 krate,
                 &crate_name,
             );
@@ -148,17 +157,20 @@ impl Compiler {
 
     pub fn expansion(
         &self
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>)>> {
+    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
         self.queries.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
-            let (krate, plugin_info) = self.register_plugins()?.take();
+            let (krate, plugin_info, lint_store) = self.register_plugins()?.take();
             passes::configure_and_expand(
                 self.sess.clone(),
+                lint_store.clone(),
                 self.cstore().clone(),
                 krate,
                 &crate_name,
                 plugin_info,
-            ).map(|(krate, resolver)| (krate, Steal::new(Rc::new(RefCell::new(resolver)))))
+            ).map(|(krate, resolver)| {
+                (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
+            })
         })
     }
 
@@ -185,9 +197,11 @@ impl Compiler {
             let peeked = expansion_result.peek();
             let krate = &peeked.0;
             let resolver = peeked.1.steal();
+            let lint_store = &peeked.2;
             let hir = Steal::new(resolver.borrow_mut().access(|resolver| {
                 passes::lower_to_hir(
                     self.session(),
+                    lint_store,
                     self.cstore(),
                     resolver,
                     &*self.dep_graph()?.peek(),
@@ -212,11 +226,13 @@ impl Compiler {
         self.queries.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
+            let lint_store = self.expansion()?.peek().2.clone();
             let hir = self.lower_to_hir()?;
             let hir = hir.peek();
             let (ref hir_forest, ref expansion) = *hir;
             Ok(passes::create_global_ctxt(
                 self,
+                lint_store,
                 hir_forest.steal(),
                 expansion.defs.steal(),
                 expansion.resolutions.steal(),
