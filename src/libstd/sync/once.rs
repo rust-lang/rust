@@ -355,25 +355,16 @@ impl Once {
         // performance difference really does not matter there, and
         // SeqCst minimizes the chances of something going wrong.
         let mut state_and_queue = self.state_and_queue.load(Ordering::SeqCst);
-
         loop {
             match state_and_queue {
-                // If we're complete, then there's nothing to do, we just
-                // jettison out as we shouldn't run the closure.
-                COMPLETE => return,
-
-                // If we're poisoned and we're not in a mode to ignore
-                // poisoning, then we panic here to propagate the poison.
+                COMPLETE => break,
                 POISONED if !ignore_poisoning => {
+                    // Panic to propagate the poison.
                     panic!("Once instance has previously been poisoned");
                 }
-
-                // Otherwise if we see a poisoned or otherwise incomplete state
-                // we will attempt to move ourselves into the RUNNING state. If
-                // we succeed, then the queue of waiters starts at null (all 0
-                // bits).
                 POISONED |
                 INCOMPLETE => {
+                    // Try to register this thread as the one RUNNING.
                     let old = self.state_and_queue.compare_and_swap(state_and_queue,
                                                                     RUNNING,
                                                                     Ordering::SeqCst);
@@ -391,15 +382,11 @@ impl Once {
                     // poisoned or not.
                     init(state_and_queue == POISONED);
                     waiter_queue.set_state_on_drop_to = COMPLETE;
-                    return
+                    break
                 }
-
-                // All other values we find should correspond to the RUNNING
-                // state with an encoded waiter list in the more significant
-                // bits. We attempt to enqueue ourselves by moving us to the
-                // head of the list and bail out if we ever see a state that's
-                // not RUNNING.
                 _ => {
+                    // All other values must be RUNNING with possibly a
+                    // pointer to the waiter queue in the more significant bits.
                     assert!(state_and_queue & STATE_MASK == RUNNING);
                     wait(&self.state_and_queue, state_and_queue);
                     state_and_queue = self.state_and_queue.load(Ordering::SeqCst);
