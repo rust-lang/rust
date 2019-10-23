@@ -20,8 +20,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ) = error.clone()
             {
                 let anon_reg_sup = self.tcx().is_suitable_region(sup_r)?;
+                let return_ty = self.tcx().return_type_impl_trait(anon_reg_sup.def_id);
                 if sub_r == &RegionKind::ReStatic &&
-                    self.tcx().return_type_impl_trait(anon_reg_sup.def_id).is_some()
+                    return_ty.is_some()
                 {
                     let sp = var_origin.span();
                     let return_sp = sub_origin.span();
@@ -53,16 +54,19 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         _ => "'_".to_owned(),
                     };
                     if let Ok(snippet) = self.tcx().sess.source_map().span_to_snippet(return_sp) {
-                        err.span_suggestion(
-                            return_sp,
-                            &format!(
-                                "you can add a constraint to the return type to make it last \
+                        // only apply this suggestion onto non-async fnunctions
+                        if !return_ty.unwrap().1 {
+                            err.span_suggestion(
+                                return_sp,
+                                &format!(
+                                    "you can add a constraint to the return type to make it last \
                                  less than `'static` and match {}",
-                                lifetime,
-                            ),
-                            format!("{} + {}", snippet, lifetime_name),
-                            Applicability::Unspecified,
-                        );
+                                 lifetime,
+                                ),
+                                format!("{} + {}", snippet, lifetime_name),
+                                Applicability::Unspecified,
+                            );
+                        }
                     }
                     err.emit();
                     return Some(ErrorReported);
