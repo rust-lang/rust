@@ -1552,14 +1552,14 @@ impl<'tcx> TyCtxt<'tcx> {
         return Some(FreeRegionInfo {
             def_id: suitable_region_binding_scope,
             boundregion: bound_region,
-            is_impl_item: is_impl_item,
+            is_impl_item,
         });
     }
 
     pub fn return_type_impl_trait(
         &self,
         scope_def_id: DefId,
-    ) -> Option<Ty<'tcx>> {
+    ) -> Option<(Ty<'tcx>, bool)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
         match self.hir().get(hir_id) {
@@ -1579,8 +1579,10 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
+                let is_async_fn =
+                    hir::IsAsync::Async == self.asyncness(scope_def_id);
                 if output.is_impl_trait() {
-                    Some(output)
+                    Some((output, is_async_fn))
                 } else {
                     None
                 }
