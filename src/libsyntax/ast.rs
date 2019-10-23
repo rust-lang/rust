@@ -2202,12 +2202,6 @@ pub struct Attribute {
     pub span: Span,
 }
 
-// Compatibility impl to avoid churn, consider removing.
-impl std::ops::Deref for Attribute {
-    type Target = AttrItem;
-    fn deref(&self) -> &Self::Target { &self.item }
-}
-
 /// `TraitRef`s appear in impls.
 ///
 /// Resolution maps each `TraitRef`'s `ref_id` to its defining trait; that's all

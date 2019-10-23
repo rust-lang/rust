@@ -287,7 +287,7 @@ pub fn parse_in_attr<'a, T>(
 ) -> PResult<'a, T> {
     let mut parser = Parser::new(
         sess,
-        attr.tokens.clone(),
+        attr.item.tokens.clone(),
         None,
         false,
         false,
@@ -403,8 +403,8 @@ fn prepend_attrs(
         let mut brackets = tokenstream::TokenStreamBuilder::new();
 
         // For simple paths, push the identifier directly
-        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
-            let ident = attr.path.segments[0].ident;
+        if attr.item.path.segments.len() == 1 && attr.item.path.segments[0].args.is_none() {
+            let ident = attr.item.path.segments[0].ident;
             let token = token::Ident(ident.name, ident.as_str().starts_with("r#"));
             brackets.push(tokenstream::TokenTree::token(token, ident.span));
 
@@ -415,7 +415,7 @@ fn prepend_attrs(
             brackets.push(stream);
         }
 
-        brackets.push(attr.tokens.clone());
+        brackets.push(attr.item.tokens.clone());
 
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good

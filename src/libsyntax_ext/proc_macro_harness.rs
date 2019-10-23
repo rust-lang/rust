@@ -249,9 +249,9 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let path_str = pprust::path_to_string(&attr.path);
-                    let msg = if attr.path.segments[0].ident.name ==
-                                 prev_attr.path.segments[0].ident.name {
+                    let path_str = pprust::path_to_string(&attr.item.path);
+                    let msg = if attr.item.path.segments[0].ident.name ==
+                                 prev_attr.item.path.segments[0].ident.name {
                         format!(
                             "only one `#[{}]` attribute is allowed on any given function",
                             path_str,
@@ -261,7 +261,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                             "`#[{}]` and `#[{}]` attributes cannot both be applied
                             to the same function",
                             path_str,
-                            pprust::path_to_string(&prev_attr.path),
+                            pprust::path_to_string(&prev_attr.item.path),
                         )
                     };
 
@@ -290,7 +290,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         if !is_fn {
             let msg = format!(
                 "the `#[{}]` attribute may only be used on bare functions",
-                pprust::path_to_string(&attr.path),
+                pprust::path_to_string(&attr.item.path),
             );
 
             self.handler.span_err(attr.span, &msg);
@@ -304,7 +304,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         if !self.is_proc_macro_crate {
             let msg = format!(
                 "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
-                pprust::path_to_string(&attr.path),
+                pprust::path_to_string(&attr.item.path),
             );
 
             self.handler.span_err(attr.span, &msg);

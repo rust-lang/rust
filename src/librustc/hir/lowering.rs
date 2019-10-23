@@ -999,8 +999,8 @@ impl<'a> LoweringContext<'a> {
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         Attribute {
             item: AttrItem {
-                path: attr.path.clone(),
-                tokens: self.lower_token_stream(attr.tokens.clone()),
+                path: attr.item.path.clone(),
+                tokens: self.lower_token_stream(attr.item.tokens.clone()),
             },
             id: attr.id,
             style: attr.style,

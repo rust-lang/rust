@@ -150,7 +150,7 @@ impl Attribute {
     ///
     /// To check the attribute name without marking it used, use the `path` field directly.
     pub fn check_name(&self, name: Symbol) -> bool {
-        let matches = self.path == name;
+        let matches = self.item.path == name;
         if matches {
             mark_used(self);
         }
@@ -159,8 +159,8 @@ impl Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if self.path.segments.len() == 1 {
-            Some(self.path.segments[0].ident)
+        if self.item.path.segments.len() == 1 {
+            Some(self.item.path.segments[0].ident)
         } else {
             None
         }
@@ -181,7 +181,7 @@ impl Attribute {
     }
 
     pub fn is_word(&self) -> bool {
-        self.tokens.is_empty()
+        self.item.tokens.is_empty()
     }
 
     pub fn is_meta_item_list(&self) -> bool {
@@ -282,7 +282,7 @@ impl Attribute {
 
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         Ok(MetaItem {
-            path: self.path.clone(),
+            path: self.item.path.clone(),
             kind: parse::parse_in_attr(sess, self, |p| p.parse_meta_item_kind())?,
             span: self.span,
         })

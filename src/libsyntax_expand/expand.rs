@@ -419,7 +419,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
 
                     let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
+                    item.visit_attrs(|attrs| attrs.retain(|a| a.item.path != sym::derive));
                     let mut helper_attrs = Vec::new();
                     let mut has_copy = false;
                     for ext in exts {
@@ -974,7 +974,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                        -> Option<ast::Attribute> {
         let attr = attrs.iter()
                         .position(|a| {
-                            if a.path == sym::derive {
+                            if a.item.path == sym::derive {
                                 *after_derive = true;
                             }
                             !attr::is_known(a) && !is_builtin_attr(a)
@@ -982,7 +982,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
             if !self.cx.ecfg.custom_inner_attributes() &&
-               attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
+               attr.style == ast::AttrStyle::Inner && attr.item.path != sym::test {
                 emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
                                  "non-builtin inner attributes are unstable");
@@ -1032,7 +1032,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             feature_gate::check_attribute(attr, self.cx.parse_sess, features);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
-            if attr.path == sym::derive {
+            if attr.item.path == sym::derive {
                 self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
