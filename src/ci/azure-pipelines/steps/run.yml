@@ -21,21 +21,8 @@ steps:
 - checkout: self
   fetchDepth: 2
 
-# Set the SKIP_JOB environment variable if this job is supposed to only run
-# when submodules are updated and they were not. The following time consuming
-# tasks will be skipped when the environment variable is present.
-- bash: |
-    set -e
-    # Submodules pseudo-files inside git have the 160000 permissions, so when
-    # those files are present in the diff a submodule was updated.
-    if git diff HEAD^ | grep "^index .* 160000" >/dev/null 2>&1; then
-        echo "Executing the job since submodules are updated"
-    else
-        echo "Not executing this job since no submodules were updated"
-        echo "##vso[task.setvariable variable=SKIP_JOB;]1"
-    fi
+- bash: src/ci/scripts/should-skip-this.sh
   displayName: Decide whether to run this job
-  condition: and(succeeded(), variables.CI_ONLY_WHEN_SUBMODULES_CHANGED)
 
 # Spawn a background process to collect CPU usage statistics which we'll upload
 # at the end of the build. See the comments in the script here for more
