@@ -139,12 +139,14 @@ struct Waiter {
     next: *const Waiter,
 }
 
-// Helper struct used to clean up after a closure call with a `Drop`
-// implementation to also run on panic.
-struct Finish<'a> {
-    panicked: bool,
-    me: &'a Once,
+// Head of a linked list of waiters.
+// Every node is a struct on the stack of a waiting thread.
+// Will wake up the waiters when it gets dropped, i.e. also on panic.
+struct WaiterQueue<'a> {
+    state_and_queue: &'a AtomicUsize,
+    set_state_on_drop_to: usize,
 }
+
 
 impl Once {
     /// Creates a new `Once` value.
@@ -379,18 +381,16 @@ impl Once {
                         state_and_queue = old;
                         continue
                     }
-
-                    // Run the initialization routine, letting it know if we're
-                    // poisoned or not. The `Finish` struct is then dropped, and
-                    // the `Drop` implementation here is responsible for waking
-                    // up other waiters both in the normal return and panicking
-                    // case.
-                    let mut complete = Finish {
-                        panicked: true,
-                        me: self,
+                    // `waiter_queue` will manage other waiting threads, and
+                    // wake them up on drop.
+                    let mut waiter_queue = WaiterQueue {
+                        state_and_queue: &self.state_and_queue,
+                        set_state_on_drop_to: POISONED,
                     };
+                    // Run the initialization function, letting it know if we're
+                    // poisoned or not.
                     init(state_and_queue == POISONED);
-                    complete.panicked = false;
+                    waiter_queue.set_state_on_drop_to = COMPLETE;
                     return
                 }
 
@@ -453,15 +453,13 @@ impl fmt::Debug for Once {
     }
 }
 
-impl Drop for Finish<'_> {
+impl Drop for WaiterQueue<'_> {
     fn drop(&mut self) {
-        // Swap out our state with however we finished. We should only ever see
-        // an old state which was RUNNING.
-        let state_and_queue = if self.panicked {
-            self.me.state_and_queue.swap(POISONED, Ordering::SeqCst)
-        } else {
-            self.me.state_and_queue.swap(COMPLETE, Ordering::SeqCst)
-        };
+        // Swap out our state with however we finished.
+        let state_and_queue = self.state_and_queue.swap(self.set_state_on_drop_to,
+                                                        Ordering::SeqCst);
+
+        // We should only ever see an old state which was RUNNING.
         assert_eq!(state_and_queue & STATE_MASK, RUNNING);
 
         // Decode the RUNNING to a list of waiters, then walk that entire list
