@@ -1,32 +1,50 @@
-//! FIXME: write short doc here
+//! Assist: `convert_to_guarded_return`
+//!
+//! Replace a large conditional with a guarded return.
+//!
+//! ```notrust
+//! fn <|>main() {
+//!     if cond {
+//!         foo();
+//!         bar();
+//!     }
+//! }
+//! ```
+//! ->
+//! ```notrust
+//! fn main() {
+//!     if !cond {
+//!         return;
+//!     }
+//!     foo();
+//!     bar();
+//! }
+//! ```
+
+use std::ops::RangeInclusive;
+
+use hir::db::HirDatabase;
+use ra_syntax::{
+    algo::replace_children,
+    ast::{self, edit::IndentLevel, make},
+    AstNode,
+    SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
+};
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
     AssistId,
 };
-use hir::db::HirDatabase;
-use ra_syntax::{
-    algo::replace_children,
-    ast::edit::IndentLevel,
-    ast::make,
-    ast::Block,
-    ast::ContinueExpr,
-    ast::IfExpr,
-    ast::ReturnExpr,
-    AstNode,
-    SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
-};
-use std::ops::RangeInclusive;
 
 pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let if_expr: IfExpr = ctx.node_at_offset()?;
+    let if_expr: ast::IfExpr = ctx.node_at_offset()?;
     let expr = if_expr.condition()?.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
     if if_expr.else_branch().is_some() {
         return None;
     }
 
-    let parent_block = if_expr.syntax().parent()?.ancestors().find_map(Block::cast)?;
+    let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::Block::cast)?;
 
     if parent_block.expr()? != if_expr.clone().into() {
         return None;
@@ -34,11 +52,11 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
 
     // check for early return and continue
     let first_in_then_block = then_block.syntax().first_child()?.clone();
-    if ReturnExpr::can_cast(first_in_then_block.kind())
-        || ContinueExpr::can_cast(first_in_then_block.kind())
+    if ast::ReturnExpr::can_cast(first_in_then_block.kind())
+        || ast::ContinueExpr::can_cast(first_in_then_block.kind())
         || first_in_then_block
             .children()
-            .any(|x| ReturnExpr::can_cast(x.kind()) || ContinueExpr::can_cast(x.kind()))
+            .any(|x| ast::ReturnExpr::can_cast(x.kind()) || ast::ContinueExpr::can_cast(x.kind()))
     {
         return None;
     }
@@ -86,7 +104,7 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
             &mut new_if_and_then_statements,
         );
         edit.target(if_expr.syntax().text_range());
-        edit.replace_ast(parent_block, Block::cast(new_block).unwrap());
+        edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
         edit.set_cursor(cursor_position);
     });
     ctx.build()
