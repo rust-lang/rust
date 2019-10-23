@@ -81,7 +81,7 @@ pub struct Once {
     // `state_and_queue` is actually an a pointer to a `Waiter` with extra state
     // bits, so we add the `PhantomData` appropriately.
     state_and_queue: AtomicUsize,
-    _marker: marker::PhantomData<*mut Waiter>,
+    _marker: marker::PhantomData<*const Waiter>,
 }
 
 // The `PhantomData` of a raw pointer removes these two auto traits, but we
@@ -134,9 +134,9 @@ const STATE_MASK: usize = 0x3;
 
 // Representation of a node in the linked list of waiters in the RUNNING state.
 struct Waiter {
-    thread: Option<Thread>,
+    thread: Thread,
     signaled: AtomicBool,
-    next: *mut Waiter,
+    next: *const Waiter,
 }
 
 // Helper struct used to clean up after a closure call with a `Drop`
@@ -404,11 +404,11 @@ impl Once {
                     // Create the node for our current thread that we are going to try to slot
                     // in at the head of the linked list.
                     let mut node = Waiter {
-                        thread: Some(thread::current()),
+                        thread: thread::current(),
                         signaled: AtomicBool::new(false),
-                        next: ptr::null_mut(),
+                        next: ptr::null(),
                     };
-                    let me = &mut node as *mut Waiter as usize;
+                    let me = &node as *const Waiter as usize;
                     assert!(me & STATE_MASK == 0); // We assume pointers have 2 free bits that
                                                    // we can use for state.
 
@@ -421,7 +421,7 @@ impl Once {
                             return; // No need anymore to enqueue ourselves.
                         }
 
-                        node.next = (old_head_and_status & !STATE_MASK) as *mut Waiter;
+                        node.next = (old_head_and_status & !STATE_MASK) as *const Waiter;
                         let old = self.state_and_queue.compare_and_swap(old_head_and_status,
                                                                         me | RUNNING,
                                                                         Ordering::Release);
@@ -469,10 +469,10 @@ impl Drop for Finish<'_> {
         // in the node it can be free'd! As a result we load the `thread` to
         // signal ahead of time and then unpark it after the store.
         unsafe {
-            let mut queue = (state_and_queue & !STATE_MASK) as *mut Waiter;
+            let mut queue = (state_and_queue & !STATE_MASK) as *const Waiter;
             while !queue.is_null() {
                 let next = (*queue).next;
-                let thread = (*queue).thread.take().unwrap();
+                let thread = (*queue).thread.clone();
                 (*queue).signaled.store(true, Ordering::SeqCst);
                 thread.unpark();
                 queue = next;
