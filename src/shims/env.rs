@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::env;
-use std::path::Path;
 
 use crate::stacked_borrows::Tag;
 use crate::*;
+
 use rustc::ty::layout::Size;
 use rustc_mir::interpret::{Memory, Pointer};
 
@@ -127,18 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
-                // It is not clear what happens with non-utf8 paths here
-                let mut bytes = cwd.display().to_string().into_bytes();
-                // If `size` is smaller or equal than the `bytes.len()`, writing `bytes` plus the
-                // required null terminator to memory using the `buf` pointer would cause an
-                // overflow. The desired behavior in this case is to return null.
-                if (bytes.len() as u64) < size {
-                    // We add a `/0` terminator
-                    bytes.push(0);
-                    // This is ok because the buffer was strictly larger than `bytes`, so after
-                    // adding the null terminator, the buffer size is larger or equal to
-                    // `bytes.len()`, meaning that `bytes` actually fit inside tbe buffer.
-                    this.memory.write_bytes(buf, bytes.iter().copied())?;
+                if this.write_os_str_to_c_string(&OsString::from(cwd), buf, size)? {
                     return Ok(buf);
                 }
                 let erange = this.eval_libc("ERANGE")?;
@@ -154,14 +144,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("chdir")?;
 
-        let path_bytes = this
-            .memory
-            .read_c_str(this.read_scalar(path_op)?.not_undef()?)?;
-
-        let path = Path::new(
-            std::str::from_utf8(path_bytes)
-                .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", path_bytes))?,
-        );
+        let path = this.read_os_string_from_c_string(this.read_scalar(path_op)?.not_undef()?)?;
 
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),
