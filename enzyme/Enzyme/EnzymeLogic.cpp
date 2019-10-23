@@ -1960,12 +1960,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         llvm::errs() << "Forcibly loading cached reads " << *op << "\n";
         IRBuilder<> BuilderZ(op->getNextNode());
         inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst));
-        llvm::errs() << "before cast inst :" << *inst << "\n";
-        llvm::errs() << "Cast successful " << "\n";
-        //llvm::errs() << "Forcibly loading cached reads after addmalloc " << *op << "\n";
-        // NOTE(TFK): changes here.
         if (inst != op) {
-          op = nullptr;//cast<LoadInst>(inst);
+          // Set to nullptr since op should never be used after invalidated through addMalloc.
+          op = nullptr;
           gutils->nonconstant_values.insert(inst);
           gutils->nonconstant.insert(inst);
           gutils->originalInstructions.insert(inst);
