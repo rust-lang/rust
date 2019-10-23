@@ -61,6 +61,8 @@ enabling or disabling a feature.
 To see the valid options and an example of use, run `rustc --print
 target-features`.
 
+Using this flag is unsafe and might result in [undefined runtime behavior](../targets/known-issues.md).
+
 ## passes
 
 This flag can be used to add extra LLVM passes to the compilation.

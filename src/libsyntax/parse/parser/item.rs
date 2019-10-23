@@ -10,7 +10,6 @@ use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, 
 use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
 use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, MethodSig, SelfKind, Param};
 use crate::parse::token;
-use crate::parse::parser::maybe_append;
 use crate::tokenstream::{TokenTree, TokenStream};
 use crate::symbol::{kw, sym};
 use crate::source_map::{self, respan, Span};
@@ -416,8 +415,15 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<P<Item>>> {
         let (ident, item, extra_attrs) = info;
         let span = lo.to(self.prev_span);
-        let attrs = maybe_append(attrs, extra_attrs);
+        let attrs = Self::maybe_append(attrs, extra_attrs);
         Ok(Some(self.mk_item(span, ident, item, vis, attrs)))
+    }
+
+    fn maybe_append<T>(mut lhs: Vec<T>, mut rhs: Option<Vec<T>>) -> Vec<T> {
+        if let Some(ref mut rhs) = rhs {
+            lhs.append(rhs);
+        }
+        lhs
     }
 
     /// This is the fall-through for parsing items.
