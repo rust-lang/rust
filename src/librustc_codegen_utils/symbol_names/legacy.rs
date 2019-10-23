@@ -335,7 +335,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             self.path.finalize_pending_component();
         }
 
-        self.write_str(&disambiguated_data.data.as_interned_str().as_str())?;
+        self.write_str(&disambiguated_data.data.as_symbol().as_str())?;
         Ok(self)
     }
     fn path_generic_args(

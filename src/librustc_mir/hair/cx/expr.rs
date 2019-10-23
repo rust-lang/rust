@@ -908,7 +908,7 @@ fn convert_path_expr<'a, 'tcx>(
             let generics = cx.tcx.generics_of(item_def_id);
             let local_def_id = cx.tcx.hir().local_def_id(hir_id);
             let index = generics.param_def_id_to_index[&local_def_id];
-            let name = cx.tcx.hir().name(hir_id).as_interned_str();
+            let name = cx.tcx.hir().name(hir_id);
             let val = ConstValue::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(

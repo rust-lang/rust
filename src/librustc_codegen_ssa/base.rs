@@ -526,7 +526,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // unnecessarily.
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in &codegen_units {
-            tcx.codegen_unit(cgu.name().clone());
+            tcx.codegen_unit(cgu.name());
         }
     }
 
@@ -614,7 +614,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         match cgu_reuse {
             CguReuse::No => {
                 let start_time = Instant::now();
-                backend.compile_codegen_unit(tcx, *cgu.name(), &ongoing_codegen.coordinator_send);
+                backend.compile_codegen_unit(tcx, cgu.name(), &ongoing_codegen.coordinator_send);
                 total_codegen_time += start_time.elapsed();
                 false
             }

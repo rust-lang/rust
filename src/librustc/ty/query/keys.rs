@@ -9,7 +9,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::mir;
 
 use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
@@ -188,7 +188,7 @@ impl<'tcx> Key for traits::Environment<'tcx> {
     }
 }
 
-impl Key for InternedString {
+impl Key for Symbol {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

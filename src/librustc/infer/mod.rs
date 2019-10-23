@@ -32,7 +32,7 @@ use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 use syntax_pos::Span;
 
 use self::combine::CombineFields;
@@ -392,7 +392,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     /// Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, InternedString),
+    EarlyBoundRegion(Span, Symbol),
 
     /// Region variables created for bound regions
     /// in a function or method that is called

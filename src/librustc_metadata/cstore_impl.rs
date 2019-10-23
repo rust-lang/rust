@@ -460,7 +460,7 @@ impl cstore::CStore {
 
         LoadedMacro::MacroDef(ast::Item {
             // FIXME: cross-crate hygiene
-            ident: ast::Ident::with_dummy_span(name.as_symbol()),
+            ident: ast::Ident::with_dummy_span(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),

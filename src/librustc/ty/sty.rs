@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::symbol::{kw, InternedString};
+use syntax::symbol::{kw, Symbol};
 
 use self::InferTy::*;
 use self::TyKind::*;
@@ -55,7 +55,7 @@ pub enum BoundRegion {
     ///
     /// The `DefId` is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, InternedString),
+    BrNamed(DefId, Symbol),
 
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
@@ -1121,16 +1121,16 @@ pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
          Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ParamTy {
     pub index: u32,
-    pub name: InternedString,
+    pub name: Symbol,
 }
 
 impl<'tcx> ParamTy {
-    pub fn new(index: u32, name: InternedString) -> ParamTy {
+    pub fn new(index: u32, name: Symbol) -> ParamTy {
         ParamTy { index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, kw::SelfUpper.as_interned_str())
+        ParamTy::new(0, kw::SelfUpper)
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
@@ -1146,11 +1146,11 @@ impl<'tcx> ParamTy {
          Eq, PartialEq, Ord, PartialOrd, HashStable)]
 pub struct ParamConst {
     pub index: u32,
-    pub name: InternedString,
+    pub name: Symbol,
 }
 
 impl<'tcx> ParamConst {
-    pub fn new(index: u32, name: InternedString) -> ParamConst {
+    pub fn new(index: u32, name: Symbol) -> ParamConst {
         ParamConst { index, name }
     }
 
@@ -1323,7 +1323,7 @@ impl<'tcx> rustc_serialize::UseSpecializedDecodable for Region<'tcx> {}
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
-    pub name: InternedString,
+    pub name: Symbol,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -1387,7 +1387,7 @@ pub struct BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum BoundTyKind {
     Anon,
-    Param(InternedString),
+    Param(Symbol),
 }
 
 impl_stable_hash_for!(struct BoundTy { var, kind });
