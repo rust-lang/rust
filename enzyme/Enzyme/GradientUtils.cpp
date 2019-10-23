@@ -534,7 +534,6 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
       gutils.erase(PN);
     }
 
-    #if 1
     if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) && cast<BranchInst>(latches[0]->getTerminator())->isConditional())
     for (auto use : CanonicalIV->users()) {
       if (auto cmp = dyn_cast<ICmpInst>(use)) {
@@ -671,7 +670,6 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
       }
 
     }
-    #endif
 }
 
 bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopContext> &loopContexts, LoopInfo &LI,ScalarEvolution &SE,DominatorTree &DT, GradientUtils &gutils) {
