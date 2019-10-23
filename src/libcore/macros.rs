@@ -252,7 +252,7 @@ macro_rules! debug_assert_ne {
 /// assert!(matches!(bar, Some(x) if x > 2));
 /// ```
 #[macro_export]
-#[unstable(feature = "matches_macro", issue = "0")]
+#[unstable(feature = "matches_macro", issue = "65721")]
 macro_rules! matches {
     ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )?) => {
         match $expression {
