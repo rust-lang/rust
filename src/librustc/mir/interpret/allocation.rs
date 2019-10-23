@@ -353,11 +353,14 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        src: impl IntoIterator<Item=u8, IntoIter: iter::ExactSizeIterator>,
+        src: impl IntoIterator<Item=u8>,
     ) -> InterpResult<'tcx>
     {
         let mut src = src.into_iter();
-        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
+        let (lower, upper) = src.size_hint();
+        let len = upper.expect("can only write bounded iterators");
+        assert_eq!(lower, len, "can only write iterators with a precise length");
+        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(len as u64))?;
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
         for dest in bytes {

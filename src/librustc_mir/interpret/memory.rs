@@ -7,7 +7,7 @@
 //! short-circuiting the empty case!
 
 use std::collections::VecDeque;
-use std::{ptr, iter};
+use std::ptr;
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
@@ -791,11 +791,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn write_bytes(
         &mut self,
         ptr: Scalar<M::PointerTag>,
-        src: impl IntoIterator<Item=u8, IntoIter: iter::ExactSizeIterator>,
+        src: impl IntoIterator<Item=u8>,
     ) -> InterpResult<'tcx>
     {
         let src = src.into_iter();
-        let size = Size::from_bytes(src.len() as u64);
+        let size = Size::from_bytes(src.size_hint().0 as u64);
+        // `write_bytes` checks that this lower bound matches the upper bound matches reality.
         let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
