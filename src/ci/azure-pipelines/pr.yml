@@ -22,14 +22,6 @@ jobs:
         IMAGE: x86_64-gnu-llvm-6.0
       mingw-check:
         IMAGE: mingw-check
-
-- job: LinuxTools
-  timeoutInMinutes: 600
-  pool:
-    vmImage: ubuntu-16.04
-  steps:
-    - template: steps/run.yml
-      parameters:
-        only_on_updated_submodules: 'yes'
-  variables:
-    IMAGE: x86_64-gnu-tools
+      x86_64-gnu-tools:
+        IMAGE: x86_64-gnu-tools
+        CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
