@@ -53,11 +53,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         }) => name.to_string(),
                         _ => "'_".to_owned(),
                     };
-                    if let Ok(snippet) = self.tcx().sess.source_map().span_to_snippet(return_sp) {
-                        // only apply this suggestion onto non-async fnunctions
-                        if !return_ty.unwrap().1 {
+                    let fn_return_span = return_ty.unwrap().1;
+                    if let Ok(snippet) =
+                        self.tcx().sess.source_map().span_to_snippet(fn_return_span) {
+                        // only apply this suggestion onto functions with
+                        // explicit non-desugar'able return.
+                        if fn_return_span.desugaring_kind().is_none() {
                             err.span_suggestion(
-                                return_sp,
+                                fn_return_span,
                                 &format!(
                                     "you can add a constraint to the return type to make it last \
                                  less than `'static` and match {}",
