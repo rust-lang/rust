@@ -12,6 +12,16 @@ fn main() {
     for _v in &vec {
         _index += 1
     }
+
+    let mut _index = 0;
+    for _v in &mut vec {
+        _index += 1;
+    }
+
+    let mut _index = 0;
+    for _v in vec {
+        _index += 1;
+    }
 }
 
 mod issue_1219 {
