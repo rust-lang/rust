@@ -354,7 +354,7 @@ impl Once {
         // SeqCst minimizes the chances of something going wrong.
         let mut state_and_queue = self.state_and_queue.load(Ordering::SeqCst);
 
-        'outer: loop {
+        loop {
             match state_and_queue {
                 // If we're complete, then there's nothing to do, we just
                 // jettison out as we shouldn't run the closure.
@@ -401,33 +401,45 @@ impl Once {
                 // not RUNNING.
                 _ => {
                     assert!(state_and_queue & STATE_MASK == RUNNING);
+                    // Create the node for our current thread that we are going to try to slot
+                    // in at the head of the linked list.
                     let mut node = Waiter {
                         thread: Some(thread::current()),
                         signaled: AtomicBool::new(false),
                         next: ptr::null_mut(),
                     };
                     let me = &mut node as *mut Waiter as usize;
-                    assert!(me & STATE_MASK == 0);
+                    assert!(me & STATE_MASK == 0); // We assume pointers have 2 free bits that
+                                                   // we can use for state.
 
-                    while state_and_queue & STATE_MASK == RUNNING {
-                        node.next = (state_and_queue & !STATE_MASK) as *mut Waiter;
-                        let old = self.state_and_queue.compare_and_swap(state_and_queue,
+                    // Try to slide in the node at the head of the linked list.
+                    // Run in a loop where we make sure the status is still RUNNING, and that
+                    // another thread did not just replace the head of the linked list.
+                    let mut old_head_and_status = state_and_queue;
+                    loop {
+                        if old_head_and_status & STATE_MASK != RUNNING {
+                            return; // No need anymore to enqueue ourselves.
+                        }
+
+                        node.next = (old_head_and_status & !STATE_MASK) as *mut Waiter;
+                        let old = self.state_and_queue.compare_and_swap(old_head_and_status,
                                                                         me | RUNNING,
-                                                                        Ordering::SeqCst);
-                        if old != state_and_queue {
-                            state_and_queue = old;
-                            continue
+                                                                        Ordering::Release);
+                        if old == old_head_and_status {
+                            break; // Success!
                         }
-
-                        // Once we've enqueued ourselves, wait in a loop.
-                        // Afterwards reload the state and continue with what we
-                        // were doing from before.
-                        while !node.signaled.load(Ordering::SeqCst) {
-                            thread::park();
-                        }
-                        state_and_queue = self.state_and_queue.load(Ordering::SeqCst);
-                        continue 'outer
+                        old_head_and_status = old;
                     }
+
+                    // We have enqueued ourselves, now lets wait.
+                    // It is important not to return before being signaled, otherwise we would
+                    // drop our `Waiter` node and leave a hole in the linked list (and a
+                    // dangling reference). Guard against spurious wakeups by reparking
+                    // ourselves until we are signaled.
+                    while !node.signaled.load(Ordering::SeqCst) {
+                        thread::park();
+                    }
+                    state_and_queue = self.state_and_queue.load(Ordering::SeqCst);
                 }
             }
         }
