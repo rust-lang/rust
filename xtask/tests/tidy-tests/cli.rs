@@ -14,7 +14,7 @@ fn generated_grammar_is_fresh() {
 #[test]
 fn generated_tests_are_fresh() {
     if let Err(error) = codegen::generate_parser_tests(Mode::Verify) {
-        panic!("{}. Please update tests by running `cargo xtask gen-tests`", error);
+        panic!("{}. Please update tests by running `cargo xtask codegen`", error);
     }
 }
 

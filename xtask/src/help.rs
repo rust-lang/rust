@@ -13,7 +13,6 @@ SUBCOMMANDS:
     format-hook
     fuzz-tests
     codegen
-    gen-tests
     install
     lint";
 

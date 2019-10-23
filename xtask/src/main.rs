@@ -57,19 +57,13 @@ fn main() -> Result<()> {
             };
             install(opts)?
         }
-        "gen-tests" => {
-            if matches.contains(["-h", "--help"]) {
-                help::print_no_param_subcommand_help(&subcommand);
-                return Ok(());
-            }
-            codegen::generate_parser_tests(Mode::Overwrite)?
-        }
         "codegen" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
             }
-            codegen::generate_syntax(Mode::Overwrite)?
+            codegen::generate_syntax(Mode::Overwrite)?;
+            codegen::generate_parser_tests(Mode::Overwrite)?;
         }
         "format" => {
             if matches.contains(["-h", "--help"]) {
