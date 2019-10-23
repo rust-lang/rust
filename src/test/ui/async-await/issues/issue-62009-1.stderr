@@ -40,4 +40,5 @@ LL |     F: Future
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0728.
+For more information about an error, try `rustc --explain E0277`.
