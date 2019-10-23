@@ -1333,10 +1333,10 @@ impl<T> Vec<T> {
 
     /// Splits the collection into two at the given index.
     ///
-    /// Returns a newly allocated `Self`. `self` contains elements `[0, at)`,
-    /// and the returned `Self` contains elements `[at, len)`.
-    ///
-    /// Note that the capacity of `self` does not change.
+    /// Copies the range from `[at, len)` to a newly allocated `Self`
+    /// and returns the result. The original `Self` will contain the
+    /// range from `[0, at)`. Note that the capacity of `self` does
+    /// not change.
     ///
     /// # Panics
     ///
