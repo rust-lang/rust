@@ -556,9 +556,9 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.3.24"
+version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "676a74b493d50ac33cacd83fd536597e6b52c0b46b9856f7b9c809d82fef4ac0"
+checksum = "f75b10a18fb53549fdd090846eb01c7f8593914494d1faabc4d3005c436e417a"
 dependencies = [
  "diff",
  "filetime",
