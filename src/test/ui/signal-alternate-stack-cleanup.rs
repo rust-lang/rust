@@ -7,7 +7,7 @@
 // ignore-wasm32-bare no libc
 // ignore-windows
 // ignore-sgx no libc
-// ignore-vxworks no SIGWINCH is not avaliable in user space
+// ignore-vxworks no SIGWINCH in user space
 
 #![feature(rustc_private)]
 extern crate libc;
