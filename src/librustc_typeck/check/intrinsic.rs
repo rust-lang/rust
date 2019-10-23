@@ -7,7 +7,7 @@ use rustc::ty::subst::Subst;
 use crate::require_same_types;
 
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 
 use rustc::hir;
 
@@ -80,7 +80,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
 /// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
-    let param = |n| tcx.mk_ty_param(n, InternedString::intern(&format!("P{}", n)));
+    let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
 
     let mk_va_list_ty = |mutbl| {
@@ -387,7 +387,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     let param = |n| {
-        let name = InternedString::intern(&format!("P{}", n));
+        let name = Symbol::intern(&format!("P{}", n));
         tcx.mk_ty_param(n, name)
     };
 

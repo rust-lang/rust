@@ -221,7 +221,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {
                 output.push_str("::");
-                output.push_str(&path_element.data.as_interned_str().as_str());
+                output.push_str(&path_element.data.as_symbol().as_str());
             }
         } else {
             output.push_str(&tcx.item_name(def_id).as_str());

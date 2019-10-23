@@ -59,7 +59,7 @@ use crate::ich::{Fingerprint, StableHashingContext};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 use crate::traits;
 use crate::traits::query::{
     CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -426,7 +426,7 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [anon] TraitSelect,
 
-    [] CompileCodegenUnit(InternedString),
+    [] CompileCodegenUnit(Symbol),
 
     [eval_always] Analysis(CrateNum),
 ]);

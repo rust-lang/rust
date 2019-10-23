@@ -1,6 +1,6 @@
 use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use crate::hir::HirId;
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 use syntax::attr::InlineAttr;
 use syntax::source_map::Span;
 use crate::ty::{Instance, InstanceDef, TyCtxt, SymbolName, subst::InternalSubsts};
@@ -80,7 +80,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id(hir_id);
                 SymbolName {
-                    name: InternedString::intern(&format!("global_asm_{:?}", def_id))
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id))
                 }
             }
         }
@@ -246,7 +246,7 @@ pub struct CodegenUnit<'tcx> {
     /// name be unique amongst **all** crates. Therefore, it should
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
-    name: InternedString,
+    name: Symbol,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
 }
@@ -294,7 +294,7 @@ impl_stable_hash_for!(enum self::Visibility {
 });
 
 impl<'tcx> CodegenUnit<'tcx> {
-    pub fn new(name: InternedString) -> CodegenUnit<'tcx> {
+    pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
         CodegenUnit {
             name: name,
             items: Default::default(),
@@ -302,11 +302,11 @@ impl<'tcx> CodegenUnit<'tcx> {
         }
     }
 
-    pub fn name(&self) -> &InternedString {
-        &self.name
+    pub fn name(&self) -> Symbol {
+        self.name
     }
 
-    pub fn set_name(&mut self, name: InternedString) {
+    pub fn set_name(&mut self, name: Symbol) {
         self.name = name;
     }
 
@@ -474,7 +474,7 @@ impl CodegenUnitNameBuilder<'tcx> {
                                    cnum: CrateNum,
                                    components: I,
                                    special_suffix: Option<S>)
-                                   -> InternedString
+                                   -> Symbol
         where I: IntoIterator<Item=C>,
               C: fmt::Display,
               S: fmt::Display,
@@ -487,7 +487,7 @@ impl CodegenUnitNameBuilder<'tcx> {
             cgu_name
         } else {
             let cgu_name = &cgu_name.as_str()[..];
-            InternedString::intern(&CodegenUnit::mangle_name(cgu_name))
+            Symbol::intern(&CodegenUnit::mangle_name(cgu_name))
         }
     }
 
@@ -497,7 +497,7 @@ impl CodegenUnitNameBuilder<'tcx> {
                                              cnum: CrateNum,
                                              components: I,
                                              special_suffix: Option<S>)
-                                             -> InternedString
+                                             -> Symbol
         where I: IntoIterator<Item=C>,
               C: fmt::Display,
               S: fmt::Display,
@@ -543,6 +543,6 @@ impl CodegenUnitNameBuilder<'tcx> {
             write!(cgu_name, ".{}", special_suffix).unwrap();
         }
 
-        InternedString::intern(&cgu_name[..])
+        Symbol::intern(&cgu_name[..])
     }
 }

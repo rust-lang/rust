@@ -19,7 +19,7 @@ use crate::ty::subst::{Subst, InternalSubsts};
 use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self};
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -560,7 +560,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // are implemented
         let unsized_self_ty: Ty<'tcx> = self.mk_ty_param(
             ::std::u32::MAX,
-            InternedString::intern("RustaceansAreAwesome"),
+            Symbol::intern("RustaceansAreAwesome"),
         );
 
         // `Receiver[Self => U]`
