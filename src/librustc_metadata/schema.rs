@@ -238,11 +238,14 @@ crate struct LazyPerDefTables<'tcx> {
     pub deprecation: Lazy!(PerDefTable<Lazy<attr::Deprecation>>),
 
     pub ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
+    pub fn_sig: Lazy!(PerDefTable<Lazy!(ty::PolyFnSig<'tcx>)>),
+    pub impl_trait_ref: Lazy!(PerDefTable<Lazy!(ty::TraitRef<'tcx>)>),
     pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
     pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
     pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
     pub predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
     pub predicates_defined_on: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    pub super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 
     pub mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),
     pub promoted_mir: Lazy!(PerDefTable<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
@@ -264,22 +267,22 @@ crate enum EntryKind<'tcx> {
     OpaqueTy,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy!(VariantData<'tcx>)),
-    Struct(Lazy!(VariantData<'tcx>), ReprOptions),
-    Union(Lazy!(VariantData<'tcx>), ReprOptions),
-    Fn(Lazy!(FnData<'tcx>)),
-    ForeignFn(Lazy!(FnData<'tcx>)),
+    Variant(Lazy<VariantData>),
+    Struct(Lazy<VariantData>, ReprOptions),
+    Union(Lazy<VariantData>, ReprOptions),
+    Fn(Lazy<FnData>),
+    ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
-    Closure(Lazy!(ClosureData<'tcx>)),
+    Closure,
     Generator(Lazy!(GeneratorData<'tcx>)),
-    Trait(Lazy!(TraitData<'tcx>)),
-    Impl(Lazy!(ImplData<'tcx>)),
-    Method(Lazy!(MethodData<'tcx>)),
+    Trait(Lazy<TraitData>),
+    Impl(Lazy<ImplData>),
+    Method(Lazy<MethodData>),
     AssocType(AssocContainer),
     AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
-    TraitAlias(Lazy!(TraitAliasData<'tcx>)),
+    TraitAlias,
 }
 
 /// Additional data for EntryKind::Const and EntryKind::AssocConst
@@ -305,47 +308,37 @@ crate struct MacroDef {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct FnData<'tcx> {
+crate struct FnData {
     pub asyncness: hir::IsAsync,
     pub constness: hir::Constness,
     pub param_names: Lazy<[ast::Name]>,
-    pub sig: Lazy!(ty::PolyFnSig<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct VariantData<'tcx> {
+crate struct VariantData {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     pub ctor: Option<DefIndex>,
-    /// If this is a tuple struct or variant
-    /// ctor, this is its "function" signature.
-    pub ctor_sig: Option<Lazy!(ty::PolyFnSig<'tcx>)>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct TraitData<'tcx> {
+crate struct TraitData {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
     pub has_auto_impl: bool,
     pub is_marker: bool,
-    pub super_predicates: Lazy!(ty::GenericPredicates<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct TraitAliasData<'tcx> {
-    pub super_predicates: Lazy!(ty::GenericPredicates<'tcx>),
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct ImplData<'tcx> {
+crate struct ImplData {
     pub polarity: ty::ImplPolarity,
     pub defaultness: hir::Defaultness,
     pub parent_impl: Option<DefId>,
 
     /// This is `Some` only for impls of `CoerceUnsized`.
+    // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     pub coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
-    pub trait_ref: Option<Lazy!(ty::TraitRef<'tcx>)>,
 }
 
 
@@ -388,15 +381,10 @@ impl AssocContainer {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct MethodData<'tcx> {
-    pub fn_data: FnData<'tcx>,
+crate struct MethodData {
+    pub fn_data: FnData,
     pub container: AssocContainer,
     pub has_self: bool,
-}
-
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct ClosureData<'tcx> {
-    pub sig: Lazy!(ty::PolyFnSig<'tcx>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

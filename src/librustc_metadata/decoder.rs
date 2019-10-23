@@ -448,7 +448,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Mod(_) => DefKind::Mod,
             EntryKind::Variant(_) => DefKind::Variant,
             EntryKind::Trait(_) => DefKind::Trait,
-            EntryKind::TraitAlias(_) => DefKind::TraitAlias,
+            EntryKind::TraitAlias => DefKind::TraitAlias,
             EntryKind::Enum(..) => DefKind::Enum,
             EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             EntryKind::ForeignType => DefKind::ForeignTy,
@@ -458,7 +458,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Impl(_) |
             EntryKind::Field |
             EntryKind::Generator(_) |
-            EntryKind::Closure(_) => return None,
+            EntryKind::Closure => return None,
         })
     }
 }
@@ -575,7 +575,7 @@ impl<'a, 'tcx> CrateMetadata {
                                   data.is_marker,
                                   self.def_path_table.def_path_hash(item_id))
             },
-            EntryKind::TraitAlias(_) => {
+            EntryKind::TraitAlias => {
                 ty::TraitDef::new(self.local_def_id(item_id),
                                   hir::Unsafety::Normal,
                                   false,
@@ -680,13 +680,7 @@ impl<'a, 'tcx> CrateMetadata {
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
-        let super_predicates = match self.kind(item_id) {
-            EntryKind::Trait(data) => data.decode(self).super_predicates,
-            EntryKind::TraitAlias(data) => data.decode(self).super_predicates,
-            _ => bug!("def-index does not refer to trait or trait alias"),
-        };
-
-        super_predicates.decode((self, tcx))
+        self.root.per_def.super_predicates.get(self, item_id).unwrap().decode((self, tcx))
     }
 
     crate fn get_generics(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
@@ -717,7 +711,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    fn get_impl_data(&self, id: DefIndex) -> ImplData<'tcx> {
+    fn get_impl_data(&self, id: DefIndex) -> ImplData {
         match self.kind(id) {
             EntryKind::Impl(data) => data.decode(self),
             _ => bug!(),
@@ -744,7 +738,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     crate fn get_impl_trait(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Option<ty::TraitRef<'tcx>> {
-        self.get_impl_data(id).trait_ref.map(|tr| tr.decode((self, tcx)))
+        self.root.per_def.impl_trait_ref.get(self, id).map(|tr| tr.decode((self, tcx)))
     }
 
     /// Iterates over all the stability attributes in the given crate.
@@ -1118,7 +1112,7 @@ impl<'a, 'tcx> CrateMetadata {
         def_key.parent.and_then(|parent_index| {
             match self.kind(parent_index) {
                 EntryKind::Trait(_) |
-                EntryKind::TraitAlias(_) => Some(self.local_def_id(parent_index)),
+                EntryKind::TraitAlias => Some(self.local_def_id(parent_index)),
                 _ => None,
             }
         })
@@ -1245,16 +1239,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     crate fn fn_sig(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let sig = match self.kind(id) {
-            EntryKind::Fn(data) |
-            EntryKind::ForeignFn(data) => data.decode(self).sig,
-            EntryKind::Method(data) => data.decode(self).fn_data.sig,
-            EntryKind::Variant(data) |
-            EntryKind::Struct(data, _) => data.decode(self).ctor_sig.unwrap(),
-            EntryKind::Closure(data) => data.decode(self).sig,
-            _ => bug!(),
-        };
-        sig.decode((self, tcx))
+        self.root.per_def.fn_sig.get(self, id).unwrap().decode((self, tcx))
     }
 
     #[inline]
