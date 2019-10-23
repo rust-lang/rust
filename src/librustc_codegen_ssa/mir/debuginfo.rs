@@ -2,12 +2,11 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
-use rustc::ty::{self, UpvarSubsts};
-use rustc::ty::layout::{HasTyCtxt, Size};
-use rustc_target::abi::{Variants, VariantIdx};
+use rustc::ty::{self, TyCtxt};
+use rustc::ty::layout::{LayoutOf, Size, VariantIdx};
 use crate::traits::*;
 
-use syntax_pos::{DUMMY_SP, BytePos, Span};
+use syntax_pos::{BytePos, Span, Symbol};
 use syntax::symbol::kw;
 
 use super::{FunctionCx, LocalRef};
@@ -19,6 +18,7 @@ pub struct FunctionDebugContext<D> {
     pub defining_crate: CrateNum,
 }
 
+#[derive(Copy, Clone)]
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
@@ -104,37 +104,49 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) use `llvm.dbg.value` (which would work for operands),
     // not just `llvm.dbg.declare` (which requires `alloca`).
     pub fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
-        let upvar_debuginfo = &self.mir.__upvar_debuginfo_codegen_only_do_not_use;
-
         // FIXME(eddyb) maybe name the return place as `_0` or `return`?
         if local == mir::RETURN_PLACE {
             return;
         }
 
-        let decl = &self.mir.local_decls[local];
-        let (name, kind) = if self.mir.local_kind(local) == mir::LocalKind::Arg {
+        let vars = match &self.per_local_var_debug_info {
+            Some(per_local) => &per_local[local],
+            None => return,
+        };
+        let whole_local_var = vars.iter().find(|var| {
+            var.place.projection.is_empty()
+        });
+        let has_proj = || vars.iter().any(|var| {
+            !var.place.projection.is_empty()
+        });
+
+        let (fallback_var, kind) = if self.mir.local_kind(local) == mir::LocalKind::Arg {
             let arg_index = local.index() - 1;
 
             // Add debuginfo even to unnamed arguments.
             // FIXME(eddyb) is this really needed?
-            let name = if arg_index == 0 && !upvar_debuginfo.is_empty() {
+            let var = if arg_index == 0 && has_proj() {
                 // Hide closure environments from debuginfo.
                 // FIXME(eddyb) shouldn't `ArgumentVariable` indices
                 // be offset to account for the hidden environment?
                 None
             } else {
-                Some(decl.name.unwrap_or(kw::Invalid))
+                Some(VarDebugInfo {
+                    name: kw::Invalid,
+                    source_info: self.mir.local_decls[local].source_info,
+                    place: local.into(),
+                })
             };
-            (name, VariableKind::ArgumentVariable(arg_index + 1))
+            (var, VariableKind::ArgumentVariable(arg_index + 1))
         } else {
-            (decl.name, VariableKind::LocalVariable)
+            (None, VariableKind::LocalVariable)
         };
 
         let local_ref = &self.locals[local];
 
         if !bx.sess().fewer_names() {
-            let name = match name {
-                Some(name) if name != kw::Invalid => name.to_string(),
+            let name = match whole_local_var.or(fallback_var.as_ref()) {
+                Some(var) if var.name != kw::Invalid => var.name.to_string(),
                 _ => format!("{:?}", local),
             };
             match local_ref {
@@ -158,47 +170,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
 
-        if let Some(name) = name {
-            if bx.sess().opts.debuginfo != DebugInfo::Full {
-                return;
-            }
-
-            let debug_context = match &self.debug_context {
-                Some(debug_context) => debug_context,
-                None => return,
-            };
-
-            // FIXME(eddyb) add debuginfo for unsized places too.
-            let place = match local_ref {
-                LocalRef::Place(place) => place,
-                _ => return,
-            };
-
-            let (scope, span) = self.debug_loc(mir::SourceInfo {
-                span: decl.source_info.span,
-                scope: decl.visibility_scope,
-            });
-            if let Some(scope) = scope {
-                bx.declare_local(debug_context, name, place.layout.ty, scope,
-                    place.llval, Size::ZERO, &[], kind, span);
-            }
-        }
-    }
-
-    pub fn debug_introduce_locals(&self, bx: &mut Bx) {
-        let tcx = self.cx.tcx();
-        let upvar_debuginfo = &self.mir.__upvar_debuginfo_codegen_only_do_not_use;
-
         if bx.sess().opts.debuginfo != DebugInfo::Full {
-            // HACK(eddyb) figure out a way to perhaps disentangle
-            // the use of `declare_local` and `set_var_name`.
-            // Or maybe just running this loop always is not that expensive?
-            if !bx.sess().fewer_names() {
-                for local in self.locals.indices() {
-                    self.debug_introduce_local(bx, local);
-                }
-            }
-
             return;
         }
 
@@ -207,78 +179,152 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None => return,
         };
 
-        for local in self.locals.indices() {
-            self.debug_introduce_local(bx, local);
-        }
+        // FIXME(eddyb) add debuginfo for unsized places too.
+        let base = match local_ref {
+            LocalRef::Place(place) => place,
+            _ => return,
+        };
 
-        // Declare closure captures as if they were local variables.
-        // FIXME(eddyb) generalize this to `name => place` mappings.
-        let upvar_scope = if !upvar_debuginfo.is_empty() {
-            debug_context.scopes[mir::OUTERMOST_SOURCE_SCOPE].scope_metadata
+        let vars = vars.iter().chain(if whole_local_var.is_none() {
+            fallback_var.as_ref()
         } else {
             None
-        };
-        if let Some(scope) = upvar_scope {
-            let place = match self.locals[mir::Local::new(1)] {
-                LocalRef::Place(place) => place,
-                _ => bug!(),
+        });
+
+        for var in vars {
+            let mut layout = base.layout;
+            let mut direct_offset = Size::ZERO;
+            // FIXME(eddyb) use smallvec here.
+            let mut indirect_offsets = vec![];
+
+            let kind = if var.place.projection.is_empty() {
+                kind
+            } else {
+                VariableKind::LocalVariable
             };
+
+            for elem in &var.place.projection[..] {
+                match *elem {
+                    mir::ProjectionElem::Deref => {
+                        indirect_offsets.push(Size::ZERO);
+                        layout = bx.cx().layout_of(
+                            layout.ty.builtin_deref(true)
+                                .unwrap_or_else(|| {
+                                    span_bug!(
+                                        var.source_info.span,
+                                        "cannot deref `{}`",
+                                        layout.ty,
+                                    )
+                                }).ty,
+                        );
+                    }
+                    mir::ProjectionElem::Field(field, _) => {
+                        let i = field.index();
+                        let offset = indirect_offsets.last_mut()
+                            .unwrap_or(&mut direct_offset);
+                        *offset += layout.fields.offset(i);
+                        layout = layout.field(bx.cx(), i);
+                    }
+                    mir::ProjectionElem::Downcast(_, variant) => {
+                        layout = layout.for_variant(bx.cx(), variant);
+                    }
+                    _ => span_bug!(
+                        var.source_info.span,
+                        "unsupported var debuginfo place `{:?}`",
+                        var.place,
+                    ),
+                }
+            }
+
+            let (scope, span) = self.debug_loc(var.source_info);
+            if let Some(scope) = scope {
+                bx.declare_local(debug_context, var.name, layout.ty, scope,
+                    base.llval, direct_offset, &indirect_offsets, kind, span);
+            }
+        }
+    }
+
+    pub fn debug_introduce_locals(&self, bx: &mut Bx) {
+        if bx.sess().opts.debuginfo == DebugInfo::Full || !bx.sess().fewer_names() {
+            for local in self.locals.indices() {
+                self.debug_introduce_local(bx, local);
+            }
+        }
+    }
+}
+
+pub fn per_local_var_debug_info(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+) -> Option<IndexVec<mir::Local, Vec<VarDebugInfo<'tcx>>>> {
+    if tcx.sess.opts.debuginfo == DebugInfo::Full || !tcx.sess.fewer_names() {
+        let mut per_local = IndexVec::from_elem(vec![], &body.local_decls);
+        for (local, decl) in body.local_decls.iter_enumerated() {
+            if let Some(name) = decl.name {
+                per_local[local].push(VarDebugInfo {
+                    name,
+                    source_info: mir::SourceInfo {
+                        span: decl.source_info.span,
+                        scope: decl.visibility_scope,
+                    },
+                    place: local.into(),
+                });
+            }
+        }
+
+        let upvar_debuginfo = &body.__upvar_debuginfo_codegen_only_do_not_use;
+        if !upvar_debuginfo.is_empty() {
+
+            let env_arg = mir::Local::new(1);
+            let mut env_projs = vec![];
 
             let pin_did = tcx.lang_items().pin_type();
-            let (closure_layout, env_ref) = match place.layout.ty.kind {
-                ty::RawPtr(ty::TypeAndMut { ty, .. }) |
-                ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
+            match body.local_decls[env_arg].ty.kind {
+                ty::RawPtr(_) |
+                ty::Ref(..)  => {
+                    env_projs.push(mir::ProjectionElem::Deref);
+                }
                 ty::Adt(def, substs) if Some(def.did) == pin_did => {
-                    match substs.type_at(0).kind {
-                        ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
-                        _ => (place.layout, false),
+                    if let ty::Ref(..) = substs.type_at(0).kind {
+                        env_projs.push(mir::ProjectionElem::Field(
+                            mir::Field::new(0),
+                            // HACK(eddyb) field types aren't used or needed here.
+                            tcx.types.err,
+                        ));
+                        env_projs.push(mir::ProjectionElem::Deref);
                     }
                 }
-                _ => (place.layout, false)
-            };
-
-            let (def_id, upvar_substs) = match closure_layout.ty.kind {
-                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
-                ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
-                _ => bug!("upvar debuginfo with non-closure arg0 type `{}`", closure_layout.ty)
-            };
-            let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
+                _ => {}
+            }
 
             let extra_locals = {
                 let upvars = upvar_debuginfo
                     .iter()
-                    .zip(upvar_tys)
                     .enumerate()
-                    .map(|(i, (upvar, ty))| {
-                        (None, i, upvar.debug_name, upvar.by_ref, ty, scope, DUMMY_SP)
+                    .map(|(i, upvar)| {
+                        let source_info = mir::SourceInfo {
+                            span: body.span,
+                            scope: mir::OUTERMOST_SOURCE_SCOPE,
+                        };
+                        (None, i, upvar.debug_name, upvar.by_ref, source_info)
                     });
 
-                let generator_fields = self.mir.generator_layout.as_ref().map(|generator_layout| {
-                    let (def_id, gen_substs) = match closure_layout.ty.kind {
-                        ty::Generator(def_id, substs, _) => (def_id, substs),
-                        _ => bug!("generator layout without generator substs"),
-                    };
-                    let state_tys = gen_substs.as_generator().state_tys(def_id, tcx);
-
+                let generator_fields = body.generator_layout.as_ref().map(|generator_layout| {
                     generator_layout.variant_fields.iter()
-                        .zip(state_tys)
                         .enumerate()
-                        .flat_map(move |(variant_idx, (fields, tys))| {
+                        .flat_map(move |(variant_idx, fields)| {
                             let variant_idx = Some(VariantIdx::from(variant_idx));
                             fields.iter()
-                                .zip(tys)
                                 .enumerate()
-                                .filter_map(move |(i, (field, ty))| {
+                                .filter_map(move |(i, field)| {
                                     let decl = &generator_layout.
                                         __local_debuginfo_codegen_only_do_not_use[*field];
                                     if let Some(name) = decl.name {
-                                        let ty = self.monomorphize(&ty);
-                                        let (var_scope, var_span) = self.debug_loc(mir::SourceInfo {
+                                        let source_info = mir::SourceInfo {
                                             span: decl.source_info.span,
                                             scope: decl.visibility_scope,
-                                        });
-                                        let var_scope = var_scope.unwrap_or(scope);
-                                        Some((variant_idx, i, name, false, ty, var_scope, var_span))
+                                        };
+                                        Some((variant_idx, i, name, false, source_info))
                                     } else {
                                         None
                                     }
@@ -289,51 +335,51 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 upvars.chain(generator_fields)
             };
 
-            for (variant_idx, field, name, by_ref, ty, var_scope, var_span) in extra_locals {
-                let fields = match variant_idx {
-                    Some(variant_idx) => {
-                        match &closure_layout.variants {
-                            Variants::Multiple { variants, .. } => {
-                                &variants[variant_idx].fields
-                            },
-                            _ => bug!("variant index on univariant layout"),
-                        }
-                    }
-                    None => &closure_layout.fields,
-                };
+            for (variant_idx, field, name, by_ref, source_info) in extra_locals {
+                let mut projs = env_projs.clone();
 
-                // The environment and the capture can each be indirect.
-                let mut direct_offset = Size::ZERO;
-                let indirect_offsets = [
-                    fields.offset(field),
-                    Size::ZERO,
-                ];
-                let mut indirect_offsets = &indirect_offsets[..];
-
-                if !env_ref {
-                    direct_offset = indirect_offsets[0];
-                    indirect_offsets = &indirect_offsets[1..];
+                if let Some(variant_idx) = variant_idx {
+                    projs.push(mir::ProjectionElem::Downcast(None, variant_idx));
                 }
 
-                let ty = if let (true, &ty::Ref(_, ty, _)) = (by_ref, &ty.kind) {
-                    ty
-                } else {
-                    indirect_offsets = &indirect_offsets[..indirect_offsets.len() - 1];
-                    ty
-                };
+                projs.push(mir::ProjectionElem::Field(
+                    mir::Field::new(field),
+                    // HACK(eddyb) field types aren't used or needed here.
+                    tcx.types.err,
+                ));
 
-                bx.declare_local(
-                    debug_context,
+                if by_ref {
+                    projs.push(mir::ProjectionElem::Deref);
+                }
+
+                per_local[env_arg].push(VarDebugInfo {
                     name,
-                    ty,
-                    var_scope,
-                    place.llval,
-                    direct_offset,
-                    indirect_offsets,
-                    VariableKind::LocalVariable,
-                    var_span
-                );
+                    source_info,
+                    place: mir::Place {
+                        base: mir::PlaceBase::Local(env_arg),
+                        projection: tcx.intern_place_elems(&projs),
+                    },
+                });
             }
         }
+
+        Some(per_local)
+    } else {
+        None
     }
+}
+
+/// Debug information relatating to an user variable.
+// FIXME(eddyb) move this to the MIR bodies themselves.
+#[derive(Clone)]
+pub struct VarDebugInfo<'tcx> {
+    pub name: Symbol,
+
+    /// Source info of the user variable, including the scope
+    /// within which the variable is visible (to debuginfo)
+    /// (see `LocalDecl`'s `source_info` field for more details).
+    pub source_info: mir::SourceInfo,
+
+    /// Where the data for this user variable is to be found.
+    pub place: mir::Place<'tcx>,
 }
