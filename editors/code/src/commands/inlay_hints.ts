@@ -83,20 +83,14 @@ export class HintsUpdater {
     ): Promise<void> {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints !== null) {
-            const newDecorations = newHints.map(hint => {
-                const [label, range] = this.truncateHint(
-                    hint.label,
-                    hint.range
-                );
-                return {
-                    range,
-                    renderOptions: {
-                        after: {
-                            contentText: `: ${label}`
-                        }
+            const newDecorations = newHints.map(hint => ({
+                range: hint.range,
+                renderOptions: {
+                    after: {
+                        contentText: `: ${this.truncateHint(hint.label)}`
                     }
-                };
-            });
+                }
+            }));
             return editor.setDecorations(
                 typeHintDecorationType,
                 newDecorations
@@ -104,30 +98,16 @@ export class HintsUpdater {
         }
     }
 
-    private truncateHint(
-        label: string,
-        range: vscode.Range
-    ): [string, vscode.Range] {
+    private truncateHint(label: string): string {
         if (!Server.config.maxInlayHintLength) {
-            return [label, range];
+            return label;
         }
 
         let newLabel = label.substring(0, Server.config.maxInlayHintLength);
         if (label.length > Server.config.maxInlayHintLength) {
             newLabel += '…';
         }
-
-        range = new vscode.Range(
-            range.start.line,
-            range.start.character,
-            range.end.line,
-            Math.min(
-                range.start.character + Server.config.maxInlayHintLength,
-                range.end.character
-            )
-        );
-
-        return [newLabel, range];
+        return newLabel;
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {
