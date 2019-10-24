@@ -84,6 +84,17 @@ steps:
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
   displayName: Download custom MinGW
 
+# FIXME(#65767): workaround msys bug, step 1
+- bash: |
+    set -e
+    arch=i686
+    if [ "$MSYS_BITS" = "64" ]; then
+      arch=x86_64
+    fi
+    curl -O https://ci-mirrors.rust-lang.org/rustc/msys2-repo/mingw/$arch/mingw-w64-$arch-ca-certificates-20180409-1-any.pkg.tar.xz
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Download working ca-certificates for msys
+
 # Otherwise install MinGW through `pacman`
 - bash: |
     set -e
@@ -95,6 +106,18 @@ steps:
     echo "##vso[task.prependpath]$(System.Workfolder)/msys2/mingw$MSYS_BITS/bin"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Download standard MinGW
+
+# FIXME(#65767): workaround msys bug, step 2
+- bash: |
+    set -e
+    arch=i686
+    if [ "$MSYS_BITS" = "64" ]; then
+      arch=x86_64
+    fi
+    pacman -U --noconfirm --noprogressbar mingw-w64-$arch-ca-certificates-20180409-1-any.pkg.tar.xz
+    rm mingw-w64-$arch-ca-certificates-20180409-1-any.pkg.tar.xz
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Install working ca-certificates for msys
 
 # Make sure we use the native python interpreter instead of some msys equivalent
 # one way or another. The msys interpreters seem to have weird path conversions
