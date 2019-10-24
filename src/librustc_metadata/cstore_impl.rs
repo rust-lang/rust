@@ -243,8 +243,45 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let formats = tcx.dependency_formats(LOCAL_CRATE);
         let remove_generics = formats.iter().any(|(_ty, list)| {
             match list.get(def_id.krate.as_usize() - 1) {
-                Some(Linkage::IncludedFromDylib) | Some(Linkage::Dynamic) => true,
-                _ => false,
+                Some(l @ Linkage::NotLinked) |
+                Some(l @ Linkage::IncludedFromDylib) |
+                Some(l @ Linkage::Dynamic) => {
+                    log::debug!("compiling `{B}` def_id: {D:?} cannot reuse generics \
+                                 from crate `{A}` because it has linkage {L:?}",
+                                A=tcx.crate_name(def_id.krate),
+                                B=tcx.crate_name(LOCAL_CRATE),
+                                D=def_id,
+                                L=l);
+                    true
+                }
+
+                Some(Linkage::Static) => {
+                    log::debug!("compiling `{B}` def_id: {D:?} attempt to reuse generics \
+                                 from statically-linked crate `{A}`",
+                                A=tcx.crate_name(def_id.krate),
+                                B=tcx.crate_name(LOCAL_CRATE),
+                                D=def_id);
+                    false
+                }
+
+                None => {
+                    // rust-lang/rust#65890: A has unknown dependency format when compiling B.
+                    if tcx.sess.opts.debugging_opts.share_generics_for_unknown_linkage {
+                        log::info!("`{B}`, crate-type {O:?}: attempt to reuse generics \
+                                    from crate `{A}` despite its unknown dependency format",
+                                   A=tcx.crate_name(def_id.krate),
+                                   B=tcx.crate_name(LOCAL_CRATE),
+                                   O=_ty);
+                        false
+                    } else {
+                        log::info!("`{B}`, crate-type {O:?}: cannot reuse generics \
+                                    from crate `{A}` because it has unknown dependency format",
+                                   A=tcx.crate_name(def_id.krate),
+                                   B=tcx.crate_name(LOCAL_CRATE),
+                                   O=_ty);
+                        true
+                    }
+                }
             }
         });
         if remove_generics {

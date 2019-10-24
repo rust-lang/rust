@@ -1,6 +1,7 @@
 // ignore-tidy-linelength
 // no-prefer-dynamic
-// compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe
+// FIXME: Use `-Z share-generics-for-unknown-linkage` to workaround rust-lang/rust#65890
+// compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe -Z share-generics-for-unknown-linkage
 
 #![crate_type="rlib"]
 
