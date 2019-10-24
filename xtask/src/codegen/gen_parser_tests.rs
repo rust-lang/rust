@@ -3,12 +3,12 @@
 
 use std::{
     collections::HashMap,
-    fs,
+    fs, iter,
     path::{Path, PathBuf},
 };
 
 use crate::{
-    codegen::{self, update, Mode},
+    codegen::{self, extract_comment_blocks, update, Mode},
     project_root, Result,
 };
 
@@ -57,46 +57,28 @@ struct Tests {
 }
 
 fn collect_tests(s: &str) -> Vec<Test> {
-    let mut res = vec![];
-    let prefix = "// ";
-    let lines = s.lines().map(str::trim_start);
-
-    let mut block = vec![];
-    for line in lines {
-        let is_comment = line.starts_with(prefix);
-        if is_comment {
-            block.push(&line[prefix.len()..]);
+    let mut res = Vec::new();
+    for comment_block in extract_comment_blocks(s) {
+        let first_line = &comment_block[0];
+        let (name, ok) = if first_line.starts_with("test ") {
+            let name = first_line["test ".len()..].to_string();
+            (name, true)
+        } else if first_line.starts_with("test_err ") {
+            let name = first_line["test_err ".len()..].to_string();
+            (name, false)
         } else {
-            process_block(&mut res, &block);
-            block.clear();
-        }
-    }
-    process_block(&mut res, &block);
-    return res;
-
-    fn process_block(acc: &mut Vec<Test>, block: &[&str]) {
-        if block.is_empty() {
-            return;
-        }
-        let mut ok = true;
-        let mut block = block.iter();
-        let name = loop {
-            match block.next() {
-                Some(line) if line.starts_with("test ") => {
-                    break line["test ".len()..].to_string();
-                }
-                Some(line) if line.starts_with("test_err ") => {
-                    ok = false;
-                    break line["test_err ".len()..].to_string();
-                }
-                Some(_) => (),
-                None => return,
-            }
+            continue;
         };
-        let text: String = block.copied().chain(std::iter::once("")).collect::<Vec<_>>().join("\n");
+        let text: String = comment_block[1..]
+            .iter()
+            .cloned()
+            .chain(iter::once(String::new()))
+            .collect::<Vec<_>>()
+            .join("\n");
         assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        acc.push(Test { name, text, ok })
+        res.push(Test { name, text, ok })
     }
+    res
 }
 
 fn tests_from_dir(dir: &Path) -> Result<Tests> {
