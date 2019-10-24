@@ -228,11 +228,11 @@ struct Build {
 struct Install {
     prefix: Option<String>,
     sysconfdir: Option<String>,
-    datadir: Option<String>,
     docdir: Option<String>,
     bindir: Option<String>,
     libdir: Option<String>,
     mandir: Option<String>,
+    datadir: Option<String>,
 
     // standard paths, currently unused
     infodir: Option<String>,
