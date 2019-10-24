@@ -206,7 +206,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let ty =
-                Place::ty_from(used_place.base, used_place.projection, self.body, self.infcx.tcx)
+                Place::ty_from(used_place.base, used_place.projection, self.body_cache.body(), self.infcx.tcx)
                     .ty;
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
@@ -222,7 +222,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mpi = self.move_data.moves[move_out_indices[0]].path;
                 let place = &self.move_data.move_paths[mpi].place;
 
-                let ty = place.ty(self.body, self.infcx.tcx).ty;
+                let ty = place.ty(self.body_cache.body(), self.infcx.tcx).ty;
                 let opt_name =
                     self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
                 let note_msg = match opt_name {
@@ -314,7 +314,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None,
         ).add_explanation_to_diagnostic(
             self.infcx.tcx,
-            self.body,
+            &self.body_cache,
             &self.local_names,
             &mut err,
             "",
@@ -356,7 +356,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                self.body,
+                &self.body_cache,
                 &self.local_names,
                 &mut err,
                 "",
@@ -578,7 +578,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            self.body,
+            &self.body_cache,
             &self.local_names,
             &mut err,
             first_borrow_desc,
@@ -619,7 +619,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let union_ty = |place_base, place_projection| {
-            let ty = Place::ty_from(place_base, place_projection, self.body, self.infcx.tcx).ty;
+            let ty = Place::ty_from(place_base, place_projection, self.body_cache.body(), self.infcx.tcx).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
         let describe_place = |place| self.describe_place(place).unwrap_or_else(|| "_".to_owned());
@@ -738,7 +738,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         assert!(root_place.projection.is_empty());
         let proper_span = match root_place.base {
-            PlaceBase::Local(local) => self.body.local_decls[*local].source_info.span,
+            PlaceBase::Local(local) => self.body_cache.local_decls[*local].source_info.span,
             _ => drop_span,
         };
 
@@ -965,7 +965,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else {
                 explanation.add_explanation_to_diagnostic(
                     self.infcx.tcx,
-                    self.body,
+                    &self.body_cache,
                     &self.local_names,
                     &mut err,
                     "",
@@ -991,7 +991,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             );
 
             explanation.add_explanation_to_diagnostic(
-                self.infcx.tcx, self.body, &self.local_names, &mut err, "", None);
+                self.infcx.tcx, &self.body_cache, &self.local_names, &mut err, "", None);
         }
 
         err
@@ -1051,7 +1051,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            self.body,
+            &self.body_cache,
             &self.local_names,
             &mut err,
             "",
@@ -1138,7 +1138,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
         explanation.add_explanation_to_diagnostic(
             self.infcx.tcx,
-            self.body,
+            &self.body_cache,
             &self.local_names,
             &mut err,
             "",
@@ -1174,7 +1174,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         // FIXME use a better heuristic than Spans
-        let reference_desc = if return_span == self.body.source_info(borrow.reserve_location).span {
+        let reference_desc = if return_span == self.body_cache.source_info(borrow.reserve_location).span {
             "reference to"
         } else {
             "value referencing"
@@ -1182,7 +1182,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let (place_desc, note) = if let Some(place_desc) = opt_place_desc {
             let local_kind = if let Some(local) = borrow.borrowed_place.as_local() {
-                match self.body.local_kind(local) {
+                match self.body_cache.local_kind(local) {
                     LocalKind::ReturnPointer
                     | LocalKind::Temp => bug!("temporary or return pointer with a name"),
                     LocalKind::Var => "local variable ",
@@ -1215,7 +1215,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             } else {
                 bug!("try_report_cannot_return_reference_to_local: not a local")
             };
-            match self.body.local_kind(*local) {
+            match self.body_cache.local_kind(*local) {
                 LocalKind::ReturnPointer | LocalKind::Temp => (
                     "temporary value".to_string(),
                     "temporary value created here".to_string(),
@@ -1372,10 +1372,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn get_moved_indexes(&mut self, location: Location, mpi: MovePathIndex) -> Vec<MoveSite> {
-        let body = self.body;
-
         let mut stack = Vec::new();
-        stack.extend(body.predecessor_locations(location).map(|predecessor| {
+        stack.extend(self.body_cache.predecessor_locations(location).map(|predecessor| {
             let is_back_edge = location.dominates(predecessor, &self.dominators);
             (predecessor, is_back_edge)
         }));
@@ -1394,7 +1392,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             // check for moves
-            let stmt_kind = body[location.block]
+            let stmt_kind = self.body_cache[location.block]
                 .statements
                 .get(location.statement_index)
                 .map(|s| &s.kind);
@@ -1449,7 +1447,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let mut any_match = false;
             drop_flag_effects::for_location_inits(
                 self.infcx.tcx,
-                self.body,
+                &self.body_cache,
                 self.move_data,
                 location,
                 |m| {
@@ -1462,7 +1460,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 continue 'dfs;
             }
 
-            stack.extend(body.predecessor_locations(location).map(|predecessor| {
+            stack.extend(self.body_cache.predecessor_locations(location).map(|predecessor| {
                 let back_edge = location.dominates(predecessor, &self.dominators);
                 (predecessor, is_back_edge || back_edge)
             }));
@@ -1514,7 +1512,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.explain_why_borrow_contains_point(location, loan, None)
             .add_explanation_to_diagnostic(
                 self.infcx.tcx,
-                self.body,
+                &self.body_cache,
                 &self.local_names,
                 &mut err,
                 "",
@@ -1539,8 +1537,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         let (from_arg, local_decl, local_name) = match err_place.as_local() {
             Some(local) => (
-                self.body.local_kind(local) == LocalKind::Arg,
-                Some(&self.body.local_decls[local]),
+                self.body_cache.local_kind(local) == LocalKind::Arg,
+                Some(&self.body_cache.local_decls[local]),
                 self.local_names[local],
             ),
             None => (false, None, None),
@@ -1625,7 +1623,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(&place.base, proj_base, self.body, tcx).ty.is_box(),
+                                Place::ty_from(&place.base, proj_base, self.body_cache.body(), tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1633,7 +1631,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(&place.base, proj_base, self.body, tcx).ty;
+                        let base_ty = Place::ty_from(&place.base, proj_base, self.body_cache.body(), tcx).ty;
                         match base_ty.kind {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor
@@ -1721,7 +1719,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             location
         );
         if let Some(&Statement { kind: StatementKind::Assign(box(ref reservation, _)), ..})
-             = &self.body[location.block].statements.get(location.statement_index)
+             = &self.body_cache[location.block].statements.get(location.statement_index)
         {
             debug!(
                 "annotate_argument_and_return_for_borrow: reservation={:?}",
@@ -1729,14 +1727,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             );
             // Check that the initial assignment of the reserve location is into a temporary.
             let mut target = match reservation.as_local() {
-                Some(local) if self.body.local_kind(local) == LocalKind::Temp => local,
+                Some(local) if self.body_cache.local_kind(local) == LocalKind::Temp => local,
                 _ => return None,
             };
 
             // Next, look through the rest of the block, checking if we are assigning the
             // `target` (that is, the place that contains our borrow) to anything.
             let mut annotated_closure = None;
-            for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+            for stmt in &self.body_cache[location.block].statements[location.statement_index + 1..] {
                 debug!(
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
@@ -1861,7 +1859,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             // Check the terminator if we didn't find anything in the statements.
-            let terminator = &self.body[location.block].terminator();
+            let terminator = &self.body_cache[location.block].terminator();
             debug!(
                 "annotate_argument_and_return_for_borrow: target={:?} terminator={:?}",
                 target, terminator

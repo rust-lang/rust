@@ -33,6 +33,41 @@ pub struct Cache {
 //    }
 //}
 
+macro_rules! get_predecessors {
+    (mut $self:ident, $block:expr, $body:expr) => {
+        $self.predecessors_for($block, $body)
+    };
+    ($self:ident, $block:expr, $body:expr) => {
+        $self.unwrap_predecessors_for($block)
+    };
+}
+
+macro_rules! impl_predecessor_locations {
+    ( ( $($pub:ident)? )  $name:ident $($mutability:ident)?) => {
+        $($pub)? fn $name<'a>(&'a $($mutability)? self, loc: Location, body: &'a Body<'a>) -> impl Iterator<Item = Location> + 'a {
+            let if_zero_locations = if loc.statement_index == 0 {
+                let predecessor_blocks = get_predecessors!($($mutability)? self, loc.block, body);
+                let num_predecessor_blocks = predecessor_blocks.len();
+                Some(
+                    (0..num_predecessor_blocks)
+                        .map(move |i| predecessor_blocks[i])
+                        .map(move |bb| body.terminator_loc(bb)),
+                )
+            } else {
+                None
+            };
+
+            let if_not_zero_locations = if loc.statement_index == 0 {
+                None
+            } else {
+                Some(Location { block: loc.block, statement_index: loc.statement_index - 1 })
+            };
+
+            if_zero_locations.into_iter().flatten().chain(if_not_zero_locations)
+        }
+    };
+}
+
 impl Cache {
     pub fn new() -> Self {
         Self {
@@ -80,27 +115,9 @@ impl Cache {
     }
 
     #[inline]
-    pub fn predecessor_locations<'a>(&'a mut self, loc: Location, body: &'a Body<'a>) -> impl Iterator<Item = Location> + 'a {
-        let if_zero_locations = if loc.statement_index == 0 {
-            let predecessor_blocks = self.predecessors_for(loc.block, body);
-            let num_predecessor_blocks = predecessor_blocks.len();
-            Some(
-                (0..num_predecessor_blocks)
-                    .map(move |i| predecessor_blocks[i])
-                    .map(move |bb| body.terminator_loc(bb)),
-            )
-        } else {
-            None
-        };
+    impl_predecessor_locations!((pub) predecessor_locations mut);
 
-        let if_not_zero_locations = if loc.statement_index == 0 {
-            None
-        } else {
-            Some(Location { block: loc.block, statement_index: loc.statement_index - 1 })
-        };
-
-        if_zero_locations.into_iter().flatten().chain(if_not_zero_locations)
-    }
+    impl_predecessor_locations!(() unwrap_predecessor_locations);
 
     #[inline]
     pub fn basic_blocks_mut<'a, 'tcx>(&mut self, body: &'a mut Body<'tcx>) -> &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
@@ -238,6 +255,11 @@ impl ReadOnlyBodyCache<'a, 'tcx> {
     #[inline]
     pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
         self.cache.unwrap_predecessors_for(bb)
+    }
+
+    #[inline]
+    pub fn predecessor_locations(&self, loc: Location) -> impl Iterator<Item = Location> + '_ {
+        self.cache.unwrap_predecessor_locations(loc, self.body)
     }
 
     #[inline]

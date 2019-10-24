@@ -11,7 +11,7 @@ use crate::borrow_check::path_utils::*;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Body, Place, Rvalue};
+use rustc::mir::{BasicBlock, Location, Body, Place, ReadOnlyBodyCache, Rvalue};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
@@ -22,7 +22,7 @@ pub(super) fn generate_invalidates<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    body: &Body<'tcx>,
+    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if all_facts.is_none() {
@@ -31,17 +31,17 @@ pub(super) fn generate_invalidates<'tcx>(
     }
 
     if let Some(all_facts) = all_facts {
-        let dominators = body.dominators();
+        let dominators = body_cache.dominators();
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
             param_env,
             tcx,
             location_table,
-            body,
+            body: body_cache.body(),
             dominators,
         };
-        ig.visit_body(body);
+        ig.visit_body(&body_cache);
     }
 }
 
