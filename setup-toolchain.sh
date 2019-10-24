@@ -9,5 +9,5 @@ if [[ "$CI" == true ]] || ! command -v rustup-toolchain-install-master > /dev/nu
   cargo install -Z install-upgrade rustup-toolchain-install-master --bin rustup-toolchain-install-master
 fi
 
-rustup-toolchain-install-master -f -n master
+rustup-toolchain-install-master -f -n master -c rustc-dev
 rustup override set master
