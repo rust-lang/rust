@@ -340,6 +340,9 @@
 # nightly features
 #channel = "dev"
 
+# The root location of the MUSL installation directory.
+#musl-root = "..."
+
 # By default the `rustc` executable is built with `-Wl,-rpath` flags on Unix
 # platforms to ensure that the compiler is usable by default from the build
 # directory (as it links to a number of dynamic libraries). This may not be
