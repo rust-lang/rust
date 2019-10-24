@@ -9,7 +9,9 @@ use lsp_types::{
     Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
     Range, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
-use ra_ide_api::{AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind};
+use ra_ide_api::{
+    AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind, SearchScope,
+};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
@@ -485,7 +487,7 @@ pub fn handle_references(
     let _p = profile("handle_references");
     let position = params.text_document_position.try_conv_with(&world)?;
 
-    let refs = match world.analysis().find_all_refs(position)? {
+    let refs = match world.analysis().find_all_refs(position, None)? {
         None => return Ok(None),
         Some(refs) => refs,
     };
@@ -748,7 +750,10 @@ pub fn handle_document_highlight(
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
-    let refs = match world.analysis().find_all_refs(params.try_conv_with(&world)?)? {
+    let refs = match world
+        .analysis()
+        .find_all_refs(params.try_conv_with(&world)?, Some(SearchScope::single_file(file_id)))?
+    {
         None => return Ok(None),
         Some(refs) => refs,
     };

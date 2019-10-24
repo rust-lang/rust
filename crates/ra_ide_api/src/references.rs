@@ -27,6 +27,8 @@ pub(crate) use self::{
     rename::rename,
 };
 
+pub use self::search_scope::SearchScope;
+
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     declaration: NavigationTarget,
@@ -67,6 +69,7 @@ impl IntoIterator for ReferenceSearchResult {
 pub(crate) fn find_all_refs(
     db: &RootDatabase,
     position: FilePosition,
+    search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let parse = db.parse(position.file_id);
     let syntax = parse.tree().syntax().clone();
@@ -86,7 +89,15 @@ pub(crate) fn find_all_refs(
         NameKind::GenericParam(_) => return None,
     };
 
-    let references = process_definition(db, def, name);
+    let search_scope = {
+        let base = def.search_scope(db);
+        match search_scope {
+            None => base,
+            Some(scope) => base.intersection(&scope),
+        }
+    };
+
+    let references = process_definition(db, def, name, search_scope);
 
     Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
 }
@@ -107,11 +118,15 @@ fn find_name<'a>(
     Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
 }
 
-fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> Vec<FileRange> {
+fn process_definition(
+    db: &RootDatabase,
+    def: NameDefinition,
+    name: String,
+    scope: SearchScope,
+) -> Vec<FileRange> {
     let _p = profile("process_definition");
 
     let pat = name.as_str();
-    let scope = def.search_scope(db);
     let mut refs = vec![];
 
     for (file_id, search_range) in scope {
@@ -144,8 +159,8 @@ fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> V
 #[cfg(test)]
 mod tests {
     use crate::{
-        mock_analysis::analysis_and_position, mock_analysis::single_file_with_position,
-        ReferenceSearchResult,
+        mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
+        ReferenceSearchResult, SearchScope,
     };
 
     #[test]
@@ -270,7 +285,7 @@ mod tests {
         "#;
 
         let (analysis, pos) = analysis_and_position(code);
-        let refs = analysis.find_all_refs(pos).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         assert_eq!(refs.len(), 3);
     }
 
@@ -296,7 +311,7 @@ mod tests {
         "#;
 
         let (analysis, pos) = analysis_and_position(code);
-        let refs = analysis.find_all_refs(pos).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         assert_eq!(refs.len(), 2);
     }
 
@@ -321,12 +336,40 @@ mod tests {
         "#;
 
         let (analysis, pos) = analysis_and_position(code);
-        let refs = analysis.find_all_refs(pos).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         assert_eq!(refs.len(), 3);
+    }
+
+    #[test]
+    fn test_find_all_refs_with_scope() {
+        let code = r#"
+            //- /lib.rs
+            mod foo;
+            mod bar;
+
+            pub fn quux<|>() {}
+
+            //- /foo.rs
+            fn f() { super::quux(); }
+
+            //- /bar.rs
+            fn f() { super::quux(); }
+        "#;
+
+        let (mock, pos) = MockAnalysis::with_files_and_position(code);
+        let bar = mock.id_of("/bar.rs");
+        let analysis = mock.analysis();
+
+        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
+        assert_eq!(refs.len(), 3);
+
+        let refs =
+            analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
+        assert_eq!(refs.len(), 2);
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
         let (analysis, position) = single_file_with_position(text);
-        analysis.find_all_refs(position).unwrap().unwrap()
+        analysis.find_all_refs(position, None).unwrap().unwrap()
     }
 }

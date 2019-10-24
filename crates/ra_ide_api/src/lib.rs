@@ -71,7 +71,7 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayKind},
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
-    references::ReferenceSearchResult,
+    references::{ReferenceSearchResult, SearchScope},
     runnables::{Runnable, RunnableKind},
     syntax_highlighting::HighlightedRange,
 };
@@ -481,8 +481,9 @@ impl Analysis {
     pub fn find_all_refs(
         &self,
         position: FilePosition,
+        search_scope: Option<SearchScope>,
     ) -> Cancelable<Option<ReferenceSearchResult>> {
-        self.with_db(|db| references::find_all_refs(db, position).map(|it| it.info))
+        self.with_db(|db| references::find_all_refs(db, position, search_scope).map(|it| it.info))
     }
 
     /// Returns a short text describing element at position.
