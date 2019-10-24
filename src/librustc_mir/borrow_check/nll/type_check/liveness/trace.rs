@@ -7,7 +7,7 @@ use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
+use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyCache};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
@@ -32,7 +32,7 @@ use std::rc::Rc;
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: &Body<'tcx>,
+    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -41,11 +41,11 @@ pub(super) fn trace(
 ) {
     debug!("trace()");
 
-    let local_use_map = &LocalUseMap::build(&live_locals, elements, body);
+    let local_use_map = &LocalUseMap::build(&live_locals, elements, &body_cache);
 
     let cx = LivenessContext {
         typeck,
-        body,
+        body_cache,
         flow_inits,
         elements,
         local_use_map,
@@ -71,7 +71,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    body: &'me Body<'tcx>,
+    body_cache: &'me ReadOnlyBodyCache<'me, 'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,
@@ -135,7 +135,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             self.compute_use_live_points_for(local);
             self.compute_drop_live_points_for(local);
 
-            let local_ty = self.cx.body.local_decls[local].ty;
+            let local_ty = self.cx.body_cache.local_decls[local].ty;
 
             if !self.use_live_at.is_empty() {
                 self.cx.add_use_live_facts_for(local_ty, &self.use_live_at);
@@ -165,7 +165,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
         for (local, location) in drop_used {
             if !live_locals.contains(&local) {
-                let local_ty = self.cx.body.local_decls[local].ty;
+                let local_ty = self.cx.body_cache.local_decls[local].ty;
                 if local_ty.has_free_regions() {
                     self.cx.add_drop_live_facts_for(
                         local,
@@ -211,7 +211,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
 
             if self.use_live_at.insert(p) {
-                self.cx.elements.push_predecessors(self.cx.body, p, &mut self.stack)
+                self.cx.elements.push_predecessors(&self.cx.body_cache, p, &mut self.stack)
             }
         }
     }
@@ -234,7 +234,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         // Find the drops where `local` is initialized.
         for drop_point in self.cx.local_use_map.drops(local) {
             let location = self.cx.elements.to_location(drop_point);
-            debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
+            debug_assert_eq!(self.cx.body_cache.terminator_loc(location.block), location,);
 
             if self.cx.initialized_at_terminator(location.block, mpi) {
                 if self.drop_live_at.insert(drop_point) {
@@ -280,7 +280,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         // block.  One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
-        debug_assert_eq!(self.cx.body.terminator_loc(term_location.block), term_location,);
+        debug_assert_eq!(self.cx.body_cache.terminator_loc(term_location.block), term_location,);
         let block = term_location.block;
         let entry_point = self.cx.elements.entry_point(term_location.block);
         for p in (entry_point..term_point).rev() {
@@ -302,7 +302,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
         }
 
-        for &pred_block in self.cx.body.predecessors_for(block).iter() {
+        for &pred_block in self.cx.body_cache.predecessors_for(block).iter() {
             debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)
@@ -328,7 +328,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
                 continue;
             }
 
-            let pred_term_loc = self.cx.body.terminator_loc(pred_block);
+            let pred_term_loc = self.cx.body_cache.terminator_loc(pred_block);
             let pred_term_point = self.cx.elements.point_from_location(pred_term_loc);
 
             // If the terminator of this predecessor either *assigns*
@@ -399,7 +399,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         // the effects of all statements. This is the only way to get
         // "just ahead" of a terminator.
         self.flow_inits.reset_to_entry_of(block);
-        for statement_index in 0..self.body[block].statements.len() {
+        for statement_index in 0..self.body_cache[block].statements.len() {
             let location = Location { block, statement_index };
             self.flow_inits.reconstruct_statement_effect(location);
             self.flow_inits.apply_local_effect(location);
@@ -471,7 +471,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
 
         drop_data.dropck_result.report_overflows(
             self.typeck.infcx.tcx,
-            self.body.source_info(*drop_locations.first().unwrap()).span,
+            self.body_cache.source_info(*drop_locations.first().unwrap()).span,
             dropped_ty,
         );
 

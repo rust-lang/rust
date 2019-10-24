@@ -163,13 +163,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
     let mut body: Body<'tcx> = input_body.clone();
-    // TODO(pfaria) this very likely won't work because
-    let promoted: IndexVec<Promoted, Body<'tcx>> = input_promoted.clone();
-    let mut promoted_cache: IndexVec<Promoted, BodyCache<&mut Body<'tcx>>> = promoted.iter_mut().map(|body| BodyCache::new(body)).collect();
+    let mut promoted = input_promoted.clone();
+    let mut promoted_cache: IndexVec<Promoted, BodyCache<&mut Body<'tcx>>> = input_promoted.clone().iter_mut().map(|body| BodyCache::new(body)).collect();
     let mut body_cache = BodyCache::new(&mut body);
     let free_regions =
         nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body_cache, &mut promoted_cache);
     let body_cache = BodyCache::new(&body).read_only(); // no further changes
+    let promoted: IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>> = promoted_cache.into_iter().map(|body_cache| body_cache.read_only()).collect();
 
     let location_table = &LocationTable::new(&body_cache);
 

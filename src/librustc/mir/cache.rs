@@ -206,6 +206,15 @@ impl<'a, 'tcx> BodyCache<&'a mut Body<'tcx>> {
     }
 
     #[inline]
+    pub fn read_only(mut self) -> ReadOnlyBodyCache<'a, 'tcx> {
+        self.cache.ensure_predecessors(self.body);
+        ReadOnlyBodyCache {
+            cache: self.cache,
+            body: self.body,
+        }
+    }
+
+    #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.body.basic_blocks
     }
