@@ -1,6 +1,10 @@
 // run-rustfix
+// aux-build:macro_rules.rs
 
 #![deny(clippy::try_err)]
+
+#[macro_use]
+extern crate macro_rules;
 
 // Tests that a simple case works
 // Should flag `Err(err)?`
@@ -77,6 +81,9 @@ fn main() {
     negative_test().unwrap();
     closure_matches_test().unwrap();
     closure_into_test().unwrap();
+
+    // We don't want to lint in external macros
+    try_err!();
 }
 
 macro_rules! bar {

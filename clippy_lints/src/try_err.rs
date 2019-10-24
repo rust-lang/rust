@@ -1,7 +1,7 @@
 use crate::utils::{match_qpath, paths, snippet, snippet_with_macro_callsite, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::Ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
@@ -54,6 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
         //         val,
         // };
         if_chain! {
+            if !in_external_macro(cx.tcx.sess, expr.span);
             if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.kind;
             if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
