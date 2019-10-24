@@ -1,6 +1,7 @@
 environment:
     global:
         PROJECT_NAME: rust-clippy
+        RUST_BACKTRACE: 1
     matrix:
         #- TARGET: i686-pc-windows-gnu
         #- TARGET: i686-pc-windows-msvc
@@ -15,6 +16,7 @@ branches:
 
 cache:
     - '%USERPROFILE%\.cargo'
+# before cache
 after_test:
     - cargo install -Z install-upgrade cargo-cache --debug
     - cargo cache --autoclean
@@ -22,21 +24,22 @@ after_test:
 install:
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly --profile=minimal
-    - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+    - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
+    - rustup component add rustfmt --toolchain nightly & exit 0 # Format test handles missing rustfmt
     - del rust-toolchain
     - cargo install -Z install-upgrade rustup-toolchain-install-master
     - rustup-toolchain-install-master -f -n master -c rustc-dev
-    - rustup component add rustfmt --toolchain nightly & exit 0 # Format test handles missing rustfmt
-    - rustup default master
-    - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
+    - rustup override set master
     - rustc -V
     - cargo -V
 
+# Build settings, not to be confused with "before_build" and "after_build".
 build: false
 
-test_script:
-    - set RUST_BACKTRACE=1
+build_script:
     - cargo build --features debugging
+
+test_script:
     - cargo test --features debugging
 
 notifications:
