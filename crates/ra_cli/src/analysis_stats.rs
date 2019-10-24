@@ -13,6 +13,7 @@ pub fn run(
     memory_usage: bool,
     path: &Path,
     only: Option<&str>,
+    with_deps: bool,
 ) -> Result<()> {
     let db_load_time = Instant::now();
     let (mut host, roots) = ra_batch::load_cargo(path)?;
@@ -23,18 +24,17 @@ pub fn run(
     let mut visited_modules = HashSet::new();
     let mut visit_queue = Vec::new();
 
-    let members = roots
-        .into_iter()
-        .filter_map(
-            |(source_root_id, project_root)| {
-                if project_root.is_member() {
+    let members =
+        roots
+            .into_iter()
+            .filter_map(|(source_root_id, project_root)| {
+                if with_deps || project_root.is_member() {
                     Some(source_root_id)
                 } else {
                     None
                 }
-            },
-        )
-        .collect::<HashSet<_>>();
+            })
+            .collect::<HashSet<_>>();
 
     for krate in Crate::all(db) {
         let module = krate.root_module(db).expect("crate without root module");

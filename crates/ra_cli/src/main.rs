@@ -96,6 +96,7 @@ fn main() -> Result<()> {
             };
             let memory_usage = matches.contains("--memory-usage");
             let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
+            let with_deps: bool = matches.contains("--with-deps");
             let path = {
                 let mut trailing = matches.free()?;
                 if trailing.len() != 1 {
@@ -109,6 +110,7 @@ fn main() -> Result<()> {
                 memory_usage,
                 path.as_ref(),
                 only.as_ref().map(String::as_ref),
+                with_deps,
             )?;
         }
         "analysis-bench" => {
