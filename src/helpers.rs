@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, iter};
 use std::ffi::{OsStr, OsString};
 
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
@@ -428,7 +428,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(false);
         }
         // FIXME: We should use `Iterator::chain` instead when rust-lang/rust#65704 lands.
-        self.eval_context_mut().memory.write_bytes(scalar, [bytes, &[0]].concat())?;
+        self.eval_context_mut().memory.write_bytes(scalar, bytes.iter().copied().chain(iter::once(0u8)))?;
         Ok(true)
     }
 }

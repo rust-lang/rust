@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{iter, convert::TryInto};
 
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -52,7 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if zero_init {
                 // We just allocated this, the access is definitely in-bounds.
                 this.memory
-                    .write_bytes(ptr.into(), itertools::repeat_n(0u8, size as usize))
+                    .write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize))
                     .unwrap();
             }
             Scalar::Ptr(ptr)
@@ -227,7 +227,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 );
                 // We just allocated this, the access is definitely in-bounds.
                 this.memory
-                    .write_bytes(ptr.into(), itertools::repeat_n(0u8, size as usize))
+                    .write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize))
                     .unwrap();
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
@@ -839,7 +839,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let system_info = this.deref_operand(args[0])?;
                 // Initialize with `0`.
                 this.memory
-                    .write_bytes(system_info.ptr, itertools::repeat_n(0, system_info.layout.size.bytes() as usize))?;
+                    .write_bytes(system_info.ptr, iter::repeat(0u8).take(system_info.layout.size.bytes() as usize))?;
                 // Set number of processors.
                 let dword_size = Size::from_bytes(4);
                 let num_cpus = this.mplace_field(system_info, 6)?;

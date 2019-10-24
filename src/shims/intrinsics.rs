@@ -1,3 +1,5 @@
+use std::iter;
+
 use rustc_apfloat::Float;
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
@@ -357,7 +359,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             // Do it in memory
                             let mplace = this.force_allocation(dest)?;
                             mplace.meta.unwrap_none(); // must be sized
-                            this.memory.write_bytes(mplace.ptr, itertools::repeat_n(0, dest.layout.size.bytes() as usize))?;
+                            this.memory.write_bytes(mplace.ptr, iter::repeat(0u8).take(dest.layout.size.bytes() as usize))?;
                         }
                     }
                 }
@@ -562,7 +564,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let count = this.read_scalar(args[2])?.to_usize(this)?;
                 let byte_count = ty_layout.size * count;
-                this.memory.write_bytes(ptr, itertools::repeat_n(val_byte, byte_count.bytes() as usize))?;
+                this.memory.write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
