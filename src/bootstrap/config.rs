@@ -333,13 +333,13 @@ struct Rust {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlTarget {
-    llvm_config: Option<String>,
-    llvm_filecheck: Option<String>,
     cc: Option<String>,
     cxx: Option<String>,
     ar: Option<String>,
     ranlib: Option<String>,
     linker: Option<String>,
+    llvm_config: Option<String>,
+    llvm_filecheck: Option<String>,
     android_ndk: Option<String>,
     crt_static: Option<bool>,
     musl_root: Option<String>,
