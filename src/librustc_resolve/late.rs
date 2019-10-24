@@ -111,9 +111,6 @@ crate enum RibKind<'a> {
     /// from the default of a type parameter because they're not declared
     /// before said type parameter. Also see the `visit_generics` override.
     ForwardTyParamBanRibKind,
-
-    /// We forbid the use of type parameters as the types of const parameters.
-    TyParamAsConstParamTy,
 }
 
 impl RibKind<'_> {
@@ -128,8 +125,7 @@ impl RibKind<'_> {
             | MacroDefinition(_) => false,
             AssocItemRibKind
             | ItemRibKind(_)
-            | ForwardTyParamBanRibKind
-            | TyParamAsConstParamTy => true,
+            | ForwardTyParamBanRibKind => true,
         }
     }
 }
@@ -483,18 +479,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
             default_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
         }
 
-        // We also ban access to type parameters for use as the types of const parameters.
-        let mut const_ty_param_ban_rib = Rib::new(TyParamAsConstParamTy);
-        const_ty_param_ban_rib.bindings.extend(generics.params.iter()
-            .filter(|param| {
-                if let GenericParamKind::Type { .. } = param.kind {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map(|param| (Ident::with_dummy_span(param.ident.name), Res::Err)));
-
         for param in &generics.params {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => self.visit_generic_param(param),
@@ -513,15 +497,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
                 GenericParamKind::Const { ref ty } => {
-                    self.ribs[TypeNS].push(const_ty_param_ban_rib);
-
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
-
                     self.visit_ty(ty);
-
-                    const_ty_param_ban_rib = self.ribs[TypeNS].pop().unwrap();
                 }
             }
         }
