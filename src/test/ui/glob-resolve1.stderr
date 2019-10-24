@@ -3,6 +3,7 @@ error[E0425]: cannot find function `fpriv` in this scope
    |
 LL |     fpriv();
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::fpriv;
@@ -13,6 +14,7 @@ error[E0425]: cannot find function `epriv` in this scope
    |
 LL |     epriv();
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::epriv;
@@ -29,6 +31,7 @@ error[E0425]: cannot find value `C` in this scope
    |
 LL |     C;
    |     ^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::C;
@@ -45,6 +48,7 @@ error[E0412]: cannot find type `A` in this scope
    |
 LL |     foo::<A>();
    |           ^
+   |
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
@@ -59,6 +63,7 @@ error[E0412]: cannot find type `C` in this scope
    |
 LL |     foo::<C>();
    |           ^
+   |
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
@@ -73,6 +78,7 @@ error[E0412]: cannot find type `D` in this scope
    |
 LL |     foo::<D>();
    |           ^
+   |
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();

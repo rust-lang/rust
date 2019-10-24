@@ -19,6 +19,7 @@ error: unused variable: `x`
    |
 LL |         F::A(x, y) | F::B(x, y) => { y },
    |              ^            ^
+   |
 help: consider prefixing with an underscore
    |
 LL |         F::A(_x, y) | F::B(_x, y) => { y },
@@ -41,6 +42,7 @@ error: unused variable: `x`
    |
 LL |     let _ = if let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
    |                         ^            ^
+   |
 help: consider prefixing with an underscore
    |
 LL |     let _ = if let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
@@ -51,6 +53,7 @@ error: unused variable: `x`
    |
 LL |     while let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
    |                    ^            ^
+   |
 help: consider prefixing with an underscore
    |
 LL |     while let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {

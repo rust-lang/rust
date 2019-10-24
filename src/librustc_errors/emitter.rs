@@ -1629,6 +1629,19 @@ impl EmitterWriter {
                             _ => ()
                         }
                     }
+                    if children.is_empty() && suggestions.iter().any(|s| {
+                        s.style != SuggestionStyle::CompletelyHidden
+                    }) {
+                        let mut buffer = StyledBuffer::new();
+                        if !self.short_message {
+                            draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
+                        }
+                        match emit_to_destination(&buffer.render(), level, &mut self.dst,
+                                                self.short_message) {
+                            Ok(()) => (),
+                            Err(e) => panic!("failed to emit error: {}", e)
+                        }
+                    }
                     for sugg in suggestions {
                         if sugg.style == SuggestionStyle::CompletelyHidden {
                             // do not display this suggestion, it is meant only for tools

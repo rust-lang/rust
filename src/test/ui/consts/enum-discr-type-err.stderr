@@ -9,6 +9,7 @@ LL | |     A = F,
 LL | |     B = T,
 LL | | }
    | |_- in this macro invocation
+   |
 help: you can convert an `i32` to `isize` and panic if the converted value wouldn't fit
    |
 LL |             $( $v = $s::V.try_into().unwrap(), )*

@@ -47,6 +47,7 @@ error: expected identifier, found reserved keyword `yield`
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                 ^^^^^ expected identifier, found reserved keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut mut r#yield(become, await) = r#yield(0, 0);
@@ -57,6 +58,7 @@ error: expected identifier, found reserved keyword `become`
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                       ^^^^^^ expected identifier, found reserved keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut mut yield(r#become, await) = r#yield(0, 0);
@@ -67,6 +69,7 @@ error: expected identifier, found keyword `await`
    |
 LL |     let mut mut yield(become, await) = r#yield(0, 0);
    |                               ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut mut yield(become, r#await) = r#yield(0, 0);

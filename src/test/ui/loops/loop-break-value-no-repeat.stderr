@@ -3,6 +3,7 @@ error[E0571]: `break` with value from a `for` loop
    |
 LL |         break 22
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `for` loop
    |
 LL |         break

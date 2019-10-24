@@ -3,6 +3,7 @@ error[E0423]: expected function, found trait `Bar`
    |
 LL |     Bar();
    |     ^^^
+   |
 help: a unit struct with a similar name exists
    |
 LL |     Baz();
@@ -21,6 +22,7 @@ error[E0573]: expected type, found function `Bar`
    |
 LL |     let _x: Box<Bar>;
    |                 ^^^
+   |
 help: a struct with a similar name exists
    |
 LL |     let _x: Box<Baz>;
@@ -39,6 +41,7 @@ error[E0425]: cannot find function `Bar` in this scope
    |
 LL |     Bar();
    |     ^^^
+   |
 help: a unit struct with a similar name exists
    |
 LL |     Baz();
@@ -57,6 +60,7 @@ error[E0412]: cannot find type `Bar` in this scope
    |
 LL |     let _x: Box<Bar>;
    |                 ^^^
+   |
 help: a struct with a similar name exists
    |
 LL |     let _x: Box<Baz>;

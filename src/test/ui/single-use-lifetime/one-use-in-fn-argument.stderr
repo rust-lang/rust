@@ -23,6 +23,7 @@ LL | fn center<'m>(_: Single<'m>) {}
    |           ^^            -- ...is used only here
    |           |
    |           this lifetime...
+   |
 help: elide the single-use lifetime
    |
 LL | fn center(_: Single<'_>) {}
@@ -33,6 +34,7 @@ error: lifetime parameter `'y` only used once
    |
 LL | fn left<'x, 'y>(foo: Double<'x, 'y>) -> &'x u32 { foo.f }
    |             ^^ this lifetime... -- ...is used only here
+   |
 help: elide the single-use lifetime
    |
 LL | fn left<'x>(foo: Double<'x, '_>) -> &'x u32 { foo.f }
@@ -43,6 +45,7 @@ error: lifetime parameter `'x` only used once
    |
 LL | fn right<'x, 'y>(foo: Double<'x, 'y>) -> &'y u32 { foo.f }
    |          ^^ this lifetime... -- ...is used only here
+   |
 help: elide the single-use lifetime
    |
 LL | fn right<'y>(foo: Double<'_, 'y>) -> &'y u32 { foo.f }

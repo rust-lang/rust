@@ -18,6 +18,7 @@ LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s 
    |                 --    ^^^^^^^^^^^ expected `{`
    |                 |
    |                 this `if` statement has a condition, but no block
+   |
 help: try placing this code inside a block
    |
 LL | fn foo(u: u8) { if u8 { macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {

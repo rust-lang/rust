@@ -33,6 +33,7 @@ LL |           2.0.neg()
 ...
 LL |     real_method_stmt!();
    |     -------------------- in this macro invocation
+   |
 help: you must specify a concrete type for this numeric value, like `f32`
    |
 LL |           2.0_f32.neg()
@@ -73,6 +74,7 @@ LL |           2.0.neg()
 ...
 LL |     let _ = real_method_expr!();
    |             ------------------- in this macro invocation
+   |
 help: you must specify a concrete type for this numeric value, like `f32`
    |
 LL |           2.0_f32.neg()

@@ -50,6 +50,7 @@ LL |                    <
    |                    ^ not interpreted as comparison
 LL |                    4);
    |                    - interpreted as generic arguments
+   |
 help: try comparing the cast value
    |
 LL |     println!("{}", (a
@@ -64,6 +65,7 @@ LL |                    <
    |                    ^ not interpreted as comparison
 LL |                    5);
    |                    - interpreted as generic arguments
+   |
 help: try comparing the cast value
    |
 LL |     println!("{}", (a

@@ -3,6 +3,7 @@ error[E0425]: cannot find value `A` in crate `namespaced_enums`
    |
 LL |     let _ = namespaced_enums::A;
    |                               ^ not found in `namespaced_enums`
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use namespaced_enums::Foo::A;
@@ -13,6 +14,7 @@ error[E0425]: cannot find function `B` in crate `namespaced_enums`
    |
 LL |     let _ = namespaced_enums::B(10);
    |                               ^ not found in `namespaced_enums`
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use namespaced_enums::Foo::B;
@@ -23,6 +25,7 @@ error[E0422]: cannot find struct, variant or union type `C` in crate `namespaced
    |
 LL |     let _ = namespaced_enums::C { a: 10 };
    |                               ^ not found in `namespaced_enums`
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use namespaced_enums::Foo::C;

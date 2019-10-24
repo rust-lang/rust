@@ -35,6 +35,7 @@ error: expected expression, found `>`
    |
 LL |     } > 0
    |       ^ expected expression
+   |
 help: parentheses are required to parse this as an expression
    |
 LL |     (match x {

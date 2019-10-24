@@ -6,6 +6,7 @@ LL |     let Point { .., y, } = p;
    |                 | |
    |                 | expected `}`
    |                 `..` must be at the end and cannot have a trailing comma
+   |
 help: move the `..` to the end of the field list
    |
 LL |     let Point { y, .. } = p;
@@ -19,6 +20,7 @@ LL |     let Point { .., y } = p;
    |                 | |
    |                 | expected `}`
    |                 `..` must be at the end and cannot have a trailing comma
+   |
 help: move the `..` to the end of the field list
    |
 LL |     let Point { y , .. } = p;

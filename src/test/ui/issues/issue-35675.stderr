@@ -3,6 +3,7 @@ error[E0412]: cannot find type `Apple` in this scope
    |
 LL | fn should_return_fruit() -> Apple {
    |                             ^^^^^ not found in this scope
+   |
 help: there is an enum variant `Fruit::Apple`; try using the variant's enum
    |
 LL | fn should_return_fruit() -> Fruit {
@@ -13,6 +14,7 @@ error[E0425]: cannot find function `Apple` in this scope
    |
 LL |     Apple(5)
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use Fruit::Apple;
@@ -32,6 +34,7 @@ error[E0425]: cannot find function `Apple` in this scope
    |
 LL |     Apple(5)
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use Fruit::Apple;
@@ -51,6 +54,7 @@ error[E0412]: cannot find type `Variant3` in this scope
    |
 LL | fn bar() -> Variant3 {
    |             ^^^^^^^^ not found in this scope
+   |
 help: there is an enum variant `x::Enum::Variant3`; try using the variant's enum
    |
 LL | fn bar() -> x::Enum {

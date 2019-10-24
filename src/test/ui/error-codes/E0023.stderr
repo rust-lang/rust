@@ -33,6 +33,7 @@ LL |     Orange((String, String)),
 ...
 LL |         Fruit::Orange(a, b) => {},
    |         ^^^^^^^^^^^^^^^^^^^ expected 1 field, found 2
+   |
 help: missing parenthesis
    |
 LL |         Fruit::Orange((a, b)) => {},
@@ -46,6 +47,7 @@ LL |     Banana(()),
 ...
 LL |         Fruit::Banana() => {},
    |         ^^^^^^^^^^^^^^^ expected 1 field, found 0
+   |
 help: missing parenthesis
    |
 LL |         Fruit::Banana(()) => {},
