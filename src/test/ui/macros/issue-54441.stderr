@@ -2,7 +2,7 @@ error: expected one of `crate`, `fn`, `pub`, `static`, or `type`, found keyword 
   --> $DIR/issue-54441.rs:3:9
    |
 LL |         let
-   |         ^^^ unexpected token
+   |         ^^^ expected one of `crate`, `fn`, `pub`, `static`, or `type` here
 ...
 LL |     m!();
    |     ----- in this macro invocation

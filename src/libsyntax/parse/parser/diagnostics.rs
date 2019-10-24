@@ -327,31 +327,27 @@ impl<'a> Parser<'a> {
         }
 
         let sm = self.sess.source_map();
-        match (sm.lookup_line(self.token.span.lo()), sm.lookup_line(sp.lo())) {
-            (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                // When the spans are in the same line, it means that the only content between
-                // them is whitespace, point at the found token in that case:
-                //
-                // X |     () => { syntax error };
-                //   |                    ^^^^^ expected one of 8 possible tokens here
-                //
-                // instead of having:
-                //
-                // X |     () => { syntax error };
-                //   |                   -^^^^^ unexpected token
-                //   |                   |
-                //   |                   expected one of 8 possible tokens here
-                err.span_label(self.token.span, label_exp);
-            }
-            _ if self.prev_span == syntax_pos::DUMMY_SP => {
-                // Account for macro context where the previous span might not be
-                // available to avoid incorrect output (#54841).
-                err.span_label(self.token.span, "unexpected token");
-            }
-            _ => {
-                err.span_label(sp, label_exp);
-                err.span_label(self.token.span, "unexpected token");
-            }
+        if self.prev_span == DUMMY_SP {
+            // Account for macro context where the previous span might not be
+            // available to avoid incorrect output (#54841).
+            err.span_label(self.token.span, label_exp);
+        } else if !sm.is_multiline(self.token.span.shrink_to_hi().until(sp.shrink_to_lo())) {
+            // When the spans are in the same line, it means that the only content between
+            // them is whitespace, point at the found token in that case:
+            //
+            // X |     () => { syntax error };
+            //   |                    ^^^^^ expected one of 8 possible tokens here
+            //
+            // instead of having:
+            //
+            // X |     () => { syntax error };
+            //   |                   -^^^^^ unexpected token
+            //   |                   |
+            //   |                   expected one of 8 possible tokens here
+            err.span_label(self.token.span, label_exp);
+        } else {
+            err.span_label(sp, label_exp);
+            err.span_label(self.token.span, "unexpected token");
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
@@ -894,7 +890,12 @@ impl<'a> Parser<'a> {
         let sm = self.sess.source_map();
         let msg = format!("expected `;`, found `{}`", self.this_token_descr());
         let appl = Applicability::MachineApplicable;
-        if self.look_ahead(1, |t| t == &token::CloseDelim(token::Brace)
+        if self.token.span == DUMMY_SP || self.prev_span == DUMMY_SP {
+            // Likely inside a macro, can't provide meaninful suggestions.
+            return self.expect(&token::Semi).map(|_| ());
+        } else if !sm.is_multiline(self.prev_span.until(self.token.span)) {
+            // The current token is in the same line as the prior token, not recoverable.
+        } else if self.look_ahead(1, |t| t == &token::CloseDelim(token::Brace)
             || token_can_begin_expr(t) && t.kind != token::Colon
         ) && [token::Comma, token::Colon].contains(&self.token.kind) {
             // Likely typo: `,` → `;` or `:` → `;`. This is triggered if the current token is
@@ -903,14 +904,12 @@ impl<'a> Parser<'a> {
             //
             //   let x = 32:
             //   let y = 42;
-            if sm.is_multiline(self.prev_span.until(self.token.span)) {
-                self.bump();
-                let sp = self.prev_span;
-                self.struct_span_err(sp, &msg)
-                    .span_suggestion(sp, "change this to `;`", ";".to_string(), appl)
-                    .emit();
-                return Ok(())
-            }
+            self.bump();
+            let sp = self.prev_span;
+            self.struct_span_err(sp, &msg)
+                .span_suggestion(sp, "change this to `;`", ";".to_string(), appl)
+                .emit();
+            return Ok(())
         } else if self.look_ahead(0, |t| t == &token::CloseDelim(token::Brace) || (
                 token_can_begin_expr(t)
                 && t != &token::Semi
@@ -921,14 +920,12 @@ impl<'a> Parser<'a> {
             //
             //   let x = 32
             //   let y = 42;
-            if sm.is_multiline(self.prev_span.until(self.token.span)) {
-                let sp = self.prev_span.shrink_to_hi();
-                self.struct_span_err(sp, &msg)
-                    .span_label(self.token.span, "unexpected token")
-                    .span_suggestion_short(sp, "add `;` here", ";".to_string(), appl)
-                    .emit();
-                return Ok(())
-            }
+            let sp = self.prev_span.shrink_to_hi();
+            self.struct_span_err(sp, &msg)
+                .span_label(self.token.span, "unexpected token")
+                .span_suggestion_short(sp, "add `;` here", ";".to_string(), appl)
+                .emit();
+            return Ok(())
         }
         self.expect(&token::Semi).map(|_| ()) // Error unconditionally
     }
