@@ -502,6 +502,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         &eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         &excessive_precision::EXCESSIVE_PRECISION,
+        &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
         &format::USELESS_FORMAT,

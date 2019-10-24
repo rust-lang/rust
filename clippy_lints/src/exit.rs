@@ -33,31 +33,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Exit {
             if match_def_path(cx, def_id, &paths::EXIT);
             then {
                 let mut parent = cx.tcx.hir().get_parent_item(e.hir_id);
-                // We have to traverse the parents upwards until we find a function
-                // otherwise a exit in a let or if in main would still trigger this
-                loop{
-                    match cx.tcx.hir().find(parent) {
-                        Some(Node::Item(Item{ident, kind: ItemKind::Fn(..), ..})) => {
-                            // If we found a function we check it's name if it is
-                            // `main` we emit a lint.
-                            let def_id = cx.tcx.hir().local_def_id(parent);
-                            if !is_entrypoint_fn(cx, def_id) {
-                                span_lint(cx, EXIT, e.span, "usage of `process::exit`");
-                            }
-                            // We found any kind of function and can end our loop
-                            break;
-                        }
-                        // If we found anything but a funciton we continue with the
-                        // loop and go one parent up
-                        Some(_) => {
-                            parent = cx.tcx.hir().get_parent_item(parent);
-                        },
-                        // If we found nothing we break.
-                        None => break,
+                if let Some(Node::Item(Item{ident, kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find(parent) {
+                    // If the next item up is a function we check if it is an entry point
+                    // and only then emit a linter warning
+                    let def_id = cx.tcx.hir().local_def_id(parent);
+                    if !is_entrypoint_fn(cx, def_id) {
+                        span_lint(cx, EXIT, e.span, "usage of `process::exit`");
                     }
                 }
             }
-
         }
     }
 }
