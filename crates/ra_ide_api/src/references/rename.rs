@@ -110,7 +110,7 @@ fn rename_reference(
     position: FilePosition,
     new_name: &str,
 ) -> Option<RangeInfo<SourceChange>> {
-    let RangeInfo { range, info: refs } = find_all_refs(db, position)?;
+    let RangeInfo { range, info: refs } = find_all_refs(db, position, None)?;
 
     let edit = refs
         .into_iter()
@@ -255,13 +255,13 @@ mod tests {
         "#;
 
         let (analysis, pos) = analysis_and_position(code);
-        let refs = analysis.find_all_refs(pos).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         assert_eq!(refs.len(), 3);
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
         let (analysis, position) = single_file_with_position(text);
-        analysis.find_all_refs(position).unwrap().unwrap()
+        analysis.find_all_refs(position, None).unwrap().unwrap()
     }
 
     #[test]
