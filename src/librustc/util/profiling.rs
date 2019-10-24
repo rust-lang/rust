@@ -156,26 +156,14 @@ impl SelfProfilerRef {
     }
 
     /// Start profiling a query being blocked on a concurrent execution.
-    /// Profiling continues until `query_blocked_end` is called.
+    /// Profiling continues until the TimingGuard returned from this call is
+    /// dropped.
     #[inline(always)]
-    pub fn query_blocked_start(&self, query_name: QueryName) {
-        self.non_guard_query_event(
-            |profiler| profiler.query_blocked_event_kind,
-            query_name,
-            EventFilter::QUERY_BLOCKED,
-            TimestampKind::Start,
-        );
-    }
-
-    /// End profiling a query being blocked on a concurrent execution.
-    #[inline(always)]
-    pub fn query_blocked_end(&self, query_name: QueryName) {
-        self.non_guard_query_event(
-            |profiler| profiler.query_blocked_event_kind,
-            query_name,
-            EventFilter::QUERY_BLOCKED,
-            TimestampKind::End,
-        );
+    pub fn query_blocked(&self, query_name: QueryName) -> TimingGuard<'_> {
+        self.exec(EventFilter::QUERY_BLOCKED, |profiler| {
+            let event_id = SelfProfiler::get_query_name_string_id(query_name);
+            TimingGuard::start(profiler, profiler.query_blocked_event_kind, event_id)
+        })
     }
 
     /// Start profiling how long it takes to load a query result from the
