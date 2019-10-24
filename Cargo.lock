@@ -374,6 +374,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo_metadata"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d2d1617e838936c0d2323a65cc151e03ae19a7678dd24f72bccf27119b90a5d"
+dependencies = [
+ "semver",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "cargotest2"
 version = "0.1.0"
 
@@ -443,7 +455,7 @@ dependencies = [
 name = "clippy"
 version = "0.0.212"
 dependencies = [
- "cargo_metadata",
+ "cargo_metadata 0.9.0",
  "clippy-mini-macro-test",
  "clippy_lints",
  "compiletest_rs",
@@ -464,7 +476,7 @@ version = "0.2.0"
 name = "clippy_lints"
 version = "0.0.212"
 dependencies = [
- "cargo_metadata",
+ "cargo_metadata 0.9.0",
  "if_chain",
  "itertools 0.8.0",
  "lazy_static 1.3.0",
@@ -2124,7 +2136,7 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "cargo_metadata",
+ "cargo_metadata 0.8.0",
  "colored",
  "compiletest_rs",
  "directories",
@@ -2954,7 +2966,7 @@ name = "rls"
 version = "1.39.0"
 dependencies = [
  "cargo",
- "cargo_metadata",
+ "cargo_metadata 0.8.0",
  "clippy_lints",
  "crossbeam-channel",
  "difference",
@@ -3872,7 +3884,7 @@ version = "1.4.9"
 dependencies = [
  "annotate-snippets",
  "bytecount",
- "cargo_metadata",
+ "cargo_metadata 0.8.0",
  "derive-new",
  "diff",
  "dirs",
