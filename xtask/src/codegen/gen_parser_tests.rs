@@ -3,12 +3,12 @@
 
 use std::{
     collections::HashMap,
-    fs,
+    fs, iter,
     path::{Path, PathBuf},
 };
 
 use crate::{
-    codegen::{self, update, Mode},
+    codegen::{self, extract_comment_blocks, update, Mode},
     project_root, Result,
 };
 
@@ -56,48 +56,29 @@ struct Tests {
     pub err: HashMap<String, Test>,
 }
 
-fn collect_tests(s: &str) -> Vec<(usize, Test)> {
-    let mut res = vec![];
-    let prefix = "// ";
-    let lines = s.lines().map(str::trim_start).enumerate();
-
-    let mut block = vec![];
-    for (line_idx, line) in lines {
-        let is_comment = line.starts_with(prefix);
-        if is_comment {
-            block.push((line_idx, &line[prefix.len()..]));
+fn collect_tests(s: &str) -> Vec<Test> {
+    let mut res = Vec::new();
+    for comment_block in extract_comment_blocks(s) {
+        let first_line = &comment_block[0];
+        let (name, ok) = if first_line.starts_with("test ") {
+            let name = first_line["test ".len()..].to_string();
+            (name, true)
+        } else if first_line.starts_with("test_err ") {
+            let name = first_line["test_err ".len()..].to_string();
+            (name, false)
         } else {
-            process_block(&mut res, &block);
-            block.clear();
-        }
-    }
-    process_block(&mut res, &block);
-    return res;
-
-    fn process_block(acc: &mut Vec<(usize, Test)>, block: &[(usize, &str)]) {
-        if block.is_empty() {
-            return;
-        }
-        let mut ok = true;
-        let mut block = block.iter();
-        let (start_line, name) = loop {
-            match block.next() {
-                Some(&(idx, line)) if line.starts_with("test ") => {
-                    break (idx, line["test ".len()..].to_string());
-                }
-                Some(&(idx, line)) if line.starts_with("test_err ") => {
-                    ok = false;
-                    break (idx, line["test_err ".len()..].to_string());
-                }
-                Some(_) => (),
-                None => return,
-            }
+            continue;
         };
-        let text: String =
-            block.map(|(_, line)| *line).chain(std::iter::once("")).collect::<Vec<_>>().join("\n");
+        let text: String = comment_block[1..]
+            .iter()
+            .cloned()
+            .chain(iter::once(String::new()))
+            .collect::<Vec<_>>()
+            .join("\n");
         assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        acc.push((start_line, Test { name, text, ok }))
+        res.push(Test { name, text, ok })
     }
+    res
 }
 
 fn tests_from_dir(dir: &Path) -> Result<Tests> {
@@ -118,7 +99,7 @@ fn tests_from_dir(dir: &Path) -> Result<Tests> {
     fn process_file(res: &mut Tests, path: &Path) -> Result<()> {
         let text = fs::read_to_string(path)?;
 
-        for (_, test) in collect_tests(&text) {
+        for test in collect_tests(&text) {
             if test.ok {
                 if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
                     Err(format!("Duplicate test: {}", old_test.name))?

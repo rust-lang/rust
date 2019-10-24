@@ -8,7 +8,7 @@
 mod gen_syntax;
 mod gen_parser_tests;
 
-use std::{fs, path::Path};
+use std::{fs, mem, path::Path};
 
 use crate::Result;
 
@@ -43,4 +43,27 @@ pub fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     eprintln!("updating {}", path.display());
     fs::write(path, contents)?;
     Ok(())
+}
+
+fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
+    let mut res = Vec::new();
+
+    let prefix = "// ";
+    let lines = text.lines().map(str::trim_start);
+
+    let mut block = vec![];
+    for line in lines {
+        let is_comment = line.starts_with(prefix);
+        if is_comment {
+            block.push(line[prefix.len()..].to_string());
+        } else {
+            if !block.is_empty() {
+                res.push(mem::replace(&mut block, Vec::new()))
+            }
+        }
+    }
+    if !block.is_empty() {
+        res.push(mem::replace(&mut block, Vec::new()))
+    }
+    res
 }
