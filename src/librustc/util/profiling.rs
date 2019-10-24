@@ -14,9 +14,12 @@ use measureme::{StringId, TimestampKind};
 /// MmapSerializatioSink is faster on macOS and Linux
 /// but FileSerializationSink is faster on Windows
 #[cfg(not(windows))]
-type Profiler = measureme::Profiler<measureme::MmapSerializationSink>;
+type SerializationSink = measureme::MmapSerializationSink;
 #[cfg(windows)]
-type Profiler = measureme::Profiler<measureme::FileSerializationSink>;
+type SerializationSink = measureme::FileSerializationSink;
+
+type Profiler = measureme::Profiler<SerializationSink>;
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum ProfileCategory {
@@ -298,14 +301,7 @@ impl SelfProfiler {
 }
 
 #[must_use]
-pub struct TimingGuard<'a>(Option<TimingGuardInternal<'a>>);
-
-struct TimingGuardInternal<'a> {
-    raw_profiler: &'a Profiler,
-    event_id: StringId,
-    event_kind: StringId,
-    thread_id: u64,
-}
+pub struct TimingGuard<'a>(Option<measureme::TimingGuard<'a, SerializationSink>>);
 
 impl<'a> TimingGuard<'a> {
     #[inline]
@@ -316,30 +312,14 @@ impl<'a> TimingGuard<'a> {
     ) -> TimingGuard<'a> {
         let thread_id = thread_id_to_u64(std::thread::current().id());
         let raw_profiler = &profiler.profiler;
-        raw_profiler.record_event(event_kind, event_id, thread_id, TimestampKind::Start);
-
-        TimingGuard(Some(TimingGuardInternal {
-            raw_profiler,
-            event_kind,
-            event_id,
-            thread_id,
-        }))
+        let timing_guard = raw_profiler.start_recording_interval_event(event_kind,
+                                                                       event_id,
+                                                                       thread_id);
+        TimingGuard(Some(timing_guard))
     }
 
     #[inline]
     pub fn none() -> TimingGuard<'a> {
         TimingGuard(None)
-    }
-}
-
-impl<'a> Drop for TimingGuardInternal<'a> {
-    #[inline]
-    fn drop(&mut self) {
-        self.raw_profiler.record_event(
-            self.event_kind,
-            self.event_id,
-            self.thread_id,
-            TimestampKind::End
-        );
     }
 }
