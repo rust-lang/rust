@@ -2767,8 +2767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut opaque_types = self.opaque_types.borrow_mut();
         for (ty, decl) in opaque_type_map {
-            let old_value = opaque_types.insert(ty, decl);
-            assert!(old_value.is_none(), "instantiated twice: {:?}/{:?}", ty, decl);
+            let _ = opaque_types.insert(ty, decl);
         }
 
         value
