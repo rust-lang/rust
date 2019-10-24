@@ -637,6 +637,28 @@ impl Step for DebuggerScripts {
     }
 }
 
+fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
+    // The only true set of target libraries came from the build triple, so
+    // let's reduce redundant work by only producing archives from that host.
+    if compiler.host != builder.config.build {
+        builder.info("\tskipping, not a build host");
+        true
+    } else {
+        false
+    }
+}
+
+/// Copy stamped files into an image's `target/lib` directory.
+fn copy_target_libs(builder: &Builder<'_>, target: &str, image: &Path, stamp: &Path) {
+    let dst = image.join("lib/rustlib").join(target).join("lib");
+    t!(fs::create_dir_all(&dst));
+    for (path, host) in builder.read_stamp_file(stamp) {
+        if !host || builder.config.build == target {
+            builder.copy(&path, &dst.join(path.file_name().unwrap()));
+        }
+    }
+}
+
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     pub compiler: Compiler,
@@ -667,44 +689,19 @@ impl Step for Std {
         let target = self.target;
 
         let name = pkgname(builder, "rust-std");
-
-        // The only true set of target libraries came from the build triple, so
-        // let's reduce redundant work by only producing archives from that host.
-        if compiler.host != builder.config.build {
-            builder.info("\tskipping, not a build host");
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
+        let archive = distdir(builder).join(format!("{}-{}.tar.gz", name, target));
+        if skip_host_target_lib(builder, compiler) {
+            return archive;
         }
 
-        // We want to package up as many target libraries as possible
-        // for the `rust-std` package, so if this is a host target we
-        // depend on librustc and otherwise we just depend on libtest.
-        if builder.hosts.iter().any(|t| t == target) {
-            builder.ensure(compile::Rustc { compiler, target });
-        } else {
-            builder.ensure(compile::Std { compiler, target });
-        }
+        builder.ensure(compile::Std { compiler, target });
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
         let _ = fs::remove_dir_all(&image);
 
-        let dst = image.join("lib/rustlib").join(target);
-        t!(fs::create_dir_all(&dst));
-        let mut src = builder.sysroot_libdir(compiler, target).to_path_buf();
-        src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
-        builder.cp_filtered(&src, &dst, &|path| {
-            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                if name == builder.config.rust_codegen_backends_dir.as_str() {
-                    return false
-                }
-                if name == "bin" {
-                    return false
-                }
-                if name.contains("LLVM") {
-                    return false
-                }
-            }
-            true
-        });
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
+        copy_target_libs(builder, &target, &image, &stamp);
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -723,7 +720,73 @@ impl Step for Std {
         let _time = timeit(builder);
         builder.run(&mut cmd);
         builder.remove_dir(&image);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target))
+        archive
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustcDev {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+}
+
+impl Step for RustcDev {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("rustc-dev")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustcDev {
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        let name = pkgname(builder, "rustc-dev");
+        let archive = distdir(builder).join(format!("{}-{}.tar.gz", name, target));
+        if skip_host_target_lib(builder, compiler) {
+            return archive;
+        }
+
+        builder.ensure(compile::Rustc { compiler, target });
+
+        let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
+        let _ = fs::remove_dir_all(&image);
+
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
+        copy_target_libs(builder, &target, &image, &stamp);
+
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=Rust-is-ready-to-develop.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(builder))
+           .arg("--output-dir").arg(&distdir(builder))
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg(format!("--component-name=rustc-dev-{}", target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        builder.info(&format!("Dist rustc-dev stage{} ({} -> {})",
+            compiler.stage, &compiler.host, target));
+        let _time = timeit(builder);
+        builder.run(&mut cmd);
+        builder.remove_dir(&image);
+        archive
     }
 }
 
