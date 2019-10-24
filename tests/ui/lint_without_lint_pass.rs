@@ -20,6 +20,12 @@ declare_clippy_lint! {
     ""
 }
 
+declare_clippy_lint! {
+    pub TEST_LINT_REGISTERED_ONLY_IMPL,
+    correctness,
+    ""
+}
+
 pub struct Pass;
 impl LintPass for Pass {
     fn name(&self) -> &'static str {
@@ -30,6 +36,6 @@ impl LintPass for Pass {
 declare_lint_pass!(Pass2 => [TEST_LINT_REGISTERED]);
 
 pub struct Pass3;
-impl_lint_pass!(Pass3 => [TEST_LINT_REGISTERED]);
+impl_lint_pass!(Pass3 => [TEST_LINT_REGISTERED_ONLY_IMPL]);
 
 fn main() {}
