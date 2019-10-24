@@ -131,32 +131,6 @@ impl SelfProfilerRef {
         })
     }
 
-    /// Start profiling a generic activity. Profiling continues until
-    /// `generic_activity_end` is called. The RAII-based `generic_activity`
-    /// usually is the better alternative.
-    #[inline(always)]
-    pub fn generic_activity_start(&self, event_id: &str) {
-        self.non_guard_generic_event(
-            |profiler| profiler.generic_activity_event_kind,
-            |profiler| profiler.profiler.alloc_string(event_id),
-            EventFilter::GENERIC_ACTIVITIES,
-            TimestampKind::Start,
-        );
-    }
-
-    /// End profiling a generic activity that was started with
-    /// `generic_activity_start`. The RAII-based `generic_activity` usually is
-    /// the better alternative.
-    #[inline(always)]
-    pub fn generic_activity_end(&self, event_id: &str) {
-        self.non_guard_generic_event(
-            |profiler| profiler.generic_activity_event_kind,
-            |profiler| profiler.profiler.alloc_string(event_id),
-            EventFilter::GENERIC_ACTIVITIES,
-            TimestampKind::End,
-        );
-    }
-
     /// Start profiling a query provider. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
@@ -231,28 +205,6 @@ impl SelfProfilerRef {
             profiler.profiler.record_event(
                 event_kind(profiler),
                 event_id,
-                thread_id,
-                timestamp_kind,
-            );
-
-            TimingGuard::none()
-        }));
-    }
-
-    #[inline(always)]
-    fn non_guard_generic_event<F: FnOnce(&SelfProfiler) -> StringId>(
-        &self,
-        event_kind: fn(&SelfProfiler) -> StringId,
-        event_id: F,
-        event_filter: EventFilter,
-        timestamp_kind: TimestampKind
-    ) {
-        drop(self.exec(event_filter, |profiler| {
-            let thread_id = thread_id_to_u64(std::thread::current().id());
-
-            profiler.profiler.record_event(
-                event_kind(profiler),
-                event_id(profiler),
                 thread_id,
                 timestamp_kind,
             );
