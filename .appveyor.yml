@@ -32,7 +32,9 @@ install:
     - rustup update
     # Install "master" toolchain
     - cargo install rustup-toolchain-install-master -f
-    - rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev
+    # We need to install cargo here as well or else the DLL search path inside `cargo run`
+    # will be for the wrong toolchain. (On Unix, `./miri` takes care of this, but not here.)
+    - rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev -c cargo
     - rustup default master
     - rustc --version
     - cargo --version
