@@ -1218,7 +1218,7 @@ function getSearchElement() {
                 }
                 dst = dst[0];
                 if (window.location.pathname === dst.pathname) {
-                    addClass(document.getElementById("search"), "hidden");
+                    addClass(getSearchElement(), "hidden");
                     removeClass(main, "hidden");
                     document.location.href = dst.href;
                 }
@@ -2454,7 +2454,7 @@ function getSearchElement() {
     function putBackSearch(search_input) {
         if (search_input.value !== "") {
             addClass(main, "hidden");
-            removeClass(document.getElementById("search"), "hidden");
+            removeClass(getSearchElement(), "hidden");
             if (browserSupportsHistoryApi()) {
                 history.replaceState(search_input.value,
                                      "",
