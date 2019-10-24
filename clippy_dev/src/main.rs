@@ -109,6 +109,7 @@ fn print_lints() {
     println!("there are {} lints", lint_count);
 }
 
+#[allow(clippy::too_many_lines)]
 fn update_lints(update_mode: &UpdateMode) {
     let lint_list: Vec<Lint> = gather_all().collect();
 

@@ -143,13 +143,19 @@ pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
         .collect::<Vec<String>>()
 }
 
+#[must_use]
 pub fn gen_register_lint_list(lints: &[Lint]) -> Vec<String> {
     let pre = "    store.register_lints(&[".to_string();
     let post = "    ]);".to_string();
     let mut inner = lints
         .iter()
-        .filter(|l| !(l.is_internal() || l.deprecation.is_some()))
-        .map(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
+        .filter_map(|l| {
+            if !l.is_internal() && l.deprecation.is_none() {
+                Some(format!("        &{}::{},", l.module, l.name.to_uppercase()))
+            } else {
+                None
+            }
+        })
         .sorted()
         .collect::<Vec<String>>();
     inner.insert(0, pre);

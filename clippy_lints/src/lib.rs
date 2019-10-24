@@ -309,9 +309,9 @@ mod reexport {
 pub fn register_pre_expansion_lints(store: &mut rustc::lint::LintStore, conf: &Conf) {
     store.register_pre_expansion_pass(|| box write::Write);
     store.register_pre_expansion_pass(|| box redundant_field_names::RedundantFieldNames);
-    let p = conf.single_char_binding_names_threshold;
+    let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_pre_expansion_pass(move || box non_expressive_names::NonExpressiveNames {
-        single_char_binding_names_threshold: p,
+        single_char_binding_names_threshold,
     });
     store.register_pre_expansion_pass(|| box attrs::DeprecatedCfgAttribute);
     store.register_pre_expansion_pass(|| box dbg_macro::DbgMacro);
@@ -783,8 +783,8 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box enum_glob_use::EnumGlobUse);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
     store.register_late_pass(|| box excessive_precision::ExcessivePrecision);
-    let p = conf.verbose_bit_mask_threshold;
-    store.register_late_pass(move || box bit_mask::BitMask::new(p));
+    let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
+    store.register_late_pass(move || box bit_mask::BitMask::new(verbose_bit_mask_threshold));
     store.register_late_pass(|| box ptr::Ptr);
     store.register_late_pass(|| box needless_bool::NeedlessBool);
     store.register_late_pass(|| box needless_bool::BoolComparison);
@@ -812,8 +812,8 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box entry::HashMapPass);
     store.register_late_pass(|| box ranges::Ranges);
     store.register_late_pass(|| box types::Casts);
-    let p = conf.type_complexity_threshold;
-    store.register_late_pass(move || box types::TypeComplexity::new(p));
+    let type_complexity_threshold = conf.type_complexity_threshold;
+    store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
     store.register_late_pass(|| box matches::Matches);
     store.register_late_pass(|| box minmax::MinMaxPass);
     store.register_late_pass(|| box open_options::OpenOptions);
@@ -825,10 +825,10 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box no_effect::NoEffect);
     store.register_late_pass(|| box temporary_assignment::TemporaryAssignment);
     store.register_late_pass(|| box transmute::Transmute);
-    let p = conf.cognitive_complexity_threshold;
-    store.register_late_pass(move || box cognitive_complexity::CognitiveComplexity::new(p));
-    let a = conf.too_large_for_stack;
-    store.register_late_pass(move || box escape::BoxedLocal{too_large_for_stack: a});
+    let cognitive_complexity_threshold = conf.cognitive_complexity_threshold;
+    store.register_late_pass(move || box cognitive_complexity::CognitiveComplexity::new(cognitive_complexity_threshold));
+    let too_large_for_stack = conf.too_large_for_stack;
+    store.register_late_pass(move || box escape::BoxedLocal{too_large_for_stack});
     store.register_late_pass(|| box panic_unimplemented::PanicUnimplemented);
     store.register_late_pass(|| box strings::StringLitAsBytes);
     store.register_late_pass(|| box derive::Derive);
@@ -848,13 +848,13 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box overflow_check_conditional::OverflowCheckConditional);
     store.register_late_pass(|| box unused_label::UnusedLabel);
     store.register_late_pass(|| box new_without_default::NewWithoutDefault::default());
-    let p = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || box blacklisted_name::BlacklistedName::new(p.clone()));
-    let a1 = conf.too_many_arguments_threshold;
-    let a2 = conf.too_many_lines_threshold;
-    store.register_late_pass(move || box functions::Functions::new(a1, a2));
-    let p = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || box doc::DocMarkdown::new(p.clone()));
+    let blacklisted_names = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box blacklisted_name::BlacklistedName::new(blacklisted_names.clone()));
+    let too_many_arguments_threshold1 = conf.too_many_arguments_threshold;
+    let too_many_lines_threshold2 = conf.too_many_lines_threshold;
+    store.register_late_pass(move || box functions::Functions::new(too_many_arguments_threshold1, too_many_lines_threshold2));
+    let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box doc::DocMarkdown::new(doc_valid_idents.clone()));
     store.register_late_pass(|| box neg_multiply::NegMultiply);
     store.register_late_pass(|| box mem_discriminant::MemDiscriminant);
     store.register_late_pass(|| box mem_forget::MemForget);
@@ -869,15 +869,15 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box redundant_pattern_matching::RedundantPatternMatching);
     store.register_late_pass(|| box partialeq_ne_impl::PartialEqNeImpl);
     store.register_late_pass(|| box unused_io_amount::UnusedIoAmount);
-    let p = conf.enum_variant_size_threshold;
-    store.register_late_pass(move || box large_enum_variant::LargeEnumVariant::new(p));
+    let enum_variant_size_threshold = conf.enum_variant_size_threshold;
+    store.register_late_pass(move || box large_enum_variant::LargeEnumVariant::new(enum_variant_size_threshold));
     store.register_late_pass(|| box explicit_write::ExplicitWrite);
     store.register_late_pass(|| box needless_pass_by_value::NeedlessPassByValue);
-    let p = trivially_copy_pass_by_ref::TriviallyCopyPassByRef::new(
+    let trivially_copy_pass_by_ref = trivially_copy_pass_by_ref::TriviallyCopyPassByRef::new(
         conf.trivial_copy_size_limit,
         &sess.target,
     );
-    store.register_late_pass(move || box p);
+    store.register_late_pass(move || box trivially_copy_pass_by_ref);
     store.register_late_pass(|| box try_err::TryErr);
     store.register_late_pass(|| box use_self::UseSelf);
     store.register_late_pass(|| box bytecount::ByteCount);
@@ -933,11 +933,11 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_early_pass(|| box multiple_crate_versions::MultipleCrateVersions);
     store.register_early_pass(|| box wildcard_dependencies::WildcardDependencies);
     store.register_early_pass(|| box literal_representation::LiteralDigitGrouping);
-    let p = conf.literal_representation_threshold;
-    store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(p));
+    let literal_representation_threshold = conf.literal_representation_threshold;
+    store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
     store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
-    let p = conf.enum_variant_name_threshold;
-    store.register_early_pass(move || box enum_variants::EnumVariantNames::new(p));
+    let enum_variant_name_threshold = conf.enum_variant_name_threshold;
+    store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
 
