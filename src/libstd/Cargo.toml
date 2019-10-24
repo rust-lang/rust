@@ -23,7 +23,7 @@ libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of
 compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
-hashbrown = { version = "0.6.1", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.6.2", default-features = false, features = ['rustc-dep-of-std'] }
 
 [dependencies.backtrace_rs]
 package = "backtrace"
