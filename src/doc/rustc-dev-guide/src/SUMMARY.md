@@ -91,6 +91,7 @@
     - [Code Generation](./codegen.md)
         - [Updating LLVM](./codegen/updating-llvm.md)
         - [Debugging LLVM](./codegen/debugging.md)
+        - [Backend Agnostic Codegen](./codegen/backend-agnostic.md)
     - [Profile-guided Optimization](./profile-guided-optimization.md)
     - [Debugging Support in Rust Compiler](./debugging-support-in-rustc.md)
 
