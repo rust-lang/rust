@@ -60,5 +60,5 @@ cargo_miri = ["cargo_metadata", "directories", "rustc_version"]
 rustc_tests = []
 
 [dev-dependencies]
-compiletest_rs = { version = "0.3.24", features = ["tmp", "stable"] }
+compiletest_rs = { version = "0.3.24", features = ["tmp"] }
 colored = "1.6"
