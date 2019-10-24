@@ -332,7 +332,7 @@ pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
                         sess.struct_err(&format!("error finding Clippy's configuration file: {}", error))
                             .emit();
                         None
-                    }
+                    },
                 }
             };
 
@@ -361,13 +361,13 @@ pub fn read_conf(args: &[syntax::ast::NestedMetaItem], sess: &Session) -> Conf {
             }
 
             conf
-        }
+        },
         Err((err, span)) => {
             sess.struct_span_err(span, err)
                 .span_note(span, "Clippy will use default configuration")
                 .emit();
             toml::from_str("").expect("we never error on empty config files")
-        }
+        },
     }
 }
 

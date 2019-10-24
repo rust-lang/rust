@@ -67,7 +67,7 @@ fn main() {
     match matches.subcommand() {
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
-        }
+        },
         ("update_lints", Some(matches)) => {
             if matches.is_present("print-only") {
                 print_lints();
@@ -76,8 +76,8 @@ fn main() {
             } else {
                 update_lints(&UpdateMode::Change);
             }
-        }
-        _ => {}
+        },
+        _ => {},
     }
 }
 

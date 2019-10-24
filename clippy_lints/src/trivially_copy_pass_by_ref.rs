@@ -160,7 +160,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                         return;
                     }
                 }
-            }
+            },
             FnKind::Method(..) => (),
             _ => return,
         }
