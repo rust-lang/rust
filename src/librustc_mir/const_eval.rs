@@ -375,11 +375,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        if ecx.emulate_intrinsic(instance, args, dest)? {
+        if ecx.emulate_intrinsic(span, instance, args, dest)? {
             return Ok(());
         }
         // An intrinsic that we do not support

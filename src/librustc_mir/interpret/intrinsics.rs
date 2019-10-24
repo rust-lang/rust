@@ -3,6 +3,7 @@
 //! and miri.
 
 use syntax::symbol::Symbol;
+use syntax_pos::Span;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::ty::subst::SubstsRef;
@@ -15,6 +16,7 @@ use super::{
     Machine, PlaceTy, OpTy, InterpCx,
 };
 
+mod caller_location;
 mod type_name;
 
 fn numeric_intrinsic<'tcx, Tag>(
@@ -86,6 +88,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: PlaceTy<'tcx, M::PointerTag>,
@@ -94,6 +97,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
+            "caller_location" => {
+                self.write_caller_location(span, dest)?;
+            }
+
             "min_align_of" |
             "pref_align_of" |
             "needs_drop" |

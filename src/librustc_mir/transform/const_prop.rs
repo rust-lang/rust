@@ -158,6 +158,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn call_intrinsic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _dest: PlaceTy<'tcx>,
