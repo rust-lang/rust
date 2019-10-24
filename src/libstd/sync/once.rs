@@ -171,6 +171,7 @@ const STATE_MASK: usize = 0x3;
 // `wait` would both hand out a mutable reference to its `Waiter` node, and keep
 // a shared reference to check `signaled`. Instead we hold shared references and
 // use interior mutability.
+#[repr(align(4))] // Ensure the two lower bits are free to use as state bits.
 struct Waiter {
     thread: Cell<Option<Thread>>,
     signaled: AtomicBool,
