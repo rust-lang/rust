@@ -215,7 +215,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(
         tcx: TyCtxt<'_>,
-        span: Span,
         seg: &hir::PathSegment,
         generics: &ty::Generics,
     ) -> bool {
@@ -228,13 +227,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
 
         if explicit && impl_trait {
+            let spans =
+                seg.generic_args().args
+                    .iter()
+                    .filter_map(|arg|
+                        match arg {
+                            GenericArg::Type(_) => Some(arg.span()),
+                            _ => None
+                        })
+                    .collect::<Vec<_>>();
+
             let mut err = struct_span_err! {
                 tcx.sess,
-                span,
+                spans.clone(),
                 E0632,
                 "cannot provide explicit generic arguments when `impl Trait` is \
-                 used in argument position"
+                used in argument position"
             };
+
+            for span in spans {
+                err.span_label(span, "explicit generic argument not allowed");
+            }
 
             err.emit();
         }
@@ -254,7 +267,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let empty_args = P(hir::GenericArgs {
             args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
         });
-        let suppress_mismatch = Self::check_impl_trait(tcx, span, seg, &def);
+        let suppress_mismatch = Self::check_impl_trait(tcx, seg, &def);
         Self::check_generic_arg_count(
             tcx,
             span,
