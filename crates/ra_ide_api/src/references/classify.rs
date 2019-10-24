@@ -2,6 +2,7 @@
 
 use hir::{Either, FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
 use ra_db::FileId;
+use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode, AstPtr};
 use test_utils::tested_by;
 
@@ -16,6 +17,7 @@ pub(crate) fn classify_name(
     file_id: FileId,
     name: &ast::Name,
 ) -> Option<NameDefinition> {
+    let _p = profile("classify_name");
     let parent = name.syntax().parent()?;
     let file_id = file_id.into();
 
@@ -107,6 +109,8 @@ pub(crate) fn classify_name_ref(
     name_ref: &ast::NameRef,
 ) -> Option<NameDefinition> {
     use PathResolution::*;
+
+    let _p = profile("classify_name_ref");
 
     let parent = name_ref.syntax().parent()?;
     let analyzer = SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);

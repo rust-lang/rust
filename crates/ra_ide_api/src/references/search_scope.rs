@@ -5,6 +5,7 @@
 
 use hir::{DefWithBody, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase, SourceDatabaseExt};
+use ra_prof::profile;
 use ra_syntax::{AstNode, TextRange};
 use rustc_hash::FxHashSet;
 
@@ -14,6 +15,8 @@ use super::{NameDefinition, NameKind};
 
 impl NameDefinition {
     pub(crate) fn search_scope(&self, db: &RootDatabase) -> FxHashSet<(FileId, Option<TextRange>)> {
+        let _p = profile("search_scope");
+
         let module_src = self.container.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 

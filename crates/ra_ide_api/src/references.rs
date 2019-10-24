@@ -16,6 +16,7 @@ mod search_scope;
 
 use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_prof::profile;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode, TextUnit};
 
 use crate::{db::RootDatabase, FilePosition, FileRange, NavigationTarget, RangeInfo};
@@ -107,6 +108,8 @@ fn find_name<'a>(
 }
 
 fn process_definition(db: &RootDatabase, def: NameDefinition, name: String) -> Vec<FileRange> {
+    let _p = profile("process_definition");
+
     let pat = name.as_str();
     let scope = def.search_scope(db);
     let mut refs = vec![];
