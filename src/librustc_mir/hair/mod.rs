@@ -208,9 +208,6 @@ pub enum ExprKind<'tcx> {
     },
     /// first argument, used for self in a closure
     SelfRef,
-    StaticRef {
-        id: DefId,
-    },
     Borrow {
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,

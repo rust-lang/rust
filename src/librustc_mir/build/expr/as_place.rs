@@ -197,13 +197,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 block.and(place_builder)
             }
-            ExprKind::StaticRef { id } => block.and(PlaceBuilder::from(
-                PlaceBase::Static(Box::new(Static {
-                    ty: expr.ty,
-                    kind: StaticKind::Static,
-                    def_id: id,
-                }))
-            )),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let source = this.hir.mirror(source);
