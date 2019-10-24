@@ -3,7 +3,7 @@
 use crate::cstore::{self, CStore, MetadataBlob};
 use crate::locator::{self, CratePaths};
 use crate::schema::{CrateRoot, CrateDep};
-use rustc_data_structures::sync::{Lrc, RwLock, Lock, AtomicCell};
+use rustc_data_structures::sync::{RwLock, Lock, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
@@ -14,21 +14,20 @@ use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
-use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource};
+use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
 
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
 use syntax_expand::allocator::{global_allocator_spans, AllocatorKind};
 use syntax::symbol::{Symbol, sym};
-use syntax::{span_err, span_fatal};
+use syntax::span_fatal;
 use syntax_pos::{Span, DUMMY_SP};
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
@@ -39,9 +38,12 @@ crate struct Library {
 }
 
 pub struct CrateLoader<'a> {
+    // Immutable configuration.
     sess: &'a Session,
-    cstore: &'a CStore,
+    metadata_loader: &'a MetadataLoaderDyn,
     local_crate_name: Symbol,
+    // Mutable output.
+    cstore: CStore,
 }
 
 fn dump_crates(cstore: &CStore) {
@@ -56,29 +58,6 @@ fn dump_crates(cstore: &CStore) {
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
         rmeta.map(|rl| info!("   rmeta: {}", rl.0.display()));
     });
-}
-
-// Extra info about a crate loaded for plugins or exported macros.
-struct ExtensionCrate {
-    metadata: PMDSource,
-    dylib: Option<PathBuf>,
-    target_only: bool,
-}
-
-enum PMDSource {
-    Registered(Lrc<cstore::CrateMetadata>),
-    Owned(Library),
-}
-
-impl Deref for PMDSource {
-    type Target = MetadataBlob;
-
-    fn deref(&self) -> &MetadataBlob {
-        match *self {
-            PMDSource::Registered(ref cmd) => &cmd.blob,
-            PMDSource::Owned(ref lib) => &lib.metadata
-        }
-    }
 }
 
 enum LoadResult {
@@ -99,12 +78,25 @@ impl<'a> LoadError<'a> {
 }
 
 impl<'a> CrateLoader<'a> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore, local_crate_name: &str) -> Self {
+    pub fn new(
+        sess: &'a Session,
+        metadata_loader: &'a MetadataLoaderDyn,
+        local_crate_name: &str,
+    ) -> Self {
         CrateLoader {
             sess,
-            cstore,
+            metadata_loader,
             local_crate_name: Symbol::intern(local_crate_name),
+            cstore: Default::default(),
         }
+    }
+
+    pub fn cstore(&self) -> &CStore {
+        &self.cstore
+    }
+
+    pub fn into_cstore(self) -> CStore {
+        self.cstore
     }
 
     fn existing_match(&self, name: Symbol, hash: Option<&Svh>, kind: PathKind)
@@ -187,14 +179,14 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn register_crate(
-        &self,
+        &mut self,
         host_lib: Option<Library>,
         root: Option<&CratePaths>,
         span: Span,
         lib: Library,
         dep_kind: DepKind,
         name: Symbol
-    ) -> (CrateNum, Lrc<cstore::CrateMetadata>) {
+    ) -> CrateNum {
         let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
 
         let Library { source, metadata } = lib;
@@ -248,9 +240,9 @@ impl<'a> CrateLoader<'a> {
             crate_root.def_path_table.decode((&metadata, self.sess))
         });
 
-        let cmeta = cstore::CrateMetadata {
+        self.cstore.set_crate_data(cnum, cstore::CrateMetadata {
             extern_crate: Lock::new(None),
-            def_path_table: Lrc::new(def_path_table),
+            def_path_table,
             trait_impls,
             root: crate_root,
             blob: metadata,
@@ -264,11 +256,9 @@ impl<'a> CrateLoader<'a> {
             private_dep,
             raw_proc_macros,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
-        };
+        });
 
-        let cmeta = Lrc::new(cmeta);
-        self.cstore.set_crate_data(cnum, cmeta.clone());
-        (cnum, cmeta)
+        cnum
     }
 
     fn load_proc_macro<'b>(
@@ -327,22 +317,22 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn resolve_crate<'b>(
-        &'b self,
+        &'b mut self,
         name: Symbol,
         span: Span,
         dep_kind: DepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
-    ) -> (CrateNum, Lrc<cstore::CrateMetadata>) {
+    ) -> CrateNum {
         self.maybe_resolve_crate(name, span, dep_kind, dep).unwrap_or_else(|err| err.report())
     }
 
     fn maybe_resolve_crate<'b>(
-        &'b self,
+        &'b mut self,
         name: Symbol,
         span: Span,
         mut dep_kind: DepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
-    ) -> Result<(CrateNum, Lrc<cstore::CrateMetadata>), LoadError<'b>> {
+    ) -> Result<CrateNum, LoadError<'b>> {
         info!("resolving crate `{}`", name);
         let (root, hash, extra_filename, path_kind) = match dep {
             Some((root, dep)) =>
@@ -370,7 +360,7 @@ impl<'a> CrateLoader<'a> {
                 rejected_via_filename: vec![],
                 should_match_name: true,
                 is_proc_macro: Some(false),
-                metadata_loader: &*self.cstore.metadata_loader,
+                metadata_loader: self.metadata_loader,
             };
 
             self.load(&mut locate_ctxt).map(|r| (r, None)).or_else(|| {
@@ -388,7 +378,7 @@ impl<'a> CrateLoader<'a> {
                 data.dep_kind.with_lock(|data_dep_kind| {
                     *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
                 });
-                Ok((cnum, data))
+                Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
                 Ok(self.register_crate(host_library, root, span, library, dep_kind, name))
@@ -466,7 +456,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     // Go through the crate metadata and load any crates that it references
-    fn resolve_crate_deps(&self,
+    fn resolve_crate_deps(&mut self,
                           root: &CratePaths,
                           crate_root: &CrateRoot<'_>,
                           metadata: &MetadataBlob,
@@ -492,71 +482,8 @@ impl<'a> CrateLoader<'a> {
                 DepKind::MacrosOnly => DepKind::MacrosOnly,
                 _ => dep.kind,
             };
-            self.resolve_crate(dep.name, span, dep_kind, Some((root, &dep))).0
+            self.resolve_crate(dep.name, span, dep_kind, Some((root, &dep)))
         })).collect()
-    }
-
-    fn read_extension_crate(&self, name: Symbol, span: Span) -> ExtensionCrate {
-        info!("read extension crate `{}`", name);
-        let target_triple = self.sess.opts.target_triple.clone();
-        let host_triple = TargetTriple::from_triple(config::host_triple());
-        let is_cross = target_triple != host_triple;
-        let mut target_only = false;
-        let mut locate_ctxt = locator::Context {
-            sess: self.sess,
-            span,
-            crate_name: name,
-            hash: None,
-            extra_filename: None,
-            filesearch: self.sess.host_filesearch(PathKind::Crate),
-            target: &self.sess.host,
-            triple: host_triple,
-            root: None,
-            rejected_via_hash: vec![],
-            rejected_via_triple: vec![],
-            rejected_via_kind: vec![],
-            rejected_via_version: vec![],
-            rejected_via_filename: vec![],
-            should_match_name: true,
-            is_proc_macro: None,
-            metadata_loader: &*self.cstore.metadata_loader,
-        };
-        let library = self.load(&mut locate_ctxt).or_else(|| {
-            if !is_cross {
-                return None
-            }
-            // Try loading from target crates. This will abort later if we
-            // try to load a plugin registrar function,
-            target_only = true;
-
-            locate_ctxt.target = &self.sess.target.target;
-            locate_ctxt.triple = target_triple;
-            locate_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
-
-            self.load(&mut locate_ctxt)
-        });
-        let library = match library {
-            Some(l) => l,
-            None => locate_ctxt.report_errs(),
-        };
-
-        let (dylib, metadata) = match library {
-            LoadResult::Previous(cnum) => {
-                let data = self.cstore.get_crate_data(cnum);
-                (data.source.dylib.clone(), PMDSource::Registered(data))
-            }
-            LoadResult::Loaded(library) => {
-                let dylib = library.source.dylib.clone();
-                let metadata = PMDSource::Owned(library);
-                (dylib, metadata)
-            }
-        };
-
-        ExtensionCrate {
-            metadata,
-            dylib: dylib.map(|p| p.0),
-            target_only,
-        }
     }
 
     fn dlsym_proc_macros(&self,
@@ -590,42 +517,7 @@ impl<'a> CrateLoader<'a> {
         decls
     }
 
-    /// Look for a plugin registrar. Returns library path, crate
-    /// SVH and DefIndex of the registrar function.
-    pub fn find_plugin_registrar(&self,
-                                 span: Span,
-                                 name: Symbol)
-                                 -> Option<(PathBuf, CrateDisambiguator)> {
-        let ekrate = self.read_extension_crate(name, span);
-
-        if ekrate.target_only {
-            // Need to abort before syntax expansion.
-            let message = format!("plugin `{}` is not available for triple `{}` \
-                                   (only found {})",
-                                  name,
-                                  config::host_triple(),
-                                  self.sess.opts.target_triple);
-            span_fatal!(self.sess, span, E0456, "{}", &message);
-        }
-
-        let root = ekrate.metadata.get_root();
-        match ekrate.dylib.as_ref() {
-            Some(dylib) => {
-                Some((dylib.to_path_buf(), root.disambiguator))
-            }
-            None => {
-                span_err!(self.sess, span, E0457,
-                          "plugin `{}` only found in rlib format, but must be available \
-                           in dylib format",
-                          name);
-                // No need to abort because the loading code will just ignore this
-                // empty dylib.
-                None
-            }
-        }
-    }
-
-    fn inject_panic_runtime(&self, krate: &ast::Crate) {
+    fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
         let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| {
@@ -687,7 +579,8 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let (cnum, data) = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+        let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+        let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
@@ -706,7 +599,7 @@ impl<'a> CrateLoader<'a> {
                                   &|data| data.root.needs_panic_runtime);
     }
 
-    fn inject_sanitizer_runtime(&self) {
+    fn inject_sanitizer_runtime(&mut self) {
         if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
             // Sanitizers can only be used on some tested platforms with
             // executables linked to `std`
@@ -791,7 +684,8 @@ impl<'a> CrateLoader<'a> {
                 });
                 info!("loading sanitizer: {}", name);
 
-                let data = self.resolve_crate(name, DUMMY_SP, DepKind::Explicit, None).1;
+                let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Explicit, None);
+                let data = self.cstore.get_crate_data(cnum);
 
                 // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
                 if !data.root.sanitizer_runtime {
@@ -804,14 +698,15 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn inject_profiler_runtime(&self) {
+    fn inject_profiler_runtime(&mut self) {
         if self.sess.opts.debugging_opts.profile ||
            self.sess.opts.cg.profile_generate.enabled()
         {
             info!("loading profiler");
 
             let name = Symbol::intern("profiler_builtins");
-            let data = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None).1;
+            let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+            let data = self.cstore.get_crate_data(cnum);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
             if !data.root.profiler_runtime {
@@ -957,10 +852,8 @@ impl<'a> CrateLoader<'a> {
             data.dependencies.borrow_mut().push(krate);
         });
     }
-}
 
-impl<'a> CrateLoader<'a> {
-    pub fn postprocess(&self, krate: &ast::Crate) {
+    pub fn postprocess(&mut self, krate: &ast::Crate) {
         self.inject_sanitizer_runtime();
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
@@ -971,7 +864,11 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    pub fn process_extern_crate(&self, item: &ast::Item, definitions: &Definitions) -> CrateNum {
+    pub fn process_extern_crate(
+        &mut self,
+        item: &ast::Item,
+        definitions: &Definitions,
+    ) -> CrateNum {
         match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
@@ -990,7 +887,7 @@ impl<'a> CrateLoader<'a> {
                     DepKind::Explicit
                 };
 
-                let cnum = self.resolve_crate(name, item.span, dep_kind, None).0;
+                let cnum = self.resolve_crate(name, item.span, dep_kind, None);
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
                 let path_len = definitions.def_path(def_id.index).data.len();
@@ -1010,8 +907,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    pub fn process_path_extern(&self, name: Symbol, span: Span) -> CrateNum {
-        let cnum = self.resolve_crate(name, span, DepKind::Explicit, None).0;
+    pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
+        let cnum = self.resolve_crate(name, span, DepKind::Explicit, None);
 
         self.update_extern_crate(
             cnum,
@@ -1028,8 +925,8 @@ impl<'a> CrateLoader<'a> {
         cnum
     }
 
-    pub fn maybe_process_path_extern(&self, name: Symbol, span: Span) -> Option<CrateNum> {
-        let cnum = self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()?.0;
+    pub fn maybe_process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
+        let cnum = self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()?;
 
         self.update_extern_crate(
             cnum,

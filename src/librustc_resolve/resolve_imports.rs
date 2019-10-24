@@ -1344,7 +1344,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 if res != Res::Err {
                     if let Some(def_id) = res.opt_def_id() {
                         if !def_id.is_local() {
-                            this.cstore.export_macros_untracked(def_id.krate);
+                            this.cstore().export_macros_untracked(def_id.krate);
                         }
                     }
                     reexports.push(Export {

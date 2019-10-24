@@ -36,11 +36,11 @@ use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
+use rustc::middle::cstore::MetadataLoader;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::TyCtxt;
 use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
-use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
@@ -277,7 +277,7 @@ pub fn run_compiler(
             compiler.output_file(),
         ).and_then(|| RustcDefaultCalls::list_metadata(
             sess,
-            compiler.cstore(),
+            &*compiler.codegen_backend().metadata_loader(),
             &matches,
             compiler.input()
         ));
@@ -614,7 +614,7 @@ fn show_content_with_pager(content: &String) {
 
 impl RustcDefaultCalls {
     pub fn list_metadata(sess: &Session,
-                         cstore: &CStore,
+                         metadata_loader: &dyn MetadataLoader,
                          matches: &getopts::Matches,
                          input: &Input)
                          -> Compilation {
@@ -626,7 +626,7 @@ impl RustcDefaultCalls {
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
-                                                cstore,
+                                                metadata_loader,
                                                 &mut v)
                             .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());

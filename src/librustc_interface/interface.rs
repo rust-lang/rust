@@ -11,7 +11,6 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc_metadata::cstore::CStore;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -37,7 +36,6 @@ pub struct Compiler {
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
     pub(crate) queries: Queries,
-    pub(crate) cstore: Lrc<CStore>,
     pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
 }
@@ -48,9 +46,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
-    }
-    pub fn cstore(&self) -> &Lrc<CStore> {
-        &self.cstore
     }
     pub fn source_map(&self) -> &Lrc<SourceMap> {
         &self.source_map
@@ -160,13 +155,10 @@ where
         config.lint_caps,
     );
 
-    let cstore = Lrc::new(CStore::new(codegen_backend.metadata_loader()));
-
     let compiler = Compiler {
         sess,
         codegen_backend,
         source_map,
-        cstore,
         input: config.input,
         input_path: config.input_path,
         output_dir: config.output_dir,

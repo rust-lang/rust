@@ -21,14 +21,14 @@ use Determinacy::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
-use rustc::middle::cstore::CrateStore;
+use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::{TraitMap, GlobMap};
-use rustc::ty::{self, DefIdTree};
+use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::span_bug;
 
@@ -829,14 +829,13 @@ pub struct ExternPreludeEntry<'a> {
 /// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
-    cstore: &'a CStore,
 
-    pub definitions: Definitions,
+    definitions: Definitions,
 
-    pub graph_root: Module<'a>,
+    graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
-    pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
+    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -869,9 +868,9 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    pub extern_crate_map: NodeMap<CrateNum>,
-    pub export_map: ExportMap<NodeId>,
-    pub trait_map: TraitMap,
+    extern_crate_map: NodeMap<CrateNum>,
+    export_map: ExportMap<NodeId>,
+    trait_map: TraitMap,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -898,11 +897,11 @@ pub struct Resolver<'a> {
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    pub glob_map: GlobMap,
+    glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
-    pub maybe_unused_trait_imports: NodeSet,
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_trait_imports: NodeSet,
+    maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -916,11 +915,11 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: &'a CrateLoader<'a>,
+    crate_loader: CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
-    pub all_macros: FxHashMap<Name, Res>,
+    all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
@@ -1015,7 +1014,7 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
-            _ => self.cstore.def_key(id).parent,
+            _ => self.cstore().def_key(id).parent,
         }.map(|index| DefId { index, ..id })
     }
 }
@@ -1023,6 +1022,10 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
+    fn cstore(&self) -> &dyn CrateStore {
+        self.cstore()
+    }
+
     fn resolve_str_path(
         &mut self,
         span: Span,
@@ -1083,10 +1086,9 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
-               cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               crate_loader: &'a CrateLoader<'a>,
+               metadata_loader: &'a MetadataLoaderDyn,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
@@ -1147,8 +1149,6 @@ impl<'a> Resolver<'a> {
         Resolver {
             session,
 
-            cstore,
-
             definitions,
 
             // The outermost module has def ID 0; this is not reflected in the
@@ -1202,7 +1202,7 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
 
-            crate_loader,
+            crate_loader: CrateLoader::new(session, metadata_loader, crate_name),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             macro_use_prelude: FxHashMap::default(),
@@ -1234,6 +1234,42 @@ impl<'a> Resolver<'a> {
 
     pub fn arenas() -> ResolverArenas<'a> {
         Default::default()
+    }
+
+    pub fn into_outputs(self) -> ResolverOutputs {
+        ResolverOutputs {
+            definitions: self.definitions,
+            cstore: Box::new(self.crate_loader.into_cstore()),
+            extern_crate_map: self.extern_crate_map,
+            export_map: self.export_map,
+            trait_map: self.trait_map,
+            glob_map: self.glob_map,
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates,
+            extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
+        }
+    }
+
+    pub fn clone_outputs(&self) -> ResolverOutputs {
+        ResolverOutputs {
+            definitions: self.definitions.clone(),
+            cstore: Box::new(self.cstore().clone()),
+            extern_crate_map: self.extern_crate_map.clone(),
+            export_map: self.export_map.clone(),
+            trait_map: self.trait_map.clone(),
+            glob_map: self.glob_map.clone(),
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
+            extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
+        }
+    }
+
+    pub fn cstore(&self) -> &CStore {
+        self.crate_loader.cstore()
     }
 
     fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
@@ -2807,6 +2843,16 @@ impl<'a> Resolver<'a> {
         let mut seg = ast::PathSegment::from_ident(ident);
         seg.id = self.session.next_node_id();
         seg
+    }
+
+    // For rustdoc.
+    pub fn graph_root(&self) -> Module<'a> {
+        self.graph_root
+    }
+
+    // For rustdoc.
+    pub fn all_macros(&self) -> &FxHashMap<Name, Res> {
+        &self.all_macros
     }
 }
 

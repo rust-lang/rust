@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
-use rustc_data_structures::sync::{self, MetadataRef, Lrc};
+use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_macros::HashStable;
 
 pub use self::NativeLibraryKind::*;
@@ -191,6 +191,8 @@ pub trait MetadataLoader {
                           -> Result<MetadataRef, String>;
 }
 
+pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
+
 /// A store of Rust crates, through which their metadata can be accessed.
 ///
 /// Note that this trait should probably not be expanding today. All new
@@ -201,13 +203,13 @@ pub trait MetadataLoader {
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
+    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
-    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
+    fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
