@@ -54,6 +54,7 @@ declare_clippy_lint! {
     "functions taking small copyable arguments by reference"
 }
 
+#[derive(Copy, Clone)]
 pub struct TriviallyCopyPassByRef {
     limit: u64,
 }

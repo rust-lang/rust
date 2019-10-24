@@ -25,7 +25,7 @@ install:
     - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
     - del rust-toolchain
     - cargo install -Z install-upgrade rustup-toolchain-install-master
-    - rustup-toolchain-install-master -f -n master
+    - rustup-toolchain-install-master -f -n master -c rustc-dev
     - rustup component add rustfmt --toolchain nightly & exit 0 # Format test handles missing rustfmt
     - rustup default master
     - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin

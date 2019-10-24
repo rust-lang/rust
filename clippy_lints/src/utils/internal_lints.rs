@@ -1,5 +1,6 @@
 use crate::utils::{
-    match_def_path, match_type, method_calls, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
+    is_expn_of, match_def_path, match_type, method_calls, paths, span_help_and_lint, span_lint, span_lint_and_sugg,
+    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::hir;
@@ -148,25 +149,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             if is_lint_ref_type(cx, ty) {
                 self.declared_lints.insert(item.ident.name, item.span);
             }
-        } else if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.kind {
-            if_chain! {
-                if let hir::TraitRef{path, ..} = trait_ref;
-                if let Res::Def(DefKind::Trait, def_id) = path.res;
-                if match_def_path(cx, def_id, &paths::LINT_PASS);
-                then {
-                    let mut collector = LintCollector {
-                        output: &mut self.registered_lints,
-                        cx,
-                    };
-                    let body_id = cx.tcx.hir().body_owned_by(
-                        impl_item_refs
-                            .iter()
-                            .find(|iiref| iiref.ident.as_str() == "get_lints")
-                            .expect("LintPass needs to implement get_lints")
-                            .id.hir_id
-                    );
-                    collector.visit_expr(&cx.tcx.hir().body(body_id).value);
-                }
+        } else if is_expn_of(item.span, "impl_lint_pass").is_some()
+            || is_expn_of(item.span, "declare_lint_pass").is_some()
+        {
+            if let hir::ItemKind::Impl(.., None, _, ref impl_item_refs) = item.kind {
+                let mut collector = LintCollector {
+                    output: &mut self.registered_lints,
+                    cx,
+                };
+                let body_id = cx.tcx.hir().body_owned_by(
+                    impl_item_refs
+                        .iter()
+                        .find(|iiref| iiref.ident.as_str() == "get_lints")
+                        .expect("LintPass needs to implement get_lints")
+                        .id
+                        .hir_id,
+                );
+                collector.visit_expr(&cx.tcx.hir().body(body_id).value);
             }
         }
     }
@@ -275,9 +274,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
     }
 }
 
-pub struct OuterExpnDataPass;
-
-impl_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
+declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {

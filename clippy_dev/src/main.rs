@@ -109,6 +109,7 @@ fn print_lints() {
     println!("there are {} lints", lint_count);
 }
 
+#[allow(clippy::too_many_lines)]
 fn update_lints(update_mode: &UpdateMode) {
     let lint_list: Vec<Lint> = gather_all().collect();
 
@@ -172,6 +173,16 @@ fn update_lints(update_mode: &UpdateMode) {
 
     file_change |= replace_region_in_file(
         "../clippy_lints/src/lib.rs",
+        "begin register lints",
+        "end register lints",
+        false,
+        update_mode == &UpdateMode::Change,
+        || gen_register_lint_list(&lint_list),
+    )
+    .changed;
+
+    file_change |= replace_region_in_file(
+        "../clippy_lints/src/lib.rs",
         "begin lints modules",
         "end lints modules",
         false,
@@ -183,7 +194,7 @@ fn update_lints(update_mode: &UpdateMode) {
     // Generate lists of lints in the clippy::all lint group
     file_change |= replace_region_in_file(
         "../clippy_lints/src/lib.rs",
-        r#"reg.register_lint_group\("clippy::all""#,
+        r#"store.register_group\(true, "clippy::all""#,
         r#"\]\);"#,
         false,
         update_mode == &UpdateMode::Change,
@@ -206,7 +217,7 @@ fn update_lints(update_mode: &UpdateMode) {
     for (lint_group, lints) in Lint::by_lint_group(&usable_lints) {
         file_change |= replace_region_in_file(
             "../clippy_lints/src/lib.rs",
-            &format!("reg.register_lint_group\\(\"clippy::{}\"", lint_group),
+            &format!("store.register_group\\(true, \"clippy::{}\"", lint_group),
             r#"\]\);"#,
             false,
             update_mode == &UpdateMode::Change,

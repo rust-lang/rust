@@ -61,51 +61,20 @@ fn test_arg_value() {
 struct ClippyCallbacks;
 
 impl rustc_driver::Callbacks for ClippyCallbacks {
-    fn after_parsing(&mut self, compiler: &interface::Compiler) -> rustc_driver::Compilation {
-        let sess = compiler.session();
-        let mut registry = rustc_driver::plugin::registry::Registry::new(
-            sess,
-            compiler
-                .parse()
-                .expect(
-                    "at this compilation stage \
-                     the crate must be parsed",
-                )
-                .peek()
-                .span,
-        );
-        registry.args_hidden = Some(Vec::new());
+    fn config(&mut self, config: &mut interface::Config) {
+        let previous = config.register_lints.take();
+        config.register_lints = Some(Box::new(move |sess, mut lint_store| {
+            // technically we're ~guaranteed that this is none but might as well call anything that
+            // is there already. Certainly it can't hurt.
+            if let Some(previous) = &previous {
+                (previous)(sess, lint_store);
+            }
 
-        let conf = clippy_lints::read_conf(&registry);
-        clippy_lints::register_plugins(&mut registry, &conf);
-
-        let rustc_driver::plugin::registry::Registry {
-            early_lint_passes,
-            late_lint_passes,
-            lint_groups,
-            llvm_passes,
-            attributes,
-            ..
-        } = registry;
-        let mut ls = sess.lint_store.borrow_mut();
-        for pass in early_lint_passes {
-            ls.register_early_pass(Some(sess), true, false, pass);
-        }
-        for pass in late_lint_passes {
-            ls.register_late_pass(Some(sess), true, false, false, pass);
-        }
-
-        for (name, (to, deprecated_name)) in lint_groups {
-            ls.register_group(Some(sess), true, name, deprecated_name, to);
-        }
-        clippy_lints::register_pre_expansion_lints(sess, &mut ls, &conf);
-        clippy_lints::register_renamed(&mut ls);
-
-        sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
-        sess.plugin_attributes.borrow_mut().extend(attributes);
-
-        // Continue execution
-        rustc_driver::Compilation::Continue
+            let conf = clippy_lints::read_conf(&[], &sess);
+            clippy_lints::register_plugins(&mut lint_store, &sess, &conf);
+            clippy_lints::register_pre_expansion_lints(&mut lint_store, &conf);
+            clippy_lints::register_renamed(&mut lint_store);
+        }));
     }
 }
 

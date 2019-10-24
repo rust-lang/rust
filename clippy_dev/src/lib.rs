@@ -82,7 +82,7 @@ pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
             if l.is_internal() || l.deprecation.is_some() {
                 None
             } else {
-                Some(format!("        {}::{},", l.module, l.name.to_uppercase()))
+                Some(format!("        LintId::of(&{}::{}),", l.module, l.name.to_uppercase()))
             }
         })
         .sorted()
@@ -141,6 +141,26 @@ pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
         })
         .flatten()
         .collect::<Vec<String>>()
+}
+
+#[must_use]
+pub fn gen_register_lint_list(lints: &[Lint]) -> Vec<String> {
+    let pre = "    store.register_lints(&[".to_string();
+    let post = "    ]);".to_string();
+    let mut inner = lints
+        .iter()
+        .filter_map(|l| {
+            if !l.is_internal() && l.deprecation.is_none() {
+                Some(format!("        &{}::{},", l.module, l.name.to_uppercase()))
+            } else {
+                None
+            }
+        })
+        .sorted()
+        .collect::<Vec<String>>();
+    inner.insert(0, pre);
+    inner.push(post);
+    inner
 }
 
 /// Gathers all files in `src/clippy_lints` and gathers all lints inside
@@ -487,8 +507,8 @@ fn test_gen_lint_group_list() {
         Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
-        "        module_name::ABC,".to_string(),
-        "        module_name::SHOULD_ASSERT_EQ,".to_string(),
+        "        LintId::of(&module_name::ABC),".to_string(),
+        "        LintId::of(&module_name::SHOULD_ASSERT_EQ),".to_string(),
     ];
     assert_eq!(expected, gen_lint_group_list(lints));
 }
