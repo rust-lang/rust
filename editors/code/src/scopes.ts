@@ -63,10 +63,10 @@ function loadThemeNamed(themeName: string) {
             }
         }
 
-        const customization: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
-        if (customization && customization.textMateRules) {
-            loadColors(customization.textMateRules)
-        }
+    }
+    const customization: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
+    if (customization && customization.textMateRules) {
+        loadColors(customization.textMateRules)
     }
 }
 
