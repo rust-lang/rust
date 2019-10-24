@@ -14,6 +14,8 @@ Of course, you don't have to wait for new issues to be tagged! If you
 prefer, you can use the Github label for an ICE-breaker group to
 search for existing issues that haven't been claimed yet.
 
+[claim the issue]: https://github.com/rust-lang/triagebot/wiki/Assignment
+
 ## What issues are a good fit for ICE-breaker groups?
 
 "ICE-breaker issues" are intended to be **isolated** bugs of **middle
