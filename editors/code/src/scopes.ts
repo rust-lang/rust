@@ -31,14 +31,14 @@ export function load() {
     const themeName = vscode.workspace.getConfiguration('workbench').get('colorTheme')
 
     if (typeof themeName !== 'string') {
-        console.warn('workbench.colorTheme is', themeName)
+        // console.warn('workbench.colorTheme is', themeName)
         return
     }
     // Try to load colors from that theme
     try {
         loadThemeNamed(themeName)
     } catch (e) {
-        console.warn('failed to load theme', themeName, e)
+        // console.warn('failed to load theme', themeName, e)
     }
 }
 
@@ -130,7 +130,7 @@ function checkFileExists(filePath: string): boolean {
     if (stats && stats.isFile()) {
         return true;
     } else {
-        console.warn('no such file', filePath)
+        // console.warn('no such file', filePath)
         return false;
     }
 
