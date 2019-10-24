@@ -4,7 +4,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl DefaultedTrait for (A,) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^----
    | |                       |
-   | |                       `(A,)` is not defined in the current crate because tuples are always foreign
+   | |                       this is not defined in the current crate because tuples are always foreign
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
@@ -15,7 +15,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl !DefaultedTrait for (B,) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^----
    | |                        |
-   | |                        `(B,)` is not defined in the current crate because tuples are always foreign
+   | |                        this is not defined in the current crate because tuples are always foreign
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
@@ -32,7 +32,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl DefaultedTrait for lib::Something<C> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^-----------------
    | |                       |
-   | |                       `lib::Something<C>` is not defined in the current crate
+   | |                       `lib::Something` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

@@ -43,23 +43,28 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                     );
                     err.span_label(sp, "impl doesn't use only types from inside the current crate");
                     for (ty, is_target_ty) in &tys {
-                        // FIXME: We want to remove the type arguments from the displayed type.
-                        //        The reverse of `resolve_vars_if_possible`.
                         let mut ty = *ty;
                         self.tcx.infer_ctxt().enter(|infcx| {
                             // Remove the lifetimes unnecessary for this error.
                             ty = infcx.freshen(ty);
                         });
-                        let msg = format!(
-                            "`{}` is not defined in the current crate{}",
-                            ty,
-                            match &ty.kind {
-                                ty::Slice(_) => " because slices are always foreign",
-                                ty::Array(..) => " because arrays are always foreign",
-                                ty::Tuple(..) => " because tuples are always foreign",
-                                _ => "",
-                            },
-                        );
+                        ty = match ty.kind {
+                            // Remove the type arguments from the output, as they are not relevant.
+                            // You can think of this as the reverse of `resolve_vars_if_possible`.
+                            // That way if we had `Vec<MyType>`, we will properly attribute the
+                            // problem to `Vec<T>` and avoid confusing the user if they were to see
+                            // `MyType` in the error.
+                            ty::Adt(def, _) => self.tcx.mk_adt(def, ty::List::empty()),
+                            _ => ty,
+                        };
+                        let this = "this".to_string();
+                        let (ty, postfix) = match &ty.kind {
+                            ty::Slice(_) => (this, " because slices are always foreign"),
+                            ty::Array(..) => (this, " because arrays are always foreign"),
+                            ty::Tuple(..) => (this, " because tuples are always foreign"),
+                            _ => (format!("`{}`", ty), ""),
+                        };
+                        let msg = format!("{} is not defined in the current crate{}", ty, postfix);
                         if *is_target_ty {
                             // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                             err.span_label(impl_ty.span, &msg);
