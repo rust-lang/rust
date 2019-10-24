@@ -1,33 +1,63 @@
-// The Rust abstract syntax tree.
+//! The Rust abstract syntax tree module.
+//!
+//! This module contains common structures forming the language AST.
+//! Two main entities in the module are [`Item`] (which represents an AST element with
+//! additional metadata), and [`ItemKind`] (which represents a concrete type and contains
+//! information specific to the type of the item).
+//!
+//! Other module items that worth mentioning:
+//! - [`Ty`] and [`TyKind`]: A parsed Rust type.
+//! - [`Expr`] and [`ExprKind`]: A parsed Rust expression.
+//! - [`Pat`] and [`PatKind`]: A parsed Rust pattern. Patterns are often dual to expressions.
+//! - [`Stmt`] and [`StmtKind`]: An executable action that does not return a value.
+//! - [`FnDecl`], [`FnHeader`] and [`Param`]: Metadata associated with a function declaration.
+//! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
+//! - [`EnumDef`] and [`Variant`]: Enum declaration.
+//! - [`Lit`] and [`LitKind`]: Literal expressions.
+//! - [`MacroDef`], [`MacStmtStyle`], [`Mac`], [`MacDelimeter`]: Macro definition and invocation.
+//! - [`Attribute`]: Metadata associated with item.
+//! - [`UnOp`], [`UnOpKind`], [`BinOp`], [`BinOpKind`]: Unary and binary operators.
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use crate::util::parser::ExprPrecedence;
+
+pub use rustc_target::abi::FloatTy;
+pub use syntax_pos::symbol::{Ident, Symbol as Name};
 
 use crate::parse::token::{self, DelimToken};
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::tokenstream::TokenStream;
 
-use rustc_target::spec::abi::Abi;
-pub use rustc_target::abi::FloatTy;
-
-use syntax_pos::{Span, DUMMY_SP, ExpnId};
 use syntax_pos::symbol::{kw, sym, Symbol};
-pub use syntax_pos::symbol::{Ident, Symbol as Name};
+use syntax_pos::{Span, DUMMY_SP, ExpnId};
 
-use rustc_index::vec::Idx;
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
+use rustc_target::spec::abi::Abi;
+
+#[cfg(target_arch = "x86_64")]
+use rustc_data_structures::static_assert_size;
+
 use std::fmt;
 
 #[cfg(test)]
 mod tests;
 
+/// A "Label" is an identifier of some point in sources,
+/// e.g. in the following code:
+///
+/// ```rust
+/// 'outer: loop {
+///     break 'outer;
+/// }
+/// ```
+///
+/// `'outer` is a label.
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Label {
     pub ident: Ident,
@@ -39,6 +69,8 @@ impl fmt::Debug for Label {
     }
 }
 
+/// A "Lifetime" is an annotation of the scope in which variable
+/// can be used, e.g. `'a` in `&'a i32`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
@@ -161,10 +193,14 @@ impl GenericArgs {
     }
 }
 
+/// Concrete argument in the sequence of generic args.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericArg {
+    /// `'a` in `Foo<'a>`
     Lifetime(Lifetime),
+    /// `Bar` in `Foo<Bar>`
     Type(P<Ty>),
+    /// `1` in `Foo<1>`
     Const(AnonConst),
 }
 
@@ -549,15 +585,24 @@ impl Pat {
         }
 
         match &self.kind {
+            // Walk into the pattern associated with `Ident` (if any).
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
+
+            // Walk into each field of struct.
             PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
+
+            // Sequence of patterns.
             PatKind::TupleStruct(_, s)
             | PatKind::Tuple(s)
             | PatKind::Slice(s)
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
+
+            // Trivial wrappers over inner patterns.
             PatKind::Box(s)
             | PatKind::Ref(s, _)
             | PatKind::Paren(s) => s.walk(it),
+
+            // These patterns do not contain subpatterns, skip.
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Lit(_)
@@ -609,7 +654,9 @@ pub enum RangeEnd {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum RangeSyntax {
+    /// `...`
     DotDotDot,
+    /// `..=`
     DotDotEq,
 }
 
@@ -768,6 +815,8 @@ impl BinOpKind {
 
     pub fn is_comparison(&self) -> bool {
         use BinOpKind::*;
+        // Note for developers: please keep this as is;
+        // we want compilation to fail if another variant is added.
         match *self {
             Eq | Lt | Le | Ne | Gt | Ge => true,
             And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
@@ -782,6 +831,9 @@ impl BinOpKind {
 
 pub type BinOp = Spanned<BinOpKind>;
 
+/// Unary operator.
+///
+/// Note that `&data` is not an operator, it's an `AddrOf` expression.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
@@ -849,10 +901,8 @@ impl Stmt {
 pub enum StmtKind {
     /// A local (let) binding.
     Local(P<Local>),
-
     /// An item definition.
     Item(P<Item>),
-
     /// Expr without trailing semi-colon.
     Expr(P<Expr>),
     /// Expr with a trailing semi-colon.
@@ -899,14 +949,18 @@ pub struct Local {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arm {
     pub attrs: Vec<Attribute>,
+    /// Match arm pattern, e.g. `10` in `match foo { 10 => {}, _ => {} }`
     pub pat: P<Pat>,
+    /// Match arm guard, e.g. `n > 10` in `match foo { n if n > 10 => {}, _ => {} }`
     pub guard: Option<P<Expr>>,
+    /// Match arm body.
     pub body: P<Expr>,
     pub span: Span,
     pub id: NodeId,
     pub is_placeholder: bool,
 }
 
+/// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
     pub ident: Ident,
@@ -989,18 +1043,25 @@ impl Expr {
         }
     }
 
+    /// Attempts to reparse as `Ty` (for diagnostic purposes).
     pub(super) fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
+            // Trivial conversions.
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             ExprKind::Mac(mac) => TyKind::Mac(mac.clone()),
+
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
+
             ExprKind::AddrOf(mutbl, expr) => expr
                 .to_ty()
                 .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
+
             ExprKind::Repeat(expr, expr_len) => {
                 expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?
             }
+
             ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
+
             ExprKind::Tup(exprs) => {
                 let tys = exprs
                     .iter()
@@ -1008,6 +1069,10 @@ impl Expr {
                     .collect::<Option<Vec<_>>>()?;
                 TyKind::Tup(tys)
             }
+
+            // If binary operator is `Add` and both `lhs` and `rhs` are trait bounds,
+            // then type of result is trait object.
+            // Othewise we don't assume the result type.
             ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add => {
                 if let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) {
                     TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
@@ -1015,6 +1080,8 @@ impl Expr {
                     return None;
                 }
             }
+
+            // This expression doesn't look like a type syntactically.
             _ => return None,
         };
 
@@ -1241,10 +1308,12 @@ pub struct QSelf {
     pub position: usize,
 }
 
-/// A capture clause.
+/// A capture clause used in closures and `async` blocks.
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum CaptureBy {
+    /// `move |x| y + x`.
     Value,
+    /// `move` keyword was not specified.
     Ref,
 }
 
@@ -1293,9 +1362,11 @@ impl MacDelimiter {
     }
 }
 
+/// Represents a macro definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MacroDef {
     pub tokens: TokenStream,
+    /// `true` if macro was defined with `macro_rules`.
     pub legacy: bool,
 }
 
@@ -1329,10 +1400,14 @@ pub struct Lit {
 }
 
 // Clippy uses Hash and PartialEq
+/// Type of the integer literal based on provided suffix.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum LitIntType {
+    /// e.g. `42_i32`.
     Signed(IntTy),
+    /// e.g. `42_u32`.
     Unsigned(UintTy),
+    /// e.g. `42`.
     Unsuffixed,
 }
 
@@ -1390,7 +1465,16 @@ impl LitKind {
     /// Returns `true` if this literal has no suffix.
     /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
     pub fn is_unsuffixed(&self) -> bool {
+        !self.is_suffixed()
+    }
+
+    /// Returns `true` if this literal has a suffix.
+    pub fn is_suffixed(&self) -> bool {
         match *self {
+            // suffixed variants
+            LitKind::Int(_, LitIntType::Signed(..))
+            | LitKind::Int(_, LitIntType::Unsigned(..))
+            | LitKind::Float(..) => true,
             // unsuffixed variants
             LitKind::Str(..)
             | LitKind::ByteStr(..)
@@ -1399,17 +1483,8 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::FloatUnsuffixed(..)
             | LitKind::Bool(..)
-            | LitKind::Err(..) => true,
-            // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..))
-            | LitKind::Int(_, LitIntType::Unsigned(..))
-            | LitKind::Float(..) => false,
+            | LitKind::Err(..) => false,
         }
-    }
-
-    /// Returns `true` if this literal has a suffix.
-    pub fn is_suffixed(&self) -> bool {
-        !self.is_unsuffixed()
     }
 }
 
@@ -1779,6 +1854,7 @@ pub enum SelfKind {
 pub type ExplicitSelf = Spanned<SelfKind>;
 
 impl Param {
+    /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
@@ -1797,6 +1873,7 @@ impl Param {
         None
     }
 
+    /// Returns `true` if parameter is `self`.
     pub fn is_self(&self) -> bool {
         if let PatKind::Ident(_, ident, _) = self.pat.kind {
             ident.name == kw::SelfLower
@@ -1805,6 +1882,7 @@ impl Param {
         }
     }
 
+    /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: ThinVec<Attribute>, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
@@ -1845,9 +1923,12 @@ impl Param {
     }
 }
 
-/// A header (not the body) of a function declaration.
+/// A signature (not the body) of a function declaration.
 ///
 /// E.g., `fn foo(bar: baz)`.
+///
+/// Please note that it's different from `FnHeader` structure
+/// which contains metadata about function safety, asyncness, constness and ABI.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Param>,
@@ -1859,13 +1940,13 @@ impl FnDecl {
         self.inputs.get(0).and_then(Param::to_self)
     }
     pub fn has_self(&self) -> bool {
-        self.inputs.get(0).map(Param::is_self).unwrap_or(false)
+        self.inputs.get(0).map_or(false, Param::is_self)
     }
     pub fn c_variadic(&self) -> bool {
-        self.inputs.last().map(|arg| match arg.ty.kind {
+        self.inputs.last().map_or(false, |arg| match arg.ty.kind {
             TyKind::CVarArgs => true,
             _ => false,
-        }).unwrap_or(false)
+        })
     }
 }
 
@@ -1918,6 +1999,8 @@ pub enum Constness {
     NotConst,
 }
 
+/// Item defaultness.
+/// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum Defaultness {
     Default,
@@ -2009,6 +2092,7 @@ pub struct EnumDef {
     pub variants: Vec<Variant>,
 }
 
+/// Enum variant.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Variant {
     /// Name of the variant.
@@ -2111,6 +2195,8 @@ pub struct AttrItem {
 pub struct Attribute {
     pub item: AttrItem,
     pub id: AttrId,
+    /// Denotes if the attribute decorates the following construct (outer)
+    /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
     pub is_sugared_doc: bool,
     pub span: Span,
