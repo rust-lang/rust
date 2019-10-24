@@ -379,7 +379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 _ => throw_unsup_format!("The {} error cannot be transformed into a raw os error", e)
             })?
         } else {
-            // FIXME: we have to implement the windows' equivalent of this.
+            // FIXME: we have to implement the Windows equivalent of this.
             throw_unsup_format!("Setting the last OS error from an io::Error is unsupported for {}.", target.target_os)
         };
         this.set_last_error(last_error)
@@ -390,7 +390,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// `Ok(-1)` and sets the last OS error accordingly.
     ///
     /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`)
+    /// functions return different integer types (like `read`, that returns an `i64`).
     fn try_unwrap_io_result<T: From<i32>>(
         &mut self,
         result: std::io::Result<T>,
@@ -423,11 +423,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, bool> {
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
-        // terminator to memory using the `ptr` pointer would cause an overflow.
+        // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
         if size <= bytes.len() as u64 {
             return Ok(false);
         }
-        // FIXME: We should use `Iterator::chain` instead when rust-lang/rust#65704 lands.
         self.eval_context_mut().memory.write_bytes(scalar, bytes.iter().copied().chain(iter::once(0u8)))?;
         Ok(true)
     }
