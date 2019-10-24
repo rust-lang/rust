@@ -1,5 +1,7 @@
 //! Type context book-keeping.
 
+// ignore-tidy-filelength
+
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
