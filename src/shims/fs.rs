@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions, remove_file};
+use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Write};
 
 use rustc::ty::layout::Size;
@@ -125,8 +125,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
             // always sets this flag when opening a file. However we still need to check that the
             // file itself is open.
-            let fd_cloexec = this.eval_libc_i32("FD_CLOEXEC")?;
-            this.get_handle_and(fd, |_| Ok(fd_cloexec))
+            if this.machine.file_handler.handles.contains_key(&fd) {
+                Ok(this.eval_libc_i32("FD_CLOEXEC")?)
+            } else {
+                this.handle_not_found()
+            }
         } else {
             throw_unsup_format!("The {:#x} command is not supported for `fcntl`)", cmd);
         }
@@ -139,9 +142,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        this.remove_handle_and(fd, |handle, this| {
+        if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
             this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32))
-        })
+        } else {
+            this.handle_not_found()
+        }
     }
 
     fn read(
@@ -160,20 +165,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(0);
         }
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let buf_scalar = this.read_scalar(buf_op)?.not_undef()?;
+        let buf = this.read_scalar(buf_op)?.not_undef()?;
 
-        // Remove the file handle to avoid borrowing issues.
-        this.remove_handle_and(fd, |mut handle, this| {
-            // Don't use `?` to avoid returning before reinserting the handle.
-            let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
-                this.memory
-                    .get_mut(buf.alloc_id)?
-                    .get_bytes_mut(&*this.tcx, buf, Size::from_bytes(count))
-                    .map(|buffer| handle.file.read(buffer))
-            });
-            this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
-            this.try_unwrap_io_result(bytes?.map(|bytes| bytes as i64))
-        })
+        if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
+            // We want to read at most `count` bytes
+            let mut bytes = vec![0; count as usize];
+            let result = handle.file.read(&mut bytes).map(|c| c as i64);
+            let written_count = this.try_unwrap_io_result(result)?;
+            // `try_unwrap_io_result` returns Ok(`-1`) if `result` is an error. There is no other
+            // way of returning `-1` because the `Ok` variant of `result` contains the number of
+            // written bytes, which is a possitive value.
+            if written_count != -1 {
+                // If reading to `bytes` did not fail, we write those bytes to the buffer.
+                this.memory.write_bytes(buf, bytes)?;
+            }
+            Ok(written_count)
+        } else {
+            this.handle_not_found()
+        }
     }
 
     fn write(
@@ -192,20 +201,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(0);
         }
         let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
+        let buf = this.read_scalar(buf_op)?.not_undef()?;
 
-        this.remove_handle_and(fd, |mut handle, this| {
-            let bytes = this.memory.get(buf.alloc_id).and_then(|alloc| {
-                alloc
-                    .get_bytes(&*this.tcx, buf, Size::from_bytes(count))
-                    .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
-            });
-            this.machine.file_handler.handles.insert(fd, handle).unwrap_none();
-            this.try_unwrap_io_result(bytes?)
-        })
+        if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
+            let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
+            let result = handle.file.write(&bytes).map(|c| c as i64);
+            this.try_unwrap_io_result(result)
+        } else {
+            this.handle_not_found()
+        }
     }
 
-    fn unlink( &mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn unlink(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.check_no_isolation("unlink")?;
@@ -217,49 +224,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(result)
     }
 
-    /// Helper function that gets a `FileHandle` immutable reference and allows to manipulate it
-    /// using the `f` closure.
-    ///
-    /// If the `fd` file descriptor does not correspond to a file, this functions returns `Ok(-1)`
-    /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
-    ///
-    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`).
-    fn get_handle_and<F, T: From<i32>>(&mut self, fd: i32, f: F) -> InterpResult<'tcx, T>
-    where
-        F: Fn(&FileHandle) -> InterpResult<'tcx, T>,
-    {
+    /// Function used when a handle is not found inside `FileHandler`. It returns `Ok(-1)`and sets
+    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
+    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
+    /// types (like `read`, that returns an `i64`).
+    fn handle_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
         let this = self.eval_context_mut();
-        if let Some(handle) = this.machine.file_handler.handles.get(&fd) {
-            f(handle)
-        } else {
-            let ebadf = this.eval_libc("EBADF")?;
-            this.set_last_error(ebadf)?;
-            Ok((-1).into())
-        }
-    }
-
-    /// Helper function that removes a `FileHandle` and allows to manipulate it using the `f`
-    /// closure. This function is quite useful when you need to modify a `FileHandle` but you need
-    /// to modify `MiriEvalContext` at the same time, so you can modify the handle and reinsert it
-    /// using `f`.
-    ///
-    /// If the `fd` file descriptor does not correspond to a file, this functions returns `Ok(-1)`
-    /// and sets `Evaluator::last_error` to `libc::EBADF` (invalid file descriptor).
-    ///
-    /// This function uses `T: From<i32>` instead of `i32` directly because some IO related
-    /// functions return different integer types (like `read`, that returns an `i64`).
-    fn remove_handle_and<F, T: From<i32>>(&mut self, fd: i32, mut f: F) -> InterpResult<'tcx, T>
-    where
-        F: FnMut(FileHandle, &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, T>,
-    {
-        let this = self.eval_context_mut();
-        if let Some(handle) = this.machine.file_handler.handles.remove(&fd) {
-            f(handle, this)
-        } else {
-            let ebadf = this.eval_libc("EBADF")?;
-            this.set_last_error(ebadf)?;
-            Ok((-1).into())
-        }
+        let ebadf = this.eval_libc("EBADF")?;
+        this.set_last_error(ebadf)?;
+        Ok((-1).into())
     }
 }
