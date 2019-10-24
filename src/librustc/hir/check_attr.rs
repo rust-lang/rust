@@ -17,6 +17,12 @@ use syntax::{attr, symbol::sym};
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
+pub(crate) enum MethodKind {
+    Trait { body: bool },
+    Inherent,
+}
+
+#[derive(Copy, Clone, PartialEq)]
 pub(crate) enum Target {
     ExternCrate,
     Use,
@@ -38,7 +44,7 @@ pub(crate) enum Target {
     Expression,
     Statement,
     AssocConst,
-    Method { body: bool },
+    Method(MethodKind),
     AssocTy,
     ForeignFn,
     ForeignStatic,
@@ -68,7 +74,7 @@ impl Display for Target {
             Target::Expression => "expression",
             Target::Statement => "statement",
             Target::AssocConst => "associated const",
-            Target::Method { .. } => "method",
+            Target::Method(_) => "method",
             Target::AssocTy => "associated type",
             Target::ForeignFn => "foreign function",
             Target::ForeignStatic => "foreign static item",
@@ -103,10 +109,10 @@ impl Target {
         match trait_item.kind {
             TraitItemKind::Const(..) => Target::AssocConst,
             TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
-                Target::Method { body: false }
+                Target::Method(MethodKind::Trait { body: false })
             }
             TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
-                Target::Method { body: true }
+                Target::Method(MethodKind::Trait { body: true })
             }
             TraitItemKind::Type(..) => Target::AssocTy,
         }
@@ -120,10 +126,22 @@ impl Target {
         }
     }
 
-    fn from_impl_item(impl_item: &hir::ImplItem) -> Target {
+    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem) -> Target {
         match impl_item.kind {
             hir::ImplItemKind::Const(..) => Target::Const,
-            hir::ImplItemKind::Method(..) => Target::Method { body: true },
+            hir::ImplItemKind::Method(..) => {
+                let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
+                let containing_item = tcx.hir().expect_item(parent_hir_id);
+                let containing_impl_is_for_trait = match &containing_item.kind {
+                    hir::ItemKind::Impl(_, _, _, _, tr, _, _) => tr.is_some(),
+                    _ => bug!("parent of an ImplItem must be an Impl"),
+                };
+                if containing_impl_is_for_trait {
+                    Target::Method(MethodKind::Trait { body: true })
+                } else {
+                    Target::Method(MethodKind::Inherent)
+                }
+            }
             hir::ImplItemKind::TyAlias(..) => Target::TyAlias,
             hir::ImplItemKind::OpaqueTy(..) => Target::OpaqueTy,
         }
@@ -176,8 +194,9 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
     fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Fn | Target::Closure | Target::Method { body: true } => true,
-            Target::Method { body: false } | Target::ForeignFn => {
+            Target::Fn | Target::Closure | Target::Method(MethodKind::Trait { body: true })
+            | Target::Method(MethodKind::Inherent) => true,
+            Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
                 self.tcx.struct_span_lint_hir(
                     UNUSED_ATTRIBUTES,
                     hir_id,
@@ -216,8 +235,8 @@ impl CheckAttrVisitor<'tcx> {
                 ).emit();
                 false
             }
-            Target::Fn => true,
-            Target::Method { .. } => {
+            Target::Fn | Target::Method(MethodKind::Inherent) => true,
+            Target::Method(_) => {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
@@ -278,7 +297,8 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[target_feature]` attribute on `item` is valid. Returns `true` if valid.
     fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Fn | Target::Method { body: true } => true,
+            Target::Fn | Target::Method(MethodKind::Trait { body: true })
+            | Target::Method(MethodKind::Inherent) => true,
             _ => {
                 self.tcx.sess
                     .struct_span_err(attr.span, "attribute should be applied to a function")
@@ -471,7 +491,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        let target = Target::from_impl_item(impl_item);
+        let target = Target::from_impl_item(self.tcx, impl_item);
         self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
