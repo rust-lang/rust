@@ -17,5 +17,5 @@ impl MustUseDeprecated { //~ warning: use of deprecated item
 
 fn main() {
     MustUseDeprecated::new(); //~ warning: use of deprecated item
-    //| warning: unused `MustUseDeprecated` that must be used
+    //~| warning: unused `MustUseDeprecated` that must be used
 }

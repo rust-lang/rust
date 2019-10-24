@@ -38,6 +38,7 @@
 // Exception, a gated and deprecated attribute.
 
 #![plugin_registrar] //~ WARN unused attribute
+//~| WARN use of deprecated attribute
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -90,7 +91,7 @@
 #![crate_id = "10"] //~ WARN use of deprecated attribute
 
 // FIXME(#44232) we should warn that this isn't used.
-#![feature(rust1)]
+#![feature(rust1)] //~ WARN no longer requires an attribute to enable
 
 #![no_start] //~ WARN use of deprecated attribute
 
@@ -215,20 +216,25 @@ mod macro_export {
 
 #[plugin_registrar]
 //~^ WARN unused attribute
+//~| WARN use of deprecated attribute
 mod plugin_registrar {
     mod inner { #![plugin_registrar] }
     //~^ WARN unused attribute
+    //~| WARN use of deprecated attribute
 
     // for `fn f()` case, see gated-plugin_registrar.rs
 
     #[plugin_registrar] struct S;
     //~^ WARN unused attribute
+    //~| WARN use of deprecated attribute
 
     #[plugin_registrar] type T = S;
     //~^ WARN unused attribute
+    //~| WARN use of deprecated attribute
 
     #[plugin_registrar] impl S { }
     //~^ WARN unused attribute
+    //~| WARN use of deprecated attribute
 }
 
 #[main]
