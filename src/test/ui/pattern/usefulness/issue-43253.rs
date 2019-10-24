@@ -32,14 +32,14 @@ fn main() {
 
     match 10 {
         1..10 => {},
-        8..=9 => {}, //~ WARNING multiple patterns covering the same range
+        8..=9 => {}, //~ WARNING unreachable pattern
         _ => {},
     }
 
     match 10 {
         5..7 => {},
         6 => {}, //~ WARNING unreachable pattern
-        1..10 => {}, //~ WARNING multiple patterns covering the same range
+        1..10 => {},
         9..=9 => {}, //~ WARNING unreachable pattern
         6 => {}, //~ WARNING unreachable pattern
         _ => {},

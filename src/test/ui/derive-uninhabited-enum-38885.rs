@@ -10,7 +10,7 @@ enum Void {}
 #[derive(Debug)]
 enum Foo {
     Bar(u8),
-    Void(Void), //~ WARN never used
+    Void(Void), //~ WARN never constructed
 }
 
 fn main() {
