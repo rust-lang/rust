@@ -243,14 +243,14 @@ struct Install {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
-    ccache: Option<StringOrBool>,
-    ninja: Option<bool>,
-    assertions: Option<bool>,
     optimize: Option<bool>,
     thin_lto: Option<bool>,
     release_debuginfo: Option<bool>,
+    assertions: Option<bool>,
+    ccache: Option<StringOrBool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
+    ninja: Option<bool>,
     targets: Option<String>,
     experimental_targets: Option<String>,
     link_jobs: Option<u32>,
