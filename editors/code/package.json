@@ -32,7 +32,8 @@
     },
     "dependencies": {
         "seedrandom": "^3.0.1",
-        "vscode-languageclient": "^5.3.0-next.4"
+        "vscode-languageclient": "^5.3.0-next.4",
+        "jsonc-parser": "^2.1.0"
     },
     "devDependencies": {
         "@types/glob": "^7.1.1",

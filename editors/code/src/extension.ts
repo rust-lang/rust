@@ -91,11 +91,11 @@ export function activate(context: vscode.ExtensionContext) {
     const allNotifications: Iterable<
         [string, lc.GenericNotificationHandler]
     > = [
-        [
-            'rust-analyzer/publishDecorations',
-            notifications.publishDecorations.handle
-        ]
-    ];
+            [
+                'rust-analyzer/publishDecorations',
+                notifications.publishDecorations.handle
+            ]
+        ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode

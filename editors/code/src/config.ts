@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-
+import * as scopes from './scopes';
 import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
@@ -46,7 +46,11 @@ export class Config {
 
     public userConfigChanged() {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
+        
+        Server.highlighter.removeHighlights();
+        scopes.load()
         if (config.has('highlightingOn')) {
+
             this.highlightingOn = config.get('highlightingOn') as boolean;
         }
 

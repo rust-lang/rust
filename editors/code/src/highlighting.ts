@@ -1,6 +1,8 @@
 import seedrandom = require('seedrandom');
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
+import * as scopes from './scopes'
+
 
 import { Server } from './server';
 
@@ -23,6 +25,37 @@ function fancify(seed: string, shade: 'light' | 'dark') {
     return `hsl(${h},${s}%,${l}%)`;
 }
 
+function createDecorationFromTextmate(themeStyle: scopes.TextMateRuleSettings): vscode.TextEditorDecorationType {
+    const options: vscode.DecorationRenderOptions = {}
+    options.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen
+    if (themeStyle.foreground) {
+        options.color = themeStyle.foreground
+    }
+    if (themeStyle.background) {
+        options.backgroundColor = themeStyle.background
+    }
+    if (themeStyle.fontStyle) {
+        const parts: string[] = themeStyle.fontStyle.split(' ')
+        parts.forEach((part) => {
+            switch (part) {
+                case 'italic':
+                    options.fontStyle = 'italic'
+                    break
+                case 'bold':
+                    options.fontWeight = 'bold'
+
+                    break
+                case 'underline':
+                    options.textDecoration = 'underline'
+                    break
+                default:
+                    break
+            }
+        })
+    }
+    return vscode.window.createTextEditorDecorationType(options)
+}
+
 export class Highlighter {
     private static initDecorations(): Map<
         string,
@@ -32,36 +65,44 @@ export class Highlighter {
             tag: string,
             textDecoration?: string
         ): [string, vscode.TextEditorDecorationType] => {
-            const color = new vscode.ThemeColor('ralsp.' + tag);
-            const decor = vscode.window.createTextEditorDecorationType({
-                color,
-                textDecoration
-            });
-            return [tag, decor];
+            const scope = scopes.find(tag)
+
+            if (scope) {
+                const decor = createDecorationFromTextmate(scope);
+                return [tag, decor];
+            }
+            else {
+                const color = new vscode.ThemeColor('ralsp.' + tag);
+                const decor = vscode.window.createTextEditorDecorationType({
+                    color,
+                    textDecoration
+                });
+                return [tag, decor];
+            }
         };
 
         const decorations: Iterable<
             [string, vscode.TextEditorDecorationType]
         > = [
-            decoration('comment'),
-            decoration('string'),
-            decoration('keyword'),
-            decoration('keyword.control'),
-            decoration('keyword.unsafe'),
-            decoration('function'),
-            decoration('parameter'),
-            decoration('constant'),
-            decoration('type'),
-            decoration('builtin'),
-            decoration('text'),
-            decoration('attribute'),
-            decoration('literal'),
-            decoration('macro'),
-            decoration('variable'),
-            decoration('variable.mut', 'underline'),
-            decoration('field'),
-            decoration('module')
-        ];
+                decoration('comment'),
+                decoration('string'),
+                decoration('keyword'),
+                decoration('keyword.control'),
+                decoration('keyword.unsafe'),
+                decoration('function'),
+                decoration('parameter'),
+                decoration('constant'),
+                decoration('type'),
+                decoration('builtin'),
+                decoration('text'),
+                decoration('attribute'),
+                decoration('literal'),
+                decoration('macro'),
+                decoration('variable'),
+                decoration('variable.mut', 'underline'),
+                decoration('field'),
+                decoration('module')
+            ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);
     }
@@ -89,6 +130,8 @@ export class Highlighter {
         //
         // Note: decoration objects need to be kept around so we can dispose them
         // if the user disables syntax highlighting
+
+
         if (this.decorations == null) {
             this.decorations = Highlighter.initDecorations();
         }
@@ -133,6 +176,7 @@ export class Highlighter {
                 tag
             ) as vscode.TextEditorDecorationType;
             const ranges = byTag.get(tag)!;
+
             editor.setDecorations(dec, ranges);
         }
 
