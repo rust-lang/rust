@@ -48,4 +48,6 @@ fn main() {
 
 "###);
     //~^^^ ERROR invalid format string: unmatched `}` found
+    println!("{} {} {}", 1, 2);
+    //~^ ERROR 3 positional arguments in format string, but there are 2 arguments
 }
