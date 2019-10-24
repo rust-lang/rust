@@ -110,6 +110,7 @@ symbols! {
         aarch64_target_feature,
         abi,
         abi_amdgpu_kernel,
+        abi_efiapi,
         abi_msp430_interrupt,
         abi_ptx,
         abi_sysv64,

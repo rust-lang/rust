@@ -531,6 +531,9 @@ declare_features! (
     /// Non-object safe trait objects safe to use but cannot be created in safe rust
     (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
 
+    /// Allows using the `efiapi` ABI.
+    (active, abi_efiapi, "1.40.0", Some(1), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
