@@ -56,16 +56,16 @@ struct Tests {
     pub err: HashMap<String, Test>,
 }
 
-fn collect_tests(s: &str) -> Vec<(usize, Test)> {
+fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = vec![];
     let prefix = "// ";
-    let lines = s.lines().map(str::trim_start).enumerate();
+    let lines = s.lines().map(str::trim_start);
 
     let mut block = vec![];
-    for (line_idx, line) in lines {
+    for line in lines {
         let is_comment = line.starts_with(prefix);
         if is_comment {
-            block.push((line_idx, &line[prefix.len()..]));
+            block.push(&line[prefix.len()..]);
         } else {
             process_block(&mut res, &block);
             block.clear();
@@ -74,29 +74,28 @@ fn collect_tests(s: &str) -> Vec<(usize, Test)> {
     process_block(&mut res, &block);
     return res;
 
-    fn process_block(acc: &mut Vec<(usize, Test)>, block: &[(usize, &str)]) {
+    fn process_block(acc: &mut Vec<Test>, block: &[&str]) {
         if block.is_empty() {
             return;
         }
         let mut ok = true;
         let mut block = block.iter();
-        let (start_line, name) = loop {
+        let name = loop {
             match block.next() {
-                Some(&(idx, line)) if line.starts_with("test ") => {
-                    break (idx, line["test ".len()..].to_string());
+                Some(line) if line.starts_with("test ") => {
+                    break line["test ".len()..].to_string();
                 }
-                Some(&(idx, line)) if line.starts_with("test_err ") => {
+                Some(line) if line.starts_with("test_err ") => {
                     ok = false;
-                    break (idx, line["test_err ".len()..].to_string());
+                    break line["test_err ".len()..].to_string();
                 }
                 Some(_) => (),
                 None => return,
             }
         };
-        let text: String =
-            block.map(|(_, line)| *line).chain(std::iter::once("")).collect::<Vec<_>>().join("\n");
+        let text: String = block.copied().chain(std::iter::once("")).collect::<Vec<_>>().join("\n");
         assert!(!text.trim().is_empty() && text.ends_with('\n'));
-        acc.push((start_line, Test { name, text, ok }))
+        acc.push(Test { name, text, ok })
     }
 }
 
@@ -118,7 +117,7 @@ fn tests_from_dir(dir: &Path) -> Result<Tests> {
     fn process_file(res: &mut Tests, path: &Path) -> Result<()> {
         let text = fs::read_to_string(path)?;
 
-        for (_, test) in collect_tests(&text) {
+        for test in collect_tests(&text) {
             if test.ok {
                 if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
                     Err(format!("Duplicate test: {}", old_test.name))?
