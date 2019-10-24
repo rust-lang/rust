@@ -224,8 +224,9 @@ error: 4 positional arguments in format string, but there are 3 arguments
   --> $DIR/ifmt-bad-arg.rs:78:15
    |
 LL |     println!("{} {:.*} {}", 1, 3.2, 4);
-   |               ^^ ^^--^ ^^      --- this parameter corresponds to the precision flag
-   |                    |
+   |               ^^ ^^--^ ^^   -  ---  -
+   |                    |           |
+   |                    |           this parameter corresponds to the precision flag
    |                    this precision flag adds an extra required argument at position 1, which is why there are 4 arguments expected
    |
    = note: positional arguments are zero-based
@@ -235,8 +236,9 @@ error: 4 positional arguments in format string, but there are 3 arguments
   --> $DIR/ifmt-bad-arg.rs:81:15
    |
 LL |     println!("{} {:07$.*} {}", 1, 3.2, 4);
-   |               ^^ ^^^----^ ^^      --- this parameter corresponds to the precision flag
-   |                     | |
+   |               ^^ ^^^----^ ^^   -  ---  -
+   |                     | |           |
+   |                     | |           this parameter corresponds to the precision flag
    |                     | this precision flag adds an extra required argument at position 1, which is why there are 4 arguments expected
    |                     this width flag expects an `usize` argument at position 7, but there are 3 arguments
    |
