@@ -1,11 +1,6 @@
 dist: xenial
 language: bash
 
-os:
-  - linux
-  - osx
-  - windows
-
 branches:
   # Don't build these branches
   except:
@@ -34,13 +29,12 @@ install:
       if ! rustup component add rustfmt; then
         cargo install -Z install-upgrade --git https://github.com/rust-lang/rustfmt --bin rustfmt
       fi
-      if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         . $HOME/.nvm/nvm.sh
         nvm install stable
         nvm use stable
         npm install remark-cli remark-lint
-      fi
-      if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+      elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
         choco install windows-sdk-10.1
       fi
     fi
@@ -53,11 +47,9 @@ matrix:
   include:
     # Builds that are executed for every PR
     - os: osx # run base tests on both platforms
-      env: BASE_TESTS=true
     - os: linux
-      env: BASE_TESTS=true
     - os: windows
-      env: CARGO_INCREMENTAL=0 BASE_TESTS=true OS_WINDOWS=true
+      env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
 
     # Builds that are only executed when a PR is r+ed or a try build is started
     # We don't want to run these always because they go towards
@@ -95,25 +87,20 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
   allow_failures:
     - os: windows
-      env: CARGO_INCREMENTAL=0 BASE_TESTS=true OS_WINDOWS=true
-  # prevent these jobs with default env vars
-  exclude:
-    - os: linux
-    - os: osx
-    - os: windows
+      env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
 
 before_script:
   - |
-    if [ "$TRAVIS_BRANCH" == "auto" ] || [ "$TRAVIS_BRANCH" == "try" ]; then
-      pr=$(echo $TRAVIS_COMMIT_MESSAGE | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
-      output=$(curl -H "Authorization: token $GITHUB_API_TOKEN" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$pr" | \
+    if [[ "$TRAVIS_BRANCH" == "auto" ]] || [[ "$TRAVIS_BRANCH" == "try" ]]; then
+      PR=$(echo "$TRAVIS_COMMIT_MESSAGE" | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
+      output=$(curl -H "Authorization: token $GITHUB_API_TOKEN" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR" | \
         python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
         grep "^changelog: " | \
         sed "s/changelog: //g")
-      if [ -z "$output" ]; then
+      if [[ -z "$output" ]]; then
         echo "ERROR: PR body must contain 'changelog: ...'"
         exit 1
-      elif [ "$output" = "none" ]; then
+      elif [[ "$output" = "none" ]]; then
         echo "WARNING: changelog is 'none'"
       fi
     fi
@@ -121,25 +108,30 @@ before_script:
     rm rust-toolchain
     ./setup-toolchain.sh
   - |
-    if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      export PATH=$PATH:$(rustc --print sysroot)/bin
-    else
-      export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
-    fi
+    SYSROOT=$(rustc --print sysroot)
+    case "$TRAVIS_OS_NAME" in
+      windows ) export PATH="${SYSROOT}/bin:${PATH}" ;;
+      linux ) export LD_LIBRARY_PATH="${SYSROOT}/lib" ;;
+      osx )
+        # See <https://github.com/nteract/nteract/issues/1523#issuecomment-301623519>
+        sudo mkdir -p /usr/local/lib
+        sudo find "$SYSROOT/lib" -maxdepth 1 -name '*.dylib' -exec ln -s {} /usr/local/lib \;
+        ;;
+    esac
 
 script:
   - |
-    if [ -z ${INTEGRATION} ]; then
-      travis_wait 30 ./ci/base-tests.sh && sleep 5
-    else
+    if [[ -n ${INTEGRATION} ]]; then
       ./ci/integration-tests.sh && sleep 5
+    else
+      ./ci/base-tests.sh && sleep 5
     fi
 
 after_success:
   - |
-    if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       set -e
-      if [ -z ${INTEGRATION} ]; then
+      if [[ -z ${INTEGRATION} ]]; then
         ./.github/deploy.sh
       else
         echo "Not deploying, because we're in an integration test run"

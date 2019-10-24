@@ -1,3 +1,5 @@
 #!/bin/sh
+CARGO_TARGET_DIR=$(pwd)/target/
+export CARGO_TARGET_DIR
 
-cd clippy_dev && cargo run -- $@
+cd clippy_dev && cargo run -- "$@"

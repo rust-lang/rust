@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-set -x
+set -ex
 
 if [[ -z "$INTEGRATION" ]]; then
     exit 0
 fi
+
+CARGO_TARGET_DIR=$(pwd)/target/
+export CARGO_TARGET_DIR
 
 rm ~/.cargo/bin/cargo-clippy
 cargo install --force --debug --path .
