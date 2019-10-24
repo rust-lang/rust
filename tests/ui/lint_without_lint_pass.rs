@@ -22,10 +22,6 @@ declare_clippy_lint! {
 
 pub struct Pass;
 impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TEST_LINT_REGISTERED)
-    }
-
     fn name(&self) -> &'static str {
         "TEST_LINT"
     }

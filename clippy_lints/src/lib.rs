@@ -914,7 +914,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box trait_bounds::TraitBounds);
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
     store.register_late_pass(|| box mul_add::MulAddCheck);
-
     store.register_early_pass(|| box reference::DerefAddrOf);
     store.register_early_pass(|| box reference::RefInDeref);
     store.register_early_pass(|| box double_parens::DoubleParens);
@@ -939,6 +938,8 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
     let p = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(p));
+    store.register_late_pass(|| box unused_self::UnusedSelf);
+    store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),

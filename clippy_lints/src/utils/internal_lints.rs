@@ -275,9 +275,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
     }
 }
 
-pub struct OuterExpnDataPass;
-
-impl_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
+declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
