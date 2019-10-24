@@ -301,18 +301,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn() {
-            assert!(args.len() == 1);
-            // &(&'static str, &'static str, u32, u32)
-            let place = self.deref_operand(args[0])?;
-            let (msg, file, line, col) = (
-                self.mplace_field(place, 0)?,
-                self.mplace_field(place, 1)?,
-                self.mplace_field(place, 2)?,
-                self.mplace_field(place, 3)?,
+            // &'static str, &core::panic::Location { &'static str, u32, u32 }
+            assert!(args.len() == 2);
+
+            let msg_place = self.deref_operand(args[0])?;
+            let msg = Symbol::intern(self.read_str(msg_place)?);
+
+            let location = self.deref_operand(args[1])?;
+            let (file, line, col) = (
+                self.mplace_field(location, 0)?,
+                self.mplace_field(location, 1)?,
+                self.mplace_field(location, 2)?,
             );
 
-            let msg_place = self.deref_operand(msg.into())?;
-            let msg = Symbol::intern(self.read_str(msg_place)?);
             let file_place = self.deref_operand(file.into())?;
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;

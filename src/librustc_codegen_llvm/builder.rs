@@ -1082,36 +1082,6 @@ impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
         // FIXME(eddyb) move this into miri, it can be correct if e.g. field order changes
         self.static_addr_of(struct_, align, Some("panic_loc"))
     }
-
-    fn static_panic_msg(
-        &mut self,
-        msg: Option<Symbol>,
-        filename: Symbol,
-        line: Self::Value,
-        col: Self::Value,
-        kind: &str,
-    ) -> Self::Value {
-        let align = self.tcx.data_layout.aggregate_align.abi
-            .max(self.tcx.data_layout.i32_align.abi)
-            .max(self.tcx.data_layout.pointer_align.abi);
-
-        let filename = self.const_str_slice(filename);
-
-        let with_msg_components;
-        let without_msg_components;
-
-        let components = if let Some(msg) = msg {
-            let msg = self.const_str_slice(msg);
-            with_msg_components = [msg, filename, line, col];
-            &with_msg_components as &[_]
-        } else {
-            without_msg_components = [filename, line, col];
-            &without_msg_components as &[_]
-        };
-
-        let struct_ = self.const_struct(&components, false);
-        self.static_addr_of(struct_, align, Some(kind))
-    }
 }
 
 impl Builder<'a, 'll, 'tcx> {

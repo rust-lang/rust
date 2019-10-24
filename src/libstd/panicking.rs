@@ -323,10 +323,8 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>,
     }
 
     let (file, line, col) = *file_line_col;
-    let info = PanicInfo::internal_constructor(
-        Some(msg),
-        Location::internal_constructor(file, line, col),
-    );
+    let location = Location::internal_constructor(file, line, col);
+    let info = PanicInfo::internal_constructor(Some(msg), &location);
     continue_panic_fmt(&info)
 }
 
@@ -453,10 +451,8 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
     }
 
     unsafe {
-        let mut info = PanicInfo::internal_constructor(
-            message,
-            Location::internal_constructor(file, line, col),
-        );
+        let location = Location::internal_constructor(file, line, col);
+        let mut info = PanicInfo::internal_constructor(message, &location);
         HOOK_LOCK.read();
         match HOOK {
             // Some platforms know that printing to stderr won't ever actually

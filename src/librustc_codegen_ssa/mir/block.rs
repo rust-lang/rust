@@ -16,7 +16,6 @@ use crate::traits::*;
 use std::borrow::Cow;
 
 use syntax::symbol::Symbol;
-use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
@@ -422,37 +421,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Get the location information.
         let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-        let filename = Symbol::intern(&loc.file.name.to_string());
-        let line = bx.const_u32(loc.line as u32);
-        let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
+        let location = bx.static_panic_location(&loc);
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
             PanicInfo::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
-
-                let file_line_col = bx.static_panic_msg(
-                    None,
-                    filename,
-                    line,
-                    col,
-                    "panic_bounds_check_loc",
-                );
-                (lang_items::PanicBoundsCheckFnLangItem,
-                    vec![file_line_col, index, len])
+                (lang_items::PanicBoundsCheckFnLangItem, vec![location, index, len])
             }
             _ => {
                 let msg_str = Symbol::intern(msg.description());
-                let msg_file_line_col = bx.static_panic_msg(
-                    Some(msg_str),
-                    filename,
-                    line,
-                    col,
-                    "panic_loc",
-                );
-                (lang_items::PanicFnLangItem,
-                    vec![msg_file_line_col])
+                let msg = bx.const_str(msg_str);
+                (lang_items::PanicFnLangItem, vec![msg.0, msg.1, location])
             }
         };
 
@@ -554,22 +535,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             if layout.abi.is_uninhabited() {
                 let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                let filename = Symbol::intern(&loc.file.name.to_string());
-                let line = bx.const_u32(loc.line as u32);
-                let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
 
-                let str = format!(
-                    "Attempted to instantiate uninhabited type {}",
-                    ty
-                );
-                let msg_str = Symbol::intern(&str);
-                let msg_file_line_col = bx.static_panic_msg(
-                    Some(msg_str),
-                    filename,
-                    line,
-                    col,
-                    "panic_loc",
-                );
+                let msg_str = format!("Attempted to instantiate uninhabited type {}", ty);
+                let msg = bx.const_str(Symbol::intern(&msg_str));
+                let location = bx.static_panic_location(&loc);
 
                 // Obtain the panic entry point.
                 let def_id =
@@ -587,7 +556,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &mut bx,
                     fn_ty,
                     llfn,
-                    &[msg_file_line_col],
+                    &[msg.0, msg.1, location],
                     destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
                     cleanup,
                 );
