@@ -557,10 +557,9 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         x.val
     };
 
-    // Currently, the values that can be unified are those that
-    // implement both `PartialEq` and `Eq`, corresponding to
-    // `structural_match` types.
-    // FIXME(const_generics): check for `structural_match` synthetic attribute.
+    // Currently, the values that can be unified are primitive types,
+    // and those that derive both `PartialEq` and `Eq`, corresponding
+    // to `structural_match` types.
     let new_const_val = match (eagerly_eval(a), eagerly_eval(b)) {
         (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
             // The caller should handle these cases!

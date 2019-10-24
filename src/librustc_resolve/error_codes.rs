@@ -1880,13 +1880,14 @@ fn main() {
 "##,
 
 E0671: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Const parameters cannot depend on type parameters.
 The following is therefore invalid:
-```compile_fail,E0671
+```compile_fail,E0741
 #![feature(const_generics)]
 
-fn const_id<T, const N: T>() -> T { // error: const parameter
-                                    // depends on type parameter
+fn const_id<T, const N: T>() -> T { // error
     N
 }
 ```

@@ -215,8 +215,6 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
-    /// Error E0671: const parameter cannot depend on type parameter.
-    ConstParamDependentOnTypeParam,
 }
 
 // A minimal representation of a path segment. We use this in resolve because
@@ -2169,15 +2167,6 @@ impl<'a> Resolver<'a> {
             return Res::Err;
         }
 
-        // An invalid use of a type parameter as the type of a const parameter.
-        if let TyParamAsConstParamTy = all_ribs[rib_index].kind {
-            if record_used {
-                self.report_error(span, ResolutionError::ConstParamDependentOnTypeParam);
-            }
-            assert_eq!(res, Res::Err);
-            return Res::Err;
-        }
-
         match res {
             Res::Local(_) => {
                 use ResolutionError::*;
@@ -2186,7 +2175,7 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
-                        ForwardTyParamBanRibKind | TyParamAsConstParamTy => {
+                        ForwardTyParamBanRibKind => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
@@ -2220,7 +2209,7 @@ impl<'a> Resolver<'a> {
                     let has_generic_params = match rib.kind {
                         NormalRibKind | AssocItemRibKind |
                         ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
-                        ConstantItemRibKind | TyParamAsConstParamTy => {
+                        ConstantItemRibKind => {
                             // Nothing to do. Continue.
                             continue;
                         }
