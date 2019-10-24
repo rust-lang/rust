@@ -1800,12 +1800,12 @@ fn check_specialization_validity<'tcx>(
 
 fn check_impl_items_against_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_span: Span,
+    full_impl_span: Span,
     impl_id: DefId,
     impl_trait_ref: ty::TraitRef<'tcx>,
     impl_item_refs: &[hir::ImplItemRef],
 ) {
-    let impl_span = tcx.sess.source_map().def_span(impl_span);
+    let impl_span = tcx.sess.source_map().def_span(full_impl_span);
 
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -1934,12 +1934,22 @@ fn check_impl_items_against_trait<'tcx>(
                 missing_items.iter()
                     .map(|trait_item| trait_item.ident.to_string())
                     .collect::<Vec<_>>().join("`, `")));
+
+        // `Span` before impl block closing brace.
+        let hi = full_impl_span.hi() - BytePos(1);
+        let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
+        let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
+        let padding: String = (0..indentation).map(|_| " ").collect();
         for trait_item in missing_items {
+            let snippet = suggestion_signature(&trait_item, tcx);
+            let code = format!("{}{}\n{}", padding, snippet, padding);
+            let msg = format!("implement the missing item: `{}`", snippet);
+            let appl = Applicability::HasPlaceholders;
             if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
                 err.span_label(span, format!("`{}` from trait", trait_item.ident));
+                err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
             } else {
-                err.note_trait_signature(trait_item.ident.to_string(),
-                                         trait_item.signature(tcx));
+                err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
             }
         }
         err.emit();
@@ -1947,13 +1957,92 @@ fn check_impl_items_against_trait<'tcx>(
 
     if !invalidated_items.is_empty() {
         let invalidator = overridden_associated_type.unwrap();
-        span_err!(tcx.sess, invalidator.span, E0399,
-                  "the following trait items need to be reimplemented \
-                   as `{}` was overridden: `{}`",
-                  invalidator.ident,
-                  invalidated_items.iter()
-                                   .map(|name| name.to_string())
-                                   .collect::<Vec<_>>().join("`, `"))
+        span_err!(
+            tcx.sess,
+            invalidator.span,
+            E0399,
+            "the following trait items need to be reimplemented as `{}` was overridden: `{}`",
+            invalidator.ident,
+            invalidated_items.iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>().join("`, `"))
+    }
+}
+
+/// Given a `ty::AssocItem` and a `TyCtxt`, return placeholder code for that associated item.
+/// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
+/// structured suggestion.
+fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
+    match assoc.kind {
+        ty::AssocKind::Method => {
+            // We skip the binder here because the binder would deanonymize all
+            // late-bound regions, and we don't want method signatures to show up
+            // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+            // regions just fine, showing `fn(&MyType)`.
+            let sig = tcx.fn_sig(assoc.def_id);
+            let unsafety = match sig.unsafety() {
+                hir::Unsafety::Unsafe => "unsafe ",
+                _ => "",
+            };
+            let args = sig.inputs()
+                .skip_binder()
+                .iter()
+                .map(|ty| Some(match ty.kind {
+                    ty::Param(param) if param.name == kw::SelfUpper => {
+                        "self".to_string()
+                    }
+                    ty::Ref(reg, ref_ty, mutability) => {
+                        let mutability = match mutability {
+                            hir::Mutability::MutMutable => "mut ",
+                            _ => "",
+                        };
+                        let mut reg = format!("{}", reg);
+                        if &reg[..] == "'_" {
+                            reg = "".to_string();
+                        }
+                        if &reg[..] != "" {
+                            reg = format!("{} ", reg);
+                        }
+                        match ref_ty.kind {
+                            ty::Param(param)
+                            if param.name == kw::SelfUpper => {
+                                format!("&{}{}self", reg, mutability)
+                            }
+                            _ => format!("_: {:?}", ty),
+                        }
+
+                    }
+                    _ => format!("_: {:?}", ty),
+                }))
+                .chain(std::iter::once(if sig.c_variadic() {
+                    Some("...".to_string())
+                } else {
+                    None
+                }))
+                .filter_map(|arg| arg)
+                .collect::<Vec<String>>()
+                .join(", ");
+            let output = sig.output();
+            let output = if !output.skip_binder().is_unit() {
+                format!(" -> {:?}", output.skip_binder())
+            } else {
+                String::new()
+            };
+            // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
+            // not be present in the `fn` definition, not will we account for renamed
+            // lifetimes between the `impl` and the `trait`, but this should be good enough to
+            // fill in a significant portion of the missing code, and other subsequent
+            // suggestions can help the user fix the code.
+            format!("{}fn {}({}){} {{ unimplemented!() }}", unsafety, assoc.ident, args, output)
+        }
+        ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
+        // FIXME(type_alias_impl_trait): we should print bounds here too.
+        ty::AssocKind::OpaqueTy => format!("type {} = Type;", assoc.ident),
+        ty::AssocKind::Const => {
+            let ty = tcx.type_of(assoc.def_id);
+            let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
+            format!("const {}: {:?} = {};", assoc.ident, ty, val)
+        }
     }
 }
 
