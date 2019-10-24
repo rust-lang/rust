@@ -4,7 +4,7 @@ mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
 
-use std::{error::Error, fmt, path::PathBuf, sync::Arc, time::Instant};
+use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
@@ -565,7 +565,7 @@ impl<'a> PoolDispatcher<'a> {
     ) -> Result<&mut Self>
     where
         R: req::Request + 'static,
-        R::Params: DeserializeOwned + Send + 'static,
+        R::Params: DeserializeOwned + panic::UnwindSafe + 'static,
         R::Result: Serialize + 'static,
     {
         let (id, params) = match self.parse::<R>() {
@@ -574,8 +574,12 @@ impl<'a> PoolDispatcher<'a> {
                 return Ok(self);
             }
         };
-        let result = f(self.world, params);
-        let task = result_to_task::<R>(id, result);
+        let world = panic::AssertUnwindSafe(&mut *self.world);
+        let task = panic::catch_unwind(move || {
+            let result = f(world.0, params);
+            result_to_task::<R>(id, result)
+        })
+        .map_err(|_| format!("sync task {:?} panicked", R::METHOD))?;
         on_task(task, self.msg_sender, self.pending_requests, self.world);
         Ok(self)
     }
@@ -610,7 +614,7 @@ impl<'a> PoolDispatcher<'a> {
     fn parse<R>(&mut self) -> Option<(RequestId, R::Params)>
     where
         R: req::Request + 'static,
-        R::Params: DeserializeOwned + Send + 'static,
+        R::Params: DeserializeOwned + 'static,
     {
         let req = self.req.take()?;
         let (id, params) = match req.extract::<R::Params>(R::METHOD) {
@@ -647,7 +651,7 @@ impl<'a> PoolDispatcher<'a> {
 fn result_to_task<R>(id: RequestId, result: Result<R::Result>) -> Task
 where
     R: req::Request + 'static,
-    R::Params: DeserializeOwned + Send + 'static,
+    R::Params: DeserializeOwned + 'static,
     R::Result: Serialize + 'static,
 {
     let response = match result {
