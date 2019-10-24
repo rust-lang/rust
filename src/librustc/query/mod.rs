@@ -15,7 +15,7 @@ use crate::traits::query::{
 };
 
 use std::borrow::Cow;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -924,7 +924,7 @@ rustc_queries! {
             desc { "collect_and_partition_mono_items" }
         }
         query is_codegened_item(_: DefId) -> bool {}
-        query codegen_unit(_: InternedString) -> Arc<CodegenUnit<'tcx>> {
+        query codegen_unit(_: Symbol) -> Arc<CodegenUnit<'tcx>> {
             no_force
             desc { "codegen_unit" }
         }

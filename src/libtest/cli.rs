@@ -149,7 +149,7 @@ fn optgroups() -> getopts::Options {
             `CRITICAL_TIME` here means the limit that should not be exceeded by test.
             "
         );
-    return opts;
+    opts
 }
 
 fn usage(binary: &str, options: &getopts::Options) {

@@ -9,7 +9,7 @@ extern crate rustc;
 extern crate rustc_driver;
 
 use rustc::hir;
-use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
+use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LintArray, LintId};
 use rustc_driver::plugin::Registry;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
@@ -30,6 +30,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box Pass);
-    reg.register_lint_group("lint_me", None, vec![TEST_LINT, PLEASE_LINT]);
+    reg.lint_store.register_lints(&[&TEST_LINT, &PLEASE_LINT]);
+    reg.lint_store.register_late_pass(|| box Pass);
+    reg.lint_store.register_group(true, "lint_me", None,
+        vec![LintId::of(&TEST_LINT), LintId::of(&PLEASE_LINT)]);
 }

@@ -456,7 +456,7 @@ impl str {
                 }
             }
         }
-        return s;
+        s
     }
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.

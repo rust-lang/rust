@@ -37,7 +37,7 @@ use std::slice;
 use std::vec::IntoIter;
 use std::{iter, mem, option, u32};
 use syntax::ast::Name;
-use syntax::symbol::{InternedString, Symbol};
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
@@ -2736,8 +2736,8 @@ pub enum UnsafetyViolationKind {
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
-    pub description: InternedString,
-    pub details: InternedString,
+    pub description: Symbol,
+    pub details: Symbol,
     pub kind: UnsafetyViolationKind,
 }
 

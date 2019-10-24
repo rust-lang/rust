@@ -257,7 +257,7 @@ impl Stdio {
                         let ret = io.duplicate(0, true,
                                                c::DUPLICATE_SAME_ACCESS);
                         io.into_raw();
-                        return ret
+                        ret
                     }
                     Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
                 }
@@ -472,9 +472,8 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
             cmd.push('"' as u16);
         }
 
-        let mut iter = arg.encode_wide();
         let mut backslashes: usize = 0;
-        while let Some(x) = iter.next() {
+        for x in arg.encode_wide() {
             if x == '\\' as u16 {
                 backslashes += 1;
             } else {

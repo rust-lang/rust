@@ -296,7 +296,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     assert!(st.current_test_count() == st.total);
 
-    return out.write_run_finish(&st);
+    out.write_run_finish(&st)
 }
 
 // Calculates padding for given test description.

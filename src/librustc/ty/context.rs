@@ -72,7 +72,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::feature_gate;
-use syntax::symbol::{Symbol, InternedString, kw, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 
 pub struct AllArenas {
@@ -949,7 +949,7 @@ impl<'tcx> CommonTypes<'tcx> {
             f64: mk(Float(ast::FloatTy::F64)),
             self_param: mk(ty::Param(ty::ParamTy {
                 index: 0,
-                name: kw::SelfUpper.as_interned_str(),
+                name: kw::SelfUpper,
             })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
@@ -1030,6 +1030,8 @@ pub struct GlobalCtxt<'tcx> {
     cstore: &'tcx CrateStoreDyn,
 
     pub sess: &'tcx Session,
+
+    pub lint_store: Lrc<lint::LintStore>,
 
     pub dep_graph: DepGraph,
 
@@ -1192,6 +1194,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
+        lint_store: Lrc<lint::LintStore>,
         cstore: &'tcx CrateStoreDyn,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
@@ -1255,6 +1258,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         GlobalCtxt {
             sess: s,
+            lint_store,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
             interners,
@@ -2552,7 +2556,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_ty_param(self, index: u32, name: InternedString) -> Ty<'tcx> {
+    pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { index, name: name }))
     }
 
@@ -2560,7 +2564,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_const_param(
         self,
         index: u32,
-        name: InternedString,
+        name: Symbol,
         ty: Ty<'tcx>
     ) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {

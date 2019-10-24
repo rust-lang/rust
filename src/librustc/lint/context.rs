@@ -22,11 +22,11 @@ use crate::hir::intravisit as hir_visit;
 use crate::hir::intravisit::Visitor;
 use crate::hir::map::{definitions::DisambiguatedDefPathData, DefPathData};
 use crate::lint::{EarlyLintPass, LateLintPass, EarlyLintPassObject, LateLintPassObject};
-use crate::lint::{LintArray, Level, Lint, LintId, LintPass, LintBuffer};
+use crate::lint::{Level, Lint, LintId, LintPass, LintBuffer, FutureIncompatibleInfo};
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
-use crate::session::{config, early_error, Session};
+use crate::session::Session;
 use crate::ty::{self, print::Printer, subst::GenericArg, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
@@ -35,10 +35,9 @@ use crate::util::common::time;
 use errors::DiagnosticBuilder;
 use std::slice;
 use std::default::Default as StdDefault;
-use rustc_data_structures::sync::{ReadGuard, Lock, ParallelIterator, join, par_iter};
+use rustc_data_structures::sync::{self, ParallelIterator, join, par_iter};
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
-use syntax::edition;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 use syntax_pos::{MultiSpan, Span, symbol::Symbol};
@@ -50,24 +49,25 @@ use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 pub struct LintStore {
     /// Registered lints. The bool is true if the lint was
     /// added by a plugin.
-    lints: Vec<(&'static Lint, bool)>,
+    lints: Vec<&'static Lint>,
 
-    /// Trait objects for each lint pass.
-    /// This is only `None` while performing a lint pass.
-    pre_expansion_passes: Option<Vec<EarlyLintPassObject>>,
-    early_passes: Option<Vec<EarlyLintPassObject>>,
-    late_passes: Lock<Option<Vec<LateLintPassObject>>>,
-    late_module_passes: Vec<LateLintPassObject>,
+    /// Constructor functions for each variety of lint pass.
+    ///
+    /// These should only be called once, but since we want to avoid locks or
+    /// interior mutability, we don't enforce this (and lints should, in theory,
+    /// be compatible with being constructed more than once, though not
+    /// necessarily in a sane manner. This is safe though.)
+    pre_expansion_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
+    early_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
+    late_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    /// This is unique in that we construct them per-module, so not once.
+    late_module_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
 
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
 
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
-
-    /// Extra info for future incompatibility lints, describing the
-    /// issue or RFC that caused the incompatibility.
-    future_incompatible: FxHashMap<LintId, FutureIncompatibleInfo>,
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -79,18 +79,6 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
     pub msg: String,
     pub diagnostic: BuiltinLintDiagnostics,
-}
-
-/// Extra information for a future incompatibility lint. See the call
-/// to `register_future_incompatible` in `librustc_lint/lib.rs` for
-/// guidelines.
-pub struct FutureIncompatibleInfo {
-    pub id: LintId,
-    /// e.g., a URL for an issue/PR/RFC or error code
-    pub reference: &'static str,
-    /// If this is an edition fixing lint, the edition in which
-    /// this lint becomes obsolete
-    pub edition: Option<edition::Edition>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -142,17 +130,16 @@ impl LintStore {
     pub fn new() -> LintStore {
         LintStore {
             lints: vec![],
-            pre_expansion_passes: Some(vec![]),
-            early_passes: Some(vec![]),
-            late_passes: Lock::new(Some(vec![])),
+            pre_expansion_passes: vec![],
+            early_passes: vec![],
+            late_passes: vec![],
             late_module_passes: vec![],
             by_name: Default::default(),
-            future_incompatible: Default::default(),
             lint_groups: Default::default(),
         }
     }
 
-    pub fn get_lints<'t>(&'t self) -> &'t [(&'static Lint, bool)] {
+    pub fn get_lints<'t>(&'t self) -> &'t [&'static Lint] {
         &self.lints
     }
 
@@ -168,99 +155,64 @@ impl LintStore {
             .collect()
     }
 
-    pub fn register_early_pass(&mut self,
-                               sess: Option<&Session>,
-                               from_plugin: bool,
-                               register_only: bool,
-                               pass: EarlyLintPassObject) {
-        self.push_pass(sess, from_plugin, &pass);
-        if !register_only {
-            self.early_passes.as_mut().unwrap().push(pass);
-        }
+    pub fn register_early_pass(
+        &mut self,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync
+    ) {
+        self.early_passes.push(Box::new(pass));
     }
 
     pub fn register_pre_expansion_pass(
         &mut self,
-        sess: Option<&Session>,
-        from_plugin: bool,
-        register_only: bool,
-        pass: EarlyLintPassObject,
+        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
     ) {
-        self.push_pass(sess, from_plugin, &pass);
-        if !register_only {
-            self.pre_expansion_passes.as_mut().unwrap().push(pass);
-        }
+        self.pre_expansion_passes.push(Box::new(pass));
     }
 
-    pub fn register_late_pass(&mut self,
-                              sess: Option<&Session>,
-                              from_plugin: bool,
-                              register_only: bool,
-                              per_module: bool,
-                              pass: LateLintPassObject) {
-        self.push_pass(sess, from_plugin, &pass);
-        if !register_only {
-            if per_module {
-                self.late_module_passes.push(pass);
-            } else {
-                self.late_passes.lock().as_mut().unwrap().push(pass);
-            }
-        }
+    pub fn register_late_pass(
+        &mut self,
+        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+    ) {
+        self.late_passes.push(Box::new(pass));
+    }
+
+    pub fn register_late_mod_pass(
+        &mut self,
+        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+    ) {
+        self.late_module_passes.push(Box::new(pass));
     }
 
     // Helper method for register_early/late_pass
-    fn push_pass<P: LintPass + ?Sized + 'static>(&mut self,
-                                        sess: Option<&Session>,
-                                        from_plugin: bool,
-                                        pass: &Box<P>) {
-        for lint in pass.get_lints() {
-            self.lints.push((lint, from_plugin));
+    pub fn register_lints(&mut self, lints: &[&'static Lint]) {
+        for lint in lints {
+            self.lints.push(lint);
 
             let id = LintId::of(lint);
             if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
-                let msg = format!("duplicate specification of lint {}", lint.name_lower());
-                match (sess, from_plugin) {
-                    // We load builtin lints first, so a duplicate is a compiler bug.
-                    // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
-                    (Some(_), false) => bug!("{}", msg),
+                bug!("duplicate specification of lint {}", lint.name_lower())
+            }
 
-                    // A duplicate name from a plugin is a user error.
-                    (Some(sess), true)  => sess.err(&msg[..]),
+            if let Some(FutureIncompatibleInfo { edition, .. }) = lint.future_incompatible {
+                if let Some(edition) = edition {
+                    self.lint_groups.entry(edition.lint_name())
+                        .or_insert(LintGroup {
+                            lint_ids: vec![],
+                            from_plugin: lint.is_plugin,
+                            depr: None,
+                        })
+                        .lint_ids.push(id);
                 }
+
+                self.lint_groups.entry("future_incompatible")
+                    .or_insert(LintGroup {
+                        lint_ids: vec![],
+                        from_plugin: lint.is_plugin,
+                        depr: None,
+                    })
+                    .lint_ids.push(id);
             }
         }
-    }
-
-    pub fn register_future_incompatible(&mut self,
-                                        sess: Option<&Session>,
-                                        lints: Vec<FutureIncompatibleInfo>) {
-
-        for edition in edition::ALL_EDITIONS {
-            let lints = lints.iter().filter(|f| f.edition == Some(*edition)).map(|f| f.id)
-                             .collect::<Vec<_>>();
-            if !lints.is_empty() {
-                self.register_group(sess, false, edition.lint_name(), None, lints)
-            }
-        }
-
-        let mut future_incompatible = Vec::with_capacity(lints.len());
-        for lint in lints {
-            future_incompatible.push(lint.id);
-            self.future_incompatible.insert(lint.id, lint);
-        }
-
-        self.register_group(
-            sess,
-            false,
-            "future_incompatible",
-            None,
-            future_incompatible,
-        );
-    }
-
-    pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {
-        self.future_incompatible.get(&id)
     }
 
     pub fn register_group_alias(
@@ -277,7 +229,6 @@ impl LintStore {
 
     pub fn register_group(
         &mut self,
-        sess: Option<&Session>,
         from_plugin: bool,
         name: &'static str,
         deprecated_name: Option<&'static str>,
@@ -300,16 +251,7 @@ impl LintStore {
         }
 
         if !new {
-            let msg = format!("duplicate specification of lint group {}", name);
-            match (sess, from_plugin) {
-                // We load builtin lints first, so a duplicate is a compiler bug.
-                // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
-                (Some(_), false) => bug!("{}", msg),
-
-                // A duplicate name from a plugin is a user error.
-                (Some(sess), true)  => sess.err(&msg[..]),
-            }
+            bug!("duplicate specification of lint group {}", name);
         }
     }
 
@@ -522,7 +464,7 @@ pub struct LateContext<'a, 'tcx> {
     pub access_levels: &'a AccessLevels,
 
     /// The store of registered lints and the lint levels.
-    lint_store: ReadGuard<'a, LintStore>,
+    lint_store: &'tcx LintStore,
 
     last_node_with_lint_attrs: hir::HirId,
 
@@ -550,7 +492,7 @@ pub struct EarlyContext<'a> {
     builder: LintLevelsBuilder<'a>,
 
     /// The store of registered lints and the lint levels.
-    lint_store: ReadGuard<'a, LintStore>,
+    lint_store: &'a LintStore,
 
     buffered: LintBuffer,
 }
@@ -639,14 +581,15 @@ pub trait LintContext: Sized {
 impl<'a> EarlyContext<'a> {
     fn new(
         sess: &'a Session,
+        lint_store: &'a LintStore,
         krate: &'a ast::Crate,
         buffered: LintBuffer,
     ) -> EarlyContext<'a> {
         EarlyContext {
             sess,
             krate,
-            lint_store: sess.lint_store.borrow(),
-            builder: LintLevelSets::builder(sess),
+            lint_store,
+            builder: LintLevelSets::builder(sess, lint_store),
             buffered,
         }
     }
@@ -681,7 +624,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
                           f: F)
         where F: FnOnce(&mut Self)
     {
-        let push = self.context.builder.push(attrs);
+        let push = self.context.builder.push(attrs, &self.context.lint_store);
         self.check_id(id);
         self.enter_attrs(attrs);
         f(self);
@@ -875,7 +818,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                     _ => {}
                 }
 
-                path.push(disambiguated_data.data.as_interned_str().as_symbol());
+                path.push(disambiguated_data.data.as_symbol());
                 Ok(path)
             }
 
@@ -1355,10 +1298,6 @@ impl LintPass for LateLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
     }
-
-    fn get_lints(&self) -> LintArray {
-        panic!()
-    }
 }
 
 macro_rules! expand_late_lint_pass_impl_methods {
@@ -1393,7 +1332,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_store: tcx.sess.lint_store.borrow(),
+        lint_store: &tcx.lint_store,
         last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id).unwrap(),
         generics: None,
         only_module: true,
@@ -1425,8 +1364,8 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
-    let mut passes: Vec<_> = tcx.sess.lint_store.borrow().late_module_passes
-                                .iter().map(|pass| pass.fresh_late_pass()).collect();
+    let mut passes: Vec<_> = tcx.lint_store.late_module_passes
+                                .iter().map(|pass| (pass)()).collect();
 
     if !passes.is_empty() {
         late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
@@ -1443,7 +1382,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
         tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
-        lint_store: tcx.sess.lint_store.borrow(),
+        lint_store: &tcx.lint_store,
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,
@@ -1467,7 +1406,8 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
 }
 
 fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes = tcx.sess.lint_store.borrow().late_passes.lock().take().unwrap();
+    let mut passes = tcx.lint_store
+        .late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
         if !passes.is_empty() {
@@ -1482,8 +1422,8 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
             });
         }
 
-        let mut passes: Vec<_> = tcx.sess.lint_store.borrow().late_module_passes
-                                    .iter().map(|pass| pass.fresh_late_pass()).collect();
+        let mut passes: Vec<_> = tcx.lint_store.late_module_passes
+                                    .iter().map(|pass| (pass)()).collect();
 
         for pass in &mut passes {
             time(tcx.sess, &format!("running late module lint: {}", pass.name()), || {
@@ -1491,9 +1431,6 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
             });
         }
     }
-
-    // Put the passes back in the session.
-    *tcx.sess.lint_store.borrow().late_passes.lock() = Some(passes);
 }
 
 /// Performs lint checking on a crate.
@@ -1525,10 +1462,6 @@ impl LintPass for EarlyLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
     }
-
-    fn get_lints(&self) -> LintArray {
-        panic!()
-    }
 }
 
 macro_rules! expand_early_lint_pass_impl_methods {
@@ -1553,12 +1486,13 @@ early_lint_methods!(early_lint_pass_impl, []);
 
 fn early_lint_crate<T: EarlyLintPass>(
     sess: &Session,
+    lint_store: &LintStore,
     krate: &ast::Crate,
     pass: T,
     buffered: LintBuffer,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(sess, krate, buffered),
+        context: EarlyContext::new(sess, lint_store, krate, buffered),
         pass,
     };
 
@@ -1577,28 +1511,30 @@ fn early_lint_crate<T: EarlyLintPass>(
 
 pub fn check_ast_crate<T: EarlyLintPass>(
     sess: &Session,
+    lint_store: &LintStore,
     krate: &ast::Crate,
     pre_expansion: bool,
     builtin_lints: T,
 ) {
-    let (mut passes, mut buffered) = if pre_expansion {
+    let (mut passes, mut buffered): (Vec<_>, _) = if pre_expansion {
         (
-            sess.lint_store.borrow_mut().pre_expansion_passes.take().unwrap(),
+            lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect(),
             LintBuffer::default(),
         )
     } else {
         (
-            sess.lint_store.borrow_mut().early_passes.take().unwrap(),
+            lint_store.early_passes.iter().map(|p| (p)()).collect(),
             sess.buffered_lints.borrow_mut().take().unwrap(),
         )
     };
 
     if !sess.opts.debugging_opts.no_interleave_lints {
-        buffered = early_lint_crate(sess, krate, builtin_lints, buffered);
+        buffered = early_lint_crate(sess, lint_store, krate, builtin_lints, buffered);
 
         if !passes.is_empty() {
             buffered = early_lint_crate(
                 sess,
+                lint_store,
                 krate,
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 buffered,
@@ -1609,19 +1545,13 @@ pub fn check_ast_crate<T: EarlyLintPass>(
             buffered = time(sess, &format!("running lint: {}", pass.name()), || {
                 early_lint_crate(
                     sess,
+                    lint_store,
                     krate,
                     EarlyLintPassObjects { lints: slice::from_mut(pass) },
                     buffered,
                 )
             });
         }
-    }
-
-    // Put the lint store levels and passes back in the session.
-    if pre_expansion {
-        sess.lint_store.borrow_mut().pre_expansion_passes = Some(passes);
-    } else {
-        sess.lint_store.borrow_mut().early_passes = Some(passes);
     }
 
     // All of the buffered lints should have been emitted at this point.
@@ -1653,7 +1583,7 @@ impl Decodable for LintId {
     fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
         let s = d.read_str()?;
         ty::tls::with(|tcx| {
-            match tcx.sess.lint_store.borrow().find_lints(&s) {
+            match tcx.lint_store.find_lints(&s) {
                 Ok(ids) => {
                     if ids.len() != 0 {
                         panic!("invalid lint-id `{}`", s);

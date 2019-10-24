@@ -186,13 +186,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum).as_interned_str();
+            let name = cstore.crate_name_untracked(cnum);
             let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
             (name, disambiguator, hash)
         }).collect();
 
-        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name, dis));
+        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
 
         // We hash the final, remapped names of all local source files so we
         // don't have to include the path prefix remapping commandline args.
