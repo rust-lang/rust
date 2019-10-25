@@ -386,17 +386,7 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
-            // # Install xargo.
-            let mut cargo = tool::prepare_tool_cargo(
-                builder,
-                compiler,
-                Mode::ToolRustc,
-                host,
-                "install",
-                "src/tools/miri",
-                SourceType::Submodule,
-                &[],
-            );
+            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "install");
             cargo.arg("xargo");
             // Configure `cargo install` path. cargo adds a `bin/`.
             cargo.env("CARGO_INSTALL_ROOT", &builder.out);
