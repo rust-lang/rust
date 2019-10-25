@@ -1548,7 +1548,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                             if is_expected(ctor_res) &&
                                self.r.is_accessible_from(ctor_vis, self.parent_scope.module) {
                                 let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
-                                self.r.session.buffer_lint(lint, id, span,
+                                self.r.lint_buffer.buffer_lint(lint, id, span,
                                     "private struct constructors are not usable through \
                                      re-exports in outer modules",
                                 );
@@ -1774,7 +1774,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             };
             if result.base_res() == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-                self.r.session.buffer_lint(lint, id, span, "unnecessary qualification")
+                self.r.lint_buffer.buffer_lint(lint, id, span, "unnecessary qualification")
             }
         }
 
@@ -2111,7 +2111,7 @@ impl<'a> Resolver<'a> {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
-            self.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
+            self.lint_buffer.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
         }
     }
 }

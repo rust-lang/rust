@@ -496,7 +496,7 @@ impl<'a> Resolver<'a> {
                         if let (&NameBindingKind::Res(_, true), &NameBindingKind::Res(_, true)) =
                                (&old_binding.kind, &binding.kind) {
 
-                            this.session.buffer_lint_with_diagnostic(
+                            this.lint_buffer.buffer_lint_with_diagnostic(
                                 DUPLICATE_MACRO_EXPORTS,
                                 CRATE_NODE_ID,
                                 binding.span,
@@ -979,7 +979,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                    !max_vis.get().is_at_least(directive.vis.get(), &*self) {
                     let msg =
                     "glob import doesn't reexport anything because no candidate is public enough";
-                    self.r.session.buffer_lint(UNUSED_IMPORTS, directive.id, directive.span, msg);
+                    self.r.lint_buffer.buffer_lint(
+                        UNUSED_IMPORTS, directive.id, directive.span, msg,
+                    );
                 }
                 return None;
             }
@@ -1148,7 +1150,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                    re-exported (error E0365), consider declaring with \
                                    `pub`",
                                    ident);
-                self.r.session.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+                self.r.lint_buffer.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                                          directive.id,
                                          directive.span,
                                          &msg);
@@ -1273,7 +1275,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            self.r.session.buffer_lint_with_diagnostic(
+            self.r.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 directive.id,
                 directive.span,

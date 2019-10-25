@@ -858,7 +858,7 @@ pub trait Resolver {
         &mut self, invoc: &Invocation, eager_expansion_root: ExpnId, force: bool
     ) -> Result<InvocationRes, Indeterminate>;
 
-    fn check_unused_macros(&self);
+    fn check_unused_macros(&mut self);
 
     fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool;
     fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives);
@@ -1053,7 +1053,7 @@ impl<'a> ExtCtxt<'a> {
         Symbol::intern(st)
     }
 
-    pub fn check_unused_macros(&self) {
+    pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
     }
 

@@ -247,9 +247,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         Ok(InvocationRes::Single(ext))
     }
 
-    fn check_unused_macros(&self) {
+    fn check_unused_macros(&mut self) {
         for (&node_id, &span) in self.unused_macros.iter() {
-            self.session.buffer_lint(
+            self.lint_buffer.buffer_lint(
                 lint::builtin::UNUSED_MACROS, node_id, span, "unused macro definition"
             );
         }
@@ -789,15 +789,17 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &ast::Path) {
+    fn check_stability_and_deprecation(&mut self, ext: &SyntaxExtension, path: &ast::Path) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
                     let node_id = ast::CRATE_NODE_ID;
-                    let soft_handler =
-                        |lint, span, msg: &_| self.session.buffer_lint(lint, node_id, span, msg);
+                    let lint_buffer = &mut self.lint_buffer;
+                    let soft_handler = |lint, span, msg: &_| {
+                        lint_buffer.buffer_lint(lint, node_id, span, msg)
+                    };
                     stability::report_unstable(
                         self.session, feature, reason, issue, is_soft, span, soft_handler
                     );
@@ -807,14 +809,14 @@ impl<'a> Resolver<'a> {
                 let path = pprust::path_to_string(path);
                 let (message, lint) = stability::rustc_deprecation_message(depr, &path);
                 stability::early_report_deprecation(
-                    self.session, &message, depr.suggestion, lint, span
+                    &mut self.lint_buffer, &message, depr.suggestion, lint, span
                 );
             }
         }
         if let Some(depr) = &ext.deprecation {
             let path = pprust::path_to_string(&path);
             let (message, lint) = stability::deprecation_message(depr, &path);
-            stability::early_report_deprecation(self.session, &message, None, lint, span);
+            stability::early_report_deprecation(&mut self.lint_buffer, &message, None, lint, span);
         }
     }
 

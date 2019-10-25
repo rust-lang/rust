@@ -962,6 +962,8 @@ pub struct Resolver<'a> {
     /// Stores enum visibilities to properly build a reduced graph
     /// when visiting the correspondent variants.
     variant_vis: DefIdMap<ty::Visibility>,
+
+    pub lint_buffer: lint::LintBuffer,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1088,7 +1090,8 @@ impl<'a> Resolver<'a> {
                krate: &Crate,
                crate_name: &str,
                metadata_loader: &'a MetadataLoaderDyn,
-               arenas: &'a ResolverArenas<'a>)
+               arenas: &'a ResolverArenas<'a>,
+               lint_buffer: lint::LintBuffer)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let root_module_kind = ModuleKind::Def(
@@ -1227,7 +1230,8 @@ impl<'a> Resolver<'a> {
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                     .collect(),
-            variant_vis: Default::default()
+            variant_vis: Default::default(),
+            lint_buffer,
         }
     }
 
@@ -1653,7 +1657,7 @@ impl<'a> Resolver<'a> {
             match result {
                 Ok(binding) => {
                     if let Some(node_id) = poisoned {
-                        self.session.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                             node_id, ident.span,
                             &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
@@ -2118,7 +2122,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn lint_if_path_starts_with_module(
-        &self,
+        &mut self,
         crate_lint: CrateLint,
         path: &[Segment],
         path_span: Span,
@@ -2169,7 +2173,7 @@ impl<'a> Resolver<'a> {
 
         let diag = lint::builtin::BuiltinLintDiagnostics
             ::AbsPathWithModule(diag_span);
-        self.session.buffer_lint_with_diagnostic(
+        self.lint_buffer.buffer_lint_with_diagnostic(
             lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             diag_id, diag_span,
             "absolute paths must start with `self`, `super`, \
@@ -2419,7 +2423,7 @@ impl<'a> Resolver<'a> {
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
             let msg = "macro-expanded `macro_export` macros from the current crate \
                        cannot be referred to by absolute paths";
-            self.session.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint_with_diagnostic(
                 lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID, span_use, msg,
                 lint::builtin::BuiltinLintDiagnostics::
