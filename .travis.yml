@@ -1,5 +1,8 @@
 dist: xenial
 language: bash
+git:
+  depth: 1
+  quiet: true
 
 branches:
   # Don't build these branches
