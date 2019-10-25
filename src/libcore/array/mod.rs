@@ -18,7 +18,7 @@ use crate::slice::{Iter, IterMut};
 mod iter;
 
 #[cfg(not(bootstrap))]
-#[unstable(feature = "array_value_iter", issue = "0")]
+#[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
 
 /// Utility trait implemented only on arrays of fixed size

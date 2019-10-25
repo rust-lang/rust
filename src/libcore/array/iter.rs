@@ -13,7 +13,7 @@ use super::LengthAtMost32;
 /// A by-value [array] iterator.
 ///
 /// [array]: ../../std/primitive.array.html
-#[unstable(feature = "array_value_iter", issue = "0")]
+#[unstable(feature = "array_value_iter", issue = "65798")]
 pub struct IntoIter<T, const N: usize>
 where
     [T; N]: LengthAtMost32,
@@ -49,7 +49,7 @@ where
     /// *Note*: this method might never get stabilized and/or removed in the
     /// future as there will likely be another, preferred way of obtaining this
     /// iterator (either via `IntoIterator` for arrays or via another way).
-    #[unstable(feature = "array_value_iter", issue = "0")]
+    #[unstable(feature = "array_value_iter", issue = "65798")]
     pub fn new(array: [T; N]) -> Self {
         // The transmute here is actually safe. The docs of `MaybeUninit`
         // promise:
@@ -95,7 +95,7 @@ where
 }
 
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> Iterator for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
@@ -141,7 +141,7 @@ where
     }
 }
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
@@ -176,7 +176,7 @@ where
     }
 }
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> Drop for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
@@ -189,7 +189,7 @@ where
     }
 }
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> ExactSizeIterator for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
@@ -204,7 +204,7 @@ where
     }
 }
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> FusedIterator for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
@@ -214,13 +214,13 @@ where
 // elements (that will still be yielded) is the length of the range `alive`.
 // This range is decremented in length in either `next` or `next_back`. It is
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
 {}
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: Clone, const N: usize> Clone for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
@@ -251,7 +251,7 @@ where
     }
 }
 
-#[stable(feature = "array_value_iter_impls", since = "1.38.0")]
+#[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, {N}>
 where
     [T; N]: LengthAtMost32,
