@@ -19,6 +19,7 @@ use log::debug;
 use std::mem;
 use rustc_target::spec::abi::Abi;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
+use syntax_pos::BytePos;
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
@@ -1737,6 +1738,25 @@ impl<'a> Parser<'a> {
                 err.emit();
             }
         }
+    }
+
+    fn report_invalid_macro_expansion_item(&self) {
+        self.struct_span_err(
+            self.prev_span,
+            "macros that expand to items must be delimited with braces or followed by a semicolon",
+        ).multipart_suggestion(
+            "change the delimiters to curly braces",
+            vec![
+                (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), String::from(" {")),
+                (self.prev_span.with_lo(self.prev_span.hi() - BytePos(1)), '}'.to_string()),
+            ],
+            Applicability::MaybeIncorrect,
+        ).span_suggestion(
+            self.sess.source_map().next_point(self.prev_span),
+            "add a semicolon",
+            ';'.to_string(),
+            Applicability::MaybeIncorrect,
+        ).emit();
     }
 
     fn mk_item(&self, span: Span, ident: Ident, kind: ItemKind, vis: Visibility,
