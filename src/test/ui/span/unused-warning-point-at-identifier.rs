@@ -20,8 +20,8 @@ fn func() -> usize { //~ WARN function is never used
     3
 }
 
-fn //~ WARN function is never used
-func_complete_span()
+fn
+func_complete_span() //~ WARN function is never used
 -> usize
 {
     3

@@ -19,10 +19,10 @@ LL | fn lintme() {}
    = note: `#[warn(clippy::test_lint)]` on by default
 
 warning: function is never used: `lintme`
-  --> $DIR/lint-tool-cmdline-allow.rs:10:1
+  --> $DIR/lint-tool-cmdline-allow.rs:10:4
    |
 LL | fn lintme() {}
-   | ^^^^^^^^^^^
+   |    ^^^^^^
    |
 note: lint level defined here
   --> $DIR/lint-tool-cmdline-allow.rs:7:9

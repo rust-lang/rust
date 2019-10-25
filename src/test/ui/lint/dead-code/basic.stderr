@@ -1,8 +1,8 @@
 error: function is never used: `foo`
-  --> $DIR/basic.rs:4:1
+  --> $DIR/basic.rs:4:4
    |
 LL | fn foo() {
-   | ^^^^^^^^
+   |    ^^^
    |
 note: lint level defined here
   --> $DIR/basic.rs:1:9

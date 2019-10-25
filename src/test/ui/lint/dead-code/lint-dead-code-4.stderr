@@ -27,10 +27,10 @@ LL | |     },
    | |_____^
 
 error: enum is never used: `ABC`
-  --> $DIR/lint-dead-code-4.rs:24:1
+  --> $DIR/lint-dead-code-4.rs:24:6
    |
 LL | enum ABC {
-   | ^^^^^^^^
+   |      ^^^
 
 error: variant is never constructed: `I`
   --> $DIR/lint-dead-code-4.rs:36:5

@@ -1,0 +1,26 @@
+error: function is never used: `unused`
+  --> $DIR/newline-span.rs:3:4
+   |
+LL | fn unused() {
+   |    ^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/newline-span.rs:1:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: function is never used: `unused2`
+  --> $DIR/newline-span.rs:7:4
+   |
+LL | fn unused2(var: i32) {
+   |    ^^^^^^^
+
+error: function is never used: `unused3`
+  --> $DIR/newline-span.rs:11:4
+   |
+LL | fn unused3(
+   |    ^^^^^^^
+
+error: aborting due to 3 previous errors
+
