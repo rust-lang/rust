@@ -79,7 +79,7 @@ function getSearchElement() {
                      "derive",
                      "traitalias"];
 
-    var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") !== "true";
+    var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
 
     // On the search screen, so you remain on the last tab you opened.
