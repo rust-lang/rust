@@ -795,7 +795,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
     let store = &tcx.lint_store;
     let mut builder = LintLevelMapBuilder {
-        levels: LintLevelSets::builder(tcx.sess, &store),
+        levels: LintLevelSets::builder(tcx.sess, false, &store),
         tcx: tcx,
         store: store,
     };
