@@ -73,6 +73,14 @@ pub enum OperationError {
     /// An io error during reading or writing.
     #[fail(display = "io error: {}", _0)]
     IoError(IoError),
+    /// Attempt to use --check with stdin, which isn't currently
+    /// supported.
+    #[fail(display = "The `--check` option is not supported with standard input.")]
+    CheckWithStdin,
+    /// Attempt to use --emit=json with stdin, which isn't currently
+    /// supported.
+    #[fail(display = "Using `--emit` other than stdout is not supported with standard input.")]
+    EmitWithStdin,
 }
 
 impl From<IoError> for OperationError {
@@ -242,6 +250,14 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32, FailureE
     // try to read config from local directory
     let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
 
+    if options.check {
+        return Err(OperationError::CheckWithStdin.into());
+    }
+    if let Some(emit_mode) = options.emit_mode {
+        if emit_mode != EmitMode::Stdout {
+            return Err(OperationError::EmitWithStdin.into());
+        }
+    }
     // emit mode is always Stdout for Stdin.
     config.set().emit_mode(EmitMode::Stdout);
     config.set().verbose(Verbosity::Quiet);
@@ -486,7 +502,7 @@ struct GetOptsOptions {
     verbose: bool,
     config_path: Option<PathBuf>,
     inline_config: HashMap<String, String>,
-    emit_mode: EmitMode,
+    emit_mode: Option<EmitMode>,
     backup: bool,
     check: bool,
     edition: Option<Edition>,
@@ -574,7 +590,7 @@ impl GetOptsOptions {
                 return Err(format_err!("Invalid to use `--emit` and `--check`"));
             }
 
-            options.emit_mode = emit_mode_from_emit_str(emit_str)?;
+            options.emit_mode = Some(emit_mode_from_emit_str(emit_str)?);
         }
 
         if let Some(ref edition_str) = matches.opt_str("edition") {
@@ -590,11 +606,13 @@ impl GetOptsOptions {
         }
 
         if !rust_nightly {
-            if !STABLE_EMIT_MODES.contains(&options.emit_mode) {
-                return Err(format_err!(
-                    "Invalid value for `--emit` - using an unstable \
-                     value without `--unstable-features`",
-                ));
+            if let Some(ref emit_mode) = options.emit_mode {
+                if !STABLE_EMIT_MODES.contains(emit_mode) {
+                    return Err(format_err!(
+                        "Invalid value for `--emit` - using an unstable \
+                         value without `--unstable-features`",
+                    ));
+                }
             }
         }
 
@@ -643,8 +661,8 @@ impl CliOptions for GetOptsOptions {
         }
         if self.check {
             config.set().emit_mode(EmitMode::Diff);
-        } else {
-            config.set().emit_mode(self.emit_mode);
+        } else if let Some(emit_mode) = self.emit_mode {
+            config.set().emit_mode(emit_mode);
         }
         if self.backup {
             config.set().make_backup(true);
