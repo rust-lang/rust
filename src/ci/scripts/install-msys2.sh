@@ -1,4 +1,5 @@
 #!/bin/bash
+# ignore-tidy-linelength
 # Download and install MSYS2, needed primarily for the test suite (run-make) but
 # also used by the MinGW toolchain for assembling things.
 #
