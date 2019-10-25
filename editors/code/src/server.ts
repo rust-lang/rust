@@ -42,8 +42,6 @@ export class Server {
             documentSelector: [{ scheme: 'file', language: 'rust' }],
             initializationOptions: {
                 publishDecorations: true,
-                showWorkspaceLoaded:
-                    Server.config.showWorkspaceLoadedNotification,
                 lruCapacity: Server.config.lruCapacity,
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
