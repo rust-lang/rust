@@ -859,8 +859,8 @@ impl Attributes {
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
-        /// Converts `self` to a normal `#[doc="foo"]` comment, if it is a
-        /// comment like `///` or `/** */`. (Returns `self` unchanged for
+        /// Converts `attr` to a normal `#[doc="foo"]` comment, if it is a
+        /// comment like `///` or `/** */`. (Returns `attr` unchanged for
         /// non-sugared doc attributes.)
         pub fn with_desugared_doc<T>(attr: &Attribute, f: impl FnOnce(&Attribute) -> T) -> T {
             if attr.is_sugared_doc {
