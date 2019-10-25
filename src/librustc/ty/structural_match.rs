@@ -93,17 +93,20 @@ pub fn type_marked_structural(id: hir::HirId,
     fulfillment_cx.select_all_or_error(infcx).is_ok()
 }
 
+/// This implements the traversal over the structure of a given type to try to
+/// find instances of ADTs (specifically structs or enums) that do not implement
+/// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
 struct Search<'a, 'tcx> {
     id: hir::HirId,
     span: Span,
 
     infcx: InferCtxt<'a, 'tcx>,
 
-    // records the first ADT we find that does not implement `Structural`.
+    /// Records first ADT that does not implement a structural-match trait.
     found: Option<NonStructuralMatchTy<'tcx>>,
 
-    // tracks ADT's previously encountered during search, so that
-    // we will not recur on them again.
+    /// Tracks ADTs previously encountered during search, so that
+    /// we will not recur on them again.
     seen: FxHashSet<hir::def_id::DefId>,
 }
 
@@ -129,13 +132,26 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
-                // `*const _`/`*mut _`, so skip super_visit_with
+                // `*const _`/`*mut _`, so skip `super_visit_with`.
                 //
+                // For example, if you have:
+                // ```
+                // struct NonStructural;
+                // #[derive(PartialEq, Eq)]
+                // struct T(*const NonStructural);
+                // const C: T = T(std::ptr::null());
+                // ```
+                //
+                // Even though `NonStructural` does not implement `PartialEq`,
+                // structural equality on `T` does not recur into the raw
+                // pointer. Therefore, one can still use `C` in a pattern.
+
                 // (But still tell caller to continue search.)
                 return false;
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
-                // types of formals and return in `fn(_) -> _` are also irrelevant
+                // types of formals and return in `fn(_) -> _` are also irrelevant;
+                // so we do not recur into them via `super_visit_with`
                 //
                 // (But still tell caller to continue search.)
                 return false;
