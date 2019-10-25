@@ -82,7 +82,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL | extern "efiapi" fn f10() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -169,7 +169,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL |     extern "efiapi" fn m10();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -239,7 +239,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL |     extern "efiapi" fn dm10() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -326,7 +326,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL |     extern "efiapi" fn m10() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -413,7 +413,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL |     extern "efiapi" fn im10() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -500,7 +500,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL | type A10 = extern "efiapi" fn();
    |            ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -587,7 +587,7 @@ error[E0658]: efiapi ABI is experimental and subject to change
 LL | extern "efiapi" {}
    | ^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/1
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
    = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block

@@ -532,7 +532,7 @@ declare_features! (
     (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
 
     /// Allows using the `efiapi` ABI.
-    (active, abi_efiapi, "1.40.0", Some(1), None),
+    (active, abi_efiapi, "1.40.0", Some(65815), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
