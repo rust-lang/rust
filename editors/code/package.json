@@ -229,11 +229,6 @@
                     "description": "A list of patterns for cargo-watch to ignore (will be passed as `--ignore`)",
                     "default": []
                 },
-                "rust-analyzer.showWorkspaceLoadedNotification": {
-                    "type": "boolean",
-                    "description": "Controls whether rust-analyzer displays a notification when a project is loaded.",
-                    "default": false
-                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
