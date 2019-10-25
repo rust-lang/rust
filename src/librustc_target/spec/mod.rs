@@ -906,7 +906,7 @@ impl Target {
                 }
             },
             Abi::EfiApi => {
-                if self.arch != "x86_64" {
+                if self.arch == "x86_64" {
                     Abi::Win64
                 } else {
                     Abi::C
