@@ -59,6 +59,23 @@ pub enum DirectoryOwnership {
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
+/// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+macro_rules! panictry_buffer {
+    ($handler:expr, $e:expr) => ({
+        use std::result::Result::{Ok, Err};
+        use errors::FatalError;
+        match $e {
+            Ok(e) => e,
+            Err(errs) => {
+                for e in errs {
+                    $handler.emit_diagnostic(&e);
+                }
+                FatalError.raise()
+            }
+        }
+    })
+}
+
 pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
     let mut parser = new_parser_from_file(sess, input);
     parser.parse_crate_mod()
