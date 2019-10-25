@@ -132,6 +132,7 @@ pub fn handle_on_enter(
     }
 }
 
+// Don't forget to add new trigger characters to `ServerCapabilities` in `caps.rs`.
 pub fn handle_on_type_formatting(
     world: WorldSnapshot,
     params: req::DocumentOnTypeFormattingParams,

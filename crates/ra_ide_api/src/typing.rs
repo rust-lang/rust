@@ -81,7 +81,7 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
     Some(text[pos..].into())
 }
 
-pub(crate) const TRIGGER_CHARS: &str = ".=";
+pub(crate) const TRIGGER_CHARS: &str = ".=>";
 
 pub(crate) fn on_char_typed(
     db: &RootDatabase,
@@ -100,10 +100,12 @@ fn on_char_typed_inner(
     offset: TextUnit,
     char_typed: char,
 ) -> Option<SingleFileChange> {
+    assert!(TRIGGER_CHARS.contains(char_typed));
     match char_typed {
         '.' => on_dot_typed(file, offset),
         '=' => on_eq_typed(file, offset),
-        _ => None,
+        '>' => on_arrow_typed(file, offset),
+        _ => unreachable!(),
     }
 }
 
@@ -169,6 +171,25 @@ fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange>
     })
 }
 
+/// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
+fn on_arrow_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
+    let file_text = file.syntax().text();
+    assert_eq!(file_text.char_at(offset), Some('>'));
+    let after_arrow = offset + TextUnit::of_char('>');
+    if file_text.char_at(after_arrow) != Some('{') {
+        return None;
+    }
+    if find_node_at_offset::<ast::RetType>(file.syntax(), offset).is_none() {
+        return None;
+    }
+
+    Some(SingleFileChange {
+        label: "add space after return type".to_string(),
+        edit: TextEdit::insert(after_arrow, " ".to_string()),
+        cursor_position: Some(after_arrow),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use test_utils::{add_cursor, assert_eq_text, extract_offset};
@@ -176,231 +197,6 @@ mod tests {
     use crate::mock_analysis::single_file;
 
     use super::*;
-
-    fn type_char(char_typed: char, before: &str, after: &str) {
-        let (offset, before) = extract_offset(before);
-        let edit = TextEdit::insert(offset, char_typed.to_string());
-        let before = edit.apply(&before);
-        let parse = SourceFile::parse(&before);
-        if let Some(result) = on_char_typed_inner(&parse.tree(), offset, char_typed) {
-            let actual = result.edit.apply(&before);
-            assert_eq_text!(after, &actual);
-        } else {
-            assert_eq_text!(&before, after)
-        };
-    }
-
-    fn type_eq(before: &str, after: &str) {
-        type_char('=', before, after);
-    }
-
-    fn type_dot(before: &str, after: &str) {
-        type_char('.', before, after);
-    }
-
-    #[test]
-    fn test_on_eq_typed() {
-        //     do_check(r"
-        // fn foo() {
-        //     let foo =<|>
-        // }
-        // ", r"
-        // fn foo() {
-        //     let foo =;
-        // }
-        // ");
-        type_eq(
-            r"
-fn foo() {
-    let foo <|> 1 + 1
-}
-",
-            r"
-fn foo() {
-    let foo = 1 + 1;
-}
-",
-        );
-        //     do_check(r"
-        // fn foo() {
-        //     let foo =<|>
-        //     let bar = 1;
-        // }
-        // ", r"
-        // fn foo() {
-        //     let foo =;
-        //     let bar = 1;
-        // }
-        // ");
-    }
-
-    #[test]
-    fn indents_new_chain_call() {
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                <|>
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .
-            }
-            ",
-        );
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    <|>
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .
-            }
-            ",
-        )
-    }
-
-    #[test]
-    fn indents_new_chain_call_with_semi() {
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                <|>;
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .;
-            }
-            ",
-        );
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    <|>;
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .;
-            }
-            ",
-        )
-    }
-
-    #[test]
-    fn indents_continued_chain_call() {
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .first()
-                <|>
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .first()
-                    .
-            }
-            ",
-        );
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .first()
-                    <|>
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                self.child_impl(db, name)
-                    .first()
-                    .
-            }
-            ",
-        );
-    }
-
-    #[test]
-    fn indents_middle_of_chain_call() {
-        type_dot(
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                <|>
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                    .
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
-        );
-        type_dot(
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                    <|>
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                    .
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
-        );
-    }
-
-    #[test]
-    fn dont_indent_freestanding_dot() {
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                <|>
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-                .
-            }
-            ",
-        );
-        type_dot(
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-            <|>
-            }
-            ",
-            r"
-            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
-            .
-            }
-            ",
-        );
-    }
 
     #[test]
     fn test_on_enter() {
@@ -453,5 +249,215 @@ impl S {
 ",
         );
         do_check_noop(r"<|>//! docz");
+    }
+
+    fn do_type_char(char_typed: char, before: &str) -> Option<(String, SingleFileChange)> {
+        let (offset, before) = extract_offset(before);
+        let edit = TextEdit::insert(offset, char_typed.to_string());
+        let before = edit.apply(&before);
+        let parse = SourceFile::parse(&before);
+        on_char_typed_inner(&parse.tree(), offset, char_typed)
+            .map(|it| (it.edit.apply(&before), it))
+    }
+
+    fn type_char(char_typed: char, before: &str, after: &str) {
+        let (actual, file_change) = do_type_char(char_typed, before)
+            .expect(&format!("typing `{}` did nothing", char_typed));
+
+        if after.contains("<|>") {
+            let (offset, after) = extract_offset(after);
+            assert_eq_text!(&after, &actual);
+            assert_eq!(file_change.cursor_position, Some(offset))
+        } else {
+            assert_eq_text!(after, &actual);
+        }
+    }
+
+    fn type_char_noop(char_typed: char, before: &str) {
+        let file_change = do_type_char(char_typed, before);
+        assert!(file_change.is_none())
+    }
+
+    #[test]
+    fn test_on_eq_typed() {
+        //     do_check(r"
+        // fn foo() {
+        //     let foo =<|>
+        // }
+        // ", r"
+        // fn foo() {
+        //     let foo =;
+        // }
+        // ");
+        type_char(
+            '=',
+            r"
+fn foo() {
+    let foo <|> 1 + 1
+}
+",
+            r"
+fn foo() {
+    let foo = 1 + 1;
+}
+",
+        );
+        //     do_check(r"
+        // fn foo() {
+        //     let foo =<|>
+        //     let bar = 1;
+        // }
+        // ", r"
+        // fn foo() {
+        //     let foo =;
+        //     let bar = 1;
+        // }
+        // ");
+    }
+
+    #[test]
+    fn indents_new_chain_call() {
+        type_char(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                <|>
+            }
+            ",
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .
+            }
+            ",
+        );
+        type_char_noop(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    <|>
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn indents_new_chain_call_with_semi() {
+        type_char(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                <|>;
+            }
+            ",
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .;
+            }
+            ",
+        );
+        type_char_noop(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    <|>;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn indents_continued_chain_call() {
+        type_char(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                <|>
+            }
+            ",
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                    .
+            }
+            ",
+        );
+        type_char_noop(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                self.child_impl(db, name)
+                    .first()
+                    <|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn indents_middle_of_chain_call() {
+        type_char(
+            '.',
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                <|>
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                    .
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+        );
+        type_char_noop(
+            '.',
+            r"
+            fn source_impl() {
+                let var = enum_defvariant_list().unwrap()
+                    <|>
+                    .nth(92)
+                    .unwrap();
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn dont_indent_freestanding_dot() {
+        type_char_noop(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+                <|>
+            }
+            ",
+        );
+        type_char_noop(
+            '.',
+            r"
+            pub fn child(&self, db: &impl HirDatabase, name: &Name) -> Cancelable<Option<Module>> {
+            <|>
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn adds_space_after_return_type() {
+        type_char('>', "fn foo() -<|>{ 92 }", "fn foo() -><|> { 92 }")
     }
 }
