@@ -320,7 +320,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::ForeignItem(_) |
             Node::Variant(_) |
             Node::Ctor(..) |
-            Node::Field(_) |
+            Node::StructField(_) |
             Node::Ty(_) |
             Node::MacroDef(_) => {}
             _ => {

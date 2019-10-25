@@ -384,7 +384,7 @@ impl<'hir> Map<'hir> {
                 DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
             }
             Node::AnonConst(_) |
-            Node::Field(_) |
+            Node::StructField(_) |
             Node::Expr(_) |
             Node::Stmt(_) |
             Node::PathSegment(_) |
@@ -990,7 +990,7 @@ impl<'hir> Map<'hir> {
             Node::ImplItem(ii) => ii.ident.name,
             Node::TraitItem(ti) => ti.ident.name,
             Node::Variant(v) => v.ident.name,
-            Node::Field(f) => f.ident.name,
+            Node::StructField(f) => f.ident.name,
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
@@ -1011,7 +1011,7 @@ impl<'hir> Map<'hir> {
             Some(Node::TraitItem(ref ti)) => Some(&ti.attrs[..]),
             Some(Node::ImplItem(ref ii)) => Some(&ii.attrs[..]),
             Some(Node::Variant(ref v)) => Some(&v.attrs[..]),
-            Some(Node::Field(ref f)) => Some(&f.attrs[..]),
+            Some(Node::StructField(ref f)) => Some(&f.attrs[..]),
             Some(Node::Expr(ref e)) => Some(&*e.attrs),
             Some(Node::Stmt(ref s)) => Some(s.kind.attrs()),
             Some(Node::Arm(ref a)) => Some(&*a.attrs),
@@ -1072,7 +1072,7 @@ impl<'hir> Map<'hir> {
             Some(Node::TraitItem(trait_method)) => trait_method.span,
             Some(Node::ImplItem(impl_item)) => impl_item.span,
             Some(Node::Variant(variant)) => variant.span,
-            Some(Node::Field(field)) => field.span,
+            Some(Node::StructField(field)) => field.span,
             Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
             Some(Node::Expr(expr)) => expr.span,
             Some(Node::Stmt(stmt)) => stmt.span,
@@ -1195,7 +1195,7 @@ impl<'a> NodesMatchingSuffix<'a> {
             Some(Node::TraitItem(n)) => n.name(),
             Some(Node::ImplItem(n)) => n.name(),
             Some(Node::Variant(n)) => n.name(),
-            Some(Node::Field(n)) => n.name(),
+            Some(Node::StructField(n)) => n.name(),
             _ => return false,
         };
         self.matches_names(self.map.get_parent_item(hir), name)
@@ -1304,7 +1304,7 @@ impl<'a> print::State<'a> {
             Node::Lifetime(a)     => self.print_lifetime(&a),
             Node::Visibility(a)   => self.print_visibility(&a),
             Node::GenericParam(_) => bug!("cannot print Node::GenericParam"),
-            Node::Field(_)        => bug!("cannot print StructField"),
+            Node::StructField(_)  => bug!("cannot print StructField"),
             // These cases do not carry enough information in the
             // `hir_map` to reconstruct their full structure for pretty
             // printing.
@@ -1392,8 +1392,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                     variant.ident,
                     path_str(), id_str)
         }
-        Some(Node::Field(ref field)) => {
-            format!("field {} in {}{}",
+        Some(Node::StructField(ref field)) => {
+            format!("struct field {} in {}{}",
                     field.ident,
                     path_str(), id_str)
         }

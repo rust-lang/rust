@@ -627,7 +627,7 @@ fn annotate_struct_field(
             let node = tcx.hir().find(hir_id)?;
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
-            if let hir::Node::Field(field) = node {
+            if let hir::Node::StructField(field) = node {
                 if let hir::TyKind::Rptr(lifetime, hir::MutTy {
                     mutbl: hir::Mutability::MutImmutable,
                     ref ty

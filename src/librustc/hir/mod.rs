@@ -2814,7 +2814,7 @@ pub enum Node<'hir> {
     TraitItem(&'hir TraitItem),
     ImplItem(&'hir ImplItem),
     Variant(&'hir Variant),
-    Field(&'hir StructField),
+    StructField(&'hir StructField),
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr),
     Stmt(&'hir Stmt),
