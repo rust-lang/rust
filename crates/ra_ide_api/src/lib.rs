@@ -407,24 +407,16 @@ impl Analysis {
         self.with_db(|db| typing::on_enter(&db, position))
     }
 
-    /// Returns an edit which should be applied after `=` was typed. Primarily,
-    /// this works when adding `let =`.
-    // FIXME: use a snippet completion instead of this hack here.
-    pub fn on_eq_typed(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
-        self.with_db(|db| {
-            let parse = db.parse(position.file_id);
-            let file = parse.tree();
-            let edit = typing::on_eq_typed(&file, position.offset)?;
-            Some(SourceChange::source_file_edit(
-                "add semicolon",
-                SourceFileEdit { edit, file_id: position.file_id },
-            ))
-        })
-    }
-
-    /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
-    pub fn on_dot_typed(&self, position: FilePosition) -> Cancelable<Option<SourceChange>> {
-        self.with_db(|db| typing::on_dot_typed(&db, position))
+    /// Returns an edit which should be applied after a character was typed.
+    ///
+    /// This is useful for some on-the-fly fixups, like adding `;` to `let =`
+    /// automatically.
+    pub fn on_char_typed(
+        &self,
+        position: FilePosition,
+        char_typed: char,
+    ) -> Cancelable<Option<SourceChange>> {
+        self.with_db(|db| typing::on_char_typed(&db, position, char_typed))
     }
 
     /// Returns a tree representation of symbols in the file. Useful to draw a

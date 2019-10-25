@@ -1,4 +1,17 @@
-//! FIXME: write short doc here
+//! This module handles auto-magic editing actions applied together with users
+//! edits. For example, if the user typed
+//!
+//! ```text
+//!     foo
+//!         .bar()
+//!         .baz()
+//!     |   // <- cursor is here
+//! ```
+//!
+//! and types `.` next, we want to indent the dot.
+//!
+//! Language server executes such typing assists synchronously. That is, they
+//! block user's typing and should be pretty fast for this reason!
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
@@ -68,18 +81,50 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
     Some(text[pos..].into())
 }
 
-pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
-    assert_eq!(file.syntax().text().char_at(eq_offset), Some('='));
-    let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), eq_offset)?;
+pub(crate) fn on_char_typed(
+    db: &RootDatabase,
+    position: FilePosition,
+    char_typed: char,
+) -> Option<SourceChange> {
+    let file = &db.parse(position.file_id).tree();
+    assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
+    match char_typed {
+        '=' => {
+            let edit = on_eq_typed(file, position.offset)?;
+            Some(SourceChange::source_file_edit(
+                "add semicolon",
+                SourceFileEdit { edit, file_id: position.file_id },
+            ))
+        }
+        '.' => {
+            let (edit, cursor_offset) = on_dot_typed(file, position.offset)?;
+            Some(
+                SourceChange::source_file_edit(
+                    "reindent dot",
+                    SourceFileEdit { edit, file_id: position.file_id },
+                )
+                .with_cursor(FilePosition { file_id: position.file_id, offset: cursor_offset }),
+            )
+        }
+        _ => None,
+    }
+}
+
+/// Returns an edit which should be applied after `=` was typed. Primarily,
+/// this works when adding `let =`.
+// FIXME: use a snippet completion instead of this hack here.
+fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<TextEdit> {
+    assert_eq!(file.syntax().text().char_at(offset), Some('='));
+    let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.has_semi() {
         return None;
     }
     if let Some(expr) = let_stmt.initializer() {
         let expr_range = expr.syntax().text_range();
-        if expr_range.contains(eq_offset) && eq_offset != expr_range.start() {
+        if expr_range.contains(offset) && offset != expr_range.start() {
             return None;
         }
-        if file.syntax().text().slice(eq_offset..expr_range.start()).contains_char('\n') {
+        if file.syntax().text().slice(offset..expr_range.start()).contains_char('\n') {
             return None;
         }
     } else {
@@ -91,16 +136,11 @@ pub fn on_eq_typed(file: &SourceFile, eq_offset: TextUnit) -> Option<TextEdit> {
     Some(edit.finish())
 }
 
-pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
-    let parse = db.parse(position.file_id);
-    assert_eq!(parse.tree().syntax().text().char_at(position.offset), Some('.'));
-
-    let whitespace = parse
-        .tree()
-        .syntax()
-        .token_at_offset(position.offset)
-        .left_biased()
-        .and_then(ast::Whitespace::cast)?;
+/// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
+fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<(TextEdit, TextUnit)> {
+    assert_eq!(file.syntax().text().char_at(offset), Some('.'));
+    let whitespace =
+        file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
     let current_indent = {
         let text = whitespace.text();
@@ -118,19 +158,11 @@ pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<
         return None;
     }
     let mut edit = TextEditBuilder::default();
-    edit.replace(
-        TextRange::from_to(position.offset - current_indent_len, position.offset),
-        target_indent,
-    );
+    edit.replace(TextRange::from_to(offset - current_indent_len, offset), target_indent);
 
-    let res = SourceChange::source_file_edit_from("reindent dot", position.file_id, edit.finish())
-        .with_cursor(FilePosition {
-            offset: position.offset + target_indent_len - current_indent_len
-                + TextUnit::of_char('.'),
-            file_id: position.file_id,
-        });
+    let cursor_offset = offset + target_indent_len - current_indent_len + TextUnit::of_char('.');
 
-    Some(res)
+    Some((edit.finish(), cursor_offset))
 }
 
 #[cfg(test)]
@@ -197,9 +229,9 @@ fn foo() {
         edit.insert(offset, ".".to_string());
         let before = edit.finish().apply(&before);
         let (analysis, file_id) = single_file(&before);
-        if let Some(result) = analysis.on_dot_typed(FilePosition { offset, file_id }).unwrap() {
-            assert_eq!(result.source_file_edits.len(), 1);
-            let actual = result.source_file_edits[0].edit.apply(&before);
+        let file = analysis.parse(file_id).unwrap();
+        if let Some((edit, _cursor_offset)) = on_dot_typed(&file, offset) {
+            let actual = edit.apply(&before);
             assert_eq_text!(after, &actual);
         } else {
             assert_eq_text!(&before, after)
