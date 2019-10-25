@@ -119,16 +119,11 @@ sgx_entry:
     mov %rbx,%gs:tcsls_tcs_addr
     stmxcsr %gs:tcsls_user_mxcsr
     fnstcw %gs:tcsls_user_fcw
-/*  reset user state */
-    cld /* x86-64 ABI requires DF to be unset at function entry/exit */
 
-/*  making sure AC flag is not set in rflags */
-/*  avoid using the 'clac' instruction to be compatible with older compilers */
-    pushfq
-    popq %rcx
-    and $0xFFFFFFFFFFFBFFFF, %rcx
-    push %rcx
-    popfq
+/*  reset user state */
+/*    - DF flag: x86-64 ABI requires DF to be unset at function entry/exit */
+/*    - AC flag: AEX on misaligned memory accesses leaks side channel info */
+    andq $~0x40400, (%rsp)
 
 /*  check for debug buffer pointer */
     testb  $0xff,DEBUG(%rip)
