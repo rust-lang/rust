@@ -1368,25 +1368,6 @@ impl<'a> Parser<'a> {
             }
         }
     }
-
-    fn report_invalid_macro_expansion_item(&self) {
-        self.struct_span_err(
-            self.prev_span,
-            "macros that expand to items must be delimited with braces or followed by a semicolon",
-        ).multipart_suggestion(
-            "change the delimiters to curly braces",
-            vec![
-                (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), String::from(" {")),
-                (self.prev_span.with_lo(self.prev_span.hi() - BytePos(1)), '}'.to_string()),
-            ],
-            Applicability::MaybeIncorrect,
-        ).span_suggestion(
-            self.sess.source_map().next_point(self.prev_span),
-            "add a semicolon",
-            ';'.to_string(),
-            Applicability::MaybeIncorrect,
-        ).emit();
-    }
 }
 
 pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: &errors::Handler) {

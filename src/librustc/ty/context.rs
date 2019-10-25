@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Type context book-keeping.
 
 use crate::arena::Arena;
@@ -21,7 +22,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, interpret, ProjectionKind, Promoted};
+use crate::mir::{Body, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -106,6 +107,7 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
+    place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
 }
 
@@ -124,6 +126,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
+            place_elems: Default::default(),
             const_: Default::default(),
         }
     }
@@ -2142,6 +2145,13 @@ impl<'tcx> Borrow<[ProjectionKind]>
     }
 }
 
+impl<'tcx> Borrow<[PlaceElem<'tcx>]>
+    for Interned<'tcx, List<PlaceElem<'tcx>>> {
+    fn borrow(&self) -> &[PlaceElem<'tcx>] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     fn borrow(&self) -> &RegionKind {
         &self.0
@@ -2242,7 +2252,8 @@ slice_interners!(
     predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
-    projs: _intern_projs(ProjectionKind)
+    projs: _intern_projs(ProjectionKind),
+    place_elems: _intern_place_elems(PlaceElem<'tcx>)
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2584,6 +2595,48 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
     }
 
+    pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Field(f, ty))
+    }
+
+    pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Deref)
+    }
+
+    pub fn mk_place_downcast(
+        self,
+        place: Place<'tcx>,
+        adt_def: &'tcx AdtDef,
+        variant_index: VariantIdx,
+    ) -> Place<'tcx> {
+        self.mk_place_elem(
+            place,
+            PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index),
+        )
+    }
+
+    pub fn mk_place_downcast_unnamed(
+        self,
+        place: Place<'tcx>,
+        variant_index: VariantIdx,
+    ) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Downcast(None, variant_index))
+    }
+
+    pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Index(index))
+    }
+
+    /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
+    /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
+    /// flight.
+    pub fn mk_place_elem(self, place: Place<'tcx>, elem: PlaceElem<'tcx>) -> Place<'tcx> {
+        let mut projection = place.projection.to_vec();
+        projection.push(elem);
+
+        Place { base: place.base, projection: self.intern_place_elems(&projection) }
+    }
+
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
         -> &'tcx List<ExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
@@ -2625,6 +2678,14 @@ impl<'tcx> TyCtxt<'tcx> {
             List::empty()
         } else {
             self._intern_projs(ps)
+        }
+    }
+
+    pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
+        if ts.len() == 0 {
+            List::empty()
+        } else {
+            self._intern_place_elems(ts)
         }
     }
 
@@ -2688,6 +2749,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_substs<I: InternAs<[GenericArg<'tcx>],
                      &'tcx List<GenericArg<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
+    }
+
+    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>],
+                          &'tcx List<PlaceElem<'tcx>>>>(self, iter: I) -> I::Output {
+        iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
     pub fn mk_substs_trait(self,

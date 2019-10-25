@@ -89,45 +89,41 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    box(
-                        Place {
-                            base: PlaceBase::Local(local),
-                            projection: box [],
-                        },
-                        Rvalue::Use(Operand::Move(move_from))
-                    )
+                    box(place, Rvalue::Use(Operand::Move(move_from)))
                 )) = self.body.basic_blocks()[location.block]
                     .statements
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)
                 {
-                    let local_decl = &self.body.local_decls[*local];
-                    // opt_match_place is the
-                    // match_span is the span of the expression being matched on
-                    // match *x.y { ... }        match_place is Some(*x.y)
-                    //       ^^^^                match_span is the span of *x.y
-                    //
-                    // opt_match_place is None for let [mut] x = ... statements,
-                    // whether or not the right-hand side is a place expression
-                    if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                        opt_match_place: Some((ref opt_match_place, match_span)),
-                        binding_mode: _,
-                        opt_ty_info: _,
-                        pat_span: _,
-                    }))) = local_decl.is_user_variable
-                    {
-                        let stmt_source_info = self.body.source_info(location);
-                        self.append_binding_error(
-                            grouped_errors,
-                            kind,
-                            original_path,
-                            move_from,
-                            *local,
-                            opt_match_place,
-                            match_span,
-                            stmt_source_info.span,
-                        );
-                        return;
+                    if let Some(local) = place.as_local() {
+                        let local_decl = &self.body.local_decls[local];
+                        // opt_match_place is the
+                        // match_span is the span of the expression being matched on
+                        // match *x.y { ... }        match_place is Some(*x.y)
+                        //       ^^^^                match_span is the span of *x.y
+                        //
+                        // opt_match_place is None for let [mut] x = ... statements,
+                        // whether or not the right-hand side is a place expression
+                        if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((ref opt_match_place, match_span)),
+                            binding_mode: _,
+                            opt_ty_info: _,
+                            pat_span: _,
+                        }))) = local_decl.is_user_variable
+                        {
+                            let stmt_source_info = self.body.source_info(location);
+                            self.append_binding_error(
+                                grouped_errors,
+                                kind,
+                                original_path,
+                                move_from,
+                                local,
+                                opt_match_place,
+                                match_span,
+                                stmt_source_info.span,
+                            );
+                            return;
+                        }
                     }
                 }
 
@@ -307,11 +303,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let upvar_field = self.prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
 
-        let deref_base = match &deref_target_place.projection {
-            box [proj_base @ .., ProjectionElem::Deref] => {
+        let deref_base = match deref_target_place.projection.as_ref() {
+            &[ref proj_base @ .., ProjectionElem::Deref] => {
                 PlaceRef {
                     base: &deref_target_place.base,
-                    projection: proj_base,
+                    projection: &proj_base,
                 }
             }
             _ => bug!("deref_target_place is not a deref projection"),

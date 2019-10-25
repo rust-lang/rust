@@ -176,7 +176,7 @@ fn split_block_comment_into_lines(
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments(sess: &ParseSess, path: FileName, src: String) -> Vec<Comment> {
+crate fn gather_comments(sess: &ParseSess, path: FileName, src: String) -> Vec<Comment> {
     let cm = SourceMap::new(sess.source_map().path_mapping().clone());
     let source_file = cm.new_source_file(path, src);
     let text = (*source_file.src.as_ref().unwrap()).clone();

@@ -252,6 +252,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
     ungated!(no_implicit_prelude, Normal, template!(Word)),
+    ungated!(non_exhaustive, Whitelisted, template!(Word)),
 
     // Runtime
     ungated!(windows_subsystem, Whitelisted, template!(NameValueStr: "windows|console")),
@@ -314,9 +315,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         test_runner, CrateLevel, template!(List: "path"), custom_test_frameworks,
         "custom test frameworks are an unstable feature",
     ),
-
-    // RFC #2008
-    gated!(non_exhaustive, Whitelisted, template!(Word), experimental!(non_exhaustive)),
     // RFC #1268
     gated!(marker, Normal, template!(Word), marker_trait_attr, experimental!(marker)),
     gated!(

@@ -56,16 +56,16 @@ where
     fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, value: bool) {
         debug_assert!(!place.is_indirect());
 
-        match (value, place) {
-            (true, mir::Place { base: mir::PlaceBase::Local(local), .. }) => {
-                self.qualifs_per_local.insert(*local);
+        match (value, place.as_ref()) {
+            (true, mir::PlaceRef { base: &mir::PlaceBase::Local(local), .. }) => {
+                self.qualifs_per_local.insert(local);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
             // an unqualified rvalue (e.g. `y = 5`). This is to be consistent
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
-            (false, mir::Place { base: mir::PlaceBase::Local(_local), projection: box [] }) => {
+            (false, mir::PlaceRef { base: &mir::PlaceBase::Local(_local), projection: &[] }) => {
                 // self.qualifs_per_local.remove(*local);
             }
 
@@ -101,11 +101,10 @@ where
 
         // If a local with no projections is moved from (e.g. `x` in `y = x`), record that
         // it no longer needs to be dropped.
-        if let mir::Operand::Move(mir::Place {
-            base: mir::PlaceBase::Local(local),
-            projection: box [],
-        }) = *operand {
-            self.qualifs_per_local.remove(local);
+        if let mir::Operand::Move(place) = operand {
+            if let Some(local) = place.as_local() {
+                self.qualifs_per_local.remove(local);
+            }
         }
     }
 

@@ -9,7 +9,7 @@
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
-#![feature(non_exhaustive)]
+#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
 #![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
@@ -855,6 +855,15 @@ impl Sub<BytePos> for NonNarrowChar {
     }
 }
 
+/// Identifies an offset of a character that was normalized away from `SourceFile`.
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq, Debug)]
+pub struct NormalizedPos {
+    /// The absolute offset of the character in the `SourceMap`.
+    pub pos: BytePos,
+    /// The difference between original and normalized string at position.
+    pub diff: u32,
+}
+
 /// The state of the lazy external source loading mechanism of a `SourceFile`.
 #[derive(PartialEq, Eq, Clone)]
 pub enum ExternalSource {
@@ -918,6 +927,8 @@ pub struct SourceFile {
     pub multibyte_chars: Vec<MultiByteChar>,
     /// Width of characters that are not narrow in the source code.
     pub non_narrow_chars: Vec<NonNarrowChar>,
+    /// Locations of characters removed during normalization.
+    pub normalized_pos: Vec<NormalizedPos>,
     /// A hash of the filename, used for speeding up hashing in incremental compilation.
     pub name_hash: u128,
 }
@@ -984,6 +995,9 @@ impl Encodable for SourceFile {
             })?;
             s.emit_struct_field("name_hash", 8, |s| {
                 self.name_hash.encode(s)
+            })?;
+            s.emit_struct_field("normalized_pos", 9, |s| {
+                self.normalized_pos.encode(s)
             })
         })
     }
@@ -1034,6 +1048,8 @@ impl Decodable for SourceFile {
                 d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
             let name_hash: u128 =
                 d.read_struct_field("name_hash", 8, |d| Decodable::decode(d))?;
+            let normalized_pos: Vec<NormalizedPos> =
+                d.read_struct_field("normalized_pos", 9, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
                 name_was_remapped,
@@ -1050,6 +1066,7 @@ impl Decodable for SourceFile {
                 lines,
                 multibyte_chars,
                 non_narrow_chars,
+                normalized_pos,
                 name_hash,
             })
         })
@@ -1068,8 +1085,7 @@ impl SourceFile {
                unmapped_path: FileName,
                mut src: String,
                start_pos: BytePos) -> Result<SourceFile, OffsetOverflowError> {
-        remove_bom(&mut src);
-        normalize_newlines(&mut src);
+        let normalized_pos = normalize_src(&mut src, start_pos);
 
         let src_hash = {
             let mut hasher: StableHasher = StableHasher::new();
@@ -1102,6 +1118,7 @@ impl SourceFile {
             lines,
             multibyte_chars,
             non_narrow_chars,
+            normalized_pos,
             name_hash,
         })
     }
@@ -1228,12 +1245,44 @@ impl SourceFile {
     pub fn contains(&self, byte_pos: BytePos) -> bool {
         byte_pos >= self.start_pos && byte_pos <= self.end_pos
     }
+
+    /// Calculates the original byte position relative to the start of the file
+    /// based on the given byte position.
+    pub fn original_relative_byte_pos(&self, pos: BytePos) -> BytePos {
+
+        // Diff before any records is 0. Otherwise use the previously recorded
+        // diff as that applies to the following characters until a new diff
+        // is recorded.
+        let diff = match self.normalized_pos.binary_search_by(
+                            |np| np.pos.cmp(&pos)) {
+            Ok(i) => self.normalized_pos[i].diff,
+            Err(i) if i == 0 => 0,
+            Err(i) => self.normalized_pos[i-1].diff,
+        };
+
+        BytePos::from_u32(pos.0 - self.start_pos.0 + diff)
+    }
+}
+
+/// Normalizes the source code and records the normalizations.
+fn normalize_src(src: &mut String, start_pos: BytePos) -> Vec<NormalizedPos> {
+    let mut normalized_pos = vec![];
+    remove_bom(src, &mut normalized_pos);
+    normalize_newlines(src, &mut normalized_pos);
+
+    // Offset all the positions by start_pos to match the final file positions.
+    for np in &mut normalized_pos {
+        np.pos.0 += start_pos.0;
+    }
+
+    normalized_pos
 }
 
 /// Removes UTF-8 BOM, if any.
-fn remove_bom(src: &mut String) {
+fn remove_bom(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
     if src.starts_with("\u{feff}") {
         src.drain(..3);
+        normalized_pos.push(NormalizedPos { pos: BytePos(0), diff: 3 });
     }
 }
 
@@ -1241,7 +1290,7 @@ fn remove_bom(src: &mut String) {
 /// Replaces `\r\n` with `\n` in-place in `src`.
 ///
 /// Returns error if there's a lone `\r` in the string
-fn normalize_newlines(src: &mut String) {
+fn normalize_newlines(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
     if !src.as_bytes().contains(&b'\r') {
         return;
     }
@@ -1254,6 +1303,8 @@ fn normalize_newlines(src: &mut String) {
     let mut buf = std::mem::replace(src, String::new()).into_bytes();
     let mut gap_len = 0;
     let mut tail = buf.as_mut_slice();
+    let mut cursor = 0;
+    let original_gap = normalized_pos.last().map_or(0, |l| l.diff);
     loop {
         let idx = match find_crlf(&tail[gap_len..]) {
             None => tail.len(),
@@ -1264,7 +1315,12 @@ fn normalize_newlines(src: &mut String) {
         if tail.len() == gap_len {
             break;
         }
+        cursor += idx - gap_len;
         gap_len += 1;
+        normalized_pos.push(NormalizedPos {
+            pos: BytePos::from_usize(cursor + 1),
+            diff: original_gap + gap_len as u32,
+        });
     }
 
     // Account for removed `\r`.

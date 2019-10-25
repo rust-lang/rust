@@ -1,5 +1,4 @@
 // check-pass
-#![feature(non_exhaustive)]
 #![deny(improper_ctypes)]
 
 // This test checks that non-exhaustive types with `#[repr(C)]` are considered proper within

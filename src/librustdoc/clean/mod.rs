@@ -26,9 +26,10 @@ use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use syntax::ast::{self, AttrStyle, Ident};
+use syntax::ast::{self, Attribute, AttrStyle, AttrItem, Ident};
 use syntax::attr;
 use syntax_expand::base::MacroKind;
+use syntax::parse::lexer::comments;
 use syntax::source_map::DUMMY_SP;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::{self, Pos, FileName};
@@ -858,8 +859,31 @@ impl Attributes {
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
+        /// Converts `attr` to a normal `#[doc="foo"]` comment, if it is a
+        /// comment like `///` or `/** */`. (Returns `attr` unchanged for
+        /// non-sugared doc attributes.)
+        pub fn with_desugared_doc<T>(attr: &Attribute, f: impl FnOnce(&Attribute) -> T) -> T {
+            if attr.is_sugared_doc {
+                let comment = attr.value_str().unwrap();
+                let meta = attr::mk_name_value_item_str(
+                    Ident::with_dummy_span(sym::doc),
+                    Symbol::intern(&comments::strip_doc_comment_decoration(&comment.as_str())),
+                    DUMMY_SP,
+                );
+                f(&Attribute {
+                    item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                    id: attr.id,
+                    style: attr.style,
+                    is_sugared_doc: true,
+                    span: attr.span,
+                })
+            } else {
+                f(attr)
+            }
+        }
+
         let other_attrs = attrs.iter().filter_map(|attr| {
-            attr.with_desugared_doc(|attr| {
+            with_desugared_doc(attr, |attr| {
                 if attr.check_name(sym::doc) {
                     if let Some(mi) = attr.meta() {
                         if let Some(value) = mi.value_str() {

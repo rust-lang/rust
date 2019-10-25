@@ -121,7 +121,7 @@
 #![feature(hexagon_target_feature)]
 #![feature(const_int_conversion)]
 #![feature(const_transmute)]
-#![feature(non_exhaustive)]
+#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]

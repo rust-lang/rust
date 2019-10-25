@@ -105,11 +105,14 @@ cfg_has_statx! {{
         flags: i32,
         mask: u32,
     ) -> Option<io::Result<FileAttr>> {
-        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sync::atomic::{AtomicU8, Ordering};
 
         // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`
-        // We store the availability in a global to avoid unnecessary syscalls
-        static HAS_STATX: AtomicBool = AtomicBool::new(true);
+        // We store the availability in global to avoid unnecessary syscalls.
+        // 0: Unknown
+        // 1: Not available
+        // 2: Available
+        static STATX_STATE: AtomicU8 = AtomicU8::new(0);
         syscall! {
             fn statx(
                 fd: c_int,
@@ -120,50 +123,60 @@ cfg_has_statx! {{
             ) -> c_int
         }
 
-        if !HAS_STATX.load(Ordering::Relaxed) {
-            return None;
+        match STATX_STATE.load(Ordering::Relaxed) {
+            0 => {
+                // It is a trick to call `statx` with NULL pointers to check if the syscall
+                // is available. According to the manual, it is expected to fail with EFAULT.
+                // We do this mainly for performance, since it is nearly hundreds times
+                // faster than a normal successfull call.
+                let err = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
+                    .err()
+                    .and_then(|e| e.raw_os_error());
+                // We don't check `err == Some(libc::ENOSYS)` because the syscall may be limited
+                // and returns `EPERM`. Listing all possible errors seems not a good idea.
+                // See: https://github.com/rust-lang/rust/issues/65662
+                if err != Some(libc::EFAULT) {
+                    STATX_STATE.store(1, Ordering::Relaxed);
+                    return None;
+                }
+                STATX_STATE.store(2, Ordering::Relaxed);
+            }
+            1 => return None,
+            _ => {}
         }
 
         let mut buf: libc::statx = mem::zeroed();
-        let ret = cvt(statx(fd, path, flags, mask, &mut buf));
-        match ret {
-            Err(err) => match err.raw_os_error() {
-                Some(libc::ENOSYS) => {
-                    HAS_STATX.store(false, Ordering::Relaxed);
-                    return None;
-                }
-                _ => return Some(Err(err)),
-            }
-            Ok(_) => {
-                // We cannot fill `stat64` exhaustively because of private padding fields.
-                let mut stat: stat64 = mem::zeroed();
-                // `c_ulong` on gnu-mips, `dev_t` otherwise
-                stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor) as _;
-                stat.st_ino = buf.stx_ino as libc::ino64_t;
-                stat.st_nlink = buf.stx_nlink as libc::nlink_t;
-                stat.st_mode = buf.stx_mode as libc::mode_t;
-                stat.st_uid = buf.stx_uid as libc::uid_t;
-                stat.st_gid = buf.stx_gid as libc::gid_t;
-                stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor) as _;
-                stat.st_size = buf.stx_size as off64_t;
-                stat.st_blksize = buf.stx_blksize as libc::blksize_t;
-                stat.st_blocks = buf.stx_blocks as libc::blkcnt64_t;
-                stat.st_atime = buf.stx_atime.tv_sec as libc::time_t;
-                // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
-                stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
-                stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
-                stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
-                stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
-                stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
-
-                let extra = StatxExtraFields {
-                    stx_mask: buf.stx_mask,
-                    stx_btime: buf.stx_btime,
-                };
-
-                Some(Ok(FileAttr { stat, statx_extra_fields: Some(extra) }))
-            }
+        if let Err(err) = cvt(statx(fd, path, flags, mask, &mut buf)) {
+            return Some(Err(err));
         }
+
+        // We cannot fill `stat64` exhaustively because of private padding fields.
+        let mut stat: stat64 = mem::zeroed();
+        // `c_ulong` on gnu-mips, `dev_t` otherwise
+        stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor) as _;
+        stat.st_ino = buf.stx_ino as libc::ino64_t;
+        stat.st_nlink = buf.stx_nlink as libc::nlink_t;
+        stat.st_mode = buf.stx_mode as libc::mode_t;
+        stat.st_uid = buf.stx_uid as libc::uid_t;
+        stat.st_gid = buf.stx_gid as libc::gid_t;
+        stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor) as _;
+        stat.st_size = buf.stx_size as off64_t;
+        stat.st_blksize = buf.stx_blksize as libc::blksize_t;
+        stat.st_blocks = buf.stx_blocks as libc::blkcnt64_t;
+        stat.st_atime = buf.stx_atime.tv_sec as libc::time_t;
+        // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
+        stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
+        stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
+        stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
+        stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
+        stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
+
+        let extra = StatxExtraFields {
+            stx_mask: buf.stx_mask,
+            stx_btime: buf.stx_btime,
+        };
+
+        Some(Ok(FileAttr { stat, statx_extra_fields: Some(extra) }))
     }
 
 } else {

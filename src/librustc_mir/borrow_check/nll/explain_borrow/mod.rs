@@ -6,8 +6,8 @@ use crate::borrow_check::nll::region_infer::{Cause, RegionName};
 use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
 use rustc::mir::{
-    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Body, Operand, Place, PlaceBase,
-    Rvalue, Statement, StatementKind, TerminatorKind,
+    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Body, Operand, Place, Rvalue,
+    Statement, StatementKind, TerminatorKind,
 };
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::adjustment::{PointerCast};
@@ -273,12 +273,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mut should_note_order = false;
                 if body.local_decls[local].name.is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                        if let Place {
-                            base: PlaceBase::Local(borrowed_local),
-                            projection: box [],
-                        } = place {
-                             if body.local_decls[*borrowed_local].name.is_some()
-                                && local != *borrowed_local
+                        if let Some(borrowed_local) = place.as_local() {
+                             if body.local_decls[borrowed_local].name.is_some()
+                                && local != borrowed_local
                             {
                                 should_note_order = true;
                             }
@@ -494,22 +491,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
                             Operand::Constant(c) => c.span,
-                            Operand::Copy(Place {
-                                base: PlaceBase::Local(l),
-                                projection: box [],
-                            }) |
-                            Operand::Move(Place {
-                                base: PlaceBase::Local(l),
-                                projection: box [],
-                            }) => {
-                                let local_decl = &self.body.local_decls[*l];
-                                if local_decl.name.is_none() {
-                                    local_decl.source_info.span
+                            Operand::Copy(place) |
+                            Operand::Move(place) => {
+                                if let Some(l) = place.as_local() {
+                                    let local_decl = &self.body.local_decls[l];
+                                    if local_decl.name.is_none() {
+                                        local_decl.source_info.span
+                                    } else {
+                                        span
+                                    }
                                 } else {
                                     span
                                 }
                             }
-                            _ => span,
                         };
                         return (LaterUseKind::Call, function_span);
                     } else {
@@ -542,14 +536,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // it which simplifies the termination logic.
         let mut queue = vec![location];
         let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(box(Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
-            }, _)),
+            kind: StatementKind::Assign(box(ref place, _)),
             ..
-        }) = stmt
-        {
-            local
+        }) = stmt {
+            if let Some(local) = place.as_local() {
+                local
+            } else {
+                return false;
+            }
         } else {
             return false;
         };
@@ -582,17 +576,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
                         Rvalue::Use(operand) => match operand {
-                            Operand::Copy(Place {
-                                base: PlaceBase::Local(from),
-                                projection: box [],
-                            })
-                            | Operand::Move(Place {
-                                base: PlaceBase::Local(from),
-                                projection: box [],
-                            })
-                                if *from == target =>
-                            {
-                                target = into;
+                            Operand::Copy(place)
+                            | Operand::Move(place) => {
+                                if let Some(from) = place.as_local() {
+                                    if from == target {
+                                        target = into;
+                                    }
+                                }
                             }
                             _ => {}
                         },
@@ -601,28 +591,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         Rvalue::Cast(
                             CastKind::Pointer(PointerCast::Unsize), operand, ty
                         ) => match operand {
-                            Operand::Copy(Place {
-                                base: PlaceBase::Local(from),
-                                projection: box [],
-                            })
-                            | Operand::Move(Place {
-                                base: PlaceBase::Local(from),
-                                projection: box [],
-                            })
-                                if *from == target =>
-                            {
-                                debug!("was_captured_by_trait_object: ty={:?}", ty);
-                                // Check the type for a trait object.
-                                return match ty.kind {
-                                    // `&dyn Trait`
-                                    ty::Ref(_, ty, _) if ty.is_trait() => true,
-                                    // `Box<dyn Trait>`
-                                    _ if ty.is_box() && ty.boxed_ty().is_trait() => true,
-                                    // `dyn Trait`
-                                    _ if ty.is_trait() => true,
-                                    // Anything else.
-                                    _ => false,
-                                };
+                            Operand::Copy(place)
+                            | Operand::Move(place) => {
+                                if let Some(from) = place.as_local() {
+                                    if from == target {
+                                        debug!("was_captured_by_trait_object: ty={:?}", ty);
+                                        // Check the type for a trait object.
+                                        return match ty.kind {
+                                            // `&dyn Trait`
+                                            ty::Ref(_, ty, _) if ty.is_trait() => true,
+                                            // `Box<dyn Trait>`
+                                            _ if ty.is_box() && ty.boxed_ty().is_trait() => true,
+                                            // `dyn Trait`
+                                            _ if ty.is_trait() => true,
+                                            // Anything else.
+                                            _ => false,
+                                        };
+                                    }
+                                }
+                                return false;
                             }
                             _ => return false,
                         },
@@ -638,34 +625,33 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
                 if let TerminatorKind::Call {
-                    destination: Some((Place {
-                        base: PlaceBase::Local(dest),
-                        projection: box [],
-                    }, block)),
+                    destination: Some((place, block)),
                     args,
                     ..
-                } = &terminator.kind
-                {
-                    debug!(
-                        "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                        target, dest, args
-                    );
-                    // Check if one of the arguments to this function is the target place.
-                    let found_target = args.iter().any(|arg| {
-                        if let Operand::Move(Place {
-                            base: PlaceBase::Local(potential),
-                            projection: box [],
-                        }) = arg {
-                            *potential == target
-                        } else {
-                            false
-                        }
-                    });
+                } = &terminator.kind {
+                    if let Some(dest) = place.as_local() {
+                        debug!(
+                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                            target, dest, args
+                        );
+                        // Check if one of the arguments to this function is the target place.
+                        let found_target = args.iter().any(|arg| {
+                            if let Operand::Move(place) = arg {
+                                if let Some(potential) = place.as_local() {
+                                    potential == target
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        });
 
-                    // If it is, follow this to the next block and update the target.
-                    if found_target {
-                        target = *dest;
-                        queue.push(block.start_location());
+                        // If it is, follow this to the next block and update the target.
+                        if found_target {
+                            target = dest;
+                            queue.push(block.start_location());
+                        }
                     }
                 }
             }
