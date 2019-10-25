@@ -1,10 +1,6 @@
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
-use std::panic::{self, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::iter::TrustedLen;
-
-use rand::{thread_rng, seq::SliceRandom};
 
 #[test]
 fn test_iterator() {
