@@ -646,6 +646,27 @@ impl LintBuffer {
     fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
         self.map.remove(&id).unwrap_or_default()
     }
+
+    pub fn buffer_lint<S: Into<MultiSpan>>(
+        &mut self,
+        lint: &'static Lint,
+        id: ast::NodeId,
+        sp: S,
+        msg: &str,
+    ) {
+        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+    }
+
+    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
+        &mut self,
+        lint: &'static Lint,
+        id: ast::NodeId,
+        sp: S,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
+        self.add_lint(lint, id, sp.into(), msg, diagnostic)
+    }
 }
 
 pub fn struct_lint_level<'a>(sess: &'a Session,

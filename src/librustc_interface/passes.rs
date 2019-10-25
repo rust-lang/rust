@@ -270,12 +270,14 @@ fn configure_and_expand_inner<'a>(
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new());
     });
 
+    let lint_buffer = lint::LintBuffer::default();
     let mut resolver = Resolver::new(
         sess,
         &krate,
         crate_name,
         metadata_loader,
         &resolver_arenas,
+        lint_buffer,
     );
     syntax_ext::register_builtin_macros(&mut resolver, sess.edition());
 
@@ -366,7 +368,7 @@ fn configure_and_expand_inner<'a>(
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
-            sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            resolver.lint_buffer.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
@@ -395,7 +397,7 @@ fn configure_and_expand_inner<'a>(
     }
 
     let has_proc_macro_decls = time(sess, "AST validation", || {
-        ast_validation::check_crate(sess, &krate)
+        ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer)
     });
 
 
@@ -464,7 +466,7 @@ fn configure_and_expand_inner<'a>(
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
             let lint = lint::Lint::from_parser_lint_id(lint_id);
-            sess.buffer_lint(lint, id, span, &msg);
+            resolver.lint_buffer.buffer_lint(lint, id, span, &msg);
         }
     });
 
