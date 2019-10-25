@@ -646,11 +646,6 @@ impl LintBuffer {
     pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
         self.map.remove(&id).unwrap_or_default()
     }
-
-    pub fn get_any(&self) -> Option<&[BufferedEarlyLint]> {
-        let key = self.map.keys().next().map(|k| *k);
-        key.map(|k| &self.map[&k][..])
-    }
 }
 
 pub fn struct_lint_level<'a>(sess: &'a Session,
