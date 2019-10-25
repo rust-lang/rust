@@ -269,6 +269,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::Pointer(PointerCast::MutToConstPointer)
+                    | mir::CastKind::Pointer(PointerCast::ArrayToPointer)
                     | mir::CastKind::Misc => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);

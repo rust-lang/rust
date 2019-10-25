@@ -150,7 +150,8 @@ fn check_rvalue(
                 _ => check_operand(tcx, operand, span, def_id, body),
             }
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _) => {
+        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _)
+        | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, _) => {
             check_operand(tcx, operand, span, def_id, body)
         }
         Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _) |
