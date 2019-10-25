@@ -425,6 +425,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             ref lines,
             ref multibyte_chars,
             ref non_narrow_chars,
+            ref normalized_pos,
         } = *self;
 
         (name_hash as u64).hash_stable(hcx, hasher);
@@ -453,6 +454,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         for &char_pos in non_narrow_chars.iter() {
             stable_non_narrow_char(char_pos, start_pos).hash_stable(hcx, hasher);
         }
+
+        normalized_pos.len().hash_stable(hcx, hasher);
+        for &char_pos in normalized_pos.iter() {
+            stable_normalized_pos(char_pos, start_pos).hash_stable(hcx, hasher);
+        }
+
     }
 }
 
@@ -481,6 +488,18 @@ fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
 
     (pos.0 - source_file_start.0, width as u32)
 }
+
+fn stable_normalized_pos(np: ::syntax_pos::NormalizedPos,
+                         source_file_start: ::syntax_pos::BytePos)
+                         -> (u32, u32) {
+    let ::syntax_pos::NormalizedPos {
+        pos,
+        diff
+    } = np;
+
+    (pos.0 - source_file_start.0, diff)
+}
+
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for feature_gate::Features {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
