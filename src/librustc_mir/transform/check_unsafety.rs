@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::vec::IndexVec;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::query::Providers;
@@ -12,7 +12,7 @@ use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSA
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{InternedString, sym};
 
 use std::ops::Bound;
 
@@ -167,8 +167,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         self.register_violations(&[UnsafetyViolation {
                             source_info: self.source_info,
-                            description: Symbol::intern("cast of pointer to int"),
-                            details: Symbol::intern("casting pointers to integers in constants"),
+                            description: InternedString::intern("cast of pointer to int"),
+                            details: InternedString::intern(
+                                "casting pointers to integers in constants"),
                             kind: UnsafetyViolationKind::General,
                         }], &[]);
                     },
@@ -184,8 +185,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     self.register_violations(&[UnsafetyViolation {
                         source_info: self.source_info,
-                        description: Symbol::intern("pointer operation"),
-                        details: Symbol::intern("operations on pointers in constants"),
+                        description: InternedString::intern("pointer operation"),
+                        details: InternedString::intern("operations on pointers in constants"),
                         kind: UnsafetyViolationKind::General,
                     }], &[]);
                 }
@@ -218,8 +219,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: Symbol::intern("use of extern static"),
-                        details: Symbol::intern(
+                        description: InternedString::intern("use of extern static"),
+                        details: InternedString::intern(
                             "extern statics are not controlled by the Rust type system: \
                             invalid data, aliasing violations or data races will cause \
                             undefined behavior"),
@@ -239,8 +240,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: Symbol::intern("borrow of packed field"),
-                        details: Symbol::intern(
+                        description: InternedString::intern("borrow of packed field"),
+                        details: InternedString::intern(
                             "fields of packed structs might be misaligned: dereferencing a \
                             misaligned pointer or even just creating a misaligned reference \
                             is undefined behavior"),
@@ -333,8 +334,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
             source_info,
-            description: Symbol::intern(description),
-            details: Symbol::intern(details),
+            description: InternedString::intern(description),
+            details: InternedString::intern(details),
             kind,
         }], &[]);
     }
@@ -406,8 +407,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: &Place<'tcx>,
         is_mut_use: bool,
     ) {
-        let mut cursor = place.projection.as_ref();
-        while let &[ref proj_base @ .., elem] = cursor {
+        let mut cursor = &*place.projection;
+        while let [proj_base @ .., elem] = cursor {
             cursor = proj_base;
 
             match elem {
@@ -437,8 +438,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 let source_info = self.source_info;
                                 self.register_violations(&[UnsafetyViolation {
                                     source_info,
-                                    description: Symbol::intern(description),
-                                    details: Symbol::intern(details),
+                                    description: InternedString::intern(description),
+                                    details: InternedString::intern(details),
                                     kind: UnsafetyViolationKind::GeneralAndConstFn,
                                 }], &[]);
                             }

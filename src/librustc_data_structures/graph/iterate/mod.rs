@@ -1,6 +1,6 @@
-use rustc_index::vec::IndexVec;
+use super::super::indexed_vec::IndexVec;
 use super::{DirectedGraph, WithNumNodes, WithSuccessors, WithStartNode};
-use rustc_index::bit_set::BitSet;
+use crate::bit_set::BitSet;
 
 #[cfg(test)]
 mod tests;

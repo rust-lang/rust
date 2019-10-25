@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! Type context book-keeping.
 
 use crate::arena::Arena;
@@ -22,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{Body, interpret, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -30,7 +29,7 @@ use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{TyS, TyKind, List};
-use crate::ty::{AdtKind, AdtDef, Region, Const};
+use crate::ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
 use crate::ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use crate::ty::RegionKind;
 use crate::ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid, ConstVid};
@@ -44,17 +43,16 @@ use crate::ty::subst::{UserSubsts, GenericArgKind};
 use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
 use crate::util::common::ErrorReported;
-use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet, NodeMap};
+use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
-use crate::util::profiling::SelfProfilerRef;
 
 use errors::DiagnosticBuilder;
 use arena::SyncDroplessArena;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableHasher, StableVec, hash_stable_hashmap,
+    HashStable, StableHasher, StableHasherResult, StableVec, hash_stable_hashmap,
 };
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
@@ -73,7 +71,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::feature_gate;
-use syntax::symbol::{Symbol, kw, sym};
+use syntax::symbol::{Symbol, InternedString, kw, sym};
 use syntax_pos::Span;
 
 pub struct AllArenas {
@@ -107,7 +105,6 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
-    place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
 }
 
@@ -126,7 +123,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
-            place_elems: Default::default(),
             const_: Default::default(),
         }
     }
@@ -149,6 +145,10 @@ impl<'tcx> CtxtInterners<'tcx> {
             Interned(self.arena.alloc(ty_struct))
         }).0
     }
+}
+
+pub struct Common<'tcx> {
+    pub empty_predicates: ty::GenericPredicates<'tcx>,
 }
 
 pub struct CommonTypes<'tcx> {
@@ -288,40 +288,6 @@ pub struct ResolvedOpaqueTy<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-/// Whenever a value may be live across a generator yield, the type of that value winds up in the
-/// `GeneratorInteriorTypeCause` struct. This struct adds additional information about such
-/// captured types that can be useful for diagnostics. In particular, it stores the span that
-/// caused a given type to be recorded, along with the scope that enclosed the value (which can
-/// be used to find the await that the value is live across).
-///
-/// For example:
-///
-/// ```ignore (pseudo-Rust)
-/// async move {
-///     let x: T = ...;
-///     foo.await
-///     ...
-/// }
-/// ```
-///
-/// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
-/// the scope that contains `x`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, HashStable, PartialEq)]
-pub struct GeneratorInteriorTypeCause<'tcx> {
-    /// Type of the captured binding.
-    pub ty: Ty<'tcx>,
-    /// Span of the binding that was captured.
-    pub span: Span,
-    /// Span of the scope of the captured binding.
-    pub scope_span: Option<Span>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for GeneratorInteriorTypeCause<'tcx> {
-        ty, span, scope_span
-    }
-}
-
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.
@@ -431,10 +397,6 @@ pub struct TypeckTables<'tcx> {
     /// leading to the member of the struct or tuple that is used instead of the
     /// entire variable.
     pub upvar_list: ty::UpvarListMap,
-
-    /// Stores the type, span and optional scope span of all types
-    /// that are live across the yield of this generator (if a generator).
-    pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -460,7 +422,6 @@ impl<'tcx> TypeckTables<'tcx> {
             free_region_map: Default::default(),
             concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
-            generator_interior_types: Default::default(),
         }
     }
 
@@ -744,7 +705,9 @@ impl<'tcx> TypeckTables<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         let ty::TypeckTables {
             local_id_root,
             ref type_dependent_defs,
@@ -768,7 +731,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref free_region_map,
             ref concrete_opaque_types,
             ref upvar_list,
-            ref generator_interior_types,
 
         } = *self;
 
@@ -813,12 +775,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             free_region_map.hash_stable(hcx, hasher);
             concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
-            generator_interior_types.hash_stable(hcx, hasher);
         })
     }
 }
 
-rustc_index::newtype_index! {
+newtype_index! {
     pub struct UserTypeAnnotationIndex {
         derive [HashStable]
         DEBUG_FORMAT = "UserType({})",
@@ -830,7 +791,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
@@ -885,7 +846,7 @@ impl CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Const(ct) => match ct.val {
-                            ConstValue::Bound(debruijn, b) => {
+                            ConstValue::Infer(InferConst::Canonical(debruijn, b)) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == b
@@ -902,7 +863,7 @@ impl CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -952,7 +913,7 @@ impl<'tcx> CommonTypes<'tcx> {
             f64: mk(Float(ast::FloatTy::F64)),
             self_param: mk(ty::Param(ty::ParamTy {
                 index: 0,
-                name: kw::SelfUpper,
+                name: kw::SelfUpper.as_interned_str(),
             })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
@@ -1030,15 +991,14 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
-    cstore: Box<CrateStoreDyn>,
+    cstore: &'tcx CrateStoreDyn,
 
     pub sess: &'tcx Session,
 
-    pub lint_store: Lrc<lint::LintStore>,
-
     pub dep_graph: DepGraph,
 
-    pub prof: SelfProfilerRef,
+    /// Common objects.
+    pub common: Common<'tcx>,
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
@@ -1048,9 +1008,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
-
-    /// Resolutions of `extern crate` items produced by resolver.
-    extern_crate_map: NodeMap<CrateNum>,
 
     /// Map indicating what traits are in scope for places where this
     /// is relevant; generated by resolve.
@@ -1197,11 +1154,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        lint_store: Lrc<lint::LintStore>,
+        cstore: &'tcx CrateStoreDyn,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
-        resolutions: ty::ResolverOutputs,
+        resolutions: ty::Resolutions,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
@@ -1211,32 +1168,44 @@ impl<'tcx> TyCtxt<'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(&arenas.interner);
+        let common = Common {
+            empty_predicates: ty::GenericPredicates {
+                parent: None,
+                predicates: vec![],
+            },
+        };
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
         let dep_graph = hir.dep_graph.clone();
-        let cstore = resolutions.cstore;
-        let crates = cstore.crates_untracked();
-        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
-            let def_path_tables = crates
+            let upstream_def_path_tables: Vec<(CrateNum, Lrc<_>)> = cstore
+                .crates_untracked()
                 .iter()
                 .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
-                .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())));
+                .collect();
+
+            let def_path_tables = || {
+                upstream_def_path_tables
+                    .iter()
+                    .map(|&(cnum, ref rc)| (cnum, &**rc))
+                    .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())))
+            };
 
             // Precompute the capacity of the hashmap so we don't have to
             // re-allocate when populating it.
-            let capacity = def_path_tables.clone().map(|(_, t)| t.size()).sum::<usize>();
+            let capacity = def_path_tables().map(|(_, t)| t.size()).sum::<usize>();
 
             let mut map: FxHashMap<_, _> = FxHashMap::with_capacity_and_hasher(
                 capacity,
                 ::std::default::Default::default()
             );
 
-            for (cnum, def_path_table) in def_path_tables {
+            for (cnum, def_path_table) in def_path_tables() {
                 def_path_table.add_def_path_hashes_to(cnum, &mut map);
             }
 
@@ -1254,16 +1223,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
         GlobalCtxt {
             sess: s,
-            lint_store,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
             interners,
             dep_graph,
-            prof: s.prof.clone(),
+            common,
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
-            extern_crate_map: resolutions.extern_crate_map,
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
                 let exports: Vec<_> = v.into_iter().map(|e| {
@@ -1413,8 +1380,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_any(self, cnum: CrateNum) -> &'tcx dyn Any {
-        self.cstore.crate_data_as_any(cnum)
+    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Lrc<dyn Any> {
+        self.cstore.crate_data_as_rc_any(cnum)
     }
 
     #[inline(always)]
@@ -1424,7 +1391,7 @@ impl<'tcx> TyCtxt<'tcx> {
         StableHashingContext::new(self.sess,
                                   krate,
                                   self.hir().definitions(),
-                                  &*self.cstore)
+                                  self.cstore)
     }
 
     // This method makes sure that we have a DepNode and a Fingerprint for
@@ -2145,13 +2112,6 @@ impl<'tcx> Borrow<[ProjectionKind]>
     }
 }
 
-impl<'tcx> Borrow<[PlaceElem<'tcx>]>
-    for Interned<'tcx, List<PlaceElem<'tcx>>> {
-    fn borrow(&self) -> &[PlaceElem<'tcx>] {
-        &self.0[..]
-    }
-}
-
 impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     fn borrow(&self) -> &RegionKind {
         &self.0
@@ -2196,29 +2156,44 @@ impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
     }
 }
 
+macro_rules! intern_method {
+    ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
+                                            $alloc_method:expr,
+                                            $alloc_to_key:expr) -> $ty:ty) => {
+        impl<$lt_tcx> TyCtxt<$lt_tcx> {
+            pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
+                let key = ($alloc_to_key)(&v);
+
+                self.interners.$name.intern_ref(key, || {
+                    Interned($alloc_method(&self.interners.arena, v))
+
+                }).0
+            }
+        }
+    }
+}
+
 macro_rules! direct_interners {
-    ($($name:ident: $method:ident($ty:ty)),+) => {
-        $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
+    ($lt_tcx:tt, $($name:ident: $method:ident($ty:ty)),+) => {
+        $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
             }
         }
 
-        impl<'tcx> Eq for Interned<'tcx, $ty> {}
+        impl<$lt_tcx> Eq for Interned<$lt_tcx, $ty> {}
 
-        impl<'tcx> Hash for Interned<'tcx, $ty> {
+        impl<$lt_tcx> Hash for Interned<$lt_tcx, $ty> {
             fn hash<H: Hasher>(&self, s: &mut H) {
                 self.0.hash(s)
             }
         }
 
-        impl<'tcx> TyCtxt<'tcx> {
-            pub fn $method(self, v: $ty) -> &'tcx $ty {
-                self.interners.$name.intern_ref(&v, || {
-                    Interned(self.interners.arena.alloc(v))
-                }).0
-            }
-        })+
+        intern_method!(
+            $lt_tcx,
+            $name: $method($ty,
+                           |a: &$lt_tcx SyncDroplessArena, v| -> &$lt_tcx $ty { a.alloc(v) },
+                           |x| x) -> $ty);)+
     }
 }
 
@@ -2226,7 +2201,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
     x.has_type_flags(ty::TypeFlags::KEEP_IN_LOCAL_TCX)
 }
 
-direct_interners!(
+direct_interners!('tcx,
     region: mk_region(RegionKind),
     goal: mk_goal(GoalKind<'tcx>),
     const_: mk_const(Const<'tcx>)
@@ -2234,27 +2209,36 @@ direct_interners!(
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+) => (
-        $(impl<'tcx> TyCtxt<'tcx> {
-            pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
-                self.interners.$field.intern_ref(v, || {
-                    Interned(List::from_arena(&self.interners.arena, v))
-                }).0
-            }
-        })+
+        $(intern_method!( 'tcx, $field: $method(
+            &[$ty],
+            |a, v| List::from_arena(a, v),
+            Deref::deref) -> List<$ty>);)+
     );
 }
 
 slice_interners!(
-    type_list: _intern_type_list(Ty<'tcx>),
-    substs: _intern_substs(GenericArg<'tcx>),
-    canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo),
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
+    type_list: _intern_type_list(Ty<'tcx>),
+    substs: _intern_substs(GenericArg<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
-    projs: _intern_projs(ProjectionKind),
-    place_elems: _intern_place_elems(PlaceElem<'tcx>)
+    projs: _intern_projs(ProjectionKind)
 );
+
+// This isn't a perfect fit: `CanonicalVarInfo` slices are always
+// allocated in the global arena, so this `intern_method!` macro is
+// overly general. However, we just return `false` for the code that checks
+// whether they belong in the thread-local arena, so no harm done, and
+// seems better than open-coding the rest.
+intern_method! {
+    'tcx,
+    canonical_var_infos: _intern_canonical_var_infos(
+        &[CanonicalVarInfo],
+        |a, v| List::from_arena(a, v),
+        Deref::deref
+    ) -> List<CanonicalVarInfo>
+}
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
@@ -2500,7 +2484,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
     #[inline]
-    pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>)
+    pub fn mk_closure(self, closure_id: DefId, closure_substs: ClosureSubsts<'tcx>)
                       -> Ty<'tcx> {
         self.mk_ty(Closure(closure_id, closure_substs))
     }
@@ -2508,7 +2492,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_generator(self,
                         id: DefId,
-                        generator_substs: SubstsRef<'tcx>,
+                        generator_substs: GeneratorSubsts<'tcx>,
                         movability: hir::GeneratorMovability)
                         -> Ty<'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))
@@ -2560,7 +2544,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
+    pub fn mk_ty_param(self, index: u32, name: InternedString) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { index, name: name }))
     }
 
@@ -2568,7 +2552,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_const_param(
         self,
         index: u32,
-        name: Symbol,
+        name: InternedString,
         ty: Ty<'tcx>
     ) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {
@@ -2593,48 +2577,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
-    }
-
-    pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Field(f, ty))
-    }
-
-    pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Deref)
-    }
-
-    pub fn mk_place_downcast(
-        self,
-        place: Place<'tcx>,
-        adt_def: &'tcx AdtDef,
-        variant_index: VariantIdx,
-    ) -> Place<'tcx> {
-        self.mk_place_elem(
-            place,
-            PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index),
-        )
-    }
-
-    pub fn mk_place_downcast_unnamed(
-        self,
-        place: Place<'tcx>,
-        variant_index: VariantIdx,
-    ) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Downcast(None, variant_index))
-    }
-
-    pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Index(index))
-    }
-
-    /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
-    /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
-    /// flight.
-    pub fn mk_place_elem(self, place: Place<'tcx>, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        let mut projection = place.projection.to_vec();
-        projection.push(elem);
-
-        Place { base: place.base, projection: self.intern_place_elems(&projection) }
     }
 
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
@@ -2678,14 +2620,6 @@ impl<'tcx> TyCtxt<'tcx> {
             List::empty()
         } else {
             self._intern_projs(ps)
-        }
-    }
-
-    pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
-        if ts.len() == 0 {
-            List::empty()
-        } else {
-            self._intern_place_elems(ts)
         }
     }
 
@@ -2749,11 +2683,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_substs<I: InternAs<[GenericArg<'tcx>],
                      &'tcx List<GenericArg<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
-    }
-
-    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>],
-                          &'tcx List<PlaceElem<'tcx>>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
     pub fn mk_substs_trait(self,
@@ -2921,29 +2850,8 @@ impl<'a, T, R> InternIteratorElement<T, R> for &'a T
 
 impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     type Output = Result<R, E>;
-    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(mut iter: I, f: F)
-            -> Self::Output {
-        // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // The match arms are in order of frequency. The 1, 2, and 0 cases are
-        // typically hit in ~95% of cases. We assume that if the upper and
-        // lower bounds from `size_hint` agree they are correct.
-        Ok(match iter.size_hint() {
-            (1, Some(1)) => {
-                f(&[iter.next().unwrap()?])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap()?;
-                let t1 = iter.next().unwrap()?;
-                f(&[t0, t1])
-            }
-            (0, Some(0)) => {
-                f(&[])
-            }
-            _ => {
-                f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?)
-            }
-        })
+    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        Ok(f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?))
     }
 }
 
@@ -3004,7 +2912,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.extern_mod_stmt_cnum = |tcx, id| {
         let id = tcx.hir().as_local_node_id(id).unwrap();
-        tcx.extern_crate_map.get(&id).cloned()
+        tcx.cstore.extern_mod_stmt_cnum_untracked(id)
     };
     providers.all_crate_nums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

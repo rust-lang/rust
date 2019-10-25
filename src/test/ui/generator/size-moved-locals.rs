@@ -11,7 +11,6 @@
 
 // edition:2018
 // ignore-wasm32 issue #62807
-// ignore-asmjs issue #62807
 
 #![feature(generators, generator_trait)]
 

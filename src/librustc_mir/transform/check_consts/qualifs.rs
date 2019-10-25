@@ -3,7 +3,7 @@
 use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, Ty};
-use rustc_index::bit_set::BitSet;
+use rustc_data_structures::bit_set::BitSet;
 use syntax_pos::DUMMY_SP;
 
 use super::Item as ConstCx;
@@ -26,9 +26,6 @@ impl QualifSet {
 /// The default implementations proceed structurally.
 pub trait Qualif {
     const IDX: usize;
-
-    /// The name of the file used to debug the dataflow analysis that computes this qualif.
-    const ANALYSIS_NAME: &'static str;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
@@ -164,8 +161,8 @@ pub trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
-                    if ProjectionElem::Deref == elem {
+                if let box [proj_base @ .., elem] = &place.projection {
+                    if ProjectionElem::Deref == *elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, per_local, PlaceRef {
@@ -210,7 +207,6 @@ pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
     const IDX: usize = 0;
-    const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
@@ -268,7 +264,6 @@ pub struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
     const IDX: usize = 1;
-    const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {

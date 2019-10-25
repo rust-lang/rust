@@ -88,7 +88,6 @@ pub trait HasCodegen<'tcx>:
     type CodegenCx: CodegenMethods<'tcx>
         + BackendTypes<
             Value = Self::Value,
-            Function = Self::Function,
             BasicBlock = Self::BasicBlock,
             Type = Self::Type,
             Funclet = Self::Funclet,

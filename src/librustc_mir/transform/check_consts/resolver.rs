@@ -5,7 +5,7 @@
 
 use rustc::mir::visit::Visitor;
 use rustc::mir::{self, BasicBlock, Local, Location};
-use rustc_index::bit_set::BitSet;
+use rustc_data_structures::bit_set::BitSet;
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -56,16 +56,16 @@ where
     fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, value: bool) {
         debug_assert!(!place.is_indirect());
 
-        match (value, place.as_ref()) {
-            (true, mir::PlaceRef { base: &mir::PlaceBase::Local(local), .. }) => {
-                self.qualifs_per_local.insert(local);
+        match (value, place) {
+            (true, mir::Place { base: mir::PlaceBase::Local(local), .. }) => {
+                self.qualifs_per_local.insert(*local);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
             // an unqualified rvalue (e.g. `y = 5`). This is to be consistent
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
-            (false, mir::PlaceRef { base: &mir::PlaceBase::Local(_local), projection: &[] }) => {
+            (false, mir::Place { base: mir::PlaceBase::Local(_local), projection: box [] }) => {
                 // self.qualifs_per_local.remove(*local);
             }
 
@@ -101,10 +101,11 @@ where
 
         // If a local with no projections is moved from (e.g. `x` in `y = x`), record that
         // it no longer needs to be dropped.
-        if let mir::Operand::Move(place) = operand {
-            if let Some(local) = place.as_local() {
-                self.qualifs_per_local.remove(local);
-            }
+        if let mir::Operand::Move(mir::Place {
+            base: mir::PlaceBase::Local(local),
+            projection: box [],
+        }) = *operand {
+            self.qualifs_per_local.remove(local);
         }
     }
 
@@ -207,8 +208,7 @@ where
             _qualif: PhantomData,
         };
         let results =
-            dataflow::Engine::new(item.tcx, item.body, item.def_id, dead_unwinds, analysis)
-                .iterate_to_fixpoint();
+            dataflow::Engine::new(item.body, dead_unwinds, analysis).iterate_to_fixpoint();
         let cursor = dataflow::ResultsCursor::new(item.body, results);
 
         let mut qualifs_in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
@@ -308,7 +308,7 @@ where
 {
     type Idx = Local;
 
-    const NAME: &'static str = Q::ANALYSIS_NAME;
+    const NAME: &'static str = "flow_sensitive_qualif";
 
     fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
         body.local_decls.len()

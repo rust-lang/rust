@@ -3,7 +3,6 @@
 
 // revisions:rpass1 rpass2
 
-// ignore-asmjs wasm2js does not support source maps yet
 // compile-flags: -g -Z query-dep-graph
 
 #![feature(rustc_attrs)]

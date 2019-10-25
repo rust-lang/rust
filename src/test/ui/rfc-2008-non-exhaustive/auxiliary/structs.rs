@@ -1,3 +1,5 @@
+#![feature(non_exhaustive)]
+
 #[non_exhaustive]
 pub struct NormalStruct {
     pub first_field: u16,

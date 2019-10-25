@@ -1,4 +1,4 @@
-// error-pattern:can't find crate for `fake_crate`
+// error-pattern:can't find crate for `extra`
 
 extern crate fake_crate as extra;
 

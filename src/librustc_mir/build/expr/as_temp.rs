@@ -103,6 +103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr_span,
                         temp_lifetime,
                         temp,
+                        expr_ty,
                         DropKind::Storage,
                     );
                 }
@@ -116,6 +117,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 expr_span,
                 temp_lifetime,
                 temp,
+                expr_ty,
                 DropKind::Value,
             );
         }

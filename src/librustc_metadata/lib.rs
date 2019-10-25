@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
-#![feature(core_intrinsics)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
@@ -12,7 +11,6 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
-#![feature(stmt_expr_attributes)]
 
 #![recursion_limit="256"]
 
@@ -26,15 +24,15 @@ extern crate rustc_data_structures;
 
 pub mod error_codes;
 
+mod index;
 mod encoder;
 mod decoder;
-mod dependency_format;
 mod cstore_impl;
-mod foreign_modules;
-mod link_args;
-mod native_libs;
 mod schema;
-mod table;
+mod native_libs;
+mod link_args;
+mod foreign_modules;
+mod dependency_format;
 
 pub mod creader;
 pub mod cstore;

@@ -95,7 +95,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, Instance};
 use rustc::mir::mono::{MonoItem, InstantiationMode};
 
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::InternedString;
 
 use log::debug;
 
@@ -112,7 +112,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
+fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> InternedString {
     let def_id = instance.def_id();
     let substs = instance.substs;
 
@@ -123,11 +123,13 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
     if def_id.is_local() {
         if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return Symbol::intern(&tcx.sess.generate_plugin_registrar_symbol(disambiguator));
+            return
+                InternedString::intern(&tcx.sess.generate_plugin_registrar_symbol(disambiguator));
         }
         if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return Symbol::intern(&tcx.sess.generate_proc_macro_decls_symbol(disambiguator));
+            return
+                InternedString::intern(&tcx.sess.generate_proc_macro_decls_symbol(disambiguator));
         }
     }
 
@@ -144,21 +146,22 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
     let attrs = tcx.codegen_fn_attrs(def_id);
     if is_foreign {
         if let Some(name) = attrs.link_name {
-            return name;
+            return name.as_interned_str();
         }
         // Don't mangle foreign items.
-        return tcx.item_name(def_id);
+        return tcx.item_name(def_id).as_interned_str();
     }
 
-    if let Some(name) = attrs.export_name {
+    if let Some(name) = &attrs.export_name {
         // Use provided name
-        return name;
+        return name.as_interned_str();
     }
 
     if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
-        return tcx.item_name(def_id);
+        return tcx.item_name(def_id).as_interned_str();
     }
+
 
     let is_generic = substs.non_erasable_generics().next().is_some();
     let avoid_cross_crate_conflicts =
@@ -219,5 +222,5 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Symbol {
         SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
     };
 
-    Symbol::intern(&mangled)
+    InternedString::intern(&mangled)
 }

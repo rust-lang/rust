@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{
-    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
+    self, Size, Abi, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
 };
 use rustc::ty::TypeFoldable;
 
@@ -377,17 +377,20 @@ where
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len(self)?;
                 if field >= len {
-                    // This can be violated because the index (field) can be a runtime value
-                    // provided by the user.
+                    // This can be violated because this runs during promotion on code where the
+                    // type system has not yet ensured that such things don't happen.
                     debug!("tried to access element {} of array/slice with length {}", field, len);
                     throw_panic!(BoundsCheck { len, index: field });
                 }
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
+                // FIXME(#64506) `UninhabitedValue` can be removed when this issue is resolved
+                if base.layout.abi == Abi::Uninhabited {
+                    throw_unsup!(UninhabitedValue);
+                }
                 assert!(field < count as u64,
-                        "Tried to access field {} of union {:#?} with {} fields",
-                        field, base.layout, count);
+                        "Tried to access field {} of union with {} fields", field, count);
                 // Offset is always 0
                 Size::from_bytes(0)
             }
@@ -591,13 +594,6 @@ where
             StaticKind::Promoted(promoted, promoted_substs) => {
                 let substs = self.subst_from_frame_and_normalize_erasing_regions(promoted_substs);
                 let instance = ty::Instance::new(place_static.def_id, substs);
-
-                // Even after getting `substs` from the frame, this instance may still be
-                // polymorphic because `ConstProp` will try to promote polymorphic MIR.
-                if instance.needs_subst() {
-                    throw_inval!(TooGeneric);
-                }
-
                 self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted),
@@ -1031,13 +1027,9 @@ where
         variant_index: VariantIdx,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let variant_scalar = Scalar::from_u32(variant_index.as_u32()).into();
-
         match dest.layout.variants {
             layout::Variants::Single { index } => {
-                if index != variant_index {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                assert_eq!(index, variant_index);
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
@@ -1045,9 +1037,7 @@ where
                 discr_index,
                 ..
             } => {
-                if !dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index) {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                assert!(dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index));
                 let discr_val =
                     dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
 
@@ -1070,9 +1060,9 @@ where
                 discr_index,
                 ..
             } => {
-                if !variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len() {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                assert!(
+                    variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len(),
+                );
                 if variant_index != dataful_variant {
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index.as_u32()

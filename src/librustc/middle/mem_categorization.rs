@@ -79,11 +79,12 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use rustc_data_structures::fx::FxIndexMap;
 use std::rc::Rc;
+use crate::util::nodemap::ItemLocalSet;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {
-    Rvalue,                              // temporary val
-    ThreadLocal,                         // value that cannot move, but still restricted in scope
+    Rvalue(ty::Region<'tcx>),            // temporary val, argument is its scope
+    ThreadLocal(ty::Region<'tcx>),       // value that cannot move, but still restricted in scope
     StaticItem,
     Upvar(Upvar),                        // upvar referenced by closure env
     Local(hir::HirId),                   // local variable
@@ -102,7 +103,7 @@ pub struct Upvar {
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerKind<'tcx> {
     /// `Box<T>`
     Unique,
@@ -116,7 +117,7 @@ pub enum PointerKind<'tcx> {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g., a field
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldIndex),
     InteriorElement(InteriorOffsetKind),
@@ -139,13 +140,13 @@ impl Hash for FieldIndex {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InteriorOffsetKind {
     Index,   // e.g., `array_expr[index_expr]`
     Pattern, // e.g., `fn foo([_, a, _, _]: [A; 4]) { ... }`
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -218,6 +219,7 @@ pub struct MemCategorizationContext<'a, 'tcx> {
     pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
+    rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
     infcx: Option<&'a InferCtxt<'a, 'tcx>>,
 }
 
@@ -333,6 +335,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         body_owner: DefId,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
+        rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
     ) -> MemCategorizationContext<'a, 'tcx> {
         MemCategorizationContext {
             tcx,
@@ -340,6 +343,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             upvars: tcx.upvars(body_owner),
             region_scope_tree,
             tables,
+            rvalue_promotable_map,
             infcx: None,
             param_env,
         }
@@ -365,12 +369,19 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> MemCategorizationContext<'a, 'tcx> {
         let tcx = infcx.tcx;
 
+        // Subtle: we can't do rvalue promotion analysis until the
+        // typeck phase is complete, which means that you can't trust
+        // the rvalue lifetimes that result, but that's ok, since we
+        // don't need to know those during type inference.
+        let rvalue_promotable_map = None;
+
         MemCategorizationContext {
             tcx,
             body_owner,
             upvars: tcx.upvars(body_owner),
             region_scope_tree,
             tables,
+            rvalue_promotable_map,
             infcx: Some(infcx),
             param_env,
         }
@@ -653,7 +664,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     .any(|attr| attr.check_name(sym::thread_local));
 
                 let cat = if is_thread_local {
-                    Categorization::ThreadLocal
+                    let re = self.temporary_scope(hir_id.local_id);
+                    Categorization::ThreadLocal(re)
                 } else {
                     Categorization::StaticItem
                 };
@@ -728,18 +740,16 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let ty = self.node_ty(fn_hir_id)?;
         let kind = match ty.kind {
             ty::Generator(..) => ty::ClosureKind::FnOnce,
-            ty::Closure(closure_def_id, substs) => {
+            ty::Closure(closure_def_id, closure_substs) => {
                 match self.infcx {
                     // During upvar inference we may not know the
                     // closure kind, just use the LATTICE_BOTTOM value.
                     Some(infcx) =>
-                        infcx.closure_kind(
-                            closure_def_id,
-                            substs
-                        ).unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
+                        infcx.closure_kind(closure_def_id, closure_substs)
+                             .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
 
                     None =>
-                        substs.as_closure().kind(closure_def_id, self.tcx),
+                        closure_substs.closure_kind(closure_def_id, self.tcx),
                 }
             }
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),
@@ -866,6 +876,16 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ret
     }
 
+    /// Returns the lifetime of a temporary created by expr with id `id`.
+    /// This could be `'static` if `id` is part of a constant expression.
+    pub fn temporary_scope(&self, id: hir::ItemLocalId) -> ty::Region<'tcx> {
+        let scope = self.region_scope_tree.temporary_scope(id);
+        self.tcx.mk_region(match scope {
+            Some(scope) => ty::ReScope(scope),
+            None => ty::ReStatic
+        })
+    }
+
     pub fn cat_rvalue_node(&self,
                            hir_id: hir::HirId,
                            span: Span,
@@ -874,7 +894,28 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_rvalue_node(id={:?}, span={:?}, expr_ty={:?})",
                hir_id, span, expr_ty);
 
-        let ret = self.cat_rvalue(hir_id, span, expr_ty);
+        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m.contains(&hir_id.local_id))
+                                                            .unwrap_or(false);
+
+        debug!("cat_rvalue_node: promotable = {:?}", promotable);
+
+        // Always promote `[T; 0]` (even when e.g., borrowed mutably).
+        let promotable = match expr_ty.kind {
+            ty::Array(_, len) if len.try_eval_usize(self.tcx, self.param_env) == Some(0) => true,
+            _ => promotable,
+        };
+
+        debug!("cat_rvalue_node: promotable = {:?} (2)", promotable);
+
+        // Compute maximum lifetime of this rvalue. This is 'static if
+        // we can promote to a constant, otherwise equal to enclosing temp
+        // lifetime.
+        let re = if promotable {
+            self.tcx.lifetimes.re_static
+        } else {
+            self.temporary_scope(hir_id.local_id)
+        };
+        let ret = self.cat_rvalue(hir_id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);
         ret
     }
@@ -882,11 +923,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub fn cat_rvalue(&self,
                       cmt_hir_id: hir::HirId,
                       span: Span,
+                      temp_scope: ty::Region<'tcx>,
                       expr_ty: Ty<'tcx>) -> cmt_<'tcx> {
         let ret = cmt_ {
             hir_id: cmt_hir_id,
             span:span,
-            cat:Categorization::Rvalue,
+            cat:Categorization::Rvalue(temp_scope),
             mutbl:McDeclared,
             ty:expr_ty,
             note: NoteNone
@@ -1334,9 +1376,9 @@ impl<'tcx> cmt_<'tcx> {
         //! determines how long the value in `self` remains live.
 
         match self.cat {
-            Categorization::Rvalue |
+            Categorization::Rvalue(..) |
             Categorization::StaticItem |
-            Categorization::ThreadLocal |
+            Categorization::ThreadLocal(..) |
             Categorization::Local(..) |
             Categorization::Deref(_, UnsafePtr(..)) |
             Categorization::Deref(_, BorrowedPtr(..)) |
@@ -1367,8 +1409,8 @@ impl<'tcx> cmt_<'tcx> {
                 b.freely_aliasable()
             }
 
-            Categorization::Rvalue |
-            Categorization::ThreadLocal |
+            Categorization::Rvalue(..) |
+            Categorization::ThreadLocal(..) |
             Categorization::Local(..) |
             Categorization::Upvar(..) |
             Categorization::Deref(_, UnsafePtr(..)) => { // yes, it's aliasable, but...
@@ -1415,10 +1457,10 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::StaticItem => {
                 "static item".into()
             }
-            Categorization::ThreadLocal => {
+            Categorization::ThreadLocal(..) => {
                 "thread-local static item".into()
             }
-            Categorization::Rvalue => {
+            Categorization::Rvalue(..) => {
                 "non-place".into()
             }
             Categorization::Local(vid) => {

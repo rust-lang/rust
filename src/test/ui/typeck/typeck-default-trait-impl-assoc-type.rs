@@ -1,7 +1,5 @@
-// run-rustfix
 // Test that we do not consider associated types to be sendable without
 // some applicable trait bound (and we don't ICE).
-#![allow(dead_code)]
 
 trait Trait {
     type AssocType;

@@ -25,7 +25,7 @@ declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
     "unused result of a type flagged as `#[must_use]`",
-    report_in_external_macro
+    report_in_external_macro: true
 }
 
 declare_lint! {
@@ -156,7 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 }
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
-                    for (predicate, _) in cx.tcx.predicates_of(def).predicates {
+                    for (predicate, _) in &cx.tcx.predicates_of(def).predicates {
                         if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             let def_id = trait_ref.def_id;

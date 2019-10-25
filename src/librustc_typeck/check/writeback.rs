@@ -58,7 +58,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
-        wbcx.visit_generator_interior_types();
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
@@ -190,26 +189,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let hir::ExprKind::Index(ref base, ref index) = e.kind {
             let mut tables = self.fcx.tables.borrow_mut();
 
-            // All valid indexing looks like this; might encounter non-valid indexes at this point.
-            let base_ty = tables.expr_ty_adjusted_opt(&base).map(|t| &t.kind);
-            if base_ty.is_none() {
-                // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
-                // that isn't in the type table. We assume more relevant errors have already been
-                // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
-            }
-            if let Some(ty::Ref(_, base_ty, _)) = base_ty {
-                let index_ty = tables.expr_ty_adjusted_opt(&index).unwrap_or_else(|| {
-                    // When encountering `return [0][0]` outside of a `fn` body we would attempt
-                    // to access an unexistend index. We assume that more relevant errors will
-                    // already have been emitted, so we only gate on this with an ICE if no
-                    // error has been emitted. (#64638)
-                    self.tcx().sess.delay_span_bug(
-                        e.span,
-                        &format!("bad index {:?} for base: `{:?}`", index, base),
-                    );
-                    self.fcx.tcx.types.err
-                });
+            // All valid indexing looks like this; might encounter non-valid indexes at this point
+            if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).kind {
+                let index_ty = tables.expr_ty_adjusted(&index);
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
                 if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
@@ -446,12 +428,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .user_provided_sigs
                 .insert(def_id, c_sig.clone());
         }
-    }
-
-    fn visit_generator_interior_types(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
-        self.tables.generator_interior_types = fcx_tables.generator_interior_types.clone();
     }
 
     fn visit_opaque_types(&mut self, span: Span) {

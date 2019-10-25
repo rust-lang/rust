@@ -111,9 +111,11 @@ impl From<char> for u32 {
     /// ```
     /// use std::mem;
     ///
-    /// let c = 'c';
-    /// let u = u32::from(c);
-    /// assert!(4 == mem::size_of_val(&u))
+    /// fn main() {
+    ///     let c = 'c';
+    ///     let u = u32::from(c);
+    ///     assert!(4 == mem::size_of_val(&u))
+    /// }
     /// ```
     #[inline]
     fn from(c: char) -> Self {
@@ -148,9 +150,11 @@ impl From<u8> for char {
     /// ```
     /// use std::mem;
     ///
-    /// let u = 32 as u8;
-    /// let c = char::from(u);
-    /// assert!(4 == mem::size_of_val(&c))
+    /// fn main() {
+    ///     let u = 32 as u8;
+    ///     let c = char::from(u);
+    ///     assert!(4 == mem::size_of_val(&c))
+    /// }
     /// ```
     #[inline]
     fn from(i: u8) -> Self {

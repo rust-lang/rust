@@ -108,16 +108,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               expected: Ty<'tcx>,
                               allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
-        let expected = self.resolve_vars_with_obligations(expected);
+        let expected = self.resolve_type_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
             Ok(ty) => return (ty, None),
             Err(e) => e
         };
 
-        let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
-        let expr_ty = self.resolve_vars_with_obligations(checked_ty);
+        let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
 
         if self.is_assign_to_bool(expr, expected) {
@@ -350,10 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the span is from a macro, then it's hard to extract the text
         // and make a good suggestion, so don't bother.
-        let is_macro = sp.from_expansion() && sp.desugaring_kind().is_none();
-
-        // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
-        let expr = expr.peel_drop_temps();
+        let is_macro = sp.from_expansion();
 
         match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {

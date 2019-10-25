@@ -9,7 +9,7 @@ use std::ops;
 
 use syntax::symbol::{Symbol, sym};
 use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, LitKind};
-use syntax::sess::ParseSess;
+use syntax::parse::ParseSess;
 use syntax::feature_gate::Features;
 
 use syntax_pos::Span;
@@ -360,7 +360,7 @@ impl<'a> fmt::Display for Html<'a> {
                     ("target_arch", Some(arch)) => match &*arch.as_str() {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
-                        "asmjs" => "JavaScript",
+                        "asmjs" => "asm.js",
                         "mips" => "MIPS",
                         "mips64" => "MIPS-64",
                         "msp430" => "MSP430",

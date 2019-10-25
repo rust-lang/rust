@@ -85,7 +85,6 @@
 #![feature(const_generic_impls_guard)]
 #![feature(const_generics)]
 #![feature(const_in_array_repeat_expressions)]
-#![feature(cow_is_borrowed)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
 #![feature(container_error_extra)]
@@ -122,6 +121,7 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
+#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 
 // Allow testing this library
@@ -154,7 +154,7 @@ mod boxed {
 #[cfg(test)]
 mod tests;
 pub mod collections;
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 pub mod sync;
 pub mod rc;
 pub mod raw_vec;

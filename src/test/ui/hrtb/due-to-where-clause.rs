@@ -1,3 +1,6 @@
+// ignore-compare-mode-nll
+// ^ This code works in nll mode.
+
 fn main() {
     test::<FooS>(&mut 42); //~ ERROR implementation of `Foo` is not general enough
 }

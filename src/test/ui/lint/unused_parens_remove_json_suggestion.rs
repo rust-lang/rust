@@ -1,4 +1,5 @@
-// compile-flags: --error-format json -Zunstable-options
+// compile-flags: --error-format pretty-json -Zunstable-options
+// build-pass
 // run-rustfix
 
 // The output for humans should just highlight the whole span without showing
@@ -7,14 +8,14 @@
 // stripping away any starting or ending parenthesis characters—hence this
 // test of the JSON error format.
 
-#![deny(unused_parens)]
+#![warn(unused_parens)]
 #![allow(unreachable_code)]
 
 fn main() {
 
     let _b = false;
 
-    if (_b) { //~ ERROR unnecessary parentheses
+    if (_b) {
         println!("hello");
     }
 
@@ -25,29 +26,29 @@ fn main() {
 fn f() -> bool {
     let c = false;
 
-    if(c) { //~ ERROR unnecessary parentheses
+    if(c) {
         println!("next");
     }
 
-    if (c){ //~ ERROR unnecessary parentheses
+    if (c){
         println!("prev");
     }
 
     while (false && true){
-        if (c) { //~ ERROR unnecessary parentheses
+        if (c) {
             println!("norm");
         }
 
     }
 
-    while(true && false) { //~ ERROR unnecessary parentheses
-        for _ in (0 .. 3){ //~ ERROR unnecessary parentheses
+    while(true && false) {
+        for _ in (0 .. 3){
             println!("e~")
         }
     }
 
-    for _ in (0 .. 3) { //~ ERROR unnecessary parentheses
-        while (true && false) { //~ ERROR unnecessary parentheses
+    for _ in (0 .. 3) {
+        while (true && false) {
             println!("e~")
         }
     }

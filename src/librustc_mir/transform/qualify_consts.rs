@@ -4,8 +4,8 @@
 //! The Qualif flags below can be used to also provide better
 //! diagnostics as to why a constant rvalue wasn't promoted.
 
-use rustc_index::bit_set::BitSet;
-use rustc_index::vec::IndexVec;
+use rustc_data_structures::bit_set::BitSet;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
@@ -292,8 +292,8 @@ trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
-                    if ProjectionElem::Deref == elem {
+                if let box [proj_base @ .., elem] = &place.projection {
+                    if ProjectionElem::Deref == *elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, PlaceRef {
@@ -1024,12 +1024,23 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             new_errors.dedup();
 
             if self.errors != new_errors {
-                validator_mismatch(
-                    self.tcx,
-                    body,
-                    std::mem::replace(&mut self.errors, vec![]),
-                    new_errors,
-                );
+                error!("old validator: {:?}", self.errors);
+                error!("new validator: {:?}", new_errors);
+
+                // ICE on nightly if the validators do not emit exactly the same errors.
+                // Users can supress this panic with an unstable compiler flag (hopefully after
+                // filing an issue).
+                let opts = &self.tcx.sess.opts;
+                let trigger_ice = opts.unstable_features.is_nightly_build()
+                    && !opts.debugging_opts.suppress_const_validation_back_compat_ice;
+
+                if trigger_ice {
+                    span_bug!(
+                        body.span,
+                        "{}",
+                        VALIDATOR_MISMATCH_ERR,
+                    );
+                }
             }
         }
 
@@ -1041,24 +1052,26 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             match *candidate {
                 Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
                     if let StatementKind::Assign(box(_, Rvalue::Repeat(
-                        Operand::Move(place),
+                        Operand::Move(Place {
+                            base: PlaceBase::Local(index),
+                            projection: box [],
+                        }),
                         _
-                    ))) = &self.body[bb].statements[stmt_idx].kind {
-                        if let Some(index) = place.as_local() {
-                            promoted_temps.insert(index);
-                        }
+                    ))) = self.body[bb].statements[stmt_idx].kind {
+                        promoted_temps.insert(index);
                     }
                 }
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     if let StatementKind::Assign(
                         box(
                             _,
-                            Rvalue::Ref(_, _, place)
+                            Rvalue::Ref(_, _, Place {
+                                base: PlaceBase::Local(index),
+                                projection: box [],
+                            })
                         )
-                    ) = &self.body[bb].statements[stmt_idx].kind {
-                        if let Some(index) = place.as_local() {
-                            promoted_temps.insert(index);
-                        }
+                    ) = self.body[bb].statements[stmt_idx].kind {
+                        promoted_temps.insert(index);
                     }
                 }
                 Candidate::Argument { .. } => {}
@@ -1143,87 +1156,82 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         }
     }
 
-    fn visit_projection_elem(
+    fn visit_projection(
         &mut self,
         place_base: &PlaceBase<'tcx>,
-        proj_base: &[PlaceElem<'tcx>],
-        elem: &PlaceElem<'tcx>,
+        proj: &[PlaceElem<'tcx>],
         context: PlaceContext,
         location: Location,
     ) {
         debug!(
-            "visit_projection_elem: place_base={:?} proj_base={:?} elem={:?} \
-            context={:?} location={:?}",
-            place_base,
-            proj_base,
-            elem,
-            context,
-            location,
+            "visit_place_projection: proj={:?} context={:?} location={:?}",
+            proj, context, location,
         );
+        self.super_projection(place_base, proj, context, location);
 
-        self.super_projection_elem(place_base, proj_base, elem, context, location);
-
-        match elem {
-            ProjectionElem::Deref => {
-                if context.is_mutating_use() {
-                    // `not_const` errors out in const contexts
-                    self.not_const(ops::MutDeref)
-                }
-                let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
-                match self.mode {
-                    Mode::NonConstFn => {}
-                    _ if self.suppress_errors => {}
-                    _ => {
-                        if let ty::RawPtr(_) = base_ty.kind {
-                            if !self.tcx.features().const_raw_ptr_deref {
-                                self.record_error(ops::RawPtrDeref);
-                                emit_feature_err(
-                                    &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
-                                    self.span, GateIssue::Language,
-                                    &format!(
-                                        "dereferencing raw pointers in {}s is unstable",
-                                        self.mode,
-                                    ),
-                                );
+        if let [proj_base @ .., elem] = proj {
+            match elem {
+                ProjectionElem::Deref => {
+                    if context.is_mutating_use() {
+                        // `not_const` errors out in const contexts
+                        self.not_const(ops::MutDeref)
+                    }
+                    let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
+                    match self.mode {
+                        Mode::NonConstFn => {}
+                        _ if self.suppress_errors => {}
+                        _ => {
+                            if let ty::RawPtr(_) = base_ty.kind {
+                                if !self.tcx.features().const_raw_ptr_deref {
+                                    self.record_error(ops::RawPtrDeref);
+                                    emit_feature_err(
+                                        &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
+                                        self.span, GateIssue::Language,
+                                        &format!(
+                                            "dereferencing raw pointers in {}s is unstable",
+                                            self.mode,
+                                        ),
+                                    );
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            ProjectionElem::ConstantIndex {..} |
-            ProjectionElem::Subslice {..} |
-            ProjectionElem::Field(..) |
-            ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
-                if let Some(def) = base_ty.ty_adt_def() {
-                    if def.is_union() {
-                        match self.mode {
-                            Mode::ConstFn => {
-                                if !self.tcx.features().const_fn_union
-                                    && !self.suppress_errors
-                                {
-                                    self.record_error(ops::UnionAccess);
-                                    emit_feature_err(
-                                        &self.tcx.sess.parse_sess, sym::const_fn_union,
-                                        self.span, GateIssue::Language,
-                                        "unions in const fn are unstable",
-                                    );
-                                }
-                            },
+                ProjectionElem::ConstantIndex {..} |
+                ProjectionElem::Subslice {..} |
+                ProjectionElem::Field(..) |
+                ProjectionElem::Index(_) => {
+                    let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
+                    if let Some(def) = base_ty.ty_adt_def() {
+                        if def.is_union() {
+                            match self.mode {
+                                Mode::ConstFn => {
+                                    if !self.tcx.features().const_fn_union
+                                        && !self.suppress_errors
+                                    {
+                                        self.record_error(ops::UnionAccess);
+                                        emit_feature_err(
+                                            &self.tcx.sess.parse_sess, sym::const_fn_union,
+                                            self.span, GateIssue::Language,
+                                            "unions in const fn are unstable",
+                                        );
+                                    }
+                                },
 
-                            | Mode::NonConstFn
-                            | Mode::Static
-                            | Mode::StaticMut
-                            | Mode::Const
-                            => {},
+                                | Mode::NonConstFn
+                                | Mode::Static
+                                | Mode::StaticMut
+                                | Mode::Const
+                                => {},
+                            }
                         }
                     }
                 }
-            }
 
-            ProjectionElem::Downcast(..) => {
-                self.not_const(ops::Downcast)
+                ProjectionElem::Downcast(..) => {
+                    self.not_const(ops::Downcast)
+                }
             }
         }
     }
@@ -1235,7 +1243,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match *operand {
             Operand::Move(ref place) => {
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Some(local) = place.as_local() {
+                if let Place {
+                    base: PlaceBase::Local(local),
+                    projection: box [],
+                } = *place {
                     self.cx.per_local[NeedsDrop].remove(local);
                 }
             }
@@ -1251,8 +1262,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut reborrow_place = None;
-            if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
-                if elem == ProjectionElem::Deref {
+            if let box [proj_base @ .., elem] = &place.projection {
+                if *elem == ProjectionElem::Deref {
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         reborrow_place = Some(proj_base);
@@ -1563,7 +1574,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Some(local) = place.as_local() {
+                let needs_drop = if let Place {
+                    base: PlaceBase::Local(local),
+                    projection: box [],
+                } = *place {
                     if NeedsDrop::in_local(self, local) {
                         Some(self.body.local_decls[local].source_info.span)
                     } else {
@@ -1809,17 +1823,16 @@ fn remove_drop_and_storage_dead_on_promoted_locals(
             }
         });
         let terminator = block.terminator_mut();
-        match &terminator.kind {
+        match terminator.kind {
             TerminatorKind::Drop {
-                location,
+                location: Place {
+                    base: PlaceBase::Local(index),
+                    projection: box [],
+                },
                 target,
                 ..
-            } => {
-                if let Some(index) = location.as_local() {
-                    if promoted_temps.contains(index) {
-                        terminator.kind = TerminatorKind::Goto { target: *target };
-                    }
-                }
+            } if promoted_temps.contains(index) => {
+                terminator.kind = TerminatorKind::Goto { target };
             }
             _ => {}
         }
@@ -1850,58 +1863,6 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize
         }
     }
     Some(ret)
-}
-
-fn validator_mismatch(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    mut old_errors: Vec<(Span, String)>,
-    mut new_errors: Vec<(Span, String)>,
-) {
-    error!("old validator: {:?}", old_errors);
-    error!("new validator: {:?}", new_errors);
-
-    // ICE on nightly if the validators do not emit exactly the same errors.
-    // Users can supress this panic with an unstable compiler flag (hopefully after
-    // filing an issue).
-    let opts = &tcx.sess.opts;
-    let strict_validation_enabled = opts.unstable_features.is_nightly_build()
-        && !opts.debugging_opts.suppress_const_validation_back_compat_ice;
-
-    if !strict_validation_enabled {
-        return;
-    }
-
-    // If this difference would cause a regression from the old to the new or vice versa, trigger
-    // the ICE.
-    if old_errors.is_empty() || new_errors.is_empty() {
-        span_bug!(body.span, "{}", VALIDATOR_MISMATCH_ERR);
-    }
-
-    // HACK: Borrows that would allow mutation are forbidden in const contexts, but they cause the
-    // new validator to be more conservative about when a dropped local has been moved out of.
-    //
-    // Supress the mismatch ICE in cases where the validators disagree only on the number of
-    // `LiveDrop` errors and both observe the same sequence of `MutBorrow`s.
-
-    let is_live_drop = |(_, s): &mut (_, String)| s.starts_with("LiveDrop");
-    let is_mut_borrow = |(_, s): &&(_, String)| s.starts_with("MutBorrow");
-
-    let old_live_drops: Vec<_> = old_errors.drain_filter(is_live_drop).collect();
-    let new_live_drops: Vec<_> = new_errors.drain_filter(is_live_drop).collect();
-
-    let only_live_drops_differ = old_live_drops != new_live_drops && old_errors == new_errors;
-
-    let old_mut_borrows = old_errors.iter().filter(is_mut_borrow);
-    let new_mut_borrows = new_errors.iter().filter(is_mut_borrow);
-
-    let at_least_one_mut_borrow = old_mut_borrows.clone().next().is_some();
-
-    if only_live_drops_differ && at_least_one_mut_borrow && old_mut_borrows.eq(new_mut_borrows) {
-        return;
-    }
-
-    span_bug!(body.span, "{}", VALIDATOR_MISMATCH_ERR);
 }
 
 const VALIDATOR_MISMATCH_ERR: &str =

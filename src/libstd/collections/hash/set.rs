@@ -93,9 +93,11 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 /// use std::collections::HashSet;
 ///
-/// let viking_names: HashSet<&'static str> =
-///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
-/// // use the values stored in the set
+/// fn main() {
+///     let viking_names: HashSet<&'static str> =
+///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
+///     // use the values stored in the set
+/// }
 /// ```
 ///
 /// [`Cell`]: ../../std/cell/struct.Cell.html

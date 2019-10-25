@@ -3,7 +3,6 @@
 
 #![feature(plugin)]
 #![plugin(lint_plugin_test)]
-//~^ WARN use of deprecated attribute `plugin`
 #![forbid(test_lint)]
 
 fn lintme() { } //~ ERROR item is named 'lintme'

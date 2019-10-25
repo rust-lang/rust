@@ -1,7 +1,7 @@
 use rustc::mir::visit::Visitor;
 use rustc::mir::{self, Local, Location};
 use rustc::ty::{self, TyCtxt};
-use rustc_index::bit_set::BitSet;
+use rustc_data_structures::bit_set::BitSet;
 use syntax_pos::DUMMY_SP;
 
 use crate::dataflow::{self, GenKillSet};
@@ -97,27 +97,6 @@ struct TransferFunction<'a, 'mir, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'tcx> TransferFunction<'_, '_, 'tcx> {
-    /// Returns `true` if this borrow would allow mutation of the `borrowed_place`.
-    fn borrow_allows_mutation(
-        &self,
-        kind: mir::BorrowKind,
-        borrowed_place: &mir::Place<'tcx>,
-    ) -> bool {
-        match kind {
-            mir::BorrowKind::Mut { .. } => true,
-
-            | mir::BorrowKind::Shared
-            | mir::BorrowKind::Shallow
-            | mir::BorrowKind::Unique
-            => !borrowed_place
-                .ty(self.body, self.tcx)
-                .ty
-                .is_freeze(self.tcx, self.param_env, DUMMY_SP),
-        }
-    }
-}
-
 impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
     fn visit_rvalue(
         &mut self,
@@ -125,7 +104,21 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx> {
         location: Location,
     ) {
         if let mir::Rvalue::Ref(_, kind, ref borrowed_place) = *rvalue {
-            if self.borrow_allows_mutation(kind, borrowed_place) {
+            let is_mut = match kind {
+                mir::BorrowKind::Mut { .. } => true,
+
+                | mir::BorrowKind::Shared
+                | mir::BorrowKind::Shallow
+                | mir::BorrowKind::Unique
+                => {
+                    !borrowed_place
+                        .ty(self.body, self.tcx)
+                        .ty
+                        .is_freeze(self.tcx, self.param_env, DUMMY_SP)
+                }
+            };
+
+            if is_mut {
                 match borrowed_place.base {
                     mir::PlaceBase::Local(borrowed_local) if !borrowed_place.is_indirect()
                         => self.trans.gen(borrowed_local),

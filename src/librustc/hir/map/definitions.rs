@@ -11,14 +11,14 @@ use crate::session::CrateDisambiguator;
 use crate::util::nodemap::NodeMap;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::{IndexVec};
+use rustc_data_structures::indexed_vec::{IndexVec};
 use rustc_data_structures::stable_hasher::StableHasher;
 use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
-use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{Symbol, sym};
+use syntax::ext::hygiene::ExpnId;
+use syntax::symbol::{Symbol, sym, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
@@ -111,7 +111,7 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,
@@ -136,9 +136,7 @@ impl DefKey {
 
         ::std::mem::discriminant(data).hash(&mut hasher);
         if let Some(name) = data.get_opt_name() {
-            // Get a stable hash by considering the symbol chars rather than
-            // the symbol index.
-            name.as_str().hash(&mut hasher);
+            name.hash(&mut hasher);
         }
 
         disambiguator.hash(&mut hasher);
@@ -164,13 +162,13 @@ impl DefKey {
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have, e.g., two impls for the same type in
 /// the same module, they do get distinct `DefId`s.
-#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefPath {
     /// The path leading from the crate root to the item.
     pub data: Vec<DisambiguatedDefPathData>,
@@ -220,7 +218,7 @@ impl DefPath {
         for component in &self.data {
             write!(s,
                    "::{}[{}]",
-                   component.data.as_symbol(),
+                   component.data.as_interned_str(),
                    component.disambiguator)
                 .unwrap();
         }
@@ -240,11 +238,11 @@ impl DefPath {
 
         for component in &self.data {
             if component.disambiguator == 0 {
-                write!(s, "::{}", component.data.as_symbol()).unwrap();
+                write!(s, "::{}", component.data.as_interned_str()).unwrap();
             } else {
                 write!(s,
                        "{}[{}]",
-                       component.data.as_symbol(),
+                       component.data.as_interned_str(),
                        component.disambiguator)
                        .unwrap();
             }
@@ -264,11 +262,11 @@ impl DefPath {
             opt_delimiter.map(|d| s.push(d));
             opt_delimiter = Some('-');
             if component.disambiguator == 0 {
-                write!(s, "{}", component.data.as_symbol()).unwrap();
+                write!(s, "{}", component.data.as_interned_str()).unwrap();
             } else {
                 write!(s,
                        "{}[{}]",
-                       component.data.as_symbol(),
+                       component.data.as_interned_str(),
                        component.disambiguator)
                        .unwrap();
             }
@@ -292,13 +290,13 @@ pub enum DefPathData {
     /// An impl.
     Impl,
     /// Something in the type namespace.
-    TypeNs(Symbol),
+    TypeNs(InternedString),
     /// Something in the value namespace.
-    ValueNs(Symbol),
+    ValueNs(InternedString),
     /// Something in the macro namespace.
-    MacroNs(Symbol),
+    MacroNs(InternedString),
     /// Something in the lifetime namespace.
-    LifetimeNs(Symbol),
+    LifetimeNs(InternedString),
     /// A closure expression.
     ClosureExpr,
 
@@ -313,7 +311,7 @@ pub enum DefPathData {
     /// Identifies a piece of crate metadata that is global to a whole crate
     /// (as opposed to just one item). `GlobalMetaData` components are only
     /// supposed to show up right below the crate root.
-    GlobalMetaData(Symbol),
+    GlobalMetaData(InternedString),
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
@@ -547,7 +545,7 @@ impl Definitions {
 }
 
 impl DefPathData {
-    pub fn get_opt_name(&self) -> Option<Symbol> {
+    pub fn get_opt_name(&self) -> Option<InternedString> {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) |
@@ -566,15 +564,15 @@ impl DefPathData {
         }
     }
 
-    pub fn as_symbol(&self) -> Symbol {
+    pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
-        match *self {
+        let s = match *self {
             TypeNs(name) |
             ValueNs(name) |
             MacroNs(name) |
             LifetimeNs(name) |
             GlobalMetaData(name) => {
-                name
+                return name
             }
             // Note that this does not show up in user print-outs.
             CrateRoot => sym::double_braced_crate,
@@ -584,11 +582,13 @@ impl DefPathData {
             Ctor => sym::double_braced_constructor,
             AnonConst => sym::double_braced_constant,
             ImplTrait => sym::double_braced_opaque,
-        }
+        };
+
+        s.as_interned_str()
     }
 
     pub fn to_string(&self) -> String {
-        self.as_symbol().to_string()
+        self.as_interned_str().to_string()
     }
 }
 
@@ -599,6 +599,7 @@ macro_rules! define_global_metadata_kind {
     (pub enum GlobalMetaDataKind {
         $($variant:ident),*
     }) => (
+        #[derive(Clone, Copy, Debug, Hash, RustcEncodable, RustcDecodable)]
         pub enum GlobalMetaDataKind {
             $($variant),*
         }
@@ -610,7 +611,7 @@ macro_rules! define_global_metadata_kind {
                     definitions.create_def_with_parent(
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
-                        DefPathData::GlobalMetaData(instance.name()),
+                        DefPathData::GlobalMetaData(instance.name().as_interned_str()),
                         ExpnId::root(),
                         DUMMY_SP
                     );
@@ -624,7 +625,7 @@ macro_rules! define_global_metadata_kind {
                 let def_key = DefKey {
                     parent: Some(CRATE_DEF_INDEX),
                     disambiguated_data: DisambiguatedDefPathData {
-                        data: DefPathData::GlobalMetaData(self.name()),
+                        data: DefPathData::GlobalMetaData(self.name().as_interned_str()),
                         disambiguator: 0,
                     }
                 };

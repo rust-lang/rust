@@ -1,6 +1,7 @@
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
+                                           StableHasherResult};
 use std::cmp;
 use std::mem;
 use crate::ty::{self, TyCtxt};
@@ -93,7 +94,9 @@ pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ExportedSymbol<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             ExportedSymbol::NonGeneric(def_id) => {

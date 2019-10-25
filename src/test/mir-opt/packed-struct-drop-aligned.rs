@@ -1,4 +1,4 @@
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 fn main() {
     let mut x = Packed(Aligned(Droppy(0)));

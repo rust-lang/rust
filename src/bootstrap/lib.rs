@@ -232,6 +232,7 @@ pub struct Build {
     miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
     in_tree_llvm_info: channel::GitInfo,
+    emscripten_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     doc_tests: DocTests,
@@ -350,6 +351,7 @@ impl Build {
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
+        let emscripten_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-emscripten"));
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -374,6 +376,7 @@ impl Build {
             miri_info,
             rustfmt_info,
             in_tree_llvm_info,
+            emscripten_llvm_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
@@ -548,6 +551,10 @@ impl Build {
     /// will likely be empty.
     fn llvm_out(&self, target: Interned<String>) -> PathBuf {
         self.out.join(&*target).join("llvm")
+    }
+
+    fn emscripten_llvm_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("llvm-emscripten")
     }
 
     fn lld_out(&self, target: Interned<String>) -> PathBuf {
@@ -1119,7 +1126,7 @@ impl Build {
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp), &stamp);
+        let contents = t!(fs::read(stamp));
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {
@@ -1137,7 +1144,6 @@ impl Build {
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run { return; }
         self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
-        if src == dst { return; }
         let _ = fs::remove_file(&dst);
         let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {

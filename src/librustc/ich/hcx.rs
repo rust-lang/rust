@@ -13,14 +13,14 @@ use std::cell::RefCell;
 
 use syntax::ast;
 use syntax::source_map::SourceMap;
-use syntax_expand::hygiene::SyntaxContext;
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene;
 
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableHasher, ToStableHashKey,
+    HashStable, StableHasher, StableHasherResult, ToStableHashKey,
 };
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use smallvec::SmallVec;
@@ -219,7 +219,9 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
 impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         if hcx.hash_bodies() {
             hcx.body_resolver.body(*self).hash_stable(hcx, hasher);
         }
@@ -228,7 +230,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::BodyId {
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::HirId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
@@ -259,7 +263,9 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
@@ -292,7 +298,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
     /// span starts and ends in the same file, which is almost always the case.
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_EXPANSION: u8 = 0;
@@ -371,18 +379,24 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.open.hash_stable(hcx, hasher);
         self.close.hash_stable(hcx, hasher);
     }
 }
 
-pub fn hash_stable_trait_impls<'a>(
+pub fn hash_stable_trait_impls<'a, W>(
     hcx: &mut StableHashingContext<'a>,
-    hasher: &mut StableHasher,
+    hasher: &mut StableHasher<W>,
     blanket_impls: &[DefId],
     non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
-) {
+) where
+    W: StableHasherResult,
+{
     {
         let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
             .iter()

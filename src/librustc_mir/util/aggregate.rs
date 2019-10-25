@@ -1,7 +1,7 @@
 use rustc::mir::*;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::Ty;
 use rustc::ty::layout::VariantIdx;
-use rustc_index::vec::Idx;
+use rustc_data_structures::indexed_vec::Idx;
 
 use std::iter::TrustedLen;
 
@@ -17,7 +17,6 @@ pub fn expand_aggregate<'tcx>(
     operands: impl Iterator<Item=(Operand<'tcx>, Ty<'tcx>)> + TrustedLen,
     kind: AggregateKind<'tcx>,
     source_info: SourceInfo,
-    tcx: TyCtxt<'tcx>,
 ) -> impl Iterator<Item=Statement<'tcx>> + TrustedLen {
     let mut set_discriminant = None;
     let active_field_index = match kind {
@@ -30,7 +29,7 @@ pub fn expand_aggregate<'tcx>(
                     },
                     source_info,
                 });
-                lhs = tcx.mk_place_downcast(lhs, adt_def, variant_index);
+                lhs = lhs.downcast(adt_def, variant_index);
             }
             active_field_index
         }
@@ -59,7 +58,7 @@ pub fn expand_aggregate<'tcx>(
             // FIXME(eddyb) `offset` should be u64.
             let offset = i as u32;
             assert_eq!(offset as usize, i);
-            tcx.mk_place_elem(lhs.clone(), ProjectionElem::ConstantIndex {
+            lhs.clone().elem(ProjectionElem::ConstantIndex {
                 offset,
                 // FIXME(eddyb) `min_length` doesn't appear to be used.
                 min_length: offset + 1,
@@ -67,7 +66,7 @@ pub fn expand_aggregate<'tcx>(
             })
         } else {
             let field = Field::new(active_field_index.unwrap_or(i));
-            tcx.mk_place_field(lhs.clone(), field, ty)
+            lhs.clone().field(field, ty)
         };
         Statement {
             source_info,

@@ -116,9 +116,7 @@ fn push_pop() {
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["A.1", "A.3", "A.3.i"]);
+    assert_eq!(ok.unwrap(), vec!["A.3", "A.1", "A.3.i"]);
     assert_eq!(err,
                vec![Error {
                         error: "A is for apple",
@@ -134,9 +132,7 @@ fn push_pop() {
                 _ => panic!("unexpected obligation {:?}", obligation),
             }
         }, |_| {}), DoCompleted::Yes);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["D.2", "D.2.i"]);
+    assert_eq!(ok.unwrap(), vec!["D.2.i", "D.2"]);
     assert_eq!(err,
                vec![Error {
                         error: "D is for dumb",
@@ -176,9 +172,7 @@ fn success_in_grandchildren() {
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["A.1", "A.3"]);
+    assert_eq!(ok.unwrap(), vec!["A.3", "A.1"]);
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -199,9 +193,7 @@ fn success_in_grandchildren() {
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["A", "A.2", "A.2.i", "A.2.i.a"]);
+    assert_eq!(ok.unwrap(), vec!["A.2.i.a", "A.2.i", "A.2", "A"]);
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -269,9 +261,7 @@ fn diamond() {
             }
         }, |_|{}), DoCompleted::Yes);
     assert_eq!(d_count, 1);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["A", "A.1", "A.2", "D"]);
+    assert_eq!(ok.unwrap(), vec!["D", "A.2", "A.1", "A"]);
     assert_eq!(err.len(), 0);
 
     let errors = forest.to_errors(());
@@ -333,9 +323,7 @@ fn done_dependency() {
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["A: Sized", "B: Sized", "C: Sized"]);
+    assert_eq!(ok.unwrap(), vec!["C: Sized", "B: Sized", "A: Sized"]);
     assert_eq!(err.len(), 0);
 
     forest.register_obligation("(A,B,C): Sized");
@@ -373,9 +361,7 @@ fn orphan() {
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
-    let mut ok = ok.unwrap();
-    ok.sort();
-    assert_eq!(ok, vec!["C1", "C2"]);
+    assert_eq!(ok.unwrap(), vec!["C2", "C1"]);
     assert_eq!(err.len(), 0);
 
     let Outcome { completed: ok, errors: err, .. } =

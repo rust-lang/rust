@@ -31,10 +31,10 @@ impl Thread {
         let nanos = dur.as_nanos();
         assert!(nanos <= u64::max_value() as u128);
 
-        const USERDATA: wasi::Userdata = 0x0123_45678;
+        const CLOCK_ID: wasi::Userdata = 0x0123_45678;
 
         let clock = wasi::raw::__wasi_subscription_u_clock_t {
-            identifier: 0,
+            identifier: CLOCK_ID,
             clock_id: wasi::CLOCK_MONOTONIC,
             timeout: nanos as u64,
             precision: 0,
@@ -42,7 +42,7 @@ impl Thread {
         };
 
         let in_ = [wasi::Subscription {
-            userdata: USERDATA,
+            userdata: 0,
             type_: wasi::EVENTTYPE_CLOCK,
             u: wasi::raw::__wasi_subscription_u { clock: clock },
         }];
@@ -53,7 +53,7 @@ impl Thread {
         };
         match (res, event) {
             (Ok(1), wasi::Event {
-                userdata: USERDATA,
+                userdata: CLOCK_ID,
                 error: 0,
                 type_: wasi::EVENTTYPE_CLOCK,
                 ..

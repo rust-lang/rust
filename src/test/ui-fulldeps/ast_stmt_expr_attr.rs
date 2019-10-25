@@ -10,15 +10,14 @@ extern crate syntax;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
-use syntax::sess::ParseSess;
 use syntax::source_map::{FilePathMapping, FileName};
 use syntax::parse;
-use syntax::parse::PResult;
+use syntax::parse::{ParseSess, PResult};
 use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::parse::parser::attr::*;
+use syntax::parse::attr::*;
 use syntax::print::pprust;
 use std::fmt;
 

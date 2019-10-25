@@ -4,7 +4,6 @@
 
 #![feature(plugin)]
 #![plugin(attr_plugin_test)]
-//~^ WARN use of deprecated attribute `plugin`
 
 pub use mac as reexport; //~ ERROR `mac` is private, and cannot be re-exported
 

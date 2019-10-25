@@ -1,5 +1,5 @@
 use crate::{build, shim};
-use rustc_index::vec::IndexVec;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Body, MirPhase, Promoted};
 use rustc::ty::{TyCtxt, InstanceDef};
@@ -228,7 +228,7 @@ fn run_optimization_passes<'tcx>(
 ) {
     run_passes(tcx, body, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
         // Remove all things only needed by analysis
-        &no_landing_pads::NoLandingPads::new(tcx),
+        &no_landing_pads::NoLandingPads,
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
@@ -238,7 +238,7 @@ fn run_optimization_passes<'tcx>(
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
-        &no_landing_pads::NoLandingPads::new(tcx),
+        &no_landing_pads::NoLandingPads,
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
@@ -257,7 +257,7 @@ fn run_optimization_passes<'tcx>(
 
 
         // Optimizations begin.
-        &uniform_array_move_out::RestoreSubsliceArrayMoveOut::new(tcx),
+        &uniform_array_move_out::RestoreSubsliceArrayMoveOut,
         &inline::Inline,
 
         // Lowering generator control-flow and variables

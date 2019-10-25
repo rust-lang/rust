@@ -108,10 +108,10 @@ pub struct Error;
 /// [`io::Write`]: ../../std/io/trait.Write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
-    /// Writes a string slice into this writer, returning whether the write
+    /// Writes a slice of bytes into this writer, returning whether the write
     /// succeeded.
     ///
-    /// This method can only succeed if the entire string slice was successfully
+    /// This method can only succeed if the entire byte slice was successfully
     /// written, and this method will not return until all data has been
     /// written or an error occurs.
     ///
@@ -1532,10 +1532,12 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// assert_eq!(&format!("{:<}", Foo), "left");
-    /// assert_eq!(&format!("{:>}", Foo), "right");
-    /// assert_eq!(&format!("{:^}", Foo), "center");
-    /// assert_eq!(&format!("{}", Foo), "into the void");
+    /// fn main() {
+    ///     assert_eq!(&format!("{:<}", Foo), "left");
+    ///     assert_eq!(&format!("{:>}", Foo), "right");
+    ///     assert_eq!(&format!("{:^}", Foo), "center");
+    ///     assert_eq!(&format!("{}", Foo), "into the void");
+    /// }
     /// ```
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
@@ -2025,7 +2027,7 @@ impl<T: ?Sized> Pointer for *const T {
         if f.alternate() {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
-            if f.width.is_none() {
+            if let None = f.width {
                 f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
             }
         }

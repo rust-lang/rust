@@ -1,10 +1,9 @@
 //! Attributes injected into the crate root from command line using `-Z crate-attr`.
 
-use syntax::ast::{self, AttrItem, AttrStyle};
+use syntax::ast::{self, AttrStyle};
 use syntax::attr::mk_attr;
-use syntax::parse::{self, token};
-use syntax::sess::ParseSess;
-use syntax_expand::panictry;
+use syntax::panictry;
+use syntax::parse::{self, token, ParseSess};
 use syntax_pos::FileName;
 
 pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {
@@ -16,7 +15,7 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
         );
 
         let start_span = parser.token.span;
-        let AttrItem { path, tokens } = panictry!(parser.parse_attr_item());
+        let (path, tokens) = panictry!(parser.parse_meta_item_unrestricted());
         let end_span = parser.token.span;
         if parser.token != token::Eof {
             parse_sess.span_diagnostic

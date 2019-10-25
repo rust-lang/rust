@@ -209,11 +209,6 @@ impl<'a> DiagnosticBuilder<'a> {
                                               found_extra: &dyn fmt::Display,
                                               ) -> &mut Self);
 
-    forward!(pub fn note_unsuccessfull_coercion(&mut self,
-                                                expected: DiagnosticStyledString,
-                                                found: DiagnosticStyledString,
-                                                ) -> &mut Self);
-
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_note<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,

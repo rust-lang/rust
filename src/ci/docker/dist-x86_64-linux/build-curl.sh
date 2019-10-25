@@ -3,11 +3,9 @@
 set -ex
 source shared.sh
 
-VERSION=7.66.0
+VERSION=7.51.0
 
-curl https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/curl-$VERSION.tar.xz \
-  | xz --decompress \
-  | tar xf -
+curl http://cool.haxx.se/download/curl-$VERSION.tar.bz2 | tar xjf -
 
 mkdir curl-build
 cd curl-build

@@ -6,22 +6,17 @@ use std::u32;
 use std::convert::TryInto;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn field_match_pairs<'pat>(
-        &mut self,
-        place: Place<'tcx>,
-        subpatterns: &'pat [FieldPat<'tcx>],
-    ) -> Vec<MatchPair<'pat, 'tcx>> {
-        subpatterns
-            .iter()
-            .map(|fieldpat| {
-                let place = self.hir.tcx().mk_place_field(
-                    place.clone(),
-                    fieldpat.field,
-                    fieldpat.pattern.ty,
-                );
-                MatchPair::new(place, &fieldpat.pattern)
-            })
-            .collect()
+    pub fn field_match_pairs<'pat>(&mut self,
+                                   place: Place<'tcx>,
+                                   subpatterns: &'pat [FieldPat<'tcx>])
+                                   -> Vec<MatchPair<'pat, 'tcx>> {
+        subpatterns.iter()
+                   .map(|fieldpat| {
+                       let place = place.clone().field(fieldpat.field,
+                                                       fieldpat.pattern.ty);
+                       MatchPair::new(place, &fieldpat.pattern)
+                   })
+                   .collect()
     }
 
     pub fn prefix_slice_suffix<'pat>(&mut self,
@@ -32,7 +27,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                      suffix: &'pat [Pat<'tcx>]) {
         let min_length = prefix.len() + suffix.len();
         let min_length = min_length.try_into().unwrap();
-        let tcx = self.hir.tcx();
 
         match_pairs.extend(
             prefix.iter()
@@ -43,13 +37,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                           min_length,
                           from_end: false,
                       };
-                      let place = tcx.mk_place_elem(place.clone(), elem);
+                      let place = place.clone().elem(elem);
                       MatchPair::new(place, subpattern)
                   })
         );
 
         if let Some(subslice_pat) = opt_slice {
-            let subslice = tcx.mk_place_elem(place.clone(),ProjectionElem::Subslice {
+            let subslice = place.clone().elem(ProjectionElem::Subslice {
                 from: prefix.len() as u32,
                 to: suffix.len() as u32
             });
@@ -66,7 +60,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                           min_length,
                           from_end: true,
                       };
-                      let place = tcx.mk_place_elem(place.clone(), elem);
+                      let place = place.clone().elem(elem);
                       MatchPair::new(place, subpattern)
                   })
         );

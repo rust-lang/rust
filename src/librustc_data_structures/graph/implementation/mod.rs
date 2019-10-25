@@ -20,7 +20,7 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use rustc_index::bit_set::BitSet;
+use crate::bit_set::BitSet;
 use crate::snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 use std::fmt::Debug;
 use std::usize;
@@ -60,10 +60,10 @@ impl<N> SnapshotVecDelegate for Edge<N> {
     fn reverse(_: &mut Vec<Edge<N>>, _: ()) {}
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct NodeIndex(pub usize);
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct EdgeIndex(pub usize);
 
 pub const INVALID_EDGE_INDEX: EdgeIndex = EdgeIndex(usize::MAX);
@@ -303,11 +303,11 @@ pub struct AdjacentEdges<'g, N, E> {
 
 impl<'g, N: Debug, E: Debug> AdjacentEdges<'g, N, E> {
     fn targets(self) -> impl Iterator<Item = NodeIndex> + 'g {
-        self.map(|(_, edge)| edge.target)
+        self.into_iter().map(|(_, edge)| edge.target)
     }
 
     fn sources(self) -> impl Iterator<Item = NodeIndex> + 'g {
-        self.map(|(_, edge)| edge.source)
+        self.into_iter().map(|(_, edge)| edge.source)
     }
 }
 

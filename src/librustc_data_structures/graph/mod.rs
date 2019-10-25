@@ -1,4 +1,4 @@
-use rustc_index::vec::Idx;
+use super::indexed_vec::Idx;
 
 pub mod dominators;
 pub mod implementation;

@@ -22,6 +22,5 @@ apt-get update && apt-get install -y --no-install-recommends \
   python2.7 \
   sudo \
   texinfo \
-  unzip \
   wget \
   xz-utils

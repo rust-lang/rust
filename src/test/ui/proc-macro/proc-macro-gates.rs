@@ -50,6 +50,7 @@ fn attrs() {
 }
 
 fn main() {
+    let _x: identity!(u32) = 3; //~ ERROR: procedural macros cannot be expanded to types
     if let identity!(Some(_x)) = Some(3) {}
     //~^ ERROR: procedural macros cannot be expanded to patterns
 

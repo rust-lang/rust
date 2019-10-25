@@ -347,7 +347,13 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
         self.outlives_environment
             .save_implied_bounds(body_id.hir_id);
-        self.link_fn_params(&body.params);
+        self.link_fn_params(
+            region::Scope {
+                id: body.value.hir_id.local_id,
+                data: region::ScopeData::Node,
+            },
+            &body.params,
+        );
         self.visit_body(body);
         self.visit_region_obligations(body_id.hir_id);
 
@@ -424,8 +430,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
             let typ = self.resolve_node_type(hir_id);
             let body_id = self.body_id;
-            let _ = dropck::check_drop_obligations(
-                self, typ, span, body_id,
+            let _ = dropck::check_safety_of_destructor_if_necessary(
+                self, typ, span, body_id, var_scope,
             );
         })
     }
@@ -922,15 +928,29 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     }
 
     fn check_safety_of_rvalue_destructor_if_necessary(&mut self, cmt: &mc::cmt_<'tcx>, span: Span) {
-        if let Categorization::Rvalue = cmt.cat {
-            let typ = self.resolve_type(cmt.ty);
-            let body_id = self.body_id;
-            let _ = dropck::check_drop_obligations(
-                self,
-                typ,
-                span,
-                body_id,
-            );
+        if let Categorization::Rvalue(region) = cmt.cat {
+            match *region {
+                ty::ReScope(rvalue_scope) => {
+                    let typ = self.resolve_type(cmt.ty);
+                    let body_id = self.body_id;
+                    let _ = dropck::check_safety_of_destructor_if_necessary(
+                        self,
+                        typ,
+                        span,
+                        body_id,
+                        rvalue_scope,
+                    );
+                }
+                ty::ReStatic => {}
+                _ => {
+                    span_bug!(
+                        span,
+                        "unexpected rvalue region in rvalue \
+                         destructor safety checking: `{:?}`",
+                        region
+                    );
+                }
+            }
         }
     }
 
@@ -1054,11 +1074,13 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Computes the guarantors for any ref bindings in a match and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of its guarantor (if any).
-    fn link_fn_params(&self, params: &[hir::Param]) {
+    fn link_fn_params(&self, body_scope: region::Scope, params: &[hir::Param]) {
+        debug!("regionck::link_fn_params(body_scope={:?})", body_scope);
         for param in params {
             let param_ty = self.node_ty(param.hir_id);
+            let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
             let param_cmt = self.with_mc(|mc| {
-                Rc::new(mc.cat_rvalue(param.hir_id, param.pat.span, param_ty))
+                Rc::new(mc.cat_rvalue(param.hir_id, param.pat.span, re_scope, param_ty))
             });
             debug!("param_ty={:?} param_cmt={:?} param={:?}", param_ty, param_cmt, param);
             self.link_pattern(param_cmt, &param.pat);
@@ -1200,8 +1222,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 | Categorization::StaticItem
                 | Categorization::Upvar(..)
                 | Categorization::Local(..)
-                | Categorization::ThreadLocal
-                | Categorization::Rvalue => {
+                | Categorization::ThreadLocal(..)
+                | Categorization::Rvalue(..) => {
                     // These are all "base cases" with independent lifetimes
                     // that are not subject to inference
                     return;

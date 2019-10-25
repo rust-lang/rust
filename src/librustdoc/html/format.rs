@@ -657,6 +657,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
             primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
         }
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
+        clean::CVarArgs => primitive_link(f, PrimitiveType::CVarArgs, "..."),
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 clean::Immutable => "const",
@@ -902,15 +903,12 @@ impl clean::BareFunctionDecl {
 impl clean::FnDecl {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
-        let ellipsis = if self.c_variadic { ", ..." } else { "" };
             if f.alternate() {
                 write!(f,
-                    "({args:#}{ellipsis}){arrow:#}",
-                    args = self.inputs.print(), ellipsis = ellipsis, arrow = self.output.print())
+                    "({args:#}){arrow:#}", args = self.inputs.print(), arrow = self.output.print())
             } else {
                 write!(f,
-                    "({args}{ellipsis}){arrow}",
-                    args = self.inputs.print(), ellipsis = ellipsis, arrow = self.output.print())
+                    "({args}){arrow}", args = self.inputs.print(), arrow = self.output.print())
             }
         })
     }
@@ -977,12 +975,7 @@ impl Function<'_> {
                 }
             }
 
-            let mut args_plain = format!("({})", args_plain);
-
-            if decl.c_variadic {
-                args.push_str(",<br> ...");
-                args_plain.push_str(", ...");
-            }
+            let args_plain = format!("({})", args_plain);
 
             let output = if let hir::IsAsync::Async = asyncness {
                 Cow::Owned(decl.sugared_async_return_type())

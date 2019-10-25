@@ -18,14 +18,14 @@ use rustc::ty::print::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
 use syntax::symbol::kw;
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::{Span, symbol::Symbol};
+use syntax_pos::{Span, symbol::InternedString};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
 #[derive(Debug, Clone)]
 crate struct RegionName {
     /// The name of the region (interned).
-    crate name: Symbol,
+    crate name: InternedString,
     /// Where the region comes from.
     crate source: RegionNameSource,
 }
@@ -109,7 +109,7 @@ impl RegionName {
     }
 
     #[allow(dead_code)]
-    crate fn name(&self) -> Symbol {
+    crate fn name(&self) -> InternedString {
         self.name
     }
 
@@ -273,7 +273,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             ty::ReStatic => Some(RegionName {
-                name: kw::StaticLifetime,
+                name: kw::StaticLifetime.as_interned_str(),
                 source: RegionNameSource::Static
             }),
 
@@ -300,7 +300,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         };
                         let region_name = self.synthesize_region_name(renctx);
 
-                        let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
+                        let closure_kind_ty = substs.closure_kind_ty(def_id, tcx);
                         let note = match closure_kind_ty.to_opt_closure_kind() {
                             Some(ty::ClosureKind::Fn) => {
                                 "closure implements `Fn`, so references to captured variables \
@@ -360,7 +360,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         error_region: &RegionKind,
-        name: Symbol,
+        name: InternedString,
     ) -> Span {
         let scope = error_region.free_region_binding_scope(tcx);
         let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
@@ -399,6 +399,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
         if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
             infcx,
+            body,
             mir_def_id,
             fr,
             arg_ty,
@@ -414,6 +415,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
+        body: &Body<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -422,14 +424,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionName> {
         let mir_hir_id = infcx.tcx.hir().as_local_hir_id(mir_def_id)?;
         let fn_decl = infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
-        let argument_hir_ty: &hir::Ty = fn_decl.inputs.get(argument_index)?;
+        let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
             // must highlight the variable.
-            // NOTE(eddyb) this is handled in/by the sole caller
-            // (`give_name_if_anonymous_region_appears_in_arguments`).
-            hir::TyKind::Infer => None,
+            hir::TyKind::Infer => self.give_name_if_we_cannot_match_hir_ty(
+                infcx,
+                body,
+                needle_fr,
+                argument_ty,
+                renctx,
+            ),
 
             _ => self.give_name_if_we_can_match_hir_ty(
                 infcx.tcx,
@@ -837,10 +843,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Creates a synthetic region named `'1`, incrementing the counter.
-    fn synthesize_region_name(&self, renctx: &mut RegionErrorNamingCtx) -> Symbol {
+    fn synthesize_region_name(&self, renctx: &mut RegionErrorNamingCtx) -> InternedString {
         let c = renctx.counter;
         renctx.counter += 1;
 
-        Symbol::intern(&format!("'{:?}", c))
+        InternedString::intern(&format!("'{:?}", c))
     }
 }

@@ -328,8 +328,6 @@ are:
   `Config` struct.
 * Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
 
-If you have any questions feel free to reach out on `#infra` channel in the
-[Rust Discord server][rust-discord] or ask on internals.rust-lang.org. When
-you encounter bugs, please file issues on the rust-lang/rust issue tracker.
-
-[rust-discord]: https://discord.gg/rust-lang
+If you have any questions feel free to reach out on `#rust-infra` on IRC or ask on
+internals.rust-lang.org. When you encounter bugs, please file issues on the
+rust-lang/rust issue tracker.

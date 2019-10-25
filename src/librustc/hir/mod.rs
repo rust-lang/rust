@@ -19,7 +19,7 @@ use crate::ty::query::Providers;
 use crate::util::nodemap::{NodeMap, FxHashSet};
 
 use errors::FatalError;
-use syntax_pos::{Span, DUMMY_SP, MultiSpan};
+use syntax_pos::{Span, DUMMY_SP, symbol::InternedString, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
@@ -122,9 +122,9 @@ impl fmt::Display for HirId {
 
 // Hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module.
 mod item_local_id_inner {
-    use rustc_index::vec::Idx;
+    use rustc_data_structures::indexed_vec::Idx;
     use rustc_macros::HashStable;
-    rustc_index::newtype_index! {
+    newtype_index! {
         /// An `ItemLocalId` uniquely identifies something within a given "item-like";
         /// that is, within a `hir::Item`, `hir::TraitItem`, or `hir::ImplItem`. There is no
         /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
@@ -628,9 +628,9 @@ impl Generics {
         own_counts
     }
 
-    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam> {
+    pub fn get_named(&self, name: InternedString) -> Option<&GenericParam> {
         for param in &self.params {
-            if name == param.name.ident().name {
+            if name == param.name.ident().as_interned_str() {
                 return Some(param);
             }
         }
@@ -668,12 +668,6 @@ impl WhereClause {
         } else {
             Some(self.span)
         }
-    }
-
-    /// The `WhereClause` under normal circumstances points at either the predicates or the empty
-    /// space where the `where` clause should be. Only of use for diagnostic suggestions.
-    pub fn span_for_predicates_or_empty_place(&self) -> Span {
-        self.span
     }
 }
 
@@ -867,7 +861,7 @@ pub struct Block {
     pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
     /// break out of this block early.
-    /// Used by `'label: {}` blocks and by `try {}` blocks.
+    /// Used by `'label: {}` blocks and by `catch` statements.
     pub targeted_by_break: bool,
 }
 
@@ -995,15 +989,6 @@ pub enum RangeEnd {
     Excluded,
 }
 
-impl fmt::Display for RangeEnd {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            RangeEnd::Included => "..=",
-            RangeEnd::Excluded => "..",
-        })
-    }
-}
-
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum PatKind {
     /// Represents a wildcard pattern (i.e., `_`).
@@ -1068,16 +1053,9 @@ impl Mutability {
             MutImmutable => MutImmutable,
         }
     }
-
-    pub fn invert(self) -> Self {
-        match self {
-            MutMutable => MutImmutable,
-            MutImmutable => MutMutable,
-        }
-    }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Hash, HashStable)]
 pub enum BinOpKind {
     /// The `+` operator (addition).
     Add,
@@ -1211,7 +1189,7 @@ impl Into<ast::BinOpKind> for BinOpKind {
 
 pub type BinOp = Spanned<BinOpKind>;
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Hash, HashStable)]
 pub enum UnOp {
     /// The `*` operator (deferencing).
     UnDeref,
@@ -1381,54 +1359,24 @@ impl Body {
             hir_id: self.value.hir_id,
         }
     }
-
-    pub fn generator_kind(&self) -> Option<GeneratorKind> {
-        self.generator_kind
-    }
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable, Debug, Copy)]
+// Not `IsAsync` because we want to eventually add support for `AsyncGen`
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
+         RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum GeneratorKind {
-    /// An explicit `async` block or the body of an async function.
-    Async(AsyncGeneratorKind),
-
+    /// An `async` block or function.
+    Async,
     /// A generator literal created via a `yield` inside a closure.
     Gen,
 }
 
 impl fmt::Display for GeneratorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GeneratorKind::Async(k) => fmt::Display::fmt(k, f),
-            GeneratorKind::Gen => f.write_str("generator"),
-        }
-    }
-}
-
-/// In the case of a generator created as part of an async construct,
-/// which kind of async construct caused it to be created?
-///
-/// This helps error messages but is also used to drive coercions in
-/// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable, Debug, Copy)]
-pub enum AsyncGeneratorKind {
-    /// An explicit `async` block written by the user.
-    Block,
-
-    /// An explicit `async` block written by the user.
-    Closure,
-
-    /// The `async` block generated as the body of an async function.
-    Fn,
-}
-
-impl fmt::Display for AsyncGeneratorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            AsyncGeneratorKind::Block => "`async` block",
-            AsyncGeneratorKind::Closure => "`async` closure body",
-            AsyncGeneratorKind::Fn => "`async fn` body",
+            GeneratorKind::Async => "`async` object",
+            GeneratorKind::Gen => "generator",
         })
     }
 }
@@ -1571,19 +1519,6 @@ impl Expr {
                 false
             }
         }
-    }
-
-    /// If `Self.kind` is `ExprKind::DropTemps(expr)`, drill down until we get a non-`DropTemps`
-    /// `Expr`. This is used in suggestions to ignore this `ExprKind` as it is semantically
-    /// silent, only signaling the ownership system. By doing this, suggestions that check the
-    /// `ExprKind` of any given `Expr` for presentation don't have to care about `DropTemps`
-    /// beyond remembering to call this function before doing analysis on it.
-    pub fn peel_drop_temps(&self) -> &Self {
-        let mut expr = self;
-        while let ExprKind::DropTemps(inner) = &expr.kind {
-            expr = inner;
-        }
-        expr
     }
 }
 
@@ -1823,7 +1758,6 @@ pub struct Destination {
 pub enum GeneratorMovability {
     /// May contain self-references, `!Unpin`.
     Static,
-
     /// Must not contain self-references, `Unpin`.
     Movable,
 }
@@ -2082,6 +2016,9 @@ pub enum TyKind {
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err,
+    /// Placeholder for C-variadic arguments. We "spoof" the `VaListImpl` created
+    /// from the variadic arguments. This type is only valid up to typeck.
+    CVarArgs(Lifetime),
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2706,11 +2643,6 @@ pub struct CodegenFnAttrs {
     /// probably isn't set when this is set, this is for foreign items while
     /// `#[export_name]` is for Rust-defined functions.
     pub link_name: Option<Symbol>,
-    /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
-    /// imported function has in the dynamic library. Note that this must not
-    /// be set when `link_name` is set. This is for foreign items with the
-    /// "raw-dylib" kind.
-    pub link_ordinal: Option<usize>,
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
     pub target_features: Vec<Symbol>,
@@ -2758,9 +2690,7 @@ bitflags! {
         const USED                      = 1 << 9;
         /// #[ffi_returns_twice], indicates that an extern function can return
         /// multiple times
-        const FFI_RETURNS_TWICE         = 1 << 10;
-        /// #[track_caller]: allow access to the caller location
-        const TRACK_CALLER              = 1 << 11;
+        const FFI_RETURNS_TWICE = 1 << 10;
     }
 }
 
@@ -2772,7 +2702,6 @@ impl CodegenFnAttrs {
             optimize: OptimizeAttr::None,
             export_name: None,
             link_name: None,
-            link_ordinal: None,
             target_features: vec![],
             linkage: None,
             link_section: None,

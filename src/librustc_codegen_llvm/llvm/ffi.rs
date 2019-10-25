@@ -50,7 +50,7 @@ pub enum CallConv {
 }
 
 /// LLVMRustLinkage
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
@@ -67,6 +67,7 @@ pub enum Linkage {
 }
 
 // LLVMRustVisibility
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[repr(C)]
 pub enum Visibility {
     Default = 0,
@@ -509,7 +510,6 @@ extern { pub type Module; }
 extern { pub type Context; }
 extern { pub type Type; }
 extern { pub type Value; }
-extern { pub type ConstantInt; }
 extern { pub type Metadata; }
 extern { pub type BasicBlock; }
 #[repr(C)]
@@ -719,8 +719,8 @@ extern "C" {
     pub fn LLVMConstInt(IntTy: &Type, N: c_ulonglong, SignExtend: Bool) -> &Value;
     pub fn LLVMConstIntOfArbitraryPrecision(IntTy: &Type, Wn: c_uint, Ws: *const u64) -> &Value;
     pub fn LLVMConstReal(RealTy: &Type, N: f64) -> &Value;
-    pub fn LLVMConstIntGetZExtValue(ConstantVal: &ConstantInt) -> c_ulonglong;
-    pub fn LLVMRustConstInt128Get(ConstantVal: &ConstantInt, SExt: bool,
+    pub fn LLVMConstIntGetZExtValue(ConstantVal: &Value) -> c_ulonglong;
+    pub fn LLVMRustConstInt128Get(ConstantVal: &Value, SExt: bool,
                                   high: &mut u64, low: &mut u64) -> bool;
 
 
@@ -1666,7 +1666,7 @@ extern "C" {
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
-    pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
+    pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;

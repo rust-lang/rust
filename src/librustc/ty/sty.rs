@@ -8,7 +8,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ConstValue;
 use crate::middle::region;
 use polonius_engine::Atom;
-use rustc_index::vec::Idx;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, GenericArg, GenericArgKind};
 use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::symbol::{kw, Symbol};
+use syntax::symbol::{kw, InternedString};
 
 use self::InferTy::*;
 use self::TyKind::*;
@@ -55,7 +55,7 @@ pub enum BoundRegion {
     ///
     /// The `DefId` is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, Symbol),
+    BrNamed(DefId, InternedString),
 
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
@@ -158,11 +158,11 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    Closure(DefId, SubstsRef<'tcx>),
+    Closure(DefId, ClosureSubsts<'tcx>),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -304,7 +304,8 @@ static_assert_size!(TyKind<'_>, 24);
 /// type parameters is similar, but the role of CK and CS are
 /// different. CK represents the "yield type" and CS represents the
 /// "return type" of the generator.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
@@ -355,7 +356,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Returns the closure kind for this closure; may return a type
     /// variable during inference. To get the closure kind during
     /// inference, use `infcx.closure_kind(def_id, substs)`.
-    pub fn kind_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+    pub fn closure_kind_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
     }
 
@@ -363,7 +364,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// closure; may contain type variables during inference. To get
     /// the closure signature during inference, use
     /// `infcx.fn_sig(def_id)`.
-    pub fn sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+    pub fn closure_sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
         self.split(def_id, tcx).closure_sig_ty
     }
 
@@ -372,7 +373,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// there are no type variables.
     ///
     /// If you have an inference context, use `infcx.closure_kind()`.
-    pub fn kind(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::ClosureKind {
+    pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::ClosureKind {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
 
@@ -381,8 +382,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// there are no type variables.
     ///
     /// If you have an inference context, use `infcx.closure_sig()`.
-    pub fn sig(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.sig_ty(def_id, tcx);
+    pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
+        let ty = self.closure_sig_ty(def_id, tcx);
         match ty.kind {
             ty::FnPtr(sig) => sig,
             _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.kind),
@@ -391,7 +392,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -509,7 +511,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// variant indices.
     #[inline]
     pub fn discriminants(
-        self,
+        &'tcx self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
@@ -521,7 +523,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
     #[inline]
-    pub fn variant_name(self, v: VariantIdx) -> Cow<'static, str> {
+    pub fn variant_name(&self, v: VariantIdx) -> Cow<'static, str> {
         match v.as_usize() {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
             Self::RETURNED => Cow::from(Self::RETURNED_NAME),
@@ -566,8 +568,8 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum UpvarSubsts<'tcx> {
-    Closure(SubstsRef<'tcx>),
-    Generator(SubstsRef<'tcx>),
+    Closure(ClosureSubsts<'tcx>),
+    Generator(GeneratorSubsts<'tcx>),
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
@@ -575,11 +577,11 @@ impl<'tcx> UpvarSubsts<'tcx> {
     pub fn upvar_tys(
         self,
         def_id: DefId,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
     ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
-            UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
-            UpvarSubsts::Generator(substs) => substs.as_generator().split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Closure(substs) => substs.split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
         };
         upvar_kinds.iter().map(|t| {
             if let GenericArgKind::Type(ty) = t.unpack() {
@@ -1033,7 +1035,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenSig<'tcx> {
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
@@ -1121,16 +1123,16 @@ pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
          Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ParamTy {
     pub index: u32,
-    pub name: Symbol,
+    pub name: InternedString,
 }
 
 impl<'tcx> ParamTy {
-    pub fn new(index: u32, name: Symbol) -> ParamTy {
+    pub fn new(index: u32, name: InternedString) -> ParamTy {
         ParamTy { index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, kw::SelfUpper)
+        ParamTy::new(0, kw::SelfUpper.as_interned_str())
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
@@ -1146,11 +1148,11 @@ impl<'tcx> ParamTy {
          Eq, PartialEq, Ord, PartialOrd, HashStable)]
 pub struct ParamConst {
     pub index: u32,
-    pub name: Symbol,
+    pub name: InternedString,
 }
 
 impl<'tcx> ParamConst {
-    pub fn new(index: u32, name: Symbol) -> ParamConst {
+    pub fn new(index: u32, name: InternedString) -> ParamConst {
         ParamConst { index, name }
     }
 
@@ -1163,7 +1165,7 @@ impl<'tcx> ParamConst {
     }
 }
 
-rustc_index::newtype_index! {
+newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
     /// regions (and perhaps later types) in a higher-ranked setting. In
     /// particular, imagine a type like this:
@@ -1323,7 +1325,7 @@ impl<'tcx> rustc_serialize::UseSpecializedDecodable for Region<'tcx> {}
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
-    pub name: Symbol,
+    pub name: InternedString,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -1347,7 +1349,7 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-rustc_index::newtype_index! {
+newtype_index! {
     pub struct RegionVid {
         DEBUG_FORMAT = custom,
     }
@@ -1374,7 +1376,7 @@ pub enum InferTy {
     FreshFloatTy(u32),
 }
 
-rustc_index::newtype_index! {
+newtype_index! {
     pub struct BoundVar { .. }
 }
 
@@ -1387,7 +1389,7 @@ pub struct BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum BoundTyKind {
     Anon,
-    Param(Symbol),
+    Param(InternedString),
 }
 
 impl_stable_hash_for!(struct BoundTy { var, kind });
@@ -1773,10 +1775,6 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_bool(&self) -> bool { self.kind == Bool }
 
-    /// Returns `true` if this type is a `str`.
-    #[inline]
-    pub fn is_str(&self) -> bool { self.kind == Str }
-
     #[inline]
     pub fn is_param(&self, index: u32) -> bool {
         match self.kind {
@@ -2110,8 +2108,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Generator(def_id, substs, _) =>
-                Some(substs.as_generator().variant_range(def_id, tcx)),
+            TyKind::Generator(def_id, substs, _) => Some(substs.variant_range(def_id, tcx)),
             _ => None,
         }
     }
@@ -2128,7 +2125,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
             TyKind::Generator(def_id, substs, _) =>
-                Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index)),
+                Some(substs.discriminant_for_variant(def_id, tcx, variant_index)),
             _ => None,
         }
     }
@@ -2150,8 +2147,8 @@ impl<'tcx> TyS<'tcx> {
             Adt(_, substs) | Opaque(_, substs) => {
                 out.extend(substs.regions())
             }
-            Closure(_, ref substs ) |
-            Generator(_, ref substs, _) => {
+            Closure(_, ClosureSubsts { ref substs }) |
+            Generator(_, GeneratorSubsts { ref substs }, _) => {
                 out.extend(substs.regions())
             }
             Projection(ref data) | UnnormalizedProjection(ref data) => {
@@ -2201,9 +2198,7 @@ impl<'tcx> TyS<'tcx> {
                 _ => bug!("cannot convert type `{:?}` to a closure kind", self),
             },
 
-            // "Bound" types appear in canonical queries when the
-            // closure type is not yet known
-            Bound(..) | Infer(_) => None,
+            Infer(_) => None,
 
             Error => Some(ty::ClosureKind::Fn),
 
@@ -2303,8 +2298,8 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<u128> {
         assert_eq!(self.ty, ty);
-        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         self.eval(tcx, param_env).val.try_to_bits(size)
     }
 
@@ -2371,4 +2366,6 @@ pub enum InferConst<'tcx> {
     Var(ConstVid<'tcx>),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
+    /// Canonicalized const variable, used only when preparing a trait query.
+    Canonical(DebruijnIndex, BoundVar),
 }

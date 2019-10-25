@@ -1053,12 +1053,12 @@ impl Json {
     /// a value associated with the provided key is found. If no value is found
     /// or the Json value is not an Object, returns `None`.
     pub fn search(&self, key: &str) -> Option<&Json> {
-        match *self {
-            Json::Object(ref map) => {
+        match self {
+            &Json::Object(ref map) => {
                 match map.get(key) {
                     Some(json_value) => Some(json_value),
                     None => {
-                        for v in map.values() {
+                        for (_, v) in map {
                             match v.search(key) {
                                 x if x.is_some() => return x,
                                 _ => ()
@@ -1487,12 +1487,12 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     fn parse_number(&mut self) -> JsonEvent {
-        let neg = if self.ch_is('-') {
+        let mut neg = false;
+
+        if self.ch_is('-') {
             self.bump();
-            true
-        } else {
-            false
-        };
+            neg = true;
+        }
 
         let res = match self.parse_u64() {
             Ok(res) => res,
@@ -2162,9 +2162,10 @@ impl crate::Decoder for Decoder {
         let s = self.read_str()?;
         {
             let mut it = s.chars();
-            if let (Some(c), None) = (it.next(), it.next()) {
+            match (it.next(), it.next()) {
                 // exactly one character
-                return Ok(c);
+                (Some(c), None) => return Ok(c),
+                _ => ()
             }
         }
         Err(ExpectedError("single character string".to_owned(), s.to_string()))

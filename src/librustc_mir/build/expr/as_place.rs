@@ -6,79 +6,13 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::mir::interpret::{PanicInfo::BoundsCheck};
 use rustc::mir::*;
-use rustc::ty::{CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
+use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 
-use rustc_index::vec::Idx;
-
-/// `PlaceBuilder` is used to create places during MIR construction. It allows you to "build up" a
-/// place by pushing more and more projections onto the end, and then convert the final set into a
-/// place using the `into_place` method.
-///
-/// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
-/// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
-#[derive(Clone)]
-struct PlaceBuilder<'tcx> {
-    base: PlaceBase<'tcx>,
-    projection: Vec<PlaceElem<'tcx>>,
-}
-
-impl PlaceBuilder<'tcx> {
-    fn into_place(self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
-        Place {
-            base: self.base,
-            projection: tcx.intern_place_elems(&self.projection),
-        }
-    }
-
-    fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
-        self.project(PlaceElem::Field(f, ty))
-    }
-
-    fn deref(self) -> Self {
-        self.project(PlaceElem::Deref)
-    }
-
-    fn index(self, index: Local) -> Self {
-        self.project(PlaceElem::Index(index))
-    }
-
-    fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
-        self.projection.push(elem);
-        self
-    }
-}
-
-impl From<Local> for PlaceBuilder<'tcx> {
-    fn from(local: Local) -> Self {
-        Self {
-            base: local.into(),
-            projection: Vec::new(),
-        }
-    }
-}
-
-impl From<PlaceBase<'tcx>> for PlaceBuilder<'tcx> {
-    fn from(base: PlaceBase<'tcx>) -> Self {
-        Self {
-            base,
-            projection: Vec::new(),
-        }
-    }
-}
+use rustc_data_structures::indexed_vec::Idx;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
-    pub fn as_place<M>(&mut self, mut block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self.hir.tcx()))
-    }
-
-    /// This is used when constructing a compound `Place`, so that we can avoid creating
-    /// intermediate `Place` values until we know the full set of projections.
-    fn as_place_builder<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<PlaceBuilder<'tcx>>
+    pub fn as_place<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
@@ -91,25 +25,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// place. The place itself may or may not be mutable:
     /// * If this expr is a place expr like a.b, then we will return that place.
     /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
-    pub fn as_read_only_place<M>(&mut self, mut block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self.hir.tcx()))
-    }
-
-    /// This is used when constructing a compound `Place`, so that we can avoid creating
-    /// intermediate `Place` values until we know the full set of projections.
-    /// Mutability note: The caller of this method promises only to read from the resulting
-    /// place. The place itself may or may not be mutable:
-    /// * If this expr is a place expr like a.b, then we will return that place.
-    /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
-    fn as_read_only_place_builder<M>(
-        &mut self,
-        block: BasicBlock,
-        expr: M,
-    ) -> BlockAnd<PlaceBuilder<'tcx>>
+    pub fn as_read_only_place<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
@@ -122,7 +38,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         expr: Expr<'tcx>,
         mutability: Mutability,
-    ) -> BlockAnd<PlaceBuilder<'tcx>> {
+    ) -> BlockAnd<Place<'tcx>> {
         debug!(
             "expr_as_place(block={:?}, expr={:?}, mutability={:?})",
             block, expr, mutability
@@ -138,23 +54,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 value,
             } => this.in_scope((region_scope, source_info), lint_level, |this| {
                 if mutability == Mutability::Not {
-                    this.as_read_only_place_builder(block, value)
+                    this.as_read_only_place(block, value)
                 } else {
-                    this.as_place_builder(block, value)
+                    this.as_place(block, value)
                 }
             }),
             ExprKind::Field { lhs, name } => {
-                let place_builder = unpack!(block = this.as_place_builder(block, lhs));
-                block.and(place_builder.field(name, expr.ty))
+                let place = unpack!(block = this.as_place(block, lhs));
+                let place = place.field(name, expr.ty);
+                block.and(place)
             }
             ExprKind::Deref { arg } => {
-                let place_builder = unpack!(block = this.as_place_builder(block, arg));
-                block.and(place_builder.deref())
+                let place = unpack!(block = this.as_place(block, arg));
+                let place = place.deref();
+                block.and(place)
             }
             ExprKind::Index { lhs, index } => {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
-                let place_builder = unpack!(block = this.as_place_builder(block, lhs));
+                let slice = unpack!(block = this.as_place(block, lhs));
                 // Making this a *fresh* temporary also means we do not have to worry about
                 // the index changing later: Nothing will ever change this temporary.
                 // The "retagging" transformation (for Stacked Borrows) relies on this.
@@ -165,7 +83,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Mutability::Not,
                 ));
 
-                let slice = place_builder.clone().into_place(this.hir.tcx());
                 // bounds check:
                 let (len, lt) = (
                     this.temp(usize_ty.clone(), expr_span),
@@ -175,7 +92,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info, // len = len(slice)
                     &len,
-                    Rvalue::Len(slice),
+                    Rvalue::Len(slice.clone()),
                 );
                 this.cfg.push_assign(
                     block,
@@ -193,29 +110,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     index: Operand::Copy(Place::from(idx)),
                 };
                 let success = this.assert(block, Operand::Move(lt), true, msg, expr_span);
-                success.and(place_builder.index(idx))
+                success.and(slice.index(idx))
             }
-            ExprKind::SelfRef => block.and(PlaceBuilder::from(Local::new(1))),
+            ExprKind::SelfRef => block.and(Place::from(Local::new(1))),
             ExprKind::VarRef { id } => {
-                let place_builder = if this.is_bound_var_in_guard(id) {
+                let place = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);
-                    PlaceBuilder::from(index).deref()
+                    Place::from(index).deref()
                 } else {
                     let index = this.var_local_id(id, OutsideGuard);
-                    PlaceBuilder::from(index)
+                    Place::from(index)
                 };
-                block.and(place_builder)
+                block.and(place)
             }
-            ExprKind::StaticRef { id } => block.and(PlaceBuilder::from(
-                PlaceBase::Static(Box::new(Static {
+            ExprKind::StaticRef { id } => block.and(Place {
+                base: PlaceBase::Static(Box::new(Static {
                     ty: expr.ty,
                     kind: StaticKind::Static,
                     def_id: id,
-                }))
-            )),
+                })),
+                projection: box [],
+            }),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
-                let place_builder = unpack!(block = this.as_place_builder(block, source));
+                let place = unpack!(block = this.as_place(block, source));
                 if let Some(user_ty) = user_ty {
                     let annotation_index = this.canonical_user_type_annotations.push(
                         CanonicalUserTypeAnnotation {
@@ -224,15 +142,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         }
                     );
-
-                    let place = place_builder.clone().into_place(this.hir.tcx());
                     this.cfg.push(
                         block,
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
                                 box(
-                                    place,
+                                    place.clone(),
                                     UserTypeProjection { base: annotation_index, projs: vec![], }
                                 ),
                                 Variance::Invariant,
@@ -240,7 +156,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         },
                     );
                 }
-                block.and(place_builder)
+                block.and(place)
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
                 let source = this.hir.mirror(source);
@@ -269,7 +185,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         },
                     );
                 }
-                block.and(PlaceBuilder::from(temp))
+                block.and(Place::from(temp))
             }
 
             ExprKind::Array { .. }
@@ -305,7 +221,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
                 let temp =
                     unpack!(block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
-                block.and(PlaceBuilder::from(temp))
+                block.and(Place::from(temp))
             }
         }
     }

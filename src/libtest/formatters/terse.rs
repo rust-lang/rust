@@ -1,20 +1,4 @@
-use std::{
-    io,
-    io::prelude::Write,
-};
-
-use crate::{
-    types::TestDesc,
-    time,
-    test_result::TestResult,
-    types::NamePadding,
-    console::{ConsoleTestState, OutputLocation},
-    bench::fmt_bench_samples,
-};
-use super::OutputFormatter;
-
-// insert a '\n' after 100 tests in quiet mode
-const QUIET_MODE_MAX_COLUMN: usize = 100;
+use super::*;
 
 pub(crate) struct TerseFormatter<T> {
     out: OutputLocation<T>,
@@ -84,7 +68,7 @@ impl<T: Write> TerseFormatter<T> {
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self.out {
-            OutputLocation::Pretty(ref mut term) => {
+            Pretty(ref mut term) => {
                 if self.use_color {
                     term.fg(color)?;
                 }
@@ -94,7 +78,7 @@ impl<T: Write> TerseFormatter<T> {
                 }
                 term.flush()
             }
-            OutputLocation::Raw(ref mut stdout) => {
+            Raw(ref mut stdout) => {
                 stdout.write_all(word.as_bytes())?;
                 stdout.flush()
             }
@@ -179,7 +163,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         // in order to indicate benchmarks.
         // When running benchmarks, terse-mode should still print their name as if
         // it is the Pretty formatter.
-        if !self.is_multithreaded && desc.name.padding() == NamePadding::PadOnRight {
+        if !self.is_multithreaded && desc.name.padding() == PadOnRight {
             self.write_test_name(desc)?;
         }
 
@@ -190,18 +174,16 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        _: Option<&time::TestExecTime>,
+        _: Option<&TestExecTime>,
         _: &[u8],
         _: &ConsoleTestState,
     ) -> io::Result<()> {
         match *result {
-            TestResult::TrOk => self.write_ok(),
-            TestResult::TrFailed
-                | TestResult::TrFailedMsg(_)
-                | TestResult::TrTimedFail => self.write_failed(),
-            TestResult::TrIgnored => self.write_ignored(),
-            TestResult::TrAllowedFail => self.write_allowed_fail(),
-            TestResult::TrBench(ref bs) => {
+            TrOk => self.write_ok(),
+            TrFailed | TrFailedMsg(_) => self.write_failed(),
+            TrIgnored => self.write_ignored(),
+            TrAllowedFail => self.write_allowed_fail(),
+            TrBench(ref bs) => {
                 if self.is_multithreaded {
                     self.write_test_name(desc)?;
                 }
@@ -214,7 +196,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
-            desc.name, time::TEST_WARN_TIMEOUT_S
+            desc.name, TEST_WARN_TIMEOUT_S
         ))
     }
 

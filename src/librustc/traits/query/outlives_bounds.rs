@@ -7,7 +7,8 @@ use crate::traits::query::NoSolution;
 use crate::ty::{self, Ty, TyCtxt};
 
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 use std::mem;
 
 /// Outlives bounds are relationships between generic parameters,
@@ -42,7 +43,9 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             OutlivesBound::RegionSubRegion(ref a, ref b) => {

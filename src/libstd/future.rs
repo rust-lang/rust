@@ -26,7 +26,6 @@ pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T:
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "gen_future")]
 struct GenFuture<T: Generator<Yield = ()>>(T);
 
 // We rely on the fact that async/await futures are immovable in order to create

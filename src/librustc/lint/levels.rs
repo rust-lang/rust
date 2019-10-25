@@ -3,16 +3,16 @@ use std::cmp;
 use crate::hir::HirId;
 use crate::ich::StableHashingContext;
 use crate::lint::builtin;
-use crate::lint::context::{LintStore, CheckLintNameResult};
+use crate::lint::context::CheckLintNameResult;
 use crate::lint::{self, Lint, LintId, Level, LintSource};
 use crate::session::Session;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
+                                           StableHasher, StableHasherResult};
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
-use syntax::print::pprust;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::{Symbol, sym};
 
@@ -35,20 +35,21 @@ enum LintSet {
 }
 
 impl LintLevelSets {
-    pub fn new(sess: &Session, lint_store: &LintStore) -> LintLevelSets {
+    pub fn new(sess: &Session) -> LintLevelSets {
         let mut me = LintLevelSets {
             list: Vec::new(),
             lint_cap: Level::Forbid,
         };
-        me.process_command_line(sess, lint_store);
+        me.process_command_line(sess);
         return me
     }
 
-    pub fn builder<'a>(sess: &'a Session, store: &LintStore) -> LintLevelsBuilder<'a> {
-        LintLevelsBuilder::new(sess, LintLevelSets::new(sess, store))
+    pub fn builder(sess: &Session) -> LintLevelsBuilder<'_> {
+        LintLevelsBuilder::new(sess, LintLevelSets::new(sess))
     }
 
-    fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
+    fn process_command_line(&mut self, sess: &Session) {
+        let store = sess.lint_store.borrow();
         let mut specs = FxHashMap::default();
         self.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
@@ -185,8 +186,9 @@ impl<'a> LintLevelsBuilder<'a> {
     ///   #[allow]
     ///
     /// Don't forget to call `pop`!
-    pub fn push(&mut self, attrs: &[ast::Attribute], store: &LintStore) -> BuilderPush {
+    pub fn push(&mut self, attrs: &[ast::Attribute]) -> BuilderPush {
         let mut specs = FxHashMap::default();
+        let store = self.sess.lint_store.borrow();
         let sess = self.sess;
         let bad_attr = |span| {
             struct_span_err!(sess, span, E0452, "malformed lint attribute input")
@@ -200,7 +202,11 @@ impl<'a> LintLevelsBuilder<'a> {
             let meta = unwrap_or!(attr.meta(), continue);
             attr::mark_used(attr);
 
-            let mut metas = unwrap_or!(meta.meta_item_list(), continue);
+            let mut metas = if let Some(metas) = meta.meta_item_list() {
+                metas
+            } else {
+                continue;
+            };
 
             if metas.is_empty() {
                 // FIXME (#55112): issue unused-attributes lint for `#[level()]`
@@ -280,7 +286,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
-                            pprust::path_to_string(&meta_item.path),
+                            meta_item.path
                         );
                         continue;
                     }
@@ -520,7 +526,9 @@ impl LintLevelMap {
 
 impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         let LintLevelMap {
             ref sets,
             ref id_to_set,
@@ -559,7 +567,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
 
 impl<HCX> HashStable<HCX> for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut HCX,
+                                          hasher: &mut StableHasher<W>) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }

@@ -7,9 +7,8 @@
 extern crate syntax;
 
 use std::path::Path;
-use syntax::sess::ParseSess;
 use syntax::source_map::FilePathMapping;
-use syntax::parse;
+use syntax::parse::{self, ParseSess};
 
 #[path = "mod_dir_simple/test.rs"]
 mod gravy;

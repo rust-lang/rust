@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![feature(non_exhaustive)]
 
 #[non_exhaustive]
 pub enum UninhabitedEnum {

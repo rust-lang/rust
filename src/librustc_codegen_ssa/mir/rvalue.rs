@@ -10,6 +10,7 @@ use syntax::source_map::{DUMMY_SP, Span};
 
 use crate::base;
 use crate::MemFlags;
+use crate::callee;
 use crate::common::{self, RealPredicate, IntPredicate};
 
 use crate::traits::*;
@@ -94,7 +95,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_uint(v) == Some(0) {
+                    if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
                         let fill = bx.cx().const_u8(0);
                         bx.memset(start, fill, size, dest.align, MemFlags::empty());
                         return bx;
@@ -189,15 +190,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
-                                    bx.get_fn_addr(
-                                        ty::Instance::resolve_for_fn_ptr(
-                                            bx.tcx(),
-                                            ty::ParamEnv::reveal_all(),
-                                            def_id,
-                                            substs
-                                        ).unwrap()
-                                    )
-                                )
+                                    callee::resolve_and_get_fn(bx.cx(), def_id, substs))
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.layout.ty)
@@ -208,11 +201,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         match operand.layout.ty.kind {
                             ty::Closure(def_id, substs) => {
                                 let instance = Instance::resolve_closure(
-                                    bx.cx().tcx(),
-                                    def_id,
-                                    substs,
-                                    ty::ClosureKind::FnOnce);
-                                OperandValue::Immediate(bx.cx().get_fn_addr(instance))
+                                    bx.cx().tcx(), def_id, substs, ty::ClosureKind::FnOnce);
+                                OperandValue::Immediate(bx.cx().get_fn(instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.layout.ty)
@@ -495,7 +485,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let r = bx.cx().get_fn_addr(instance);
+                let r = bx.cx().get_fn(instance);
                 let call = bx.call(r, &[llsize, llalign], None);
                 let val = bx.pointercast(call, llty_ptr);
 
@@ -530,7 +520,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let Some(index) = place.as_local() {
+        if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: box [],
+        } = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind {
                     let n = n.eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
@@ -553,6 +546,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         let is_float = input_ty.is_floating_point();
         let is_signed = input_ty.is_signed();
+        let is_unit = input_ty.is_unit();
         match op {
             mir::BinOp::Add => if is_float {
                 bx.fadd(lhs, rhs)
@@ -590,7 +584,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
-            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_float {
+            mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_unit {
+                bx.cx().const_bool(match op {
+                    mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
+                    mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
+                    _ => unreachable!()
+                })
+            } else if is_float {
                 bx.fcmp(
                     base::bin_op_to_fcmp_predicate(op.to_hir_binop()),
                     lhs, rhs

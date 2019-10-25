@@ -1,4 +1,5 @@
 #![crate_type = "rlib"]
+#![feature(non_exhaustive)]
 
 #[non_exhaustive]
 pub enum NonExhaustiveEnum {

@@ -1,3 +1,4 @@
+#![feature(proc_macro_hygiene)]
 #![allow(rustc::default_hash_types)]
 
 #![recursion_limit="128"]

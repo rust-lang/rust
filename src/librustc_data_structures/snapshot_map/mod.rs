@@ -7,7 +7,7 @@ use std::mem;
 mod tests;
 
 pub struct SnapshotMap<K, V>
-    where K: Clone + Eq
+    where K: Hash + Clone + Eq
 {
     map: FxHashMap<K, V>,
     undo_log: Vec<UndoLog<K, V>>,

@@ -5,7 +5,7 @@ use rustc::middle::region;
 use rustc::hir;
 use rustc::ty;
 
-use rustc_index::vec::Idx;
+use rustc_data_structures::indexed_vec::Idx;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     type Output = Block<'tcx>;

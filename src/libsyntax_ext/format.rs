@@ -8,7 +8,7 @@ use errors::Applicability;
 use errors::pluralise;
 
 use syntax::ast;
-use syntax_expand::base::{self, *};
+use syntax::ext::base::{self, *};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
@@ -278,7 +278,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// format string.
     fn report_invalid_references(&self, numbered_position_args: bool) {
         let mut e;
-        let sp = if self.is_literal { // Point at the formatting arguments.
+        let sp = if self.is_literal {
             MultiSpan::from_spans(self.arg_spans.clone())
         } else {
             MultiSpan::from_span(self.fmtsp)
@@ -304,9 +304,6 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.describe_num_args(),
                 ),
             );
-            for arg in &self.args { // Point at the arguments that will be formatted.
-                e.span_label(arg.span, "");
-            }
         } else {
             let (mut refs, spans): (Vec<_>, Vec<_>) = refs.unzip();
             // Avoid `invalid reference to positional arguments 7 and 7 (there is 1 argument)`

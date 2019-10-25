@@ -11,7 +11,6 @@ use syntax_pos::MultiSpan;
 pub enum BufferedEarlyLintId {
     IllFormedAttributeInput,
     MetaVariableMisuse,
-    IncompleteInclude,
 }
 
 /// Stores buffered lint info which can later be passed to `librustc`.

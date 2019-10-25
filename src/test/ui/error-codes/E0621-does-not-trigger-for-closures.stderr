@@ -27,4 +27,3 @@ LL |     invoke(&x, |a, b| if a > b { a } else { b });
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

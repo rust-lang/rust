@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
-use rustc_data_structures::sync::{self, MetadataRef};
+use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 use rustc_macros::HashStable;
 
 pub use self::NativeLibraryKind::*;
@@ -30,12 +30,6 @@ pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
     pub rmeta: Option<(PathBuf, PathKind)>,
-}
-
-impl CrateSource {
-    pub fn paths(&self) -> impl Iterator<Item = &PathBuf> {
-        self.dylib.iter().chain(self.rlib.iter()).chain(self.rmeta.iter()).map(|p| &p.0)
-    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone,
@@ -102,8 +96,6 @@ pub enum NativeLibraryKind {
     NativeStaticNobundle,
     /// macOS-specific
     NativeFramework,
-    /// Windows dynamic library without import library.
-    NativeRawDylib,
     /// default way to specify a dynamic library
     NativeUnknown,
 }
@@ -117,7 +109,7 @@ pub struct NativeLibrary {
     pub wasm_import_module: Option<Symbol>,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
@@ -156,7 +148,9 @@ pub enum ExternCrateSource {
         /// such ids
         DefId,
     ),
-    /// Crate is implicitly loaded by a path resolving through extern prelude.
+    // Crate is loaded by `use`.
+    Use,
+    /// Crate is implicitly loaded by an absolute path.
     Path,
 }
 
@@ -191,8 +185,6 @@ pub trait MetadataLoader {
                           -> Result<MetadataRef, String>;
 }
 
-pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
-
 /// A store of Rust crates, through which their metadata can be accessed.
 ///
 /// Note that this trait should probably not be expanding today. All new
@@ -203,19 +195,20 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any;
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
-    fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable;
+    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 

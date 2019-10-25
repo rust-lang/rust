@@ -2,28 +2,30 @@
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
+pub use crate::symbol::{Ident, Symbol as Name};
 pub use crate::util::parser::ExprPrecedence;
 
+use crate::ext::hygiene::ExpnId;
 use crate::parse::token::{self, DelimToken};
+use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
+use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::TokenStream;
+use crate::ThinVec;
 
-use rustc_target::spec::abi::Abi;
-pub use rustc_target::abi::FloatTy;
-
-use syntax_pos::{Span, DUMMY_SP, ExpnId};
-use syntax_pos::symbol::{kw, sym, Symbol};
-pub use syntax_pos::symbol::{Ident, Symbol as Name};
-
-use rustc_index::vec::Idx;
+use rustc_data_structures::indexed_vec::Idx;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
+use rustc_target::spec::abi::Abi;
+use syntax_pos::{Span, DUMMY_SP};
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_serialize::{self, Decoder, Encoder};
 use std::fmt;
+
+pub use rustc_target::abi::FloatTy;
 
 #[cfg(test)]
 mod tests;
@@ -68,7 +70,7 @@ impl fmt::Display for Lifetime {
 /// along with a bunch of supporting information.
 ///
 /// E.g., `std::cmp::PartialEq`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
@@ -81,6 +83,18 @@ impl PartialEq<Symbol> for Path {
         self.segments.len() == 1 && {
             self.segments[0].ident.name == *symbol
         }
+    }
+}
+
+impl fmt::Debug for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "path({})", pprust::path_to_string(self))
+    }
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", pprust::path_to_string(self))
     }
 }
 
@@ -227,8 +241,9 @@ impl ParenthesizedArgs {
 
 // hack to ensure that we don't try to access the private parts of `NodeId` in this module
 mod node_id_inner {
-    use rustc_index::vec::Idx;
-    rustc_index::newtype_index! {
+    use rustc_data_structures::indexed_vec::Idx;
+    use rustc_data_structures::newtype_index;
+    newtype_index! {
         pub struct NodeId {
             ENCODABLE = custom
             DEBUG_FORMAT = "NodeId({})"
@@ -493,11 +508,17 @@ pub struct Block {
     pub span: Span,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
+}
+
+impl fmt::Debug for Pat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "pat({}: {})", self.id, pprust::pat_to_string(self))
+    }
 }
 
 impl Pat {
@@ -811,7 +832,7 @@ impl UnOp {
 }
 
 /// A statement
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
@@ -845,7 +866,18 @@ impl Stmt {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+impl fmt::Debug for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "stmt({}: {})",
+            self.id.to_string(),
+            pprust::stmt_to_string(self)
+        )
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum StmtKind {
     /// A local (let) binding.
     Local(P<Local>),
@@ -942,7 +974,7 @@ pub struct AnonConst {
 }
 
 /// An expression.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Expr {
     pub id: NodeId,
     pub kind: ExprKind,
@@ -1066,6 +1098,12 @@ impl Expr {
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Err => ExprPrecedence::Err,
         }
+    }
+}
+
+impl fmt::Debug for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
     }
 }
 
@@ -1305,7 +1343,6 @@ impl MacroDef {
     }
 }
 
-// Clippy uses Hash and PartialEq
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
@@ -1328,7 +1365,6 @@ pub struct Lit {
     pub span: Span,
 }
 
-// Clippy uses Hash and PartialEq
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum LitIntType {
     Signed(IntTy),
@@ -1339,7 +1375,6 @@ pub enum LitIntType {
 /// Literal kind.
 ///
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
-// Clippy uses Hash and PartialEq
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
 pub enum LitKind {
     /// A string literal (`"foo"`).
@@ -1626,11 +1661,17 @@ pub enum AssocTyConstraintKind {
     },
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
+}
+
+impl fmt::Debug for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "type({})", pprust::ty_to_string(self))
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1852,6 +1893,7 @@ impl Param {
 pub struct FnDecl {
     pub inputs: Vec<Param>,
     pub output: FunctionRetTy,
+    pub c_variadic: bool,
 }
 
 impl FnDecl {
@@ -1860,12 +1902,6 @@ impl FnDecl {
     }
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).map(Param::is_self).unwrap_or(false)
-    }
-    pub fn c_variadic(&self) -> bool {
-        self.inputs.last().map(|arg| match arg.ty.kind {
-            TyKind::CVarArgs => true,
-            _ => false,
-        }).unwrap_or(false)
     }
 }
 
@@ -2099,27 +2135,16 @@ impl rustc_serialize::Decodable for AttrId {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct AttrItem {
-    pub path: Path,
-    pub tokens: TokenStream,
-}
-
 /// Metadata associated with an item.
 /// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Attribute {
-    pub item: AttrItem,
     pub id: AttrId,
     pub style: AttrStyle,
+    pub path: Path,
+    pub tokens: TokenStream,
     pub is_sugared_doc: bool,
     pub span: Span,
-}
-
-// Compatibility impl to avoid churn, consider removing.
-impl std::ops::Deref for Attribute {
-    type Target = AttrItem;
-    fn deref(&self) -> &Self::Target { &self.item }
 }
 
 /// `TraitRef`s appear in impls.

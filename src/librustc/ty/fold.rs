@@ -88,9 +88,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
-    fn has_infer_consts(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_CT_INFER)
-    }
     fn has_local_value(&self) -> bool {
         self.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
     }
@@ -521,7 +518,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Bound(debruijn, bound_const), ty } = *ct {
+        if let ty::Const {
+            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, bound_const)),
+            ty,
+        } = *ct {
             if debruijn == self.current_index {
                 let fld_c = &mut self.fld_c;
                 let ct = fld_c(bound_const, ty);
@@ -567,10 +567,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // identity for bound types and consts
         let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
         let fld_c = |bound_ct, ty| {
-            self.mk_const(ty::Const {
-                val: ConstValue::Bound(ty::INNERMOST, bound_ct),
-                ty,
-            })
+            self.mk_const_infer(ty::InferConst::Canonical(ty::INNERMOST, bound_ct), ty)
         };
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
     }
@@ -721,6 +718,7 @@ impl<'tcx> TyCtxt<'tcx> {
 // vars. See comment on `shift_vars_through_binders` method in
 // `subst.rs` for more details.
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 enum Direction {
     In,
     Out,
@@ -801,7 +799,10 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Bound(debruijn, bound_ct), ty } = *ct {
+        if let ty::Const {
+            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, bound_const)),
+            ty,
+        } = *ct {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
@@ -812,10 +813,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                         debruijn.shifted_out(self.amount)
                     }
                 };
-                self.tcx.mk_const(ty::Const {
-                    val: ConstValue::Bound(debruijn, bound_ct),
-                    ty,
-                })
+                self.tcx.mk_const_infer(ty::InferConst::Canonical(debruijn, bound_const), ty)
             }
         } else {
             ct.super_fold_with(self)
@@ -913,14 +911,13 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 
     fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> bool {
-        // we don't have a `visit_infer_const` callback, so we have to
-        // hook in here to catch this case (annoying...), but
-        // otherwise we do want to remember to visit the rest of the
-        // const, as it has types/regions embedded in a lot of other
-        // places.
-        match ct.val {
-            ConstValue::Bound(debruijn, _) if debruijn >= self.outer_index => true,
-            _ => ct.super_visit_with(self),
+        if let ty::Const {
+            val: ConstValue::Infer(ty::InferConst::Canonical(debruijn, _)),
+            ..
+        } = *ct {
+            debruijn >= self.outer_index
+        } else {
+            false
         }
     }
 }

@@ -252,7 +252,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline(always)]
+            #[inline]
             #[rustc_promotable]
             pub const fn min_value() -> Self {
                 !0 ^ ((!0 as $UnsignedT) >> 1) as Self
@@ -271,7 +271,7 @@ Basic usage:
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline(always)]
+            #[inline]
             #[rustc_promotable]
             pub const fn max_value() -> Self {
                 !Self::min_value()
@@ -938,9 +938,7 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
 assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
-"::max_value());
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_add(-1), ", stringify!($SelfT),
-"::min_value());",
+"::max_value());",
 $EndFeature, "
 ```"),
 
@@ -954,6 +952,7 @@ $EndFeature, "
             }
         }
 
+
         doc_comment! {
             concat!("Saturating integer subtraction. Computes `self - rhs`, saturating at the
 numeric bounds instead of overflowing.
@@ -965,9 +964,7 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
 assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
-"::min_value());
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_sub(-1), ", stringify!($SelfT),
-"::max_value());",
+"::min_value());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1058,7 +1055,7 @@ $EndFeature, "
             #[inline]
             pub fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or_else(|| {
-                    if (self < 0) == (rhs < 0) {
+                    if (self < 0 && rhs < 0) || (self > 0 && rhs > 0) {
                         Self::max_value()
                     } else {
                         Self::min_value()
@@ -1864,7 +1861,7 @@ if `self < 0`, this is equal to round towards +/- infinity.
 
 # Panics
 
-This function will panic if `rhs` is 0 or the division results in overflow.
+This function will panic if `rhs` is 0.
 
 # Examples
 
@@ -1903,7 +1900,7 @@ This is done as if by the Euclidean division algorithm -- given
 
 # Panics
 
-This function will panic if `rhs` is 0 or the division results in overflow.
+This function will panic if `rhs` is 0.
 
 # Examples
 
@@ -2311,7 +2308,7 @@ Basic usage:
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
-            #[inline(always)]
+            #[inline]
             pub const fn min_value() -> Self { 0 }
         }
 
@@ -2328,7 +2325,7 @@ stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_promotable]
-            #[inline(always)]
+            #[inline]
             pub const fn max_value() -> Self { !0 }
         }
 
@@ -3694,10 +3691,6 @@ Since, for the positive integers, all common
 definitions of division are equal, this
 is exactly equal to `self / rhs`.
 
-# Panics
-
-This function will panic if `rhs` is 0.
-
 # Examples
 
 Basic usage:
@@ -3722,10 +3715,6 @@ assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer 
 Since, for the positive integers, all common
 definitions of division are equal, this
 is exactly equal to `self % rhs`.
-
-# Panics
-
-This function will panic if `rhs` is 0.
 
 # Examples
 
@@ -3757,8 +3746,8 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub const fn is_power_of_two(self) -> bool {
-                self.count_ones() == 1
+            pub fn is_power_of_two(self) -> bool {
+                (self.wrapping_sub(1)) & self == 0 && !(self == 0)
             }
         }
 

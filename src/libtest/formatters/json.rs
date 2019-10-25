@@ -1,16 +1,4 @@
-use std::{
-    io,
-    io::prelude::Write,
-    borrow::Cow,
-};
-
-use crate::{
-    types::TestDesc,
-    time,
-    test_result::TestResult,
-    console::{ConsoleTestState, OutputLocation},
-};
-use super::OutputFormatter;
+use super::*;
 
 pub(crate) struct JsonFormatter<T> {
     out: OutputLocation<T>,
@@ -39,7 +27,7 @@ impl<T: Write> JsonFormatter<T> {
         ty: &str,
         name: &str,
         evt: &str,
-        exec_time: Option<&time::TestExecTime>,
+        exec_time: Option<&TestExecTime>,
         stdout: Option<Cow<'_, str>>,
         extra: Option<&str>,
     ) -> io::Result<()> {
@@ -88,35 +76,25 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        exec_time: Option<&time::TestExecTime>,
+        exec_time: Option<&TestExecTime>,
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()> {
-        let display_stdout = state.options.display_output || *result != TestResult::TrOk;
-        let stdout = if display_stdout && stdout.len() > 0 {
+        let stdout = if (state.options.display_output || *result != TrOk) && stdout.len() > 0 {
             Some(String::from_utf8_lossy(stdout))
         } else {
             None
         };
         match *result {
-            TestResult::TrOk => {
+            TrOk => {
                 self.write_event("test", desc.name.as_slice(), "ok", exec_time, stdout, None)
             }
 
-            TestResult::TrFailed => {
+            TrFailed => {
                 self.write_event("test", desc.name.as_slice(), "failed", exec_time, stdout, None)
             }
 
-            TestResult::TrTimedFail => self.write_event(
-                "test",
-                desc.name.as_slice(),
-                "failed",
-                exec_time,
-                stdout,
-                Some(r#""reason": "time limit exceeded""#),
-            ),
-
-            TestResult::TrFailedMsg(ref m) => self.write_event(
+            TrFailedMsg(ref m) => self.write_event(
                 "test",
                 desc.name.as_slice(),
                 "failed",
@@ -125,11 +103,11 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 Some(&*format!(r#""message": "{}""#, EscapedString(m))),
             ),
 
-            TestResult::TrIgnored => {
+            TrIgnored => {
                 self.write_event("test", desc.name.as_slice(), "ignored", exec_time, stdout, None)
             }
 
-            TestResult::TrAllowedFail => self.write_event(
+            TrAllowedFail => self.write_event(
                 "test",
                 desc.name.as_slice(),
                 "allowed_failure",
@@ -138,7 +116,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 None,
             ),
 
-            TestResult::TrBench(ref bs) => {
+            TrBench(ref bs) => {
                 let median = bs.ns_iter_summ.median as usize;
                 let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
 

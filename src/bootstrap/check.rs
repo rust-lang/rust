@@ -55,7 +55,6 @@ impl Step for Std {
                   cargo,
                   args(builder.kind),
                   &libstd_stamp(builder, compiler, target),
-                  vec![],
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
@@ -104,7 +103,6 @@ impl Step for Rustc {
                   cargo,
                   args(builder.kind),
                   &librustc_stamp(builder, compiler, target),
-                  vec![],
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
@@ -157,7 +155,6 @@ impl Step for CodegenBackend {
                   cargo,
                   args(builder.kind),
                   &codegen_backend_stamp(builder, compiler, target, backend),
-                  vec![],
                   true);
     }
 }
@@ -202,7 +199,6 @@ impl Step for Rustdoc {
                   cargo,
                   args(builder.kind),
                   &rustdoc_stamp(builder, compiler, target),
-                  vec![],
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);

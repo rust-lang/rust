@@ -29,8 +29,10 @@
 //!     Nil,
 //! }
 //!
-//! let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
-//! println!("{:?}", list);
+//! fn main() {
+//!     let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
+//!     println!("{:?}", list);
+//! }
 //! ```
 //!
 //! This will print `Cons(1, Cons(2, Nil))`.
@@ -142,9 +144,6 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        if layout.size() == 0 {
-            return Box(NonNull::dangling().into())
-        }
         let ptr = unsafe {
             Global.alloc(layout)
                 .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
@@ -185,16 +184,9 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = if layout.size() == 0 {
-            NonNull::dangling()
-        } else {
-            unsafe {
-                Global.alloc(layout)
-                    .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-                    .cast()
-            }
-        };
-        let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
+        let ptr = unsafe { alloc::alloc(layout) };
+        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
+        let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
         Box(Unique::from(slice))
     }
 }
@@ -383,12 +375,14 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// #![feature(box_into_raw_non_null)]
     ///
-    /// let x = Box::new(5);
-    /// let ptr = Box::into_raw_non_null(x);
+    /// fn main() {
+    ///     let x = Box::new(5);
+    ///     let ptr = Box::into_raw_non_null(x);
     ///
-    /// // Clean up the memory by converting the NonNull pointer back
-    /// // into a Box and letting the Box be dropped.
-    /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
+    ///     // Clean up the memory by converting the NonNull pointer back
+    ///     // into a Box and letting the Box be dropped.
+    ///     let x = unsafe { Box::from_raw(ptr.as_ptr()) };
+    /// }
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
     #[inline]
@@ -434,19 +428,23 @@ impl<T: ?Sized> Box<T> {
     /// Simple usage:
     ///
     /// ```
-    /// let x = Box::new(41);
-    /// let static_ref: &'static mut usize = Box::leak(x);
-    /// *static_ref += 1;
-    /// assert_eq!(*static_ref, 42);
+    /// fn main() {
+    ///     let x = Box::new(41);
+    ///     let static_ref: &'static mut usize = Box::leak(x);
+    ///     *static_ref += 1;
+    ///     assert_eq!(*static_ref, 42);
+    /// }
     /// ```
     ///
     /// Unsized data:
     ///
     /// ```
-    /// let x = vec![1, 2, 3].into_boxed_slice();
-    /// let static_ref = Box::leak(x);
-    /// static_ref[0] = 4;
-    /// assert_eq!(*static_ref, [4, 2, 3]);
+    /// fn main() {
+    ///     let x = vec![1, 2, 3].into_boxed_slice();
+    ///     let static_ref = Box::leak(x);
+    ///     static_ref[0] = 4;
+    ///     assert_eq!(*static_ref, [4, 2, 3]);
+    /// }
     /// ```
     #[stable(feature = "box_leak", since = "1.26.0")]
     #[inline]
@@ -782,9 +780,11 @@ impl Box<dyn Any> {
     ///     }
     /// }
     ///
-    /// let my_string = "Hello World".to_string();
-    /// print_if_string(Box::new(my_string));
-    /// print_if_string(Box::new(0i8));
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Box::new(my_string));
+    ///     print_if_string(Box::new(0i8));
+    /// }
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any>> {
         if self.is::<T>() {
@@ -814,9 +814,11 @@ impl Box<dyn Any + Send> {
     ///     }
     /// }
     ///
-    /// let my_string = "Hello World".to_string();
-    /// print_if_string(Box::new(my_string));
-    /// print_if_string(Box::new(0i8));
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Box::new(my_string));
+    ///     print_if_string(Box::new(0i8));
+    /// }
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any + Send>> {
         <Box<dyn Any>>::downcast(self).map_err(|s| unsafe {
@@ -881,33 +883,11 @@ impl<I: Iterator + ?Sized> Iterator for Box<I> {
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth(n)
     }
-    fn last(self) -> Option<I::Item> {
-        BoxIter::last(self)
-    }
 }
 
-trait BoxIter {
-    type Item;
-    fn last(self) -> Option<Self::Item>;
-}
-
-impl<I: Iterator + ?Sized> BoxIter for Box<I> {
-    type Item = I::Item;
-    default fn last(self) -> Option<I::Item> {
-        #[inline]
-        fn some<T>(_: Option<T>, x: T) -> Option<T> {
-            Some(x)
-        }
-
-        self.fold(None, some)
-    }
-}
-
-/// Specialization for sized `I`s that uses `I`s implementation of `last()`
-/// instead of the default.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> BoxIter for Box<I> {
-    fn last(self) -> Option<I::Item> {
+impl<I: Iterator + Sized> Iterator for Box<I> {
+    fn last(self) -> Option<I::Item> where I: Sized {
         (*self).last()
     }
 }

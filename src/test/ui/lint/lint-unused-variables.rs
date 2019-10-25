@@ -29,11 +29,6 @@ impl RefStruct {
         b: i32,
         //~^ ERROR unused variable: `b`
     ) {}
-    fn issue_64682_associated_fn(
-        #[allow(unused_variables)] a: i32,
-        b: i32,
-        //~^ ERROR unused variable: `b`
-    ) {}
 }
 trait RefTrait {
     fn bar(
@@ -42,20 +37,10 @@ trait RefTrait {
         b: i32,
         //~^ ERROR unused variable: `b`
     ) {}
-    fn issue_64682_associated_fn(
-        #[allow(unused_variables)] a: i32,
-        b: i32,
-        //~^ ERROR unused variable: `b`
-    ) {}
 }
 impl RefTrait for RefStruct {
     fn bar(
         &self,
-        #[allow(unused_variables)] a: i32,
-        b: i32,
-        //~^ ERROR unused variable: `b`
-    ) {}
-    fn issue_64682_associated_fn(
         #[allow(unused_variables)] a: i32,
         b: i32,
         //~^ ERROR unused variable: `b`

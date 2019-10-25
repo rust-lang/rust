@@ -244,5 +244,4 @@ LL |     let _ = await bar()?;
 
 error: aborting due to 35 previous errors
 
-Some errors have detailed explanations: E0277, E0728.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

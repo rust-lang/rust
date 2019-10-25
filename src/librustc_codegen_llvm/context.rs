@@ -20,6 +20,7 @@ use rustc::ty::layout::{
 use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_codegen_ssa::callee::resolve_and_get_fn;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use crate::callee::get_fn;
 
@@ -210,7 +211,7 @@ pub unsafe fn create_module(
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
-        let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
+        let avoid_plt = "RtLibUseGOT\0".as_ptr() as *const _;
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
     }
 
@@ -326,11 +327,11 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.vtables
     }
 
-    fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(self, instance)
+    fn instances(&self) -> &RefCell<FxHashMap<Instance<'tcx>, &'ll Value>> {
+        &self.instances
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
+    fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
         get_fn(self, instance)
     }
 
@@ -361,14 +362,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
-                self.get_fn_addr(
-                    ty::Instance::resolve(
-                        tcx,
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        tcx.intern_substs(&[]),
-                    ).unwrap()
-                )
+                resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
             _ => {
                 let name = if wants_msvc_seh(self.sess()) {
@@ -396,14 +390,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let tcx = self.tcx;
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
-            let llfn = self.get_fn_addr(
-                ty::Instance::resolve(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    tcx.intern_substs(&[]),
-                ).unwrap()
-            );
+            let llfn = resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));
             return llfn;
         }
@@ -550,7 +537,6 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
         ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
-        ifn!("llvm.sideeffect", fn() -> void);
 
         ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
         ifn!("llvm.powi.v2f32", fn(t_v2f32, t_i32) -> t_v2f32);

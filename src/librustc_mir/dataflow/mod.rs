@@ -1,9 +1,8 @@
 use syntax::ast::{self, MetaItem};
-use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 
-use rustc_index::bit_set::{BitSet, HybridBitSet};
-use rustc_index::vec::Idx;
+use rustc_data_structures::bit_set::{BitSet, HybridBitSet};
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
 
 use rustc::hir::def_id::DefId;
@@ -160,8 +159,9 @@ where
                 if let Some(s) = item.value_str() {
                     return Some(s.to_string())
                 } else {
-                    let path = pprust::path_to_string(&item.path);
-                    sess.span_err(item.span, &format!("{} attribute requires a path", path));
+                    sess.span_err(
+                        item.span,
+                        &format!("{} attribute requires a path", item.path));
                     return None;
                 }
             }

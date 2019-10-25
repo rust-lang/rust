@@ -1,6 +1,6 @@
 use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use crate::hir::HirId;
-use syntax::symbol::Symbol;
+use syntax::symbol::InternedString;
 use syntax::attr::InlineAttr;
 use syntax::source_map::Span;
 use crate::ty::{Instance, InstanceDef, TyCtxt, SymbolName, subst::InternalSubsts};
@@ -8,14 +8,15 @@ use crate::util::nodemap::FxHashMap;
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::dep_graph::{WorkProductId, DepNode, WorkProduct, DepConstructor};
 use rustc_data_structures::base_n;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
+                                           StableHasher};
 use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
 use crate::session::config::OptLevel;
 use std::fmt;
 use std::hash::Hash;
 
 /// Describes how a monomorphization will be instantiated in object files.
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum InstantiationMode {
     /// There will be exactly one instance of the given MonoItem. It will have
     /// external linkage so that it can be linked to from other codegen units.
@@ -80,7 +81,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id(hir_id);
                 SymbolName {
-                    name: Symbol::intern(&format!("global_asm_{:?}", def_id))
+                    name: InternedString::intern(&format!("global_asm_{:?}", def_id))
                 }
             }
         }
@@ -222,7 +223,9 @@ impl<'tcx> MonoItem<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                           hcx: &mut StableHashingContext<'a>,
+                                           hasher: &mut StableHasher<W>) {
         ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
@@ -246,12 +249,12 @@ pub struct CodegenUnit<'tcx> {
     /// name be unique amongst **all** crates. Therefore, it should
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
-    name: Symbol,
+    name: InternedString,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum Linkage {
     External,
     AvailableExternally,
@@ -280,7 +283,7 @@ impl_stable_hash_for!(enum self::Linkage {
     Common
 });
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Visibility {
     Default,
     Hidden,
@@ -294,7 +297,7 @@ impl_stable_hash_for!(enum self::Visibility {
 });
 
 impl<'tcx> CodegenUnit<'tcx> {
-    pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
+    pub fn new(name: InternedString) -> CodegenUnit<'tcx> {
         CodegenUnit {
             name: name,
             items: Default::default(),
@@ -302,11 +305,11 @@ impl<'tcx> CodegenUnit<'tcx> {
         }
     }
 
-    pub fn name(&self) -> Symbol {
-        self.name
+    pub fn name(&self) -> &InternedString {
+        &self.name
     }
 
-    pub fn set_name(&mut self, name: Symbol) {
+    pub fn set_name(&mut self, name: InternedString) {
         self.name = name;
     }
 
@@ -386,7 +389,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                             tcx.hir().as_local_hir_id(def_id)
                         }
                         InstanceDef::VtableShim(..) |
-                        InstanceDef::ReifyShim(..) |
                         InstanceDef::Intrinsic(..) |
                         InstanceDef::FnPtrShim(..) |
                         InstanceDef::Virtual(..) |
@@ -417,7 +419,9 @@ impl<'tcx> CodegenUnit<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                           hcx: &mut StableHashingContext<'a>,
+                                           hasher: &mut StableHasher<W>) {
         let CodegenUnit {
             ref items,
             name,
@@ -474,7 +478,7 @@ impl CodegenUnitNameBuilder<'tcx> {
                                    cnum: CrateNum,
                                    components: I,
                                    special_suffix: Option<S>)
-                                   -> Symbol
+                                   -> InternedString
         where I: IntoIterator<Item=C>,
               C: fmt::Display,
               S: fmt::Display,
@@ -487,7 +491,7 @@ impl CodegenUnitNameBuilder<'tcx> {
             cgu_name
         } else {
             let cgu_name = &cgu_name.as_str()[..];
-            Symbol::intern(&CodegenUnit::mangle_name(cgu_name))
+            InternedString::intern(&CodegenUnit::mangle_name(cgu_name))
         }
     }
 
@@ -497,7 +501,7 @@ impl CodegenUnitNameBuilder<'tcx> {
                                              cnum: CrateNum,
                                              components: I,
                                              special_suffix: Option<S>)
-                                             -> Symbol
+                                             -> InternedString
         where I: IntoIterator<Item=C>,
               C: fmt::Display,
               S: fmt::Display,
@@ -543,6 +547,6 @@ impl CodegenUnitNameBuilder<'tcx> {
             write!(cgu_name, ".{}", special_suffix).unwrap();
         }
 
-        Symbol::intern(&cgu_name[..])
+        InternedString::intern(&cgu_name[..])
     }
 }

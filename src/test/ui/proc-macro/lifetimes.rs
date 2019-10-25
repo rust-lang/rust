@@ -1,5 +1,7 @@
 // aux-build:lifetimes.rs
 
+#![feature(proc_macro_hygiene)]
+
 extern crate lifetimes;
 
 use lifetimes::*;

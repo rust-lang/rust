@@ -1,4 +1,4 @@
-use rustc_index::vec::{Idx, IndexVec};
+use crate::indexed_vec::{Idx, IndexVec};
 use crate::graph::{DirectedGraph, WithNumNodes, WithNumEdges, WithSuccessors, GraphSuccessors};
 
 #[cfg(test)]

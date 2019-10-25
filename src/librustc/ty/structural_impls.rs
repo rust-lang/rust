@@ -9,7 +9,7 @@ use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
-use rustc_index::vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use smallvec::SmallVec;
 use crate::mir::interpret;
 
@@ -749,7 +749,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
             ConstMismatch(ref x) => return tcx.lift(x).map(ConstMismatch),
             IntrinsicCast => IntrinsicCast,
-            ObjectUnsafeCoercion(ref x) => return tcx.lift(x).map(ObjectUnsafeCoercion),
         })
     }
 }
@@ -762,8 +761,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
                 Some(ty::InstanceDef::Item(def_id)),
             ty::InstanceDef::VtableShim(def_id) =>
                 Some(ty::InstanceDef::VtableShim(def_id)),
-            ty::InstanceDef::ReifyShim(def_id) =>
-                Some(ty::InstanceDef::ReifyShim(def_id)),
             ty::InstanceDef::Intrinsic(def_id) =>
                 Some(ty::InstanceDef::Intrinsic(def_id)),
             ty::InstanceDef::FnPtrShim(def_id, ref ty) =>
@@ -969,7 +966,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
             def: match self.def {
                 Item(did) => Item(did.fold_with(folder)),
                 VtableShim(did) => VtableShim(did.fold_with(folder)),
-                ReifyShim(did) => ReifyShim(did.fold_with(folder)),
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),
                 FnPtrShim(did, ty) => FnPtrShim(
                     did.fold_with(folder),
@@ -998,7 +994,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor) ||
         match self.def {
-            Item(did) | VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
+            Item(did) | VtableShim(did) | Intrinsic(did) | Virtual(did, _) => {
                 did.visit_with(visitor)
             },
             FnPtrShim(did, ty) | CloneShim(did, ty) => {
@@ -1219,23 +1215,16 @@ EnumTypeFoldableImpl! {
     }
 }
 
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
+        parent, predicates
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        // This code is hot enough that it's worth specializing for a list of
-        // length 0. (No other length is common enough to be worth singling
-        // out).
-        if self.len() == 0 {
-            self
-        } else {
-            // Don't bother interning if nothing changed, which is the common
-            // case.
-            let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-            if v[..] == self[..] {
-                self
-            } else {
-                folder.tcx().intern_predicates(&v)
-            }
-        }
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+        folder.tcx().intern_predicates(&v)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
@@ -1351,7 +1340,6 @@ EnumTypeFoldableImpl! {
         (ty::error::TypeError::ExistentialMismatch)(x),
         (ty::error::TypeError::ConstMismatch)(x),
         (ty::error::TypeError::IntrinsicCast),
-        (ty::error::TypeError::ObjectUnsafeCoercion)(x),
     }
 }
 
@@ -1381,23 +1369,27 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
+            ConstValue::ByRef { alloc, offset } =>
+                ConstValue::ByRef { alloc, offset },
             ConstValue::Infer(ic) => ConstValue::Infer(ic.fold_with(folder)),
             ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
+            ConstValue::Placeholder(p) => ConstValue::Placeholder(p),
+            ConstValue::Scalar(a) => ConstValue::Scalar(a),
+            ConstValue::Slice { data, start, end } => ConstValue::Slice { data, start, end },
             ConstValue::Unevaluated(did, substs)
                 => ConstValue::Unevaluated(did, substs.fold_with(folder)),
-            ConstValue::ByRef { .. } | ConstValue::Bound(..) | ConstValue::Placeholder(..)
-            | ConstValue::Scalar(..) | ConstValue::Slice { .. } => *self,
-
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
+            ConstValue::ByRef { .. } => false,
             ConstValue::Infer(ic) => ic.visit_with(visitor),
             ConstValue::Param(p) => p.visit_with(visitor),
+            ConstValue::Placeholder(_) => false,
+            ConstValue::Scalar(_) => false,
+            ConstValue::Slice { .. } => false,
             ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
-            ConstValue::ByRef { .. } | ConstValue::Bound(..) | ConstValue::Placeholder(_)
-            | ConstValue::Scalar(_) | ConstValue::Slice { .. } => false,
         }
     }
 }

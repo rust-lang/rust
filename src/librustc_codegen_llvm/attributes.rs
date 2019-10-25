@@ -96,12 +96,10 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 
     // Currently stack probes seem somewhat incompatible with the address
-    // sanitizer and thread sanitizer. With asan we're already protected from
-    // stack overflow anyway so we don't really need stack probes regardless.
-    match cx.sess().opts.debugging_opts.sanitizer {
-        Some(Sanitizer::Address) |
-        Some(Sanitizer::Thread) => return,
-        _ => {},
+    // sanitizer. With asan we're already protected from stack overflow anyway
+    // so we don't really need stack probes regardless.
+    if let Some(Sanitizer::Address) = cx.sess().opts.debugging_opts.sanitizer {
+        return
     }
 
     // probestack doesn't play nice either with `-C profile-generate`.
@@ -270,37 +268,31 @@ pub fn from_fn_attrs(
         // optimize based on this!
         false
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that.
+        // If a specific #[unwind] attribute is present, use that
         true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind.
+        // Special attribute for allocator functions, which can't unwind
         false
-    } else {
+    } else if let Some(id) = id {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if sig.abi == Abi::Rust || sig.abi == Abi::RustCall {
-            // Any Rust method (or `extern "Rust" fn` or `extern
-            // "rust-call" fn`) is explicitly allowed to unwind
-            // (unless it has no-unwind attribute, handled above).
-            true
-        } else {
-            // Anything else is either:
-            //
-            //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
-            //
-            //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
-            //
-            // Foreign items (case 1) are assumed to not unwind; it is
-            // UB otherwise. (At least for now; see also
-            // rust-lang/rust#63909 and Rust RFC 2753.)
-            //
-            // Items defined in Rust with non-Rust ABIs (case 2) are also
-            // not supposed to unwind. Whether this should be enforced
-            // (versus stating it is UB) and *how* it would be enforced
-            // is currently under discussion; see rust-lang/rust#58794.
-            //
-            // In either case, we mark item as explicitly nounwind.
+        if cx.tcx.is_foreign_item(id) {
+            // Foreign items like `extern "C" { fn foo(); }` are assumed not to
+            // unwind
             false
+        } else if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
+            // Any items defined in Rust that *don't* have the `extern` ABI are
+            // defined to not unwind. We insert shims to abort if an unwind
+            // happens to enforce this.
+            false
+        } else {
+            // Anything else defined in Rust is assumed that it can possibly
+            // unwind
+            true
         }
+    } else {
+        // assume this can possibly unwind, avoiding the application of a
+        // `nounwind` attribute below.
+        true
     });
 
     // Always annotate functions with the target-cpu they are compiled for.

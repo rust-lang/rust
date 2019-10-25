@@ -156,21 +156,21 @@ unsafe extern "C" fn rust_eh_personality(version: c_int,
     if actions as i32 & uw::_UA_SEARCH_PHASE as i32 != 0 {
         match eh_action {
             EHAction::None |
-            EHAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
-            EHAction::Catch(_) => uw::_URC_HANDLER_FOUND,
-            EHAction::Terminate => uw::_URC_FATAL_PHASE1_ERROR,
+            EHAction::Cleanup(_) => return uw::_URC_CONTINUE_UNWIND,
+            EHAction::Catch(_) => return uw::_URC_HANDLER_FOUND,
+            EHAction::Terminate => return uw::_URC_FATAL_PHASE1_ERROR,
         }
     } else {
         match eh_action {
-            EHAction::None => uw::_URC_CONTINUE_UNWIND,
+            EHAction::None => return uw::_URC_CONTINUE_UNWIND,
             EHAction::Cleanup(lpad) |
             EHAction::Catch(lpad) => {
                 uw::_Unwind_SetGR(context, UNWIND_DATA_REG.0, exception_object as uintptr_t);
                 uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, 0);
                 uw::_Unwind_SetIP(context, lpad);
-                uw::_URC_INSTALL_CONTEXT
+                return uw::_URC_INSTALL_CONTEXT;
             }
-            EHAction::Terminate => uw::_URC_FATAL_PHASE2_ERROR,
+            EHAction::Terminate => return uw::_URC_FATAL_PHASE2_ERROR,
         }
     }
 }

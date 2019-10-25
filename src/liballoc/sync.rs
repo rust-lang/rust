@@ -45,10 +45,10 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// The type `Arc<T>` provides shared ownership of a value of type `T`,
 /// allocated in the heap. Invoking [`clone`][clone] on `Arc` produces
-/// a new `Arc` instance, which points to the same allocation on the heap as the
+/// a new `Arc` instance, which points to the same value on the heap as the
 /// source `Arc`, while increasing a reference count. When the last `Arc`
-/// pointer to a given allocation is destroyed, the value stored in that allocation (often
-/// referred to as "inner value") is also dropped.
+/// pointer to a given value is destroyed, the pointed-to value is also
+/// destroyed.
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
 /// exception: you cannot generally obtain a mutable reference to something
@@ -61,7 +61,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// Unlike [`Rc<T>`], `Arc<T>` uses atomic operations for its reference
 /// counting. This means that it is thread-safe. The disadvantage is that
 /// atomic operations are more expensive than ordinary memory accesses. If you
-/// are not sharing reference-counted allocations between threads, consider using
+/// are not sharing reference-counted values between threads, consider using
 /// [`Rc<T>`] for lower overhead. [`Rc<T>`] is a safe default, because the
 /// compiler will catch any attempt to send an [`Rc<T>`] between threads.
 /// However, a library might choose `Arc<T>` in order to give library consumers
@@ -85,10 +85,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// The [`downgrade`][downgrade] method can be used to create a non-owning
 /// [`Weak`][weak] pointer. A [`Weak`][weak] pointer can be [`upgrade`][upgrade]d
-/// to an `Arc`, but this will return [`None`] if the value stored in the allocation has
-/// already been dropped. In other words, `Weak` pointers do not keep the value
-/// inside the allocation alive; however, they *do* keep the allocation
-/// (the backing store for the value) alive.
+/// to an `Arc`, but this will return [`None`] if the value has already been
+/// dropped.
 ///
 /// A cycle between `Arc` pointers will never be deallocated. For this reason,
 /// [`Weak`][weak] is used to break cycles. For example, a tree could have
@@ -123,8 +121,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// Arc::downgrade(&my_arc);
 /// ```
 ///
-/// [`Weak<T>`][weak] does not auto-dereference to `T`, because the inner value may have
-/// already been dropped.
+/// [`Weak<T>`][weak] does not auto-dereference to `T`, because the value may have
+/// already been destroyed.
 ///
 /// [arc]: struct.Arc.html
 /// [weak]: struct.Weak.html
@@ -223,18 +221,17 @@ impl<T: ?Sized> Arc<T> {
 }
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
-/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
+/// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an [`Option`]`<`[`Arc`]`<T>>`.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
-/// prevent the value stored in the allocation from being dropped, and `Weak` itself makes no
-/// guarantees about the value still being present. Thus it may return [`None`]
-/// when [`upgrade`]d. Note however that a `Weak` reference *does* prevent the allocation
-/// itself (the backing store) from being deallocated.
+/// prevent the inner value from being dropped, and `Weak` itself makes no
+/// guarantees about the value still being present and may return [`None`]
+/// when [`upgrade`]d.
 ///
-/// A `Weak` pointer is useful for keeping a temporary reference to the allocation
-/// managed by [`Arc`] without preventing its inner value from being dropped. It is also used to
-/// prevent circular references between [`Arc`] pointers, since mutual owning references
+/// A `Weak` pointer is useful for keeping a temporary reference to the value
+/// within [`Arc`] without extending its lifetime. It is also used to prevent
+/// circular references between [`Arc`] pointers, since mutual owning references
 /// would never allow either [`Arc`] to be dropped. For example, a tree could
 /// have strong [`Arc`] pointers from parent nodes to children, and `Weak`
 /// pointers from children back to their parents.
@@ -348,7 +345,7 @@ impl<T> Arc<T> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
-    /// Returns the inner value, if the `Arc` has exactly one strong reference.
+    /// Returns the contained value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`][result] is returned with the same `Arc` that was
     /// passed in.
@@ -429,7 +426,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     /// # Safety
     ///
     /// As with [`MaybeUninit::assume_init`],
-    /// it is up to the caller to guarantee that the inner value
+    /// it is up to the caller to guarantee that the value
     /// really is in an initialized state.
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
@@ -468,7 +465,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     /// # Safety
     ///
     /// As with [`MaybeUninit::assume_init`],
-    /// it is up to the caller to guarantee that the inner value
+    /// it is up to the caller to guarantee that the value
     /// really is in an initialized state.
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
@@ -587,7 +584,7 @@ impl<T: ?Sized> Arc<T> {
         unsafe { NonNull::new_unchecked(Arc::into_raw(this) as *mut _) }
     }
 
-    /// Creates a new [`Weak`][weak] pointer to this allocation.
+    /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
     ///
@@ -631,7 +628,7 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
-    /// Gets the number of [`Weak`][weak] pointers to this allocation.
+    /// Gets the number of [`Weak`][weak] pointers to this value.
     ///
     /// [weak]: struct.Weak.html
     ///
@@ -662,7 +659,7 @@ impl<T: ?Sized> Arc<T> {
         if cnt == usize::MAX { 0 } else { cnt - 1 }
     }
 
-    /// Gets the number of strong (`Arc`) pointers to this allocation.
+    /// Gets the number of strong (`Arc`) pointers to this value.
     ///
     /// # Safety
     ///
@@ -713,8 +710,8 @@ impl<T: ?Sized> Arc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns `true` if the two `Arc`s point to the same allocation
-    /// (in a vein similar to [`ptr::eq`]).
+    /// Returns `true` if the two `Arc`s point to the same value (not
+    /// just values that compare as equal).
     ///
     /// # Examples
     ///
@@ -728,8 +725,6 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(Arc::ptr_eq(&five, &same_five));
     /// assert!(!Arc::ptr_eq(&five, &other_five));
     /// ```
-    ///
-    /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
@@ -737,7 +732,7 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T: ?Sized> Arc<T> {
     /// Allocates an `ArcInner<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided.
+    /// a possibly-unsized value where the value has the layout provided.
     ///
     /// The function `mem_to_arcinner` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
@@ -766,7 +761,7 @@ impl<T: ?Sized> Arc<T> {
         inner
     }
 
-    /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
+    /// Allocates an `ArcInner<T>` with sufficient space for an unsized value.
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
         // Allocate for the `ArcInner<T>` using the given value.
         Self::allocate_for_layout(
@@ -908,7 +903,7 @@ impl<T: Copy> ArcFromSlice<T> for Arc<[T]> {
 impl<T: ?Sized> Clone for Arc<T> {
     /// Makes a clone of the `Arc` pointer.
     ///
-    /// This creates another pointer to the same allocation, increasing the
+    /// This creates another pointer to the same inner value, increasing the
     /// strong reference count.
     ///
     /// # Examples
@@ -970,19 +965,15 @@ impl<T: ?Sized> Receiver for Arc<T> {}
 impl<T: Clone> Arc<T> {
     /// Makes a mutable reference into the given `Arc`.
     ///
-    /// If there are other `Arc` or [`Weak`][weak] pointers to the same allocation,
-    /// then `make_mut` will create a new allocation and invoke [`clone`][clone] on the inner value
-    /// to ensure unique ownership. This is also referred to as clone-on-write.
-    ///
-    /// Note that this differs from the behavior of [`Rc::make_mut`] which disassociates
-    /// any remaining `Weak` pointers.
+    /// If there are other `Arc` or [`Weak`][weak] pointers to the same value,
+    /// then `make_mut` will invoke [`clone`][clone] on the inner value to
+    /// ensure unique ownership. This is also referred to as clone-on-write.
     ///
     /// See also [`get_mut`][get_mut], which will fail rather than cloning.
     ///
     /// [weak]: struct.Weak.html
     /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
     /// [get_mut]: struct.Arc.html#method.get_mut
-    /// [`Rc::make_mut`]: ../rc/struct.Rc.html#method.make_mut
     ///
     /// # Examples
     ///
@@ -997,7 +988,7 @@ impl<T: Clone> Arc<T> {
     /// *Arc::make_mut(&mut data) += 1;         // Won't clone anything
     /// *Arc::make_mut(&mut other_data) *= 2;   // Won't clone anything
     ///
-    /// // Now `data` and `other_data` point to different allocations.
+    /// // Now `data` and `other_data` point to different values.
     /// assert_eq!(*data, 8);
     /// assert_eq!(*other_data, 12);
     /// ```
@@ -1057,14 +1048,14 @@ impl<T: Clone> Arc<T> {
 }
 
 impl<T: ?Sized> Arc<T> {
-    /// Returns a mutable reference into the given `Arc`, if there are
-    /// no other `Arc` or [`Weak`][weak] pointers to the same allocation.
+    /// Returns a mutable reference to the inner value, if there are
+    /// no other `Arc` or [`Weak`][weak] pointers to the same value.
     ///
     /// Returns [`None`][option] otherwise, because it is not safe to
     /// mutate a shared value.
     ///
     /// See also [`make_mut`][make_mut], which will [`clone`][clone]
-    /// the inner value when there are other pointers.
+    /// the inner value when it's shared.
     ///
     /// [weak]: struct.Weak.html
     /// [option]: ../../std/option/enum.Option.html
@@ -1100,7 +1091,7 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
-    /// Returns a mutable reference into the given `Arc`,
+    /// Returns a mutable reference to the inner value,
     /// without any check.
     ///
     /// See also [`get_mut`], which is safe and does appropriate checks.
@@ -1109,7 +1100,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// Any other `Arc` or [`Weak`] pointers to the same allocation must not be dereferenced
+    /// Any other `Arc` or [`Weak`] pointers to the same value must not be dereferenced
     /// for the duration of the returned borrow.
     /// This is trivially the case if no such pointers exist,
     /// for example immediately after `Arc::new`.
@@ -1253,9 +1244,11 @@ impl Arc<dyn Any + Send + Sync> {
     ///     }
     /// }
     ///
-    /// let my_string = "Hello World".to_string();
-    /// print_if_string(Arc::new(my_string));
-    /// print_if_string(Arc::new(0i8));
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Arc::new(my_string));
+    ///     print_if_string(Arc::new(0i8));
+    /// }
     /// ```
     pub fn downcast<T>(self) -> Result<Arc<T>, Self>
     where
@@ -1433,10 +1426,10 @@ impl<T> Weak<T> {
 }
 
 impl<T: ?Sized> Weak<T> {
-    /// Attempts to upgrade the `Weak` pointer to an [`Arc`], delaying
-    /// dropping of the inner value if successful.
+    /// Attempts to upgrade the `Weak` pointer to an [`Arc`], extending
+    /// the lifetime of the value if successful.
     ///
-    /// Returns [`None`] if the inner value has since been dropped.
+    /// Returns [`None`] if the value has since been dropped.
     ///
     /// [`Arc`]: struct.Arc.html
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
@@ -1491,7 +1484,7 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
+    /// Gets the number of strong (`Arc`) pointers pointing to this value.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
     ///
@@ -1506,17 +1499,17 @@ impl<T: ?Sized> Weak<T> {
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this
-    /// allocation.
+    /// value.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0. If not,
     /// the returned value is at least 1, since `self` still points to the
-    /// allocation.
+    /// value.
     ///
     /// # Accuracy
     ///
     /// Due to implementation details, the returned value can be off by 1 in
     /// either direction when other threads are manipulating any `Arc`s or
-    /// `Weak`s pointing to the same allocation.
+    /// `Weak`s pointing to the same value.
     ///
     /// [`Weak::new`]: #method.new
     #[unstable(feature = "weak_counts", issue = "57977")]
@@ -1557,14 +1550,14 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
-    /// [`ptr::eq`]), or if both don't point to any allocation
+    /// Returns `true` if the two `Weak`s point to the same value (not just
+    /// values that compare as equal), or if both don't point to any value
     /// (because they were created with `Weak::new()`).
     ///
     /// # Notes
     ///
     /// Since this compares pointers it means that `Weak::new()` will equal each
-    /// other, even though they don't point to any allocation.
+    /// other, even though they don't point to any value.
     ///
     /// # Examples
     ///
@@ -1596,8 +1589,6 @@ impl<T: ?Sized> Weak<T> {
     /// let third = Arc::downgrade(&third_rc);
     /// assert!(!first.ptr_eq(&third));
     /// ```
-    ///
-    /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
     #[inline]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
@@ -1607,7 +1598,7 @@ impl<T: ?Sized> Weak<T> {
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
-    /// Makes a clone of the `Weak` pointer that points to the same allocation.
+    /// Makes a clone of the `Weak` pointer that points to the same value.
     ///
     /// # Examples
     ///
@@ -1638,7 +1629,7 @@ impl<T: ?Sized> Clone for Weak<T> {
             }
         }
 
-        Weak { ptr: self.ptr }
+        return Weak { ptr: self.ptr };
     }
 }
 
@@ -1737,8 +1728,6 @@ impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
 /// store large values, that are slow to clone, but also heavy to check for equality, causing this
 /// cost to pay off more easily. It's also more likely to have two `Arc` clones, that point to
 /// the same value, than two `&T`s.
-///
-/// We can only do this when `T: Eq` as a `PartialEq` might be deliberately irreflexive.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> ArcEqIdent<T> for Arc<T> {
     #[inline]
@@ -1756,11 +1745,10 @@ impl<T: ?Sized + Eq> ArcEqIdent<T> for Arc<T> {
 impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// Equality for two `Arc`s.
     ///
-    /// Two `Arc`s are equal if their inner values are equal, even if they are
-    /// stored in different allocation.
+    /// Two `Arc`s are equal if their inner values are equal.
     ///
-    /// If `T` also implements `Eq` (implying reflexivity of equality),
-    /// two `Arc`s that point to the same allocation are always equal.
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// always equal.
     ///
     /// # Examples
     ///
@@ -1780,8 +1768,8 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// Two `Arc`s are unequal if their inner values are unequal.
     ///
-    /// If `T` also implements `Eq` (implying reflexivity of equality),
-    /// two `Arc`s that point to the same value are never unequal.
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// never unequal.
     ///
     /// # Examples
     ///

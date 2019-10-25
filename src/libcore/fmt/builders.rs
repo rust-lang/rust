@@ -775,10 +775,10 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
                reason = "recently added",
                issue = "62482")]
     pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
-        self.result = self.result.and_then(|_| {
-            assert!(!self.has_key, "attempted to begin a new map entry \
-                                    without completing the previous one");
+        assert!(!self.has_key, "attempted to begin a new map entry \
+                                without completing the previous one");
 
+        self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if !self.has_fields {
                     self.fmt.write_str("\n")?;
@@ -839,9 +839,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
                reason = "recently added",
                issue = "62482")]
     pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
-        self.result = self.result.and_then(|_| {
-            assert!(self.has_key, "attempted to format a map value before its key");
+        assert!(self.has_key, "attempted to format a map value before its key");
 
+        self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 let mut slot = None;
                 let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut self.state);
@@ -924,11 +924,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.result.and_then(|_| {
-            assert!(!self.has_key, "attempted to finish a map with a partial entry");
+        assert!(!self.has_key, "attempted to finish a map with a partial entry");
 
-            self.fmt.write_str("}")
-        })
+        self.result.and_then(|_| self.fmt.write_str("}"))
     }
 
     fn is_pretty(&self) -> bool {

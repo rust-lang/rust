@@ -62,12 +62,9 @@ pub fn run(options: Options) -> i32 {
         ..config::Options::default()
     };
 
-    let mut cfgs = options.cfgs.clone();
-    cfgs.push("rustdoc".to_owned());
-    cfgs.push("doctest".to_owned());
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: interface::parse_cfgspecs(cfgs),
+        crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
         input,
         input_path: None,
         output_file: None,
@@ -77,7 +74,6 @@ pub fn run(options: Options) -> i32 {
         stderr: None,
         crate_name: options.crate_name.clone(),
         lint_caps: Default::default(),
-        register_lints: None,
     };
 
     let mut test_args = options.test_args.clone();
@@ -281,9 +277,6 @@ fn run_test(
     for codegen_options_str in &options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
-    for debugging_option_str in &options.debugging_options_strs {
-        compiler.arg("-Z").arg(&debugging_option_str);
-    }
     if no_run {
         compiler.arg("--emit=metadata");
     }
@@ -398,7 +391,7 @@ pub fn make_test(s: &str,
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
-        use crate::syntax::{parse, sess::ParseSess, source_map::FilePathMapping};
+        use crate::syntax::{parse::{self, ParseSess}, source_map::FilePathMapping};
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
@@ -709,7 +702,6 @@ impl Tester for Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
-                test_type: testing::TestType::DocTest,
             },
             testfn: testing::DynTestFn(box move || {
                 let res = run_test(

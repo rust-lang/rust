@@ -79,7 +79,6 @@ function getSearchElement() {
                      "derive",
                      "traitalias"];
 
-    var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
 
     // On the search screen, so you remain on the last tab you opened.
@@ -295,7 +294,7 @@ function getSearchElement() {
 
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
-        if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts === true) {
+        if (ev.ctrlKey || ev.altKey || ev.metaKey) {
             return;
         }
 

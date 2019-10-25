@@ -15,22 +15,22 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
     };
     for attr in &field.attrs {
         if let Ok(meta) = attr.parse_meta() {
-            if !meta.path().is_ident("stable_hasher") {
+            if &meta.name().to_string() != "stable_hasher" {
                 continue;
             }
             let mut any_attr = false;
             if let Meta::List(list) = meta {
                 for nested in list.nested.iter() {
                     if let NestedMeta::Meta(meta) = nested {
-                        if meta.path().is_ident("ignore") {
+                        if &meta.name().to_string() == "ignore" {
                             attrs.ignore = true;
                             any_attr = true;
                         }
-                        if meta.path().is_ident("project") {
+                        if &meta.name().to_string() == "project" {
                             if let Meta::List(list) = meta {
                                 if let Some(nested) = list.nested.iter().next() {
                                     if let NestedMeta::Meta(meta) = nested {
-                                        attrs.project = meta.path().get_ident().cloned();
+                                        attrs.project = Some(meta.name());
                                         any_attr = true;
                                     }
                                 }
@@ -76,10 +76,10 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
 
     s.bound_impl(quote!(::rustc_data_structures::stable_hasher::HashStable
                         <::rustc::ich::StableHashingContext<'__ctx>>), quote!{
-        fn hash_stable(
+        fn hash_stable<__W: ::rustc_data_structures::stable_hasher::StableHasherResult>(
             &self,
             __hcx: &mut ::rustc::ich::StableHashingContext<'__ctx>,
-            __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+            __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<__W>) {
             #discriminant
             match *self { #body }
         }

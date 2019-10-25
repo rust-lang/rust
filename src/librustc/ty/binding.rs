@@ -2,7 +2,7 @@ use crate::hir::BindingAnnotation::*;
 use crate::hir::BindingAnnotation;
 use crate::hir::Mutability;
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BindingMode {
     BindByReference(Mutability),
     BindByValue(Mutability),

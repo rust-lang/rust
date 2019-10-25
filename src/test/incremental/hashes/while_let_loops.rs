@@ -25,7 +25,7 @@ pub fn change_loop_body() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_loop_body() {
     let mut _x = 0;

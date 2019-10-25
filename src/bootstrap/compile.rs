@@ -69,7 +69,7 @@ impl Step for Std {
             return;
         }
 
-        let mut target_deps = builder.ensure(StartupObjects { compiler, target });
+        builder.ensure(StartupObjects { compiler, target });
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
@@ -91,7 +91,7 @@ impl Step for Std {
             return;
         }
 
-        target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
+        copy_third_party_objects(builder, &compiler, target);
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
@@ -102,7 +102,6 @@ impl Step for Std {
                   cargo,
                   vec![],
                   &libstd_stamp(builder, compiler, target),
-                  target_deps,
                   false);
 
         builder.ensure(StdLink {
@@ -114,21 +113,8 @@ impl Step for Std {
 }
 
 /// Copies third pary objects needed by various targets.
-fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: Interned<String>)
-    -> Vec<PathBuf>
-{
+fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: Interned<String>) {
     let libdir = builder.sysroot_libdir(*compiler, target);
-
-    let mut target_deps = vec![];
-
-    let mut copy_and_stamp = |sourcedir: &Path, name: &str| {
-        let target = libdir.join(name);
-        builder.copy(
-            &sourcedir.join(name),
-            &target,
-        );
-        target_deps.push(target);
-    };
 
     // Copies the crt(1,i,n).o startup objects
     //
@@ -137,13 +123,19 @@ fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: 
     // files. As those shipped with glibc won't work, copy the ones provided by
     // musl so we have them on linux-gnu hosts.
     if target.contains("musl") {
-        let srcdir = builder.musl_root(target).unwrap().join("lib");
         for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-            copy_and_stamp(&srcdir, obj);
+            builder.copy(
+                &builder.musl_root(target).unwrap().join("lib").join(obj),
+                &libdir.join(obj),
+            );
         }
     } else if target.ends_with("-wasi") {
-        let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(&srcdir, "crt1.o");
+        for &obj in &["crt1.o"] {
+            builder.copy(
+                &builder.wasi_root(target).unwrap().join("lib/wasm32-wasi").join(obj),
+                &libdir.join(obj),
+            );
+        }
     }
 
     // Copies libunwind.a compiled to be linked wit x86_64-fortanix-unknown-sgx.
@@ -153,11 +145,11 @@ fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: 
     // which is provided by std for this target.
     if target == "x86_64-fortanix-unknown-sgx" {
         let src_path_env = "X86_FORTANIX_SGX_LIBS";
+        let obj = "libunwind.a";
         let src = env::var(src_path_env).expect(&format!("{} not found in env", src_path_env));
-        copy_and_stamp(Path::new(&src), "libunwind.a");
+        let src = Path::new(&src).join(obj);
+        builder.copy(&src, &libdir.join(obj));
     }
-
-    target_deps
 }
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
@@ -218,6 +210,7 @@ pub fn std_cargo(builder: &Builder<'_>,
             // config.toml equivalent) is used
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
+                emscripten: false,
             });
             cargo.env("LLVM_CONFIG", llvm_config);
             cargo.env("RUSTC_BUILD_SANITIZERS", "1");
@@ -314,7 +307,7 @@ pub struct StartupObjects {
 }
 
 impl Step for StartupObjects {
-    type Output = Vec<PathBuf>;
+    type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/rtstartup")
@@ -333,14 +326,12 @@ impl Step for StartupObjects {
     /// They don't require any library support as they're just plain old object
     /// files, so we just use the nightly snapshot compiler to always build them (as
     /// no other compilers are guaranteed to be available).
-    fn run(self, builder: &Builder<'_>) -> Vec<PathBuf> {
+    fn run(self, builder: &Builder<'_>) {
         let for_compiler = self.compiler;
         let target = self.target;
         if !target.contains("windows-gnu") {
-            return vec![]
+            return
         }
-
-        let mut target_deps = vec![];
 
         let src_dir = &builder.src.join("src/rtstartup");
         let dst_dir = &builder.native_dir(target).join("rtstartup");
@@ -360,9 +351,7 @@ impl Step for StartupObjects {
                             .arg(src_file));
             }
 
-            let target = sysroot_dir.join(file.to_string() + ".o");
-            builder.copy(dst_file, &target);
-            target_deps.push(target);
+            builder.copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
         }
 
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
@@ -370,12 +359,8 @@ impl Step for StartupObjects {
                                     builder.cc(target),
                                     target,
                                     obj);
-            let target = sysroot_dir.join(obj);
-            builder.copy(&src, &target);
-            target_deps.push(target);
+            builder.copy(&src, &sysroot_dir.join(obj));
         }
-
-        target_deps
     }
 }
 
@@ -453,7 +438,6 @@ impl Step for Rustc {
                   cargo,
                   vec![],
                   &librustc_stamp(builder, compiler, target),
-                  vec![],
                   false);
 
         builder.ensure(RustcLink {
@@ -602,7 +586,7 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
+        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, false);
         if builder.config.dry_run {
             return;
         }
@@ -631,27 +615,36 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                              compiler: &Compiler,
                              target: Interned<String>,
                              backend: Interned<String>) -> String {
+    let mut features = String::new();
+
     match &*backend {
-        "llvm" => {
+        "llvm" | "emscripten" => {
             // Build LLVM for our target. This will implicitly build the
             // host LLVM if necessary.
             let llvm_config = builder.ensure(native::Llvm {
                 target,
+                emscripten: backend == "emscripten",
             });
+
+            if backend == "emscripten" {
+                features.push_str(" emscripten");
+            }
 
             builder.info(&format!("Building stage{} codegen artifacts ({} -> {}, {})",
                      compiler.stage, &compiler.host, target, backend));
 
             // Pass down configuration from the LLVM build into the build of
             // librustc_llvm and librustc_codegen_llvm.
-            if builder.is_rust_llvm(target) {
+            if builder.is_rust_llvm(target) && backend != "emscripten" {
                 cargo.env("LLVM_RUSTLLVM", "1");
             }
 
             cargo.env("LLVM_CONFIG", &llvm_config);
-            let target_config = builder.config.target_config.get(&target);
-            if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-                cargo.env("CFG_LLVM_ROOT", s);
+            if backend != "emscripten" {
+                let target_config = builder.config.target_config.get(&target);
+                if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+                    cargo.env("CFG_LLVM_ROOT", s);
+                }
             }
             // Some LLVM linker flags (-L and -l) may be needed to link librustc_llvm.
             if let Some(ref s) = builder.config.llvm_ldflags {
@@ -669,7 +662,9 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                                          "libstdc++.a");
                 cargo.env("LLVM_STATIC_STDCPP", file);
             }
-            if builder.config.llvm_link_shared || builder.config.llvm_thin_lto {
+            if builder.config.llvm_link_shared ||
+                (builder.config.llvm_thin_lto && backend != "emscripten")
+            {
                 cargo.env("LLVM_LINK_SHARED", "1");
             }
             if builder.config.llvm_use_libcxx {
@@ -681,7 +676,8 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
         }
         _ => panic!("unknown backend: {}", backend),
     }
-    String::new()
+
+    features
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be
@@ -958,7 +954,6 @@ pub fn run_cargo(builder: &Builder<'_>,
                  cargo: Cargo,
                  tail_args: Vec<String>,
                  stamp: &Path,
-                 additional_target_deps: Vec<PathBuf>,
                  is_check: bool)
     -> Vec<PathBuf>
 {
@@ -1075,7 +1070,6 @@ pub fn run_cargo(builder: &Builder<'_>,
         deps.push((path_to_add.into(), false));
     }
 
-    deps.extend(additional_target_deps.into_iter().map(|d| (d, false)));
     deps.sort();
     let mut new_contents = Vec::new();
     for (dep, proc_macro) in deps.iter() {

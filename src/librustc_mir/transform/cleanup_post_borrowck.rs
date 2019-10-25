@@ -24,22 +24,16 @@ use crate::transform::{MirPass, MirSource};
 
 pub struct CleanupNonCodegenStatements;
 
-pub struct DeleteNonCodegenStatements<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
+pub struct DeleteNonCodegenStatements;
 
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let mut delete = DeleteNonCodegenStatements { tcx };
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        let mut delete = DeleteNonCodegenStatements;
         delete.visit_body(body);
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
+impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements {
     fn visit_statement(&mut self,
                        statement: &mut Statement<'tcx>,
                        location: Location) {

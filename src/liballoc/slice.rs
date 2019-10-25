@@ -411,16 +411,25 @@ impl<T> [T] {
     /// Basic usage:
     ///
     /// ```
-    /// assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);
+    /// #![feature(repeat_generic_slice)]
+    ///
+    /// fn main() {
+    ///     assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);
+    /// }
     /// ```
     ///
     /// A panic upon overflow:
     ///
     /// ```should_panic
-    /// // this will panic at runtime
-    /// b"0123456789abcdef".repeat(usize::max_value());
+    /// #![feature(repeat_generic_slice)]
+    /// fn main() {
+    ///     // this will panic at runtime
+    ///     b"0123456789abcdef".repeat(usize::max_value());
+    /// }
     /// ```
-    #[stable(feature = "repeat_generic_slice", since = "1.40.0")]
+    #[unstable(feature = "repeat_generic_slice",
+               reason = "it's on str, why not on slice?",
+               issue = "48784")]
     pub fn repeat(&self, n: usize) -> Vec<T> where T: Copy {
         if n == 0 {
             return Vec::new();

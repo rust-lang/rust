@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
-use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
@@ -174,12 +174,14 @@ fn cs_clone(name: &str,
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumNonMatchingCollapsed(..) => cx.span_bug(trait_span, &format!(
-            "non-matching enum variants in `derive({})`",
-            name,
-        )),
+        EnumNonMatchingCollapsed(..) => {
+            cx.span_bug(trait_span,
+                        &format!("non-matching enum variants in \
+                                 `derive({})`",
+                                 name))
+        }
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
+            cx.span_bug(trait_span, &format!("static method in `derive({})`", name))
         }
     }
 
@@ -189,10 +191,12 @@ fn cs_clone(name: &str,
                 .map(|field| {
                     let ident = match field.name {
                         Some(i) => i,
-                        None => cx.span_bug(trait_span, &format!(
-                            "unnamed field in normal struct in `derive({})`",
-                            name,
-                        )),
+                        None => {
+                            cx.span_bug(trait_span,
+                                        &format!("unnamed field in normal struct in \
+                                                `derive({})`",
+                                                    name))
+                        }
                     };
                     let call = subcall(cx, field);
                     cx.field_imm(field.span, ident, call)

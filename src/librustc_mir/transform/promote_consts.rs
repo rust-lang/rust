@@ -17,10 +17,10 @@ use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{List, TyCtxt};
+use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
-use rustc_index::vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use std::{iter, mem, usize};
 
@@ -191,10 +191,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         });
     }
 
-    fn is_temp_kind(&self, local: Local) -> bool {
-        self.source.local_kind(local) == LocalKind::Temp
-    }
-
     /// Copies the initialization of this temp to the
     /// promoted MIR, recursing through temps.
     fn promote_temp(&mut self, temp: Local) -> Local {
@@ -321,7 +317,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         ty,
                         def_id,
                     }),
-                    projection: List::empty(),
+                    projection: box [],
                 }
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -339,7 +335,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                     &mut place.base,
                                     promoted_place(ty, span).base,
                                 ),
-                                projection: List::empty(),
+                                projection: box [],
                             })
                         }
                         _ => bug!()
@@ -396,28 +392,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
 /// Replaces all temporaries with their promoted counterparts.
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext,
                    _: Location) {
-        if self.is_temp_kind(*local) {
+        if self.source.local_kind(*local) == LocalKind::Temp {
             *local = self.promote_temp(*local);
-        }
-    }
-
-    fn process_projection_elem(
-        &mut self,
-        elem: &PlaceElem<'tcx>,
-    ) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) if self.is_temp_kind(*local) => {
-                Some(PlaceElem::Index(self.promote_temp(*local)))
-            }
-            _ => None,
         }
     }
 }
@@ -438,13 +418,14 @@ pub fn promote_candidates<'tcx>(
         match candidate {
             Candidate::Repeat(Location { block, statement_index }) |
             Candidate::Ref(Location { block, statement_index }) => {
-                match &body[block].statements[statement_index].kind {
-                    StatementKind::Assign(box(place, _)) => {
-                        if let Some(local) = place.as_local() {
-                            if temps[local] == TempState::PromotedOut {
-                                // Already promoted.
-                                continue;
-                            }
+                match body[block].statements[statement_index].kind {
+                    StatementKind::Assign(box(Place {
+                        base: PlaceBase::Local(local),
+                        projection: box [],
+                    }, _)) => {
+                        if temps[local] == TempState::PromotedOut {
+                            // Already promoted.
+                            continue;
                         }
                     }
                     _ => {}
@@ -490,30 +471,28 @@ pub fn promote_candidates<'tcx>(
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
     for block in body.basic_blocks_mut() {
         block.statements.retain(|statement| {
-            match &statement.kind {
-                StatementKind::Assign(box(place, _)) => {
-                    if let Some(index) = place.as_local() {
-                        !promoted(index)
-                    } else {
-                        true
-                    }
-                }
+            match statement.kind {
+                StatementKind::Assign(box(Place {
+                    base: PlaceBase::Local(index),
+                    projection: box [],
+                }, _)) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
-                    !promoted(*index)
+                    !promoted(index)
                 }
                 _ => true
             }
         });
         let terminator = block.terminator_mut();
-        match &terminator.kind {
-            TerminatorKind::Drop { location: place, target, .. } => {
-                if let Some(index) = place.as_local() {
-                    if promoted(index) {
-                        terminator.kind = TerminatorKind::Goto {
-                            target: *target,
-                        };
-                    }
+        match terminator.kind {
+            TerminatorKind::Drop { location: Place {
+                base: PlaceBase::Local(index),
+                projection: box [],
+            }, target, .. } => {
+                if promoted(index) {
+                    terminator.kind = TerminatorKind::Goto {
+                        target,
+                    };
                 }
             }
             _ => {}

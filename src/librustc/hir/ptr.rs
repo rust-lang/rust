@@ -9,9 +9,10 @@ use std::{slice, vec};
 
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
+                                           HashStable};
 /// An owned smart pointer.
-#[derive(PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq)]
 pub struct P<T: ?Sized> {
     ptr: Box<T>
 }
@@ -132,7 +133,9 @@ impl<T: Decodable> Decodable for P<[T]> {
 impl<CTX, T> HashStable<CTX> for P<T>
     where T: ?Sized + HashStable<CTX>
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
         (**self).hash_stable(hcx, hasher);
     }
 }

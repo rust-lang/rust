@@ -1,0 +1,11 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/object-safety-sized.rs:8:1
+   |
+LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

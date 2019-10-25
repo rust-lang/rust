@@ -12,7 +12,7 @@ use rustc::ty::layout::{
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_index::vec::IndexVec;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     InterpResult, truncate, sign_extend,
@@ -35,7 +35,7 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub memory: Memory<'mir, 'tcx, M>,
+    pub(crate) memory: Memory<'mir, 'tcx, M>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
@@ -91,7 +91,7 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     pub extra: Extra,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)] // Miri debug-prints these
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
@@ -113,7 +113,7 @@ pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
 }
 
 /// Current value of a local variable
-#[derive(Clone, PartialEq, Eq, Debug)] // Miri debug-prints these
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LocalValue<Tag=(), Id=AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
@@ -209,6 +209,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }
+    }
+
+    #[inline(always)]
+    pub fn memory(&self) -> &Memory<'mir, 'tcx, M> {
+        &self.memory
+    }
+
+    #[inline(always)]
+    pub fn memory_mut(&mut self) -> &mut Memory<'mir, 'tcx, M> {
+        &mut self.memory
     }
 
     #[inline(always)]

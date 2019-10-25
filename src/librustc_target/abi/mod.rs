@@ -6,7 +6,8 @@ use crate::spec::Target;
 use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_data_structures::newtype_index;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::Span;
 
@@ -738,11 +739,7 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(count) => {
-                assert!(i < count,
-                        "Tried to access field {} of union with {} fields", i, count);
-                Size::ZERO
-            },
+            FieldPlacement::Union(_) => Size::ZERO,
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);
@@ -847,7 +844,7 @@ impl Abi {
     }
 }
 
-rustc_index::newtype_index! {
+newtype_index! {
     pub struct VariantIdx { .. }
 }
 

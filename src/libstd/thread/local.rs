@@ -509,8 +509,9 @@ pub mod os {
         pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&'static T> {
             let ptr = self.os.get() as *mut Value<T>;
             if ptr as usize > 1 {
-                if let Some(ref value) = (*ptr).inner.get() {
-                    return Some(value);
+                match (*ptr).inner.get() {
+                    Some(ref value) => return Some(value),
+                    None => {},
                 }
             }
             self.try_initialize(init)

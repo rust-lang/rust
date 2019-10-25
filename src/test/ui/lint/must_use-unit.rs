@@ -1,4 +1,5 @@
 #![feature(never_type)]
+
 #![deny(unused_must_use)]
 
 #[must_use]
