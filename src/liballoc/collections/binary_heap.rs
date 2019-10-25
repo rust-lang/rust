@@ -650,11 +650,12 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Returns an iterator which retrieves elements in heap order.
-    /// The retrieved elements will be removed from the original heap.
-    /// The remaining elements are removed on drop in heap order.
+    /// The retrieved elements are removed from the original heap.
+    /// The remaining elements will be removed on drop in heap order.
     ///
     /// Note:
     /// * `.drain_sorted()` is O(n lg n); much slower than `.drain()`.
+    ///   You should use the latter for most cases.
     ///
     /// # Examples
     ///
@@ -667,14 +668,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
     /// assert_eq!(heap.len(), 5);
     ///
-    /// let removed = heap.drain_sorted()
-    ///     .take(3).collect::<Vec<_>>(); // removes 3 elements in heap order
-    ///
-    /// assert_eq!(removed, vec![5, 4, 3]);
-    /// assert_eq!(heap.len(), 2);
-    ///
-    /// drop(drain_sorted); // removes remaining elements in heap order
-    ///
+    /// drop(heap.drain_sorted()); // removes all elements in heap order
     /// assert_eq!(heap.len(), 0);
     /// ```
     #[inline]
