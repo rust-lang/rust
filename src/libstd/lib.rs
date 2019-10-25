@@ -284,7 +284,7 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(non_exhaustive))]
-#![feature(on_unimplemented)]
+#![cfg_attr(bootstrap, feature(on_unimplemented))]
 #![feature(optin_builtin_traits)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
