@@ -15,8 +15,10 @@ fn check(assist_id: &str, before: &str, after: &str) {
     let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
 
-    let (_assist_id, action) =
-        crate::assists(&db, frange).into_iter().find(|(id, _)| id.id.0 == assist_id).unwrap();
+    let (_assist_id, action) = crate::assists(&db, frange)
+        .into_iter()
+        .find(|(id, _)| id.id.0 == assist_id)
+        .unwrap_or_else(|| panic!("Assist {:?} is not applicable", assist_id));
 
     let actual = action.edit.apply(&before);
     assert_eq_text!(after, &actual);

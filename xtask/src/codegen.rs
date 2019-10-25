@@ -74,6 +74,14 @@ fn reformat(text: impl std::fmt::Display) -> Result<String> {
 }
 
 fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
+    do_extract_comment_blocks(text, false)
+}
+
+fn extract_comment_blocks_with_empty_lines(text: &str) -> Vec<Vec<String>> {
+    do_extract_comment_blocks(text, true)
+}
+
+fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lins: bool) -> Vec<Vec<String>> {
     let mut res = Vec::new();
 
     let prefix = "// ";
@@ -81,6 +89,11 @@ fn extract_comment_blocks(text: &str) -> Vec<Vec<String>> {
 
     let mut block = vec![];
     for line in lines {
+        if line == "//" && allow_blocks_with_empty_lins {
+            block.push(String::new());
+            continue;
+        }
+
         let is_comment = line.starts_with(prefix);
         if is_comment {
             block.push(line[prefix.len()..].to_string());

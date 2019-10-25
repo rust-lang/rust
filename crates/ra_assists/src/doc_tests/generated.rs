@@ -3,6 +3,145 @@
 use super::check;
 
 #[test]
+fn doctest_add_derive() {
+    check(
+        "add_derive",
+        r#####"
+struct Point {
+    x: u32,
+    y: u32,<|>
+}
+"#####,
+        r#####"
+#[derive()]
+struct Point {
+    x: u32,
+    y: u32,
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_add_explicit_type() {
+    check(
+        "add_explicit_type",
+        r#####"
+fn main() {
+    let x<|> = 92;
+}
+"#####,
+        r#####"
+fn main() {
+    let x: i32 = 92;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_add_impl() {
+    check(
+        "add_impl",
+        r#####"
+struct Ctx<T: Clone> {
+     data: T,<|>
+}
+"#####,
+        r#####"
+struct Ctx<T: Clone> {
+     data: T,
+}
+
+impl<T: Clone> Ctx<T> {
+
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_add_impl_default_members() {
+    check(
+        "add_impl_default_members",
+        r#####"
+trait T {
+    Type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl T for () {
+    Type X = ();
+    fn foo(&self) {}<|>
+
+}
+"#####,
+        r#####"
+trait T {
+    Type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl T for () {
+    Type X = ();
+    fn foo(&self) {}
+    fn bar(&self) {}
+
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_add_impl_missing_members() {
+    check(
+        "add_impl_missing_members",
+        r#####"
+trait T {
+    Type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl T for () {<|>
+
+}
+"#####,
+        r#####"
+trait T {
+    Type X;
+    fn foo(&self);
+    fn bar(&self) {}
+}
+
+impl T for () {
+    fn foo(&self) { unimplemented!() }
+
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_apply_demorgan() {
+    check(
+        "apply_demorgan",
+        r#####"
+fn main() {
+    if x != 4 ||<|> !y {}
+}
+"#####,
+        r#####"
+fn main() {
+    if !(x == 4 && y) {}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check(
         "convert_to_guarded_return",

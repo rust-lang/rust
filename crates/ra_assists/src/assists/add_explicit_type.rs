@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{db::HirDatabase, HirDisplay, Ty};
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},
@@ -8,7 +6,19 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
-/// Add explicit type assist.
+// Assist: add_explicit_type
+// Specify type for a let binding
+// ```
+// fn main() {
+//     let x<|> = 92;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let x: i32 = 92;
+// }
+// ```
 pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let stmt = ctx.node_at_offset::<LetStmt>()?;
     let expr = stmt.initializer()?;
