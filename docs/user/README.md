@@ -182,7 +182,11 @@ Installation:
     "syntaxes": [
         "Packages/Rust/Rust.sublime-syntax",
         "Packages/Rust Enhanced/RustEnhanced.sublime-syntax"
-    ]
+    ],
+    "initializationOptions": {
+      "featureFlags": {
+      }
+    },
 }
 ```
 
