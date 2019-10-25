@@ -19,6 +19,7 @@ use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
+use rustc_target::abi::HasDataLayout;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
@@ -694,6 +695,23 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
 
+            "ptr_offset_from" => {
+                let ty = substs.type_at(0);
+                let pointee_size = self.size_of(ty);
+
+                // This is the same sequence that Clang emits for pointer subtraction.
+                // It can be neither `nsw` nor `nuw` because the input is treated as
+                // unsigned but then the output is treated as signed, so neither works.
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                let a = self.ptrtoint(a, self.type_isize());
+                let b = self.ptrtoint(b, self.type_isize());
+                let d = self.sub(a, b);
+                let pointee_size = self.const_usize(pointee_size.bytes());
+                // this is where the signed magic happens (notice the `s` in `exactsdiv`)
+                self.exactsdiv(d, pointee_size)
+            }
+
             _ => bug!("unknown intrinsic '{}'", name),
         };
 
@@ -1224,7 +1242,6 @@ fn generic_simd_intrinsic(
         // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
         // vector mask and returns an unsigned integer containing the most
         // significant bit (MSB) of each lane.
-        use rustc_target::abi::HasDataLayout;
 
         // If the vector has less than 8 lanes, an u8 is returned with zeroed
         // trailing bits.
