@@ -1,4 +1,4 @@
-// ignore-32bit
+// ignore-64bit
 #[warn(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
@@ -31,5 +31,5 @@ fn main() {
     1i32 as usize;
     // Big integer literal to float
     999_999_999 as f32;
-    9_999_999_999_999_999usize as f64;
+    3_999_999_999usize as f64;
 }
