@@ -1,8 +1,8 @@
 error: function is never used: `foo`
-  --> $DIR/with-core-crate.rs:7:1
+  --> $DIR/with-core-crate.rs:7:4
    |
 LL | fn foo() {
-   | ^^^^^^^^
+   |    ^^^
    |
 note: lint level defined here
   --> $DIR/with-core-crate.rs:1:9

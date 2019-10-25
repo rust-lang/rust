@@ -7,26 +7,6 @@ LL |   return (<T as ToString>::to_string(&arg));
 note: lint level defined here
   --> $DIR/path-lookahead.rs:3:9
    |
-LL | #![warn(unused)]
-   |         ^^^^^^
-   = note: `#[warn(unused_parens)]` implied by `#[warn(unused)]`
-
-warning: function is never used: `with_parens`
-  --> $DIR/path-lookahead.rs:7:1
-   |
-LL | fn with_parens<T: ToString>(arg: T) -> String {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/path-lookahead.rs:3:9
-   |
-LL | #![warn(unused)]
-   |         ^^^^^^
-   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
-
-warning: function is never used: `no_parens`
-  --> $DIR/path-lookahead.rs:11:1
-   |
-LL | fn no_parens<T: ToString>(arg: T) -> String {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
 

@@ -578,7 +578,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Trait(..) |
-                hir::ItemKind::Impl(..) => self.tcx.sess.source_map().def_span(item.span),
+                hir::ItemKind::Impl(..) => item.ident.span,
                 _ => item.span,
             };
             let participle = match item.kind {
