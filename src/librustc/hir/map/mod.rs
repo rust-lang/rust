@@ -156,9 +156,9 @@ impl Forest {
 
 /// This type is effectively a `HashMap<HirId, Entry<'hir>>`,
 /// but it is implemented as 2 layers of arrays.
-/// - first we have `A = Vec<Option<B>>` mapping a `DefIndex`'s index to an inner value
+/// - first we have `A = IndexVec<DefIndex, B>` mapping `DefIndex`s to an inner value
 /// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which gives you the `Entry`.
-pub(super) type HirEntryMap<'hir> = Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>;
+pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Option<Entry<'hir>>>>;
 
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
@@ -222,8 +222,8 @@ impl<'map> Iterator for ParentHirIterator<'map> {
 impl<'hir> Map<'hir> {
     #[inline]
     fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map.get(id.owner.index())?;
-        local_map.as_ref()?.get(id.local_id)?.as_ref()
+        let local_map = self.map.get(id.owner)?;
+        local_map.get(id.local_id)?.as_ref()
     }
 
     /// Registers a read in the dependency graph of the AST node with
@@ -1031,14 +1031,12 @@ impl<'hir> Map<'hir> {
         // see the comment on `HirEntryMap`.
         // Iterate over all the indices and return a reference to
         // local maps and their index given that they exist.
-        self.map.iter().enumerate().filter_map(|(i, local_map)| {
-            local_map.as_ref().map(|m| (i, m))
-        }).flat_map(move |(array_index, local_map)| {
+        self.map.iter_enumerated().flat_map(move |(owner, local_map)| {
             // Iterate over each valid entry in the local map.
             local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
                 // Reconstruct the `HirId` based on the 3 indices we used to find it.
                 HirId {
-                    owner: DefIndex::from(array_index),
+                    owner,
                     local_id: i,
                 }
             }))
