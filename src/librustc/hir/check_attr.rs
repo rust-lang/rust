@@ -128,7 +128,7 @@ impl Target {
 
     fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem) -> Target {
         match impl_item.kind {
-            hir::ImplItemKind::Const(..) => Target::Const,
+            hir::ImplItemKind::Const(..) => Target::AssocConst,
             hir::ImplItemKind::Method(..) => {
                 let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
                 let containing_item = tcx.hir().expect_item(parent_hir_id);
@@ -142,8 +142,7 @@ impl Target {
                     Target::Method(MethodKind::Inherent)
                 }
             }
-            hir::ImplItemKind::TyAlias(..) => Target::TyAlias,
-            hir::ImplItemKind::OpaqueTy(..) => Target::OpaqueTy,
+            hir::ImplItemKind::TyAlias(..) | hir::ImplItemKind::OpaqueTy(..) => Target::AssocTy,
         }
     }
 }
@@ -205,12 +204,31 @@ impl CheckAttrVisitor<'tcx> {
                 ).emit();
                 true
             }
+            // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
+            // just a lint, because we previously erroneously allowed it and some crates used it
+            // accidentally, to to be compatible with crates depending on them, we can't throw an
+            // error here.
+            Target::AssocConst => {
+                self.tcx.struct_span_lint_hir(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    "`#[inline]` is ignored on constants",
+                ).warn("this was previously accepted by the compiler but is \
+                       being phased out; it will become a hard error in \
+                       a future release!")
+                .note("for more information, see issue #65833 \
+                       <https://github.com/rust-lang/rust/issues/65833>")
+                .emit();
+                true
+            }
             _ => {
-                struct_span_err!(self.tcx.sess,
-                                 attr.span,
-                                 E0518,
-                                 "attribute should be applied to function or closure")
-                    .span_label(*span, "not a function or closure")
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0518,
+                    "attribute should be applied to function or closure",
+                ).span_label(*span, "not a function or closure")
                     .emit();
                 false
             }

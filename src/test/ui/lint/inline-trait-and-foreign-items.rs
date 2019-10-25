@@ -1,8 +1,11 @@
 #![feature(extern_types)]
 #![feature(type_alias_impl_trait)]
 
+#![warn(unused_attributes)]
+
 trait Trait {
-    #[inline] //~ ERROR attribute should be applied to function or closure
+    #[inline] //~ WARN `#[inline]` is ignored on constants
+    //~^ WARN this was previously accepted
     const X: u32;
 
     #[inline] //~ ERROR attribute should be applied to function or closure
@@ -12,7 +15,8 @@ trait Trait {
 }
 
 impl Trait for () {
-    #[inline] //~ ERROR attribute should be applied to function or closure
+    #[inline] //~ WARN `#[inline]` is ignored on constants
+    //~^ WARN this was previously accepted
     const X: u32 = 0;
 
     #[inline] //~ ERROR attribute should be applied to function or closure
