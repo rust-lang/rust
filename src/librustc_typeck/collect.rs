@@ -1532,6 +1532,17 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                         );
                     };
                 }
+                if ty::search_for_structural_match_violation(tcx, ty).is_some() {
+                    struct_span_err!(
+                        tcx.sess,
+                        hir_ty.span,
+                        E0741,
+                        "the types of const generic parameters must derive `PartialEq` and `Eq`",
+                    ).span_label(
+                        hir_ty.span,
+                        format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
+                    ).emit();
+                }
                 ty
             }
             x => {

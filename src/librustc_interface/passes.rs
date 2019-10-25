@@ -9,8 +9,8 @@ use rustc::hir::lowering::lower_crate;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::cstore::CrateStore;
-use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
+use rustc::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc::ty::{self, AllArenas, ResolverOutputs, TyCtxt, GlobalCtxt};
 use rustc::ty::steal::Steal;
 use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
@@ -23,8 +23,7 @@ use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
 use rustc_incremental;
-use rustc_metadata::creader::CrateLoader;
-use rustc_metadata::cstore::{self, CStore};
+use rustc_metadata::cstore;
 use rustc_mir as mir;
 use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin as plugin;
@@ -46,12 +45,10 @@ use syntax_ext;
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
 
+use std::{env, fs, iter, mem};
 use std::any::Any;
-use std::env;
 use std::ffi::OsString;
-use std::fs;
 use std::io::{self, Write};
-use std::iter;
 use std::path::PathBuf;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -105,7 +102,7 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 declare_box_region_type!(
     pub BoxedResolver,
     for(),
-    (&mut Resolver<'_>) -> (Result<ast::Crate>, ExpansionResult)
+    (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
 );
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing,
@@ -118,7 +115,7 @@ declare_box_region_type!(
 pub fn configure_and_expand(
     sess: Lrc<Session>,
     lint_store: Lrc<lint::LintStore>,
-    cstore: Lrc<CStore>,
+    metadata_loader: Box<MetadataLoaderDyn>,
     krate: ast::Crate,
     crate_name: &str,
     plugin_info: PluginInfo,
@@ -131,16 +128,14 @@ pub fn configure_and_expand(
     let crate_name = crate_name.to_string();
     let (result, resolver) = BoxedResolver::new(static move || {
         let sess = &*sess;
-        let crate_loader = CrateLoader::new(sess, &*cstore, &crate_name);
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
             sess,
             &lint_store,
-            &*cstore,
             krate,
             &crate_name,
             &resolver_arenas,
-            &crate_loader,
+            &*metadata_loader,
             plugin_info,
         );
         let mut resolver = match res {
@@ -154,68 +149,16 @@ pub fn configure_and_expand(
             }
         };
         box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver));
-        ExpansionResult::from_owned_resolver(resolver)
+        resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
 }
 
-pub struct ExpansionResult {
-    pub defs: Steal<hir::map::Definitions>,
-    pub resolutions: Steal<Resolutions>,
-}
-
-impl ExpansionResult {
-    fn from_owned_resolver(
-        resolver: Resolver<'_>,
-    ) -> Self {
-        ExpansionResult {
-            defs: Steal::new(resolver.definitions),
-            resolutions: Steal::new(Resolutions {
-                extern_crate_map: resolver.extern_crate_map,
-                export_map: resolver.export_map,
-                trait_map: resolver.trait_map,
-                glob_map: resolver.glob_map,
-                maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-                maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
-                extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
-            }),
-        }
-    }
-
-    pub fn from_resolver_ref(
-        resolver: &Resolver<'_>,
-    ) -> Self {
-        ExpansionResult {
-            defs: Steal::new(resolver.definitions.clone()),
-            resolutions: Steal::new(Resolutions {
-                extern_crate_map: resolver.extern_crate_map.clone(),
-                export_map: resolver.export_map.clone(),
-                trait_map: resolver.trait_map.clone(),
-                glob_map: resolver.glob_map.clone(),
-                maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
-                maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
-                extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
-                    (ident.name, entry.introduced_by_item)
-                }).collect(),
-            }),
-        }
-    }
-}
-
 impl BoxedResolver {
-    pub fn to_expansion_result(
-        resolver: Rc<RefCell<BoxedResolver>>,
-    ) -> ExpansionResult {
+    pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
         match Rc::try_unwrap(resolver) {
             Ok(resolver) => resolver.into_inner().complete(),
-            Err(resolver) => {
-                let resolver = &*resolver;
-                resolver.borrow_mut().access(|resolver| {
-                    ExpansionResult::from_resolver_ref(resolver)
-                })
-            }
+            Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
         }
     }
 }
@@ -226,7 +169,7 @@ pub struct PluginInfo {
 
 pub fn register_plugins<'a>(
     sess: &'a Session,
-    cstore: &'a CStore,
+    metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut lint::LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
@@ -274,9 +217,8 @@ pub fn register_plugins<'a>(
     let registrars = time(sess, "plugin loading", || {
         plugin::load::load_plugins(
             sess,
-            &cstore,
+            metadata_loader,
             &krate,
-            crate_name,
             Some(sess.opts.debugging_opts.extra_plugins.clone()),
         )
     });
@@ -313,11 +255,10 @@ pub fn register_plugins<'a>(
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
     lint_store: &'a lint::LintStore,
-    cstore: &'a CStore,
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
-    crate_loader: &'a CrateLoader<'a>,
+    metadata_loader: &'a MetadataLoaderDyn,
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {
@@ -331,10 +272,9 @@ fn configure_and_expand_inner<'a>(
 
     let mut resolver = Resolver::new(
         sess,
-        cstore,
         &krate,
         crate_name,
-        crate_loader,
+        metadata_loader,
         &resolver_arenas,
     );
     syntax_ext::register_builtin_macros(&mut resolver, sess.edition());
@@ -534,7 +474,6 @@ fn configure_and_expand_inner<'a>(
 pub fn lower_to_hir(
     sess: &Session,
     lint_store: &lint::LintStore,
-    cstore: &CStore,
     resolver: &mut Resolver<'_>,
     dep_graph: &DepGraph,
     krate: &ast::Crate,
@@ -542,7 +481,7 @@ pub fn lower_to_hir(
     // Lower AST to HIR.
     let hir_forest = time(sess, "lowering AST -> HIR", || {
         let nt_to_tokenstream = syntax::parse::nt_to_tokenstream;
-        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver, nt_to_tokenstream);
+        let hir_crate = lower_crate(sess, &dep_graph, &krate, resolver, nt_to_tokenstream);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
@@ -648,8 +587,12 @@ fn escape_dep_filename(filename: &FileName) -> String {
     filename.to_string().replace(" ", "\\ ")
 }
 
-fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
-    let sess = &compiler.sess;
+fn write_out_deps(
+    sess: &Session,
+    boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
+    outputs: &OutputFilenames,
+    out_filenames: &[PathBuf],
+) {
     // Write out dependency rules to the dep-info file if requested
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
@@ -668,18 +611,20 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
             .collect();
 
         if sess.binary_dep_depinfo() {
-            for cnum in compiler.cstore.crates_untracked() {
-                let source = compiler.cstore.crate_source_untracked(cnum);
-                if let Some((path, _)) = source.dylib {
-                    files.push(escape_dep_filename(&FileName::Real(path)));
+            boxed_resolver.borrow().borrow_mut().access(|resolver| {
+                for cnum in resolver.cstore().crates_untracked() {
+                    let source = resolver.cstore().crate_source_untracked(cnum);
+                    if let Some((path, _)) = source.dylib {
+                        files.push(escape_dep_filename(&FileName::Real(path)));
+                    }
+                    if let Some((path, _)) = source.rlib {
+                        files.push(escape_dep_filename(&FileName::Real(path)));
+                    }
+                    if let Some((path, _)) = source.rmeta {
+                        files.push(escape_dep_filename(&FileName::Real(path)));
+                    }
                 }
-                if let Some((path, _)) = source.rlib {
-                    files.push(escape_dep_filename(&FileName::Real(path)));
-                }
-                if let Some((path, _)) = source.rmeta {
-                    files.push(escape_dep_filename(&FileName::Real(path)));
-                }
-            }
+            });
         }
 
         let mut file = fs::File::create(&deps_filename)?;
@@ -717,6 +662,7 @@ pub fn prepare_outputs(
     sess: &Session,
     compiler: &Compiler,
     krate: &ast::Crate,
+    boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     crate_name: &str
 ) -> Result<OutputFilenames> {
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
@@ -758,7 +704,7 @@ pub fn prepare_outputs(
         }
     }
 
-    write_out_deps(compiler, &outputs, &output_paths);
+    write_out_deps(sess, boxed_resolver, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -823,26 +769,24 @@ pub fn create_global_ctxt(
     compiler: &Compiler,
     lint_store: Lrc<lint::LintStore>,
     mut hir_forest: hir::map::Forest,
-    defs: hir::map::Definitions,
-    resolutions: Resolutions,
+    mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
 ) -> BoxedGlobalCtxt {
     let sess = compiler.session().clone();
-    let cstore = compiler.cstore.clone();
     let codegen_backend = compiler.codegen_backend().clone();
     let crate_name = crate_name.to_string();
+    let defs = mem::take(&mut resolver_outputs.definitions);
 
     let ((), result) = BoxedGlobalCtxt::new(static move || {
         let sess = &*sess;
-        let cstore = &*cstore;
 
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
 
         // Construct the HIR map.
         let hir_map = time(sess, "indexing HIR", || {
-            hir::map::map_crate(sess, cstore, &mut hir_forest, &defs)
+            hir::map::map_crate(sess, &*resolver_outputs.cstore, &mut hir_forest, &defs)
         });
 
         let query_result_on_disk_cache = time(sess, "load query result cache", || {
@@ -860,11 +804,10 @@ pub fn create_global_ctxt(
         let gcx = TyCtxt::create_global_ctxt(
             sess,
             lint_store,
-            cstore,
             local_providers,
             extern_providers,
             &arenas,
-            resolutions,
+            resolver_outputs,
             hir_map,
             query_result_on_disk_cache,
             &crate_name,

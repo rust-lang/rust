@@ -110,9 +110,9 @@ impl<'a> Resolver<'a> {
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.cstore.crate_name_untracked(def_id.krate), None)
+            (self.cstore().crate_name_untracked(def_id.krate), None)
         } else {
-            let def_key = self.cstore.def_key(def_id);
+            let def_key = self.cstore().def_key(def_id);
             (def_key.disambiguated_data.data.get_opt_name().unwrap(),
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
@@ -153,9 +153,8 @@ impl<'a> Resolver<'a> {
             return Some(ext.clone());
         }
 
-        let ext = Lrc::new(match self.cstore.load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(item) =>
-                self.compile_macro(&item, self.cstore.crate_edition_untracked(def_id.krate)),
+        let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
+            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
             LoadedMacro::ProcMacro(ext) => ext,
         });
 
@@ -177,7 +176,7 @@ impl<'a> Resolver<'a> {
 
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         let def_id = module.def_id().expect("unpopulated module without a def-id");
-        for child in self.cstore.item_children_untracked(def_id, self.session) {
+        for child in self.cstore().item_children_untracked(def_id, self.session) {
             let child = child.map_id(|_| panic!("unexpected id"));
             BuildReducedGraphVisitor { r: self, parent_scope: ParentScope::module(module) }
                 .build_reduced_graph_for_external_crate_res(child);
@@ -885,19 +884,19 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 bug!("unexpected resolution: {:?}", res)
         }
         // Record some extra data for better diagnostics.
+        let cstore = self.r.cstore();
         match res {
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
-                let field_names =
-                    self.r.cstore.struct_field_names_untracked(def_id, self.r.session);
+                let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Method, def_id) => {
-                if self.r.cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
+                if cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
                     self.r.has_self.insert(def_id);
                 }
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                let parent = self.r.cstore.def_key(def_id).parent;
+                let parent = cstore.def_key(def_id).parent;
                 if let Some(struct_def_id) = parent.map(|index| DefId { index, ..def_id }) {
                     self.r.struct_constructors.insert(struct_def_id, (res, vis));
                 }

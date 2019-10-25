@@ -83,8 +83,6 @@ pub struct LoweringContext<'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
-    cstore: &'a dyn CrateStore,
-
     resolver: &'a mut dyn Resolver,
 
     /// HACK(Centril): there is a cyclic dependency between the parser and lowering
@@ -160,6 +158,8 @@ pub struct LoweringContext<'a> {
 }
 
 pub trait Resolver {
+    fn cstore(&self) -> &dyn CrateStore;
+
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
 
@@ -240,7 +240,6 @@ impl<'a> ImplTraitContext<'a> {
 
 pub fn lower_crate(
     sess: &Session,
-    cstore: &dyn CrateStore,
     dep_graph: &DepGraph,
     krate: &Crate,
     resolver: &mut dyn Resolver,
@@ -256,7 +255,6 @@ pub fn lower_crate(
     LoweringContext {
         crate_root: sess.parse_sess.injected_crate_name.try_get().copied(),
         sess,
-        cstore,
         resolver,
         nt_to_tokenstream,
         items: BTreeMap::new(),
@@ -980,7 +978,7 @@ impl<'a> LoweringContext<'a> {
         if id.is_local() {
             self.resolver.definitions().def_key(id.index)
         } else {
-            self.cstore.def_key(id)
+            self.resolver.cstore().def_key(id)
         }
     }
 
@@ -1727,8 +1725,8 @@ impl<'a> LoweringContext<'a> {
                             return n;
                         }
                         assert!(!def_id.is_local());
-                        let item_generics =
-                            self.cstore.item_generics_cloned_untracked(def_id, self.sess);
+                        let item_generics = self.resolver.cstore()
+                            .item_generics_cloned_untracked(def_id, self.sess);
                         let n = item_generics.own_counts().lifetimes;
                         self.type_def_lifetime_params.insert(def_id, n);
                         n

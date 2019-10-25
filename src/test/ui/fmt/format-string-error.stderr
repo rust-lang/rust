@@ -107,5 +107,11 @@ LL |         }
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
-error: aborting due to 12 previous errors
+error: 3 positional arguments in format string, but there are 2 arguments
+  --> $DIR/format-string-error.rs:51:15
+   |
+LL |     println!("{} {} {}", 1, 2);
+   |               ^^ ^^ ^^   -  -
+
+error: aborting due to 13 previous errors
 

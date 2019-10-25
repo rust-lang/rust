@@ -56,7 +56,7 @@ use std::sync::Arc;
 use std::ffi::CStr;
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};
 use rustc::ty::{self, TyCtxt};
@@ -260,7 +260,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_features(sess)
     }
 
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
         box metadata::LlvmMetadataLoader
     }
 

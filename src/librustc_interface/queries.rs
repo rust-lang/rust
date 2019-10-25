@@ -1,5 +1,5 @@
 use crate::interface::{Compiler, Result};
-use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
+use crate::passes::{self, BoxedResolver, BoxedGlobalCtxt, PluginInfo};
 
 use rustc_incremental::DepGraphFuture;
 use rustc_data_structures::sync::Lrc;
@@ -11,6 +11,7 @@ use rustc::session::Session;
 use rustc::lint::LintStore;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::steal::Steal;
+use rustc::ty::ResolverOutputs;
 use rustc::dep_graph::DepGraph;
 use std::cell::{Ref, RefMut, RefCell};
 use std::rc::Rc;
@@ -81,7 +82,7 @@ pub(crate) struct Queries {
     register_plugins: Query<(ast::Crate, PluginInfo, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(Steal<hir::map::Forest>, ExpansionResult)>,
+    lower_to_hir: Query<(Steal<hir::map::Forest>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<BoxedGlobalCtxt>,
     ongoing_codegen: Query<Box<dyn Any>>,
@@ -118,7 +119,7 @@ impl Compiler {
             let empty: &(dyn Fn(&Session, &mut lint::LintStore) + Sync + Send) = &|_, _| {};
             let result = passes::register_plugins(
                 self.session(),
-                self.cstore(),
+                &*self.codegen_backend().metadata_loader(),
                 self.register_lints
                     .as_ref()
                     .map(|p| &**p)
@@ -164,7 +165,7 @@ impl Compiler {
             passes::configure_and_expand(
                 self.sess.clone(),
                 lint_store.clone(),
-                self.cstore().clone(),
+                self.codegen_backend().metadata_loader(),
                 krate,
                 &crate_name,
                 plugin_info,
@@ -191,7 +192,9 @@ impl Compiler {
         })
     }
 
-    pub fn lower_to_hir(&self) -> Result<&Query<(Steal<hir::map::Forest>, ExpansionResult)>> {
+    pub fn lower_to_hir(
+        &self,
+    ) -> Result<&Query<(Steal<hir::map::Forest>, Steal<ResolverOutputs>)>> {
         self.queries.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
             let peeked = expansion_result.peek();
@@ -202,23 +205,22 @@ impl Compiler {
                 passes::lower_to_hir(
                     self.session(),
                     lint_store,
-                    self.cstore(),
                     resolver,
                     &*self.dep_graph()?.peek(),
                     &krate
                 )
             })?);
-            Ok((hir, BoxedResolver::to_expansion_result(resolver)))
+            Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
         self.queries.prepare_outputs.compute(|| {
-            let krate = self.expansion()?;
-            let krate = krate.peek();
+            let expansion_result = self.expansion()?;
+            let (krate, boxed_resolver, _) = &*expansion_result.peek();
             let crate_name = self.crate_name()?;
             let crate_name = crate_name.peek();
-            passes::prepare_outputs(self.session(), self, &krate.0, &*crate_name)
+            passes::prepare_outputs(self.session(), self, &krate, &boxed_resolver, &crate_name)
         })
     }
 
@@ -229,13 +231,12 @@ impl Compiler {
             let lint_store = self.expansion()?.peek().2.clone();
             let hir = self.lower_to_hir()?;
             let hir = hir.peek();
-            let (ref hir_forest, ref expansion) = *hir;
+            let (hir_forest, resolver_outputs) = &*hir;
             Ok(passes::create_global_ctxt(
                 self,
                 lint_store,
                 hir_forest.steal(),
-                expansion.defs.steal(),
-                expansion.resolutions.steal(),
+                resolver_outputs.steal(),
                 outputs,
                 &crate_name))
         })

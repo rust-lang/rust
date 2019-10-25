@@ -29,7 +29,6 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map;
-use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::source_map::Spanned;
@@ -54,7 +53,7 @@ macro_rules! provide {
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
+                let $cdata = $tcx.crate_data_as_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore created data is not a CrateMetadata");
 
@@ -411,10 +410,6 @@ impl cstore::CStore {
         }
     }
 
-    pub fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition {
-        self.get_crate_data(cnum).root.edition
-    }
-
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }
@@ -470,7 +465,7 @@ impl cstore::CStore {
             }),
             vis: source_map::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             tokens: None,
-        })
+        }, data.root.edition)
     }
 
     pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {
@@ -483,8 +478,8 @@ impl cstore::CStore {
 }
 
 impl CrateStore for cstore::CStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any> {
-        self.get_crate_data(krate)
+    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any {
+        self.get_crate_data(cnum)
     }
 
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
@@ -525,8 +520,8 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
-    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
-        self.get_crate_data(cnum).def_path_table.clone()
+    fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable {
+        &self.get_crate_data(cnum).def_path_table
     }
 
     fn crates_untracked(&self) -> Vec<CrateNum>

@@ -5,12 +5,13 @@ use crate::schema;
 use rustc::dep_graph::DepNodeIndex;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate, MetadataLoader};
+use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate};
 use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock, MetadataRef, AtomicCell};
 use syntax::ast;
+use syntax::edition::Edition;
 use syntax_expand::base::SyntaxExtension;
 use syntax_pos;
 use proc_macro::bridge::client::ProcMacro;
@@ -36,7 +37,7 @@ crate struct ImportedSourceFile {
     pub translated_source_file: Lrc<syntax_pos::SourceFile>,
 }
 
-pub struct CrateMetadata {
+crate struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     crate blob: MetadataBlob,
 
@@ -53,7 +54,7 @@ pub struct CrateMetadata {
     /// hashmap, which gives the reverse mapping. This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
-    crate def_path_table: Lrc<DefPathTable>,
+    crate def_path_table: DefPathTable,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
@@ -94,50 +95,48 @@ pub struct CrateMetadata {
     crate extern_crate: Lock<Option<ExternCrate>>,
 }
 
+#[derive(Clone)]
 pub struct CStore {
-    metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
-    crate metadata_loader: Box<dyn MetadataLoader + Sync>,
+    metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
 }
 
 pub enum LoadedMacro {
-    MacroDef(ast::Item),
+    MacroDef(ast::Item, Edition),
     ProcMacro(SyntaxExtension),
 }
 
-impl CStore {
-    pub fn new(metadata_loader: Box<dyn MetadataLoader + Sync>) -> CStore {
+impl Default for CStore {
+    fn default() -> Self {
         CStore {
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
             // order to make array indices in `metas` match with the
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
-            metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
-            metadata_loader,
+            metas: IndexVec::from_elem_n(None, 1),
         }
     }
+}
 
-    crate fn alloc_new_crate_num(&self) -> CrateNum {
-        let mut metas = self.metas.borrow_mut();
-        let cnum = CrateNum::new(metas.len());
-        metas.push(None);
-        cnum
+impl CStore {
+    crate fn alloc_new_crate_num(&mut self) -> CrateNum {
+        self.metas.push(None);
+        CrateNum::new(self.metas.len() - 1)
     }
 
-    crate fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
-        self.metas.borrow()[cnum].clone()
+    crate fn get_crate_data(&self, cnum: CrateNum) -> &CrateMetadata {
+        self.metas[cnum].as_ref()
             .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
     }
 
-    crate fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
-        let mut metas = self.metas.borrow_mut();
-        assert!(metas[cnum].is_none(), "Overwriting crate metadata entry");
-        metas[cnum] = Some(data);
+    crate fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
+        assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
+        self.metas[cnum] = Some(Lrc::new(data));
     }
 
     crate fn iter_crate_data<I>(&self, mut i: I)
-        where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
+        where I: FnMut(CrateNum, &CrateMetadata)
     {
-        for (k, v) in self.metas.borrow().iter_enumerated() {
+        for (k, v) in self.metas.iter_enumerated() {
             if let &Some(ref v) = v {
                 i(k, v);
             }
@@ -168,7 +167,7 @@ impl CStore {
 
     crate fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
-        for (num, v) in self.metas.borrow().iter_enumerated() {
+        for (num, v) in self.metas.iter_enumerated() {
             if let &Some(_) = v {
                 self.push_dependencies_in_postorder(&mut ordering, num);
             }

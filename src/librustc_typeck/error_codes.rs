@@ -5005,6 +5005,30 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
 
+E0741: r##"
+Only `structural_match` types (that is, types that derive `PartialEq` and `Eq`)
+may be used as the types of const generic parameters.
+
+```compile_fail,E0741
+#![feature(const_generics)]
+
+struct A;
+
+struct B<const X: A>; // error!
+```
+
+To fix this example, we derive `PartialEq` and `Eq`.
+
+```
+#![feature(const_generics)]
+
+#[derive(PartialEq, Eq)]
+struct A;
+
+struct B<const X: A>; // ok!
+```
+"##,
+
 ;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
