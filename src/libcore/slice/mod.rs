@@ -28,7 +28,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
-use crate::ops::{FnMut, self};
+use crate::ops::{FnMut, Range, self};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::result::Result;
@@ -405,6 +405,65 @@ impl<T> [T] {
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
+    }
+
+    /// Returns the two raw pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_ptr`] for warnings on using these pointers. The end pointer
+    /// requires extra caution, as it does not point to a valid element in the
+    /// slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// It can also be useful to check if a reference or pointer to an element
+    /// refers to an element of this slice:
+    ///
+    /// ```
+    /// let a = [1,2,3];
+    /// let x = &a[1];
+    /// let y = &5;
+    /// assert!(a.as_ptr_range().contains(x));
+    /// assert!(!a.as_ptr_range().contains(y));
+    /// ```
+    ///
+    /// [`as_ptr`]: #method.as_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "0")]
+    #[inline]
+    pub fn as_ptr_range(&self) -> Range<*const T> {
+        let start = self.as_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
+    }
+
+    /// Returns the two unsafe mutable pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_mut_ptr`] for warnings on using these pointers. The end
+    /// pointer requires extra caution, as it does not point to a valid element
+    /// in the slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "0")]
+    #[inline]
+    pub fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
+        let start = self.as_mut_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
     }
 
     /// Swaps two elements in the slice.
