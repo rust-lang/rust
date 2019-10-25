@@ -19,9 +19,11 @@ fn fmt() {
 
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let dev_dir = root_dir.join("clippy_dev");
+    let target_dir = root_dir.join("target");
+    let target_dir = target_dir.to_str().unwrap();
     let output = Command::new("cargo")
         .current_dir(dev_dir)
-        .args(&["+nightly", "run", "--", "fmt", "--check"])
+        .args(&["+nightly", "run", "--target-dir", target_dir, "--", "fmt", "--check"])
         .output()
         .unwrap();
 
