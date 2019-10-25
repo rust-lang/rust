@@ -16,8 +16,8 @@ use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::ty::{self, DefIdTree, TyCtxt};
 use crate::ty::query::Providers;
 
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use syntax::source_map;
 use syntax_pos::{Span, DUMMY_SP};
@@ -131,7 +131,7 @@ pub enum ScopeData {
     Remainder(FirstStatementIndex)
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// Represents a subscope of `block` for a binding that is introduced
     /// by `block.stmts[first_statement_index]`. Such subscopes represent
     /// a suffix of the block. Note that each subscope does not include
@@ -796,7 +796,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
         // index information.)
 
         for (i, statement) in blk.stmts.iter().enumerate() {
-            match statement.node {
+            match statement.kind {
                 hir::StmtKind::Local(..) |
                 hir::StmtKind::Item(..) => {
                     // Each declaration introduces a subscope for bindings
@@ -850,7 +850,7 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
     visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
-    if let PatKind::Binding(..) = pat.node {
+    if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id, pat.span);
     }
 
@@ -893,7 +893,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
         let mut terminating = |id: hir::ItemLocalId| {
             terminating_scopes.insert(id);
         };
-        match expr.node {
+        match expr.kind {
             // Conditional or repeating scopes are always terminating
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
@@ -996,7 +996,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // properly, we can't miss any types.
 
 
-    match expr.node {
+    match expr.kind {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
         hir::ExprKind::Closure(.., body, _, _) => {
@@ -1053,7 +1053,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     debug!("resolve_expr post-increment {}, expr = {:?}", visitor.expr_and_pat_count, expr);
 
-    if let hir::ExprKind::Yield(_, source) = &expr.node {
+    if let hir::ExprKind::Yield(_, source) = &expr.kind {
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
@@ -1198,7 +1198,7 @@ fn resolve_local<'tcx>(
         // In the former case (the implicit ref version), the temporary is created by the
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
-        match pat.node {
+        match pat.kind {
             PatKind::Binding(hir::BindingAnnotation::Ref, ..) |
             PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
 
@@ -1240,7 +1240,7 @@ fn resolve_local<'tcx>(
         expr: &hir::Expr,
         blk_id: Option<Scope>,
     ) {
-        match expr.node {
+        match expr.kind {
             hir::ExprKind::AddrOf(_, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 record_rvalue_scope(visitor, &subexpr, blk_id);
@@ -1300,7 +1300,7 @@ fn resolve_local<'tcx>(
             // outer expression.
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
 
-            match expr.node {
+            match expr.kind {
                 hir::ExprKind::AddrOf(_, ref subexpr) |
                 hir::ExprKind::Unary(hir::UnDeref, ref subexpr) |
                 hir::ExprKind::Field(ref subexpr, _) |
@@ -1491,9 +1491,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ScopeTree {
             root_body,
             root_parent,

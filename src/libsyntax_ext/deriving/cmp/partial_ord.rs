@@ -5,7 +5,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, BinOpKind, Expr, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
 use syntax_pos::Span;

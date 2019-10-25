@@ -3,5 +3,5 @@
 // compile-flags: --crate-type lib
 
 pub const async fn x() {}
-//~^ ERROR expected identifier, found reserved keyword `async`
+//~^ ERROR expected identifier, found keyword `async`
 //~^^ expected `:`, found keyword `fn`

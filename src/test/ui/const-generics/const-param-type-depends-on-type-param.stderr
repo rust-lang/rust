@@ -1,9 +1,3 @@
-error[E0671]: const parameters cannot depend on type parameters
-  --> $DIR/const-param-type-depends-on-type-param.rs:9:34
-   |
-LL | pub struct Dependent<T, const X: T>([(); X]);
-   |                                  ^ const parameter depends on type parameter
-
 warning: the feature `const_generics` is incomplete and may cause the compiler to crash
   --> $DIR/const-param-type-depends-on-type-param.rs:1:12
    |
@@ -12,15 +6,12 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0392]: parameter `T` is never used
-  --> $DIR/const-param-type-depends-on-type-param.rs:9:22
+error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:34
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
-   |                      ^ unused parameter
-   |
-   = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
+   |                                  ^ `T` doesn't derive both `PartialEq` and `Eq`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0392, E0671.
-For more information about an error, try `rustc --explain E0392`.
+For more information about this error, try `rustc --explain E0741`.

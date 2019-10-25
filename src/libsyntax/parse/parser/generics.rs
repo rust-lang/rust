@@ -55,10 +55,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_const_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+        let lo = self.token.span;
+
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
+
+        self.sess.gated_spans.const_generics.borrow_mut().push(lo.to(self.prev_span));
 
         Ok(GenericParam {
             ident,
@@ -74,7 +78,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
     /// a trailing comma and erroneous trailing attributes.
-    crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
+    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
         let mut params = Vec::new();
         loop {
             let attrs = self.parse_outer_attributes()?;

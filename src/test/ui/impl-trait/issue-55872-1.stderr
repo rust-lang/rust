@@ -1,10 +1,11 @@
 error[E0277]: the trait bound `S: std::marker::Copy` is not satisfied in `(S, T)`
   --> $DIR/issue-55872-1.rs:12:5
    |
+LL | impl<S: Default> Bar for S {
+   |      -- help: consider further restricting this bound: `S: std::marker::Copy +`
 LL |     type E = impl Copy;
    |     ^^^^^^^^^^^^^^^^^^^ within `(S, T)`, the trait `std::marker::Copy` is not implemented for `S`
    |
-   = help: consider adding a `where S: std::marker::Copy` bound
    = note: required because it appears within the type `(S, T)`
    = note: the return type of a function must have a statically known size
 
@@ -13,8 +14,10 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied in `(S, T)
    |
 LL |     type E = impl Copy;
    |     ^^^^^^^^^^^^^^^^^^^ within `(S, T)`, the trait `std::marker::Copy` is not implemented for `T`
+...
+LL |     fn foo<T: Default>() -> Self::E {
+   |            -- help: consider further restricting this bound: `T: std::marker::Copy +`
    |
-   = help: consider adding a `where T: std::marker::Copy` bound
    = note: required because it appears within the type `(S, T)`
    = note: the return type of a function must have a statically known size
 

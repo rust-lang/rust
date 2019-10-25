@@ -11,7 +11,7 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
-pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
+crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
         libs: Vec::new(),
@@ -21,7 +21,7 @@ pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     return collector.libs;
 }
 
-pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+crate fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
@@ -35,7 +35,7 @@ struct Collector<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
-        let fm = match it.node {
+        let fm = match it.kind {
             hir::ItemKind::ForeignMod(ref fm) => fm,
             _ => return,
         };
@@ -73,6 +73,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         "static-nobundle" => cstore::NativeStaticNobundle,
                         "dylib" => cstore::NativeUnknown,
                         "framework" => cstore::NativeFramework,
+                        "raw-dylib" => cstore::NativeRawDylib,
                         k => {
                             struct_span_err!(self.tcx.sess, item.span(), E0458,
                                       "unknown kind: `{}`", k)
@@ -169,6 +170,14 @@ impl Collector<'tcx> {
                                            GateIssue::Language,
                                            "kind=\"static-nobundle\" is unstable");
         }
+        if lib.kind == cstore::NativeRawDylib &&
+           !self.tcx.features().raw_dylib {
+            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                           sym::raw_dylib,
+                                           span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
+                                           GateIssue::Language,
+                                           "kind=\"raw-dylib\" is unstable");
+        }
         self.libs.push(lib);
     }
 
@@ -189,12 +198,10 @@ impl Collector<'tcx> {
                     self.tcx.sess.err(&format!("renaming of the library `{}` was specified, \
                                                 however this crate contains no `#[link(...)]` \
                                                 attributes referencing this library.", name));
-                } else if renames.contains(name) {
+                } else if !renames.insert(name) {
                     self.tcx.sess.err(&format!("multiple renamings were \
                                                 specified for library `{}` .",
                                                name));
-                } else {
-                    renames.insert(name);
                 }
             }
         }

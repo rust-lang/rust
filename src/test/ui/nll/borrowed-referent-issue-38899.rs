@@ -1,7 +1,5 @@
 // Regression test for issue #38899
 
-#![feature(nll)]
-
 pub struct Block<'a> {
     current: &'a u8,
     unrelated: &'a u8,

@@ -20,7 +20,7 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 
 use std::{iter, mem, usize};
 
@@ -189,6 +189,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             },
             kind: StatementKind::Assign(box(Place::from(dest), rvalue))
         });
+    }
+
+    fn is_temp_kind(&self, local: Local) -> bool {
+        self.source.local_kind(local) == LocalKind::Temp
     }
 
     /// Copies the initialization of this temp to the
@@ -396,8 +400,20 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
                    local: &mut Local,
                    _: PlaceContext,
                    _: Location) {
-        if self.source.local_kind(*local) == LocalKind::Temp {
+        if self.is_temp_kind(*local) {
             *local = self.promote_temp(*local);
+        }
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        match elem {
+            PlaceElem::Index(local) if self.is_temp_kind(*local) => {
+                Some(PlaceElem::Index(self.promote_temp(*local)))
+            }
+            _ => None,
         }
     }
 }

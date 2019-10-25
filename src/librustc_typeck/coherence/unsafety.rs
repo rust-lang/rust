@@ -71,7 +71,7 @@ impl UnsafetyChecker<'tcx> {
 
 impl ItemLikeVisitor<'v> for UnsafetyChecker<'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
-        if let hir::ItemKind::Impl(unsafety, polarity, _, ref generics, ..) = item.node {
+        if let hir::ItemKind::Impl(unsafety, polarity, _, ref generics, ..) = item.kind {
             self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
         }
     }

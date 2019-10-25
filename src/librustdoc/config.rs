@@ -53,6 +53,8 @@ pub struct Options {
     pub codegen_options_strs: Vec<String>,
     /// Debugging (`-Z`) options to pass to the compiler.
     pub debugging_options: DebuggingOptions,
+    /// Debugging (`-Z`) options strings to pass to the compiler.
+    pub debugging_options_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -343,11 +345,7 @@ impl Options {
         let output = matches.opt_str("o")
                             .map(|s| PathBuf::from(&s))
                             .unwrap_or_else(|| PathBuf::from("doc"));
-        let mut cfgs = matches.opt_strs("cfg");
-        cfgs.push("rustdoc".to_string());
-        if should_test {
-            cfgs.push("doctest".to_string());
-        }
+        let cfgs = matches.opt_strs("cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
@@ -482,6 +480,7 @@ impl Options {
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
+        let debugging_options_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
         let runtool = matches.opt_str("runtool");
@@ -503,6 +502,7 @@ impl Options {
             codegen_options,
             codegen_options_strs,
             debugging_options,
+            debugging_options_strs,
             target,
             edition,
             maybe_sysroot,

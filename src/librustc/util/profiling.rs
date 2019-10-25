@@ -1,9 +1,9 @@
-use std::borrow::Cow;
 use std::error::Error;
 use std::fs;
 use std::mem::{self, Discriminant};
 use std::path::Path;
 use std::process;
+use std::sync::Arc;
 use std::thread::ThreadId;
 use std::u32;
 
@@ -60,6 +60,206 @@ const EVENT_FILTERS_BY_NAME: &[(&str, EventFilter)] = &[
 
 fn thread_id_to_u64(tid: ThreadId) -> u64 {
     unsafe { mem::transmute::<ThreadId, u64>(tid) }
+}
+
+
+/// A reference to the SelfProfiler. It can be cloned and sent across thread
+/// boundaries at will.
+#[derive(Clone)]
+pub struct SelfProfilerRef {
+    // This field is `None` if self-profiling is disabled for the current
+    // compilation session.
+    profiler: Option<Arc<SelfProfiler>>,
+
+    // We store the filter mask directly in the reference because that doesn't
+    // cost anything and allows for filtering with checking if the profiler is
+    // actually enabled.
+    event_filter_mask: EventFilter,
+}
+
+impl SelfProfilerRef {
+
+    pub fn new(profiler: Option<Arc<SelfProfiler>>) -> SelfProfilerRef {
+        // If there is no SelfProfiler then the filter mask is set to NONE,
+        // ensuring that nothing ever tries to actually access it.
+        let event_filter_mask = profiler
+            .as_ref()
+            .map(|p| p.event_filter_mask)
+            .unwrap_or(EventFilter::NONE);
+
+        SelfProfilerRef {
+            profiler,
+            event_filter_mask,
+        }
+    }
+
+    // This shim makes sure that calls only get executed if the filter mask
+    // lets them pass. It also contains some trickery to make sure that
+    // code is optimized for non-profiling compilation sessions, i.e. anything
+    // past the filter check is never inlined so it doesn't clutter the fast
+    // path.
+    #[inline(always)]
+    fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
+        where F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>
+    {
+        #[inline(never)]
+        fn cold_call<F>(profiler_ref: &SelfProfilerRef, f: F) -> TimingGuard<'_>
+            where F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>
+        {
+            let profiler = profiler_ref.profiler.as_ref().unwrap();
+            f(&**profiler)
+        }
+
+        if unlikely!(self.event_filter_mask.contains(event_filter)) {
+            cold_call(self, f)
+        } else {
+            TimingGuard::none()
+        }
+    }
+
+    /// Start profiling a generic activity. Profiling continues until the
+    /// TimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn generic_activity(&self, event_id: &str) -> TimingGuard<'_> {
+        self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
+            let event_id = profiler.profiler.alloc_string(event_id);
+            TimingGuard::start(
+                profiler,
+                profiler.generic_activity_event_kind,
+                event_id
+            )
+        })
+    }
+
+    /// Start profiling a generic activity. Profiling continues until
+    /// `generic_activity_end` is called. The RAII-based `generic_activity`
+    /// usually is the better alternative.
+    #[inline(always)]
+    pub fn generic_activity_start(&self, event_id: &str) {
+        self.non_guard_generic_event(
+            |profiler| profiler.generic_activity_event_kind,
+            |profiler| profiler.profiler.alloc_string(event_id),
+            EventFilter::GENERIC_ACTIVITIES,
+            TimestampKind::Start,
+        );
+    }
+
+    /// End profiling a generic activity that was started with
+    /// `generic_activity_start`. The RAII-based `generic_activity` usually is
+    /// the better alternative.
+    #[inline(always)]
+    pub fn generic_activity_end(&self, event_id: &str) {
+        self.non_guard_generic_event(
+            |profiler| profiler.generic_activity_event_kind,
+            |profiler| profiler.profiler.alloc_string(event_id),
+            EventFilter::GENERIC_ACTIVITIES,
+            TimestampKind::End,
+        );
+    }
+
+    /// Start profiling a query provider. Profiling continues until the
+    /// TimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn query_provider(&self, query_name: QueryName) -> TimingGuard<'_> {
+        self.exec(EventFilter::QUERY_PROVIDERS, |profiler| {
+            let event_id = SelfProfiler::get_query_name_string_id(query_name);
+            TimingGuard::start(profiler, profiler.query_event_kind, event_id)
+        })
+    }
+
+    /// Record a query in-memory cache hit.
+    #[inline(always)]
+    pub fn query_cache_hit(&self, query_name: QueryName) {
+        self.non_guard_query_event(
+            |profiler| profiler.query_cache_hit_event_kind,
+            query_name,
+            EventFilter::QUERY_CACHE_HITS,
+            TimestampKind::Instant,
+        );
+    }
+
+    /// Start profiling a query being blocked on a concurrent execution.
+    /// Profiling continues until `query_blocked_end` is called.
+    #[inline(always)]
+    pub fn query_blocked_start(&self, query_name: QueryName) {
+        self.non_guard_query_event(
+            |profiler| profiler.query_blocked_event_kind,
+            query_name,
+            EventFilter::QUERY_BLOCKED,
+            TimestampKind::Start,
+        );
+    }
+
+    /// End profiling a query being blocked on a concurrent execution.
+    #[inline(always)]
+    pub fn query_blocked_end(&self, query_name: QueryName) {
+        self.non_guard_query_event(
+            |profiler| profiler.query_blocked_event_kind,
+            query_name,
+            EventFilter::QUERY_BLOCKED,
+            TimestampKind::End,
+        );
+    }
+
+    /// Start profiling how long it takes to load a query result from the
+    /// incremental compilation on-disk cache. Profiling continues until the
+    /// TimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn incr_cache_loading(&self, query_name: QueryName) -> TimingGuard<'_> {
+        self.exec(EventFilter::INCR_CACHE_LOADS, |profiler| {
+            let event_id = SelfProfiler::get_query_name_string_id(query_name);
+            TimingGuard::start(
+                profiler,
+                profiler.incremental_load_result_event_kind,
+                event_id
+            )
+        })
+    }
+
+    #[inline(always)]
+    fn non_guard_query_event(
+        &self,
+        event_kind: fn(&SelfProfiler) -> StringId,
+        query_name: QueryName,
+        event_filter: EventFilter,
+        timestamp_kind: TimestampKind
+    ) {
+        drop(self.exec(event_filter, |profiler| {
+            let event_id = SelfProfiler::get_query_name_string_id(query_name);
+            let thread_id = thread_id_to_u64(std::thread::current().id());
+
+            profiler.profiler.record_event(
+                event_kind(profiler),
+                event_id,
+                thread_id,
+                timestamp_kind,
+            );
+
+            TimingGuard::none()
+        }));
+    }
+
+    #[inline(always)]
+    fn non_guard_generic_event<F: FnOnce(&SelfProfiler) -> StringId>(
+        &self,
+        event_kind: fn(&SelfProfiler) -> StringId,
+        event_id: F,
+        event_filter: EventFilter,
+        timestamp_kind: TimestampKind
+    ) {
+        drop(self.exec(event_filter, |profiler| {
+            let thread_id = thread_id_to_u64(std::thread::current().id());
+
+            profiler.profiler.record_event(
+                event_kind(profiler),
+                event_id(profiler),
+                thread_id,
+                timestamp_kind,
+            );
+
+            TimingGuard::none()
+        }));
+    }
 }
 
 pub struct SelfProfiler {
@@ -143,103 +343,51 @@ impl SelfProfiler {
         let id = SelfProfiler::get_query_name_string_id(query_name);
         self.profiler.alloc_string_with_reserved_id(id, query_name.as_str());
     }
+}
 
+#[must_use]
+pub struct TimingGuard<'a>(Option<TimingGuardInternal<'a>>);
+
+struct TimingGuardInternal<'a> {
+    raw_profiler: &'a Profiler,
+    event_id: StringId,
+    event_kind: StringId,
+    thread_id: u64,
+}
+
+impl<'a> TimingGuard<'a> {
     #[inline]
-    pub fn start_activity(
-        &self,
-        label: impl Into<Cow<'static, str>>,
-    ) {
-        if self.event_filter_mask.contains(EventFilter::GENERIC_ACTIVITIES) {
-            self.record(&label.into(), self.generic_activity_event_kind, TimestampKind::Start);
-        }
-    }
-
-    #[inline]
-    pub fn end_activity(
-        &self,
-        label: impl Into<Cow<'static, str>>,
-    ) {
-        if self.event_filter_mask.contains(EventFilter::GENERIC_ACTIVITIES) {
-            self.record(&label.into(), self.generic_activity_event_kind, TimestampKind::End);
-        }
-    }
-
-    #[inline]
-    pub fn record_query_hit(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS) {
-            self.record_query(query_name, self.query_cache_hit_event_kind, TimestampKind::Instant);
-        }
-    }
-
-    #[inline]
-    pub fn start_query(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::QUERY_PROVIDERS) {
-            self.record_query(query_name, self.query_event_kind, TimestampKind::Start);
-        }
-    }
-
-    #[inline]
-    pub fn end_query(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::QUERY_PROVIDERS) {
-            self.record_query(query_name, self.query_event_kind, TimestampKind::End);
-        }
-    }
-
-    #[inline]
-    pub fn incremental_load_result_start(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::INCR_CACHE_LOADS) {
-            self.record_query(
-                query_name,
-                self.incremental_load_result_event_kind,
-                TimestampKind::Start
-            );
-        }
-    }
-
-    #[inline]
-    pub fn incremental_load_result_end(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::INCR_CACHE_LOADS) {
-            self.record_query(
-                query_name,
-                self.incremental_load_result_event_kind,
-                TimestampKind::End
-            );
-        }
-    }
-
-    #[inline]
-    pub fn query_blocked_start(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::QUERY_BLOCKED) {
-            self.record_query(query_name, self.query_blocked_event_kind, TimestampKind::Start);
-        }
-    }
-
-    #[inline]
-    pub fn query_blocked_end(&self, query_name: QueryName) {
-        if self.event_filter_mask.contains(EventFilter::QUERY_BLOCKED) {
-            self.record_query(query_name, self.query_blocked_event_kind, TimestampKind::End);
-        }
-    }
-
-    #[inline]
-    fn record(&self, event_id: &str, event_kind: StringId, timestamp_kind: TimestampKind) {
-        let thread_id = thread_id_to_u64(std::thread::current().id());
-
-        let event_id = self.profiler.alloc_string(event_id);
-        self.profiler.record_event(event_kind, event_id, thread_id, timestamp_kind);
-    }
-
-    #[inline]
-    fn record_query(
-        &self,
-        query_name: QueryName,
+    pub fn start(
+        profiler: &'a SelfProfiler,
         event_kind: StringId,
-        timestamp_kind: TimestampKind,
-    ) {
-        let dep_node_name = SelfProfiler::get_query_name_string_id(query_name);
-
+        event_id: StringId,
+    ) -> TimingGuard<'a> {
         let thread_id = thread_id_to_u64(std::thread::current().id());
+        let raw_profiler = &profiler.profiler;
+        raw_profiler.record_event(event_kind, event_id, thread_id, TimestampKind::Start);
 
-        self.profiler.record_event(event_kind, dep_node_name, thread_id, timestamp_kind);
+        TimingGuard(Some(TimingGuardInternal {
+            raw_profiler,
+            event_kind,
+            event_id,
+            thread_id,
+        }))
+    }
+
+    #[inline]
+    pub fn none() -> TimingGuard<'a> {
+        TimingGuard(None)
+    }
+}
+
+impl<'a> Drop for TimingGuardInternal<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        self.raw_profiler.record_event(
+            self.event_kind,
+            self.event_id,
+            self.thread_id,
+            TimestampKind::End
+        );
     }
 }

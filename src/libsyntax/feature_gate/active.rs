@@ -330,8 +330,13 @@ declare_features! (
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
 
-    /// Allows untagged unions `union U { ... }`.
-    (active, untagged_unions, "1.13.0", Some(32836), None),
+    /// Allows `union`s to implement `Drop`. Moreover, `union`s may now include fields
+    /// that don't implement `Copy` as long as they don't have any drop glue.
+    /// This is checked recursively. On encountering type variable where no progress can be made,
+    /// `T: Copy` is used as a substitute for "no drop glue".
+    ///
+    /// NOTE: A limited form of `union U { ... }` was accepted in 1.19.0.
+    (active, untagged_unions, "1.13.0", Some(55149), None),
 
     /// Allows `#[link(..., cfg(..))]`.
     (active, link_cfg, "1.14.0", Some(37406), None),
@@ -401,9 +406,6 @@ declare_features! (
 
     /// Allows infering `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
-
-    /// Allows macro invocations in `extern {}` blocks.
-    (active, macros_in_extern, "1.27.0", Some(49476), None),
 
     /// Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
@@ -518,6 +520,21 @@ declare_features! (
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (active, or_patterns, "1.38.0", Some(54883), None),
 
+    /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
+    (active, const_extern_fn, "1.40.0", Some(64926), None),
+
+    /// Allows the use of raw-dylibs (RFC 2627).
+    (active, raw_dylib, "1.40.0", Some(58713), None),
+
+    /// Allows `#[track_caller]` to be used which provides
+    /// accurate caller location reporting during panic (RFC 2091).
+    (active, track_caller, "1.40.0", Some(47809), None),
+
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
+    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
+    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -532,4 +549,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics,
     sym::or_patterns,
     sym::let_chains,
+    sym::raw_dylib,
+    sym::track_caller,
 ];

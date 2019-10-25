@@ -47,6 +47,12 @@ pub(crate) fn emit_unescape_error(
                 .emit();
         }
         EscapeError::MoreThanOneChar => {
+            let msg = if mode.is_bytes() {
+                "if you meant to write a byte string literal, use double quotes"
+            } else {
+                "if you meant to write a `str` literal, use double quotes"
+            };
+
             handler
                 .struct_span_err(
                     span_with_quotes,
@@ -54,7 +60,7 @@ pub(crate) fn emit_unescape_error(
                 )
                 .span_suggestion(
                     span_with_quotes,
-                    "if you meant to write a `str` literal, use double quotes",
+                    msg,
                     format!("\"{}\"", lit),
                     Applicability::MachineApplicable,
                 ).emit()

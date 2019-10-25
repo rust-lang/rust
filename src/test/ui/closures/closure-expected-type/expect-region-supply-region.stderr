@@ -38,7 +38,7 @@ LL | |
 LL | |
 LL | |     });
    | |_____^
-note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 32:30
+note: ...does not necessarily outlive the lifetime `'x` as defined on the function body at 32:30
   --> $DIR/expect-region-supply-region.rs:32:30
    |
 LL | fn expect_bound_supply_named<'x>() {
@@ -52,7 +52,7 @@ LL |     closure_expecting_bound(|x: &'x u32| {
    |
    = note: expected type `&u32`
               found type `&'x u32`
-note: the lifetime 'x as defined on the function body at 32:30...
+note: the lifetime `'x` as defined on the function body at 32:30...
   --> $DIR/expect-region-supply-region.rs:32:30
    |
 LL | fn expect_bound_supply_named<'x>() {

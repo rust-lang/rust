@@ -13,7 +13,7 @@ pub use emitter::ColorConfig;
 
 use Level::*;
 
-use emitter::{Emitter, EmitterWriter};
+use emitter::{Emitter, EmitterWriter, is_case_difference};
 use registry::Registry;
 
 use rustc_data_structures::sync::{self, Lrc, Lock};
@@ -37,13 +37,16 @@ pub mod registry;
 mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos,
-                 Loc,
-                 FileLinesResult,
-                 SourceFile,
-                 FileName,
-                 MultiSpan,
-                 Span};
+use syntax_pos::{
+    BytePos,
+    FileLinesResult,
+    FileName,
+    Loc,
+    MultiSpan,
+    SourceFile,
+    Span,
+    SpanSnippetError,
+};
 
 /// Indicates the confidence in the correctness of a suggestion.
 ///
@@ -81,6 +84,8 @@ pub enum SuggestionStyle {
     /// This will *not* show the code if the suggestion is inline *and* the suggested code is
     /// empty.
     ShowCode,
+    /// Always show the suggested code independently.
+    ShowAlways,
 }
 
 impl SuggestionStyle {
@@ -145,6 +150,7 @@ pub trait SourceMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
     fn span_to_string(&self, sp: Span) -> String;
+    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError>;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
@@ -153,9 +159,12 @@ pub trait SourceMapper {
 }
 
 impl CodeSuggestion {
-    /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &SourceMapperDyn)
-                        -> Vec<(String, Vec<SubstitutionPart>)> {
+    /// Returns the assembled code suggestions, whether they should be shown with an underline
+    /// and whether the substitution only differs in capitalization.
+    pub fn splice_lines(
+        &self,
+        cm: &SourceMapperDyn,
+    ) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
         use syntax_pos::{CharPos, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -230,6 +239,7 @@ impl CodeSuggestion {
                 prev_hi = cm.lookup_char_pos(part.span.hi());
                 prev_line = fm.get_line(prev_hi.line - 1);
             }
+            let only_capitalization = is_case_difference(cm, &buf, bounding_span);
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
                 push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
@@ -238,7 +248,7 @@ impl CodeSuggestion {
             while buf.ends_with('\n') {
                 buf.pop();
             }
-            (buf, substitution.parts)
+            (buf, substitution.parts, only_capitalization)
         }).collect()
     }
 }
@@ -469,14 +479,17 @@ impl Handler {
     /// NOTE: *do not* call this function from rustc. It is only meant to be called from external
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
-    // FIXME: this does not clear inner entirely
     pub fn reset_err_count(&self) {
         let mut inner = self.inner.borrow_mut();
-        // actually frees the underlying memory (which `clear` would not do)
-        inner.emitted_diagnostics = Default::default();
-        inner.deduplicated_err_count = 0;
         inner.err_count = 0;
-        inner.stashed_diagnostics.clear();
+        inner.deduplicated_err_count = 0;
+
+        // actually free the underlying memory (which `clear` would not do)
+        inner.delayed_span_bugs = Default::default();
+        inner.taught_diagnostics = Default::default();
+        inner.emitted_diagnostic_codes = Default::default();
+        inner.emitted_diagnostics = Default::default();
+        inner.stashed_diagnostics = Default::default();
     }
 
     /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.

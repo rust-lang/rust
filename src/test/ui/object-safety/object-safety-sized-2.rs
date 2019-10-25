@@ -1,5 +1,9 @@
 // Check that we correctly prevent users from making trait objects
 // from traits where `Self : Sized`.
+//
+// revisions: curr object_safe_for_dispatch
+
+#![cfg_attr(object_safe_for_dispatch, feature(object_safe_for_dispatch))]
 
 trait Bar
     where Self : Sized
@@ -8,8 +12,9 @@ trait Bar
 }
 
 fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
-        //~^ ERROR E0038
-    loop { }
+    //[curr]~^ ERROR E0038
+    t
+    //[object_safe_for_dispatch]~^ ERROR E0038
 }
 
 fn main() {

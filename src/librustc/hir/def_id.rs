@@ -1,9 +1,9 @@
 use crate::ty::{self, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::fmt;
 use std::u32;
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct CrateId {
         ENCODABLE = custom
     }
@@ -87,7 +87,7 @@ impl fmt::Display for CrateNum {
 impl rustc_serialize::UseSpecializedEncodable for CrateNum {}
 impl rustc_serialize::UseSpecializedDecodable for CrateNum {}
 
-newtype_index! {
+rustc_index::newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.

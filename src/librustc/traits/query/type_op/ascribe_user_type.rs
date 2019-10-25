@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
+use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
 use crate::hir::def_id::DefId;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
@@ -36,12 +36,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
         tcx.type_op_ascribe_user_type(canonicalized)
-    }
-
-    fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'tcx, ()>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, ()>> {
-        v
     }
 }
 

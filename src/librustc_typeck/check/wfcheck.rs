@@ -48,7 +48,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
                 // empty `param_env`.
                 check_false_global_bounds(&fcx, span, id);
             }
-            let wf_tys = f(&fcx, fcx.tcx.global_tcx());
+            let wf_tys = f(&fcx, fcx.tcx);
             fcx.select_all_obligations_or_error();
             fcx.regionck_item(id, span, &wf_tys);
         });
@@ -76,7 +76,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
            item.hir_id,
            tcx.def_path_str(def_id));
 
-    match item.node {
+    match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -128,7 +128,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
             check_item_type(tcx, item.hir_id, ty.span, false);
         }
         hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
-            if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
+            if let hir::ForeignItemKind::Static(ref ty, ..) = it.kind {
                 check_item_type(tcx, it.hir_id, ty.span, true);
             }
         },
@@ -167,21 +167,57 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
-    let method_sig = match trait_item.node {
+    let method_sig = match trait_item.kind {
         hir::TraitItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+
+    // Prohibits applying `#[track_caller]` to trait decls
+    for attr in &trait_item.attrs {
+        if attr.check_name(sym::track_caller) {
+            struct_span_err!(
+                tcx.sess,
+                attr.span,
+                E0738,
+                "`#[track_caller]` is not supported in trait declarations."
+            ).emit();
+        }
+    }
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
-    let method_sig = match impl_item.node {
+    let method_sig = match impl_item.kind {
         hir::ImplItemKind::Method(ref sig, _) => Some(sig),
         _ => None
     };
+
+    // Prohibits applying `#[track_caller]` to trait impls
+    if method_sig.is_some() {
+        let track_caller_attr = impl_item.attrs.iter()
+            .find(|a| a.check_name(sym::track_caller));
+        if let Some(tc_attr) = track_caller_attr {
+            let parent_hir_id = tcx.hir().get_parent_item(hir_id);
+            let containing_item = tcx.hir().expect_item(parent_hir_id);
+            let containing_impl_is_for_trait = match &containing_item.kind {
+                hir::ItemKind::Impl(_, _, _, _, tr, _, _) => tr.is_some(),
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+
+            if containing_impl_is_for_trait {
+                struct_span_err!(
+                    tcx.sess,
+                    tc_attr.span,
+                    E0738,
+                    "`#[track_caller]` is not supported in traits yet."
+                ).emit();
+            }
+        }
+    }
+
     check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
 }
 
@@ -299,7 +335,7 @@ fn check_type_defn<'tcx, F>(
                         field.span,
                         fcx.body_id,
                         traits::FieldSized {
-                            adt_kind: match item.node.adt_kind() {
+                            adt_kind: match item.kind.adt_kind() {
                                 Some(i) => i,
                                 None => bug!(),
                             },
@@ -366,8 +402,8 @@ fn check_item_type(
 ) {
     debug!("check_item_type: {:?}", item_id);
 
-    for_id(tcx, item_id, ty_span).with_fcx(|fcx, gcx| {
-        let ty = gcx.type_of(gcx.hir().local_def_id(item_id));
+    for_id(tcx, item_id, ty_span).with_fcx(|fcx, tcx| {
+        let ty = tcx.type_of(tcx.hir().local_def_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
         let mut forbid_unsized = true;
@@ -755,7 +791,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                         "check_opaque_types: may define, predicates={:#?}",
                         predicates,
                     );
-                    for &(pred, _) in predicates.predicates.iter() {
+                    for &(pred, _) in predicates.predicates {
                         let substituted_pred = pred.subst(fcx.tcx, substs);
                         // Avoid duplication of predicates that contain no parameters, for example.
                         if !predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
@@ -975,7 +1011,7 @@ fn check_variances_for_type_defn<'tcx>(
 
     identify_constrained_generic_params(
         tcx,
-        &ty_predicates,
+        ty_predicates,
         None,
         &mut constrained_parameters,
     );
@@ -999,11 +1035,16 @@ fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) {
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
     // Help is available only in presence of lang items.
-    if let Some(def_id) = suggested_marker_id {
-        err.help(&format!("consider removing `{}` or using a marker such as `{}`",
-                          param_name,
-                          tcx.def_path_str(def_id)));
-    }
+    let msg = if let Some(def_id) = suggested_marker_id {
+        format!(
+            "consider removing `{}`, referring to it in a field, or using a marker such as `{}`",
+            param_name,
+            tcx.def_path_str(def_id),
+        )
+    } else {
+        format!( "consider removing `{}` or referring to it in a field", param_name)
+    };
+    err.help(&msg);
     err.emit();
 }
 

@@ -13,6 +13,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::check_attr::Target;
 use crate::ty::{self, TyCtxt};
 use crate::middle::weak_lang_items;
+use crate::middle::cstore::ExternCrate;
 use crate::util::nodemap::FxHashMap;
 
 use syntax::ast;
@@ -182,16 +183,39 @@ impl LanguageItemCollector<'tcx> {
                         E0152,
                         "duplicate lang item found: `{}`.",
                         name),
-                    None => self.tcx.sess.struct_err(&format!(
-                            "duplicate lang item in crate `{}`: `{}`.",
-                            self.tcx.crate_name(item_def_id.krate),
-                            name)),
+                    None => {
+                        match self.tcx.extern_crate(item_def_id) {
+                            Some(ExternCrate {dependency_of, ..}) => {
+                                self.tcx.sess.struct_err(&format!(
+                                "duplicate lang item in crate `{}` (which `{}` depends on): `{}`.",
+                                self.tcx.crate_name(item_def_id.krate),
+                                self.tcx.crate_name(*dependency_of),
+                                name))
+                            },
+                            _ => {
+                                self.tcx.sess.struct_err(&format!(
+                                "duplicate lang item in crate `{}`: `{}`.",
+                                self.tcx.crate_name(item_def_id.krate),
+                                name))
+                            }
+                        }
+                    },
                 };
                 if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
                     span_note!(&mut err, span, "first defined here.");
                 } else {
-                    err.note(&format!("first defined in crate `{}`.",
+                    match self.tcx.extern_crate(original_def_id) {
+                        Some(ExternCrate {dependency_of, ..}) => {
+                            err.note(&format!(
+                            "first defined in crate `{}` (which `{}` depends on).",
+                                      self.tcx.crate_name(original_def_id.krate),
+                                      self.tcx.crate_name(*dependency_of)));
+                        },
+                        _ => {
+                            err.note(&format!("first defined in crate `{}`.",
                                       self.tcx.crate_name(original_def_id.krate)));
+                        }
+                    }
                 }
                 err.emit();
             }

@@ -7,14 +7,11 @@ LL |     write(|| format_args!("{}", String::from("Hello world")));
    |              |                  temporary value created here
    |              returns a value referencing data owned by the current function
 
-error[E0515]: cannot return value referencing temporary value
+error[E0515]: cannot return reference to temporary value
   --> $DIR/issue-27592.rs:16:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
-   |              ^^^^^^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |              |            |
-   |              |            temporary value created here
-   |              returns a value referencing data owned by the current function
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error: aborting due to 2 previous errors
 

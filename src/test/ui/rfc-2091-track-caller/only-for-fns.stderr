@@ -1,0 +1,18 @@
+warning: the feature `track_caller` is incomplete and may cause the compiler to crash
+  --> $DIR/only-for-fns.rs:1:12
+   |
+LL | #![feature(track_caller)]
+   |            ^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0739]: attribute should be applied to function
+  --> $DIR/only-for-fns.rs:3:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | struct S;
+   | --------- not a function
+
+error: aborting due to previous error
+

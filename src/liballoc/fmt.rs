@@ -80,24 +80,210 @@
 //! arguments which have names. Like with positional parameters, it is not
 //! valid to provide named parameters that are unused by the format string.
 //!
-//! ## Argument types
+//! # Formatting Parameters
 //!
-//! Each argument's type is dictated by the format string.
-//! There are various parameters which require a particular type, however.
-//! An example is the `{:.*}` syntax, which sets the number of decimal places
-//! in floating-point types:
+//! Each argument being formatted can be transformed by a number of formatting
+//! parameters (corresponding to `format_spec` in the syntax above). These
+//! parameters affect the string representation of what's being formatted.
+//!
+//! ## Width
 //!
 //! ```
-//! let formatted_number = format!("{:.*}", 2, 1.234567);
-//!
-//! assert_eq!("1.23", formatted_number)
+//! // All of these print "Hello x    !"
+//! println!("Hello {:5}!", "x");
+//! println!("Hello {:1$}!", "x", 5);
+//! println!("Hello {1:0$}!", 5, "x");
+//! println!("Hello {:width$}!", "x", width = 5);
 //! ```
 //!
-//! If this syntax is used, then the number of characters to print precedes the
-//! actual object being formatted, and the number of characters must have the
-//! type [`usize`].
+//! This is a parameter for the "minimum width" that the format should take up.
+//! If the value's string does not fill up this many characters, then the
+//! padding specified by fill/alignment will be used to take up the required
+//! space (see below).
 //!
-//! ## Formatting traits
+//! The value for the width can also be provided as a [`usize`] in the list of
+//! parameters by adding a postfix `$`, indicating that the second argument is
+//! a [`usize`] specifying the width.
+//!
+//! Referring to an argument with the dollar syntax does not affect the "next
+//! argument" counter, so it's usually a good idea to refer to arguments by
+//! position, or use named arguments.
+//!
+//! ## Fill/Alignment
+//!
+//! ```
+//! assert_eq!(format!("Hello {:<5}!", "x"),  "Hello x    !");
+//! assert_eq!(format!("Hello {:-<5}!", "x"), "Hello x----!");
+//! assert_eq!(format!("Hello {:^5}!", "x"),  "Hello   x  !");
+//! assert_eq!(format!("Hello {:>5}!", "x"),  "Hello     x!");
+//! ```
+//!
+//! The optional fill character and alignment is provided normally in conjunction with the
+//! [`width`](#width) parameter. It must be defined before `width`, right after the `:`.
+//! This indicates that if the value being formatted is smaller than
+//! `width` some extra characters will be printed around it.
+//! Filling comes in the following variants for different alignments:
+//!
+//! * `[fill]<` - the argument is left-aligned in `width` columns
+//! * `[fill]^` - the argument is center-aligned in `width` columns
+//! * `[fill]>` - the argument is right-aligned in `width` columns
+//!
+//! The default [fill/alignment](#fillalignment) for non-numerics is a space and
+//! left-aligned. The
+//! defaults for numeric formatters is also a space but with right-alignment. If
+//! the `0` flag (see below) is specified for numerics, then the implicit fill character is
+//! `0`.
+//!
+//! Note that alignment may not be implemented by some types. In particular, it
+//! is not generally implemented for the `Debug` trait.  A good way to ensure
+//! padding is applied is to format your input, then pad this resulting string
+//! to obtain your output:
+//!
+//! ```
+//! println!("Hello {:^15}!", format!("{:?}", Some("hi"))); // => "Hello   Some("hi")   !"
+//! ```
+//!
+//! ## Sign/`#`/`0`
+//!
+//! ```
+//! assert_eq!(format!("Hello {:+}!", 5), "Hello +5!");
+//! assert_eq!(format!("{:#x}!", 27), "0x1b!");
+//! assert_eq!(format!("Hello {:05}!", 5),  "Hello 00005!");
+//! assert_eq!(format!("Hello {:05}!", -5), "Hello -0005!");
+//! assert_eq!(format!("{:#010x}!", 27), "0x0000001b!");
+//! ```
+//!
+//! These are all flags altering the behavior of the formatter.
+//!
+//! * `+` - This is intended for numeric types and indicates that the sign
+//!         should always be printed. Positive signs are never printed by
+//!         default, and the negative sign is only printed by default for the
+//!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
+//!         should always be printed.
+//! * `-` - Currently not used
+//! * `#` - This flag is indicates that the "alternate" form of printing should
+//!         be used. The alternate forms are:
+//!     * `#?` - pretty-print the [`Debug`] formatting
+//!     * `#x` - precedes the argument with a `0x`
+//!     * `#X` - precedes the argument with a `0x`
+//!     * `#b` - precedes the argument with a `0b`
+//!     * `#o` - precedes the argument with a `0o`
+//! * `0` - This is used to indicate for integer formats that the padding to `width` should
+//!         both be done with a `0` character as well as be sign-aware. A format
+//!         like `{:08}` would yield `00000001` for the integer `1`, while the
+//!         same format would yield `-0000001` for the integer `-1`. Notice that
+//!         the negative version has one fewer zero than the positive version.
+//!         Note that padding zeroes are always placed after the sign (if any)
+//!         and before the digits. When used together with the `#` flag, a similar
+//!         rule applies: padding zeroes are inserted after the prefix but before
+//!         the digits. The prefix is included in the total width.
+//!
+//! ## Precision
+//!
+//! For non-numeric types, this can be considered a "maximum width". If the resulting string is
+//! longer than this width, then it is truncated down to this many characters and that truncated
+//! value is emitted with proper `fill`, `alignment` and `width` if those parameters are set.
+//!
+//! For integral types, this is ignored.
+//!
+//! For floating-point types, this indicates how many digits after the decimal point should be
+//! printed.
+//!
+//! There are three possible ways to specify the desired `precision`:
+//!
+//! 1. An integer `.N`:
+//!
+//!    the integer `N` itself is the precision.
+//!
+//! 2. An integer or name followed by dollar sign `.N$`:
+//!
+//!    use format *argument* `N` (which must be a `usize`) as the precision.
+//!
+//! 3. An asterisk `.*`:
+//!
+//!    `.*` means that this `{...}` is associated with *two* format inputs rather than one: the
+//!    first input holds the `usize` precision, and the second holds the value to print. Note that
+//!    in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part refers
+//!    to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
+//!
+//! For example, the following calls all print the same thing `Hello x is 0.01000`:
+//!
+//! ```
+//! // Hello {arg 0 ("x")} is {arg 1 (0.01) with precision specified inline (5)}
+//! println!("Hello {0} is {1:.5}", "x", 0.01);
+//!
+//! // Hello {arg 1 ("x")} is {arg 2 (0.01) with precision specified in arg 0 (5)}
+//! println!("Hello {1} is {2:.0$}", 5, "x", 0.01);
+//!
+//! // Hello {arg 0 ("x")} is {arg 2 (0.01) with precision specified in arg 1 (5)}
+//! println!("Hello {0} is {2:.1$}", "x", 5, 0.01);
+//!
+//! // Hello {next arg ("x")} is {second of next two args (0.01) with precision
+//! //                          specified in first of next two args (5)}
+//! println!("Hello {} is {:.*}",    "x", 5, 0.01);
+//!
+//! // Hello {next arg ("x")} is {arg 2 (0.01) with precision
+//! //                          specified in its predecessor (5)}
+//! println!("Hello {} is {2:.*}",   "x", 5, 0.01);
+//!
+//! // Hello {next arg ("x")} is {arg "number" (0.01) with precision specified
+//! //                          in arg "prec" (5)}
+//! println!("Hello {} is {number:.prec$}", "x", prec = 5, number = 0.01);
+//! ```
+//!
+//! While these:
+//!
+//! ```
+//! println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
+//! println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
+//! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
+//! ```
+//!
+//! print two significantly different things:
+//!
+//! ```text
+//! Hello, `1234.560` has 3 fractional digits
+//! Hello, `123` has 3 characters
+//! Hello, `     123` has 3 right-aligned characters
+//! ```
+//!
+//! # Escaping
+//!
+//! The literal characters `{` and `}` may be included in a string by preceding
+//! them with the same character. For example, the `{` character is escaped with
+//! `{{` and the `}` character is escaped with `}}`.
+//!
+//! ```
+//! assert_eq!(format!("Hello {{}}"), "Hello {}");
+//! assert_eq!(format!("{{ Hello"), "{ Hello");
+//! ```
+//!
+//! # Syntax
+//!
+//! To summarize, here you can find the full grammar of format strings.
+//! The syntax for the formatting language used is drawn from other languages,
+//! so it should not be too alien. Arguments are formatted with Python-like
+//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
+//! `%`. The actual grammar for the formatting syntax is:
+//!
+//! ```text
+//! format_string := <text> [ maybe-format <text> ] *
+//! maybe-format := '{' '{' | '}' '}' | <format>
+//! format := '{' [ argument ] [ ':' format_spec ] '}'
+//! argument := integer | identifier
+//!
+//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
+//! fill := character
+//! align := '<' | '^' | '>'
+//! sign := '+' | '-'
+//! width := count
+//! precision := count | '*'
+//! type := identifier | '?' | ''
+//! count := parameter | integer
+//! parameter := argument '$'
+//! ```
+//!
+//! # Formatting traits
 //!
 //! When requesting that an argument be formatted with a particular type, you
 //! are actually requesting that an argument ascribes to a particular trait.
@@ -220,7 +406,7 @@
 //! assert_eq!(format!("{} {:?}", "foo\n", "bar\n"), "foo\n \"bar\\n\"");
 //! ```
 //!
-//! ## Related macros
+//! # Related macros
 //!
 //! There are a number of related macros in the [`format!`] family. The ones that
 //! are currently implemented are:
@@ -299,185 +485,6 @@
 //! For example, a logging library could use the standard formatting syntax, but
 //! it would internally pass around this structure until it has been determined
 //! where output should go to.
-//!
-//! # Syntax
-//!
-//! The syntax for the formatting language used is drawn from other languages,
-//! so it should not be too alien. Arguments are formatted with Python-like
-//! syntax, meaning that arguments are surrounded by `{}` instead of the C-like
-//! `%`. The actual grammar for the formatting syntax is:
-//!
-//! ```text
-//! format_string := <text> [ maybe-format <text> ] *
-//! maybe-format := '{' '{' | '}' '}' | <format>
-//! format := '{' [ argument ] [ ':' format_spec ] '}'
-//! argument := integer | identifier
-//!
-//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
-//! fill := character
-//! align := '<' | '^' | '>'
-//! sign := '+' | '-'
-//! width := count
-//! precision := count | '*'
-//! type := identifier | '?' | ''
-//! count := parameter | integer
-//! parameter := argument '$'
-//! ```
-//!
-//! # Formatting Parameters
-//!
-//! Each argument being formatted can be transformed by a number of formatting
-//! parameters (corresponding to `format_spec` in the syntax above). These
-//! parameters affect the string representation of what's being formatted.
-//!
-//! ## Fill/Alignment
-//!
-//! The fill character is provided normally in conjunction with the
-//! [`width`](#width)
-//! parameter. This indicates that if the value being formatted is smaller than
-//! `width` some extra characters will be printed around it. The extra
-//! characters are specified by `fill`, and the alignment can be one of the
-//! following options:
-//!
-//! * `<` - the argument is left-aligned in `width` columns
-//! * `^` - the argument is center-aligned in `width` columns
-//! * `>` - the argument is right-aligned in `width` columns
-//!
-//! Note that alignment may not be implemented by some types. In particular, it
-//! is not generally implemented for the `Debug` trait.  A good way to ensure
-//! padding is applied is to format your input, then use this resulting string
-//! to pad your output.
-//!
-//! ## Sign/`#`/`0`
-//!
-//! These can all be interpreted as flags for a particular formatter.
-//!
-//! * `+` - This is intended for numeric types and indicates that the sign
-//!         should always be printed. Positive signs are never printed by
-//!         default, and the negative sign is only printed by default for the
-//!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
-//!         should always be printed.
-//! * `-` - Currently not used
-//! * `#` - This flag is indicates that the "alternate" form of printing should
-//!         be used. The alternate forms are:
-//!     * `#?` - pretty-print the [`Debug`] formatting
-//!     * `#x` - precedes the argument with a `0x`
-//!     * `#X` - precedes the argument with a `0x`
-//!     * `#b` - precedes the argument with a `0b`
-//!     * `#o` - precedes the argument with a `0o`
-//! * `0` - This is used to indicate for integer formats that the padding should
-//!         both be done with a `0` character as well as be sign-aware. A format
-//!         like `{:08}` would yield `00000001` for the integer `1`, while the
-//!         same format would yield `-0000001` for the integer `-1`. Notice that
-//!         the negative version has one fewer zero than the positive version.
-//!         Note that padding zeroes are always placed after the sign (if any)
-//!         and before the digits. When used together with the `#` flag, a similar
-//!         rule applies: padding zeroes are inserted after the prefix but before
-//!         the digits.
-//!
-//! ## Width
-//!
-//! This is a parameter for the "minimum width" that the format should take up.
-//! If the value's string does not fill up this many characters, then the
-//! padding specified by fill/alignment will be used to take up the required
-//! space.
-//!
-//! The default [fill/alignment](#fillalignment) for non-numerics is a space and
-//! left-aligned. The
-//! defaults for numeric formatters is also a space but with right-alignment. If
-//! the `0` flag is specified for numerics, then the implicit fill character is
-//! `0`.
-//!
-//! The value for the width can also be provided as a [`usize`] in the list of
-//! parameters by using the dollar syntax indicating that the second argument is
-//! a [`usize`] specifying the width, for example:
-//!
-//! ```
-//! // All of these print "Hello x    !"
-//! println!("Hello {:5}!", "x");
-//! println!("Hello {:1$}!", "x", 5);
-//! println!("Hello {1:0$}!", 5, "x");
-//! println!("Hello {:width$}!", "x", width = 5);
-//! ```
-//!
-//! Referring to an argument with the dollar syntax does not affect the "next
-//! argument" counter, so it's usually a good idea to refer to arguments by
-//! position, or use named arguments.
-//!
-//! ## Precision
-//!
-//! For non-numeric types, this can be considered a "maximum width". If the resulting string is
-//! longer than this width, then it is truncated down to this many characters and that truncated
-//! value is emitted with proper `fill`, `alignment` and `width` if those parameters are set.
-//!
-//! For integral types, this is ignored.
-//!
-//! For floating-point types, this indicates how many digits after the decimal point should be
-//! printed.
-//!
-//! There are three possible ways to specify the desired `precision`:
-//!
-//! 1. An integer `.N`:
-//!
-//!    the integer `N` itself is the precision.
-//!
-//! 2. An integer or name followed by dollar sign `.N$`:
-//!
-//!    use format *argument* `N` (which must be a `usize`) as the precision.
-//!
-//! 3. An asterisk `.*`:
-//!
-//!    `.*` means that this `{...}` is associated with *two* format inputs rather than one: the
-//!    first input holds the `usize` precision, and the second holds the value to print. Note that
-//!    in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part refers
-//!    to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
-//!
-//! For example, the following calls all print the same thing `Hello x is 0.01000`:
-//!
-//! ```
-//! // Hello {arg 0 ("x")} is {arg 1 (0.01) with precision specified inline (5)}
-//! println!("Hello {0} is {1:.5}", "x", 0.01);
-//!
-//! // Hello {arg 1 ("x")} is {arg 2 (0.01) with precision specified in arg 0 (5)}
-//! println!("Hello {1} is {2:.0$}", 5, "x", 0.01);
-//!
-//! // Hello {arg 0 ("x")} is {arg 2 (0.01) with precision specified in arg 1 (5)}
-//! println!("Hello {0} is {2:.1$}", "x", 5, 0.01);
-//!
-//! // Hello {next arg ("x")} is {second of next two args (0.01) with precision
-//! //                          specified in first of next two args (5)}
-//! println!("Hello {} is {:.*}",    "x", 5, 0.01);
-//!
-//! // Hello {next arg ("x")} is {arg 2 (0.01) with precision
-//! //                          specified in its predecessor (5)}
-//! println!("Hello {} is {2:.*}",   "x", 5, 0.01);
-//!
-//! // Hello {next arg ("x")} is {arg "number" (0.01) with precision specified
-//! //                          in arg "prec" (5)}
-//! println!("Hello {} is {number:.prec$}", "x", prec = 5, number = 0.01);
-//! ```
-//!
-//! While these:
-//!
-//! ```
-//! println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
-//! println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
-//! println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
-//! ```
-//!
-//! print two significantly different things:
-//!
-//! ```text
-//! Hello, `1234.560` has 3 fractional digits
-//! Hello, `123` has 3 characters
-//! Hello, `     123` has 3 right-aligned characters
-//! ```
-//!
-//! # Escaping
-//!
-//! The literal characters `{` and `}` may be included in a string by preceding
-//! them with the same character. For example, the `{` character is escaped with
-//! `{{` and the `}` character is escaped with `}}`.
 //!
 //! [`usize`]: ../../std/primitive.usize.html
 //! [`isize`]: ../../std/primitive.isize.html

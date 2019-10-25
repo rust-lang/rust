@@ -41,7 +41,7 @@ LL |     let _prove_piercing_earnest: Vec<usize> = &[1, 2, 3];
    |                                               ^^^^^^^^^^
    |                                               |
    |                                               expected struct `std::vec::Vec`, found reference
-   |                                               help: try using a conversion method: `&[1, 2, 3].to_vec()`
+   |                                               help: try using a conversion method: `(&[1, 2, 3]).to_vec()`
    |
    = note: expected type `std::vec::Vec<usize>`
               found type `&[{integer}; 3]`

@@ -16,6 +16,7 @@ use std::intrinsics;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
 use crate::mir::interpret::Allocation;
+use syntax_pos::Span;
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -92,16 +93,16 @@ pub fn encode_with_shorthand<E, T, M>(encoder: &mut E,
     Ok(())
 }
 
-pub fn encode_predicates<'tcx, E, C>(encoder: &mut E,
-                                     predicates: &ty::GenericPredicates<'tcx>,
-                                     cache: C)
-                                     -> Result<(), E::Error>
+pub fn encode_spanned_predicates<'tcx, E, C>(
+    encoder: &mut E,
+    predicates: &'tcx [(ty::Predicate<'tcx>, Span)],
+    cache: C,
+) -> Result<(), E::Error>
     where E: TyEncoder,
           C: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<ty::Predicate<'tcx>, usize>,
 {
-    predicates.parent.encode(encoder)?;
-    predicates.predicates.len().encode(encoder)?;
-    for (predicate, span) in &predicates.predicates {
+    predicates.len().encode(encoder)?;
+    for (predicate, span) in predicates {
         encode_with_shorthand(encoder, predicate, &cache)?;
         span.encode(encoder)?;
     }
@@ -182,13 +183,15 @@ where
 }
 
 #[inline]
-pub fn decode_predicates<D>(decoder: &mut D) -> Result<ty::GenericPredicates<'tcx>, D::Error>
+pub fn decode_spanned_predicates<D>(
+    decoder: &mut D,
+) -> Result<&'tcx [(ty::Predicate<'tcx>, Span)], D::Error>
 where
     D: TyDecoder<'tcx>,
 {
-    Ok(ty::GenericPredicates {
-        parent: Decodable::decode(decoder)?,
-        predicates: (0..decoder.read_usize()?).map(|_| {
+    let tcx = decoder.tcx();
+    Ok(tcx.arena.alloc_from_iter(
+        (0..decoder.read_usize()?).map(|_| {
             // Handle shorthands first, if we have an usize > 0x80.
             let predicate = if decoder.positioned_at_shorthand() {
                 let pos = decoder.read_usize()?;
@@ -202,7 +205,7 @@ where
             Ok((predicate, Decodable::decode(decoder)?))
         })
         .collect::<Result<Vec<_>, _>>()?,
-    })
+    ))
 }
 
 #[inline]
@@ -339,6 +342,8 @@ macro_rules! implement_ty_decoder {
             use $crate::ty::subst::SubstsRef;
             use $crate::hir::def_id::{CrateNum};
 
+            use syntax_pos::Span;
+
             use super::$DecoderName;
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
@@ -393,11 +398,11 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<ty::GenericPredicates<'tcx>>
+            impl<$($typaram),*> SpecializedDecoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self)
-                                      -> Result<ty::GenericPredicates<'tcx>, Self::Error> {
-                    decode_predicates(self)
+                                      -> Result<&'tcx [(ty::Predicate<'tcx>, Span)], Self::Error> {
+                    decode_spanned_predicates(self)
                 }
             }
 

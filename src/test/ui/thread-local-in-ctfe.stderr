@@ -10,48 +10,40 @@ error[E0625]: thread-local statics cannot be accessed at compile-time
 LL | static C: &u32 = &A;
    |                  ^^
 
-warning[E0712]: thread-local variable borrowed past end of function
+error[E0712]: thread-local variable borrowed past end of function
   --> $DIR/thread-local-in-ctfe.rs:9:18
    |
 LL | static C: &u32 = &A;
    |                  ^^- end of enclosing function is here
    |                  |
    |                  thread-local variables cannot be borrowed beyond the end of the function
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:15:16
+  --> $DIR/thread-local-in-ctfe.rs:13:16
    |
 LL | const D: u32 = A;
    |                ^
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:18:17
+  --> $DIR/thread-local-in-ctfe.rs:16:17
    |
 LL | const E: &u32 = &A;
    |                 ^^
 
-warning[E0712]: thread-local variable borrowed past end of function
-  --> $DIR/thread-local-in-ctfe.rs:18:17
+error[E0712]: thread-local variable borrowed past end of function
+  --> $DIR/thread-local-in-ctfe.rs:16:17
    |
 LL | const E: &u32 = &A;
    |                 ^^- end of enclosing function is here
    |                 |
    |                 thread-local variables cannot be borrowed beyond the end of the function
-   |
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-in-ctfe.rs:25:5
+  --> $DIR/thread-local-in-ctfe.rs:21:5
    |
 LL |     A
    |     ^
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0712`.

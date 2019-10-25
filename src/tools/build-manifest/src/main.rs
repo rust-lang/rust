@@ -399,6 +399,7 @@ impl Builder {
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
+        package("rustc-dev", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
         package("rust-std", TARGETS);
@@ -426,6 +427,13 @@ impl Builder {
             "rls-preview", "rust-src", "llvm-tools-preview",
             "lldb-preview", "rust-analysis", "miri-preview"
         ]);
+
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users.
+        if self.rust_release == "nightly" {
+            self.extend_profile("default", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+        }
     }
 
     fn add_renames_to(&self, manifest: &mut Manifest) {
@@ -481,6 +489,15 @@ impl Builder {
             components.push(host_component("rust-mingw"));
         }
 
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users,
+        // but ship it as an optional component on the beta and stable channels.
+        if self.rust_release == "nightly" {
+            components.push(host_component("rustc-dev"));
+        } else {
+            extensions.push(host_component("rustc-dev"));
+        }
+
         // Tools are always present in the manifest,
         // but might be marked as unavailable if they weren't built.
         extensions.extend(vec![
@@ -497,6 +514,11 @@ impl Builder {
             TARGETS.iter()
                 .filter(|&&target| target != host)
                 .map(|target| Component::from_str("rust-std", target))
+        );
+        extensions.extend(
+            HOSTS.iter()
+                .filter(|&&target| target != host)
+                .map(|target| Component::from_str("rustc-dev", target))
         );
         extensions.push(Component::from_str("rust-src", "*"));
 
@@ -532,6 +554,14 @@ impl Builder {
                dst: &mut BTreeMap<String, Vec<String>>,
                pkgs: &[&str]) {
         dst.insert(profile_name.to_owned(), pkgs.iter().map(|s| (*s).to_owned()).collect());
+    }
+
+    fn extend_profile(&mut self,
+               profile_name: &str,
+               dst: &mut BTreeMap<String, Vec<String>>,
+               pkgs: &[&str]) {
+        dst.get_mut(profile_name).expect("existing profile")
+            .extend(pkgs.iter().map(|s| (*s).to_owned()));
     }
 
     fn package(&mut self,

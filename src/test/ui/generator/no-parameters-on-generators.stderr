@@ -4,5 +4,18 @@ error[E0628]: generators cannot have explicit parameters
 LL |     let gen = |start| {
    |               ^^^^^^^
 
-error: aborting due to previous error
+error[E0698]: type inside generator must be known in this context
+  --> $DIR/no-parameters-on-generators.rs:4:16
+   |
+LL |     let gen = |start| {
+   |                ^^^^^ cannot infer type
+   |
+note: the type is part of the generator because of this `yield`
+  --> $DIR/no-parameters-on-generators.rs:6:9
+   |
+LL |         yield;
+   |         ^^^^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0698`.

@@ -10,8 +10,8 @@ use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
 use crate::mut_visit::*;
-use crate::parse::{token, ParseSess};
 use crate::ptr::P;
+use crate::sess::ParseSess;
 use crate::symbol::sym;
 use crate::util::map_in_place::MapInPlace;
 
@@ -56,6 +56,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
     (krate, features)
 }
 
+#[macro_export]
 macro_rules! configure {
     ($this:ident, $node:ident) => {
         match $this.configure($node) {
@@ -111,25 +112,7 @@ impl<'a> StripUnconfigured<'a> {
             return vec![];
         }
 
-        let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
-            parser.expect(&token::OpenDelim(token::Paren))?;
-
-            let cfg_predicate = parser.parse_meta_item()?;
-            parser.expect(&token::Comma)?;
-
-            // Presumably, the majority of the time there will only be one attr.
-            let mut expanded_attrs = Vec::with_capacity(1);
-
-            while !parser.check(&token::CloseDelim(token::Paren)) {
-                let lo = parser.token.span.lo();
-                let (path, tokens) = parser.parse_meta_item_unrestricted()?;
-                expanded_attrs.push((path, tokens, parser.prev_span.with_lo(lo)));
-                parser.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;
-            }
-
-            parser.expect(&token::CloseDelim(token::Paren))?;
-            Ok((cfg_predicate, expanded_attrs))
-        }) {
+        let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |p| p.parse_cfg_attr()) {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();
@@ -150,11 +133,10 @@ impl<'a> StripUnconfigured<'a> {
             // `cfg_attr` inside of another `cfg_attr`. E.g.
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
-            .flat_map(|(path, tokens, span)| self.process_cfg_attr(ast::Attribute {
+            .flat_map(|(item, span)| self.process_cfg_attr(ast::Attribute {
+                item,
                 id: attr::mk_attr_id(),
                 style: attr.style,
-                path,
-                tokens,
                 is_sugared_doc: false,
                 span,
             }))
@@ -298,7 +280,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_pat(&mut self, pat: &mut P<ast::Pat>) {
-        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.node {
+        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.kind {
             fields.flat_map_in_place(|field| self.configure(field));
         }
     }
@@ -321,13 +303,13 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.configure_expr(expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(expr, self);
     }
 
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let mut expr = configure!(self, expr);
-        self.configure_expr_kind(&mut expr.node);
+        self.configure_expr_kind(&mut expr.kind);
         noop_visit_expr(&mut expr, self);
         Some(expr)
     }

@@ -427,7 +427,7 @@ impl Step for Miri {
             // (We do this separately from the above so that when the setup actually
             // happens we get some output.)
             // We re-use the `cargo` from above.
-            cargo.arg("--env");
+            cargo.arg("--print-sysroot");
 
             // FIXME: Is there a way in which we can re-use the usual `run` helpers?
             let miri_sysroot = if builder.config.dry_run {
@@ -437,13 +437,11 @@ impl Step for Miri {
                 let out = cargo.output()
                     .expect("We already ran `cargo miri setup` before and that worked");
                 assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
-                // Output is "MIRI_SYSROOT=<str>\n".
+                // Output is "<sysroot>\n".
                 let stdout = String::from_utf8(out.stdout)
                     .expect("`cargo miri setup` stdout is not valid UTF-8");
-                let stdout = stdout.trim();
-                builder.verbose(&format!("`cargo miri setup --env` returned: {:?}", stdout));
-                let sysroot = stdout.splitn(2, '=')
-                    .nth(1).expect("`cargo miri setup` stdout did not contain '='");
+                let sysroot = stdout.trim_end();
+                builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
                 sysroot.to_owned()
             };
 
@@ -1047,10 +1045,11 @@ impl Step for Compiletest {
         // Also provide `rust_test_helpers` for the host.
         builder.ensure(native::TestHelpers { target: compiler.host });
 
-        // wasm32 can't build the test helpers
-        if !target.contains("wasm32") {
+        // As well as the target, except for plain wasm32, which can't build it
+        if !target.contains("wasm32") || target.contains("emscripten") {
             builder.ensure(native::TestHelpers { target });
         }
+
         builder.ensure(RemoteCopyLibs { compiler, target });
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
@@ -1164,7 +1163,7 @@ impl Step for Compiletest {
                     }).to_string()
             })
         };
-        let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
+        let lldb_exe = if builder.config.lldb_enabled {
             // Test against the lldb that was just built.
             builder.llvm_out(target).join("bin").join("lldb")
         } else {
@@ -1233,7 +1232,6 @@ impl Step for Compiletest {
         if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
-                emscripten: false,
             });
             if !builder.config.dry_run {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));

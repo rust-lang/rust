@@ -5,7 +5,7 @@ LL |         x = box x;
    |             ^^^^^
    |             |
    |             cyclic type of infinite size
-   |             help: try using a conversion method: `box x.to_string()`
+   |             help: try using a conversion method: `(box x).to_string()`
 
 error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:25:5

@@ -1,5 +1,5 @@
 use crate::{build, shim};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Body, MirPhase, Promoted};
 use rustc::ty::{TyCtxt, InstanceDef};
@@ -15,6 +15,7 @@ use syntax_pos::Span;
 pub mod add_retag;
 pub mod add_moves_for_packed_drops;
 pub mod cleanup_post_borrowck;
+pub mod check_consts;
 pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify;
@@ -290,10 +291,6 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     tcx.ensure().mir_borrowck(def_id);
-
-    if tcx.use_ast_borrowck() {
-        tcx.ensure().borrowck(def_id);
-    }
 
     let (body, _) = tcx.mir_validated(def_id);
     let mut body = body.steal();

@@ -35,7 +35,7 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
                 match ty {
                     clean::Generic(s) => params.entry(s).or_default()
                                                .extend(bounds),
-                    t => tybounds.push((t, ty_bounds(bounds))),
+                    t => tybounds.push((t, bounds)),
                 }
             }
             WP::RegionPredicate { lifetime, bounds } => {
@@ -44,11 +44,6 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
             WP::EqPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
         }
     }
-
-    // Simplify the type parameter bounds on all the generics
-    let mut params = params.into_iter().map(|(k, v)| {
-        (k, ty_bounds(v))
-    }).collect::<BTreeMap<_, _>>();
 
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates
@@ -73,7 +68,7 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // And finally, let's reassemble everything
     let mut clauses = Vec::new();
     clauses.extend(lifetimes.into_iter().map(|(lt, bounds)| {
-        WP::RegionPredicate { lifetime: lt, bounds: bounds }
+        WP::RegionPredicate { lifetime: lt, bounds }
     }));
     clauses.extend(params.into_iter().map(|(k, v)| {
         WP::BoundPredicate {
@@ -82,10 +77,10 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
         }
     }));
     clauses.extend(tybounds.into_iter().map(|(ty, bounds)| {
-        WP::BoundPredicate { ty: ty, bounds: bounds }
+        WP::BoundPredicate { ty, bounds }
     }));
     clauses.extend(equalities.into_iter().map(|(lhs, rhs)| {
-        WP::EqPredicate { lhs: lhs, rhs: rhs }
+        WP::EqPredicate { lhs, rhs }
     }));
     clauses
 }
@@ -122,9 +117,9 @@ pub fn merge_bounds(
                     },
                 });
             }
-            PP::Parenthesized { ref mut output, .. } => {
-                assert!(output.is_none());
-                if *rhs != clean::Type::Tuple(Vec::new()) {
+            PP::Parenthesized { ref mut output, .. } => match output {
+                Some(o) => assert_eq!(o, rhs),
+                None => if *rhs != clean::Type::Tuple(Vec::new()) {
                     *output = Some(rhs.clone());
                 }
             }
@@ -137,16 +132,12 @@ pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericP
     for param in &mut params {
         match param.kind {
             clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
-                *bounds = ty_bounds(mem::take(bounds));
+                *bounds = mem::take(bounds);
             }
             _ => panic!("expected only type parameters"),
         }
     }
     params
-}
-
-fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
-    bounds
 }
 
 fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId,

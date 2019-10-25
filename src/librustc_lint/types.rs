@@ -7,7 +7,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx, SizeSkeleton};
 use rustc::{lint, util};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -72,7 +72,7 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
-    if let ExprKind::Struct(_, eps, _) = &parent_expr.node {
+    if let ExprKind::Struct(_, eps, _) = &parent_expr.kind {
         if eps.len() != 2 {
             return false;
         }
@@ -279,7 +279,7 @@ fn lint_int_literal<'a, 'tcx>(
 
         let par_id = cx.tcx.hir().get_parent_node(e.hir_id);
         if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
-            if let hir::ExprKind::Struct(..) = par_e.node {
+            if let hir::ExprKind::Struct(..) = par_e.kind {
                 if is_range_literal(cx.sess(), par_e)
                     && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
                 {
@@ -318,7 +318,7 @@ fn lint_uint_literal<'a, 'tcx>(
     if lit_val < min || lit_val > max {
         let parent_id = cx.tcx.hir().get_parent_node(e.hir_id);
         if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
-            match par_e.node {
+            match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.tables.expr_ty(par_e).kind {
                         let mut err = cx.struct_span_lint(
@@ -400,7 +400,7 @@ fn lint_literal<'a, 'tcx>(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
-        match e.node {
+        match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.hir_id {
@@ -445,7 +445,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         l: &hir::Expr,
                         r: &hir::Expr)
                         -> bool {
-            let (lit, expr, swap) = match (&l.node, &r.node) {
+            let (lit, expr, swap) = match (&l.kind, &r.kind) {
                 (&hir::ExprKind::Lit(_), _) => (l, r, true),
                 (_, &hir::ExprKind::Lit(_)) => (r, l, false),
                 _ => return true,
@@ -456,7 +456,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             match cx.tables.node_type(expr.hir_id).kind {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
-                    let lit_val: i128 = match lit.node {
+                    let lit_val: i128 = match lit.kind {
                         hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -470,7 +470,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
                 ty::Uint(uint_ty) => {
                     let (min, max) :(u128, u128) = uint_ty_range(uint_ty);
-                    let lit_val: u128 = match lit.node {
+                    let lit_val: u128 = match lit.kind {
                         hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, _) => v,
@@ -631,6 +631,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
+                        let is_non_exhaustive =
+                            def.non_enum_variant().is_field_list_non_exhaustive();
+                        if is_non_exhaustive && !def.did.is_local() {
+                            return FfiUnsafe {
+                                ty,
+                                reason: "this struct is non-exhaustive",
+                                help: None,
+                            };
+                        }
+
                         if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe {
                                 ty,
@@ -730,8 +740,25 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             }
                         }
 
+                        if def.is_variant_list_non_exhaustive() && !def.did.is_local() {
+                            return FfiUnsafe {
+                                ty,
+                                reason: "this enum is non-exhaustive",
+                                help: None,
+                            };
+                        }
+
                         // Check the contained variants.
                         for variant in &def.variants {
+                            let is_non_exhaustive = variant.is_field_list_non_exhaustive();
+                            if is_non_exhaustive && !variant.def_id.is_local() {
+                                return FfiUnsafe {
+                                    ty,
+                                    reason: "this enum has non-exhaustive variants",
+                                    help: None,
+                                };
+                            }
+
                             for field in &variant.fields {
                                 let field_ty = cx.normalize_erasing_regions(
                                     ParamEnv::reveal_all(),
@@ -944,15 +971,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
-        let inputs = if sig.c_variadic {
-            // Don't include the spoofed `VaListImpl` in the functions list
-            // of inputs.
-            &sig.inputs()[..sig.inputs().len() - 1]
-        } else {
-            &sig.inputs()[..]
-        };
 
-        for (input_ty, input_hir) in inputs.iter().zip(&decl.inputs) {
+        for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
         }
 
@@ -978,7 +998,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
         if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
             // Don't worry about types in internal ABIs.
         } else {
-            match it.node {
+            match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
                     vis.check_foreign_fn(it.hir_id, decl);
                 }
@@ -995,7 +1015,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
+        if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let item_def_id = cx.tcx.hir().local_def_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);
             let ty = cx.tcx.erase_regions(&t);

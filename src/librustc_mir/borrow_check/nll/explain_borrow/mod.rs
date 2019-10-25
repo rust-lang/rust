@@ -17,6 +17,7 @@ use syntax_pos::Span;
 
 mod find_use;
 
+#[derive(Debug)]
 pub(in crate::borrow_check) enum BorrowExplanation {
     UsedLater(LaterUseKind, Span),
     UsedLaterInLoop(LaterUseKind, Span),
@@ -35,7 +36,7 @@ pub(in crate::borrow_check) enum BorrowExplanation {
     Unexplained,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(in crate::borrow_check) enum LaterUseKind {
     TraitCapture,
     ClosureCapture,
@@ -457,7 +458,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// True if an edge `source -> target` is a backedge -- in other words, if the target
     /// dominates the source.
     fn is_back_edge(&self, source: Location, target: Location) -> bool {
-        target.dominates(source, &self.body.dominators())
+        target.dominates(source, &self.dominators)
     }
 
     /// Determine how the borrow was later used.

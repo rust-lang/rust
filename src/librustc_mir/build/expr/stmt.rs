@@ -159,7 +159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let ExprKind::Block { body } = expr.kind {
                         if let Some(tail_expr) = &body.expr {
                             let mut expr = tail_expr;
-                            while let rustc::hir::ExprKind::Block(subblock, _label) = &expr.node {
+                            while let rustc::hir::ExprKind::Block(subblock, _label) = &expr.kind {
                                 if let Some(subtail_expr) = &subblock.expr {
                                     expr = subtail_expr
                                 } else {

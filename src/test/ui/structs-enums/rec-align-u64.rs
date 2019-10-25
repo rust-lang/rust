@@ -40,7 +40,8 @@ struct Outer {
           target_os = "macos",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "solaris"))]
+          target_os = "solaris",
+          target_os = "vxworks"))]
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {

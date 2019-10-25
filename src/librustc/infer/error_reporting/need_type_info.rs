@@ -92,10 +92,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let (ExprKind::Closure(_, _fn_decl, _id, _sp, _), Some(_)) = (
-            &expr.node,
+            &expr.kind,
             self.node_matches_type(expr.hir_id),
         ) {
-            self.found_closure = Some(&expr.node);
+            self.found_closure = Some(&expr.kind);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -114,7 +114,7 @@ fn closure_return_type_suggestion(
         FunctionRetTy::DefaultReturn(_) => ("-> ", " "),
         _ => ("", ""),
     };
-    let suggestion = match body.value.node {
+    let suggestion = match body.value.kind {
         ExprKind::Block(..) => {
             vec![(output.span(), format!("{}{}{}", arrow, ret, post))]
         }
@@ -220,7 +220,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let ty_msg = match local_visitor.found_ty {
             Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.closure_sig(*def_id, self.tcx);
+                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
@@ -255,7 +255,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let suffix = match local_visitor.found_ty {
             Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.closure_sig(*def_id, self.tcx);
+                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
                 let ret = fn_sig.output().skip_binder().to_string();
 
                 if let Some(ExprKind::Closure(_, decl, body_id, ..)) = local_visitor.found_closure {

@@ -1,11 +1,11 @@
-error[E0391]: cycle detected when processing `FOO`
+error[E0391]: cycle detected when const checking `FOO`
   --> $DIR/issue-17252.rs:1:20
    |
 LL | const FOO: usize = FOO;
    |                    ^^^
    |
-   = note: ...which again requires processing `FOO`, completing the cycle
-note: cycle used when processing `main::{{constant}}#0`
+   = note: ...which again requires const checking `FOO`, completing the cycle
+note: cycle used when const checking `main::{{constant}}#0`
   --> $DIR/issue-17252.rs:4:18
    |
 LL |     let _x: [u8; FOO]; // caused stack overflow prior to fix

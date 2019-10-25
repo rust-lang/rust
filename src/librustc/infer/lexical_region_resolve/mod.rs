@@ -19,8 +19,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use smallvec::SmallVec;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
 use std::fmt;
 use syntax_pos::Span;
 
@@ -304,8 +304,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
-        self.iterate_until_fixed_point("Expansion", |constraint| {
-            debug!("expansion: constraint={:?}", constraint);
+        let mut process_constraint = |constraint: &Constraint<'tcx>| {
             let (a_region, b_vid, b_data, retain) = match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
@@ -331,7 +330,33 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             let changed = self.expand_node(a_region, b_vid, b_data);
             (changed, retain)
-        })
+        };
+
+        // Using bitsets to track the remaining elements is faster than using a
+        // `Vec` by itself (which requires removing elements, which requires
+        // element shuffling, which is slow).
+        let constraints: Vec<_> = self.data.constraints.keys().collect();
+        let mut live_indices: BitSet<usize> = BitSet::new_filled(constraints.len());
+        let mut killed_indices: BitSet<usize> = BitSet::new_empty(constraints.len());
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for index in live_indices.iter() {
+                let constraint = constraints[index];
+                let (edge_changed, retain) = process_constraint(constraint);
+                if edge_changed {
+                    changed = true;
+                }
+                if !retain {
+                    let changed = killed_indices.insert(index);
+                    debug_assert!(changed);
+                }
+            }
+            live_indices.subtract(&killed_indices);
+
+            // We could clear `killed_indices` here, but we don't need to and
+            // it's cheaper not to.
+        }
     }
 
     // This function is very hot in some workloads. There's a single callsite
@@ -360,11 +385,19 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         match *b_data {
             VarValue::Value(cur_region) => {
                 // Identical scopes can show up quite often, if the fixed point
-                // iteration converges slowly, skip them
+                // iteration converges slowly. Skip them. This is purely an
+                // optimization.
                 if let (ReScope(a_scope), ReScope(cur_scope)) = (a_region, cur_region) {
                     if a_scope == cur_scope {
                         return false;
                     }
+                }
+
+                // This is a specialized version of the `lub_concrete_regions`
+                // check below for a common case, here purely as an
+                // optimization.
+                if let ReEmpty = a_region {
+                    return false;
                 }
 
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
@@ -407,8 +440,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     /// Returns the smallest region `c` such that `a <= c` and `b <= c`.
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        let tcx = self.tcx();
-
         match (a, b) {
             (&ty::ReClosureBound(..), _)
             | (_, &ty::ReClosureBound(..))
@@ -468,7 +499,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
                 // otherwise, we don't know what the free region is,
                 // so we must conservatively say the LUB is static:
-                tcx.lifetimes.re_static
+                self.tcx().lifetimes.re_static
             }
 
             (&ReScope(a_id), &ReScope(b_id)) => {
@@ -476,7 +507,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // subtype of the region corresponding to an inner
                 // block.
                 let lub = self.region_rels.region_scope_tree.nearest_common_ancestor(a_id, b_id);
-                tcx.mk_region(ReScope(lub))
+                self.tcx().mk_region(ReScope(lub))
             }
 
             (&ReEarlyBound(_), &ReEarlyBound(_))
@@ -490,7 +521,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 if a == b {
                     a
                 } else {
-                    tcx.lifetimes.re_static
+                    self.tcx().lifetimes.re_static
                 }
             }
         }
@@ -858,29 +889,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 }
             }
         }
-    }
-
-    fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F)
-    where
-        F: FnMut(&Constraint<'tcx>) -> (bool, bool),
-    {
-        let mut constraints: SmallVec<[_; 16]> = self.data.constraints.keys().collect();
-        let mut iteration = 0;
-        let mut changed = true;
-        while changed {
-            changed = false;
-            iteration += 1;
-            debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            constraints.retain(|constraint| {
-                let (edge_changed, retain) = body(constraint);
-                if edge_changed {
-                    debug!("updated due to constraint {:?}", constraint);
-                    changed = true;
-                }
-                retain
-            });
-        }
-        debug!("---- {} Complete after {} iteration(s)", tag, iteration);
     }
 
     fn bound_is_met(

@@ -16,5 +16,24 @@ error[E0533]: expected unit struct/variant or constant, found method `<Foo>::tra
 LL |         <Foo>::trait_bar => {}
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0533]: expected unit struct/variant or constant, found method `<Foo>::bar`
+  --> $DIR/method-path-in-pattern.rs:26:12
+   |
+LL |     if let Foo::bar = 0u32 {}
+   |            ^^^^^^^^
 
+error[E0533]: expected unit struct/variant or constant, found method `<Foo>::bar`
+  --> $DIR/method-path-in-pattern.rs:28:12
+   |
+LL |     if let <Foo>::bar = 0u32 {}
+   |            ^^^^^^^^^^
+
+error[E0533]: expected unit struct/variant or constant, found method `<Foo>::trait_bar`
+  --> $DIR/method-path-in-pattern.rs:30:12
+   |
+LL |     if let Foo::trait_bar = 0u32 {}
+   |            ^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0533`.

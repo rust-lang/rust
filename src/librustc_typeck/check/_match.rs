@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
             //
             // FIXME(60707): Consider removing hack with principled solution.
-            self.check_expr_has_type_or_error(discrim, self.tcx.types.bool)
+            self.check_expr_has_type_or_error(discrim, self.tcx.types.bool, |_| {})
         } else {
             self.demand_discriminant_type(arms, discrim)
         };
@@ -106,7 +106,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(g) = &arm.guard {
                 self.diverges.set(pats_diverge);
                 match g {
-                    hir::Guard::If(e) => self.check_expr_has_type_or_error(e, tcx.types.bool),
+                    hir::Guard::If(e) => {
+                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {})
+                    }
                 };
             }
 
@@ -135,7 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             } else {
-                let arm_span = if let hir::ExprKind::Block(blk, _) = &arm.body.node {
+                let arm_span = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
                     // Point at the block expr instead of the entire block
                     blk.expr.as_ref().map(|e| e.span).unwrap_or(arm.body.span)
                 } else {
@@ -219,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coercion.coerce_forced_unit(self, &cause, &mut |err| {
             if let Some((span, msg)) = &ret_reason {
                 err.span_label(*span, msg.as_str());
-            } else if let ExprKind::Block(block, _) = &then_expr.node {
+            } else if let ExprKind::Block(block, _) = &then_expr.kind {
                 if let Some(expr) = &block.expr {
                     err.span_label(expr.span, "found here".to_string());
                 }
@@ -248,7 +250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
             if let (Some(expr), Item(hir::Item {
-                node: hir::ItemKind::Fn(..), ..
+                kind: hir::ItemKind::Fn(..), ..
             })) = (&block.expr, parent) {
                 // check that the `if` expr without `else` is the fn body's expr
                 if expr.span == span {
@@ -300,7 +302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut remove_semicolon = None;
-        let error_sp = if let ExprKind::Block(block, _) = &else_expr.node {
+        let error_sp = if let ExprKind::Block(block, _) = &else_expr.kind {
             if let Some(expr) = &block.expr {
                 expr.span
             } else if let Some(stmt) = block.stmts.last() {
@@ -345,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Compute `Span` of `then` part of `if`-expression.
-        let then_sp = if let ExprKind::Block(block, _) = &then_expr.node {
+        let then_sp = if let ExprKind::Block(block, _) = &then_expr.kind {
             if let Some(expr) = &block.expr {
                 expr.span
             } else if let Some(stmt) = block.stmts.last() {
@@ -442,7 +444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: TypeVariableOriginKind::TypeInference,
                 span: discrim.span,
             });
-            self.check_expr_has_type_or_error(discrim, discrim_ty);
+            self.check_expr_has_type_or_error(discrim, discrim_ty, |_| {});
             discrim_ty
         }
     }

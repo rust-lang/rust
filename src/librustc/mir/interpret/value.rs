@@ -5,11 +5,12 @@ use rustc_apfloat::{Float, ieee::{Double, Single}};
 use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
 use crate::ty::PlaceholderConst;
 use crate::hir::def_id::DefId;
+use crate::ty::{BoundVar, DebruijnIndex};
 
 use super::{InterpResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
 /// Represents the result of a raw const operation, pre-validation.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash, HashStable)]
+#[derive(Clone, HashStable)]
 pub struct RawConst<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
@@ -27,6 +28,9 @@ pub enum ConstValue<'tcx> {
 
     /// Infer the value of the const.
     Infer(InferConst<'tcx>),
+
+    /// Bound const variable, used only when preparing a trait query.
+    Bound(DebruijnIndex, BoundVar),
 
     /// A placeholder const - universally quantified higher-ranked const.
     Placeholder(PlaceholderConst),
@@ -66,8 +70,9 @@ impl<'tcx> ConstValue<'tcx> {
         match *self {
             ConstValue::Param(_) |
             ConstValue::Infer(_) |
+            ConstValue::Bound(..) |
             ConstValue::Placeholder(_) |
-            ConstValue::ByRef{ .. } |
+            ConstValue::ByRef { .. } |
             ConstValue::Unevaluated(..) |
             ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
@@ -343,14 +348,19 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    #[inline(always)]
+    pub fn check_raw(data: u128, size: u8, target_size: Size) {
+        assert_eq!(target_size.bytes(), size as u64);
+        assert_ne!(size, 0, "you should never look at the bits of a ZST");
+        Scalar::check_data(data, size);
+    }
+
     /// Do not call this method!  Use either `assert_bits` or `force_bits`.
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "you should never look at the bits of a ZST");
-                Scalar::check_data(data, size);
+                Self::check_raw(data, size, target_size);
                 Ok(data)
             }
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
@@ -482,7 +492,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
@@ -611,3 +621,18 @@ impl_stable_hash_for!(enum crate::mir::interpret::ScalarMaybeUndef {
     Scalar(v),
     Undef
 });
+
+/// Gets the bytes of a constant slice value.
+pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
+    if let ConstValue::Slice { data, start, end } = val {
+        let len = end - start;
+        data.get_bytes(
+            cx,
+            // invent a pointer, only the offset is relevant anyway
+            Pointer::new(AllocId(0), Size::from_bytes(start as u64)),
+            Size::from_bytes(len as u64),
+        ).unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
+    } else {
+        bug!("expected const slice, but found another const value");
+    }
+}

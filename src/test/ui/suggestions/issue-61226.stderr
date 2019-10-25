@@ -1,6 +1,9 @@
 error[E0423]: expected value, found struct `X`
   --> $DIR/issue-61226.rs:3:10
    |
+LL | struct X {}
+   | ----------- `X` defined here
+LL | fn main() {
 LL |     vec![X]; //…
    |          ^ did you mean `X { /* fields */ }`?
 

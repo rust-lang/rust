@@ -5,6 +5,7 @@
 // sidestep the overflow checking.
 
 #![warn(exceeding_bitshifts)]
+#![warn(const_err)]
 
 fn main() {
     // this signals overflow when checking is on

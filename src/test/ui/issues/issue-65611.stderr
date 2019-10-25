@@ -1,0 +1,18 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-65611.rs:59:20
+   |
+LL |     let x = buffer.last().unwrap().0.clone();
+   |                    ^^^^ cannot infer type for `T`
+   |
+   = note: type must be known at this point
+
+error[E0609]: no field `0` on type `&_`
+  --> $DIR/issue-65611.rs:59:36
+   |
+LL |     let x = buffer.last().unwrap().0.clone();
+   |                                    ^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0609.
+For more information about an error, try `rustc --explain E0282`.

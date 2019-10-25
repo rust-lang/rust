@@ -1,9 +1,11 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
+use crate::util::check_builtin_macro_attribute;
+
 use syntax::ast;
-use syntax::attr::{self, check_builtin_macro_attribute};
-use syntax::ext::base::*;
+use syntax::attr;
+use syntax_expand::base::*;
 use syntax::print::pprust;
 use syntax::source_map::respan;
 use syntax::symbol::{Symbol, sym};
@@ -78,7 +80,7 @@ pub fn expand_test_or_bench(
                 "`#[test]` attribute is only allowed on non associated functions").raise();
         };
 
-    if let ast::ItemKind::Mac(_) = item.node {
+    if let ast::ItemKind::Mac(_) = item.kind {
         cx.parse_sess.span_diagnostic.span_warn(item.span,
             "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.");
         return vec![Annotatable::Item(item)];
@@ -104,6 +106,11 @@ pub fn expand_test_or_bench(
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(sp, vec![test_id, cx.ident_of("ShouldPanic", sp), cx.ident_of(name, sp)])
+    };
+
+    // creates test::TestType::$name
+    let test_type_path = |name| {
+        cx.path(sp, vec![test_id, cx.ident_of("TestType", sp), cx.ident_of(name, sp)])
     };
 
     // creates $name: $expr
@@ -180,6 +187,17 @@ pub fn expand_test_or_bench(
                         ShouldPanic::Yes(Some(sym)) => cx.expr_call(sp,
                             cx.expr_path(should_panic_path("YesWithMessage")),
                             vec![cx.expr_str(sp, sym)]),
+                    }),
+                    // test_type: ...
+                    field("test_type", match test_type(cx) {
+                        // test::TestType::UnitTest
+                        TestType::UnitTest => cx.expr_path(test_type_path("UnitTest")),
+                        // test::TestType::IntegrationTest
+                        TestType::IntegrationTest => cx.expr_path(
+                            test_type_path("IntegrationTest")
+                        ),
+                        // test::TestPath::Unknown
+                        TestType::Unknown => cx.expr_path(test_type_path("Unknown")),
                     }),
                 // },
                 ])),
@@ -261,10 +279,38 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     }
 }
 
+enum TestType {
+    UnitTest,
+    IntegrationTest,
+    Unknown,
+}
+
+/// Attempts to determine the type of test.
+/// Since doctests are created without macro expanding, only possible variants here
+/// are `UnitTest`, `IntegrationTest` or `Unknown`.
+fn test_type(cx: &ExtCtxt<'_>) -> TestType {
+    // Root path from context contains the topmost sources directory of the crate.
+    // I.e., for `project` with sources in `src` and tests in `tests` folders
+    // (no matter how many nested folders lie inside),
+    // there will be two different root paths: `/project/src` and `/project/tests`.
+    let crate_path = cx.root_path.as_path();
+
+    if crate_path.ends_with("src") {
+        // `/src` folder contains unit-tests.
+        TestType::UnitTest
+    } else if crate_path.ends_with("tests") {
+        // `/tests` folder contains integration tests.
+        TestType::IntegrationTest
+    } else {
+        // Crate layout doesn't match expected one, test type is unknown.
+        TestType::Unknown
+    }
+}
+
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.node {
+    if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.kind {
         if header.unsafety == ast::Unsafety::Unsafe {
             sd.span_err(
                 i.span,
@@ -285,7 +331,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
         // type implements the `Termination` trait as `libtest` enforces that.
         let has_output = match decl.output {
             ast::FunctionRetTy::Default(..) => false,
-            ast::FunctionRetTy::Ty(ref t) if t.node.is_unit() => false,
+            ast::FunctionRetTy::Ty(ref t) if t.kind.is_unit() => false,
             _ => true
         };
 
@@ -315,7 +361,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.node {
+    let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
         decl.inputs.len() == 1

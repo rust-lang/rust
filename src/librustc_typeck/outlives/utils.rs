@@ -161,9 +161,14 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         // ignore it.  We can't put it on the struct header anyway.
         RegionKind::ReLateBound(..) => false,
 
+        // This can appear in `where Self: ` bounds (#64855):
+        //
+        //     struct Bar<T>(<Self as Foo>::Type) where Self: ;
+        //     struct Baz<'a>(&'a Self) where Self: ;
+        RegionKind::ReEmpty => false,
+
         // These regions don't appear in types from type declarations:
-        RegionKind::ReEmpty
-        | RegionKind::ReErased
+        RegionKind::ReErased
         | RegionKind::ReClosureBound(..)
         | RegionKind::ReScope(..)
         | RegionKind::ReVar(..)

@@ -30,7 +30,7 @@ use rustc::ty;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::{Visitor, PlaceContext, NonUseContext};
-use rustc_data_structures::indexed_vec::{IndexVec};
+use rustc_index::vec::{IndexVec};
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
 

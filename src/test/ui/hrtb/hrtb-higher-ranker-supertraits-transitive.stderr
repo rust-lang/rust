@@ -6,10 +6,11 @@ LL | fn want_bar_for_any_ccx<B>(b: &B)
 LL |     where B : for<'ccx> Bar<'ccx>
    |               ------------------- required by this bound in `want_bar_for_any_ccx`
 ...
+LL |     where B : Qux
+   |                  - help: consider further restricting type parameter `B`: `, for<'ccx> B: Bar<'ccx>`
+...
 LL |     want_bar_for_any_ccx(b);
    |                          ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
-   |
-   = help: consider adding a `where for<'ccx> B: Bar<'ccx>` bound
 
 error: aborting due to previous error
 

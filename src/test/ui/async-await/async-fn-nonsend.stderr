@@ -9,9 +9,9 @@ LL |     assert_send(local_dropped_before_await());
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
    = note: required because it appears within the type `impl std::fmt::Debug`
-   = note: required because it appears within the type `{impl std::fmt::Debug, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]>`
+   = note: required because it appears within the type `{impl std::fmt::Debug, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}`
+   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]`
+   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
@@ -26,9 +26,9 @@ LL |     assert_send(non_send_temporary_in_match());
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
    = note: required because it appears within the type `impl std::fmt::Debug`
-   = note: required because it appears within the type `{fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]>`
+   = note: required because it appears within the type `{fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}`
+   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]`
+   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
@@ -45,9 +45,9 @@ LL |     assert_send(non_sync_with_method_call());
    = note: required because of the requirements on the impl of `std::marker::Send` for `&mut dyn std::fmt::Write`
    = note: required because it appears within the type `std::fmt::Formatter<'_>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&mut std::fmt::Formatter<'_>`
-   = note: required because it appears within the type `for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]>`
+   = note: required because it appears within the type `for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}`
+   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]`
+   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 
@@ -68,9 +68,9 @@ LL |     assert_send(non_sync_with_method_call());
    = note: required because of the requirements on the impl of `std::marker::Send` for `std::slice::Iter<'_, std::fmt::ArgumentV1<'_>>`
    = note: required because it appears within the type `std::fmt::Formatter<'_>`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&mut std::fmt::Formatter<'_>`
-   = note: required because it appears within the type `for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, ()}]>`
+   = note: required because it appears within the type `for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}`
+   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]`
+   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, bool, fn() -> impl std::future::Future {fut}, impl std::future::Future, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 

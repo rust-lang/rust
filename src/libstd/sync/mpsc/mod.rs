@@ -1581,10 +1581,6 @@ impl<T: Send> error::Error for SendError<T> {
     fn description(&self) -> &str {
         "sending on a closed channel"
     }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1624,10 +1620,6 @@ impl<T: Send> error::Error for TrySendError<T> {
             }
         }
     }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
-    }
 }
 
 #[stable(feature = "mpsc_error_conversions", since = "1.24.0")]
@@ -1651,10 +1643,6 @@ impl error::Error for RecvError {
 
     fn description(&self) -> &str {
         "receiving on a closed channel"
-    }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
     }
 }
 
@@ -1684,10 +1672,6 @@ impl error::Error for TryRecvError {
                 "receiving on a closed channel"
             }
         }
-    }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
     }
 }
 
@@ -1725,10 +1709,6 @@ impl error::Error for RecvTimeoutError {
                 "channel is empty and sending half is closed"
             }
         }
-    }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
     }
 }
 

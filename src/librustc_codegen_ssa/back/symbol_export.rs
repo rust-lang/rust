@@ -13,8 +13,8 @@ use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
-use rustc_data_structures::indexed_vec::IndexVec;
-use syntax::ext::allocator::ALLOCATOR_METHODS;
+use rustc_index::vec::IndexVec;
+use syntax_expand::allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -94,14 +94,14 @@ fn reachable_non_generics_provider(
 
                 // Only consider nodes that actually have exported symbols.
                 Node::Item(&hir::Item {
-                    node: hir::ItemKind::Static(..),
+                    kind: hir::ItemKind::Static(..),
                     ..
                 }) |
                 Node::Item(&hir::Item {
-                    node: hir::ItemKind::Fn(..), ..
+                    kind: hir::ItemKind::Fn(..), ..
                 }) |
                 Node::ImplItem(&hir::ImplItem {
-                    node: hir::ImplItemKind::Method(..),
+                    kind: hir::ImplItemKind::Method(..),
                     ..
                 }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
@@ -367,7 +367,7 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
         // Emscripten cannot export statics, so reduce their export level here
         if tcx.sess.target.target.options.is_like_emscripten {
             if let Some(Node::Item(&hir::Item {
-                node: hir::ItemKind::Static(..),
+                kind: hir::ItemKind::Static(..),
                 ..
             })) = tcx.hir().get_if_local(sym_def_id) {
                 return SymbolExportLevel::Rust;

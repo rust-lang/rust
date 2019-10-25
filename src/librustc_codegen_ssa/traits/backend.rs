@@ -8,11 +8,14 @@ use rustc::session::{Session, config};
 use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use std::sync::Arc;
-use syntax::ext::allocator::AllocatorKind;
-use syntax_pos::symbol::InternedString;
+use std::sync::mpsc;
+use syntax_expand::allocator::AllocatorKind;
+use syntax_pos::symbol::Symbol;
 
 pub trait BackendTypes {
     type Value: CodegenObject;
+    type Function: CodegenObject;
+
     type BasicBlock: Copy;
     type Type: CodegenObject;
     type Funclet;
@@ -44,7 +47,12 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         mods: &mut Self::Module,
         kind: AllocatorKind,
     );
-    fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: InternedString);
+    fn compile_codegen_unit(
+        &self,
+        tcx: TyCtxt<'_>,
+        cgu_name: Symbol,
+        tx_to_llvm_workers: &mpsc::Sender<Box<dyn std::any::Any + Send>>,
+    );
     // If find_features is true this won't access `sess.crate_types` by assuming
     // that `is_pie_binary` is false. When we discover LLVM target features
     // `sess.crate_types` is uninitialized so we cannot access it.

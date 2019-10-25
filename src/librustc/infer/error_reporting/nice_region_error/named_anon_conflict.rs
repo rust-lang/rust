@@ -87,7 +87,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 return None;
             }
             if let FunctionRetTy::Return(ty) = &fndecl.output {
-                if let (TyKind::Def(_, _), ty::ReStatic) = (&ty.node, sub) {
+                if let (TyKind::Def(_, _), ty::ReStatic) = (&ty.kind, sub) {
                     // This is an impl Trait return that evaluates de need of 'static.
                     // We handle this case better in `static_impl_trait`.
                     return None;

@@ -7,7 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 use std::any::Any;
-use std::sync::mpsc;
 
 use syntax::symbol::Symbol;
 use rustc::session::Session;
@@ -15,7 +14,7 @@ use rustc::util::common::ErrorReported;
 use rustc::session::config::{OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc::dep_graph::DepGraph;
 
 pub use rustc_data_structures::sync::MetadataRef;
@@ -26,9 +25,8 @@ pub trait CodegenBackend {
     fn target_features(&self, _sess: &Session) -> Vec<Symbol> { vec![] }
     fn print_passes(&self) {}
     fn print_version(&self) {}
-    fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
+    fn metadata_loader(&self) -> Box<MetadataLoaderDyn>;
     fn provide(&self, _providers: &mut Providers<'_>);
     fn provide_extern(&self, _providers: &mut Providers<'_>);
     fn codegen_crate<'tcx>(
@@ -36,7 +34,6 @@ pub trait CodegenBackend {
         tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from `codegen_backend`

@@ -1,0 +1,15 @@
+error[E0005]: refutable pattern in local binding: `std::i32::MIN..=1i32` and `3i32..=std::i32::MAX` not covered
+  --> $DIR/const-pat-non-exaustive-let-new-var.rs:2:9
+   |
+LL |     let A = 3;
+   |         ^
+   |         |
+   |         interpreted as a constant pattern, not a new variable
+   |         help: introduce a variable instead: `a_var`
+...
+LL |     const A: i32 = 2;
+   |     ----------------- constant defined here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0005`.

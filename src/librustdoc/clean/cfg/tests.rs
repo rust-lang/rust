@@ -17,7 +17,7 @@ fn name_value_cfg(name: &str, value: &str) -> Cfg {
 fn dummy_meta_item_word(name: &str) -> MetaItem {
     MetaItem {
         path: Path::from_ident(Ident::from_str(name)),
-        node: MetaItemKind::Word,
+        kind: MetaItemKind::Word,
         span: DUMMY_SP,
     }
 }
@@ -26,7 +26,7 @@ macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:ident),* $(,)?]) => {
         MetaItem {
             path: Path::from_ident(Ident::from_str(stringify!($name))),
-            node: MetaItemKind::List(vec![
+            kind: MetaItemKind::List(vec![
                 $(
                     NestedMetaItem::MetaItem(
                         dummy_meta_item_word(stringify!($list)),
@@ -40,7 +40,7 @@ macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:expr),* $(,)?]) => {
         MetaItem {
             path: Path::from_ident(Ident::from_str(stringify!($name))),
-            node: MetaItemKind::List(vec![
+            kind: MetaItemKind::List(vec![
                 $(
                     NestedMetaItem::MetaItem($list),
                 )*

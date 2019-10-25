@@ -3,6 +3,12 @@ error: expected one of `:`, `@`, or `|`, found `<`
    |
 LL | fn a(B<) {}
    |       ^ expected one of `:`, `@`, or `|` here
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn a(_: B<) {}
+   |      ^^^^
 
 error: aborting due to previous error
 

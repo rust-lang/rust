@@ -14,6 +14,7 @@ LL |         Box::new(());
    |
    = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Foo>>` for `std::boxed::Box<()>`
+   = note: required by cast to type `std::boxed::Box<dyn Foo>`
 
 error: aborting due to 2 previous errors
 

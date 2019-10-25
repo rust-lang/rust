@@ -57,7 +57,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                  -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
-            PatternKind::AscribeUserType {
+            PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: hair::pattern::Ascription {
                     variance,
@@ -79,12 +79,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatternKind::Wild => {
+            PatKind::Wild => {
                 // nothing left to do
                 Ok(())
             }
 
-            PatternKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
+            PatKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
                 candidate.bindings.push(Binding {
                     name,
                     mutability,
@@ -103,12 +103,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatternKind::Constant { .. } => {
+            PatKind::Constant { .. } => {
                 // FIXME normalize patterns when possible
                 Err(match_pair)
             }
 
-            PatternKind::Range(PatternRange { lo, hi, end }) => {
+            PatKind::Range(PatRange { lo, hi, end }) => {
                 let (range, bias) = match lo.ty.kind {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     // irrefutable
                     self.prefix_slice_suffix(&mut candidate.match_pairs,
@@ -158,7 +158,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         self.hir.tcx().features().exhaustive_patterns &&
@@ -174,7 +174,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
+            PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 self.prefix_slice_suffix(&mut candidate.match_pairs,
                                          &match_pair.place,
                                          prefix,
@@ -183,20 +183,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatternKind::Leaf { ref subpatterns } => {
+            PatKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
                 candidate.match_pairs
                          .extend(self.field_match_pairs(match_pair.place, subpatterns));
                 Ok(())
             }
 
-            PatternKind::Deref { ref subpattern } => {
+            PatKind::Deref { ref subpattern } => {
                 let place = match_pair.place.deref();
                 candidate.match_pairs.push(MatchPair::new(place, subpattern));
                 Ok(())
             }
 
-            PatternKind::Or { .. } => {
+            PatKind::Or { .. } => {
                 Err(match_pair)
             }
         }

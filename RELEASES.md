@@ -47,8 +47,6 @@ Stabilized APIs
 - [`<*mut T>::cast`]
 - [`Duration::as_secs_f32`]
 - [`Duration::as_secs_f64`]
-- [`Duration::div_duration_f32`]
-- [`Duration::div_duration_f64`]
 - [`Duration::div_f32`]
 - [`Duration::div_f64`]
 - [`Duration::from_secs_f32`]
@@ -100,8 +98,6 @@ Compatibility Notes
 [`<*mut T>::cast`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.cast
 [`Duration::as_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f32
 [`Duration::as_secs_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f64
-[`Duration::div_duration_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_duration_f32
-[`Duration::div_duration_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_duration_f64
 [`Duration::div_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_f32
 [`Duration::div_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.div_f64
 [`Duration::from_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_secs_f32

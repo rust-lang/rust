@@ -144,7 +144,7 @@ fn kind() -> Kind {
         Some(..) => Kind::SRWLock,
     };
     KIND.store(ret as usize, Ordering::SeqCst);
-    return ret;
+    ret
 }
 
 pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>> }

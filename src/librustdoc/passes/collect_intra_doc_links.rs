@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc_resolve::ParentScope;
 use syntax;
 use syntax::ast::{self, Ident};
-use syntax::ext::base::SyntaxExtensionKind;
+use syntax_expand::base::SyntaxExtensionKind;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
@@ -432,13 +432,13 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
     let path = ast::Path::from_ident(Ident::from_str(path_str));
     cx.enter_resolver(|resolver| {
         if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path, None, &ParentScope::module(resolver.graph_root), false, false
+            &path, None, &ParentScope::module(resolver.graph_root()), false, false
         ) {
             if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
                 return Some(res.map_id(|_| panic!("unexpected id")));
             }
         }
-        if let Some(res) = resolver.all_macros.get(&Symbol::intern(path_str)) {
+        if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
             return Some(res.map_id(|_| panic!("unexpected id")));
         }
         None

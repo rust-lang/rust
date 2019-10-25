@@ -362,6 +362,29 @@ fn test_vec_from_vecdeque() {
 }
 
 #[test]
+fn test_clone_from() {
+    let m = vec![1; 8];
+    let n = vec![2; 12];
+    for pfv in 0..8 {
+        for pfu in 0..8 {
+            for longer in 0..2 {
+                let (vr, ur) = if longer == 0 { (&m, &n) } else { (&n, &m) };
+                let mut v = VecDeque::from(vr.clone());
+                for _ in 0..pfv {
+                    v.push_front(1);
+                }
+                let mut u = VecDeque::from(ur.clone());
+                for _ in 0..pfu {
+                    u.push_front(2);
+                }
+                v.clone_from(&u);
+                assert_eq!(&v, &u);
+            }
+        }
+    }
+}
+
+#[test]
 fn issue_53529() {
     use crate::boxed::Box;
 

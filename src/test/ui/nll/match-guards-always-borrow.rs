@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // Here is arielb1's basic example from rust-lang/rust#27282
 // that AST borrowck is flummoxed by:
 

@@ -3,16 +3,16 @@ use std::cmp;
 use crate::hir::HirId;
 use crate::ich::StableHashingContext;
 use crate::lint::builtin;
-use crate::lint::context::CheckLintNameResult;
+use crate::lint::context::{LintStore, CheckLintNameResult};
 use crate::lint::{self, Lint, LintId, Level, LintSource};
 use crate::session::Session;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
-                                           StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
+use syntax::print::pprust;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::{Symbol, sym};
 
@@ -35,21 +35,20 @@ enum LintSet {
 }
 
 impl LintLevelSets {
-    pub fn new(sess: &Session) -> LintLevelSets {
+    pub fn new(sess: &Session, lint_store: &LintStore) -> LintLevelSets {
         let mut me = LintLevelSets {
             list: Vec::new(),
             lint_cap: Level::Forbid,
         };
-        me.process_command_line(sess);
+        me.process_command_line(sess, lint_store);
         return me
     }
 
-    pub fn builder(sess: &Session) -> LintLevelsBuilder<'_> {
-        LintLevelsBuilder::new(sess, LintLevelSets::new(sess))
+    pub fn builder<'a>(sess: &'a Session, store: &LintStore) -> LintLevelsBuilder<'a> {
+        LintLevelsBuilder::new(sess, LintLevelSets::new(sess, store))
     }
 
-    fn process_command_line(&mut self, sess: &Session) {
-        let store = sess.lint_store.borrow();
+    fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
         let mut specs = FxHashMap::default();
         self.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
@@ -186,9 +185,8 @@ impl<'a> LintLevelsBuilder<'a> {
     ///   #[allow]
     ///
     /// Don't forget to call `pop`!
-    pub fn push(&mut self, attrs: &[ast::Attribute]) -> BuilderPush {
+    pub fn push(&mut self, attrs: &[ast::Attribute], store: &LintStore) -> BuilderPush {
         let mut specs = FxHashMap::default();
-        let store = self.sess.lint_store.borrow();
         let sess = self.sess;
         let bad_attr = |span| {
             struct_span_err!(sess, span, E0452, "malformed lint attribute input")
@@ -202,11 +200,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let meta = unwrap_or!(attr.meta(), continue);
             attr::mark_used(attr);
 
-            let mut metas = if let Some(metas) = meta.meta_item_list() {
-                metas
-            } else {
-                continue;
-            };
+            let mut metas = unwrap_or!(meta.meta_item_list(), continue);
 
             if metas.is_empty() {
                 // FIXME (#55112): issue unused-attributes lint for `#[level()]`
@@ -218,7 +212,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let mut reason = None;
             let tail_li = &metas[metas.len()-1];
             if let Some(item) = tail_li.meta_item() {
-                match item.node {
+                match item.kind {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
@@ -226,7 +220,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
                             // don't have any lint names (`#[level(reason = "foo")]`)
-                            if let ast::LitKind::Str(rationale, _) = name_value.node {
+                            if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.sess.features_untracked().lint_reasons {
                                     feature_gate::emit_feature_err(
                                         &self.sess.parse_sess,
@@ -264,7 +258,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(sp);
                         let mut add_label = true;
                         if let Some(item) = li.meta_item() {
-                            if let ast::MetaItemKind::NameValue(_) = item.node {
+                            if let ast::MetaItemKind::NameValue(_) = item.kind {
                                 if item.path == sym::reason {
                                     err.span_label(sp, "reason in lint attribute must come last");
                                     add_label = false;
@@ -286,7 +280,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             tool_ident.span,
                             E0710,
                             "an unknown tool name found in scoped lint: `{}`",
-                            meta_item.path
+                            pprust::path_to_string(&meta_item.path),
                         );
                         continue;
                     }
@@ -526,9 +520,7 @@ impl LintLevelMap {
 
 impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let LintLevelMap {
             ref sets,
             ref id_to_set,
@@ -567,9 +559,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
 
 impl<HCX> HashStable<HCX> for LintId {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut HCX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }

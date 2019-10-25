@@ -20,9 +20,9 @@ use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
 
+use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
 
-use rustc::session::Session;
 use syntax_pos::Span;
 
 use std::cmp::Ordering;
@@ -724,6 +724,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         self.call(expect, &[cond, self.const_bool(expected)], None)
     }
 
+    fn sideeffect(&mut self) {
+        if self.tcx.sess.opts.debugging_opts.insert_sideeffect {
+            let fnname = self.get_intrinsic(&("llvm.sideeffect"));
+            self.call(fnname, &[], None);
+        }
+    }
+
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
         let intrinsic = self.cx().get_intrinsic("llvm.va_start");
         self.call(intrinsic, &[va_list], None)
@@ -810,6 +817,7 @@ fn codegen_msvc_try(
 ) {
     let llfn = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
+        bx.sideeffect();
 
         let mut normal = bx.build_sibling_block("normal");
         let mut catchswitch = bx.build_sibling_block("catchswitch");
@@ -933,6 +941,8 @@ fn codegen_gnu_try(
         // expected to be `*mut *mut u8` for this to actually work, but that's
         // managed by the standard library.
 
+        bx.sideeffect();
+
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");
 
@@ -1014,10 +1024,6 @@ fn get_rust_try_fn<'ll, 'tcx>(
     let rust_try = gen_fn(cx, "__rust_try", vec![fn_ty, i8p, i8p], output, codegen);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
-}
-
-fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
-    span_err!(a, b, E0511, "{}", c);
 }
 
 fn generic_simd_intrinsic(

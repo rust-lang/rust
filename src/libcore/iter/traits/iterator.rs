@@ -1859,14 +1859,13 @@ pub trait Iterator {
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
-            move |x| {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+            move |(), x| {
                 if f(x) { LoopState::Continue(()) }
                 else { LoopState::Break(()) }
             }
         }
-
-        self.try_for_each(check(f)) == LoopState::Continue(())
+        self.try_fold((), check(f)) == LoopState::Continue(())
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -1913,14 +1912,14 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
-            move |x| {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+            move |(), x| {
                 if f(x) { LoopState::Break(()) }
                 else { LoopState::Continue(()) }
             }
         }
 
-        self.try_for_each(check(f)) == LoopState::Break(())
+        self.try_fold((), check(f)) == LoopState::Break(())
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -1972,14 +1971,16 @@ pub trait Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut(T) -> LoopState<(), T> {
-            move |x| {
+        fn check<T>(
+            mut predicate: impl FnMut(&T) -> bool
+        ) -> impl FnMut((), T) -> LoopState<(), T> {
+            move |(), x| {
                 if predicate(&x) { LoopState::Break(x) }
                 else { LoopState::Continue(()) }
             }
         }
 
-        self.try_for_each(check(predicate)).break_value()
+        self.try_fold((), check(predicate)).break_value()
     }
 
     /// Applies function to the elements of iterator and returns
@@ -2004,14 +2005,14 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> Option<B>,
     {
         #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut(T) -> LoopState<(), B> {
-            move |x| match f(x) {
+        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> LoopState<(), B> {
+            move |(), x| match f(x) {
                 Some(x) => LoopState::Break(x),
                 None => LoopState::Continue(()),
             }
         }
 
-        self.try_for_each(check(f)).break_value()
+        self.try_fold((), check(f)).break_value()
     }
 
     /// Searches for an element in an iterator, returning its index.

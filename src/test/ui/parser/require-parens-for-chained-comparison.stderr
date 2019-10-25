@@ -2,21 +2,41 @@ error: chained comparison operators require parentheses
   --> $DIR/require-parens-for-chained-comparison.rs:5:11
    |
 LL |     false == false == false;
-   |           ^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^
 
 error: chained comparison operators require parentheses
   --> $DIR/require-parens-for-chained-comparison.rs:8:11
    |
 LL |     false == 0 < 2;
-   |           ^^^^^^^^
+   |           ^^^^^^
 
 error: chained comparison operators require parentheses
   --> $DIR/require-parens-for-chained-comparison.rs:13:6
    |
 LL |     f<X>();
-   |      ^^^^
+   |      ^^^
+help: use `::<...>` instead of `<...>` to specify type arguments
    |
-   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+LL |     f::<X>();
+   |      ^^
+
+error: chained comparison operators require parentheses
+  --> $DIR/require-parens-for-chained-comparison.rs:17:6
+   |
+LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
+   |      ^^^^^^^^
+help: use `::<...>` instead of `<...>` to specify type arguments
+   |
+LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
+   |      ^^
+
+error: chained comparison operators require parentheses
+  --> $DIR/require-parens-for-chained-comparison.rs:22:21
+   |
+LL |     let _ = identity<u8>;
+   |                     ^^^^
+   |
+   = help: use `::<...>` instead of `<...>` to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
 error[E0308]: mismatched types
@@ -37,6 +57,6 @@ LL |     false == 0 < 2;
    = note: expected type `bool`
               found type `{integer}`
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

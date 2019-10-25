@@ -4,14 +4,16 @@ error[E0277]: `F` cannot be sent between threads safely
 LL |   struct X<F> where F: FnOnce() + 'static + Send {
    |   ---------------------------------------------- required by `X`
 ...
-LL | / fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+LL |   fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+   |   ^                                                    - help: consider further restricting type parameter `F`: `, F: std::marker::Send`
+   |  _|
+   | |
 LL | |
 LL | |     return X { field: blk };
 LL | | }
    | |_^ `F` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `F`
-   = help: consider adding a `where F: std::marker::Send` bound
 
 error: aborting due to previous error
 

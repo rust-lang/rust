@@ -6,7 +6,7 @@ LL | |     loop {}
 LL | | }
    | |_^
    |
-   = note: first defined in crate `std`.
+   = note: first defined in crate `std` (which `panic_handler_std` depends on).
 
 error: argument should be `&PanicInfo`
   --> $DIR/panic-handler-std.rs:7:16

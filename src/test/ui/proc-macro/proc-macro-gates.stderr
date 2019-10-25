@@ -94,17 +94,8 @@ LL |     let _x = #[identity_attr] println!();
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
-error[E0658]: procedural macros cannot be expanded to types
-  --> $DIR/proc-macro-gates.rs:53:13
-   |
-LL |     let _x: identity!(u32) = 3;
-   |             ^^^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
 error[E0658]: procedural macros cannot be expanded to patterns
-  --> $DIR/proc-macro-gates.rs:54:12
+  --> $DIR/proc-macro-gates.rs:53:12
    |
 LL |     if let identity!(Some(_x)) = Some(3) {}
    |            ^^^^^^^^^^^^^^^^^^^
@@ -113,7 +104,7 @@ LL |     if let identity!(Some(_x)) = Some(3) {}
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to statements
-  --> $DIR/proc-macro-gates.rs:57:5
+  --> $DIR/proc-macro-gates.rs:56:5
    |
 LL |     empty!(struct S;);
    |     ^^^^^^^^^^^^^^^^^^
@@ -122,7 +113,7 @@ LL |     empty!(struct S;);
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to statements
-  --> $DIR/proc-macro-gates.rs:58:5
+  --> $DIR/proc-macro-gates.rs:57:5
    |
 LL |     empty!(let _x = 3;);
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -131,7 +122,7 @@ LL |     empty!(let _x = 3;);
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
-  --> $DIR/proc-macro-gates.rs:60:14
+  --> $DIR/proc-macro-gates.rs:59:14
    |
 LL |     let _x = identity!(3);
    |              ^^^^^^^^^^^^
@@ -140,7 +131,7 @@ LL |     let _x = identity!(3);
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
-  --> $DIR/proc-macro-gates.rs:61:15
+  --> $DIR/proc-macro-gates.rs:60:15
    |
 LL |     let _x = [empty!(3)];
    |               ^^^^^^^^^
@@ -148,6 +139,6 @@ LL |     let _x = [empty!(3)];
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
-error: aborting due to 17 previous errors
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

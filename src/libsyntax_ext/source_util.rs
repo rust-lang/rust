@@ -1,10 +1,12 @@
-use syntax::{ast, panictry};
-use syntax::ext::base::{self, *};
+use syntax_expand::panictry;
+use syntax_expand::base::{self, *};
+use syntax::ast;
 use syntax::parse::{self, token, DirectoryOwnership};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenStream;
+use syntax::early_buffered_lints::BufferedEarlyLintId;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, Pos, Span};
@@ -74,7 +76,13 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let file = cx.resolve_path(file, sp);
+    let file = match cx.resolve_path(file, sp) {
+        Ok(f) => f,
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::any(sp);
+        },
+    };
     let directory_ownership = DirectoryOwnership::Owned { relative: None };
     let p = parse::new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
 
@@ -83,7 +91,16 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            Some(panictry!(self.p.parse_expr()))
+            let r = panictry!(self.p.parse_expr());
+            if self.p.token != token::Eof {
+                self.p.sess.buffer_lint(
+                    BufferedEarlyLintId::IncompleteInclude,
+                    self.p.token.span,
+                    ast::CRATE_NODE_ID,
+                    "include macro expected single expression in source",
+                );
+            }
+            Some(r)
         }
 
         fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
@@ -111,7 +128,13 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         Some(f) => f,
         None => return DummyResult::any(sp)
     };
-    let file = cx.resolve_path(file, sp);
+    let file = match cx.resolve_path(file, sp) {
+        Ok(f) => f,
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::any(sp);
+        },
+    };
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
@@ -136,7 +159,13 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
         Some(f) => f,
         None => return DummyResult::any(sp)
     };
-    let file = cx.resolve_path(file, sp);
+    let file = match cx.resolve_path(file, sp) {
+        Ok(f) => f,
+        Err(mut err) => {
+            err.emit();
+            return DummyResult::any(sp);
+        },
+    };
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => {
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))

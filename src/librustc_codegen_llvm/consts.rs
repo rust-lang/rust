@@ -221,7 +221,7 @@ impl CodegenCx<'ll, 'tcx> {
                  def_id);
 
         let ty = instance.ty(self.tcx);
-        let sym = self.tcx.symbol_name(instance).name.as_symbol();
+        let sym = self.tcx.symbol_name(instance).name;
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
 
@@ -230,7 +230,7 @@ impl CodegenCx<'ll, 'tcx> {
             let llty = self.layout_of(ty).llvm_type(self);
             let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item {
-                    ref attrs, span, node: hir::ItemKind::Static(..), ..
+                    ref attrs, span, kind: hir::ItemKind::Static(..), ..
                 }) => {
                     let sym_str = sym.as_str();
                     if self.get_declared_value(&sym_str).is_some() {
@@ -249,7 +249,7 @@ impl CodegenCx<'ll, 'tcx> {
                 }
 
                 Node::ForeignItem(&hir::ForeignItem {
-                    ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
+                    ref attrs, span, kind: hir::ForeignItemKind::Static(..), ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
                     (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), attrs)
@@ -488,7 +488,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext(
                         self.llcx,
-                        section.as_str().as_ptr() as *const _,
+                        section.as_str().as_ptr().cast(),
                         section.as_str().len() as c_uint,
                     );
                     assert!(alloc.relocations().is_empty());
@@ -500,14 +500,14 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                         0..alloc.len());
                     let alloc = llvm::LLVMMDStringInContext(
                         self.llcx,
-                        bytes.as_ptr() as *const _,
+                        bytes.as_ptr().cast(),
                         bytes.len() as c_uint,
                     );
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext(self.llcx, data.as_ptr(), 2);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
-                        "wasm.custom_sections\0".as_ptr() as *const _,
+                        "wasm.custom_sections\0".as_ptr().cast(),
                         meta,
                     );
                 }

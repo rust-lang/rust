@@ -96,7 +96,7 @@ use std::collections::hash_map::Entry;
 use std::cmp;
 use std::sync::Arc;
 
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
@@ -121,7 +121,7 @@ pub enum PartitioningStrategy {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> InternedString {
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
@@ -134,10 +134,15 @@ pub fn partition<'tcx, I>(
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
+    let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
+
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = place_root_mono_items(tcx, mono_items);
+    let mut initial_partitioning = {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_roots");
+        place_root_mono_items(tcx, mono_items)
+    };
 
     initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
@@ -146,8 +151,8 @@ where
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
+        let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
         merge_codegen_units(tcx, &mut initial_partitioning, count);
-
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
@@ -155,8 +160,11 @@ where
     // monomorphizations have to go into each codegen unit. These additional
     // monomorphizations can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with `#[inline]`.
-    let mut post_inlining = place_inlined_mono_items(initial_partitioning,
-                                                            inlining_map);
+    let mut post_inlining = {
+        let _prof_timer =
+            tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
+        place_inlined_mono_items(initial_partitioning, inlining_map)
+    };
 
     post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
@@ -165,6 +173,8 @@ where
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
     if !tcx.sess.opts.cg.link_dead_code {
+        let _prof_timer =
+            tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(tcx, &mut post_inlining, inlining_map);
     }
 
@@ -175,9 +185,7 @@ where
         internalization_candidates: _,
     } = post_inlining;
 
-    result.sort_by(|cgu1, cgu2| {
-        cgu1.name().cmp(cgu2.name())
-    });
+    result.sort_by_cached_key(|cgu| cgu.name().as_str());
 
     result
 }
@@ -193,7 +201,7 @@ struct PreInliningPartitioning<'tcx> {
 /// to keep track of that.
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum MonoItemPlacement {
-    SingleCgu { cgu_name: InternedString },
+    SingleCgu { cgu_name: Symbol },
     MultipleCgus,
 }
 
@@ -241,8 +249,8 @@ where
             None => fallback_cgu_name(cgu_name_builder),
         };
 
-        let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
-            .or_insert_with(|| CodegenUnit::new(codegen_unit_name.clone()));
+        let codegen_unit = codegen_units.entry(codegen_unit_name)
+            .or_insert_with(|| CodegenUnit::new(codegen_unit_name));
 
         let mut can_be_internalized = true;
         let (linkage, visibility) = mono_item_linkage_and_visibility(
@@ -263,8 +271,7 @@ where
     // crate with just types (for example), we could wind up with no CGU.
     if codegen_units.is_empty() {
         let codegen_unit_name = fallback_cgu_name(cgu_name_builder);
-        codegen_units.insert(codegen_unit_name.clone(),
-                             CodegenUnit::new(codegen_unit_name.clone()));
+        codegen_units.insert(codegen_unit_name, CodegenUnit::new(codegen_unit_name));
     }
 
     PreInliningPartitioning {
@@ -329,6 +336,7 @@ fn mono_item_visibility(
 
         // These are all compiler glue and such, never exported, always hidden.
         InstanceDef::VtableShim(..) |
+        InstanceDef::ReifyShim(..) |
         InstanceDef::FnPtrShim(..) |
         InstanceDef::Virtual(..) |
         InstanceDef::Intrinsic(..) |
@@ -481,7 +489,7 @@ fn merge_codegen_units<'tcx>(
     // smallest into each other) we're sure to start off with a deterministic
     // order (sorted by name). This'll mean that if two cgus have the same size
     // the stable sort below will keep everything nice and deterministic.
-    codegen_units.sort_by_key(|cgu| *cgu.name());
+    codegen_units.sort_by_cached_key(|cgu| cgu.name().as_str());
 
     // Merge the two smallest codegen units until the target size is reached.
     while codegen_units.len() > target_cgu_count {
@@ -494,6 +502,9 @@ fn merge_codegen_units<'tcx>(
         for (k, v) in smallest.items_mut().drain() {
             second_smallest.items_mut().insert(k, v);
         }
+        debug!("CodegenUnit {} merged in to CodegenUnit {}",
+               smallest.name(),
+               second_smallest.name());
     }
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
@@ -523,7 +534,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
             follow_inlining(*root, inlining_map, &mut reachable);
         }
 
-        let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name().clone());
+        let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name());
 
         // Add all monomorphizations that are not already there.
         for mono_item in reachable {
@@ -550,8 +561,8 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
                     Entry::Occupied(e) => {
                         let placement = e.into_mut();
                         debug_assert!(match *placement {
-                            MonoItemPlacement::SingleCgu { ref cgu_name } => {
-                                *cgu_name != *new_codegen_unit.name()
+                            MonoItemPlacement::SingleCgu { cgu_name } => {
+                                cgu_name != new_codegen_unit.name()
                             }
                             MonoItemPlacement::MultipleCgus => true,
                         });
@@ -559,7 +570,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
                     }
                     Entry::Vacant(e) => {
                         e.insert(MonoItemPlacement::SingleCgu {
-                            cgu_name: new_codegen_unit.name().clone()
+                            cgu_name: new_codegen_unit.name()
                         });
                     }
                 }
@@ -624,7 +635,7 @@ fn internalize_symbols<'tcx>(
     // accessed from outside its defining codegen unit.
     for cgu in &mut partitioning.codegen_units {
         let home_cgu = MonoItemPlacement::SingleCgu {
-            cgu_name: cgu.name().clone()
+            cgu_name: cgu.name()
         };
 
         for (accessee, linkage_and_visibility) in cgu.items_mut() {
@@ -664,6 +675,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def_id) => def_id,
                 ty::InstanceDef::VtableShim(..) |
+                ty::InstanceDef::ReifyShim(..) |
                 ty::InstanceDef::FnPtrShim(..) |
                 ty::InstanceDef::ClosureOnceShim { .. } |
                 ty::InstanceDef::Intrinsic(..) |
@@ -702,7 +714,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
     }
 }
 
-type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
+type CguNameCache = FxHashMap<(DefId, bool), Symbol>;
 
 fn compute_codegen_unit_name(
     tcx: TyCtxt<'_>,
@@ -710,7 +722,7 @@ fn compute_codegen_unit_name(
     def_id: DefId,
     volatile: bool,
     cache: &mut CguNameCache,
-) -> InternedString {
+) -> Symbol {
     // Find the innermost module that is not nested within a function.
     let mut current_def_id = def_id;
     let mut cgu_def_id = None;
@@ -747,7 +759,7 @@ fn compute_codegen_unit_name(
         let components = def_path
             .data
             .iter()
-            .map(|part| part.data.as_interned_str());
+            .map(|part| part.data.as_symbol());
 
         let volatile_suffix = if volatile {
             Some("volatile")
@@ -762,7 +774,7 @@ fn compute_codegen_unit_name(
 fn numbered_codegen_unit_name(
     name_builder: &mut CodegenUnitNameBuilder<'_>,
     index: usize,
-) -> InternedString {
+) -> Symbol {
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 
@@ -774,7 +786,7 @@ where
     if cfg!(debug_assertions) {
         debug!("{}", label);
         for cgu in cgus {
-            debug!("CodegenUnit {}:", cgu.name());
+            debug!("CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
 
             for (mono_item, linkage) in cgu.items() {
                 let symbol_name = mono_item.symbol_name(tcx).name.as_str();
@@ -782,10 +794,11 @@ where
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");
 
-                debug!(" - {} [{:?}] [{}]",
+                debug!(" - {} [{:?}] [{}] estimated size {}",
                        mono_item.to_string(tcx, true),
                        linkage,
-                       symbol_hash);
+                       symbol_hash,
+                       mono_item.size_estimate(tcx));
             }
 
             debug!("");
@@ -913,7 +926,7 @@ fn collect_and_partition_mono_items(
             for (&mono_item, &linkage) in cgu.items() {
                 item_to_cgus.entry(mono_item)
                             .or_default()
-                            .push((cgu.name().clone(), linkage));
+                            .push((cgu.name(), linkage));
             }
         }
 
@@ -975,7 +988,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.codegen_unit = |tcx, name| {
         let (_, all) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
         all.iter()
-            .find(|cgu| *cgu.name() == name)
+            .find(|cgu| cgu.name() == name)
             .cloned()
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
     };

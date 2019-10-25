@@ -28,7 +28,7 @@ pub fn main() {
     //~| ERROR `mut` must be attached to each individual binding
     //~| ERROR expected identifier, found reserved keyword `yield`
     //~| ERROR expected identifier, found reserved keyword `become`
-    //~| ERROR expected identifier, found reserved keyword `await`
+    //~| ERROR expected identifier, found keyword `await`
 
     struct W<T, U>(T, U);
     struct B { f: Box<u8> }

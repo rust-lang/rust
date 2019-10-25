@@ -7,7 +7,7 @@ use rustc::ty::subst::Subst;
 use crate::require_same_types;
 
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 
 use rustc::hir;
 
@@ -24,7 +24,7 @@ fn equate_intrinsic_type<'tcx>(
 ) {
     let def_id = tcx.hir().local_def_id(it.hir_id);
 
-    match it.node {
+    match it.kind {
         hir::ForeignItemKind::Fn(..) => {}
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622,
@@ -37,7 +37,7 @@ fn equate_intrinsic_type<'tcx>(
 
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     if i_n_tps != n_tps {
-        let span = match it.node {
+        let span = match it.kind {
             hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
             _ => bug!()
         };
@@ -63,7 +63,7 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns `true` if the given intrinsic is unsafe to call or not.
-pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
+pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
         "size_of" | "min_align_of" | "needs_drop" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
@@ -80,7 +80,7 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
 /// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
-    let param = |n| tcx.mk_ty_param(n, InternedString::intern(&format!("P{}", n)));
+    let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
 
     let mk_va_list_ty = |mutbl| {
@@ -130,7 +130,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     } else if &name[..] == "abort" || &name[..] == "unreachable" {
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Unsafe)
     } else {
-        let unsafety = intrisic_operation_unsafety(&name[..]);
+        let unsafety = intrinsic_operation_unsafety(&name[..]);
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
             "size_of" |
@@ -387,7 +387,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     let param = |n| {
-        let name = InternedString::intern(&format!("P{}", n));
+        let name = Symbol::intern(&format!("P{}", n));
         tcx.mk_ty_param(n, name)
     };
 

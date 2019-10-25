@@ -2,14 +2,14 @@
 //! of any `'static` type through runtime reflection.
 //!
 //! `Any` itself can be used to get a `TypeId`, and has more features when used
-//! as a trait object. As `&Any` (a borrowed trait object), it has the `is` and
-//! `downcast_ref` methods, to test if the contained value is of a given type,
-//! and to get a reference to the inner value as a type. As `&mut Any`, there
+//! as a trait object. As `&dyn Any` (a borrowed trait object), it has the `is`
+//! and `downcast_ref` methods, to test if the contained value is of a given type,
+//! and to get a reference to the inner value as a type. As `&mut dyn Any`, there
 //! is also the `downcast_mut` method, for getting a mutable reference to the
-//! inner value. `Box<Any>` adds the `downcast` method, which attempts to
+//! inner value. `Box<dyn Any>` adds the `downcast` method, which attempts to
 //! convert to a `Box<T>`. See the [`Box`] documentation for the full details.
 //!
-//! Note that &Any is limited to testing whether a value is of a specified
+//! Note that `&dyn Any` is limited to testing whether a value is of a specified
 //! concrete type, and cannot be used to test whether a type implements a trait.
 //!
 //! [`Box`]: ../../std/boxed/struct.Box.html
@@ -87,10 +87,8 @@ pub trait Any: 'static {
     ///     TypeId::of::<String>() == s.type_id()
     /// }
     ///
-    /// fn main() {
-    ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
-    /// }
+    /// assert_eq!(is_string(&0), false);
+    /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "get_type_id", since = "1.34.0")]
     fn type_id(&self) -> TypeId;
@@ -145,10 +143,8 @@ impl dyn Any {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_string());
-    /// }
+    /// is_string(&0);
+    /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -179,10 +175,8 @@ impl dyn Any {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_string());
-    /// }
+    /// print_if_string(&0);
+    /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -210,16 +204,14 @@ impl dyn Any {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_string();
+    /// let mut x = 10u32;
+    /// let mut s = "starlord".to_string();
     ///
-    ///     modify_if_u32(&mut x);
-    ///     modify_if_u32(&mut s);
+    /// modify_if_u32(&mut x);
+    /// modify_if_u32(&mut s);
     ///
-    ///     assert_eq!(x, 42);
-    ///     assert_eq!(&s, "starlord");
-    /// }
+    /// assert_eq!(x, 42);
+    /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -250,10 +242,8 @@ impl dyn Any+Send {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_string());
-    /// }
+    /// is_string(&0);
+    /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -276,10 +266,8 @@ impl dyn Any+Send {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_string());
-    /// }
+    /// print_if_string(&0);
+    /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -300,16 +288,14 @@ impl dyn Any+Send {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_string();
+    /// let mut x = 10u32;
+    /// let mut s = "starlord".to_string();
     ///
-    ///     modify_if_u32(&mut x);
-    ///     modify_if_u32(&mut s);
+    /// modify_if_u32(&mut x);
+    /// modify_if_u32(&mut s);
     ///
-    ///     assert_eq!(x, 42);
-    ///     assert_eq!(&s, "starlord");
-    /// }
+    /// assert_eq!(x, 42);
+    /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -334,10 +320,8 @@ impl dyn Any+Send+Sync {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     is_string(&0);
-    ///     is_string(&"cookie monster".to_string());
-    /// }
+    /// is_string(&0);
+    /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
@@ -360,10 +344,8 @@ impl dyn Any+Send+Sync {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     print_if_string(&0);
-    ///     print_if_string(&"cookie monster".to_string());
-    /// }
+    /// print_if_string(&0);
+    /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
@@ -384,16 +366,14 @@ impl dyn Any+Send+Sync {
     ///     }
     /// }
     ///
-    /// fn main() {
-    ///     let mut x = 10u32;
-    ///     let mut s = "starlord".to_string();
+    /// let mut x = 10u32;
+    /// let mut s = "starlord".to_string();
     ///
-    ///     modify_if_u32(&mut x);
-    ///     modify_if_u32(&mut s);
+    /// modify_if_u32(&mut x);
+    /// modify_if_u32(&mut s);
     ///
-    ///     assert_eq!(x, 42);
-    ///     assert_eq!(&s, "starlord");
-    /// }
+    /// assert_eq!(x, 42);
+    /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
@@ -437,10 +417,8 @@ impl TypeId {
     ///     TypeId::of::<String>() == TypeId::of::<T>()
     /// }
     ///
-    /// fn main() {
-    ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
-    /// }
+    /// assert_eq!(is_string(&0), false);
+    /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="const_type_id")]
@@ -467,6 +445,15 @@ impl TypeId {
 ///
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.
+///
+/// # Example
+///
+/// ```rust
+/// assert_eq!(
+///     std::any::type_name::<Option<String>>(),
+///     "core::option::Option<alloc::string::String>",
+/// );
+/// ```
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name")]
 pub const fn type_name<T: ?Sized>() -> &'static str {

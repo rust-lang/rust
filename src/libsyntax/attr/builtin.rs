@@ -2,9 +2,9 @@
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::ext::base::ExtCtxt;
 use crate::feature_gate::{Features, GatedCfg};
-use crate::parse::ParseSess;
+use crate::print::pprust;
+use crate::sess::ParseSess;
 
 use errors::{Applicability, Handler};
 use syntax_pos::hygiene::Transparency;
@@ -31,12 +31,16 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
+    pub fn only_word() -> Self {
+        Self { word: true, list: None, name_value_str: None }
+    }
+
     /// Checks that the given meta-item is compatible with this template.
     fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
         match meta_item_kind {
             ast::MetaItemKind::Word => self.word,
             ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.node.is_str() => self.name_value_str.is_some(),
+            ast::MetaItemKind::NameValue(lit) if lit.kind.is_str() => self.name_value_str.is_some(),
             ast::MetaItemKind::NameValue(..) => false,
         }
     }
@@ -80,7 +84,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -88,7 +92,7 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum OptimizeAttr {
     None,
     Speed,
@@ -106,7 +110,7 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
     attrs.iter().fold(None, |ia, attr| {
         if attr.check_name(sym::unwind) {
             if let Some(meta) = attr.meta() {
-                if let MetaItemKind::List(items) = meta.node {
+                if let MetaItemKind::List(items) = meta.kind {
                     if items.len() == 1 {
                         if items[0].check_name(sym::allowed) {
                             return Some(UnwindAttr::Allowed);
@@ -239,11 +243,15 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             allow_const_fn_ptr = true;
         }
         // attributes with data
-        else if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
+        else if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta {
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(sess, meta.span, AttrError::MultipleItem(meta.path.to_string()));
+                    handle_errors(
+                        sess,
+                        meta.span,
+                        AttrError::MultipleItem(pprust::path_to_string(&meta.path)),
+                    );
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -271,7 +279,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                     handle_errors(
                                         sess,
                                         mi.span,
-                                        AttrError::UnknownMetaItem(mi.path.to_string(), expected),
+                                        AttrError::UnknownMetaItem(
+                                            pprust::path_to_string(&mi.path),
+                                            expected,
+                                        ),
                                     );
                                     continue 'outer
                                 }
@@ -362,7 +373,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                         sess,
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
-                                            mi.path.to_string(),
+                                            pprust::path_to_string(&mi.path),
                                             &["feature", "reason", "issue", "soft"]
                                         ),
                                     );
@@ -434,7 +445,8 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                             sess,
                                             meta.span(),
                                             AttrError::UnknownMetaItem(
-                                                mi.path.to_string(), &["since", "note"],
+                                                pprust::path_to_string(&mi.path),
+                                                &["since", "note"],
                                             ),
                                         );
                                         continue 'outer
@@ -534,17 +546,17 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
         if cfg.path.segments.len() != 1 {
             return error(cfg.path.span, "`cfg` predicate key must be an identifier");
         }
-        match &cfg.node {
+        match &cfg.kind {
             MetaItemKind::List(..) => {
                 error(cfg.span, "unexpected parentheses after `cfg` predicate key")
             }
-            MetaItemKind::NameValue(lit) if !lit.node.is_str() => {
+            MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
                 handle_errors(
                     sess,
                     lit.span,
                     AttrError::UnsupportedLiteral(
                         "literal in `cfg` predicate value must be a string",
-                        lit.node.is_bytestr()
+                        lit.kind.is_bytestr()
                     ),
                 );
                 true
@@ -563,7 +575,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                          -> bool
     where F: FnMut(&ast::MetaItem) -> bool
 {
-    match cfg.node {
+    match cfg.kind {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
@@ -597,8 +609,11 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                     !eval_condition(mis[0].meta_item().unwrap(), sess, eval)
                 },
                 _ => {
-                    span_err!(sess.span_diagnostic, cfg.span, E0537,
-                              "invalid predicate `{}`", cfg.path);
+                    span_err!(
+                        sess.span_diagnostic, cfg.span, E0537,
+                        "invalid predicate `{}`",
+                        pprust::path_to_string(&cfg.path)
+                    );
                     false
                 }
             }
@@ -609,8 +624,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
     }
 }
 
-
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     pub note: Option<Symbol>,
@@ -642,7 +656,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
         }
 
         let meta = attr.meta().unwrap();
-        depr = match &meta.node {
+        depr = match &meta.kind {
             MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
             MetaItemKind::NameValue(..) => {
                 meta.value_str().map(|note| {
@@ -653,7 +667,9 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
                         handle_errors(
-                            sess, meta.span, AttrError::MultipleItem(meta.path.to_string())
+                            sess,
+                            meta.span,
+                            AttrError::MultipleItem(pprust::path_to_string(&meta.path)),
                         );
                         return false
                     }
@@ -668,7 +684,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                 AttrError::UnsupportedLiteral(
                                     "literal in `deprecated` \
                                     value must be a string",
-                                    lit.node.is_bytestr()
+                                    lit.kind.is_bytestr()
                                 ),
                             );
                         } else {
@@ -691,8 +707,10 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                                     handle_errors(
                                         sess,
                                         meta.span(),
-                                        AttrError::UnknownMetaItem(mi.path.to_string(),
-                                                                   &["since", "note"]),
+                                        AttrError::UnknownMetaItem(
+                                            pprust::path_to_string(&mi.path),
+                                            &["since", "note"],
+                                        ),
                                     );
                                     continue 'outer
                                 }
@@ -730,7 +748,7 @@ pub enum ReprAttr {
     ReprAlign(u32),
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)
@@ -811,14 +829,14 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     let mut literal_error = None;
                     if name == sym::align {
                         recognised = true;
-                        match parse_alignment(&value.node) {
+                        match parse_alignment(&value.kind) {
                             Ok(literal) => acc.push(ReprAlign(literal)),
                             Err(message) => literal_error = Some(message)
                         };
                     }
                     else if name == sym::packed {
                         recognised = true;
-                        match parse_alignment(&value.node) {
+                        match parse_alignment(&value.kind) {
                             Ok(literal) => acc.push(ReprPacked(literal)),
                             Err(message) => literal_error = Some(message)
                         };
@@ -830,11 +848,11 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                 } else {
                     if let Some(meta_item) = item.meta_item() {
                         if meta_item.check_name(sym::align) {
-                            if let MetaItemKind::NameValue(ref value) = meta_item.node {
+                            if let MetaItemKind::NameValue(ref value) = meta_item.kind {
                                 recognised = true;
                                 let mut err = struct_span_err!(diagnostic, item.span(), E0693,
                                     "incorrect `repr(align)` attribute format");
-                                match value.node {
+                                match value.kind {
                                     ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
                                         err.span_suggestion(
                                             item.span(),
@@ -921,14 +939,7 @@ pub fn find_transparency(
     (transparency.map_or(fallback, |t| t.0), error)
 }
 
-pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
-    // All the built-in macro attributes are "words" at the moment.
-    let template = AttributeTemplate { word: true, list: None, name_value_str: None };
-    let attr = ecx.attribute(meta_item.clone());
-    check_builtin_attribute(ecx.parse_sess, &attr, name, template);
-}
-
-crate fn check_builtin_attribute(
+pub fn check_builtin_attribute(
     sess: &ParseSess, attr: &ast::Attribute, name: Symbol, template: AttributeTemplate
 ) {
     // Some special attributes like `cfg` must be checked
@@ -941,7 +952,7 @@ crate fn check_builtin_attribute(
                              name == sym::test || name == sym::bench;
 
     match attr.parse_meta(sess) {
-        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
+        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.kind) {
             let error_msg = format!("malformed `{}` attribute input", name);
             let mut msg = "attribute must be of the form ".to_owned();
             let mut suggestions = vec![];

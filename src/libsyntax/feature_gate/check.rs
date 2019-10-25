@@ -3,16 +3,12 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{
-    self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
-    PatKind, RangeEnd,
-};
+use crate::ast::{self, NodeId, PatKind, VariantData};
 use crate::attr::{self, check_builtin_attribute};
-use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
-use crate::parse::{token, ParseSess};
-use crate::parse::parser::Parser;
+use crate::parse::token;
+use crate::sess::ParseSess;
 use crate::symbol::{Symbol, sym};
 use crate::tokenstream::TokenTree;
 
@@ -56,7 +52,7 @@ macro_rules! gate_feature {
     };
 }
 
-crate fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
+pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 
@@ -157,9 +153,6 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
 
 }
 
-const EXPLAIN_BOX_SYNTAX: &str =
-    "box expression syntax is experimental; you can call `Box::new` instead";
-
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
     "attributes on expressions are experimental";
 
@@ -246,6 +239,70 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::System => {}
         }
     }
+
+    fn maybe_report_invalid_custom_discriminants(&self, variants: &[ast::Variant]) {
+        let has_fields = variants.iter().any(|variant| match variant.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => true,
+            VariantData::Unit(..) => false,
+        });
+
+        let discriminant_spans = variants.iter().filter(|variant| match variant.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => false,
+            VariantData::Unit(..) => true,
+        })
+        .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
+        .collect::<Vec<_>>();
+
+        if !discriminant_spans.is_empty() && has_fields {
+            let mut err = feature_err(
+                self.parse_sess,
+                sym::arbitrary_enum_discriminant,
+                discriminant_spans.clone(),
+                crate::feature_gate::GateIssue::Language,
+                "custom discriminant values are not allowed in enums with tuple or struct variants",
+            );
+            for sp in discriminant_spans {
+                err.span_label(sp, "disallowed custom discriminant");
+            }
+            for variant in variants.iter() {
+                match &variant.data {
+                    VariantData::Struct(..) => {
+                        err.span_label(
+                            variant.span,
+                            "struct variant defined here",
+                        );
+                    }
+                    VariantData::Tuple(..) => {
+                        err.span_label(
+                            variant.span,
+                            "tuple variant defined here",
+                        );
+                    }
+                    VariantData::Unit(..) => {}
+                }
+            }
+            err.emit();
+        }
+    }
+
+    fn check_gat(&self, generics: &ast::Generics, span: Span) {
+        if !generics.params.is_empty() {
+            gate_feature_post!(
+                &self,
+                generic_associated_types,
+                span,
+                "generic associated types are unstable"
+            );
+        }
+        if !generics.where_clause.predicates.is_empty() {
+            gate_feature_post!(
+                &self,
+                generic_associated_types,
+                span,
+                "where clauses on associated types are unstable"
+            );
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -302,7 +359,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
-        match i.node {
+        match i.kind {
             ast::ItemKind::ForeignMod(ref foreign_module) => {
                 self.check_abi(foreign_module.abi, i.span);
             }
@@ -353,7 +410,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
                 let has_feature = self.features.arbitrary_enum_discriminant;
                 if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
-                    Parser::maybe_report_invalid_custom_discriminants(self.parse_sess, &variants);
+                    self.maybe_report_invalid_custom_discriminants(&variants);
                 }
             }
 
@@ -378,20 +435,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "auto traits are experimental and possibly buggy");
             }
 
-            ast::ItemKind::TraitAlias(..) => {
-                gate_feature_post!(
-                    &self,
-                    trait_alias,
-                    i.span,
-                    "trait aliases are experimental"
-                );
-            }
-
-            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
-                let msg = "`macro` is experimental";
-                gate_feature_post!(&self, decl_macro, i.span, msg);
-            }
-
             ast::ItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
@@ -408,7 +451,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
-        match i.node {
+        match i.kind {
             ast::ForeignItemKind::Fn(..) |
             ast::ForeignItemKind::Static(..) => {
                 let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
@@ -432,7 +475,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
-        match ty.node {
+        match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
             }
@@ -447,7 +490,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if let ast::TyKind::Never = output_ty.node {
+            if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
                 self.visit_ty(output_ty)
@@ -455,43 +498,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_expr(&mut self, e: &'a ast::Expr) {
-        match e.node {
-            ast::ExprKind::Box(_) => {
-                gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
-            }
-            ast::ExprKind::Type(..) => {
-                // To avoid noise about type ascription in common syntax errors, only emit if it
-                // is the *only* error.
-                if self.parse_sess.span_diagnostic.err_count() == 0 {
-                    gate_feature_post!(&self, type_ascription, e.span,
-                                       "type ascription is experimental");
-                }
-            }
-            ast::ExprKind::TryBlock(_) => {
-                gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
-            }
-            ast::ExprKind::Block(_, opt_label) => {
-                if let Some(label) = opt_label {
-                    gate_feature_post!(&self, label_break_value, label.ident.span,
-                                    "labels on blocks are unstable");
-                }
-            }
-            _ => {}
-        }
-        visit::walk_expr(self, e)
-    }
-
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        visit::walk_arm(self, arm)
-    }
-
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
-        match &pattern.node {
+        match &pattern.kind {
             PatKind::Slice(pats) => {
                 for pat in &*pats {
                     let span = pat.span;
-                    let inner_pat = match &pat.node {
+                    let inner_pat = match &pat.kind {
                         PatKind::Ident(.., Some(pat)) => pat,
                         _ => pat,
                     };
@@ -505,25 +517,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
             }
-            PatKind::Box(..) => {
-                gate_feature_post!(&self, box_patterns,
-                                  pattern.span,
-                                  "box pattern syntax is experimental");
-            }
-            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
-                gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
-                                   "exclusive range pattern syntax is experimental");
-            }
             _ => {}
         }
         visit::walk_pat(self, pattern)
     }
 
-    fn visit_fn(&mut self,
-                fn_kind: FnKind<'a>,
-                fn_decl: &'a ast::FnDecl,
-                span: Span,
-                _node_id: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, fn_decl: &'a ast::FnDecl, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
@@ -531,40 +530,20 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             self.check_abi(header.abi, span);
         }
 
-        if fn_decl.c_variadic {
+        if fn_decl.c_variadic() {
             gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
         visit::walk_fn(self, fn_kind, fn_decl, span)
     }
 
-    fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        match param.kind {
-            GenericParamKind::Const { .. } =>
-                gate_feature_post!(&self, const_generics, param.ident.span,
-                    "const generics are unstable"),
-            _ => {}
-        }
-        visit::walk_generic_param(self, param)
-    }
-
-    fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
-        match constraint.kind {
-            AssocTyConstraintKind::Bound { .. } =>
-                gate_feature_post!(&self, associated_type_bounds, constraint.span,
-                    "associated type bounds are unstable"),
-            _ => {}
-        }
-        visit::walk_assoc_ty_constraint(self, constraint)
-    }
-
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
-        match ti.node {
+        match ti.kind {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
                 }
-                if sig.decl.c_variadic {
+                if sig.decl.c_variadic() {
                     gate_feature_post!(&self, c_variadic, ti.span,
                                        "C-variadic functions are unstable");
                 }
@@ -579,14 +558,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, associated_type_defaults, ti.span,
                                        "associated type defaults are unstable");
                 }
-                if !ti.generics.params.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ti.span,
-                                       "generic associated types are unstable");
-                }
-                if !ti.generics.where_clause.predicates.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ti.span,
-                                       "where clauses on associated types are unstable");
-                }
+                self.check_gat(&ti.generics, ti.span);
             }
             _ => {}
         }
@@ -600,8 +572,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                               "specialization is unstable");
         }
 
-        match ii.node {
-            ast::ImplItemKind::Method(..) => {}
+        match ii.kind {
+            ast::ImplItemKind::Method(ref sig, _) => {
+                if sig.decl.c_variadic() {
+                    gate_feature_post!(&self, c_variadic, ii.span,
+                                       "C-variadic functions are unstable");
+                }
+            }
             ast::ImplItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
@@ -611,26 +588,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
             }
             ast::ImplItemKind::TyAlias(_) => {
-                if !ii.generics.params.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ii.span,
-                                       "generic associated types are unstable");
-                }
-                if !ii.generics.where_clause.predicates.is_empty() {
-                    gate_feature_post!(&self, generic_associated_types, ii.span,
-                                       "where clauses on associated types are unstable");
-                }
+                self.check_gat(&ii.generics, ii.span);
             }
             _ => {}
         }
         visit::walk_impl_item(self, ii)
-    }
-
-    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.node {
-            gate_feature_post!(&self, crate_visibility_modifier, vis.span,
-                               "`crate` visibility modifier is experimental");
-        }
-        visit::walk_vis(self, vis)
     }
 }
 
@@ -764,7 +726,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             if let Some(allowed) = allow_features.as_ref() {
-                if allowed.iter().find(|f| *f == name.as_str()).is_none() {
+                if allowed.iter().find(|&f| f == &name.as_str() as &str).is_none() {
                     span_err!(span_handler, mi.span(), E0725,
                               "the feature `{}` is not in the list of allowed features",
                               name);
@@ -816,6 +778,23 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
+    gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
+    gate_all!(trait_alias, "trait aliases are experimental");
+    gate_all!(associated_type_bounds, "associated type bounds are unstable");
+    gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
+    gate_all!(const_generics, "const generics are unstable");
+    gate_all!(decl_macro, "`macro` is experimental");
+    gate_all!(box_patterns, "box pattern syntax is experimental");
+    gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
+    gate_all!(try_blocks, "`try` blocks are unstable");
+    gate_all!(label_break_value, "labels on blocks are unstable");
+    gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
+
+    // To avoid noise about type ascription in common syntax errors,
+    // only emit if it is the *only* error. (Also check it last.)
+    if parse_sess.span_diagnostic.err_count() == 0 {
+        gate_all!(type_ascription, "type ascription is experimental");
+    }
 
     visit::walk_crate(&mut visitor, krate);
 }
@@ -849,25 +828,19 @@ impl UnstableFeatures {
     pub fn is_nightly_build(&self) -> bool {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            _ => false,
+            UnstableFeatures::Disallow => false,
         }
     }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: UnstableFeatures) {
-    let allow_features = match unstable {
-        UnstableFeatures::Allow => true,
-        UnstableFeatures::Disallow => false,
-        UnstableFeatures::Cheat => true
-    };
-    if !allow_features {
-        for attr in &krate.attrs {
-            if attr.check_name(sym::feature) {
-                let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
-                span_err!(span_handler, attr.span, E0554,
-                          "`#![feature]` may not be used on the {} release channel",
-                          release_channel);
-            }
+    if !unstable.is_nightly_build() {
+        for attr in krate.attrs.iter().filter(|attr| attr.check_name(sym::feature)) {
+            span_err!(
+                span_handler, attr.span, E0554,
+                "`#![feature]` may not be used on the {} release channel",
+                option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
+            );
         }
     }
 }

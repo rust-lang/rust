@@ -1,6 +1,6 @@
 // The compiler code necessary to support the compile_error! extension.
 
-use syntax::ext::base::{self, *};
+use syntax_expand::base::{self, *};
 use syntax_pos::Span;
 use syntax::tokenstream::TokenStream;
 

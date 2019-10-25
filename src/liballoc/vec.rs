@@ -389,28 +389,26 @@ impl<T> Vec<T> {
     /// use std::ptr;
     /// use std::mem;
     ///
-    /// fn main() {
-    ///     let mut v = vec![1, 2, 3];
+    /// let mut v = vec![1, 2, 3];
     ///
-    ///     // Pull out the various important pieces of information about `v`
-    ///     let p = v.as_mut_ptr();
-    ///     let len = v.len();
-    ///     let cap = v.capacity();
+    /// // Pull out the various important pieces of information about `v`
+    /// let p = v.as_mut_ptr();
+    /// let len = v.len();
+    /// let cap = v.capacity();
     ///
-    ///     unsafe {
-    ///         // Cast `v` into the void: no destructor run, so we are in
-    ///         // complete control of the allocation to which `p` points.
-    ///         mem::forget(v);
+    /// unsafe {
+    ///     // Cast `v` into the void: no destructor run, so we are in
+    ///     // complete control of the allocation to which `p` points.
+    ///     mem::forget(v);
     ///
-    ///         // Overwrite memory with 4, 5, 6
-    ///         for i in 0..len as isize {
-    ///             ptr::write(p.offset(i), 4 + i);
-    ///         }
-    ///
-    ///         // Put everything back together into a Vec
-    ///         let rebuilt = Vec::from_raw_parts(p, len, cap);
-    ///         assert_eq!(rebuilt, [4, 5, 6]);
+    ///     // Overwrite memory with 4, 5, 6
+    ///     for i in 0..len as isize {
+    ///         ptr::write(p.offset(i), 4 + i);
     ///     }
+    ///
+    ///     // Put everything back together into a Vec
+    ///     let rebuilt = Vec::from_raw_parts(p, len, cap);
+    ///     assert_eq!(rebuilt, [4, 5, 6]);
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1391,12 +1389,10 @@ impl<T> Vec<T> {
     /// ```
     /// #![feature(vec_leak)]
     ///
-    /// fn main() {
-    ///     let x = vec![1, 2, 3];
-    ///     let static_ref: &'static mut [usize] = Vec::leak(x);
-    ///     static_ref[0] += 1;
-    ///     assert_eq!(static_ref, &[2, 2, 3]);
-    /// }
+    /// let x = vec![1, 2, 3];
+    /// let static_ref: &'static mut [usize] = Vec::leak(x);
+    /// static_ref[0] += 1;
+    /// assert_eq!(static_ref, &[2, 2, 3]);
     /// ```
     #[unstable(feature = "vec_leak", issue = "62195")]
     #[inline]
@@ -1734,17 +1730,42 @@ impl_is_zero!(char, |x| x == '\0');
 impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
 impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 
-unsafe impl<T: ?Sized> IsZero for *const T {
+unsafe impl<T> IsZero for *const T {
     #[inline]
     fn is_zero(&self) -> bool {
         (*self).is_null()
     }
 }
 
-unsafe impl<T: ?Sized> IsZero for *mut T {
+unsafe impl<T> IsZero for *mut T {
     #[inline]
     fn is_zero(&self) -> bool {
         (*self).is_null()
+    }
+}
+
+// `Option<&T>`, `Option<&mut T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
+// For fat pointers, the bytes that would be the pointer metadata in the `Some` variant
+// are padding in the `None` variant, so ignoring them and zero-initializing instead is ok.
+
+unsafe impl<T: ?Sized> IsZero for Option<&T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.is_none()
+    }
+}
+
+unsafe impl<T: ?Sized> IsZero for Option<&mut T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.is_none()
+    }
+}
+
+unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.is_none()
     }
 }
 

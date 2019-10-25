@@ -6,7 +6,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::query::Providers;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, sym};
@@ -66,9 +66,12 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 Some(arg_tys)
             )
         }
-        ty::InstanceDef::Virtual(def_id, _) => {
-            // We are generating a call back to our def-id, which the
-            // codegen backend knows to turn to an actual virtual call.
+        // We are generating a call back to our def-id, which the
+        // codegen backend knows to turn to an actual virtual call.
+        ty::InstanceDef::Virtual(def_id, _) |
+        // ...or we are generating a direct call to a function for which indirect calls must be
+        // codegen'd differently than direct ones (example: #[track_caller])
+        ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(
                 tcx,
                 def_id,
@@ -79,7 +82,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         }
         ty::InstanceDef::ClosureOnceShim { call_once } => {
             let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
-            let call_mut = tcx.global_tcx()
+            let call_mut = tcx
                 .associated_items(fn_mut)
                 .find(|it| it.kind == ty::AssocKind::Method)
                 .unwrap().def_id;
@@ -169,7 +172,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     // Check if this is a generator, if so, return the drop glue for it
     if let Some(&ty::TyS { kind: ty::Generator(gen_def_id, substs, _), .. }) = ty {
         let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
-        return body.subst(tcx, substs.substs);
+        return body.subst(tcx, substs);
     }
 
     let substs = if let Some(ty) = ty {
@@ -320,7 +323,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         ty::Closure(def_id, substs) => {
             builder.tuple_like_shim(
                 dest, src,
-                substs.upvar_tys(def_id, tcx)
+                substs.as_closure().upvar_tys(def_id, tcx)
             )
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),

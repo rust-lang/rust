@@ -46,7 +46,7 @@ pub fn payload() -> *mut u8 {
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let panic_ctx = Box::from_raw(ptr as *mut PanicData);
-    return panic_ctx.data;
+    panic_ctx.data
 }
 
 // SEH doesn't support resuming unwinds after calling a landing pad like

@@ -1,5 +1,4 @@
-use crate::infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
-use crate::traits::query::dropck_outlives::trivial_dropck_outlives;
+use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::dropck_outlives::DropckOutlivesResult;
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
@@ -22,7 +21,7 @@ impl super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
         tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        if trivial_dropck_outlives(tcx, key.value.dropped_ty) {
+        if tcx.trivial_dropck_outlives(key.value.dropped_ty) {
             Some(DropckOutlivesResult::default())
         } else {
             None
@@ -52,12 +51,6 @@ impl super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
         });
 
         tcx.dropck_outlives(canonicalized)
-    }
-
-    fn shrink_to_tcx_lifetime(
-        lifted_query_result: &'a CanonicalizedQueryResponse<'tcx, Self::QueryResponse>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>> {
-        lifted_query_result
     }
 }
 

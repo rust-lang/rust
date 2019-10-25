@@ -45,13 +45,12 @@ pub enum TypeError<'tcx> {
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
-
+    ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 
     IntrinsicCast,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum UnconstrainedNumeric {
     UnconstrainedFloat,
     UnconstrainedInt,
@@ -179,6 +178,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             IntrinsicCast => {
                 write!(f, "cannot coerce intrinsics to function pointers")
             }
+            ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
 }
@@ -193,7 +193,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::Array(_, n) => {
-                let n = tcx.lift_to_global(&n).unwrap();
+                let n = tcx.lift(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     Some(n) => {
                         format!("array of {} element{}", n, pluralise!(n)).into()

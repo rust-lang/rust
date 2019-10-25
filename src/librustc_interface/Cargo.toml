@@ -11,14 +11,14 @@ doctest = false
 
 [dependencies]
 log = "0.4"
-rayon = { version = "0.2.0", package = "rustc-rayon" }
+rayon = { version = "0.3.0", package = "rustc-rayon" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
+syntax_expand = { path = "../libsyntax_expand" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc = { path = "../librustc" }
-rustc_ast_borrowck = { path = "../librustc_ast_borrowck" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -27,6 +27,7 @@ rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_passes = { path = "../librustc_passes" }
+rustc_target = { path = "../librustc_target" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_errors = { path = "../librustc_errors" }

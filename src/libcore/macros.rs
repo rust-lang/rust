@@ -238,6 +238,33 @@ macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
 }
 
+/// Returns whether the given expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(matches_macro)]
+///
+/// let foo = 'f';
+/// assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+///
+/// let bar = Some(4);
+/// assert!(matches!(bar, Some(x) if x > 2));
+/// ```
+#[macro_export]
+#[unstable(feature = "matches_macro", issue = "65721")]
+macro_rules! matches {
+    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )?) => {
+        match $expression {
+            $( $pattern )|+ $( if $guard )? => true,
+            _ => false
+        }
+    }
+}
+
 /// Unwraps a result or propagates its error.
 ///
 /// The `?` operator was added to replace `try!` and should be used instead.
@@ -465,7 +492,7 @@ macro_rules! writeln {
 /// The unsafe counterpart of this macro is the [`unreachable_unchecked`] function, which
 /// will cause undefined behavior if the code is reached.
 ///
-/// [`panic!`]:  ../std/macro.panic.html
+/// [`panic!`]: ../std/macro.panic.html
 /// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
 /// [`std::hint`]: ../std/hint/index.html
 ///
@@ -474,6 +501,7 @@ macro_rules! writeln {
 /// This will always [`panic!`]
 ///
 /// [`panic!`]: ../std/macro.panic.html
+///
 /// # Examples
 ///
 /// Match arms:
@@ -519,15 +547,20 @@ macro_rules! unreachable {
     });
 }
 
-/// Indicates unfinished code.
+/// Indicates unfinished code by panicking with a message of "not yet implemented".
 ///
-/// This can be useful if you are prototyping and are just looking to have your
-/// code type-check, or if you're implementing a trait that requires multiple
-/// methods, and you're only planning on using one of them.
+/// This allows the your code to type-check, which is useful if you are prototyping or
+/// implementing a trait that requires multiple methods which you don't plan of using all of.
+///
+/// There is no difference between `unimplemented!` and `todo!` apart from the
+/// name.
 ///
 /// # Panics
 ///
-/// This will always [panic!](macro.panic.html)
+/// This will always [panic!](macro.panic.html) because `unimplemented!` is just a
+/// shorthand for `panic!` with a fixed, specific message.
+///
+/// Like `panic!`, this macro has a second form for displaying custom values.
 ///
 /// # Examples
 ///
@@ -535,38 +568,53 @@ macro_rules! unreachable {
 ///
 /// ```
 /// trait Foo {
-///     fn bar(&self);
+///     fn bar(&self) -> u8;
 ///     fn baz(&self);
+///     fn qux(&self) -> Result<u64, ()>;
 /// }
 /// ```
 ///
-/// We want to implement `Foo` on one of our types, but we also want to work on
-/// just `bar()` first. In order for our code to compile, we need to implement
-/// `baz()`, so we can use `unimplemented!`:
+/// We want to implement `Foo` for 'MyStruct', but so far we only know how to
+/// implement the `bar()` function. `baz()` and `qux()` will still need to be defined
+/// in our implementation of `Foo`, but we can use `unimplemented!` in their definitions
+/// to allow our code to compile.
+///
+/// In the meantime, we want to have our program stop running once these
+/// unimplemented functions are reached.
 ///
 /// ```
 /// # trait Foo {
-/// #     fn bar(&self);
+/// #     fn bar(&self) -> u8;
 /// #     fn baz(&self);
+/// #     fn qux(&self) -> Result<u64, ()>;
 /// # }
 /// struct MyStruct;
 ///
 /// impl Foo for MyStruct {
-///     fn bar(&self) {
-///         // implementation goes here
+///     fn bar(&self) -> u8 {
+///         1 + 1
 ///     }
 ///
 ///     fn baz(&self) {
-///         // let's not worry about implementing baz() for now
+///         // We aren't sure how to even start writing baz yet,
+///         // so we have no logic here at all.
+///         // This will display "thread 'main' panicked at 'not yet implemented'".
 ///         unimplemented!();
+///     }
+///
+///     fn qux(&self) -> Result<u64, ()> {
+///         let n = self.bar();
+///         // We have some logic here,
+///         // so we can use unimplemented! to display what we have so far.
+///         // This will display:
+///         // "thread 'main' panicked at 'not yet implemented: we need to divide by 2'".
+///         unimplemented!("we need to divide by {}", n);
 ///     }
 /// }
 ///
 /// fn main() {
 ///     let s = MyStruct;
 ///     s.bar();
-///
-///     // we aren't even using baz() yet, so this is fine.
 /// }
 /// ```
 #[macro_export]
@@ -579,8 +627,10 @@ macro_rules! unimplemented {
 /// Indicates unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
-/// code typecheck. `todo!` works exactly like `unimplemented!`. The only
-/// difference between the two macros is the name.
+/// code typecheck.
+///
+/// There is no difference between `unimplemented!` and `todo!` apart from the
+/// name.
 ///
 /// # Panics
 ///
@@ -602,8 +652,6 @@ macro_rules! unimplemented {
 /// `baz()`, so we can use `todo!`:
 ///
 /// ```
-/// #![feature(todo_macro)]
-///
 /// # trait Foo {
 /// #     fn bar(&self);
 /// #     fn baz(&self);
@@ -629,7 +677,7 @@ macro_rules! unimplemented {
 /// }
 /// ```
 #[macro_export]
-#[unstable(feature = "todo_macro", issue = "59277")]
+#[stable(feature = "todo_macro", since = "1.39.0")]
 macro_rules! todo {
     () => (panic!("not yet implemented"));
     ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));

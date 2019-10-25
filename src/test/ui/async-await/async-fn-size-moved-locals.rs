@@ -7,7 +7,7 @@
 //
 // See issue #59123 for a full explanation.
 
-// ignore-wasm32-bare (sizes don't match)
+// ignore-emscripten (sizes don't match)
 // run-pass
 
 // edition:2018
@@ -22,7 +22,8 @@ struct BigFut([u8; BIG_FUT_SIZE]);
 impl BigFut {
     fn new() -> Self {
         BigFut([0; BIG_FUT_SIZE])
-    } }
+    }
+}
 
 impl Drop for BigFut {
     fn drop(&mut self) {}

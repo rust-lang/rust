@@ -1,5 +1,5 @@
-error[E0658]: `try` expression is experimental
-  --> $DIR/feature-gate-try_blocks.rs:4:33
+error[E0658]: `try` blocks are unstable
+  --> $DIR/feature-gate-try_blocks.rs:5:33
    |
 LL |       let try_result: Option<_> = try {
    |  _________________________________^

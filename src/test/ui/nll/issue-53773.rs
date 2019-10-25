@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Archive;
 struct ArchiveIterator<'a> {
     x: &'a Archive,

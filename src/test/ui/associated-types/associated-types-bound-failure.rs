@@ -1,4 +1,6 @@
+// run-rustfix
 // Test equality constraints on associated types in a where clause.
+#![allow(dead_code)]
 
 pub trait ToInt {
     fn to_int(&self) -> isize;

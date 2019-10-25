@@ -141,7 +141,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // binder). It would be better to normalize in a
                 // binding-aware fashion.
 
-                let gcx = self.infcx.tcx.global_tcx();
+                let tcx = self.infcx.tcx;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -150,7 +150,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     &self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                match gcx.normalize_projection_ty(c_data) {
+                match tcx.normalize_projection_ty(c_data) {
                     Ok(result) => {
                         // We don't expect ambiguity.
                         if result.is_ambiguous() {

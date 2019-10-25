@@ -45,7 +45,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 
 impl hir::Pat {
     pub fn is_refutable(&self) -> bool {
-        match self.node {
+        match self.kind {
             PatKind::Lit(_) |
             PatKind::Range(..) |
             PatKind::Path(hir::QPath::Resolved(Some(..), _)) |
@@ -68,7 +68,7 @@ impl hir::Pat {
     /// `match foo() { Some(a) => (), None => () }`
     pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident)) {
         self.walk(|p| {
-            if let PatKind::Binding(binding_mode, _, ident, _) = p.node {
+            if let PatKind::Binding(binding_mode, _, ident, _) = p.kind {
                 f(binding_mode, p.hir_id, p.span, ident);
             }
             true
@@ -83,7 +83,7 @@ impl hir::Pat {
         &self,
         f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
     ) {
-        self.walk(|p| match &p.node {
+        self.walk(|p| match &p.kind {
             PatKind::Or(ps) => {
                 ps[0].each_binding_or_first(f);
                 false
@@ -99,7 +99,7 @@ impl hir::Pat {
     /// Checks if the pattern contains any patterns that bind something to
     /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
     pub fn contains_bindings(&self) -> bool {
-        self.satisfies(|p| match p.node {
+        self.satisfies(|p| match p.kind {
             PatKind::Binding(..) => true,
             _ => false,
         })
@@ -108,7 +108,7 @@ impl hir::Pat {
     /// Checks if the pattern contains any patterns that bind something to
     /// an ident or wildcard, e.g., `foo`, or `Foo(_)`, `foo @ Bar(..)`,
     pub fn contains_bindings_or_wild(&self) -> bool {
-        self.satisfies(|p| match p.node {
+        self.satisfies(|p| match p.kind {
             PatKind::Binding(..) | PatKind::Wild => true,
             _ => false,
         })
@@ -129,7 +129,7 @@ impl hir::Pat {
     }
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
-        match self.node {
+        match self.kind {
             PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) |
             PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
             _ => None,
@@ -139,7 +139,7 @@ impl hir::Pat {
     /// Returns variants that are necessary to exist for the pattern to match.
     pub fn necessary_variants(&self) -> Vec<DefId> {
         let mut variants = vec![];
-        self.walk(|p| match &p.node {
+        self.walk(|p| match &p.kind {
             PatKind::Or(_) => false,
             PatKind::Path(hir::QPath::Resolved(_, path)) |
             PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..) |

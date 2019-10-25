@@ -1,7 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::ty::TyCtxt;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::fmt::Debug;
 use std::io::{self, Write};
 

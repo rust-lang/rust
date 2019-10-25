@@ -1,3 +1,4 @@
+use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::ptr;
 use crate::sys::cvt;
@@ -438,6 +439,57 @@ impl Process {
         } else {
             self.status = Some(ExitStatus::new(status));
             Ok(Some(ExitStatus::new(status)))
+        }
+    }
+}
+
+/// Unix exit statuses
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatus(c_int);
+
+impl ExitStatus {
+    pub fn new(status: c_int) -> ExitStatus {
+        ExitStatus(status)
+    }
+
+    fn exited(&self) -> bool {
+        unsafe { libc::WIFEXITED(self.0) }
+    }
+
+    pub fn success(&self) -> bool {
+        self.code() == Some(0)
+    }
+
+    pub fn code(&self) -> Option<i32> {
+        if self.exited() {
+            Some(unsafe { libc::WEXITSTATUS(self.0) })
+        } else {
+            None
+        }
+    }
+
+    pub fn signal(&self) -> Option<i32> {
+        if !self.exited() {
+            Some(unsafe { libc::WTERMSIG(self.0) })
+        } else {
+            None
+        }
+    }
+}
+
+impl From<c_int> for ExitStatus {
+    fn from(a: c_int) -> ExitStatus {
+        ExitStatus(a)
+    }
+}
+
+impl fmt::Display for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(code) = self.code() {
+            write!(f, "exit code: {}", code)
+        } else {
+            let signal = self.signal().unwrap();
+            write!(f, "signal: {}", signal)
         }
     }
 }

@@ -1,3 +1,6 @@
+// run-rustfix
+#![allow(unused_variables)]
+
 trait Get {
     type Value;
     fn get(&self) -> <Self as Get>::Value;

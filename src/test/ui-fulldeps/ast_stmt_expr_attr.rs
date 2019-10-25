@@ -10,14 +10,15 @@ extern crate syntax;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
+use syntax::sess::ParseSess;
 use syntax::source_map::{FilePathMapping, FileName};
 use syntax::parse;
-use syntax::parse::{ParseSess, PResult};
+use syntax::parse::PResult;
 use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::parse::attr::*;
+use syntax::parse::parser::attr::*;
 use syntax::print::pprust;
 use std::fmt;
 
@@ -83,7 +84,7 @@ fn check_expr_attrs(es: &str, expected: &[&str]) {
 fn check_stmt_attrs(es: &str, expected: &[&str]) {
     let ps = ParseSess::new(FilePathMapping::empty());
     let e = stmt(es, &ps).expect("parse error");
-    let actual = e.node.attrs();
+    let actual = e.kind.attrs();
     str_compare(es,
                 &expected.iter().map(|r| attr(r, &ps).unwrap()).collect::<Vec<_>>(),
                 actual,

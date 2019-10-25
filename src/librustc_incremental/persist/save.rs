@@ -28,6 +28,8 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
 
         join(move || {
             if tcx.sess.opts.debugging_opts.incremental_queries {
+                let _timer = tcx.prof.generic_activity("incr_comp_persist_result_cache");
+
                 time(sess, "persist query result cache", || {
                     save_in(sess,
                             query_cache_path,
@@ -36,6 +38,8 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             }
         }, || {
             time(sess, "persist dep-graph", || {
+                let _timer = tcx.prof.generic_activity("incr_comp_persist_dep_graph");
+
                 save_in(sess,
                         dep_graph_path,
                         |e| {
@@ -135,6 +139,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
 
     // Encode the graph data.
     let serialized_graph = time(tcx.sess, "getting serialized graph", || {
+        let _timer = tcx.prof.generic_activity("incr_comp_serialize_dep_graph");
         tcx.dep_graph.serialize()
     });
 
@@ -214,6 +219,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
     }
 
     time(tcx.sess, "encoding serialized graph", || {
+        let _timer = tcx.prof.generic_activity("incr_comp_encode_serialized_dep_graph");
         serialized_graph.encode(encoder).unwrap();
     });
 }
@@ -235,6 +241,8 @@ fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduc
 
 fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
     time(tcx.sess, "serialize query result cache", || {
+        let _timer = tcx.prof.generic_activity("incr_comp_serialize_result_cache");
+
         tcx.serialize_query_result_cache(encoder).unwrap();
     })
 }

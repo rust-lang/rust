@@ -28,11 +28,12 @@ use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt, InferConst};
+use crate::infer::{ConstVariableValue, ConstVarValue};
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq)]
 pub enum NormalizationStrategy {
     Lazy,
     Eager,
@@ -93,7 +94,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// we will invoke this method to instantiate `'a` with an
     /// inference variable (though `'b` would be instantiated first,
     /// as a placeholder).
-    fn next_existential_region_var(&mut self) -> ty::Region<'tcx>;
+    fn next_existential_region_var(&mut self, was_placeholder: bool) -> ty::Region<'tcx>;
 
     /// Creates a new region variable representing a
     /// higher-ranked region that is instantiated universally.
@@ -193,7 +194,7 @@ where
                     let placeholder = ty::PlaceholderRegion { universe, name: br };
                     delegate.next_placeholder_region(placeholder)
                 } else {
-                    delegate.next_existential_region_var()
+                    delegate.next_existential_region_var(true)
                 }
             }
         };
@@ -324,7 +325,7 @@ where
         let vid = pair.vid();
         let value_ty = pair.value_ty();
 
-        // FIXME -- this logic assumes invariance, but that is wrong.
+        // FIXME(invariance) -- this logic assumes invariance, but that is wrong.
         // This only presently applies to chalk integration, as NLL
         // doesn't permit type variables to appear on both sides (and
         // doesn't use lazy norm).
@@ -616,15 +617,21 @@ where
     fn consts(
         &mut self,
         a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
+        mut b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Canonical(_, _)), .. } = a {
-            // FIXME(const_generics): I'm unsure how this branch should actually be handled,
-            // so this is probably not correct.
-            self.infcx.super_combine_consts(self, a, b)
-        } else {
-            debug!("consts(a={:?}, b={:?}, variance={:?})", a, b, self.ambient_variance);
-            relate::super_relate_consts(self, a, b)
+        let a = self.infcx.shallow_resolve(a);
+
+        if !D::forbid_inference_vars() {
+            b = self.infcx.shallow_resolve(b);
+        }
+
+        match b.val {
+            ConstValue::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+                // Forbid inference variables in the RHS.
+                bug!("unexpected inference var {:?}", b)
+            }
+            // FIXME(invariance): see the related FIXME above.
+            _ => self.infcx.super_combine_consts(self, a, b)
         }
     }
 
@@ -991,15 +998,28 @@ where
         a: &'tcx ty::Const<'tcx>,
         _: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        debug!("TypeGeneralizer::consts(a={:?})", a);
-
-        if let ty::Const { val: ConstValue::Infer(InferConst::Canonical(_, _)), .. } = a {
-            bug!(
-                "unexpected inference variable encountered in NLL generalization: {:?}",
-                a
-            );
-        } else {
-            relate::super_relate_consts(self, a, a)
+        match a.val {
+            ConstValue::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+                bug!(
+                    "unexpected inference variable encountered in NLL generalization: {:?}",
+                    a
+                );
+            }
+            ConstValue::Infer(InferConst::Var(vid)) => {
+                let mut variable_table = self.infcx.const_unification_table.borrow_mut();
+                let var_value = variable_table.probe_value(vid);
+                match var_value.val.known() {
+                    Some(u) => self.relate(&u, &u),
+                    None => {
+                        let new_var_id = variable_table.new_key(ConstVarValue {
+                            origin: var_value.origin,
+                            val: ConstVariableValue::Unknown { universe: self.universe },
+                        });
+                        Ok(self.tcx().mk_const_var(new_var_id, a.ty))
+                    }
+                }
+            }
+            _ => relate::super_relate_consts(self, a, a),
         }
     }
 

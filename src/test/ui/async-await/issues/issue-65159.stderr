@@ -1,0 +1,9 @@
+error[E0107]: wrong number of type arguments: expected 2, found 1
+  --> $DIR/issue-65159.rs:5:20
+   |
+LL | async fn copy() -> Result<()>
+   |                    ^^^^^^^^^^ expected 2 type arguments
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

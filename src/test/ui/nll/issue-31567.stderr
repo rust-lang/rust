@@ -1,5 +1,5 @@
 error[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-31567.rs:12:26
+  --> $DIR/issue-31567.rs:10:26
    |
 LL | fn get_dangling<'a>(v: VecWrapper<'a>) -> &'a u32 {
    |                 -- lifetime `'a` defined here

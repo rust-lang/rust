@@ -1,0 +1,19 @@
+error[E0423]: expected function, found trait `Foo`
+  --> $DIR/issue-58022.rs:14:9
+   |
+LL |         Foo(Box::new(*slice))
+   |         ^^^ not a function
+
+error[E0283]: type annotations needed: cannot resolve `_: Foo`
+  --> $DIR/issue-58022.rs:4:25
+   |
+LL |     const SIZE: usize;
+   |     ------------------ required by `Foo::SIZE`
+LL | 
+LL |     fn new(slice: &[u8; Foo::SIZE]) -> Self;
+   |                         ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0283, E0423.
+For more information about an error, try `rustc --explain E0283`.

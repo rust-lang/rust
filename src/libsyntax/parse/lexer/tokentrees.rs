@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashMap;
 use syntax_pos::Span;
 
 use crate::print::pprust::token_to_string;
@@ -16,6 +17,7 @@ impl<'a> StringReader<'a> {
             unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
             last_unclosed_found_span: None,
+            last_delim_empty_block_spans: FxHashMap::default()
         };
         let res = tt_reader.parse_all_token_trees();
         (res, tt_reader.unmatched_braces)
@@ -34,6 +36,7 @@ struct TokenTreesReader<'a> {
     /// Used only for error recovery when arriving to EOF with mismatched braces.
     matching_delim_spans: Vec<(token::DelimToken, Span, Span)>,
     last_unclosed_found_span: Option<Span>,
+    last_delim_empty_block_spans: FxHashMap<token::DelimToken, Span>
 }
 
 impl<'a> TokenTreesReader<'a> {
@@ -121,13 +124,20 @@ impl<'a> TokenTreesReader<'a> {
                     // Correct delimiter.
                     token::CloseDelim(d) if d == delim => {
                         let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
+                        let close_brace_span = self.token.span;
+
+                        if tts.is_empty() {
+                            let empty_block_span = open_brace_span.to(close_brace_span);
+                            self.last_delim_empty_block_spans.insert(delim, empty_block_span);
+                        }
+
                         if self.open_braces.len() == 0 {
                             // Clear up these spans to avoid suggesting them as we've found
                             // properly matched delimiters so far for an entire block.
                             self.matching_delim_spans.clear();
                         } else {
                             self.matching_delim_spans.push(
-                                (open_brace, open_brace_span, self.token.span),
+                                (open_brace, open_brace_span, close_brace_span),
                             );
                         }
                         // Parse the close delimiter.
@@ -193,13 +203,20 @@ impl<'a> TokenTreesReader<'a> {
                     tts.into()
                 ).into())
             },
-            token::CloseDelim(_) => {
+            token::CloseDelim(delim) => {
                 // An unexpected closing delimiter (i.e., there is no
                 // matching opening delimiter).
                 let token_str = token_to_string(&self.token);
                 let msg = format!("unexpected close delimiter: `{}`", token_str);
                 let mut err = self.string_reader.sess.span_diagnostic
                     .struct_span_err(self.token.span, &msg);
+
+                if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
+                    err.span_label(
+                        span,
+                        "this block is empty, you might have not meant to close it"
+                    );
+                }
                 err.span_label(self.token.span, "unexpected close delimiter");
                 Err(err)
             },

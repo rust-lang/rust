@@ -33,7 +33,7 @@ use rustc::traits::{
     InEnvironment,
     ChalkCanonicalGoal,
 };
-use rustc::ty::{self, TyCtxt, InferConst};
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
@@ -286,7 +286,7 @@ impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
                     _ => false,
                 },
                 GenericArgKind::Const(ct) => match ct.val {
-                    ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)) => {
+                    ConstValue::Bound(debruijn, bound_ct) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == bound_ct
                     }
@@ -474,7 +474,7 @@ impl context::UnificationOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
         &self,
         value: DelayedLiteral<ChalkArenas<'tcx>>,
     ) -> DelayedLiteral<ChalkArenas<'tcx>> {
-        match self.infcx.tcx.lift_to_global(&value) {
+        match self.infcx.tcx.lift(&value) {
             Some(literal) => literal,
             None => bug!("cannot lift {:?}", value),
         }

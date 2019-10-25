@@ -7,8 +7,7 @@ use crate::traits::query::NoSolution;
 use crate::ty::{self, Ty, TyCtxt};
 
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::mem;
 
 /// Outlives bounds are relationships between generic parameters,
@@ -43,9 +42,7 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             OutlivesBound::RegionSubRegion(ref a, ref b) => {
@@ -97,7 +94,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let mut orig_values = OriginalQueryValues::default();
         let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
-        let result = match self.tcx.global_tcx().implied_outlives_bounds(key) {
+        let result = match self.tcx.implied_outlives_bounds(key) {
             Ok(r) => r,
             Err(NoSolution) => {
                 self.tcx.sess.delay_span_bug(

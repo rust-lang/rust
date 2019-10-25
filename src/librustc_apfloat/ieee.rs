@@ -1199,8 +1199,8 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         }
 
         // Handle a leading minus sign.
-        let minus = s.starts_with("-");
-        if minus || s.starts_with("+") {
+        let minus = s.starts_with('-');
+        if minus || s.starts_with('+') {
             s = &s[1..];
             if s.is_empty() {
                 return Err(ParseError("String has no digits"));

@@ -4,7 +4,6 @@ use syntax_pos::Span;
 
 use crate::hir;
 use crate::hir::def_id::DefId;
-use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
 use crate::ty::subst::{GenericArg, Subst, SubstsRef};
@@ -654,22 +653,21 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.hir().as_local_hir_id(node_item_def_id) {
             Some(hir_id) => {
                 let item = self.hir().expect_item(hir_id);
-                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.node {
+                if let hir::ItemKind::Impl(_, _, defaultness, ..) = item.kind {
                     defaultness.is_default()
                 } else {
                     false
                 }
             }
             None => {
-                self.global_tcx()
-                    .impl_defaultness(node_item_def_id)
+                self.impl_defaultness(node_item_def_id)
                     .is_default()
             }
         }
     }
 
-    pub fn impl_item_is_final(self, node_item: &NodeItem<hir::Defaultness>) -> bool {
-        node_item.item.is_final() && !self.impl_is_default(node_item.node.def_id())
+    pub fn impl_item_is_final(self, assoc_item: &ty::AssocItem) -> bool {
+        assoc_item.defaultness.is_final() && !self.impl_is_default(assoc_item.container.id())
     }
 }
 

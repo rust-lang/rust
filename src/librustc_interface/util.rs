@@ -13,7 +13,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_errors::registry::Registry;
-use rustc_lint;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_mir;
 use rustc_passes;
@@ -108,11 +107,6 @@ pub fn create_session(
 
     let codegen_backend = get_codegen_backend(&sess);
 
-    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    if sess.unstable_options() {
-        rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    }
-
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
     add_configuration(&mut cfg, &sess, &*codegen_backend);
     sess.parse_sess.config = cfg;
@@ -173,7 +167,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
 #[cfg(not(parallel_compiler))]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
-    _threads: Option<usize>,
+    _threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
@@ -198,18 +192,19 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 #[cfg(parallel_compiler)]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
-    threads: Option<usize>,
+    threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
-    use rayon::{ThreadPool, ThreadPoolBuilder};
+    use rayon::{ThreadBuilder, ThreadPool, ThreadPoolBuilder};
 
     let gcx_ptr = &Lock::new(0);
 
     let mut config = ThreadPoolBuilder::new()
+        .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
-        .num_threads(Session::threads_from_count(threads))
+        .num_threads(threads)
         .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
 
     if let Some(size) = get_stack_size() {
@@ -225,20 +220,20 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 // the thread local rustc uses. syntax_globals and syntax_pos_globals are
                 // captured and set on the new threads. ty::tls::with_thread_locals sets up
                 // thread local callbacks from libsyntax
-                let main_handler = move |worker: &mut dyn FnMut()| {
+                let main_handler = move |thread: ThreadBuilder| {
                     syntax::GLOBALS.set(syntax_globals, || {
                         syntax_pos::GLOBALS.set(syntax_pos_globals, || {
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));
                             }
                             ty::tls::with_thread_locals(|| {
-                                ty::tls::GCX_PTR.set(gcx_ptr, || worker())
+                                ty::tls::GCX_PTR.set(gcx_ptr, || thread.run())
                             })
                         })
                     })
                 };
 
-                ThreadPool::scoped_pool(config, main_handler, with_pool).unwrap()
+                config.build_scoped(main_handler, with_pool).unwrap()
             })
         })
     })
@@ -502,7 +497,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
     // into various other hashes quite a bit (symbol hashes, incr. comp. hashes,
     // debuginfo type IDs, etc), so we don't want it to be too wide. 128 bits
     // should still be safe enough to avoid collisions in practice.
-    let mut hasher = StableHasher::<Fingerprint>::new();
+    let mut hasher = StableHasher::new();
 
     let mut metadata = session.opts.cg.metadata.clone();
     // We don't want the crate_disambiguator to dependent on the order
@@ -528,7 +523,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
         .contains(&config::CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
-    CrateDisambiguator::from(hasher.finish())
+    CrateDisambiguator::from(hasher.finish::<Fingerprint>())
 }
 
 pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
@@ -556,7 +551,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                             sym::bin
                         ];
 
-                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().node {
+                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
                             let span = spanned.span;
                             let lev_candidate = find_best_match_for_name(
                                 crate_types.iter(),
@@ -738,7 +733,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
     fn should_ignore_fn(ret_ty: &ast::FnDecl) -> bool {
         if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
-                match ty.node {
+                match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
                     ast::TyKind::Slice(ref subty) |
                     ast::TyKind::Array(ref subty, _) |
@@ -796,7 +791,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     }
 
     fn flat_map_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
-        let is_const = match i.node {
+        let is_const = match i.kind {
             ast::TraitItemKind::Const(..) => true,
             ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
@@ -806,7 +801,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     }
 
     fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
-        let is_const = match i.node {
+        let is_const = match i.kind {
             ast::ImplItemKind::Const(..) => true,
             ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
@@ -834,21 +829,21 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
         fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
             let expr = P(ast::Expr {
                 id: sess.next_node_id(),
-                node: ast::ExprKind::Block(P(b), None),
+                kind: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
             });
 
             ast::Stmt {
                 id: sess.next_node_id(),
-                node: ast::StmtKind::Expr(expr),
+                kind: ast::StmtKind::Expr(expr),
                 span: syntax_pos::DUMMY_SP,
             }
         }
 
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.sess);
         let loop_expr = P(ast::Expr {
-            node: ast::ExprKind::Loop(P(empty_block), None),
+            kind: ast::ExprKind::Loop(P(empty_block), None),
             id: self.sess.next_node_id(),
             span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
@@ -857,7 +852,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
         let loop_stmt = ast::Stmt {
             id: self.sess.next_node_id(),
             span: syntax_pos::DUMMY_SP,
-            node: ast::StmtKind::Expr(loop_expr),
+            kind: ast::StmtKind::Expr(loop_expr),
         };
 
         if self.within_static_or_const {

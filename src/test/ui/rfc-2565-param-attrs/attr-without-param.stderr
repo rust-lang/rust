@@ -1,0 +1,20 @@
+error: expected parameter name, found `)`
+  --> $DIR/attr-without-param.rs:3:17
+   |
+LL |     fn f(#[attr]) {}
+   |                 ^ expected parameter name
+
+error: expected parameter name, found `)`
+  --> $DIR/attr-without-param.rs:8:17
+   |
+LL |     fn f(#[attr]) {}
+   |                 ^ expected parameter name
+
+error: expected argument name, found `)`
+  --> $DIR/attr-without-param.rs:13:17
+   |
+LL |     fn f(#[attr]);
+   |                 ^ expected argument name
+
+error: aborting due to 3 previous errors
+

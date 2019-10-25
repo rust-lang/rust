@@ -13,7 +13,7 @@ use rustc::hir::PrimTy;
 use rustc::session::config::nightly_options;
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Expr, ExprKind, Ident, NodeId, Path, Ty, TyKind};
-use syntax::ext::base::MacroKind;
+use syntax_expand::base::MacroKind;
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
@@ -115,8 +115,10 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if is_self_type(path, ns) {
             syntax::diagnostic_used!(E0411);
             err.code(DiagnosticId::Error("E0411".into()));
-            err.span_label(span, format!("`Self` is only available in impls, traits, \
-                                          and type definitions"));
+            err.span_label(
+                span,
+                format!("`Self` is only available in impls, traits, and type definitions"),
+            );
             return (err, Vec::new());
         }
         if is_self_value(path, ns) {
@@ -125,17 +127,16 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             syntax::diagnostic_used!(E0424);
             err.code(DiagnosticId::Error("E0424".into()));
             err.span_label(span, match source {
-                PathSource::Pat => {
-                    format!("`self` value is a keyword \
-                             and may not be bound to \
-                             variables or shadowed")
-                }
-                _ => {
-                    format!("`self` value is a keyword \
-                             only available in methods \
-                             with `self` parameter")
-                }
+                PathSource::Pat => format!(
+                    "`self` value is a keyword and may not be bound to variables or shadowed",
+                ),
+                _ => format!(
+                    "`self` value is a keyword only available in methods with a `self` parameter",
+                ),
             });
+            if let Some(span) = &self.current_function {
+                err.span_label(*span, "this function doesn't have a `self` parameter");
+            }
             return (err, Vec::new());
         }
 
@@ -325,7 +326,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.node {
+        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.kind {
             ExprKind::Field(_, ident) => {
                 err.span_suggestion(
                     expr.span,
@@ -348,7 +349,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             _ => false,
         };
 
-        let mut bad_struct_syntax_suggestion = || {
+        let mut bad_struct_syntax_suggestion = |def_id: DefId| {
             let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
             let mut suggested = false;
             match source {
@@ -374,6 +375,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 _ => {}
             }
             if !suggested {
+                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                    err.span_label(span, &format!("`{}` defined here", path_str));
+                }
                 err.span_label(
                     span,
                     format!("did you mean `{} {{ /* fields */ }}`?", path_str),
@@ -437,18 +441,21 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                         );
                     }
                 } else {
-                    bad_struct_syntax_suggestion();
+                    bad_struct_syntax_suggestion(def_id);
                 }
             }
-            (Res::Def(DefKind::Union, _), _) |
-            (Res::Def(DefKind::Variant, _), _) |
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _), _) if ns == ValueNS => {
-                bad_struct_syntax_suggestion();
+            (Res::Def(DefKind::Union, def_id), _) |
+            (Res::Def(DefKind::Variant, def_id), _) |
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), def_id), _) if ns == ValueNS => {
+                bad_struct_syntax_suggestion(def_id);
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), _), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
+                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                    err.span_label(span, &format!("`{}` defined here", path_str));
+                }
                 err.span_label(
                     span,
-                    format!("did you mean `{} ( /* fields */ )`?", path_str),
+                    format!("did you mean `{}( /* fields */ )`?", path_str),
                 );
             }
             (Res::SelfTy(..), _) if ns == ValueNS => {
@@ -472,7 +479,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         where FilterFn: Fn(Res) -> bool
     {
         fn extract_node_id(t: &Ty) -> Option<NodeId> {
-            match t.node {
+            match t.kind {
                 TyKind::Path(None, _) => Some(t.id),
                 TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
                 // This doesn't handle the remaining `Ty` variants as they are not
@@ -491,7 +498,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                         Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
                                 if resolution.unresolved_segments() == 0 => {
                             if let Some(field_names) = self.r.field_names.get(&did) {
-                                if field_names.iter().any(|&field_name| ident.name == field_name) {
+                                if field_names.iter()
+                                        .any(|&field_name| ident.name == field_name.node) {
                                     return Some(AssocSuggestion::Field);
                                 }
                             }
@@ -722,7 +730,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             // abort if the module is already found
             if result.is_some() { break; }
 
-            in_module.for_each_child_stable(self.r, |_, ident, _, name_binding| {
+            in_module.for_each_child(self.r, |_, ident, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
                 if result.is_some() || !name_binding.vis.is_visible_locally() {
                     return
@@ -754,7 +762,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
     fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
             let mut variants = Vec::new();
-            enum_module.for_each_child_stable(self.r, |_, ident, _, name_binding| {
+            enum_module.for_each_child(self.r, |_, ident, _, name_binding| {
                 if let Res::Def(DefKind::Variant, _) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident));

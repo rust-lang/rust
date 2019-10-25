@@ -141,14 +141,24 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // ADJUSTMENTS
 
-    fn adjust_self_ty(&mut self,
-                      unadjusted_self_ty: Ty<'tcx>,
-                      pick: &probe::Pick<'tcx>)
-                      -> Ty<'tcx> {
+    fn adjust_self_ty(
+        &mut self,
+        unadjusted_self_ty: Ty<'tcx>,
+        pick: &probe::Pick<'tcx>,
+    ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various tables.
         let mut autoderef = self.autoderef(self.span, unadjusted_self_ty);
-        let (_, n) = autoderef.nth(pick.autoderefs).unwrap();
+        let (_, n) = match autoderef.nth(pick.autoderefs) {
+            Some(n) => n,
+            None => {
+                self.tcx.sess.delay_span_bug(
+                    syntax_pos::DUMMY_SP,
+                    &format!("failed autoderef {}", pick.autoderefs),
+                );
+                return self.tcx.types.err;
+            }
+        };
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = autoderef.adjust_steps(self, Needs::None);
@@ -436,7 +446,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let mut exprs = vec![self.self_expr];
 
         loop {
-            match exprs.last().unwrap().node {
+            match exprs.last().unwrap().kind {
                 hir::ExprKind::Field(ref expr, _) |
                 hir::ExprKind::Index(ref expr, _) |
                 hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),
@@ -480,7 +490,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
-            match expr.node {
+            match expr.kind {
                 hir::ExprKind::Index(ref base_expr, ref index_expr) => {
                     let index_expr_ty = self.node_ty(index_expr.hir_id);
                     self.convert_place_op_to_mutable(

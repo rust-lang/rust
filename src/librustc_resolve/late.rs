@@ -5,7 +5,6 @@
 //! If you wonder why there's no `early.rs`, that's because it's split into three files -
 //! `build_reduced_graph.rs`, `macros.rs` and `resolve_imports.rs`.
 
-use GenericParameters::*;
 use RibKind::*;
 
 use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
@@ -46,16 +45,6 @@ struct BindingInfo {
     binding_mode: BindingMode,
 }
 
-#[derive(Copy, Clone)]
-enum GenericParameters<'a, 'b> {
-    NoGenericParams,
-    HasGenericParams(// Type parameters.
-                      &'b Generics,
-
-                      // The kind of the rib used for type parameters.
-                      RibKind<'a>),
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
     Match,
@@ -85,6 +74,10 @@ enum PatBoundCtx {
     Or,
 }
 
+/// Does this the item (from the item rib scope) allow generic parameters?
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+crate enum HasGenericParams { Yes, No }
+
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
@@ -103,7 +96,7 @@ crate enum RibKind<'a> {
     FnItemRibKind,
 
     /// We passed through an item scope. Disallow upvars.
-    ItemRibKind,
+    ItemRibKind(HasGenericParams),
 
     /// We're in a constant item. Can't refer to dynamic stuff.
     ConstantItemRibKind,
@@ -118,9 +111,6 @@ crate enum RibKind<'a> {
     /// from the default of a type parameter because they're not declared
     /// before said type parameter. Also see the `visit_generics` override.
     ForwardTyParamBanRibKind,
-
-    /// We forbid the use of type parameters as the types of const parameters.
-    TyParamAsConstParamTy,
 }
 
 impl RibKind<'_> {
@@ -134,9 +124,8 @@ impl RibKind<'_> {
             | ModuleRibKind(_)
             | MacroDefinition(_) => false,
             AssocItemRibKind
-            | ItemRibKind
-            | ForwardTyParamBanRibKind
-            | TyParamAsConstParamTy => true,
+            | ItemRibKind(_)
+            | ForwardTyParamBanRibKind => true,
         }
     }
 }
@@ -221,7 +210,7 @@ impl<'a> PathSource<'a> {
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match parent.map(|p| &p.node) {
+            PathSource::Expr(parent) => match parent.map(|p| &p.kind) {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(&ExprKind::Call(..)) => "function",
@@ -352,6 +341,9 @@ struct LateResolutionVisitor<'a, 'b> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
+    /// The current enclosing funciton (used for better errors).
+    current_function: Option<Span>,
+
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
     unused_labels: FxHashMap<NodeId, Span>,
@@ -384,7 +376,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &'tcx Ty) {
-        match ty.node {
+        match ty.kind {
             TyKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
@@ -406,19 +398,24 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
-        let generic_params = match foreign_item.node {
+        match foreign_item.kind {
             ForeignItemKind::Fn(_, ref generics) => {
-                HasGenericParams(generics, ItemRibKind)
+                self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
+                    visit::walk_foreign_item(this, foreign_item);
+                });
             }
-            ForeignItemKind::Static(..) => NoGenericParams,
-            ForeignItemKind::Ty => NoGenericParams,
-            ForeignItemKind::Macro(..) => NoGenericParams,
-        };
-        self.with_generic_param_rib(generic_params, |this| {
-            visit::walk_foreign_item(this, foreign_item);
-        });
+            ForeignItemKind::Static(..) => {
+                self.with_item_rib(HasGenericParams::No, |this| {
+                    visit::walk_foreign_item(this, foreign_item);
+                });
+            }
+            ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {
+                visit::walk_foreign_item(self, foreign_item);
+            }
+        }
     }
-    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, _: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, sp: Span, _: NodeId) {
+        let previous_value = replace(&mut self.current_function, Some(sp));
         debug!("(resolving function) entering function");
         let rib_kind = match fn_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
@@ -444,6 +441,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 debug!("(resolving function) leaving function");
             })
         });
+        self.current_function = previous_value;
     }
 
     fn visit_generics(&mut self, generics: &'tcx Generics) {
@@ -468,17 +466,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 }
             }));
 
-        // We also ban access to type parameters for use as the types of const parameters.
-        let mut const_ty_param_ban_rib = Rib::new(TyParamAsConstParamTy);
-        const_ty_param_ban_rib.bindings.extend(generics.params.iter()
-            .filter(|param| {
-                if let GenericParamKind::Type { .. } = param.kind {
-                    true
-                } else {
-                    false
-                }
-            })
-            .map(|param| (Ident::with_dummy_span(param.ident.name), Res::Err)));
+        // rust-lang/rust#61631: The type `Self` is essentially
+        // another type parameter. For ADTs, we consider it
+        // well-defined only after all of the ADT type parameters have
+        // been provided. Therefore, we do not allow use of `Self`
+        // anywhere in ADT type parameter defaults.
+        //
+        // (We however cannot ban `Self` for defaults on *all* generic
+        // lists; e.g. trait generics can usefully refer to `Self`,
+        // such as in the case of `trait Add<Rhs = Self>`.)
+        if self.current_self_item.is_some() { // (`Some` if + only if we are in ADT's generics.)
+            default_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
+        }
 
         for param in &generics.params {
             match param.kind {
@@ -498,15 +497,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
                 GenericParamKind::Const { ref ty } => {
-                    self.ribs[TypeNS].push(const_ty_param_ban_rib);
-
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
-
                     self.visit_ty(ty);
-
-                    const_ty_param_ban_rib = self.ribs[TypeNS].pop().unwrap();
                 }
             }
         }
@@ -536,6 +530,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             current_trait_assoc_types: Vec::new(),
             current_self_type: None,
             current_self_item: None,
+            current_function: None,
             unused_labels: Default::default(),
             current_type_ascription: Vec::new(),
         }
@@ -647,7 +642,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     fn resolve_adt(&mut self, item: &Item, generics: &Generics) {
         debug!("resolve_adt");
         self.with_current_self_item(item, |this| {
-            this.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
+            this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                 let item_def_id = this.r.definitions.local_def_id(item.id);
                 this.with_self_rib(Res::SelfTy(None, Some(item_def_id)), |this| {
                     visit::walk_item(this, item);
@@ -700,16 +695,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
-        debug!("(resolving item) resolving {} ({:?})", name, item.node);
+        debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
-        match item.node {
+        match item.kind {
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
-                self.with_generic_param_rib(
-                    HasGenericParams(generics, ItemRibKind),
-                    |this| visit::walk_item(this, item)
-                );
+                self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes),
+                                            |this| visit::walk_item(this, item));
             }
 
             ItemKind::Enum(_, ref generics) |
@@ -727,7 +720,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
             ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
-                self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
+                self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let local_def_id = this.r.definitions.local_def_id(item.id);
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
@@ -735,35 +728,32 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
                         for trait_item in trait_items {
                             this.with_trait_items(trait_items, |this| {
-                                let generic_params = HasGenericParams(
-                                    &trait_item.generics,
-                                    AssocItemRibKind,
-                                );
-                                this.with_generic_param_rib(generic_params, |this| {
-                                    match trait_item.node {
-                                        TraitItemKind::Const(ref ty, ref default) => {
-                                            this.visit_ty(ty);
+                                this.with_generic_param_rib(&trait_item.generics, AssocItemRibKind,
+                                    |this| {
+                                        match trait_item.kind {
+                                            TraitItemKind::Const(ref ty, ref default) => {
+                                                this.visit_ty(ty);
 
-                                            // Only impose the restrictions of
-                                            // ConstRibKind for an actual constant
-                                            // expression in a provided default.
-                                            if let Some(ref expr) = *default{
-                                                this.with_constant_rib(|this| {
-                                                    this.visit_expr(expr);
-                                                });
+                                                // Only impose the restrictions of
+                                                // ConstRibKind for an actual constant
+                                                // expression in a provided default.
+                                                if let Some(ref expr) = *default{
+                                                    this.with_constant_rib(|this| {
+                                                        this.visit_expr(expr);
+                                                    });
+                                                }
                                             }
-                                        }
-                                        TraitItemKind::Method(_, _) => {
-                                            visit::walk_trait_item(this, trait_item)
-                                        }
-                                        TraitItemKind::Type(..) => {
-                                            visit::walk_trait_item(this, trait_item)
-                                        }
-                                        TraitItemKind::Macro(_) => {
-                                            panic!("unexpanded macro in resolve!")
-                                        }
-                                    };
-                                });
+                                            TraitItemKind::Method(_, _) => {
+                                                visit::walk_trait_item(this, trait_item)
+                                            }
+                                            TraitItemKind::Type(..) => {
+                                                visit::walk_trait_item(this, trait_item)
+                                            }
+                                            TraitItemKind::Macro(_) => {
+                                                panic!("unexpanded macro in resolve!")
+                                            }
+                                        };
+                                    });
                             });
                         }
                     });
@@ -772,7 +762,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
             ItemKind::TraitAlias(ref generics, ref bounds) => {
                 // Create a new rib for the trait-wide type parameters.
-                self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
+                self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let local_def_id = this.r.definitions.local_def_id(item.id);
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
@@ -790,7 +780,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             ItemKind::Static(ref ty, _, ref expr) |
             ItemKind::Const(ref ty, ref expr) => {
                 debug!("resolve_item ItemKind::Const");
-                self.with_item_rib(|this| {
+                self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     this.with_constant_rib(|this| {
                         this.visit_expr(expr);
@@ -811,91 +801,75 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
-    fn with_generic_param_rib<'c, F>(&'c mut self, generic_params: GenericParameters<'a, 'c>, f: F)
+    fn with_generic_param_rib<'c, F>(&'c mut self, generics: &'c Generics, kind: RibKind<'a>, f: F)
         where F: FnOnce(&mut Self)
     {
         debug!("with_generic_param_rib");
-        match generic_params {
-            HasGenericParams(generics, rib_kind) => {
-                let mut function_type_rib = Rib::new(rib_kind);
-                let mut function_value_rib = Rib::new(rib_kind);
-                let mut seen_bindings = FxHashMap::default();
-                // We also can't shadow bindings from the parent item
-                if let AssocItemRibKind = rib_kind {
-                    let mut add_bindings_for_ns = |ns| {
-                        let parent_rib = self.ribs[ns].iter()
-                            .rfind(|rib| if let ItemRibKind = rib.kind { true } else { false })
-                            .expect("associated item outside of an item");
-                        seen_bindings.extend(
-                            parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)),
-                        );
-                    };
-                    add_bindings_for_ns(ValueNS);
-                    add_bindings_for_ns(TypeNS);
-                }
-                for param in &generics.params {
-                    match param.kind {
-                        GenericParamKind::Lifetime { .. } => {}
-                        GenericParamKind::Type { .. } => {
-                            let ident = param.ident.modern();
-                            debug!("with_generic_param_rib: {}", param.id);
+        let mut function_type_rib = Rib::new(kind);
+        let mut function_value_rib = Rib::new(kind);
+        let mut seen_bindings = FxHashMap::default();
 
-                            if seen_bindings.contains_key(&ident) {
-                                let span = seen_bindings.get(&ident).unwrap();
-                                let err = ResolutionError::NameAlreadyUsedInParameterList(
-                                    ident.name,
-                                    *span,
-                                );
-                                self.r.report_error(param.ident.span, err);
-                            }
-                            seen_bindings.entry(ident).or_insert(param.ident.span);
+        // We also can't shadow bindings from the parent item
+        if let AssocItemRibKind = kind {
+            let mut add_bindings_for_ns = |ns| {
+                let parent_rib = self.ribs[ns].iter()
+                    .rfind(|r| if let ItemRibKind(_) = r.kind { true } else { false })
+                    .expect("associated item outside of an item");
+                seen_bindings.extend(
+                    parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)),
+                );
+            };
+            add_bindings_for_ns(ValueNS);
+            add_bindings_for_ns(TypeNS);
+        }
 
-                            // Plain insert (no renaming).
-                            let res = Res::Def(
-                                DefKind::TyParam,
-                                self.r.definitions.local_def_id(param.id),
-                            );
-                            function_type_rib.bindings.insert(ident, res);
-                            self.r.record_partial_res(param.id, PartialRes::new(res));
-                        }
-                        GenericParamKind::Const { .. } => {
-                            let ident = param.ident.modern();
-                            debug!("with_generic_param_rib: {}", param.id);
-
-                            if seen_bindings.contains_key(&ident) {
-                                let span = seen_bindings.get(&ident).unwrap();
-                                let err = ResolutionError::NameAlreadyUsedInParameterList(
-                                    ident.name,
-                                    *span,
-                                );
-                                self.r.report_error(param.ident.span, err);
-                            }
-                            seen_bindings.entry(ident).or_insert(param.ident.span);
-
-                            let res = Res::Def(
-                                DefKind::ConstParam,
-                                self.r.definitions.local_def_id(param.id),
-                            );
-                            function_value_rib.bindings.insert(ident, res);
-                            self.r.record_partial_res(param.id, PartialRes::new(res));
-                        }
-                    }
-                }
-                self.ribs[ValueNS].push(function_value_rib);
-                self.ribs[TypeNS].push(function_type_rib);
+        for param in &generics.params {
+            if let GenericParamKind::Lifetime { .. } = param.kind {
+                continue;
             }
 
-            NoGenericParams => {
-                // Nothing to do.
+            let def_kind = match param.kind {
+                GenericParamKind::Type { .. } => DefKind::TyParam,
+                GenericParamKind::Const { .. } => DefKind::ConstParam,
+                _ => unreachable!(),
+            };
+
+            let ident = param.ident.modern();
+            debug!("with_generic_param_rib: {}", param.id);
+
+            if seen_bindings.contains_key(&ident) {
+                let span = seen_bindings.get(&ident).unwrap();
+                let err = ResolutionError::NameAlreadyUsedInParameterList(
+                    ident.name,
+                    *span,
+                );
+                self.r.report_error(param.ident.span, err);
+            }
+            seen_bindings.entry(ident).or_insert(param.ident.span);
+
+            // Plain insert (no renaming).
+            let res = Res::Def(def_kind, self.r.definitions.local_def_id(param.id));
+
+            match param.kind {
+                GenericParamKind::Type { .. } => {
+                    function_type_rib.bindings.insert(ident, res);
+                    self.r.record_partial_res(param.id, PartialRes::new(res));
+                }
+                GenericParamKind::Const { .. } => {
+                    function_value_rib.bindings.insert(ident, res);
+                    self.r.record_partial_res(param.id, PartialRes::new(res));
+                }
+                _ => unreachable!(),
             }
         }
+
+        self.ribs[ValueNS].push(function_value_rib);
+        self.ribs[TypeNS].push(function_type_rib);
 
         f(self);
 
-        if let HasGenericParams(..) = generic_params {
-            self.ribs[TypeNS].pop();
-            self.ribs[ValueNS].pop();
-        }
+        self.ribs[TypeNS].pop();
+        self.ribs[ValueNS].pop();
     }
 
     fn with_label_rib(&mut self, kind: RibKind<'a>, f: impl FnOnce(&mut Self)) {
@@ -904,8 +878,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.label_ribs.pop();
     }
 
-    fn with_item_rib(&mut self, f: impl FnOnce(&mut Self)) {
-        self.with_rib(ValueNS, ItemRibKind, |this| this.with_rib(TypeNS, ItemRibKind, f))
+    fn with_item_rib(&mut self, has_generic_params: HasGenericParams, f: impl FnOnce(&mut Self)) {
+        let kind = ItemRibKind(has_generic_params);
+        self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
     fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
@@ -938,7 +913,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ) -> T {
         let trait_assoc_types = replace(
             &mut self.current_trait_assoc_types,
-            trait_items.iter().filter_map(|item| match &item.node {
+            trait_items.iter().filter_map(|item| match &item.kind {
                 TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
                 _ => None,
             }).collect(),
@@ -1010,7 +985,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                               impl_items: &[ImplItem]) {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
-        self.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
+        self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
             this.with_self_rib(Res::SelfTy(None, None), |this| {
                 // Resolve the trait reference, if necessary.
@@ -1031,11 +1006,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                 for impl_item in impl_items {
                                     // We also need a new scope for the impl item type parameters.
-                                    let generic_params = HasGenericParams(&impl_item.generics,
-                                                                          AssocItemRibKind);
-                                    this.with_generic_param_rib(generic_params, |this| {
+                                    this.with_generic_param_rib(&impl_item.generics,
+                                                                AssocItemRibKind,
+                                                                |this| {
                                         use crate::ResolutionError::*;
-                                        match impl_item.node {
+                                        match impl_item.kind {
                                             ImplItemKind::Const(..) => {
                                                 debug!(
                                                     "resolve_implementation ImplItemKind::Const",
@@ -1146,7 +1121,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut binding_map = FxHashMap::default();
 
         pat.walk(&mut |pat| {
-            match pat.node {
+            match pat.kind {
                 PatKind::Ident(binding_mode, ident, ref sub_pat)
                     if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
                 {
@@ -1246,7 +1221,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     /// Check the consistency of the outermost or-patterns.
     fn check_consistent_bindings_top(&mut self, pat: &Pat) {
-        pat.walk(&mut |pat| match pat.node {
+        pat.walk(&mut |pat| match pat.kind {
             PatKind::Or(ref ps) => {
                 self.check_consistent_bindings(ps);
                 false
@@ -1308,8 +1283,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
-            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
-            match pat.node {
+            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
+            match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
                     // then fall back to a fresh binding.
@@ -1804,8 +1779,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         // Descend into the block.
         for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.node {
-                if let ItemKind::MacroDef(..) = item.node {
+            if let StmtKind::Item(ref item) = stmt.kind {
+                if let ItemKind::MacroDef(..) = item.kind {
                     num_macro_definition_ribs += 1;
                     let res = self.r.definitions.local_def_id(item.id);
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
@@ -1836,7 +1811,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
         // Next, resolve the node.
-        match expr.node {
+        match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
@@ -1968,7 +1943,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
-        match expr.node {
+        match expr.kind {
             ExprKind::Field(_, ident) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match

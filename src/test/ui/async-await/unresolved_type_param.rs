@@ -7,9 +7,9 @@ async fn bar<T>() -> () {}
 
 async fn foo() {
     bar().await;
-    //~^ ERROR type inside `async` object must be known in this context
+    //~^ ERROR type inside `async fn` body must be known in this context
     //~| NOTE cannot infer type for `T`
-    //~| NOTE the type is part of the `async` object because of this `await`
+    //~| NOTE the type is part of the `async fn` body because of this `await`
     //~| NOTE in this expansion of desugaring of `await`
 }
 fn main() {}

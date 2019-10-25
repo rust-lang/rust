@@ -61,10 +61,11 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
-use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
+use rustc::ty::{self, TypeAndMut, Ty};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
+use rustc::ty::subst::SubstsRef;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
@@ -196,9 +197,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // a "spurious" type variable, and we don't want to have that
         // type variable in memory if the coercion fails.
         let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
-        if unsize.is_ok() {
-            debug!("coerce: unsize successful");
-            return unsize;
+        match unsize {
+            Ok(_) => {
+                debug!("coerce: unsize successful");
+                return unsize;
+            }
+            Err(TypeError::ObjectUnsafeCoercion(did)) => {
+                debug!("coerce: unsize not object safe");
+                return Err(TypeError::ObjectUnsafeCoercion(did));
+            }
+            Err(_) => {}
         }
         debug!("coerce: unsize failed");
 
@@ -539,7 +547,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause = ObligationCause::misc(self.cause.span, self.body_id);
+        let cause = ObligationCause::new(
+            self.cause.span,
+            self.body_id,
+            ObligationCauseCode::Coercion { source, target },
+        );
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -566,14 +578,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref t) if traits.contains(&t.def_id()) => {
-                    if unsize_did == t.def_id() {
-                        if let ty::Tuple(..) = &t.skip_binder().input_types().nth(1).unwrap().kind {
+                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
+                    if unsize_did == tr.def_id() {
+                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().kind;
+                        if let ty::Tuple(..) = sty {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    t.clone()
+                    tr.clone()
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -727,7 +740,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_closure_to_fn(&self,
                            a: Ty<'tcx>,
                            def_id_a: DefId,
-                           substs_a: ClosureSubsts<'tcx>,
+                           substs_a: SubstsRef<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a non-capturing closure
@@ -811,7 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
@@ -829,7 +842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Same as `try_coerce()`, but without side-effects.
     pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
-        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can({:?} -> {:?})", source, target);
 
         let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
@@ -853,8 +866,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 -> RelateResult<'tcx, Ty<'tcx>>
         where E: AsCoercionSite
     {
-        let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_type_vars_with_obligations(new_ty);
+        let prev_ty = self.resolve_vars_with_obligations(prev_ty);
+        let new_ty = self.resolve_vars_with_obligations(new_ty);
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
 
         // Special-case that coercion alone cannot handle:
@@ -1163,18 +1176,20 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fcx.try_coerce(expression, expression_ty, self.expected_ty, AllowTwoPhase::No)
             } else {
                 match self.expressions {
-                    Expressions::Dynamic(ref exprs) =>
-                        fcx.try_find_coercion_lub(cause,
-                                                  exprs,
-                                                  self.merged_ty(),
-                                                  expression,
-                                                  expression_ty),
-                    Expressions::UpFront(ref coercion_sites) =>
-                        fcx.try_find_coercion_lub(cause,
-                                                  &coercion_sites[0..self.pushed],
-                                                  self.merged_ty(),
-                                                  expression,
-                                                  expression_ty),
+                    Expressions::Dynamic(ref exprs) => fcx.try_find_coercion_lub(
+                        cause,
+                        exprs,
+                        self.merged_ty(),
+                        expression,
+                        expression_ty,
+                    ),
+                    Expressions::UpFront(ref coercion_sites) => fcx.try_find_coercion_lub(
+                        cause,
+                        &coercion_sites[0..self.pushed],
+                        self.merged_ty(),
+                        expression,
+                        expression_ty,
+                    ),
                 }
             }
         } else {
@@ -1216,7 +1231,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     self.pushed += 1;
                 }
             }
-            Err(err) => {
+            Err(coercion_error) => {
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
@@ -1232,41 +1247,42 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
-                let mut db;
+                let mut err;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
-                        db = struct_span_err!(
+                        err = struct_span_err!(
                             fcx.tcx.sess, cause.span, E0069,
                             "`return;` in a function whose return type is not `()`");
-                        db.span_label(cause.span, "return type is not `()`");
+                        err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
                         let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
-                        db = self.report_return_mismatched_types(
+                        err = self.report_return_mismatched_types(
                             cause,
                             expected,
                             found,
-                            err,
+                            coercion_error,
                             fcx,
                             parent_id,
                             expression.map(|expr| (expr, blk_id)),
                         );
                     }
                     ObligationCauseCode::ReturnValue(id) => {
-                        db = self.report_return_mismatched_types(
-                            cause, expected, found, err, fcx, id, None);
+                        err = self.report_return_mismatched_types(
+                            cause, expected, found, coercion_error, fcx, id, None);
                     }
                     _ => {
-                        db = fcx.report_mismatched_types(cause, expected, found, err);
+                        err = fcx.report_mismatched_types(cause, expected, found, coercion_error);
                     }
                 }
 
                 if let Some(augment_error) = augment_error {
-                    augment_error(&mut db);
+                    augment_error(&mut err);
                 }
 
                 // Error possibly reported in `check_assign` so avoid emitting error again.
-                db.emit_unless(expression.filter(|e| fcx.is_assign_to_bool(e, expected)).is_some());
+                err.emit_unless(expression.filter(|e| fcx.is_assign_to_bool(e, expected))
+                    .is_some());
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }
@@ -1278,12 +1294,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        err: TypeError<'tcx>,
+        ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
         expression: Option<(&'tcx hir::Expr, hir::HirId)>,
     ) -> DiagnosticBuilder<'a> {
-        let mut db = fcx.report_mismatched_types(cause, expected, found, err);
+        let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
 
         let mut pointing_at_return_type = false;
         let mut return_sp = None;
@@ -1294,7 +1310,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
             pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
-                &mut db,
+                &mut err,
                 expr,
                 expected,
                 found,
@@ -1302,6 +1318,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 blk_id,
             );
             let parent = fcx.tcx.hir().get(parent_id);
+            if let (Some(match_expr), true, false) = (
+                fcx.tcx.hir().get_match_if_cause(expr.hir_id),
+                expected.is_unit(),
+                pointing_at_return_type,
+            ) {
+                if match_expr.span.desugaring_kind().is_none() {
+                    err.span_label(match_expr.span, "expected this to be `()`");
+                    fcx.suggest_semicolon_at_end(match_expr.span, &mut err);
+                }
+            }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)
@@ -1310,20 +1336,20 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
             if expression.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
-                    &mut db, &fn_decl, expected, found, can_suggest);
+                    &mut err, &fn_decl, expected, found, can_suggest);
             }
             if !pointing_at_return_type {
                 return_sp = Some(fn_decl.output.span()); // `impl Trait` return type
             }
         }
         if let (Some(sp), Some(return_sp)) = (fcx.ret_coercion_span.borrow().as_ref(), return_sp) {
-            db.span_label(return_sp, "expected because this return type...");
-            db.span_label( *sp, format!(
+            err.span_label(return_sp, "expected because this return type...");
+            err.span_label( *sp, format!(
                 "...is found to be `{}` here",
-                fcx.resolve_type_vars_with_obligations(expected),
+                fcx.resolve_vars_with_obligations(expected),
             ));
         }
-        db
+        err
     }
 
     pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {

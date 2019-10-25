@@ -80,7 +80,7 @@ impl SystemTime {
         unsafe {
             let mut t: SystemTime = mem::zeroed();
             c::GetSystemTimeAsFileTime(&mut t.t);
-            return t
+            t
         }
     }
 
@@ -228,7 +228,7 @@ mod perf_counter {
                 FREQUENCY = frequency;
                 STATE.store(2, SeqCst);
             }
-            return frequency;
+            frequency
         }
     }
 

@@ -323,6 +323,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             NativeLibraryKind::NativeStatic => {}
             NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeFramework |
+            NativeLibraryKind::NativeRawDylib |
             NativeLibraryKind::NativeUnknown => continue,
         }
         if let Some(name) = lib.name {
@@ -883,7 +884,8 @@ pub fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary
                     Some(format!("-framework {}", name))
                 },
                 // These are included, no need to print them
-                NativeLibraryKind::NativeStatic => None,
+                NativeLibraryKind::NativeStatic |
+                NativeLibraryKind::NativeRawDylib => None,
             }
         })
         .collect();
@@ -1293,7 +1295,11 @@ pub fn add_local_native_libraries(cmd: &mut dyn Linker,
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(name),
             NativeLibraryKind::NativeFramework => cmd.link_framework(name),
             NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(name),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(name, &search_path)
+            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(name, &search_path),
+            NativeLibraryKind::NativeRawDylib => {
+                // FIXME(#58713): Proper handling for raw dylibs.
+                bug!("raw_dylib feature not yet implemented");
+            },
         }
     }
 }
@@ -1385,7 +1391,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
                 add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
             }
-            _ if codegen_results.crate_info.sanitizer_runtime == Some(cnum) => {
+            _ if codegen_results.crate_info.sanitizer_runtime == Some(cnum) &&
+                  crate_type == config::CrateType::Executable => {
+                // Link the sanitizer runtimes only if we are actually producing an executable
                 link_sanitizer_runtime::<B>(cmd, sess, codegen_results, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
@@ -1527,7 +1535,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
-        time_ext(sess.time_extended(), Some(sess), &format!("altering {}.rlib", name), || {
+        time_ext(sess.time_extended(), &format!("altering {}.rlib", name), || {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 
@@ -1678,7 +1686,11 @@ pub fn add_upstream_native_libraries(
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
-                NativeLibraryKind::NativeStatic => {}
+                NativeLibraryKind::NativeStatic => {},
+                NativeLibraryKind::NativeRawDylib => {
+                    // FIXME(#58713): Proper handling for raw dylibs.
+                    bug!("raw_dylib feature not yet implemented");
+                },
             }
         }
     }

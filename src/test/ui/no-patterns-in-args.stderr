@@ -30,4 +30,5 @@ LL | type A2 = fn(&arg: u8);
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0130`.
+Some errors have detailed explanations: E0130, E0561.
+For more information about an error, try `rustc --explain E0130`.

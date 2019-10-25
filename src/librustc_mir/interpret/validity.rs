@@ -200,7 +200,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         if let Some((&var_hir_id, _)) = upvars.get_index(field) {
                             let node = self.ecx.tcx.hir().get(var_hir_id);
                             if let hir::Node::Binding(pat) = node {
-                                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                                if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                                     name = Some(ident.name);
                                 }
                             }
@@ -344,7 +344,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         match self.walk_value(op) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
-                err_unsup!(InvalidDiscriminant(val)) =>
+                err_ub!(InvalidDiscriminant(val)) =>
                     throw_validation_failure!(
                         val, self.path, "a valid enum discriminant"
                     ),

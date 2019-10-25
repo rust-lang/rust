@@ -6,10 +6,10 @@ failures:
 
 ---- $DIR/unparseable-doc-test.rs - foo (line 6) stdout ----
 error: unterminated double quote string
- --> $DIR/unparseable-doc-test.rs:8:1
-  |
-2 | "unterminated
-  | ^^^^^^^^^^^^^
+  --> $DIR/unparseable-doc-test.rs:8:1
+   |
+LL | "unterminated
+   | ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

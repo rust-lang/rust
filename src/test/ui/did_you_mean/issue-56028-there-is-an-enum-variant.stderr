@@ -13,7 +13,7 @@ LL | fn setup() -> Determine { Set }
    |               ^^^^^^^^^
 LL | fn setup() -> PutDown { Set }
    |               ^^^^^^^
-and 3 other candidates
+     and 3 other candidates
 
 error[E0425]: cannot find value `Set` in this scope
   --> $DIR/issue-56028-there-is-an-enum-variant.rs:9:21
@@ -30,7 +30,7 @@ LL | use Determine::Set;
    |
 LL | use PutDown::Set;
    |
-and 3 other candidates
+     and 3 other candidates
 
 error: aborting due to 2 previous errors
 

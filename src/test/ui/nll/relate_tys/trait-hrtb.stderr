@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/trait-hrtb.rs:15:39
+   |
+LL |     let y: Box<dyn for<'a> Foo<'a>> = x;
+   |                                       ^
+
+error: aborting due to previous error
+

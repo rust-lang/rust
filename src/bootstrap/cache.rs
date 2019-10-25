@@ -161,7 +161,7 @@ impl Ord for Interned<String> {
     }
 }
 
-struct TyIntern<T: Hash + Clone + Eq> {
+struct TyIntern<T: Clone + Eq> {
     items: Vec<T>,
     set: HashMap<T, Interned<T>>,
 }

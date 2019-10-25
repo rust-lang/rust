@@ -108,7 +108,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     goal: obligation.goal.predicate,
                 }, &mut orig_values);
 
-                match infcx.tcx.global_tcx().evaluate_goal(canonical_goal) {
+                match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {
                         if response.is_proven() {
                             making_progress = true;

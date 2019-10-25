@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/fn-subtype.rs:9:33
+   |
+LL |     let y: for<'a> fn(&'a ()) = x;
+   |                                 ^
+
+error: aborting due to previous error
+

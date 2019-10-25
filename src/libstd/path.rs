@@ -1627,7 +1627,7 @@ impl<'a> From<Cow<'a, Path>> for PathBuf {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `PathBuf` into an `Arc` by moving the `PathBuf` data into a new `Arc` buffer.
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.into_os_string());
@@ -1637,7 +1637,7 @@ impl From<PathBuf> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&Path> for Arc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `Path` into an `Arc` by copying the `Path` data into a new `Arc` buffer.
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.as_os_str());
@@ -1647,7 +1647,7 @@ impl From<&Path> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Rc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `PathBuf` into an `Rc` by moving the `PathBuf` data into a new `Rc` buffer.
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.into_os_string());
@@ -1657,7 +1657,7 @@ impl From<PathBuf> for Rc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&Path> for Rc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `Path` into an `Rc` by copying the `Path` data into a new `Rc` buffer.
     #[inline]
     fn from(s: &Path) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.as_os_str());
@@ -2219,6 +2219,7 @@ impl Path {
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         self._join(path.as_ref())
     }

@@ -124,14 +124,14 @@ jobs:
         IMAGE: dist-x86_64-netbsd
         DEPLOY: 1
 
-      asmjs:
-        IMAGE: asmjs
       i686-gnu:
         IMAGE: i686-gnu
       i686-gnu-nopt:
         IMAGE: i686-gnu-nopt
       test-various:
         IMAGE: test-various
+      wasm32:
+        IMAGE: wasm32
       x86_64-gnu:
         IMAGE: x86_64-gnu
       x86_64-gnu-full-bootstrap:

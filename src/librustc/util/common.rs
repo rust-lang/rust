@@ -1,17 +1,13 @@
 #![allow(non_camel_case_types)]
 
-use rustc_data_structures::{fx::FxHashMap, sync::Lock};
+use rustc_data_structures::sync::Lock;
 
-use std::cell::{RefCell, Cell};
+use std::cell::Cell;
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::time::{Duration, Instant};
 
-use std::sync::mpsc::{Sender};
-use syntax_pos::{SpanData};
 use syntax::symbol::{Symbol, sym};
 use rustc_macros::HashStable;
-use crate::dep_graph::{DepNode};
 use crate::session::Session;
 
 #[cfg(test)]
@@ -27,69 +23,11 @@ pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
-/// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
-#[derive(Clone,Debug)]
-pub struct ProfQDumpParams {
-    /// A base path for the files we will dump.
-    pub path:String,
-    /// To ensure that the compiler waits for us to finish our dumps.
-    pub ack:Sender<()>,
-    /// Toggle dumping a log file with every `ProfileQueriesMsg`.
-    pub dump_profq_msg_log:bool,
-}
-
 #[allow(nonstandard_style)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryMsg {
     pub query: &'static str,
     pub msg: Option<String>,
-}
-
-/// A sequence of these messages induce a trace of query-based incremental compilation.
-// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
-#[derive(Clone,Debug)]
-pub enum ProfileQueriesMsg {
-    /// Begin a timed pass.
-    TimeBegin(String),
-    /// End a timed pass.
-    TimeEnd,
-    /// Begin a task (see `dep_graph::graph::with_task`).
-    TaskBegin(DepNode),
-    /// End a task.
-    TaskEnd,
-    /// Begin a new query.
-    /// Cannot use `Span` because queries are sent to other thread.
-    QueryBegin(SpanData, QueryMsg),
-    /// Query is satisfied by using an already-known value for the given key.
-    CacheHit,
-    /// Query requires running a provider; providers may nest, permitting queries to nest.
-    ProviderBegin,
-    /// Query is satisfied by a provider terminating with a value.
-    ProviderEnd,
-    /// Dump a record of the queries to the given path.
-    Dump(ProfQDumpParams),
-    /// Halt the profiling/monitoring background thread.
-    Halt
-}
-
-/// If enabled, send a message to the profile-queries thread.
-pub fn profq_msg(sess: &Session, msg: ProfileQueriesMsg) {
-    if let Some(s) = sess.profile_channel.borrow().as_ref() {
-        s.send(msg).unwrap()
-    } else {
-        // Do nothing.
-    }
-}
-
-/// Set channel for profile queries channel.
-pub fn profq_set_chan(sess: &Session, s: Sender<ProfileQueriesMsg>) -> bool {
-    let mut channel = sess.profile_channel.borrow_mut();
-    if channel.is_none() {
-        *channel = Some(s);
-        true
-    } else {
-        false
-    }
 }
 
 /// Read the current depth of `time()` calls. This is used to
@@ -108,10 +46,10 @@ pub fn set_time_depth(depth: usize) {
 pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T where
     F: FnOnce() -> T,
 {
-    time_ext(sess.time_passes(), Some(sess), what, f)
+    time_ext(sess.time_passes(), what, f)
 }
 
-pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> T where
+pub fn time_ext<T, F>(do_it: bool, what: &str, f: F) -> T where
     F: FnOnce() -> T,
 {
     if !do_it { return f(); }
@@ -122,19 +60,9 @@ pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> 
         r
     });
 
-    if let Some(sess) = sess {
-        if cfg!(debug_assertions) {
-            profq_msg(sess, ProfileQueriesMsg::TimeBegin(what.to_string()))
-        }
-    }
     let start = Instant::now();
     let rv = f();
     let dur = start.elapsed();
-    if let Some(sess) = sess {
-        if cfg!(debug_assertions) {
-            profq_msg(sess, ProfileQueriesMsg::TimeEnd)
-        }
-    }
 
     print_time_passes_entry(true, what, dur);
 
@@ -278,40 +206,4 @@ impl Drop for Indenter {
 pub fn indenter() -> Indenter {
     debug!(">>");
     Indenter { _cannot_construct_outside_of_this_module: () }
-}
-
-pub trait MemoizationMap {
-    type Key: Clone;
-    type Value: Clone;
-
-    /// If `key` is present in the map, return the value,
-    /// otherwise invoke `op` and store the value in the map.
-    ///
-    /// N.B., if the receiver is a `DepTrackingMap`, special care is
-    /// needed in the `op` to ensure that the correct edges are
-    /// added into the dep graph. See the `DepTrackingMap` impl for
-    /// more details!
-    fn memoize<OP>(&self, key: Self::Key, op: OP) -> Self::Value
-        where OP: FnOnce() -> Self::Value;
-}
-
-impl<K, V> MemoizationMap for RefCell<FxHashMap<K,V>>
-    where K: Hash+Eq+Clone, V: Clone
-{
-    type Key = K;
-    type Value = V;
-
-    fn memoize<OP>(&self, key: K, op: OP) -> V
-        where OP: FnOnce() -> V
-    {
-        let result = self.borrow().get(&key).cloned();
-        match result {
-            Some(result) => result,
-            None => {
-                let result = op();
-                self.borrow_mut().insert(key, result.clone());
-                result
-            }
-        }
-    }
 }

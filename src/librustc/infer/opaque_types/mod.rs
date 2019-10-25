@@ -561,15 +561,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             def_id, instantiated_ty
         );
 
-        let gcx = self.tcx.global_tcx();
-
         // Use substs to build up a reverse map from regions to their
         // identity mappings. This is necessary because of `impl
         // Trait` lifetimes are computed by replacing existing
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(gcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = opaque_defn
             .substs
             .iter()
@@ -724,23 +722,23 @@ where
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in substs.upvar_tys(def_id, self.tcx) {
+                for upvar_ty in substs.as_closure().upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.closure_sig_ty(def_id, self.tcx).visit_with(self);
+                substs.as_closure().sig_ty(def_id, self.tcx).visit_with(self);
             }
 
             ty::Generator(def_id, ref substs, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                for upvar_ty in substs.upvar_tys(def_id, self.tcx) {
+                for upvar_ty in substs.as_generator().upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.return_ty(def_id, self.tcx).visit_with(self);
-                substs.yield_ty(def_id, self.tcx).visit_with(self);
+                substs.as_generator().return_ty(def_id, self.tcx).visit_with(self);
+                substs.as_generator().yield_ty(def_id, self.tcx).visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
@@ -854,7 +852,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().global_tcx().mk_region(ty::ReStatic)
+                self.tcx().mk_region(ty::ReStatic)
             },
         }
     }
@@ -888,7 +886,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
                 let generics = self.tcx.generics_of(def_id);
                 let substs =
-                    self.tcx.mk_substs(substs.substs.iter().enumerate().map(|(index, &kind)| {
+                    self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
                         if index < generics.parent_count {
                             // Accommodate missing regions in the parent kinds...
                             self.fold_kind_mapping_missing_regions_to_empty(kind)
@@ -898,13 +896,13 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         }
                     }));
 
-                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+                self.tcx.mk_closure(def_id, substs)
             }
 
             ty::Generator(def_id, substs, movability) => {
                 let generics = self.tcx.generics_of(def_id);
                 let substs =
-                    self.tcx.mk_substs(substs.substs.iter().enumerate().map(|(index, &kind)| {
+                    self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
                         if index < generics.parent_count {
                             // Accommodate missing regions in the parent kinds...
                             self.fold_kind_mapping_missing_regions_to_empty(kind)
@@ -914,7 +912,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                         }
                     }));
 
-                self.tcx.mk_generator(def_id, ty::GeneratorSubsts { substs }, movability)
+                self.tcx.mk_generator(def_id, substs, movability)
             }
 
             ty::Param(..) => {
@@ -1036,7 +1034,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                                 .local_def_id(opaque_parent_hir_id)
                         };
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
-                            Some(Node::Item(item)) => match item.node {
+                            Some(Node::Item(item)) => match item.kind {
                                 // Anonymous `impl Trait`
                                 hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: Some(parent),
@@ -1060,7 +1058,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias)
                                 }
                             },
-                            Some(Node::ImplItem(item)) => match item.node {
+                            Some(Node::ImplItem(item)) => match item.kind {
                                 hir::ImplItemKind::OpaqueTy(_) => (
                                     may_define_opaque_type(
                                         tcx,
@@ -1215,7 +1213,7 @@ pub fn may_define_opaque_type(
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Named opaque types can be defined by any siblings or children of siblings.
-    let scope = tcx.hir().get_defining_scope(opaque_hir_id).expect("could not get defining scope");
+    let scope = tcx.hir().get_defining_scope(opaque_hir_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id);

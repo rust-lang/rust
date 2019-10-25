@@ -8,7 +8,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
                                              mem::size_of_val(&v));
         imp::fill_bytes(view);
     }
-    return v
+    v
 }
 
 #[cfg(all(unix,

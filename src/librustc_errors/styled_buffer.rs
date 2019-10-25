@@ -111,7 +111,7 @@ impl StyledBuffer {
 
     pub fn prepend(&mut self, line: usize, string: &str, style: Style) {
         self.ensure_lines(line);
-        let string_len = string.len();
+        let string_len = string.chars().count();
 
         // Push the old content over to make room for new content
         for _ in 0..string_len {

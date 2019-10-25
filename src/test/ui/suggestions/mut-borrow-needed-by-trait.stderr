@@ -1,0 +1,41 @@
+error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
+  --> $DIR/mut-borrow-needed-by-trait.rs:17:29
+   |
+LL |     let fp = BufWriter::new(fp);
+   |                             ^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   |
+   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
+   = note: required by `std::io::BufWriter::<W>::new`
+
+error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
+  --> $DIR/mut-borrow-needed-by-trait.rs:17:14
+   |
+LL |     let fp = BufWriter::new(fp);
+   |              ^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   |
+   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
+   = note: required by `std::io::BufWriter`
+
+error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
+  --> $DIR/mut-borrow-needed-by-trait.rs:17:14
+   |
+LL |     let fp = BufWriter::new(fp);
+   |              ^^^^^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
+   |
+   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
+   = note: required by `std::io::BufWriter`
+
+error[E0599]: no method named `write_fmt` found for type `std::io::BufWriter<&dyn std::io::Write>` in the current scope
+  --> $DIR/mut-borrow-needed-by-trait.rs:22:5
+   |
+LL |     writeln!(fp, "hello world").unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `std::io::BufWriter<&dyn std::io::Write>`
+   |
+   = note: the method `write_fmt` exists but the following trait bounds were not satisfied:
+           `std::io::BufWriter<&dyn std::io::Write> : std::io::Write`
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,6 +1,6 @@
 use crate::infer::canonical::{
-    Canonical, Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues,
-    QueryRegionConstraints, QueryResponse,
+    Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues,
+    QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
 use std::fmt;
@@ -66,22 +66,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>>;
 
-    /// Casts a lifted query result (which is in the gcx lifetime)
-    /// into the tcx lifetime. This is always just an identity cast,
-    /// but the generic code doesn't realize it -- put another way, in
-    /// the generic code, we have a `Lifted<'tcx, Self::QueryResponse>`
-    /// and we want to convert that to a `Self::QueryResponse`. This is
-    /// not a priori valid, so we can't do it -- but in practice, it
-    /// is always a no-op (e.g., the lifted form of a type,
-    /// `Ty<'tcx>`, is a subtype of `Ty<'tcx>`). So we have to push
-    /// the operation into the impls that know more specifically what
-    /// `QueryResponse` is. This operation would (maybe) be nicer with
-    /// something like HKTs or GATs, since then we could make
-    /// `QueryResponse` parametric and `'tcx` and `'tcx` etc.
-    fn shrink_to_tcx_lifetime(
-        lifted_query_result: &'a CanonicalizedQueryResponse<'tcx, Self::QueryResponse>,
-    ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>>;
-
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -99,7 +83,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
         let canonical_self =
             infcx.canonicalize_hr_query_hack(&query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
-        let canonical_result = Self::shrink_to_tcx_lifetime(&canonical_result);
 
         let param_env = query_key.param_env;
 

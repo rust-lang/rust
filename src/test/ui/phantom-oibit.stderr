@@ -3,12 +3,13 @@ error[E0277]: `T` cannot be shared between threads safely
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    |    ------    --- required by this bound in `is_zen`
-...
+LL | 
+LL | fn not_sync<T>(x: Guard<T>) {
+   |             - help: consider restricting this bound: `T: std::marker::Sync`
 LL |     is_zen(x)
    |            ^ `T` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `T`
-   = help: consider adding a `where T: std::marker::Sync` bound
    = note: required because of the requirements on the impl of `Zen` for `&T`
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`
@@ -19,11 +20,12 @@ error[E0277]: `T` cannot be shared between threads safely
 LL | fn is_zen<T: Zen>(_: T) {}
    |    ------    --- required by this bound in `is_zen`
 ...
+LL | fn nested_not_sync<T>(x: Nested<Guard<T>>) {
+   |                    - help: consider restricting this bound: `T: std::marker::Sync`
 LL |     is_zen(x)
    |            ^ `T` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `T`
-   = help: consider adding a `where T: std::marker::Sync` bound
    = note: required because of the requirements on the impl of `Zen` for `&T`
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`

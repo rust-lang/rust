@@ -38,6 +38,9 @@ impl W {
     fn inherent4<'a>(#[id] self: Box<Self>, #[id] arg1: u8) {}
     //~^ ERROR expected an inert attribute, found an attribute macro
     //~| ERROR expected an inert attribute, found an attribute macro
+    fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8) {}
+    //~^ ERROR expected an inert attribute, found an attribute macro
+    //~| ERROR expected an inert attribute, found an attribute macro
 }
 
 trait A {
@@ -53,6 +56,9 @@ trait A {
     fn trait4<'a>(#[id] self: Box<Self>, #[id] arg1: u8, #[id] Vec<u8>);
     //~^ ERROR expected an inert attribute, found an attribute macro
     //~| ERROR expected an inert attribute, found an attribute macro
+    //~| ERROR expected an inert attribute, found an attribute macro
+    fn issue_64682_associated_fn<'a>(#[id] arg1: u8, #[id] arg2: u8);
+    //~^ ERROR expected an inert attribute, found an attribute macro
     //~| ERROR expected an inert attribute, found an attribute macro
 }
 

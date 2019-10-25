@@ -384,7 +384,7 @@ fn map_lib_features(base_src_path: &Path,
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
-           filename == "diagnostic_list.rs" {
+           filename == "diagnostic_list.rs" || filename == "error_codes.rs" {
             return;
         }
 

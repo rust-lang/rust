@@ -7,19 +7,19 @@ LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:50
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:52
    |
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                          -                       ^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+   |                          -                         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
    |                          |
    |                          lifetime `'_` defined here
    |                          lifetime `'_` defined here
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:11:73
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:11:75
    |
 LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                          -                                              ^^^^^^^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+   |                          -                                                ^^^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
    |                          |
    |                          lifetime `'_` defined here
    |                          lifetime `'_` defined here
@@ -33,12 +33,11 @@ LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:62
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:64
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
-   |                  --              -                           ^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'a`
-   |                  |               |
-   |                  |               lifetime `'_` defined here
+   |                  --              - lifetime `'_` defined here  ^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'a`
+   |                  |
    |                  lifetime `'a` defined here
 
 error: aborting due to 5 previous errors

@@ -36,7 +36,7 @@ use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
 
 use std::ffi::CString;
 use std::time::Instant;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 use rustc::hir::CodegenFnAttrs;
 
 use crate::value::Value;
@@ -103,7 +103,12 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-pub fn compile_codegen_unit(tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
+pub fn compile_codegen_unit(
+    tcx: TyCtxt<'tcx>,
+    cgu_name: Symbol,
+    tx_to_llvm_workers: &std::sync::mpsc::Sender<Box<dyn std::any::Any + Send>>,
+) {
+    let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
@@ -115,17 +120,18 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
         dep_graph::hash_result,
     );
     let time_to_codegen = start_time.elapsed();
+    drop(prof_timer);
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 +
                time_to_codegen.subsec_nanos() as u64;
 
-    submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
+    submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tx_to_llvm_workers, module, cost);
 
     fn module_codegen(
         tcx: TyCtxt<'_>,
-        cgu_name: InternedString,
+        cgu_name: Symbol,
     ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...

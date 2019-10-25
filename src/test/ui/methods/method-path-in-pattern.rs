@@ -23,4 +23,10 @@ fn main() {
         <Foo>::trait_bar => {}
         //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::trait_bar`
     }
+    if let Foo::bar = 0u32 {}
+    //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::bar`
+    if let <Foo>::bar = 0u32 {}
+    //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::bar`
+    if let Foo::trait_bar = 0u32 {}
+    //~^ ERROR expected unit struct/variant or constant, found method `<Foo>::trait_bar`
 }

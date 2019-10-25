@@ -10,6 +10,7 @@
 // This is a regression test for issue #17021.
 //
 // compile-flags: -g
+// ignore-asmjs wasm2js does not support source maps yet
 
 use std::ptr;
 

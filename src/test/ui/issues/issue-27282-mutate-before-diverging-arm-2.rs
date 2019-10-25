@@ -13,8 +13,6 @@
 // occurs in the pattern-match itself, and not in the guard
 // expression.
 
-#![feature(nll)]
-
 struct ForceFnOnce;
 
 fn main() {

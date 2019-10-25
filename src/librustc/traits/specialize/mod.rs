@@ -125,7 +125,7 @@ pub fn find_associated_item<'tcx>(
     let trait_def = tcx.trait_def(trait_def_id);
 
     let ancestors = trait_def.ancestors(tcx, impl_data.impl_def_id);
-    match ancestors.defs(tcx, item.ident, item.kind, trait_def_id).next() {
+    match ancestors.leaf_def(tcx, item.ident, item.kind) {
         Some(node_item) => {
             let substs = tcx.infer_ctxt().enter(|infcx| {
                 let param_env = param_env.with_reveal_all();
@@ -419,7 +419,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> 
 
     // The predicates will contain default bounds like `T: Sized`. We need to
     // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
-    let predicates = &tcx.predicates_of(impl_def_id).predicates;
+    let predicates = tcx.predicates_of(impl_def_id).predicates;
     let mut pretty_predicates = Vec::with_capacity(
         predicates.len() + types_without_default_bounds.len());
 

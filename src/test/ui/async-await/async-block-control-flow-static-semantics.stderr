@@ -39,6 +39,22 @@ LL |     let _: &dyn Future<Output = ()> = &block;
               found type `()`
    = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
 
+error[E0308]: mismatched types
+  --> $DIR/async-block-control-flow-static-semantics.rs:22:58
+   |
+LL |   async fn return_targets_async_block_not_async_fn() -> u8 {
+   |  __________________________________________________________^
+LL | |
+LL | |     let block = async {
+LL | |         return 0u8;
+...  |
+LL | |
+LL | | }
+   | |_^ expected u8, found ()
+   |
+   = note: expected type `u8`
+              found type `()`
+
 error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
   --> $DIR/async-block-control-flow-static-semantics.rs:27:39
    |
@@ -48,16 +64,6 @@ LL |     let _: &dyn Future<Output = ()> = &block;
    = note: expected type `u8`
               found type `()`
    = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
-
-error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == u8`
-  --> $DIR/async-block-control-flow-static-semantics.rs:22:55
-   |
-LL | async fn return_targets_async_block_not_async_fn() -> u8 {
-   |                                                       ^^ expected (), found u8
-   |
-   = note: expected type `()`
-              found type `u8`
-   = note: the return type of a function must have a statically known size
 
 error[E0308]: mismatched types
   --> $DIR/async-block-control-flow-static-semantics.rs:48:44

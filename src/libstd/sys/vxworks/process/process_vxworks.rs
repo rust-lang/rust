@@ -54,8 +54,8 @@ impl Command {
 
             let ret = libc::rtpSpawn(
                 self.get_argv()[0],                   // executing program
-                self.get_argv().as_ptr() as *const _, // argv
-                *sys::os::environ() as *const *const c_char,
+                self.get_argv().as_ptr() as *mut *const c_char, // argv
+                *sys::os::environ() as *mut *const c_char,
                 100 as c_int,                         // initial priority
                 thread::min_stack(),                  // initial stack size.
                 0,                                    // options

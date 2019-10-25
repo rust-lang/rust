@@ -45,10 +45,11 @@ use errors;
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::edition::Edition;
-use syntax::ext::base::MacroKind;
-use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::print::pprust;
+use syntax::source_map::FileName;
 use syntax::symbol::{Symbol, sym};
+use syntax_expand::base::MacroKind;
 use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -574,7 +575,7 @@ fn write_shared(
 
     let write = |p, c| { cx.shared.fs.write(p, c) };
     if (*cx.shared).layout.logo.is_empty() {
-        write(cx.path("rust-log.png"), static_files::RUST_LOGO)?;
+        write(cx.path("rust-logo.png"), static_files::RUST_LOGO)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
         write(cx.path("favicon.ico"), static_files::RUST_FAVICON)?;
@@ -1240,6 +1241,7 @@ fn settings(root_path: &str, suffix: &str) -> String {
         ("go-to-only-result", "Directly go to item in search if there is only one result",
             false),
         ("line-numbers", "Show line numbers on code examples", false),
+        ("disable-shortcuts", "Disable keyboard shortcuts", false),
     ];
     format!(
 "<h1 class='fqn'>\
@@ -2957,7 +2959,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let path = attr.path.to_string();
+    let path = pprust::path_to_string(&attr.path);
 
     if attr.is_word() {
         Some(path)

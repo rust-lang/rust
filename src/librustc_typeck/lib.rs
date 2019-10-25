@@ -67,8 +67,6 @@ This API is completely unstable and subject to change.
 #![feature(nll)]
 #![feature(slice_patterns)]
 #![feature(never_type)]
-#![feature(inner_deref)]
-#![feature(mem_take)]
 
 #![recursion_limit="256"]
 
@@ -162,7 +160,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     match main_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
+                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         let msg = "`main` function is not allowed to have generic \
@@ -227,7 +225,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     match start_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
+                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(tcx.sess, generics.span, E0132,
@@ -295,7 +293,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
-    tcx.sess.profiler(|p| p.start_activity("type-check crate"));
+    let _prof_timer = tcx.prof.generic_activity("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
@@ -346,8 +344,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
-
-    tcx.sess.profiler(|p| p.end_activity("type-check crate"));
 
     if tcx.sess.err_count() == 0 {
         Ok(())

@@ -30,12 +30,12 @@ LL |         self.x.iter().map(|a| a.0)
    |         |
    |         ...but this borrow...
    |
-note: ...can't outlive the lifetime 'a as defined on the method body at 10:20
+note: ...can't outlive the lifetime `'a` as defined on the method body at 10:20
   --> $DIR/static-return-lifetime-infered.rs:10:20
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                    ^^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime 'a as defined on the method body at 10:20
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime `'a` as defined on the method body at 10:20
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

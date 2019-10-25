@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &'tcx Ty) {
-        match &ty.node {
+        match &ty.kind {
             TyKind::Path(qpath) => {
                 if let QPath::Resolved(_, path) = qpath {
                     if let Some(last) = path.segments.iter().last() {
@@ -169,7 +169,7 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
 }
 
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
-    match &ty.node {
+    match &ty.kind {
         TyKind::Path(qpath) => {
             if let QPath::Resolved(_, path) = qpath {
                 let did = path.res.opt_def_id()?;
@@ -218,7 +218,7 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl(_, _, _, _, Some(lint_pass), _, _) = &item.node {
+        if let ItemKind::Impl(_, _, _, _, Some(lint_pass), _, _) = &item.kind {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();

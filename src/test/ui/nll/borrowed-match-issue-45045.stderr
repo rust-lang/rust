@@ -1,5 +1,5 @@
 error[E0503]: cannot use `e` because it was mutably borrowed
-  --> $DIR/borrowed-match-issue-45045.rs:15:9
+  --> $DIR/borrowed-match-issue-45045.rs:13:9
    |
 LL |     let f = &mut e;
    |             ------ borrow of `e` occurs here

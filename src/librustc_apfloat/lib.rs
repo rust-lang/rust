@@ -555,12 +555,13 @@ pub trait Float
     fn ilogb(self) -> ExpInt;
 
     /// Returns: self * 2<sup>exp</sup> for integral exponents.
+    /// Equivalent to C standard library function `ldexp`.
     fn scalbn_r(self, exp: ExpInt, round: Round) -> Self;
     fn scalbn(self, exp: ExpInt) -> Self {
         self.scalbn_r(exp, Round::NearestTiesToEven)
     }
 
-    /// Equivalent of C standard library function.
+    /// Equivalent to C standard library function with the same name.
     ///
     /// While the C standard says exp is an unspecified value for infinity and nan,
     /// this returns INT_MAX for infinities, and INT_MIN for NaNs (see `ilogb`).

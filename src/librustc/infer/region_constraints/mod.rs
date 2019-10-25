@@ -7,7 +7,7 @@ use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use crate::hir::def_id::DefId;
@@ -116,7 +116,7 @@ pub struct RegionConstraintData<'tcx> {
 }
 
 /// Represents a constraint that influences the inference process.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum Constraint<'tcx> {
     /// A region variable is a subregion of another.
     VarSubVar(RegionVid, RegionVid),

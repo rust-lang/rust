@@ -1,6 +1,9 @@
 error[E0532]: expected tuple struct/variant, found struct `Empty1`
   --> $DIR/empty-struct-braces-pat-2.rs:15:9
    |
+LL | struct Empty1 {}
+   | ---------------- `Empty1` defined here
+...
 LL |         Empty1() => ()
    |         ^^^^^^
    |         |
@@ -19,6 +22,9 @@ LL |         XEmpty1() => ()
 error[E0532]: expected tuple struct/variant, found struct `Empty1`
   --> $DIR/empty-struct-braces-pat-2.rs:21:9
    |
+LL | struct Empty1 {}
+   | ---------------- `Empty1` defined here
+...
 LL |         Empty1(..) => ()
    |         ^^^^^^
    |         |

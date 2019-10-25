@@ -4,13 +4,12 @@
 
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::newtype_index;
+use rustc_index::vec::Idx;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 
-use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
+use std::cmp::{PartialEq, PartialOrd, Ord};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -83,11 +82,11 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        Async:              "async", // >= 2018 Edition only
+        Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-        Async:              "async", // >= 2018 Edition only
-        Await:              "await", // >= 2018 Edition only
         Try:                "try", // >= 2018 Edition only
 
         // Special lifetime names
@@ -197,6 +196,7 @@ symbols! {
         console,
         const_compare_raw_pointers,
         const_constructor,
+        const_extern_fn,
         const_fn,
         const_fn_union,
         const_generics,
@@ -389,6 +389,7 @@ symbols! {
         link_cfg,
         link_llvm_intrinsics,
         link_name,
+        link_ordinal,
         link_section,
         LintPass,
         lint_reasons,
@@ -458,6 +459,7 @@ symbols! {
         no_std,
         not,
         note,
+        object_safe_for_dispatch,
         Ok,
         omit_gdb_pretty_printer_section,
         on,
@@ -531,6 +533,7 @@ symbols! {
         RangeInclusive,
         RangeTo,
         RangeToInclusive,
+        raw_dylib,
         raw_identifiers,
         Ready,
         reason,
@@ -598,6 +601,7 @@ symbols! {
         rustc_peek_definite_init,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
+        rustc_peek_indirectly_mutable,
         rustc_private,
         rustc_proc_macro_decls,
         rustc_promotable,
@@ -655,6 +659,7 @@ symbols! {
         suggestion,
         target_feature,
         target_has_atomic,
+        target_has_atomic_load_store,
         target_thread_local,
         task,
         tbm_target_feature,
@@ -671,6 +676,7 @@ symbols! {
         tool_attributes,
         tool_lints,
         trace_macros,
+        track_caller,
         trait_alias,
         transmute,
         transparent,
@@ -761,11 +767,6 @@ impl Ident {
         Ident::with_dummy_span(kw::Invalid)
     }
 
-    /// Maps an interned string to an identifier with an empty syntax context.
-    pub fn from_interned_str(string: InternedString) -> Ident {
-        Ident::with_dummy_span(string.as_symbol())
-    }
-
     /// Maps a string to an identifier with a dummy span.
     pub fn from_str(string: &str) -> Ident {
         Ident::with_dummy_span(Symbol::intern(string))
@@ -803,27 +804,10 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
-    /// Transforms an underscore identifier into one with the same name, but
-    /// gensymed. Leaves non-underscore identifiers unchanged.
-    pub fn gensym_if_underscore(self) -> Ident {
-        if self.name == kw::Underscore {
-            let name = with_interner(|interner| interner.gensymed(self.name));
-            Ident::new(name, self.span)
-        } else {
-            self
-        }
-    }
-
     /// Convert the name to a `LocalInternedString`. This is a slowish
     /// operation because it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
-    }
-
-    /// Convert the name to an `InternedString`. This is a slowish operation
-    /// because it requires locking the symbol interner.
-    pub fn as_interned_str(self) -> InternedString {
-        self.name.as_interned_str()
     }
 }
 
@@ -876,36 +860,19 @@ impl UseSpecializedDecodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string. A gensym is a symbol that is
-/// never equal to any other symbol.
+/// An interned string.
 ///
-/// Conceptually, a gensym can be thought of as a normal symbol with an
-/// invisible unique suffix. Gensyms are useful when creating new identifiers
-/// that must not match any existing identifiers, e.g. during macro expansion
-/// and syntax desugaring. Because gensyms should always be identifiers, all
-/// gensym operations are on `Ident` rather than `Symbol`. (Indeed, in the
-/// future the gensym-ness may be moved from `Symbol` to hygiene data.)
-///
-/// Examples:
-/// ```
-/// assert_eq!(Ident::from_str("_"), Ident::from_str("_"))
-/// assert_ne!(Ident::from_str("_").gensym_if_underscore(), Ident::from_str("_"))
-/// assert_ne!(
-///     Ident::from_str("_").gensym_if_underscore(),
-///     Ident::from_str("_").gensym_if_underscore(),
-/// )
-/// ```
-/// Internally, a symbol is implemented as an index, and all operations
+/// Internally, a `Symbol` is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
-/// of `newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
-/// because `newtype_index!` reserves the last 256 values for tagging purposes.
+/// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
+/// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
 ///
-/// Note that `Symbol` cannot directly be a `newtype_index!` because it
+/// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!` because it
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct SymbolIndex { .. }
 }
 
@@ -927,15 +894,6 @@ impl Symbol {
         })
     }
 
-    /// Access two symbols' chars. This is a slowish operation because it
-    /// requires locking the symbol interner, but it is faster than calling
-    /// `with()` twice.
-    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: Symbol, f: F) -> R {
-        with_interner(|interner| {
-            f(interner.get(self), interner.get(other))
-        })
-    }
-
     /// Convert to a `LocalInternedString`. This is a slowish operation because
     /// it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
@@ -946,14 +904,6 @@ impl Symbol {
         })
     }
 
-    /// Convert to an `InternedString`. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn as_interned_str(self) -> InternedString {
-        with_interner(|interner| InternedString {
-            symbol: interner.interned(self)
-        })
-    }
-
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }
@@ -961,24 +911,19 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_gensymed = with_interner(|interner| interner.is_gensymed(*self));
-        if is_gensymed {
-            write!(f, "{}({:?})", self, self.0)
-        } else {
-            write!(f, "{}", self)
-        }
+        self.with(|str| fmt::Debug::fmt(&str, f))
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
+        self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
 
 impl Encodable for Symbol {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
+        self.with(|string| s.emit_str(string))
     }
 }
 
@@ -989,15 +934,11 @@ impl Decodable for Symbol {
 }
 
 // The `&'static str`s in this type actually point into the arena.
-//
-// Note that normal symbols are indexed upward from 0, and gensyms are indexed
-// downward from SymbolIndex::MAX_AS_U32.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
     names: FxHashMap<&'static str, Symbol>,
     strings: Vec<&'static str>,
-    gensyms: Vec<Symbol>,
 }
 
 impl Interner {
@@ -1030,34 +971,10 @@ impl Interner {
         self.names.insert(string, name);
         name
     }
-
-    fn interned(&self, symbol: Symbol) -> Symbol {
-        if (symbol.0.as_usize()) < self.strings.len() {
-            symbol
-        } else {
-            self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]
-        }
-    }
-
-    fn gensymed(&mut self, symbol: Symbol) -> Symbol {
-        self.gensyms.push(symbol);
-        Symbol::new(SymbolIndex::MAX_AS_U32 - self.gensyms.len() as u32 + 1)
-    }
-
-    fn is_gensymed(&mut self, symbol: Symbol) -> bool {
-        symbol.0.as_usize() >= self.strings.len()
-    }
-
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
-        match self.strings.get(symbol.0.as_usize()) {
-            Some(string) => string,
-            None => {
-                let symbol = self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize];
-                self.strings[symbol.0.as_usize()]
-            }
-        }
+        self.strings[symbol.0.as_usize()]
     }
 }
 
@@ -1088,11 +1005,11 @@ pub mod sym {
 
 impl Symbol {
     fn is_used_keyword_2018(self) -> bool {
-        self == kw::Dyn
+        self >= kw::Async && self <= kw::Dyn
     }
 
     fn is_unused_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Try
+        self == kw::Try
     }
 
     /// Used for sanity checking rustdoc keyword sections.
@@ -1165,9 +1082,9 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
-/// An alternative to `Symbol` and `InternedString`, useful when the chars
-/// within the symbol need to be accessed. It is best used for temporary
-/// values.
+/// An alternative to `Symbol`, useful when the chars within the symbol need to
+/// be accessed. It deliberately has limited functionality and should only be
+/// used for temporary values.
 ///
 /// Because the interner outlives any thread which uses this type, we can
 /// safely treat `string` which points to interner data, as an immortal string,
@@ -1176,7 +1093,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 // FIXME: ensure that the interner outlives any thread which uses
 // `LocalInternedString`, by creating a new thread right after constructing the
 // interner.
-#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialOrd, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
 }
@@ -1194,30 +1111,6 @@ where
 impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for LocalInternedString {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
-    }
-}
-
-impl std::cmp::PartialEq<LocalInternedString> for str {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a str {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        *self == other.string
-    }
-}
-
-impl std::cmp::PartialEq<LocalInternedString> for String {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> std::cmp::PartialEq<LocalInternedString> for &'a String {
-    fn eq(&self, other: &LocalInternedString) -> bool {
-        *self == other.string
     }
 }
 
@@ -1239,98 +1132,5 @@ impl fmt::Debug for LocalInternedString {
 impl fmt::Display for LocalInternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
-    }
-}
-
-/// An alternative to `Symbol` that is focused on string contents. It has two
-/// main differences to `Symbol`.
-///
-/// First, its implementations of `Hash`, `PartialOrd` and `Ord` work with the
-/// string chars rather than the symbol integer. This is useful when hash
-/// stability is required across compile sessions, or a guaranteed sort
-/// ordering is required.
-///
-/// Second, gensym-ness is irrelevant. E.g.:
-/// ```
-/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
-/// assert_eq!(Symbol::gensym("x").as_interned_str(), Symbol::gensym("x").as_interned_str())
-/// ```
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct InternedString {
-    symbol: Symbol,
-}
-
-impl InternedString {
-    /// Maps a string to its interned representation.
-    pub fn intern(string: &str) -> Self {
-        InternedString {
-            symbol: Symbol::intern(string)
-        }
-    }
-
-    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        self.symbol.with(f)
-    }
-
-    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: &InternedString, f: F) -> R {
-        self.symbol.with2(other.symbol, f)
-    }
-
-    pub fn as_symbol(self) -> Symbol {
-        self.symbol
-    }
-
-    /// Convert to a `LocalInternedString`. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn as_str(self) -> LocalInternedString {
-        self.symbol.as_str()
-    }
-}
-
-impl Hash for InternedString {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.with(|str| str.hash(state))
-    }
-}
-
-impl PartialOrd<InternedString> for InternedString {
-    fn partial_cmp(&self, other: &InternedString) -> Option<Ordering> {
-        if self.symbol == other.symbol {
-            return Some(Ordering::Equal);
-        }
-        self.with2(other, |self_str, other_str| self_str.partial_cmp(other_str))
-    }
-}
-
-impl Ord for InternedString {
-    fn cmp(&self, other: &InternedString) -> Ordering {
-        if self.symbol == other.symbol {
-            return Ordering::Equal;
-        }
-        self.with2(other, |self_str, other_str| self_str.cmp(other_str))
-    }
-}
-
-impl fmt::Debug for InternedString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Debug::fmt(&str, f))
-    }
-}
-
-impl fmt::Display for InternedString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Display::fmt(&str, f))
-    }
-}
-
-impl Decodable for InternedString {
-    fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(InternedString::intern(&d.read_str()?))
-    }
-}
-
-impl Encodable for InternedString {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.with(|string| s.emit_str(string))
     }
 }

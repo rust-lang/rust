@@ -79,6 +79,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             ConstValue::Unevaluated(..) => bug!("unevaluated constant in `OperandRef::from_const`"),
             ConstValue::Param(_) => bug!("encountered a ConstValue::Param in codegen"),
             ConstValue::Infer(_) => bug!("encountered a ConstValue::Infer in codegen"),
+            ConstValue::Bound(..) => bug!("encountered a ConstValue::Bound in codegen"),
             ConstValue::Placeholder(_) => bug!("encountered a ConstValue::Placeholder in codegen"),
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {

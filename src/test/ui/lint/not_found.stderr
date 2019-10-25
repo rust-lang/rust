@@ -16,5 +16,5 @@ warning: unknown lint: `Warnings`
   --> $DIR/not_found.rs:10:8
    |
 LL | #[deny(Warnings)]
-   |        ^^^^^^^^ help: did you mean: `warnings`
+   |        ^^^^^^^^ help: did you mean (notice the capitalization): `warnings`
 

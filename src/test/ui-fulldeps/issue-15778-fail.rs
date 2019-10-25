@@ -4,5 +4,6 @@
 
 #![feature(plugin)] //~ ERROR crate is not marked with #![crate_okay]
 #![plugin(lint_for_crate)]
+//~^ WARN use of deprecated attribute `plugin`
 
 pub fn main() { }

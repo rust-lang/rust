@@ -1,5 +1,8 @@
 // Type ascription is unstable
 
-fn main() {
+#[cfg(FALSE)]
+fn foo() {
     let a = 10: u8; //~ ERROR type ascription is experimental
 }
+
+fn main() {}

@@ -1,0 +1,46 @@
+error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
+  --> $DIR/feature-gate-object_safe_for_dispatch.rs:18:1
+   |
+LL | fn takes_non_object_safe_ref<T>(obj: &dyn NonObjectSafe1) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe1` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error[E0038]: the trait `NonObjectSafe2` cannot be made into an object
+  --> $DIR/feature-gate-object_safe_for_dispatch.rs:22:1
+   |
+LL |     fn static_fn() {}
+   |        --------- associated function `static_fn` has no `self` parameter
+...
+LL | fn return_non_object_safe_ref() -> &'static dyn NonObjectSafe2 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe2` cannot be made into an object
+
+error[E0038]: the trait `NonObjectSafe3` cannot be made into an object
+  --> $DIR/feature-gate-object_safe_for_dispatch.rs:27:1
+   |
+LL |     fn foo<T>(&self);
+   |        --- method `foo` has generic type parameters
+...
+LL | fn takes_non_object_safe_box(obj: Box<dyn NonObjectSafe3>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe3` cannot be made into an object
+
+error[E0038]: the trait `NonObjectSafe4` cannot be made into an object
+  --> $DIR/feature-gate-object_safe_for_dispatch.rs:31:1
+   |
+LL |     fn foo(&self, &Self);
+   |        --- method `foo` references the `Self` type in its parameters or return type
+...
+LL | fn return_non_object_safe_rc() -> std::rc::Rc<dyn NonObjectSafe4> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonObjectSafe4` cannot be made into an object
+
+error[E0038]: the trait `NonObjectSafe1` cannot be made into an object
+  --> $DIR/feature-gate-object_safe_for_dispatch.rs:38:6
+   |
+LL | impl Trait for dyn NonObjectSafe1 {}
+   |      ^^^^^ the trait `NonObjectSafe1` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,33 @@
+error: pattern on wrong side of `@`
+  --> $DIR/intersection-patterns.rs:13:9
+   |
+LL |         Some(x) @ y => {}
+   |         -------^^^-
+   |         |         |
+   |         |         binding on the right, should be on the left
+   |         pattern on the left, should be on the right
+   |         help: switch the order: `y @ Some(x)`
+
+error: left-hand side of `@` must be a binding
+  --> $DIR/intersection-patterns.rs:23:9
+   |
+LL |         Some(x) @ Some(y) => {}
+   |         -------^^^-------
+   |         |         |
+   |         |         also a pattern
+   |         interpreted as a pattern, not a binding
+   |
+   = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
+
+error: pattern on wrong side of `@`
+  --> $DIR/intersection-patterns.rs:32:9
+   |
+LL |         1 ..= 5 @ e => {}
+   |         -------^^^-
+   |         |         |
+   |         |         binding on the right, should be on the left
+   |         pattern on the left, should be on the right
+   |         help: switch the order: `e @ 1 ..=5`
+
+error: aborting due to 3 previous errors
+

@@ -5,7 +5,6 @@ use crate::spec::{self, HasTargetSpec};
 mod aarch64;
 mod amdgpu;
 mod arm;
-mod asmjs;
 mod hexagon;
 mod mips;
 mod mips64;
@@ -22,19 +21,12 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 mod wasm32;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum IgnoreMode {
-    /// C-variadic arguments.
-    CVarArgs,
-    /// A zero-sized type.
-    Zst,
-}
+mod wasm32_bindgen_compat;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PassMode {
-    /// Ignore the argument (useful for empty structs and C-variadic args).
-    Ignore(IgnoreMode),
+    /// Ignore the argument.
+    Ignore,
     /// Pass the argument directly.
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
@@ -490,7 +482,7 @@ impl<'a, Ty> ArgType<'a, Ty> {
 
     pub fn is_ignore(&self) -> bool {
         match self.mode {
-            PassMode::Ignore(_) => true,
+            PassMode::Ignore => true,
             _ => false
         }
     }
@@ -565,14 +557,6 @@ impl<'a, Ty> FnType<'a, Ty> {
             "powerpc" => powerpc::compute_abi_info(cx, self),
             "powerpc64" => powerpc64::compute_abi_info(cx, self),
             "s390x" => s390x::compute_abi_info(cx, self),
-            "asmjs" => asmjs::compute_abi_info(cx, self),
-            "wasm32" => {
-                if cx.target_spec().llvm_target.contains("emscripten") {
-                    asmjs::compute_abi_info(cx, self)
-                } else {
-                    wasm32::compute_abi_info(self)
-                }
-            }
             "msp430" => msp430::compute_abi_info(self),
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
@@ -581,6 +565,9 @@ impl<'a, Ty> FnType<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" => riscv::compute_abi_info(self, 32),
             "riscv64" => riscv::compute_abi_info(self, 64),
+            "wasm32" if cx.target_spec().target_os != "emscripten"
+                => wasm32_bindgen_compat::compute_abi_info(self),
+            "wasm32" | "asmjs" => wasm32::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a))
         }
 

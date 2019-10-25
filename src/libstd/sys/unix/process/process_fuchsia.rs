@@ -1,11 +1,13 @@
+use crate::convert::TryInto;
 use crate::io;
+use crate::fmt;
 use crate::mem;
 use crate::ptr;
 
 use crate::sys::process::zircon::{Handle, zx_handle_t};
 use crate::sys::process::process_common::*;
 
-use libc::size_t;
+use libc::{c_int, size_t};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -160,7 +162,7 @@ impl Process {
             return Err(io::Error::new(io::ErrorKind::InvalidData,
                                       "Failed to get exit status of process"));
         }
-        Ok(ExitStatus::new(proc_info.rec.return_code))
+        Ok(ExitStatus(proc_info.return_code))
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
@@ -190,6 +192,36 @@ impl Process {
             return Err(io::Error::new(io::ErrorKind::InvalidData,
                                       "Failed to get exit status of process"));
         }
-        Ok(Some(ExitStatus::new(proc_info.rec.return_code)))
+        Ok(Some(ExitStatus(proc_info.return_code)))
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatus(i64);
+
+impl ExitStatus {
+    pub fn success(&self) -> bool {
+        self.code() == Some(0)
+    }
+
+    pub fn code(&self) -> Option<i32> {
+        // FIXME: support extracting return code as an i64
+        self.0.try_into().ok()
+    }
+
+    pub fn signal(&self) -> Option<i32> {
+        None
+    }
+}
+
+impl From<c_int> for ExitStatus {
+    fn from(a: c_int) -> ExitStatus {
+        ExitStatus(a as i64)
+    }
+}
+
+impl fmt::Display for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "exit code: {}", self.0)
     }
 }

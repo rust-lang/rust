@@ -1,11 +1,9 @@
-warning: captured variable cannot escape `FnMut` closure body
-  --> $DIR/issue-49824.rs:10:9
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-49824.rs:4:9
    |
 LL |       || {
    |        - inferred to be a `FnMut` closure
 LL | /         || {
-LL | |
-LL | |
 LL | |
 LL | |             let _y = &mut x;
 LL | |         }
@@ -13,21 +11,6 @@ LL | |         }
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
-   = note: for more information, try `rustc --explain E0729`
-
-error: compilation successful
-  --> $DIR/issue-49824.rs:6:1
-   |
-LL | / fn main() {
-LL | |
-LL | |     let mut x = 0;
-LL | |     || {
-...  |
-LL | |     };
-LL | | }
-   | |_^
 
 error: aborting due to previous error
 

@@ -2,7 +2,6 @@
 
 use rustc::hir;
 use rustc::hir::map as hir_map;
-use rustc::hir::map::blocks;
 use rustc::hir::print as pprust_hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::Session;
@@ -10,9 +9,6 @@ use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_interface::util::ReplaceBodyWithLoop;
-use rustc_ast_borrowck as borrowck;
-use rustc_ast_borrowck::graphviz as borrowck_dot;
-use rustc_ast_borrowck::cfg::{self, graphviz::LabelledCFG};
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;
@@ -20,11 +16,9 @@ use syntax::mut_visit::MutVisitor;
 use syntax::print::{pprust};
 use syntax_pos::FileName;
 
-use graphviz as dot;
-
 use std::cell::Cell;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::Write;
 use std::option;
 use std::path::Path;
 use std::str::FromStr;
@@ -49,20 +43,10 @@ pub enum PpSourceMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpFlowGraphMode {
-    Default,
-    /// Drops the labels from the edges in the flowgraph output. This
-    /// is mostly for use in the -Z unpretty flowgraph run-make tests,
-    /// since the labels are largely uninteresting in those cases and
-    /// have become a pain to maintain.
-    UnlabelledEdges,
-}
-#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmHir(PpSourceMode),
     PpmHirTree(PpSourceMode),
-    PpmFlowGraph(PpFlowGraphMode),
     PpmMir,
     PpmMirCFG,
 }
@@ -80,15 +64,14 @@ impl PpMode {
             PpmHir(_) |
             PpmHirTree(_) |
             PpmMir |
-            PpmMirCFG |
-            PpmFlowGraph(_) => true,
+            PpmMirCFG => true,
             PpmSource(PpmTyped) => panic!("invalid state"),
         }
     }
 
     pub fn needs_analysis(&self) -> bool {
         match *self {
-            PpmMir | PpmMirCFG | PpmFlowGraph(_) => true,
+            PpmMir | PpmMirCFG => true,
             _ => false,
         }
     }
@@ -114,13 +97,11 @@ pub fn parse_pretty(sess: &Session,
         ("hir-tree", true) => PpmHirTree(PpmNormal),
         ("mir", true) => PpmMir,
         ("mir-cfg", true) => PpmMirCFG,
-        ("flowgraph", true) => PpmFlowGraph(PpFlowGraphMode::Default),
-        ("flowgraph,unlabelled", true) => PpmFlowGraph(PpFlowGraphMode::UnlabelledEdges),
         _ => {
             if extended {
                 sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
-                                     `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
-                                     `identified`, `expanded,identified`, `everybody_loops`, \
+                                     `expanded`, `identified`, `expanded,identified`, \
+                                     `expanded,hygiene`, `everybody_loops`, \
                                      `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
                                      `mir` or `mir-cfg`; got {}",
                                     name));
@@ -501,24 +482,6 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     }
 }
 
-fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
-    let print_loans = sess.opts.debugging_opts.flowgraph_print_loans;
-    let print_moves = sess.opts.debugging_opts.flowgraph_print_moves;
-    let print_assigns = sess.opts.debugging_opts.flowgraph_print_assigns;
-    let print_all = sess.opts.debugging_opts.flowgraph_print_all;
-    let mut variants = Vec::new();
-    if print_all || print_loans {
-        variants.push(borrowck_dot::Loans);
-    }
-    if print_all || print_moves {
-        variants.push(borrowck_dot::Moves);
-    }
-    if print_all || print_assigns {
-        variants.push(borrowck_dot::Assigns);
-    }
-    variants
-}
-
 #[derive(Clone, Debug)]
 pub enum UserIdentifiedItem {
     ItemViaNode(ast::NodeId),
@@ -606,81 +569,6 @@ impl UserIdentifiedItem {
 
         assert!(seen == 1);
         return saw_node;
-    }
-}
-
-fn print_flowgraph<'tcx, W: Write>(
-    variants: Vec<borrowck_dot::Variant>,
-    tcx: TyCtxt<'tcx>,
-    code: blocks::Code<'tcx>,
-    mode: PpFlowGraphMode,
-    mut out: W,
-) -> io::Result<()> {
-    let body_id = match code {
-        blocks::Code::Expr(expr) => {
-            // Find the function this expression is from.
-            let mut hir_id = expr.hir_id;
-            loop {
-                let node = tcx.hir().get(hir_id);
-                if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
-                    break n.body();
-                }
-                let parent = tcx.hir().get_parent_node(hir_id);
-                assert_ne!(hir_id, parent);
-                hir_id = parent;
-            }
-        }
-        blocks::Code::FnLike(fn_like) => fn_like.body(),
-    };
-    let body = tcx.hir().body(body_id);
-    let cfg = cfg::CFG::new(tcx, &body);
-    let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
-    let hir_id = code.id();
-    // We have to disassemble the hir_id because name must be ASCII
-    // alphanumeric. This does not appear in the rendered graph, so it does not
-    // have to be user friendly.
-    let name = format!(
-        "hir_id_{}_{}",
-        hir_id.owner.index(),
-        hir_id.local_id.index(),
-    );
-    let lcfg = LabelledCFG {
-        tcx,
-        cfg: &cfg,
-        name,
-        labelled_edges,
-    };
-
-    match code {
-        _ if variants.is_empty() => {
-            let r = dot::render(&lcfg, &mut out);
-            return expand_err_details(r);
-        }
-        blocks::Code::Expr(_) => {
-            tcx.sess.err("--pretty flowgraph with -Z flowgraph-print annotations requires \
-                          fn-like node id.");
-            return Ok(());
-        }
-        blocks::Code::FnLike(fn_like) => {
-            let (bccx, analysis_data) =
-                borrowck::build_borrowck_dataflow_data_for_fn(tcx, fn_like.body(), &cfg);
-
-            let lcfg = borrowck_dot::DataflowLabeller {
-                inner: lcfg,
-                variants,
-                borrowck_ctxt: &bccx,
-                analysis_data: &analysis_data,
-            };
-            let r = dot::render(&lcfg, &mut out);
-            return expand_err_details(r);
-        }
-    }
-
-    fn expand_err_details(r: io::Result<()>) -> io::Result<()> {
-        r.map_err(|ioerr| {
-            io::Error::new(io::ErrorKind::Other,
-                           format!("graphviz::render failed: {}", ioerr))
-        })
     }
 }
 
@@ -872,55 +760,17 @@ fn print_with_analysis(
 
     tcx.analysis(LOCAL_CRATE)?;
 
-    let mut print = || match ppm {
+    match ppm {
         PpmMir | PpmMirCFG => {
-            if let Some(nodeid) = nodeid {
-                let def_id = tcx.hir().local_def_id_from_node_id(nodeid);
-                match ppm {
-                    PpmMir => write_mir_pretty(tcx, Some(def_id), &mut out),
-                    PpmMirCFG => write_mir_graphviz(tcx, Some(def_id), &mut out),
-                    _ => unreachable!(),
-                }?;
-            } else {
-                match ppm {
-                    PpmMir => write_mir_pretty(tcx, None, &mut out),
-                    PpmMirCFG => write_mir_graphviz(tcx, None, &mut out),
-                    _ => unreachable!(),
-                }?;
-            }
-            Ok(())
-        }
-        PpmFlowGraph(mode) => {
-            let nodeid =
-                nodeid.expect("`pretty flowgraph=..` needs NodeId (int) or unique path \
-                                suffix (b::c::d)");
-            let hir_id = tcx.hir().node_to_hir_id(nodeid);
-            let node = tcx.hir().find(hir_id).unwrap_or_else(|| {
-                tcx.sess.fatal(&format!("`--pretty=flowgraph` couldn't find ID: {}", nodeid))
-            });
-
-            match blocks::Code::from_node(&tcx.hir(), hir_id) {
-                Some(code) => {
-                    let variants = gather_flowgraph_variants(tcx.sess);
-
-                    let out: &mut dyn Write = &mut out;
-
-                    print_flowgraph(variants, tcx, code, mode, out)
-                }
-                None => {
-                    let message = format!("`--pretty=flowgraph` needs block, fn, or method; \
-                                            got {:?}",
-                                            node);
-
-                    let hir_id = tcx.hir().node_to_hir_id(nodeid);
-                    tcx.sess.span_fatal(tcx.hir().span(hir_id), &message)
-                }
+            let def_id = nodeid.map(|nid| tcx.hir().local_def_id_from_node_id(nid));
+            match ppm {
+                PpmMir => write_mir_pretty(tcx, def_id, &mut out),
+                PpmMirCFG => write_mir_graphviz(tcx, def_id, &mut out),
+                _ => unreachable!(),
             }
         }
         _ => unreachable!(),
-    };
-
-    print().unwrap();
+    }.unwrap();
 
     write_output(out, ofile);
 

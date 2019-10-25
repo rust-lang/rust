@@ -26,7 +26,7 @@ use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
     VariableKind, FunctionDebugContextData, type_names};
 
@@ -36,7 +36,7 @@ use std::ffi::{CStr, CString};
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc_codegen_ssa::traits::*;
 
@@ -127,20 +127,20 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         if cx.sess().target.target.options.is_like_osx ||
            cx.sess().target.target.options.is_like_android {
             llvm::LLVMRustAddModuleFlag(cx.llmod,
-                                        "Dwarf Version\0".as_ptr() as *const _,
+                                        "Dwarf Version\0".as_ptr().cast(),
                                         2)
         }
 
         // Indicate that we want CodeView debug information on MSVC
         if cx.sess().target.target.options.is_like_msvc {
             llvm::LLVMRustAddModuleFlag(cx.llmod,
-                                        "CodeView\0".as_ptr() as *const _,
+                                        "CodeView\0".as_ptr().cast(),
                                         1)
         }
 
         // Prevent bitcode readers from deleting the debug info.
         let ptr = "Debug Info Version\0".as_ptr();
-        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr as *const _,
+        llvm::LLVMRustAddModuleFlag(cx.llmod, ptr.cast(),
                                     llvm::LLVMRustDebugMetadataVersion());
     };
 }
@@ -490,7 +490,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         fn get_parameter_names(cx: &CodegenCx<'_, '_>,
                                generics: &ty::Generics)
-                               -> Vec<InternedString> {
+                               -> Vec<Symbol> {
             let mut names = generics.parent.map_or(vec![], |def_id| {
                 get_parameter_names(cx, cx.tcx.generics_of(def_id))
             });

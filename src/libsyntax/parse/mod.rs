@@ -1,40 +1,33 @@
 //! The main parser interface.
 
-use crate::ast::{self, CrateConfig, NodeId};
-use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use crate::source_map::{SourceMap, FilePathMapping};
-use crate::feature_gate::UnstableFeatures;
-use crate::parse::parser::Parser;
-use crate::parse::parser::emit_unclosed_delims;
-use crate::parse::token::TokenKind;
-use crate::tokenstream::{TokenStream, TokenTree};
+use crate::ast;
+use crate::parse::parser::{Parser, emit_unclosed_delims};
+use crate::parse::token::Nonterminal;
+use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
-use crate::symbol::Symbol;
+use crate::sess::ParseSess;
 
-use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use errors::{FatalError, Level, Diagnostic, DiagnosticBuilder};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
-use rustc_data_structures::sync::{Lrc, Lock, Once};
-use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
-use syntax_pos::edition::Edition;
-use syntax_pos::hygiene::ExpnId;
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::{Span, SourceFile, FileName};
 
 use std::borrow::Cow;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str;
+
+use log::info;
 
 #[cfg(test)]
 mod tests;
 
 #[macro_use]
 pub mod parser;
-pub mod attr;
 pub mod lexer;
 pub mod token;
 
 crate mod classify;
-crate mod diagnostics;
 crate mod literal;
 crate mod unescape_error_reporting;
 
@@ -44,110 +37,6 @@ pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 // (See also the comment on `DiagnosticBuilderInner`.)
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(PResult<'_, bool>, 16);
-
-/// Collected spans during parsing for places where a certain feature was
-/// used and should be feature gated accordingly in `check_crate`.
-#[derive(Default)]
-pub struct GatedSpans {
-    /// Spans collected for gating `let_chains`, e.g. `if a && let b = c {}`.
-    pub let_chains: Lock<Vec<Span>>,
-    /// Spans collected for gating `async_closure`, e.g. `async || ..`.
-    pub async_closure: Lock<Vec<Span>>,
-    /// Spans collected for gating `yield e?` expressions (`generators` gate).
-    pub yields: Lock<Vec<Span>>,
-    /// Spans collected for gating `or_patterns`, e.g. `Some(Foo | Bar)`.
-    pub or_patterns: Lock<Vec<Span>>,
-}
-
-/// Info about a parsing session.
-pub struct ParseSess {
-    pub span_diagnostic: Handler,
-    pub unstable_features: UnstableFeatures,
-    pub config: CrateConfig,
-    pub edition: Edition,
-    pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
-    /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
-    pub raw_identifier_spans: Lock<Vec<Span>>,
-    /// Used to determine and report recursive module inclusions.
-    included_mod_stack: Lock<Vec<PathBuf>>,
-    source_map: Lrc<SourceMap>,
-    pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
-    /// Contains the spans of block expressions that could have been incomplete based on the
-    /// operation token that followed it, but that the parser cannot identify without further
-    /// analysis.
-    pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
-    pub injected_crate_name: Once<Symbol>,
-    pub gated_spans: GatedSpans,
-}
-
-impl ParseSess {
-    pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(
-            ColorConfig::Auto,
-            true,
-            None,
-            Some(cm.clone()),
-        );
-        ParseSess::with_span_handler(handler, cm)
-    }
-
-    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
-        Self {
-            span_diagnostic: handler,
-            unstable_features: UnstableFeatures::from_environment(),
-            config: FxHashSet::default(),
-            edition: ExpnId::root().expn_data().edition,
-            missing_fragment_specifiers: Lock::new(FxHashSet::default()),
-            raw_identifier_spans: Lock::new(Vec::new()),
-            included_mod_stack: Lock::new(vec![]),
-            source_map,
-            buffered_lints: Lock::new(vec![]),
-            ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-            injected_crate_name: Once::new(),
-            gated_spans: GatedSpans::default(),
-        }
-    }
-
-    #[inline]
-    pub fn source_map(&self) -> &SourceMap {
-        &self.source_map
-    }
-
-    pub fn buffer_lint<S: Into<MultiSpan>>(&self,
-        lint_id: BufferedEarlyLintId,
-        span: S,
-        id: NodeId,
-        msg: &str,
-    ) {
-        self.buffered_lints.with_lock(|buffered_lints| {
-            buffered_lints.push(BufferedEarlyLint{
-                span: span.into(),
-                id,
-                msg: msg.into(),
-                lint_id,
-            });
-        });
-    }
-
-    /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
-    /// parser to continue parsing the following operation as part of the same expression.
-    pub fn expr_parentheses_needed(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        span: Span,
-        alt_snippet: Option<String>,
-    ) {
-        if let Some(snippet) = self.source_map().span_to_snippet(span).ok().or(alt_snippet) {
-            err.span_suggestion(
-                span,
-                "parentheses are required to parse this as an expression",
-                format!("({})", snippet),
-                Applicability::MachineApplicable,
-            );
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct Directory<'a> {
@@ -382,26 +271,131 @@ pub fn stream_to_parser_with_base_dir<'a>(
     Parser::new(sess, stream, Some(base_dir), true, false, None)
 }
 
-/// A sequence separator.
-pub struct SeqSep {
-    /// The separator token.
-    pub sep: Option<TokenKind>,
-    /// `true` if a trailing separator is allowed.
-    pub trailing_sep_allowed: bool,
+// NOTE(Centril): The following probably shouldn't be here but it acknowledges the
+// fact that architecturally, we are using parsing (read on below to understand why).
+
+pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> TokenStream {
+    // A `Nonterminal` is often a parsed AST item. At this point we now
+    // need to convert the parsed AST to an actual token stream, e.g.
+    // un-parse it basically.
+    //
+    // Unfortunately there's not really a great way to do that in a
+    // guaranteed lossless fashion right now. The fallback here is to just
+    // stringify the AST node and reparse it, but this loses all span
+    // information.
+    //
+    // As a result, some AST nodes are annotated with the token stream they
+    // came from. Here we attempt to extract these lossless token streams
+    // before we fall back to the stringification.
+    let tokens = match *nt {
+        Nonterminal::NtItem(ref item) => {
+            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+        }
+        Nonterminal::NtTraitItem(ref item) => {
+            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+        }
+        Nonterminal::NtImplItem(ref item) => {
+            prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
+        }
+        Nonterminal::NtIdent(ident, is_raw) => {
+            Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
+        }
+        Nonterminal::NtLifetime(ident) => {
+            Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
+        }
+        Nonterminal::NtTT(ref tt) => {
+            Some(tt.clone().into())
+        }
+        _ => None,
+    };
+
+    // FIXME(#43081): Avoid this pretty-print + reparse hack
+    let source = pprust::nonterminal_to_string(nt);
+    let filename = FileName::macro_expansion_source_code(&source);
+    let tokens_for_real = parse_stream_from_source_str(filename, source, sess, Some(span));
+
+    // During early phases of the compiler the AST could get modified
+    // directly (e.g., attributes added or removed) and the internal cache
+    // of tokens my not be invalidated or updated. Consequently if the
+    // "lossless" token stream disagrees with our actual stringification
+    // (which has historically been much more battle-tested) then we go
+    // with the lossy stream anyway (losing span information).
+    //
+    // Note that the comparison isn't `==` here to avoid comparing spans,
+    // but it *also* is a "probable" equality which is a pretty weird
+    // definition. We mostly want to catch actual changes to the AST
+    // like a `#[cfg]` being processed or some weird `macro_rules!`
+    // expansion.
+    //
+    // What we *don't* want to catch is the fact that a user-defined
+    // literal like `0xf` is stringified as `15`, causing the cached token
+    // stream to not be literal `==` token-wise (ignoring spans) to the
+    // token stream we got from stringification.
+    //
+    // Instead the "probably equal" check here is "does each token
+    // recursively have the same discriminant?" We basically don't look at
+    // the token values here and assume that such fine grained token stream
+    // modifications, including adding/removing typically non-semantic
+    // tokens such as extra braces and commas, don't happen.
+    if let Some(tokens) = tokens {
+        if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
+            return tokens
+        }
+        info!("cached tokens found, but they're not \"probably equal\", \
+                going with stringified version");
+    }
+    return tokens_for_real
 }
 
-impl SeqSep {
-    pub fn trailing_allowed(t: TokenKind) -> SeqSep {
-        SeqSep {
-            sep: Some(t),
-            trailing_sep_allowed: true,
-        }
+fn prepend_attrs(
+    sess: &ParseSess,
+    attrs: &[ast::Attribute],
+    tokens: Option<&tokenstream::TokenStream>,
+    span: syntax_pos::Span
+) -> Option<tokenstream::TokenStream> {
+    let tokens = tokens?;
+    if attrs.len() == 0 {
+        return Some(tokens.clone())
     }
+    let mut builder = tokenstream::TokenStreamBuilder::new();
+    for attr in attrs {
+        assert_eq!(attr.style, ast::AttrStyle::Outer,
+                   "inner attributes should prevent cached tokens from existing");
 
-    pub fn none() -> SeqSep {
-        SeqSep {
-            sep: None,
-            trailing_sep_allowed: false,
+        let source = pprust::attribute_to_string(attr);
+        let macro_filename = FileName::macro_expansion_source_code(&source);
+        if attr.is_sugared_doc {
+            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
+            builder.push(stream);
+            continue
         }
+
+        // synthesize # [ $path $tokens ] manually here
+        let mut brackets = tokenstream::TokenStreamBuilder::new();
+
+        // For simple paths, push the identifier directly
+        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
+            let ident = attr.path.segments[0].ident;
+            let token = token::Ident(ident.name, ident.as_str().starts_with("r#"));
+            brackets.push(tokenstream::TokenTree::token(token, ident.span));
+
+        // ... and for more complicated paths, fall back to a reparse hack that
+        // should eventually be removed.
+        } else {
+            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
+            brackets.push(stream);
+        }
+
+        brackets.push(attr.tokens.clone());
+
+        // The span we list here for `#` and for `[ ... ]` are both wrong in
+        // that it encompasses more than each token, but it hopefully is "good
+        // enough" for now at least.
+        builder.push(tokenstream::TokenTree::token(token::Pound, attr.span));
+        let delim_span = tokenstream::DelimSpan::from_single(attr.span);
+        builder.push(tokenstream::TokenTree::Delimited(
+            delim_span, token::DelimToken::Bracket, brackets.build().into()));
     }
+    builder.push(tokens.clone());
+    Some(builder.build())
 }

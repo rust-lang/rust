@@ -27,11 +27,14 @@ LL |     for _ in (std::ops::Range { start: 0, end: 10 }) {}
 error[E0423]: expected function, found struct `Foo`
   --> $DIR/E0423.rs:4:13
    |
+LL |     struct Foo { a: bool };
+   |     ---------------------- `Foo` defined here
+LL | 
 LL |     let f = Foo();
    |             ^^^
    |             |
    |             did you mean `Foo { /* fields */ }`?
-   |             help: a function with a similar name exists: `foo`
+   |             help: a function with a similar name exists (notice the capitalization): `foo`
 
 error[E0423]: expected value, found struct `T`
   --> $DIR/E0423.rs:14:8

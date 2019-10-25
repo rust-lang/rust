@@ -164,10 +164,8 @@ use crate::vec::Vec;
 ///
 /// fn example_func<A: TraitExample>(example_arg: A) {}
 ///
-/// fn main() {
-///     let example_string = String::from("example_string");
-///     example_func(&example_string);
-/// }
+/// let example_string = String::from("example_string");
+/// example_func(&example_string);
 /// ```
 ///
 /// There are two options that would work instead. The first would be to
