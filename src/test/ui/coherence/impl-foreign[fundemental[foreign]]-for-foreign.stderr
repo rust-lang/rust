@@ -1,0 +1,30 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:13:1
+   |
+LL | impl Remote1<Box<String>> for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference only types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:17:1
+   |
+LL | impl Remote1<Box<Rc<i32>>> for f64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference only types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:21:1
+   |
+LL | impl<T> Remote1<Box<Rc<T>>> for f32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference only types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0117`.

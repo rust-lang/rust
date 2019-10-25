@@ -494,7 +494,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 if sub_vid == self.for_vid_sub_root {
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
-                    return Err(TypeError::CyclicTy(self.root_ty));
+                    Err(TypeError::CyclicTy(self.root_ty))
                 } else {
                     match variables.probe(vid) {
                         TypeVariableValue::Known { value: u } => {
@@ -527,7 +527,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             let u = self.tcx().mk_ty_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
                                    vid, u);
-                            return Ok(u);
+                            Ok(u)
                         }
                     }
                 }
@@ -602,19 +602,26 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        match c {
-            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
+        match c.val {
+            ConstValue::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
-                match variable_table.probe_value(*vid).val.known() {
-                    Some(u) => {
-                        self.relate(&u, &u)
+                let var_value = variable_table.probe_value(vid);
+                match var_value.val {
+                    ConstVariableValue::Known { value: u } => self.relate(&u, &u),
+                    ConstVariableValue::Unknown { universe } => {
+                        if self.for_universe.can_name(universe) {
+                            Ok(c)
+                        } else {
+                            let new_var_id = variable_table.new_key(ConstVarValue {
+                                origin: var_value.origin,
+                                val: ConstVariableValue::Unknown { universe: self.for_universe },
+                            });
+                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
+                        }
                     }
-                    None => Ok(c),
                 }
             }
-            _ => {
-                relate::super_relate_consts(self, c, c)
-            }
+            _ => relate::super_relate_consts(self, c, c),
         }
     }
 }

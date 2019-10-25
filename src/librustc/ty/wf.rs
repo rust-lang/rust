@@ -380,16 +380,21 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // obligations that don't refer to Self and
                     // checking those
 
-                    let cause = self.cause(traits::MiscObligation);
-                    let component_traits =
-                        data.auto_traits().chain(data.principal_def_id());
-                    self.out.extend(
-                        component_traits.map(|did| traits::Obligation::new(
-                            cause.clone(),
-                            param_env,
-                            ty::Predicate::ObjectSafe(did)
-                        ))
-                    );
+                    let defer_to_coercion =
+                        self.infcx.tcx.features().object_safe_for_dispatch;
+
+                    if !defer_to_coercion {
+                        let cause = self.cause(traits::MiscObligation);
+                        let component_traits =
+                            data.auto_traits().chain(data.principal_def_id());
+                        self.out.extend(
+                            component_traits.map(|did| traits::Obligation::new(
+                                cause.clone(),
+                                param_env,
+                                ty::Predicate::ObjectSafe(did)
+                            ))
+                        );
+                    }
                 }
 
                 // Inference variables are the complicated case, since we don't

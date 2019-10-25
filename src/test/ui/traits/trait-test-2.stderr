@@ -33,6 +33,7 @@ LL |     (box 10 as Box<dyn bar>).dup();
    |      ^^^^^^ the trait `bar` cannot be made into an object
    |
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn bar>>` for `std::boxed::Box<{integer}>`
+   = note: required by cast to type `std::boxed::Box<dyn bar>`
 
 error: aborting due to 4 previous errors
 

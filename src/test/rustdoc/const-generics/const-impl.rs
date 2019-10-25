@@ -4,6 +4,7 @@
 
 #![crate_name = "foo"]
 
+#[derive(PartialEq, Eq)]
 pub enum Order {
     Sorted,
     Unsorted,

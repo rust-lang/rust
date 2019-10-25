@@ -131,7 +131,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir().name(tcx.hir().as_local_hir_id(def_id).unwrap()).as_interned_str()
+            tcx.hir().name(tcx.hir().as_local_hir_id(def_id).unwrap())
         };
 
         let r = match tcx.named_region(lifetime.hir_id) {
@@ -1274,8 +1274,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     span,
                     item.trait_ref().def_id(),
                     object_safety_violations
-                )
-                    .map(|mut err| err.emit());
+                ).emit();
                 return tcx.types.err;
             }
         }
@@ -2023,7 +2022,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                tcx.mk_ty_param(index, tcx.hir().name(hir_id).as_interned_str())
+                tcx.mk_ty_param(index, tcx.hir().name(hir_id))
             }
             Res::SelfTy(Some(_), None) => {
                 // `Self` in trait or type alias.
@@ -2204,7 +2203,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let item_def_id = tcx.hir().local_def_id(item_id);
             let generics = tcx.generics_of(item_def_id);
             let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
-            let name = tcx.hir().name(hir_id).as_interned_str();
+            let name = tcx.hir().name(hir_id);
             const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
         }
 

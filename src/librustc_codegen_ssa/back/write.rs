@@ -259,7 +259,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
-    let _prof_timer = cgcx.prof.generic_activity("codegen_run_lto");
+    let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
 
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
@@ -674,11 +674,11 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
-    pub fn name(&self) -> String {
+    fn profiling_event_id(&self) -> &'static str {
         match *self {
-            WorkItem::Optimize(ref m) => format!("optimize: {}", m.name),
-            WorkItem::CopyPostLtoArtifacts(ref m) => format!("copy post LTO artifacts: {}", m.name),
-            WorkItem::LTO(ref m) => format!("lto: {}", m.name()),
+            WorkItem::Optimize(_) => "codegen_module_optimize",
+            WorkItem::CopyPostLtoArtifacts(_) => "codegen_copy_artifacts_from_incr_cache",
+            WorkItem::LTO(_) => "codegen_module_perform_lto",
         }
     }
 }
@@ -1587,7 +1587,7 @@ fn spawn_work<B: ExtraBackendMethods>(
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = cgcx.prof.generic_activity(&work.name());
+            let _prof_timer = cgcx.prof.generic_activity(work.profiling_event_id());
             execute_work_item(&cgcx, work).ok()
         };
     });

@@ -14,7 +14,7 @@ use crate::util::common::{duration_to_secs_str, ErrorReported};
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
-    self, Lrc, Lock, OneThread, Once, RwLock, AtomicU64, AtomicUsize, Ordering,
+    self, Lrc, Lock, OneThread, Once, AtomicU64, AtomicUsize, Ordering,
     Ordering::SeqCst,
 };
 
@@ -77,9 +77,11 @@ pub struct Session {
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
 
-    // FIXME: `lint_store` and `buffered_lints` are not thread-safe,
-    // but are only used in a single thread.
-    pub lint_store: RwLock<lint::LintStore>,
+    /// This is intended to be used from a single thread.
+    ///
+    /// FIXME: there was a previous comment about this not being thread safe,
+    /// but it's not clear how or why that's the case. The LintBuffer itself is certainly thread
+    /// safe at least from a "Rust safety" standpoint.
     pub buffered_lints: Lock<Option<lint::LintBuffer>>,
 
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
@@ -1213,7 +1215,6 @@ fn build_session_(
         sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: RwLock::new(lint::LintStore::new()),
         buffered_lints: Lock::new(Some(Default::default())),
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),

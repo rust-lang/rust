@@ -15,15 +15,14 @@ use syntax::symbol::Symbol;
 
 use rustc::hir;
 use rustc::hir::intravisit;
-use rustc::hir::map as hir_map;
 use hir::Node;
 use rustc::lint::{LateContext, LintPass, LintArray, LateLintPass, LintContext};
-use rustc::ty;
-use syntax::{ast, source_map};
+use syntax::source_map;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box MissingWhitelistedAttrPass);
+    reg.lint_store.register_lints(&[&MISSING_WHITELISTED_ATTR]);
+    reg.lint_store.register_late_pass(|| box MissingWhitelistedAttrPass);
     reg.register_attribute(Symbol::intern("whitelisted_attr"), Whitelisted);
 }
 

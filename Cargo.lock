@@ -556,9 +556,9 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.3.24"
+version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "676a74b493d50ac33cacd83fd536597e6b52c0b46b9856f7b9c809d82fef4ac0"
+checksum = "f75b10a18fb53549fdd090846eb01c7f8593914494d1faabc4d3005c436e417a"
 dependencies = [
  "diff",
  "filetime",
@@ -1297,9 +1297,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6587d09be37fb98a11cb08b9000a3f592451c1b1b613ca69d949160e313a430a"
+checksum = "3cd9867f119b19fecb08cd5c326ad4488d7a1da4bf75b4d95d71db742525aaab"
 dependencies = [
  "autocfg",
  "compiler_builtins",
@@ -3494,6 +3494,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_interface",
+ "rustc_lint",
  "rustc_metadata",
  "rustc_mir",
  "rustc_plugin",
@@ -4156,9 +4157,8 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
- "hashbrown 0.6.1",
+ "hashbrown 0.6.2",
  "hermit-abi",
- "libc",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",

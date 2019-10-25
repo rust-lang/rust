@@ -72,7 +72,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::feature_gate;
-use syntax::symbol::{Symbol, InternedString, kw, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 
 pub struct AllArenas {
@@ -949,7 +949,7 @@ impl<'tcx> CommonTypes<'tcx> {
             f64: mk(Float(ast::FloatTy::F64)),
             self_param: mk(ty::Param(ty::ParamTy {
                 index: 0,
-                name: kw::SelfUpper.as_interned_str(),
+                name: kw::SelfUpper,
             })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
@@ -1027,9 +1027,11 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
-    cstore: &'tcx CrateStoreDyn,
+    cstore: Box<CrateStoreDyn>,
 
     pub sess: &'tcx Session,
+
+    pub lint_store: Lrc<lint::LintStore>,
 
     pub dep_graph: DepGraph,
 
@@ -1192,11 +1194,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        cstore: &'tcx CrateStoreDyn,
+        lint_store: Lrc<lint::LintStore>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
-        resolutions: ty::Resolutions,
+        resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
@@ -1210,34 +1212,28 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
         let dep_graph = hir.dep_graph.clone();
-        let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let cstore = resolutions.cstore;
+        let crates = cstore.crates_untracked();
+        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
-            let upstream_def_path_tables: Vec<(CrateNum, Lrc<_>)> = cstore
-                .crates_untracked()
+            let def_path_tables = crates
                 .iter()
                 .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
-                .collect();
-
-            let def_path_tables = || {
-                upstream_def_path_tables
-                    .iter()
-                    .map(|&(cnum, ref rc)| (cnum, &**rc))
-                    .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())))
-            };
+                .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())));
 
             // Precompute the capacity of the hashmap so we don't have to
             // re-allocate when populating it.
-            let capacity = def_path_tables().map(|(_, t)| t.size()).sum::<usize>();
+            let capacity = def_path_tables.clone().map(|(_, t)| t.size()).sum::<usize>();
 
             let mut map: FxHashMap<_, _> = FxHashMap::with_capacity_and_hasher(
                 capacity,
                 ::std::default::Default::default()
             );
 
-            for (cnum, def_path_table) in def_path_tables() {
+            for (cnum, def_path_table) in def_path_tables {
                 def_path_table.add_def_path_hashes_to(cnum, &mut map);
             }
 
@@ -1255,6 +1251,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         GlobalCtxt {
             sess: s,
+            lint_store,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
             interners,
@@ -1413,8 +1410,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Lrc<dyn Any> {
-        self.cstore.crate_data_as_rc_any(cnum)
+    pub fn crate_data_as_any(self, cnum: CrateNum) -> &'tcx dyn Any {
+        self.cstore.crate_data_as_any(cnum)
     }
 
     #[inline(always)]
@@ -1424,7 +1421,7 @@ impl<'tcx> TyCtxt<'tcx> {
         StableHashingContext::new(self.sess,
                                   krate,
                                   self.hir().definitions(),
-                                  self.cstore)
+                                  &*self.cstore)
     }
 
     // This method makes sure that we have a DepNode and a Fingerprint for
@@ -2552,7 +2549,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_ty_param(self, index: u32, name: InternedString) -> Ty<'tcx> {
+    pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { index, name: name }))
     }
 
@@ -2560,7 +2557,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_const_param(
         self,
         index: u32,
-        name: InternedString,
+        name: Symbol,
         ty: Ty<'tcx>
     ) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {

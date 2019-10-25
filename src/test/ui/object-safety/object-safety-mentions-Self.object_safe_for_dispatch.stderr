@@ -1,0 +1,27 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/object-safety-mentions-Self.rs:24:5
+   |
+LL |     fn bar(&self, x: &Self);
+   |        --- method `bar` references the `Self` type in its parameters or return type
+...
+LL |     t
+   |     ^ the trait `Bar` cannot be made into an object
+   |
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Bar>` for `&T`
+   = note: required by cast to type `&dyn Bar`
+
+error[E0038]: the trait `Baz` cannot be made into an object
+  --> $DIR/object-safety-mentions-Self.rs:30:5
+   |
+LL |     fn baz(&self) -> Self;
+   |        --- method `baz` references the `Self` type in its parameters or return type
+...
+LL |     t
+   |     ^ the trait `Baz` cannot be made into an object
+   |
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Baz>` for `&T`
+   = note: required by cast to type `&dyn Baz`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

@@ -12,7 +12,7 @@ use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSA
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
-use syntax::symbol::{InternedString, sym};
+use syntax::symbol::{Symbol, sym};
 
 use std::ops::Bound;
 
@@ -167,9 +167,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         self.register_violations(&[UnsafetyViolation {
                             source_info: self.source_info,
-                            description: InternedString::intern("cast of pointer to int"),
-                            details: InternedString::intern(
-                                "casting pointers to integers in constants"),
+                            description: Symbol::intern("cast of pointer to int"),
+                            details: Symbol::intern("casting pointers to integers in constants"),
                             kind: UnsafetyViolationKind::General,
                         }], &[]);
                     },
@@ -185,8 +184,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     self.register_violations(&[UnsafetyViolation {
                         source_info: self.source_info,
-                        description: InternedString::intern("pointer operation"),
-                        details: InternedString::intern("operations on pointers in constants"),
+                        description: Symbol::intern("pointer operation"),
+                        details: Symbol::intern("operations on pointers in constants"),
                         kind: UnsafetyViolationKind::General,
                     }], &[]);
                 }
@@ -219,8 +218,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: InternedString::intern("use of extern static"),
-                        details: InternedString::intern(
+                        description: Symbol::intern("use of extern static"),
+                        details: Symbol::intern(
                             "extern statics are not controlled by the Rust type system: \
                             invalid data, aliasing violations or data races will cause \
                             undefined behavior"),
@@ -240,8 +239,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: InternedString::intern("borrow of packed field"),
-                        details: InternedString::intern(
+                        description: Symbol::intern("borrow of packed field"),
+                        details: Symbol::intern(
                             "fields of packed structs might be misaligned: dereferencing a \
                             misaligned pointer or even just creating a misaligned reference \
                             is undefined behavior"),
@@ -334,8 +333,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
             source_info,
-            description: InternedString::intern(description),
-            details: InternedString::intern(details),
+            description: Symbol::intern(description),
+            details: Symbol::intern(details),
             kind,
         }], &[]);
     }
@@ -438,8 +437,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 let source_info = self.source_info;
                                 self.register_violations(&[UnsafetyViolation {
                                     source_info,
-                                    description: InternedString::intern(description),
-                                    details: InternedString::intern(details),
+                                    description: Symbol::intern(description),
+                                    details: Symbol::intern(details),
                                     kind: UnsafetyViolationKind::GeneralAndConstFn,
                                 }], &[]);
                             }

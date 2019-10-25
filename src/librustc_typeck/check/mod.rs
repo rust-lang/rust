@@ -536,10 +536,16 @@ pub struct EnclosingBreakables<'tcx> {
 
 impl<'tcx> EnclosingBreakables<'tcx> {
     fn find_breakable(&mut self, target_id: hir::HirId) -> &mut BreakableCtxt<'tcx> {
-        let ix = *self.by_id.get(&target_id).unwrap_or_else(|| {
+        self.opt_find_breakable(target_id).unwrap_or_else(|| {
             bug!("could not find enclosing breakable with id {}", target_id);
-        });
-        &mut self.stack[ix]
+        })
+    }
+
+    fn opt_find_breakable(&mut self, target_id: hir::HirId) -> Option<&mut BreakableCtxt<'tcx>> {
+        match self.by_id.get(&target_id) {
+            Some(ix) => Some(&mut self.stack[*ix]),
+            None => None,
+        }
     }
 }
 
@@ -2761,8 +2767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut opaque_types = self.opaque_types.borrow_mut();
         for (ty, decl) in opaque_type_map {
-            let old_value = opaque_types.insert(ty, decl);
-            assert!(old_value.is_none(), "instantiated twice: {:?}/{:?}", ty, decl);
+            let _ = opaque_types.insert(ty, decl);
         }
 
         value

@@ -27,7 +27,7 @@ use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use std::collections::BTreeSet;
 use syntax::ast;
-use syntax::symbol::{InternedString, Symbol, sym};
+use syntax::symbol::{Symbol, sym};
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
                  ATTR_EXPECTED_CGU_REUSE};
 
@@ -45,8 +45,8 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
             .collect_and_partition_mono_items(LOCAL_CRATE)
             .1
             .iter()
-            .map(|cgu| *cgu.name())
-            .collect::<BTreeSet<InternedString>>();
+            .map(|cgu| cgu.name())
+            .collect::<BTreeSet<Symbol>>();
 
         let ams = AssertModuleSource {
             tcx,
@@ -61,7 +61,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: BTreeSet<InternedString>,
+    available_cgus: BTreeSet<Symbol>,
 }
 
 impl AssertModuleSource<'tcx> {
