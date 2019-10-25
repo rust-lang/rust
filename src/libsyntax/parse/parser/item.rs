@@ -211,7 +211,7 @@ impl<'a> Parser<'a> {
         {
             // UNSAFE TRAIT ITEM
             self.bump(); // `unsafe`
-            let info = self.parse_item_trait(Unsafety::Unsafe)?;
+            let info = self.parse_item_trait(lo, Unsafety::Unsafe)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
                 && self.is_keyword_ahead(1, &[kw::Trait]))
         {
             // TRAIT ITEM
-            let info = self.parse_item_trait(Unsafety::Normal)?;
+            let info = self.parse_item_trait(lo, Unsafety::Normal)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -780,7 +780,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
-    fn parse_item_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+    fn parse_item_trait(&mut self, lo: Span, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) {
             IsAuto::Yes
@@ -793,29 +793,43 @@ impl<'a> Parser<'a> {
         let mut tps = self.parse_generics()?;
 
         // Parse optional colon and supertrait bounds.
-        let bounds = if self.eat(&token::Colon) {
+        let had_colon = self.eat(&token::Colon);
+        let span_at_colon = self.prev_span;
+        let bounds = if had_colon {
             self.parse_generic_bounds(Some(self.prev_span))?
         } else {
             Vec::new()
         };
 
+        let span_before_eq = self.prev_span;
         if self.eat(&token::Eq) {
             // It's a trait alias.
+            if had_colon {
+                let span = span_at_colon.to(span_before_eq);
+                self.struct_span_err(span, "bounds are not allowed on trait aliases")
+                    .emit();
+            }
+
             let bounds = self.parse_generic_bounds(None)?;
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
+
+            let whole_span = lo.to(self.prev_span);
             if is_auto == IsAuto::Yes {
                 let msg = "trait aliases cannot be `auto`";
-                self.struct_span_err(self.prev_span, msg)
-                    .span_label(self.prev_span, msg)
+                self.struct_span_err(whole_span, msg)
+                    .span_label(whole_span, msg)
                     .emit();
             }
             if unsafety != Unsafety::Normal {
                 let msg = "trait aliases cannot be `unsafe`";
-                self.struct_span_err(self.prev_span, msg)
-                    .span_label(self.prev_span, msg)
+                self.struct_span_err(whole_span, msg)
+                    .span_label(whole_span, msg)
                     .emit();
             }
+
+            self.sess.gated_spans.trait_alias.borrow_mut().push(whole_span);
+
             Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
         } else {
             // It's a normal trait.
@@ -1692,6 +1706,11 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
+
+        if !def.legacy {
+            self.sess.gated_spans.decl_macro.borrow_mut().push(span);
+        }
+
         Ok(Some(self.mk_item(span, ident, ItemKind::MacroDef(def), vis.clone(), attrs.to_vec())))
     }
 

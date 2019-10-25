@@ -404,8 +404,9 @@ impl<'a> Parser<'a> {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
-            } else if self.check_ident() && self.look_ahead(1,
-                    |t| t == &token::Eq || t == &token::Colon) {
+            } else if self.check_ident()
+                && self.look_ahead(1, |t| t == &token::Eq || t == &token::Colon)
+            {
                 // Parse associated type constraint.
                 let lo = self.token.span;
                 let ident = self.parse_ident()?;
@@ -420,7 +421,14 @@ impl<'a> Parser<'a> {
                 } else {
                     unreachable!();
                 };
+
                 let span = lo.to(self.prev_span);
+
+                // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
+                if let AssocTyConstraintKind::Bound { .. } = kind {
+                    self.sess.gated_spans.associated_type_bounds.borrow_mut().push(span);
+                }
+
                 constraints.push(AssocTyConstraint {
                     id: ast::DUMMY_NODE_ID,
                     ident,

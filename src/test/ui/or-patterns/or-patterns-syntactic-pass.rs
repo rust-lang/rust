@@ -4,6 +4,7 @@
 // check-pass
 
 #![feature(or_patterns)]
+#![feature(box_patterns)]
 
 fn main() {}
 

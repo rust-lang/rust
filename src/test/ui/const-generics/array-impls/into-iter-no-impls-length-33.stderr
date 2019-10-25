@@ -1,0 +1,122 @@
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:12:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:10:25
+   |
+LL | pub fn no_iterator() -> impl Iterator<Item = i32> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::iter::Iterator` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:18:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:16:38
+   |
+LL | pub fn no_double_ended_iterator() -> impl DoubleEndedIterator {
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::iter::DoubleEndedIterator` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:24:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:22:36
+   |
+LL | pub fn no_exact_size_iterator() -> impl ExactSizeIterator {
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::iter::ExactSizeIterator` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:30:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:28:31
+   |
+LL | pub fn no_fused_iterator() -> impl FusedIterator {
+   |                               ^^^^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::iter::FusedIterator` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:36:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:34:28
+   |
+LL | pub fn no_trusted_len() -> impl TrustedLen {
+   |                            ^^^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::iter::TrustedLen` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:42:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:40:22
+   |
+LL | pub fn no_clone() -> impl Clone {
+   |                      ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::clone::Clone` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:48:5
+   |
+LL |     IntoIter::new([0i32; 33])
+   |     ^^^^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required by `std::array::IntoIter::<T, N>::new`
+
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/into-iter-no-impls-length-33.rs:46:22
+   |
+LL | pub fn no_debug() -> impl Debug {
+   |                      ^^^^^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[i32; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::fmt::Debug` for `std::array::IntoIter<i32, 33usize>`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

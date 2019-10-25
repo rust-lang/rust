@@ -1,17 +1,17 @@
 error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics-ptr.rs:1:22
+  --> $DIR/feature-gate-const_generics-ptr.rs:1:16
    |
 LL | struct ConstFn<const F: fn()>;
-   |                      ^
+   |                ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics-ptr.rs:5:23
+  --> $DIR/feature-gate-const_generics-ptr.rs:5:17
    |
 LL | struct ConstPtr<const P: *const u32>;
-   |                       ^
+   |                 ^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable

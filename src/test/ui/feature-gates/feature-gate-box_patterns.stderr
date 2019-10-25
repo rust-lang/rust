@@ -7,6 +7,15 @@ LL |     let box x = Box::new('c');
    = note: for more information, see https://github.com/rust-lang/rust/issues/29641
    = help: add `#![feature(box_patterns)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: box pattern syntax is experimental
+  --> $DIR/feature-gate-box_patterns.rs:7:13
+   |
+LL | accept_pat!(box 0);
+   |             ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29641
+   = help: add `#![feature(box_patterns)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

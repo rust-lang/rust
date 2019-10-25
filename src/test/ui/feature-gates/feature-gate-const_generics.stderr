@@ -1,21 +1,30 @@
 error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics.rs:1:14
+  --> $DIR/feature-gate-const_generics.rs:1:8
    |
 LL | fn foo<const X: ()>() {}
-   |              ^
+   |        ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics.rs:3:18
+  --> $DIR/feature-gate-const_generics.rs:3:12
    |
 LL | struct Foo<const X: usize>([(); X]);
-   |                  ^
+   |            ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0658]: const generics are unstable
+  --> $DIR/feature-gate-const_generics.rs:7:10
+   |
+LL |     impl<const X: ()> A {}
+   |          ^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

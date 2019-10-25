@@ -252,6 +252,7 @@ impl<'a> Parser<'a> {
                 self.last_type_ascription = Some((self.prev_span, maybe_path));
 
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
+                self.sess.gated_spans.type_ascription.borrow_mut().push(lhs.span);
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
@@ -453,7 +454,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (lo.to(span), ExprKind::Box(e))
+                let span = lo.to(span);
+                self.sess.gated_spans.box_syntax.borrow_mut().push(span);
+                (span, ExprKind::Box(e))
             }
             token::Ident(..) if self.token.is_ident_named(sym::not) => {
                 // `not` is just an ordinary identifier in Rust-the-language,
@@ -1260,6 +1263,10 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         outer_attrs: ThinVec<Attribute>,
     ) -> PResult<'a, P<Expr>> {
+        if let Some(label) = opt_label {
+            self.sess.gated_spans.label_break_value.borrow_mut().push(label.ident.span);
+        }
+
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let mut attrs = outer_attrs;
@@ -1646,7 +1653,9 @@ impl<'a> Parser<'a> {
             error.emit();
             Err(error)
         } else {
-            Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
+            let span = span_lo.to(body.span);
+            self.sess.gated_spans.try_blocks.borrow_mut().push(span);
+            Ok(self.mk_expr(span, ExprKind::TryBlock(body), attrs))
         }
     }
 

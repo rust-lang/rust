@@ -394,16 +394,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pat<'tcx>) -> bool {
-        match *pattern.kind {
-            PatKind::Variant { adt_def, variant_index, .. } => {
-                let ref variant = adt_def.variants[variant_index];
-                variant.is_field_list_non_exhaustive()
-            }
-            _ => false,
-        }
-    }
-
     fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
             ty::Adt(adt_def, ..) => adt_def.is_variant_list_non_exhaustive(),
@@ -1252,19 +1242,12 @@ pub fn is_useful<'p, 'a, 'tcx>(
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v[0]);
 
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
-        let is_declared_nonexhaustive = cx.is_non_exhaustive_variant(v[0]) && !cx.is_local(pcx.ty);
-        debug!("is_useful - expanding constructors: {:#?}, is_declared_nonexhaustive: {:?}",
-               constructors, is_declared_nonexhaustive);
-
-        if is_declared_nonexhaustive {
-            Useful
-        } else {
-            split_grouped_constructors(
-                cx.tcx, cx.param_env, constructors, matrix, pcx.ty, pcx.span, Some(hir_id),
-            ).into_iter().map(|c|
-                is_useful_specialized(cx, matrix, v, c, pcx.ty, witness, hir_id)
-            ).find(|result| result.is_useful()).unwrap_or(NotUseful)
-        }
+        debug!("is_useful - expanding constructors: {:#?}", constructors);
+        split_grouped_constructors(
+            cx.tcx, cx.param_env, constructors, matrix, pcx.ty, pcx.span, Some(hir_id),
+        ).into_iter().map(|c|
+            is_useful_specialized(cx, matrix, v, c, pcx.ty, witness, hir_id)
+        ).find(|result| result.is_useful()).unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
 
@@ -1548,27 +1531,30 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
                 // Use T as the sub pattern type of Box<T>.
                 vec![substs.type_at(0)]
             } else {
-                adt.variants[ctor.variant_index_for_adt(cx, adt)].fields.iter().map(|field| {
+                let variant = &adt.variants[ctor.variant_index_for_adt(cx, adt)];
+                let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
+                variant.fields.iter().map(|field| {
                     let is_visible = adt.is_enum()
                         || field.vis.is_accessible_from(cx.module, cx.tcx);
-                    if is_visible {
-                        let ty = field.ty(cx.tcx, substs);
-                        match ty.kind {
-                            // If the field type returned is an array of an unknown
-                            // size return an TyErr.
-                            ty::Array(_, len)
-                                if len.try_eval_usize(cx.tcx, cx.param_env).is_none() =>
-                                cx.tcx.types.err,
-                            _ => ty,
-                        }
-                    } else {
-                        // Treat all non-visible fields as TyErr. They
-                        // can't appear in any other pattern from
-                        // this match (because they are private),
-                        // so their type does not matter - but
-                        // we don't want to know they are
-                        // uninhabited.
-                        cx.tcx.types.err
+                    let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
+                    match (is_visible, is_non_exhaustive, is_uninhabited) {
+                        // Treat all uninhabited types in non-exhaustive variants as `TyErr`.
+                        (_, true, true) => cx.tcx.types.err,
+                        // Treat all non-visible fields as `TyErr`. They can't appear in any
+                        // other pattern from this match (because they are private), so their
+                        // type does not matter - but we don't want to know they are uninhabited.
+                        (false, ..) => cx.tcx.types.err,
+                        (true, ..) => {
+                            let ty = field.ty(cx.tcx, substs);
+                            match ty.kind {
+                                // If the field type returned is an array of an unknown
+                                // size return an TyErr.
+                                ty::Array(_, len)
+                                    if len.try_eval_usize(cx.tcx, cx.param_env).is_none() =>
+                                    cx.tcx.types.err,
+                                _ => ty,
+                            }
+                        },
                     }
                 }).collect()
             }
@@ -1874,15 +1860,18 @@ fn constructor_covered_by_range<'tcx>(
     }
 }
 
-fn patterns_for_variant<'p, 'tcx>(
+fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
     subpatterns: &'p [FieldPat<'tcx>],
-    wild_patterns: &[&'p Pat<'tcx>])
-    -> SmallVec<[&'p Pat<'tcx>; 2]>
-{
+    wild_patterns: &[&'p Pat<'tcx>],
+    is_non_exhaustive: bool,
+) -> SmallVec<[&'p Pat<'tcx>; 2]> {
     let mut result = SmallVec::from_slice(wild_patterns);
 
     for subpat in subpatterns {
-        result[subpat.field.index()] = &subpat.pattern;
+        if !is_non_exhaustive || !cx.is_uninhabited(subpat.pattern.ty) {
+            result[subpat.field.index()] = &subpat.pattern;
+        }
     }
 
     debug!("patterns_for_variant({:#?}, {:#?}) = {:#?}", subpatterns, wild_patterns, result);
@@ -1916,13 +1905,14 @@ fn specialize<'p, 'a: 'p, 'tcx>(
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
+            let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !cx.is_local(pat.ty);
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)
-                .map(|_| patterns_for_variant(subpatterns, wild_patterns))
+                .map(|_| patterns_for_variant(cx, subpatterns, wild_patterns, is_non_exhaustive))
         }
 
         PatKind::Leaf { ref subpatterns } => {
-            Some(patterns_for_variant(subpatterns, wild_patterns))
+            Some(patterns_for_variant(cx, subpatterns, wild_patterns, false))
         }
 
         PatKind::Deref { ref subpattern } => {

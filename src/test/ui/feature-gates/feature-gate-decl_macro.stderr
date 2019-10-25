@@ -7,6 +7,15 @@ LL | macro m() {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/39412
    = help: add `#![feature(decl_macro)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: `macro` is experimental
+  --> $DIR/feature-gate-decl_macro.rs:7:5
+   |
+LL |     macro m() {}
+   |     ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/39412
+   = help: add `#![feature(decl_macro)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
