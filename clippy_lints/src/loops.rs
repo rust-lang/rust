@@ -2367,14 +2367,54 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
         return;
     };
     let mutable_static_in_cond = var_visitor.def_ids.iter().any(|(_, v)| *v);
+
+    let mut has_break_or_return_visitor = HasBreakOrReturnVisitor {
+        has_break_or_return: false,
+    };
+    has_break_or_return_visitor.visit_expr(expr);
+    let has_break_or_return = has_break_or_return_visitor.has_break_or_return;
+
     if no_cond_variable_mutated && !mutable_static_in_cond {
-        span_lint(
+        span_lint_and_then(
             cx,
             WHILE_IMMUTABLE_CONDITION,
             cond.span,
-            "Variable in the condition are not mutated in the loop body. \
-             This either leads to an infinite or to a never running loop.",
+            "variables in the condition are not mutated in the loop body",
+            |db| {
+                db.note("this may lead to an infinite or to a never running loop");
+
+                if has_break_or_return {
+                    db.note("this loop contains `return`s or `break`s");
+                    db.help("rewrite it as `if cond { loop { } }`");
+                }
+            },
         );
+    }
+}
+
+struct HasBreakOrReturnVisitor {
+    has_break_or_return: bool,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if self.has_break_or_return {
+            return;
+        }
+
+        match expr.kind {
+            ExprKind::Ret(_) | ExprKind::Break(_, _) => {
+                self.has_break_or_return = true;
+                return;
+            },
+            _ => {},
+        }
+
+        walk_expr(self, expr);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
     }
 }
 
