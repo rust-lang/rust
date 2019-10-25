@@ -434,7 +434,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`as_ptr`]: #method.as_ptr
-    #[unstable(feature = "slice_ptr_range", issue = "0")]
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
     #[inline]
     pub fn as_ptr_range(&self) -> Range<*const T> {
         let start = self.as_ptr();
@@ -458,7 +458,7 @@ impl<T> [T] {
     /// common in C++.
     ///
     /// [`as_mut_ptr`]: #method.as_mut_ptr
-    #[unstable(feature = "slice_ptr_range", issue = "0")]
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
     #[inline]
     pub fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
         let start = self.as_mut_ptr();
