@@ -519,7 +519,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns `true` if the next token is Brace
-    fn is_next_brace(&self) -> bool { self.look_ahead(1, |t|  t.eq(&token::OpenDelim(token::Brace))) }
+    fn is_next_brace(&self) -> bool {
+        self.look_ahead(1, |t|  t.eq(&token::OpenDelim(token::Brace)))
+    }
 
     /// Returns `true` if the token is kw::Mut and next one is an Ident
     fn is_ident_mut(&self) -> bool {

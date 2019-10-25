@@ -1,4 +1,3 @@
-
 #[allow(dead_code)]
 fn main() {
     mut n = 0;//~ ERROR invalid variable declaration

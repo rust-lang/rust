@@ -1,4 +1,3 @@
-
 #[allow(dead_code)]
 fn main() {
     auto n = 0;//~ ERROR invalid variable declaration
