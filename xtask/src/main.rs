@@ -64,6 +64,7 @@ fn main() -> Result<()> {
             }
             codegen::generate_syntax(Mode::Overwrite)?;
             codegen::generate_parser_tests(Mode::Overwrite)?;
+            codegen::generate_assists_docs(Mode::Overwrite)?;
         }
         "format" => {
             if matches.contains(["-h", "--help"]) {

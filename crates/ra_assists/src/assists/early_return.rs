@@ -1,26 +1,3 @@
-//! Assist: `convert_to_guarded_return`
-//!
-//! Replace a large conditional with a guarded return.
-//!
-//! ```text
-//! fn <|>main() {
-//!     if cond {
-//!         foo();
-//!         bar();
-//!     }
-//! }
-//! ```
-//! ->
-//! ```text
-//! fn main() {
-//!     if !cond {
-//!         return;
-//!     }
-//!     foo();
-//!     bar();
-//! }
-//! ```
-
 use std::ops::RangeInclusive;
 
 use hir::db::HirDatabase;
@@ -36,6 +13,26 @@ use crate::{
     AssistId,
 };
 
+// Assist: convert_to_guarded_return
+// Replace a large conditional with a guarded return.
+// ```
+// fn main() {
+//     <|>if cond {
+//         foo();
+//         bar();
+//     }
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     if !cond {
+//         return;
+//     }
+//     foo();
+//     bar();
+// }
+// ```
 pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.node_at_offset()?;
     let expr = if_expr.condition()?.expr()?;

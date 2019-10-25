@@ -97,10 +97,12 @@ Start `cargo watch` for live error highlighting. Will prompt to install if it's 
 
 Stop `cargo watch`
 
-### Code Actions (Assists)
+### Assists (Code Actions)
 
 These are triggered in a particular context via light bulb. We use custom code on
 the VS Code side to be able to position cursor. `<|>` signifies cursor
+
+See [assists.md](./assists.md)
 
 - Add `#[derive]`
 
