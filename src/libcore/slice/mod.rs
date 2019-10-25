@@ -28,7 +28,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
-use crate::ops::{FnMut, self};
+use crate::ops::{FnMut, Range, self};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::result::Result;
@@ -405,6 +405,86 @@ impl<T> [T] {
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
+    }
+
+    /// Returns the two raw pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_ptr`] for warnings on using these pointers. The end pointer
+    /// requires extra caution, as it does not point to a valid element in the
+    /// slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// It can also be useful to check if a pointer to an element refers to an
+    /// element of this slice:
+    ///
+    /// ```
+    /// #![feature(slice_ptr_range)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let x = &a[1] as *const _;
+    /// let y = &5 as *const _;
+    ///
+    /// assert!(a.as_ptr_range().contains(&x));
+    /// assert!(!a.as_ptr_range().contains(&y));
+    /// ```
+    ///
+    /// [`as_ptr`]: #method.as_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[inline]
+    pub fn as_ptr_range(&self) -> Range<*const T> {
+        // The `add` here is safe, because:
+        //
+        //   - Both pointers are part of the same object, as pointing directly
+        //     past the object also counts.
+        //
+        //   - The size of the slice is never larger than isize::MAX bytes, as
+        //     noted here:
+        //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
+        //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+        //       - https://doc.rust-lang.org/core/slice/fn.from_raw_parts.html#safety
+        //     (This doesn't seem normative yet, but the very same assumption is
+        //     made in many places, including the Index implementation of slices.)
+        //
+        //   - There is no wrapping around involved, as slices do not wrap past
+        //     the end of the address space.
+        //
+        // See the documentation of pointer::add.
+        let start = self.as_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
+    }
+
+    /// Returns the two unsafe mutable pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_mut_ptr`] for warnings on using these pointers. The end
+    /// pointer requires extra caution, as it does not point to a valid element
+    /// in the slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[inline]
+    pub fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
+        // See as_ptr_range() above for why `add` here is safe.
+        let start = self.as_mut_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
     }
 
     /// Swaps two elements in the slice.
