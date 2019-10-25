@@ -1083,6 +1083,10 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         let expn_id = self.definitions.expansion_that_defined(def_id.index);
         self.has_derives(expn_id, derives)
     }
+
+    fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
+        &mut self.lint_buffer
+    }
 }
 
 impl<'a> Resolver<'a> {

@@ -366,7 +366,7 @@ impl Session {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
-    pub fn buffer_lint<S: Into<MultiSpan>>(
+    pub fn buffer_lint_late<S: Into<MultiSpan>>(
         &self,
         lint: &'static lint::Lint,
         id: ast::NodeId,
@@ -375,13 +375,13 @@ impl Session {
     ) {
         match *self.buffered_lints.borrow_mut() {
             Some(ref mut buffer) => {
-                buffer.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+                buffer.buffer_lint(lint, id, sp, msg);
             }
             None => bug!("can't buffer lints after HIR lowering"),
         }
     }
 
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
+    pub fn buffer_lint_with_diagnostic_late<S: Into<MultiSpan>>(
         &self,
         lint: &'static lint::Lint,
         id: ast::NodeId,
@@ -390,7 +390,9 @@ impl Session {
         diagnostic: BuiltinLintDiagnostics,
     ) {
         match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg, diagnostic),
+            Some(ref mut buffer) => buffer.buffer_lint_with_diagnostic(
+                lint, id, sp.into(), msg, diagnostic,
+            ),
             None => bug!("can't buffer lints after HIR lowering"),
         }
     }
