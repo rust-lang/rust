@@ -426,9 +426,12 @@ impl<T> [T] {
     /// refers to an element of this slice:
     ///
     /// ```
-    /// let a = [1,2,3];
+    /// #![feature(slice_ptr_range)]
+    ///
+    /// let a = [1, 2, 3];
     /// let x = &a[1];
     /// let y = &5;
+    ///
     /// assert!(a.as_ptr_range().contains(x));
     /// assert!(!a.as_ptr_range().contains(y));
     /// ```
