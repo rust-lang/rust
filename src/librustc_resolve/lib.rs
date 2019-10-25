@@ -962,7 +962,7 @@ pub struct Resolver<'a> {
     /// when visiting the correspondent variants.
     variant_vis: DefIdMap<ty::Visibility>,
 
-    pub lint_buffer: lint::LintBuffer,
+    lint_buffer: lint::LintBuffer,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1093,8 +1093,7 @@ impl<'a> Resolver<'a> {
                krate: &Crate,
                crate_name: &str,
                metadata_loader: &'a MetadataLoaderDyn,
-               arenas: &'a ResolverArenas<'a>,
-               lint_buffer: lint::LintBuffer)
+               arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let root_module_kind = ModuleKind::Def(
@@ -1234,8 +1233,12 @@ impl<'a> Resolver<'a> {
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                     .collect(),
             variant_vis: Default::default(),
-            lint_buffer,
+            lint_buffer: lint::LintBuffer::default(),
         }
+    }
+
+    pub fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
+        &mut self.lint_buffer
     }
 
     pub fn arenas() -> ResolverArenas<'a> {
