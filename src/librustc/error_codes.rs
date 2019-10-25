@@ -2105,8 +2105,6 @@ on something other than a struct or enum.
 Examples of erroneous code:
 
 ```compile_fail,E0701
-# #![feature(non_exhaustive)]
-
 #[non_exhaustive]
 trait Foo { }
 ```

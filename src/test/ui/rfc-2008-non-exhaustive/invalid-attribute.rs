@@ -1,5 +1,3 @@
-#![feature(non_exhaustive)]
-
 #[non_exhaustive(anything)]
 //~^ ERROR malformed `non_exhaustive` attribute
 struct Foo;
