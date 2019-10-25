@@ -14,9 +14,12 @@ use measureme::{StringId, TimestampKind};
 /// MmapSerializatioSink is faster on macOS and Linux
 /// but FileSerializationSink is faster on Windows
 #[cfg(not(windows))]
-type Profiler = measureme::Profiler<measureme::MmapSerializationSink>;
+type SerializationSink = measureme::MmapSerializationSink;
 #[cfg(windows)]
-type Profiler = measureme::Profiler<measureme::FileSerializationSink>;
+type SerializationSink = measureme::FileSerializationSink;
+
+type Profiler = measureme::Profiler<SerializationSink>;
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum ProfileCategory {
@@ -131,32 +134,6 @@ impl SelfProfilerRef {
         })
     }
 
-    /// Start profiling a generic activity. Profiling continues until
-    /// `generic_activity_end` is called. The RAII-based `generic_activity`
-    /// usually is the better alternative.
-    #[inline(always)]
-    pub fn generic_activity_start(&self, event_id: &str) {
-        self.non_guard_generic_event(
-            |profiler| profiler.generic_activity_event_kind,
-            |profiler| profiler.profiler.alloc_string(event_id),
-            EventFilter::GENERIC_ACTIVITIES,
-            TimestampKind::Start,
-        );
-    }
-
-    /// End profiling a generic activity that was started with
-    /// `generic_activity_start`. The RAII-based `generic_activity` usually is
-    /// the better alternative.
-    #[inline(always)]
-    pub fn generic_activity_end(&self, event_id: &str) {
-        self.non_guard_generic_event(
-            |profiler| profiler.generic_activity_event_kind,
-            |profiler| profiler.profiler.alloc_string(event_id),
-            EventFilter::GENERIC_ACTIVITIES,
-            TimestampKind::End,
-        );
-    }
-
     /// Start profiling a query provider. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
@@ -179,26 +156,14 @@ impl SelfProfilerRef {
     }
 
     /// Start profiling a query being blocked on a concurrent execution.
-    /// Profiling continues until `query_blocked_end` is called.
+    /// Profiling continues until the TimingGuard returned from this call is
+    /// dropped.
     #[inline(always)]
-    pub fn query_blocked_start(&self, query_name: QueryName) {
-        self.non_guard_query_event(
-            |profiler| profiler.query_blocked_event_kind,
-            query_name,
-            EventFilter::QUERY_BLOCKED,
-            TimestampKind::Start,
-        );
-    }
-
-    /// End profiling a query being blocked on a concurrent execution.
-    #[inline(always)]
-    pub fn query_blocked_end(&self, query_name: QueryName) {
-        self.non_guard_query_event(
-            |profiler| profiler.query_blocked_event_kind,
-            query_name,
-            EventFilter::QUERY_BLOCKED,
-            TimestampKind::End,
-        );
+    pub fn query_blocked(&self, query_name: QueryName) -> TimingGuard<'_> {
+        self.exec(EventFilter::QUERY_BLOCKED, |profiler| {
+            let event_id = SelfProfiler::get_query_name_string_id(query_name);
+            TimingGuard::start(profiler, profiler.query_blocked_event_kind, event_id)
+        })
     }
 
     /// Start profiling how long it takes to load a query result from the
@@ -231,28 +196,6 @@ impl SelfProfilerRef {
             profiler.profiler.record_event(
                 event_kind(profiler),
                 event_id,
-                thread_id,
-                timestamp_kind,
-            );
-
-            TimingGuard::none()
-        }));
-    }
-
-    #[inline(always)]
-    fn non_guard_generic_event<F: FnOnce(&SelfProfiler) -> StringId>(
-        &self,
-        event_kind: fn(&SelfProfiler) -> StringId,
-        event_id: F,
-        event_filter: EventFilter,
-        timestamp_kind: TimestampKind
-    ) {
-        drop(self.exec(event_filter, |profiler| {
-            let thread_id = thread_id_to_u64(std::thread::current().id());
-
-            profiler.profiler.record_event(
-                event_kind(profiler),
-                event_id(profiler),
                 thread_id,
                 timestamp_kind,
             );
@@ -346,14 +289,7 @@ impl SelfProfiler {
 }
 
 #[must_use]
-pub struct TimingGuard<'a>(Option<TimingGuardInternal<'a>>);
-
-struct TimingGuardInternal<'a> {
-    raw_profiler: &'a Profiler,
-    event_id: StringId,
-    event_kind: StringId,
-    thread_id: u64,
-}
+pub struct TimingGuard<'a>(Option<measureme::TimingGuard<'a, SerializationSink>>);
 
 impl<'a> TimingGuard<'a> {
     #[inline]
@@ -364,30 +300,14 @@ impl<'a> TimingGuard<'a> {
     ) -> TimingGuard<'a> {
         let thread_id = thread_id_to_u64(std::thread::current().id());
         let raw_profiler = &profiler.profiler;
-        raw_profiler.record_event(event_kind, event_id, thread_id, TimestampKind::Start);
-
-        TimingGuard(Some(TimingGuardInternal {
-            raw_profiler,
-            event_kind,
-            event_id,
-            thread_id,
-        }))
+        let timing_guard = raw_profiler.start_recording_interval_event(event_kind,
+                                                                       event_id,
+                                                                       thread_id);
+        TimingGuard(Some(timing_guard))
     }
 
     #[inline]
     pub fn none() -> TimingGuard<'a> {
         TimingGuard(None)
-    }
-}
-
-impl<'a> Drop for TimingGuardInternal<'a> {
-    #[inline]
-    fn drop(&mut self) {
-        self.raw_profiler.record_event(
-            self.event_kind,
-            self.event_id,
-            self.thread_id,
-            TimestampKind::End
-        );
     }
 }
