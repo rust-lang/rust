@@ -1,6 +1,6 @@
 #![feature(
     no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
-    untagged_unions, decl_macro, rustc_attrs
+    untagged_unions, decl_macro, rustc_attrs, transparent_unions
 )]
 #![no_core]
 #![allow(dead_code)]
@@ -448,10 +448,17 @@ pub trait Drop {
     fn drop(&mut self);
 }
 
-#[allow(unions_with_drop_fields)]
+#[lang = "manually_drop"]
+#[repr(transparent)]
+pub struct ManuallyDrop<T: ?Sized> {
+    pub value: T,
+}
+
+#[lang = "maybe_uninit"]
+#[repr(transparent)]
 pub union MaybeUninit<T> {
     pub uninit: (),
-    pub value: T,
+    pub value: ManuallyDrop<T>,
 }
 
 pub mod intrinsics {

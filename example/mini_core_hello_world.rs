@@ -196,7 +196,7 @@ fn main() {
         }
 
         unsafe fn uninitialized<T>() -> T {
-            MaybeUninit { uninit: () }.value
+            MaybeUninit { uninit: () }.value.value
         }
 
         zeroed::<(u8, u8)>();

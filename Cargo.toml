@@ -52,7 +52,7 @@ cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 # By compiling dependencies with optimizations, performing tests gets much faster.
 opt-level = 3
 
-[profile.dev.overrides."rustc_codegen_cranelift"]
+[profile.dev.package.rustc_codegen_cranelift]
 # Disabling optimizations for cg_clif itself makes compilation after a change faster.
 opt-level = 0
 
@@ -62,14 +62,14 @@ opt-level = 0
 opt-level = 0
 debug = false
 
-[profile.dev.overrides.cranelift-codegen-meta]
+[profile.dev.package.cranelift-codegen-meta]
 opt-level = 0
 debug = false
 
-[profile.dev.overrides.syn]
+[profile.dev.package.syn]
 opt-level = 0
 debug = false
 
-[profile.dev.overrides.synstructure]
+[profile.dev.package.synstructure]
 opt-level = 0
 debug = false

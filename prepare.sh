@@ -1,7 +1,7 @@
 #!/bin/bash --verbose
 set -e
 
-rustup component add rust-src
+rustup component add rust-src rustc-dev
 ./build_sysroot/prepare_sysroot_src.sh
 cargo install hyperfine || echo "Skipping hyperfine install"
 
