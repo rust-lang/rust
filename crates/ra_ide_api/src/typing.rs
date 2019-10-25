@@ -24,7 +24,7 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{db::RootDatabase, SourceChange, SourceFileEdit};
+use crate::{db::RootDatabase, source_change::SingleFileChange, SourceChange, SourceFileEdit};
 
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<SourceChange> {
     let parse = db.parse(position.file_id);
@@ -88,32 +88,19 @@ pub(crate) fn on_char_typed(
 ) -> Option<SourceChange> {
     let file = &db.parse(position.file_id).tree();
     assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
-    match char_typed {
-        '=' => {
-            let edit = on_eq_typed(file, position.offset)?;
-            Some(SourceChange::source_file_edit(
-                "add semicolon",
-                SourceFileEdit { edit, file_id: position.file_id },
-            ))
-        }
-        '.' => {
-            let (edit, cursor_offset) = on_dot_typed(file, position.offset)?;
-            Some(
-                SourceChange::source_file_edit(
-                    "reindent dot",
-                    SourceFileEdit { edit, file_id: position.file_id },
-                )
-                .with_cursor(FilePosition { file_id: position.file_id, offset: cursor_offset }),
-            )
-        }
-        _ => None,
-    }
+    let single_file_change = match char_typed {
+        '=' => on_eq_typed(file, position.offset)?,
+        '.' => on_dot_typed(file, position.offset)?,
+        _ => return None,
+    };
+
+    Some(single_file_change.into_source_change(position.file_id))
 }
 
 /// Returns an edit which should be applied after `=` was typed. Primarily,
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
-fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<TextEdit> {
+fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
     assert_eq!(file.syntax().text().char_at(offset), Some('='));
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.has_semi() {
@@ -131,13 +118,15 @@ fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<TextEdit> {
         return None;
     }
     let offset = let_stmt.syntax().text_range().end();
-    let mut edit = TextEditBuilder::default();
-    edit.insert(offset, ";".to_string());
-    Some(edit.finish())
+    Some(SingleFileChange {
+        label: "add semicolon".to_string(),
+        edit: TextEdit::insert(offset, ";".to_string()),
+        cursor_position: None,
+    })
 }
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
-fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<(TextEdit, TextUnit)> {
+fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
     assert_eq!(file.syntax().text().char_at(offset), Some('.'));
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
@@ -157,12 +146,17 @@ fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<(TextEdit, TextUn
     if current_indent_len == target_indent_len {
         return None;
     }
-    let mut edit = TextEditBuilder::default();
-    edit.replace(TextRange::from_to(offset - current_indent_len, offset), target_indent);
 
-    let cursor_offset = offset + target_indent_len - current_indent_len + TextUnit::of_char('.');
-
-    Some((edit.finish(), cursor_offset))
+    Some(SingleFileChange {
+        label: "reindent dot".to_string(),
+        edit: TextEdit::replace(
+            TextRange::from_to(offset - current_indent_len, offset),
+            target_indent,
+        ),
+        cursor_position: Some(
+            offset + target_indent_len - current_indent_len + TextUnit::of_char('.'),
+        ),
+    })
 }
 
 #[cfg(test)]
@@ -182,7 +176,7 @@ mod tests {
             let before = edit.finish().apply(&before);
             let parse = SourceFile::parse(&before);
             if let Some(result) = on_eq_typed(&parse.tree(), offset) {
-                let actual = result.apply(&before);
+                let actual = result.edit.apply(&before);
                 assert_eq_text!(after, &actual);
             } else {
                 assert_eq_text!(&before, after)
@@ -230,8 +224,8 @@ fn foo() {
         let before = edit.finish().apply(&before);
         let (analysis, file_id) = single_file(&before);
         let file = analysis.parse(file_id).unwrap();
-        if let Some((edit, _cursor_offset)) = on_dot_typed(&file, offset) {
-            let actual = edit.apply(&before);
+        if let Some(result) = on_dot_typed(&file, offset) {
+            let actual = result.edit.apply(&before);
             assert_eq_text!(after, &actual);
         } else {
             assert_eq_text!(&before, after)

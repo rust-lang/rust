@@ -6,7 +6,7 @@
 use ra_text_edit::TextEdit;
 use relative_path::RelativePathBuf;
 
-use crate::{FileId, FilePosition, SourceRootId};
+use crate::{FileId, FilePosition, SourceRootId, TextUnit};
 
 #[derive(Debug)]
 pub struct SourceChange {
@@ -99,4 +99,21 @@ pub struct SourceFileEdit {
 pub enum FileSystemEdit {
     CreateFile { source_root: SourceRootId, path: RelativePathBuf },
     MoveFile { src: FileId, dst_source_root: SourceRootId, dst_path: RelativePathBuf },
+}
+
+pub(crate) struct SingleFileChange {
+    pub label: String,
+    pub edit: TextEdit,
+    pub cursor_position: Option<TextUnit>,
+}
+
+impl SingleFileChange {
+    pub(crate) fn into_source_change(self, file_id: FileId) -> SourceChange {
+        SourceChange {
+            label: self.label,
+            source_file_edits: vec![SourceFileEdit { file_id, edit: self.edit }],
+            file_system_edits: Vec::new(),
+            cursor_position: self.cursor_position.map(|offset| FilePosition { file_id, offset }),
+        }
+    }
 }
