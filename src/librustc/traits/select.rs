@@ -49,7 +49,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
-use std::rc::Rc;
+use std::sync::Arc;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 pub struct SelectionContext<'cx, 'tcx> {
@@ -4078,7 +4078,7 @@ impl<'tcx> TraitObligation<'tcx> {
         if obligation.recursion_depth >= 0 {
             let derived_cause = DerivedObligationCause {
                 parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
-                parent_code: Rc::new(obligation.cause.code.clone()),
+                parent_code: Arc::new(obligation.cause.code.clone()),
             };
             let derived_code = variant(derived_cause);
             ObligationCause::new(

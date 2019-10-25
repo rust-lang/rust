@@ -7,7 +7,7 @@ use crate::ty::{self, Lift, Ty, TyCtxt};
 use syntax::symbol::Symbol;
 
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::collections::{BTreeSet, BTreeMap};
 
 // Structural impls for the structs in `traits`.
@@ -561,7 +561,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
             tcx.lift(&*self.parent_code)
                .map(|code| traits::DerivedObligationCause {
                    parent_trait_ref: trait_ref,
-                   parent_code: Rc::new(code),
+                   parent_code: Arc::new(code),
                })
         )
     }

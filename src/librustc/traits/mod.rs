@@ -36,7 +36,7 @@ use crate::ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
 use crate::util::common::ErrorReported;
 
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
@@ -390,7 +390,7 @@ pub struct DerivedObligationCause<'tcx> {
     parent_trait_ref: ty::PolyTraitRef<'tcx>,
 
     /// The parent trait had this cause.
-    parent_code: Rc<ObligationCauseCode<'tcx>>
+    parent_code: Arc<ObligationCauseCode<'tcx>>
 }
 
 BraceStructTypeFoldableImpl! {
