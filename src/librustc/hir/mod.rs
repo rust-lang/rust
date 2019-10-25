@@ -721,7 +721,6 @@ pub struct WhereRegionPredicate {
 /// An equality predicate (e.g., `T = int`); currently unsupported.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct WhereEqPredicate {
-    pub hir_id: HirId,
     pub span: Span,
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,

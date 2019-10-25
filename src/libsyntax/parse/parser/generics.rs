@@ -271,7 +271,6 @@ impl<'a> Parser<'a> {
                     span: lo.to(self.prev_span),
                     lhs_ty: ty,
                     rhs_ty,
-                    id: ast::DUMMY_NODE_ID,
                 }
             ))
         } else {

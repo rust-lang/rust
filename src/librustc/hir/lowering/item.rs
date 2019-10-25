@@ -1442,13 +1442,11 @@ impl LoweringContext<'_> {
                 bounds: self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             }),
             WherePredicate::EqPredicate(WhereEqPredicate {
-                id,
                 ref lhs_ty,
                 ref rhs_ty,
                 span,
             }) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    hir_id: self.lower_node_id(id),
                     lhs_ty: self.lower_ty(lhs_ty, ImplTraitContext::disallowed()),
                     rhs_ty: self.lower_ty(rhs_ty, ImplTraitContext::disallowed()),
                     span,

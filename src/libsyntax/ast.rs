@@ -457,7 +457,6 @@ pub struct WhereRegionPredicate {
 /// E.g., `T = int`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereEqPredicate {
-    pub id: NodeId,
     pub span: Span,
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
