@@ -71,8 +71,31 @@ fn test_from_utf8() {
     println!("{:?}", std::str::from_utf8(content).unwrap());
 }
 
+fn test_u64_array() {
+    #[derive(Default)]
+    #[repr(align(8))]
+    struct AlignToU64<T>(T);
+
+    const BYTE_LEN: usize = std::mem::size_of::<[u64; 4]>();
+    type Data = AlignToU64<[u8; BYTE_LEN]>;
+
+    fn example(data: &Data) {
+        let (head, u64_arrays, tail) = unsafe { data.0.align_to::<[u64; 4]>() };
+
+        assert!(head.is_empty(), "buffer was not aligned for 64-bit numbers");
+        assert_eq!(u64_arrays.len(), 1, "buffer was not long enough");
+        assert!(tail.is_empty(), "buffer was too long");
+
+        let u64_array = &u64_arrays[0];
+        let _val = u64_array[0]; // make sure we can actually load this
+    }
+
+    example(&Data::default());
+}
+
 fn main() {
     test_align_offset();
     test_align_to();
     test_from_utf8();
+    test_u64_array();
 }
