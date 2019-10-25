@@ -26,6 +26,11 @@ error[E0308]: mismatched types
    |
 LL |     let x = Foo { a: 10isize };
    |                      ^^^^^^^ expected usize, found isize
+   |
+help: change the type of the numeric literal from `isize` to `usize`
+   |
+LL |     let x = Foo { a: 10usize };
+   |                      ^^^^^^^
 
 error[E0560]: struct `c::Foo` has no field named `b`
   --> $DIR/span-preservation.rs:35:26

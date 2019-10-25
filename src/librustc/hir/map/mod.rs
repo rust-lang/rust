@@ -386,11 +386,14 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(_) |
             Node::StructField(_) |
             Node::Expr(_) |
+            Node::Field(_) |
             Node::Stmt(_) |
             Node::PathSegment(_) |
             Node::Ty(_) |
+            Node::TypeBinding(_) |
             Node::TraitRef(_) |
             Node::Pat(_) |
+            Node::FieldPat(_) |
             Node::Binding(_) |
             Node::Local(_) |
             Node::Param(_) |
@@ -1075,12 +1078,15 @@ impl<'hir> Map<'hir> {
             Some(Node::StructField(field)) => field.span,
             Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
             Some(Node::Expr(expr)) => expr.span,
+            Some(Node::Field(field)) => field.span,
             Some(Node::Stmt(stmt)) => stmt.span,
             Some(Node::PathSegment(seg)) => seg.ident.span,
             Some(Node::Ty(ty)) => ty.span,
+            Some(Node::TypeBinding(type_binding)) => type_binding.span,
             Some(Node::TraitRef(tr)) => tr.path.span,
             Some(Node::Binding(pat)) => pat.span,
             Some(Node::Pat(pat)) => pat.span,
+            Some(Node::FieldPat(field)) => field.span,
             Some(Node::Arm(arm)) => arm.span,
             Some(Node::Block(block)) => block.span,
             Some(Node::Ctor(..)) => match self.find(
@@ -1287,12 +1293,15 @@ impl<'a> print::State<'a> {
             Node::Variant(a)      => self.print_variant(&a),
             Node::AnonConst(a)    => self.print_anon_const(&a),
             Node::Expr(a)         => self.print_expr(&a),
+            Node::Field(_)        => bug!("cannot print Field"),
             Node::Stmt(a)         => self.print_stmt(&a),
             Node::PathSegment(a)  => self.print_path_segment(&a),
             Node::Ty(a)           => self.print_type(&a),
+            Node::TypeBinding(_)  => bug!("cannot print TypeBinding"),
             Node::TraitRef(a)     => self.print_trait_ref(&a),
             Node::Binding(a)      |
             Node::Pat(a)          => self.print_pat(&a),
+            Node::FieldPat(_)     => bug!("cannot print FieldPat"),
             Node::Arm(a)          => self.print_arm(&a),
             Node::Block(a)        => {
                 // Containing cbox, will be closed by print-block at `}`.
@@ -1403,6 +1412,9 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         Some(Node::Expr(_)) => {
             format!("expr {}{}", map.hir_to_pretty_string(id), id_str)
         }
+        Some(Node::Field(f)) => {
+            format!("field {}: {}{}", f.ident, map.hir_to_pretty_string(f.expr.hir_id), id_str)
+        }
         Some(Node::Stmt(_)) => {
             format!("stmt {}{}", map.hir_to_pretty_string(id), id_str)
         }
@@ -1412,6 +1424,9 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         Some(Node::Ty(_)) => {
             format!("type {}{}", map.hir_to_pretty_string(id), id_str)
         }
+        Some(Node::TypeBinding(type_binding)) => {
+            format!("type binding {:?}{}", type_binding, id_str)
+        }
         Some(Node::TraitRef(_)) => {
             format!("trait_ref {}{}", map.hir_to_pretty_string(id), id_str)
         }
@@ -1420,6 +1435,9 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         }
         Some(Node::Pat(_)) => {
             format!("pat {}{}", map.hir_to_pretty_string(id), id_str)
+        }
+        Some(Node::FieldPat(f)) => {
+            format!("field pat {}: {}{}", f.ident, map.hir_to_pretty_string(f.pat.hir_id), id_str)
         }
         Some(Node::Param(_)) => {
             format!("param {}{}", map.hir_to_pretty_string(id), id_str)

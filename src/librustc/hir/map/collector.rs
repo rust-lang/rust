@@ -433,6 +433,19 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_parent(pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);
         });
+        self.with_parent(pat.hir_id, |this| match pat.kind {
+            // FIXME(eddyb) add `visit_field_pat` to `intravisit`.
+            PatKind::Struct(ref qpath, ref fields, _) => {
+                this.visit_qpath(qpath, pat.hir_id, pat.span);
+                for field in fields {
+                    this.insert(field.span, field.hir_id, Node::FieldPat(field));
+                    this.with_parent(field.hir_id, |this| {
+                        this.visit_pat(&field.pat);
+                    });
+                }
+            }
+            _ => intravisit::walk_pat(this, pat),
+        });
     }
 
     fn visit_arm(&mut self, arm: &'hir Arm) {
@@ -456,8 +469,21 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_expr(&mut self, expr: &'hir Expr) {
         self.insert(expr.span, expr.hir_id, Node::Expr(expr));
 
-        self.with_parent(expr.hir_id, |this| {
-            intravisit::walk_expr(this, expr);
+        self.with_parent(expr.hir_id, |this| match expr.kind {
+            // FIXME(eddyb) add `visit_field` to `intravisit`.
+            ExprKind::Struct(ref qpath, ref fields, ref optional_base) => {
+                this.visit_qpath(qpath, expr.hir_id, expr.span);
+                for field in fields {
+                    this.insert(field.span, field.hir_id, Node::Field(field));
+                    this.with_parent(field.hir_id, |this| {
+                        this.visit_expr(&field.expr);
+                    });
+                }
+                if let Some(base) = optional_base {
+                    this.visit_expr(base);
+                }
+            }
+            _ => intravisit::walk_expr(this, expr),
         });
     }
 
@@ -481,6 +507,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(ty.hir_id, |this| {
             intravisit::walk_ty(this, ty);
+        });
+    }
+
+    fn visit_assoc_type_binding(&mut self, type_binding: &'hir TypeBinding) {
+        self.insert(type_binding.span, type_binding.hir_id, Node::TypeBinding(type_binding));
+
+        self.with_parent(type_binding.hir_id, |this| {
+            intravisit::walk_assoc_type_binding(this, type_binding);
         });
     }
 

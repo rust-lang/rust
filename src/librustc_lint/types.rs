@@ -277,14 +277,17 @@ fn lint_int_literal<'a, 'tcx>(
             return;
         }
 
-        let par_id = cx.tcx.hir().get_parent_node(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
-            if let hir::ExprKind::Struct(..) = par_e.kind {
-                if is_range_literal(cx.sess(), par_e)
-                    && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
-                {
-                    // The overflowing literal lint was overridden.
-                    return;
+        let field_id = cx.tcx.hir().get_parent_node(e.hir_id);
+        if let Node::Field(field) = cx.tcx.hir().get(field_id) {
+            let struct_id = cx.tcx.hir().get_parent_node(field.hir_id);
+            if let Node::Expr(par_e) = cx.tcx.hir().get(struct_id) {
+                if let hir::ExprKind::Struct(..) = par_e.kind {
+                    if is_range_literal(cx.sess(), par_e)
+                        && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
+                    {
+                        // The overflowing literal lint was overridden.
+                        return;
+                    }
                 }
             }
         }
@@ -317,9 +320,9 @@ fn lint_uint_literal<'a, 'tcx>(
     };
     if lit_val < min || lit_val > max {
         let parent_id = cx.tcx.hir().get_parent_node(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
-            match par_e.kind {
-                hir::ExprKind::Cast(..) => {
+        match cx.tcx.hir().get(parent_id) {
+            Node::Expr(par_e) => {
+                if let hir::ExprKind::Cast(..) = par_e.kind {
                     if let ty::Char = cx.tables.expr_ty(par_e).kind {
                         let mut err = cx.struct_span_lint(
                             OVERFLOWING_LITERALS,
@@ -336,15 +339,21 @@ fn lint_uint_literal<'a, 'tcx>(
                         return;
                     }
                 }
-                hir::ExprKind::Struct(..)
-                    if is_range_literal(cx.sess(), par_e) => {
-                        if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t) {
+            }
+            Node::Field(field) => {
+                let struct_id = cx.tcx.hir().get_parent_node(field.hir_id);
+                if let Node::Expr(par_e) = cx.tcx.hir().get(struct_id) {
+                    if let hir::ExprKind::Struct(..) = par_e.kind {
+                        if is_range_literal(cx.sess(), par_e)
+                            && lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t)
+                        {
                             // The overflowing literal lint was overridden.
                             return;
                         }
                     }
-                _ => {}
+                }
             }
+            _ => {}
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
             report_bin_hex_error(cx, e, attr::IntType::UnsignedInt(t), repr_str, lit_val, false);

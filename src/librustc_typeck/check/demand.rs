@@ -294,25 +294,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    // FIXME(eddyb) why does the name say "pattern" when it handles expressions?
     crate fn is_hir_id_from_struct_pattern_shorthand_field(
         &self,
         hir_id: hir::HirId,
-        sp: Span,
     ) -> bool {
-        let cm = self.sess().source_map();
         let parent_id = self.tcx.hir().get_parent_node(hir_id);
         if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Account for fields
-            if let Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Struct(_, fields, ..), ..
-            }) = parent {
-                if let Ok(src) = cm.span_to_snippet(sp) {
-                    for field in fields {
-                        if field.ident.as_str() == src && field.is_shorthand {
-                            return true;
-                        }
-                    }
-                }
+            if let Node::Field(field) = parent {
+                return field.is_shorthand;
             }
         }
         false
@@ -350,7 +341,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let is_struct_pat_shorthand_field = self.is_hir_id_from_struct_pattern_shorthand_field(
             expr.hir_id,
-            sp,
         );
 
         // If the span is from a macro, then it's hard to extract the text
@@ -579,21 +569,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let can_cast = false;
 
         let mut prefix = String::new();
-        if let Some(hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Struct(_, fields, _),
-            ..
-        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id)) {
-            // `expr` is a literal field for a struct, only suggest if appropriate
-            for field in fields {
-                if field.expr.hir_id == expr.hir_id && field.is_shorthand {
-                    // This is a field literal
-                    prefix = format!("{}: ", field.ident);
-                    break;
-                }
-            }
-            if &prefix == "" {
-                // Likely a field was meant, but this field wasn't found. Do not suggest anything.
-                return false;
+        let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
+        if let Some(hir::Node::Field(field)) = self.tcx.hir().find(parent_id) {
+            if field.is_shorthand {
+                // This is a field literal
+                prefix = format!("{}: ", field.ident);
             }
         }
         if let hir::ExprKind::Call(path, args) = &expr.kind {

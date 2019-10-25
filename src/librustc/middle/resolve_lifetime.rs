@@ -2206,7 +2206,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             // Foreign functions, `fn(...) -> R` and `Trait(...) -> R` (both types and bounds).
-            Node::ForeignItem(_) | Node::Ty(_) | Node::TraitRef(_) => None,
+            Node::ForeignItem(_) |
+            Node::Ty(_) |
+            Node::TypeBinding(_) |
+            Node::TraitRef(_) => None,
             // Everything else (only closures?) doesn't
             // actually enjoy elision in return types.
             _ => {
