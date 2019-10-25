@@ -124,7 +124,6 @@ sgx_entry:
 
 /*  making sure AC flag is not set in rflags */
 /*  avoid using the 'clac' instruction to be compatible with older compilers */
-    push %rcx
     pushfq
     popq %rcx
     and $0xFFFFFFFFFFFBFFFF, %rcx
