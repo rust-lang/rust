@@ -81,20 +81,30 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
     Some(text[pos..].into())
 }
 
+pub(crate) const TRIGGER_CHARS: &str = ".=";
+
 pub(crate) fn on_char_typed(
     db: &RootDatabase,
     position: FilePosition,
     char_typed: char,
 ) -> Option<SourceChange> {
+    assert!(TRIGGER_CHARS.contains(char_typed));
     let file = &db.parse(position.file_id).tree();
     assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
-    let single_file_change = match char_typed {
-        '=' => on_eq_typed(file, position.offset)?,
-        '.' => on_dot_typed(file, position.offset)?,
-        _ => return None,
-    };
-
+    let single_file_change = on_char_typed_inner(file, position.offset, char_typed)?;
     Some(single_file_change.into_source_change(position.file_id))
+}
+
+fn on_char_typed_inner(
+    file: &SourceFile,
+    offset: TextUnit,
+    char_typed: char,
+) -> Option<SingleFileChange> {
+    match char_typed {
+        '.' => on_dot_typed(file, offset),
+        '=' => on_eq_typed(file, offset),
+        _ => None,
+    }
 }
 
 /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -167,22 +177,29 @@ mod tests {
 
     use super::*;
 
+    fn type_char(char_typed: char, before: &str, after: &str) {
+        let (offset, before) = extract_offset(before);
+        let edit = TextEdit::insert(offset, char_typed.to_string());
+        let before = edit.apply(&before);
+        let parse = SourceFile::parse(&before);
+        if let Some(result) = on_char_typed_inner(&parse.tree(), offset, char_typed) {
+            let actual = result.edit.apply(&before);
+            assert_eq_text!(after, &actual);
+        } else {
+            assert_eq_text!(&before, after)
+        };
+    }
+
+    fn type_eq(before: &str, after: &str) {
+        type_char('=', before, after);
+    }
+
+    fn type_dot(before: &str, after: &str) {
+        type_char('.', before, after);
+    }
+
     #[test]
     fn test_on_eq_typed() {
-        fn type_eq(before: &str, after: &str) {
-            let (offset, before) = extract_offset(before);
-            let mut edit = TextEditBuilder::default();
-            edit.insert(offset, "=".to_string());
-            let before = edit.finish().apply(&before);
-            let parse = SourceFile::parse(&before);
-            if let Some(result) = on_eq_typed(&parse.tree(), offset) {
-                let actual = result.edit.apply(&before);
-                assert_eq_text!(after, &actual);
-            } else {
-                assert_eq_text!(&before, after)
-            };
-        }
-
         //     do_check(r"
         // fn foo() {
         //     let foo =<|>
@@ -215,21 +232,6 @@ fn foo() {
         //     let bar = 1;
         // }
         // ");
-    }
-
-    fn type_dot(before: &str, after: &str) {
-        let (offset, before) = extract_offset(before);
-        let mut edit = TextEditBuilder::default();
-        edit.insert(offset, ".".to_string());
-        let before = edit.finish().apply(&before);
-        let (analysis, file_id) = single_file(&before);
-        let file = analysis.parse(file_id).unwrap();
-        if let Some(result) = on_dot_typed(&file, offset) {
-            let actual = result.edit.apply(&before);
-            assert_eq_text!(after, &actual);
-        } else {
-            assert_eq_text!(&before, after)
-        };
     }
 
     #[test]
