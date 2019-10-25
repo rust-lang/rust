@@ -90,6 +90,10 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 }
                 return TryGetJob::JobCompleted(result);
             }
+
+            #[cfg(parallel_compiler)]
+            let query_blocked_prof_timer;
+
             let job = match lock.active.entry((*key).clone()) {
                 Entry::Occupied(entry) => {
                     match *entry.get() {
@@ -98,7 +102,9 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             // in another thread has completed. Record how long we wait in the
                             // self-profiler.
                             #[cfg(parallel_compiler)]
-                            tcx.prof.query_blocked_start(Q::NAME);
+                            {
+                                query_blocked_prof_timer = tcx.prof.query_blocked(Q::NAME);
+                            }
 
                             job.clone()
                         },
@@ -140,7 +146,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
-                tcx.prof.query_blocked_end(Q::NAME);
+
+                // This `drop()` is not strictly necessary as the binding
+                // would go out of scope anyway. But it's good to have an
+                // explicit marker of how far the measurement goes.
+                drop(query_blocked_prof_timer);
 
                 if let Err(cycle) = result {
                     return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
