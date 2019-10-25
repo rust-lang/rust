@@ -379,10 +379,11 @@ function getSearchElement() {
 
                 set_fragment(cur_id);
             }
-        } else if (hasClass(document.getElementById("help"), "hidden") === false) {
-            var is_inside_help_popup = document.getElementById("help").contains(ev.target);
+        } else if (hasClass(getHelpElement(), "hidden") === false) {
+            var help = getHelpElement();
+            var is_inside_help_popup = ev.target !== help && help.contains(ev.target);
             if (is_inside_help_popup === false) {
-                addClass(document.getElementById("help"), "hidden");
+                addClass(help, "hidden");
                 removeClass(document.body, "blur");
             }
         } else {
