@@ -244,8 +244,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows to be more like a copy of a reference.
             let mut reborrow_place = None;
-            if let box [proj_base @ .., elem] = &place.projection {
-                if *elem == ProjectionElem::Deref {
+            if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                if elem == ProjectionElem::Deref {
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         reborrow_place = Some(proj_base);
@@ -376,12 +376,15 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             );
 
             if rvalue_has_mut_interior {
-                let is_derived_from_illegal_borrow = match *borrowed_place {
+                let is_derived_from_illegal_borrow = match borrowed_place.as_local() {
                     // If an unprojected local was borrowed and its value was the result of an
                     // illegal borrow, suppress this error and mark the result of this borrow as
                     // illegal as well.
-                    Place { base: PlaceBase::Local(borrowed_local), projection: box [] }
-                        if self.derived_from_illegal_borrow.contains(borrowed_local) => true,
+                    Some(borrowed_local)
+                        if self.derived_from_illegal_borrow.contains(borrowed_local) =>
+                    {
+                        true
+                    }
 
                     // Otherwise proceed normally: check the legality of a mutable borrow in this
                     // context.
@@ -394,7 +397,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 // FIXME: should we also clear `derived_from_illegal_borrow` when a local is
                 // assigned a new value?
                 if is_derived_from_illegal_borrow {
-                    if let Place { base: PlaceBase::Local(dest), projection: box [] } = *dest {
+                    if let Some(dest) = dest.as_local() {
                         self.derived_from_illegal_borrow.insert(dest);
                     }
                 }
@@ -571,10 +574,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     return;
                 }
 
-                let needs_drop = if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = *dropped_place {
+                let needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
                     self.qualifs.needs_drop.contains(local)

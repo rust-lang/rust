@@ -157,10 +157,12 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         // Since `propagate_call_unwind` doesn't exist, we have to kill the
         // destination here, and then gen it again in `propagate_call_return`.
         if let TerminatorKind::Call {
-            destination: Some((Place { base: PlaceBase::Local(local), projection: box [] }, _)),
+            destination: Some((ref place, _)),
             ..
         } = self.body[loc.block].terminator().kind {
-            sets.kill(local);
+            if let Some(local) = place.as_local() {
+                sets.kill(local);
+            }
         }
         self.check_for_move(sets, loc);
     }

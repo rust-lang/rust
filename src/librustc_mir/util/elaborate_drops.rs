@@ -200,13 +200,14 @@ where
         variant.fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let subpath = self.elaborator.field_subpath(variant_path, field);
+            let tcx = self.tcx();
 
             assert_eq!(self.elaborator.param_env().reveal, Reveal::All);
-            let field_ty = self.tcx().normalize_erasing_regions(
+            let field_ty = tcx.normalize_erasing_regions(
                 self.elaborator.param_env(),
-                f.ty(self.tcx(), substs),
+                f.ty(tcx, substs),
             );
-            (base_place.clone().field(field, field_ty), subpath)
+            (tcx.mk_place_field(base_place.clone(), field, field_ty), subpath)
         }).collect()
     }
 
@@ -323,7 +324,7 @@ where
         debug!("open_drop_for_tuple({:?}, {:?})", self, tys);
 
         let fields = tys.iter().enumerate().map(|(i, &ty)| {
-            (self.place.clone().field(Field::new(i), ty),
+            (self.tcx().mk_place_field(self.place.clone(), Field::new(i), ty),
              self.elaborator.field_subpath(self.path, Field::new(i)))
         }).collect();
 
@@ -334,7 +335,7 @@ where
     fn open_drop_for_box(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
-        let interior = self.place.clone().deref();
+        let interior = self.tcx().mk_place_deref(self.place.clone());
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.succ; // FIXME(#43234)
@@ -406,14 +407,19 @@ where
         };
 
         let mut have_otherwise = false;
+        let tcx = self.tcx();
 
-        for (variant_index, discr) in adt.discriminants(self.tcx()) {
+        for (variant_index, discr) in adt.discriminants(tcx) {
             let subpath = self.elaborator.downcast_subpath(
                 self.path, variant_index);
             if let Some(variant_path) = subpath {
-                let base_place = self.place.clone().elem(
-                    ProjectionElem::Downcast(Some(adt.variants[variant_index].ident.name),
-                                             variant_index));
+                let base_place = tcx.mk_place_elem(
+                    self.place.clone(),
+                    ProjectionElem::Downcast(
+                        Some(adt.variants[variant_index].ident.name),
+                        variant_index,
+                    ),
+                );
                 let fields = self.move_paths_for_fields(
                     &base_place,
                     variant_path,
@@ -586,7 +592,7 @@ where
                 BorrowKind::Mut { allow_two_phase_borrow: false },
                 Place {
                     base: PlaceBase::Local(cur),
-                    projection: Box::new([ProjectionElem::Deref]),
+                    projection: tcx.intern_place_elems(&vec![ProjectionElem::Deref]),
                 }
              ),
              Rvalue::BinaryOp(BinOp::Offset, move_(&Place::from(cur)), one))
@@ -594,7 +600,7 @@ where
             (Rvalue::Ref(
                  tcx.lifetimes.re_erased,
                  BorrowKind::Mut { allow_two_phase_borrow: false },
-                 self.place.clone().index(cur)),
+                 tcx.mk_place_index(self.place.clone(), cur)),
              Rvalue::BinaryOp(BinOp::Add, move_(&Place::from(cur)), one))
         };
 
@@ -627,7 +633,7 @@ where
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
         self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
-            location: ptr.clone().deref(),
+            location: tcx.mk_place_deref(ptr.clone()),
             target: loop_block,
             unwind: unwind.into_option()
         });
@@ -644,18 +650,27 @@ where
         //     ptr_based_loop
         // }
 
+        let tcx = self.tcx();
+
         if let Some(size) = opt_size {
             let size: u32 = size.try_into().unwrap_or_else(|_| {
                 bug!("move out check isn't implemented for array sizes bigger than u32::MAX");
             });
-            let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size).map(|i| {
-                (self.place.clone().elem(ProjectionElem::ConstantIndex{
-                    offset: i,
-                    min_length: size,
-                    from_end: false
-                }),
-                 self.elaborator.array_subpath(self.path, i, size))
-            }).collect();
+            let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
+                .map(|i| {
+                    (
+                        tcx.mk_place_elem(
+                            self.place.clone(),
+                            ProjectionElem::ConstantIndex {
+                                offset: i,
+                                min_length: size,
+                                from_end: false,
+                            },
+                        ),
+                        self.elaborator.array_subpath(self.path, i, size),
+                    )
+                })
+                .collect();
 
             if fields.iter().any(|(_,path)| path.is_some()) {
                 let (succ, unwind) = self.drop_ladder_bottom();
@@ -664,7 +679,6 @@ where
         }
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
-        let tcx = self.tcx();
         let elem_size = &Place::from(self.new_temp(tcx.types.usize));
         let len = &Place::from(self.new_temp(tcx.types.usize));
 
@@ -900,8 +914,8 @@ where
         );
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
-            let field_ty = f.ty(self.tcx(), substs);
-            Operand::Move(self.place.clone().field(field, field_ty))
+            let field_ty = f.ty(tcx, substs);
+            Operand::Move(tcx.mk_place_field(self.place.clone(), field, field_ty))
         }).collect();
 
         let call = TerminatorKind::Call {

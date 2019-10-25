@@ -17,11 +17,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box(ref place, ref rvalue)) => {
-                if let mir::Place {
-                    base: mir::PlaceBase::Local(index),
-                    projection: box [],
-                } = place {
-                    match self.locals[*index] {
+                if let Some(index) = place.as_local() {
+                    match self.locals[index] {
                         LocalRef::Place(cg_dest) => {
                             self.codegen_rvalue(bx, cg_dest, rvalue)
                         }
@@ -30,7 +27,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                         LocalRef::Operand(None) => {
                             let (mut bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
-                            if let Some(name) = self.mir.local_decls[*index].name {
+                            if let Some(name) = self.mir.local_decls[index].name {
                                 match operand.val {
                                     OperandValue::Ref(x, ..) |
                                     OperandValue::Immediate(x) => {
@@ -44,7 +41,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     }
                                 }
                             }
-                            self.locals[*index] = LocalRef::Operand(Some(operand));
+                            self.locals[index] = LocalRef::Operand(Some(operand));
                             bx
                         }
                         LocalRef::Operand(Some(op)) => {

@@ -530,10 +530,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let mir::Place {
-            base: mir::PlaceBase::Local(index),
-            projection: box [],
-        } = *place {
+        if let Some(index) = place.as_local() {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind {
                     let n = n.eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());

@@ -926,46 +926,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If constants and statics, we don't generate StorageLive for this
             // temporary, so don't try to generate StorageDead for it either.
             _ if self.local_scope().is_none() => (),
-            Operand::Copy(Place {
-                base: PlaceBase::Local(cond_temp),
-                projection: box [],
-            })
-            | Operand::Move(Place {
-                base: PlaceBase::Local(cond_temp),
-                projection: box [],
-            }) => {
-                // Manually drop the condition on both branches.
-                let top_scope = self.scopes.scopes.last_mut().unwrap();
-                let top_drop_data = top_scope.drops.pop().unwrap();
+            Operand::Copy(place)
+            | Operand::Move(place) => {
+                if let Some(cond_temp) = place.as_local() {
+                    // Manually drop the condition on both branches.
+                    let top_scope = self.scopes.scopes.last_mut().unwrap();
+                    let top_drop_data = top_scope.drops.pop().unwrap();
 
-                match top_drop_data.kind {
-                    DropKind::Value { .. } => {
-                        bug!("Drop scheduled on top of condition variable")
+                    match top_drop_data.kind {
+                        DropKind::Value { .. } => {
+                            bug!("Drop scheduled on top of condition variable")
+                        }
+                        DropKind::Storage => {
+                            let source_info = top_scope.source_info(top_drop_data.span);
+                            let local = top_drop_data.local;
+                            assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
+                            self.cfg.push(
+                                true_block,
+                                Statement {
+                                    source_info,
+                                    kind: StatementKind::StorageDead(local)
+                                },
+                            );
+                            self.cfg.push(
+                                false_block,
+                                Statement {
+                                    source_info,
+                                    kind: StatementKind::StorageDead(local)
+                                },
+                            );
+                        }
                     }
-                    DropKind::Storage => {
-                        let source_info = top_scope.source_info(top_drop_data.span);
-                        let local = top_drop_data.local;
-                        assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
-                        self.cfg.push(
-                            true_block,
-                            Statement {
-                                source_info,
-                                kind: StatementKind::StorageDead(local)
-                            },
-                        );
-                        self.cfg.push(
-                            false_block,
-                            Statement {
-                                source_info,
-                                kind: StatementKind::StorageDead(local)
-                            },
-                        );
-                    }
+
+                    top_scope.invalidate_cache(true, self.is_generator, true);
+                } else {
+                    bug!("Expected as_local_operand to produce a temporary");
                 }
-
-                top_scope.invalidate_cache(true, self.is_generator, true);
             }
-            _ => bug!("Expected as_local_operand to produce a temporary"),
         }
 
         (true_block, false_block)

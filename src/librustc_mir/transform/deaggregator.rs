@@ -45,6 +45,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                     }),
                     *kind,
                     source_info,
+                    tcx,
                 ))
             });
         }

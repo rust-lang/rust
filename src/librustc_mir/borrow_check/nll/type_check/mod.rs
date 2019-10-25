@@ -480,13 +480,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if place.projection.is_empty() {
             if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let is_promoted = match place {
-                    Place {
-                        base: PlaceBase::Static(box Static {
+                let is_promoted = match place.as_ref() {
+                    PlaceRef {
+                        base: &PlaceBase::Static(box Static {
                             kind: StaticKind::Promoted(..),
                             ..
                         }),
-                        projection: box [],
+                        projection: &[],
                     } => true,
                     _ => false,
                 };
@@ -1366,11 +1366,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
-                let category = match *place {
-                    Place {
-                        base: PlaceBase::Local(RETURN_PLACE),
-                        projection: box [],
-                    } => if let BorrowCheckContext {
+                let category = match place.as_local() {
+                    Some(RETURN_PLACE) => if let BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
                                 defining_ty: DefiningTy::Const(def_id, _),
@@ -1386,10 +1383,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     } else {
                         ConstraintCategory::Return
                     },
-                    Place {
-                        base: PlaceBase::Local(l),
-                        projection: box [],
-                    } if !body.local_decls[l].is_user_variable.is_some() => {
+                    Some(l) if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1675,11 +1669,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(body, tcx).ty;
                 let dest_ty = self.normalize(dest_ty, term_location);
-                let category = match *dest {
-                    Place {
-                        base: PlaceBase::Local(RETURN_PLACE),
-                        projection: box [],
-                    } => {
+                let category = match dest.as_local() {
+                    Some(RETURN_PLACE) => {
                         if let BorrowCheckContext {
                             universal_regions:
                                 UniversalRegions {
@@ -1698,10 +1689,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ConstraintCategory::Return
                         }
                     }
-                    Place {
-                        base: PlaceBase::Local(l),
-                        projection: box [],
-                    } if !body.local_decls[l].is_user_variable.is_some() => {
+                    Some(l) if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -2432,7 +2420,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             location, borrow_region, borrowed_place
         );
 
-        let mut cursor = &*borrowed_place.projection;
+        let mut cursor = borrowed_place.projection.as_ref();
         while let [proj_base @ .., elem] = cursor {
             cursor = proj_base;
 

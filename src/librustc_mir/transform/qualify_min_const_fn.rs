@@ -259,8 +259,8 @@ fn check_place(
     def_id: DefId,
     body: &Body<'tcx>
 ) -> McfResult {
-    let mut cursor = &*place.projection;
-    while let [proj_base @ .., elem] = cursor {
+    let mut cursor = place.projection.as_ref();
+    while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
             ProjectionElem::Downcast(..) => {

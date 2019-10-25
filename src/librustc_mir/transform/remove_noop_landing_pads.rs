@@ -32,7 +32,7 @@ impl RemoveNoopLandingPads {
         nop_landing_pads: &BitSet<BasicBlock>,
     ) -> bool {
         for stmt in &body[bb].statements {
-            match stmt.kind {
+            match &stmt.kind {
                 StatementKind::FakeRead(..) |
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
@@ -41,12 +41,13 @@ impl RemoveNoopLandingPads {
                     // These are all nops in a landing pad
                 }
 
-                StatementKind::Assign(box(Place {
-                    base: PlaceBase::Local(_),
-                    projection: box [],
-                }, Rvalue::Use(_))) => {
-                    // Writing to a local (e.g., a drop flag) does not
-                    // turn a landing pad to a non-nop
+                StatementKind::Assign(box(place, Rvalue::Use(_))) => {
+                    if place.as_local().is_some() {
+                        // Writing to a local (e.g., a drop flag) does not
+                        // turn a landing pad to a non-nop
+                    } else {
+                        return false;
+                    }
                 }
 
                 StatementKind::Assign { .. } |
