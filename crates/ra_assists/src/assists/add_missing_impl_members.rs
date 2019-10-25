@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{db::HirDatabase, HasSource};
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
@@ -14,6 +12,32 @@ enum AddMissingImplMembersMode {
     NoDefaultMethods,
 }
 
+// Assist: add_impl_missing_members
+// Adds scaffold for required impl members
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {<|>
+//
+// }
+// ```
+// ->
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {
+//     fn foo(&self) { unimplemented!() }
+//
+// }
+// ```
 pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     add_missing_impl_members_inner(
         ctx,
@@ -23,6 +47,36 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
     )
 }
 
+// Assist: add_impl_default_members
+// Adds scaffold for overriding default impl members
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {
+//     Type X = ();
+//     fn foo(&self) {}<|>
+//
+// }
+// ```
+// ->
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {
+//     Type X = ();
+//     fn foo(&self) {}
+//     fn bar(&self) {}
+//
+// }
+// ```
 pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     add_missing_impl_members_inner(
         ctx,

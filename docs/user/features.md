@@ -104,84 +104,6 @@ the VS Code side to be able to position cursor. `<|>` signifies cursor
 
 See [assists.md](./assists.md)
 
-- Add `#[derive]`
-
-```rust
-// before:
-struct Foo {
-    <|>x: i32
-}
-// after:
-#[derive(<|>)]
-struct Foo {
-    x: i32
-}
-```
-
-- Add `impl`
-
-```rust
-// before:
-struct Foo<'a, T: Debug> {
-    <|>t: T
-}
-// after:
-struct Foo<'a, T: Debug> {
-    t: T
-}
-
-impl<'a, T: Debug> Foo<'a, T> {
-    <|>
-}
-```
-
-- Add missing `impl` members
-
-```rust
-// before:
-trait Foo {
-    fn foo(&self);
-    fn bar(&self);
-    fn baz(&self);
-}
-
-struct S;
-
-impl Foo for S {
-    fn bar(&self) {}
-    <|>
-}
-
-// after:
-trait Foo {
-    fn foo(&self);
-    fn bar(&self);
-    fn baz(&self);
-}
-
-struct S;
-
-impl Foo for S {
-    fn bar(&self) {}
-    fn foo(&self) { unimplemented!() }
-    fn baz(&self) { unimplemented!() }<|>
-}
-```
-
-- Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws)
-
-```rust
-// before:
-fn example(x: bool) -> bool {
-    !x || !x
-}
-
-// after:
-fn example(x: bool) -> bool {
-    !(x && x)
-}
-```
-
 - Import path
 
 ```rust
@@ -388,19 +310,6 @@ fn foo() {
     if 2 ><|> 1 {
         println!("Who would have thought?");
     }
-}
-```
-
-- Add explicit type
-
-```rust
-// before:
-fn foo() {
-    let t<|> = (&2, Some(1));
-}
-// after:
-fn foo() {
-    let t<|>: (&i32, Option<i32>) = (&2, Some(1));
 }
 ```
 

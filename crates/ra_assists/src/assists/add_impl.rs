@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use format_buf::format;
 use hir::db::HirDatabase;
 use join_to_string::join;
@@ -10,6 +8,23 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: add_impl
+// Adds a new inherent impl for a type
+// ```
+// struct Ctx<T: Clone> {
+//      data: T,<|>
+// }
+// ```
+// ->
+// ```
+// struct Ctx<T: Clone> {
+//      data: T,
+// }
+//
+// impl<T: Clone> Ctx<T> {
+//
+// }
+// ```
 pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;

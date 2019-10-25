@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use crate::{
-    codegen::{self, extract_comment_blocks, Mode},
+    codegen::{self, extract_comment_blocks_with_empty_lines, Mode},
     project_root, Result,
 };
 
@@ -34,7 +34,7 @@ fn collect_assists() -> Result<Vec<Assist>> {
 
     fn collect_file(acc: &mut Vec<Assist>, path: &Path) -> Result<()> {
         let text = fs::read_to_string(path)?;
-        let comment_blocks = extract_comment_blocks(&text);
+        let comment_blocks = extract_comment_blocks_with_empty_lines(&text);
 
         for block in comment_blocks {
             // FIXME: doesn't support blank lines yet, need to tweak
@@ -45,7 +45,11 @@ fn collect_assists() -> Result<Vec<Assist>> {
                 continue;
             }
             let id = first_line["Assist: ".len()..].to_string();
-            assert!(id.chars().all(|it| it.is_ascii_lowercase() || it == '_'));
+            assert!(
+                id.chars().all(|it| it.is_ascii_lowercase() || it == '_'),
+                "invalid assist id: {:?}",
+                id
+            );
 
             let doc = take_until(lines.by_ref(), "```");
             let before = take_until(lines.by_ref(), "```");

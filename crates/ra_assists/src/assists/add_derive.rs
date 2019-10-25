@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -9,6 +7,22 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: add_derive
+// Adds a new `#[derive()]` clause to a struct or enum.
+// ```
+// struct Point {
+//     x: u32,
+//     y: u32,<|>
+// }
+// ```
+// ->
+// ```
+// #[derive()]
+// struct Point {
+//     x: u32,
+//     y: u32,
+// }
+// ```
 pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(&nominal)?;
