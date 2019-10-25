@@ -406,8 +406,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: &Place<'tcx>,
         is_mut_use: bool,
     ) {
-        let mut cursor = &*place.projection;
-        while let [proj_base @ .., elem] = cursor {
+        let mut cursor = place.projection.as_ref();
+        while let &[ref proj_base @ .., elem] = cursor {
             cursor = proj_base;
 
             match elem {

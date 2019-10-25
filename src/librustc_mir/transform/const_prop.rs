@@ -7,10 +7,9 @@ use std::cell::Cell;
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
-    AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, UnOp, StatementKind, Statement, LocalKind,
-    TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp,
-    SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
+    AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local, UnOp,
+    StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo,
+    BinOp, SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -525,18 +524,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // (e.g. for CTFE) it can never happen. But here in const_prop
             // unknown data is uninitialized, so if e.g. a function argument is unsized
             // and has a reference taken, we get an ICE.
-            Rvalue::Ref(_, _, Place { base: PlaceBase::Local(local), projection: box [] }) => {
-                trace!("checking Ref({:?})", place);
-                let alive =
-                    if let LocalValue::Live(_) = self.ecx.frame().locals[*local].value {
-                        true
-                    } else {
-                        false
-                    };
+            Rvalue::Ref(_, _, place_ref) => {
+                trace!("checking Ref({:?})", place_ref);
 
-                if !alive {
-                    trace!("skipping Ref({:?}) to uninitialized local", place);
-                    return None;
+                if let Some(local) = place_ref.as_local() {
+                    let alive =
+                        if let LocalValue::Live(_) = self.ecx.frame().locals[local].value {
+                            true
+                        } else {
+                            false
+                        };
+
+                    if !alive {
+                        trace!("skipping Ref({:?}) to uninitialized local", place);
+                        return None;
+                    }
                 }
             }
 
@@ -685,6 +687,10 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
 }
 
 impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_constant(
         &mut self,
         constant: &mut Constant<'tcx>,
@@ -706,10 +712,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 .ty(&self.local_decls, self.tcx)
                 .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = *place {
+                if let Some(local) = place.as_local() {
                     let source = statement.source_info;
                     if let Some(()) = self.const_prop(rval, place_layout, source, place) {
                         if self.can_const_prop[local] {

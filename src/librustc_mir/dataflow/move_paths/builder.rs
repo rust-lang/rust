@@ -114,7 +114,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         BorrowedContent {
                             target_place: Place {
                                 base: place.base.clone(),
-                                projection: proj.to_vec().into_boxed_slice(),
+                                projection: tcx.intern_place_elems(proj),
                             },
                         },
                     ));
@@ -172,7 +172,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             Some(base),
                             Place {
                                 base: place.base.clone(),
-                                projection: proj.to_vec().into_boxed_slice(),
+                                projection: tcx.intern_place_elems(proj),
                             },
                         );
                         ent.insert(path);
@@ -274,7 +274,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     // Box starts out uninitialized - need to create a separate
                     // move-path for the interior so it will be separate from
                     // the exterior.
-                    self.create_move_path(&place.clone().deref());
+                    self.create_move_path(&self.builder.tcx.mk_place_deref(place.clone()));
                     self.gather_init(place.as_ref(), InitKind::Shallow);
                 } else {
                     self.gather_init(place.as_ref(), InitKind::Deep);

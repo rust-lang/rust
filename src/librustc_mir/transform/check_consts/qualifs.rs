@@ -164,8 +164,8 @@ pub trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let box [proj_base @ .., elem] = &place.projection {
-                    if ProjectionElem::Deref == *elem {
+                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                    if ProjectionElem::Deref == elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, per_local, PlaceRef {
