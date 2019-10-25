@@ -98,7 +98,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
             "caller_location" => {
-                self.write_caller_location(span, dest)?;
+                let caller = self.tcx.sess.source_map().lookup_char_pos(span.lo());
+                let location = self.alloc_caller_location(
+                    Symbol::intern(&caller.file.name.to_string()),
+                    caller.line as u32,
+                    caller.col_display as u32 + 1,
+                )?;
+                self.write_scalar(location.ptr, dest)?;
             }
 
             "min_align_of" |

@@ -15,7 +15,7 @@ use crate::traits::*;
 
 use std::borrow::Cow;
 
-use syntax::symbol::Symbol;
+use syntax::{source_map::Span, symbol::Symbol};
 
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
@@ -420,8 +420,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Get the location information.
-        let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-        let location = bx.static_panic_location(&loc);
+        let location = self.get_caller_location(&mut bx, span).immediate();
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
@@ -534,11 +533,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let ty = instance.unwrap().substs.type_at(0);
             let layout = bx.layout_of(ty);
             if layout.abi.is_uninhabited() {
-                let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-
                 let msg_str = format!("Attempted to instantiate uninhabited type {}", ty);
                 let msg = bx.const_str(Symbol::intern(&msg_str));
-                let location = bx.static_panic_location(&loc);
+                let location = self.get_caller_location(&mut bx, span).immediate();
 
                 // Obtain the panic entry point.
                 let def_id =
@@ -584,13 +581,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic == Some("caller_location") {
             if let Some((_, target)) = destination.as_ref() {
-                let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                let location = bx.static_panic_location(&loc);
+                let location = self.get_caller_location(&mut bx, span);
 
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                    Immediate(location).store(&mut bx, tmp);
+                    location.val.store(&mut bx, tmp);
                 }
-                self.store_return(&mut bx, ret_dest, &fn_ty.ret, location);
+                self.store_return(&mut bx, ret_dest, &fn_ty.ret, location.immediate());
 
                 helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
                 helper.funclet_br(self, &mut bx, *target);
@@ -992,6 +988,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_argument(bx, op, llargs, &args[i]);
             }
         }
+    }
+
+    fn get_caller_location(
+        &mut self,
+        bx: &mut Bx,
+        span: Span,
+    ) -> OperandRef<'tcx, Bx::Value> {
+        let caller = bx.tcx().sess.source_map().lookup_char_pos(span.lo());
+        let const_loc = bx.tcx().const_caller_location((
+            Symbol::intern(&caller.file.name.to_string()),
+            caller.line as u32,
+            caller.col_display as u32 + 1,
+        ));
+        OperandRef::from_const(bx, const_loc)
     }
 
     fn get_personality_slot(

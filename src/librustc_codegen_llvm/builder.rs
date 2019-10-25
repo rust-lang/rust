@@ -2,7 +2,6 @@ use crate::llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope};
 use crate::llvm::{self, False, BasicBlock};
 use crate::common::Funclet;
 use crate::context::CodegenCx;
-use crate::syntax_pos::Pos;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -24,7 +23,6 @@ use std::ffi::CStr;
 use std::ops::{Deref, Range};
 use std::ptr;
 use std::iter::TrustedLen;
-use syntax::symbol::Symbol;
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -1067,20 +1065,6 @@ impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
         self.cx().get_static(def_id)
-    }
-
-    fn static_panic_location(&mut self, loc: &syntax::source_map::Loc) -> Self::Value {
-        let filename = Symbol::intern(&loc.file.name.to_string());
-        let filename = self.const_str(filename);
-        let line = self.const_u32(loc.line as u32);
-        let col = self.const_u32(loc.col.to_usize() as u32 + 1);
-        let struct_ = self.const_struct(&[filename.0, filename.1, line, col], false);
-
-        let align = self.tcx.data_layout.aggregate_align.abi
-            .max(self.tcx.data_layout.i32_align.abi)
-            .max(self.tcx.data_layout.pointer_align.abi);
-        // FIXME(eddyb) move this into miri, it can be correct if e.g. field order changes
-        self.static_addr_of(struct_, align, Some("panic_loc"))
     }
 }
 

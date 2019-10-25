@@ -1,7 +1,6 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
-use rustc::hir::{self, Mutability};
 use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
@@ -10,6 +9,8 @@ use crate::require_same_types;
 
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::Symbol;
+
+use rustc::hir;
 
 use std::iter;
 
@@ -146,13 +147,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             "caller_location" => (
                 0,
                 vec![],
-                tcx.mk_ref(
+                tcx.mk_imm_ref(
                     tcx.lifetimes.re_static,
-                    ty::TypeAndMut {
-                        mutbl: Mutability::MutImmutable,
-                        ty: tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
-                            .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
-                    },
+                    tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
+                        .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
                 ),
             ),
             "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),

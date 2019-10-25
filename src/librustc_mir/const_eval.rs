@@ -18,7 +18,7 @@ use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 use crate::interpret::eval_nullary_intrinsic;
 
-use syntax::source_map::{Span, DUMMY_SP};
+use syntax::{source_map::{Span, DUMMY_SP}, symbol::Symbol};
 
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
@@ -159,11 +159,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    intern_const_alloc_recursive(
-        ecx,
-        cid.instance.def_id(),
-        ret,
-    )?;
+    intern_const_alloc_recursive(ecx, tcx.static_mutability(cid.instance.def_id()), ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)

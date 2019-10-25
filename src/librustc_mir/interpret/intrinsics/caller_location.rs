@@ -2,23 +2,19 @@ use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::mir::interpret::{Pointer, PointerArithmetic, Scalar};
 use rustc::ty::subst::Subst;
 use rustc_target::abi::{LayoutOf, Size};
-use syntax_pos::Span;
+use syntax_pos::Symbol;
 
-use crate::interpret::{
-    MemoryKind,
-    intrinsics::{InterpCx, InterpResult, Machine, PlaceTy},
-};
+use crate::interpret::{MemoryKind, MPlaceTy, intrinsics::{InterpCx, InterpResult, Machine}};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn write_caller_location(
+    pub fn alloc_caller_location(
         &mut self,
-        span: Span,
-        dest: PlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        let caller = self.tcx.sess.source_map().lookup_char_pos(span.lo());
-        let filename = caller.file.name.to_string();
-        let line = Scalar::from_u32(caller.line as u32);
-        let col = Scalar::from_u32(caller.col_display as u32 + 1);
+        filename: Symbol,
+        line: u32,
+        col: u32,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let line = Scalar::from_u32(line);
+        let col = Scalar::from_u32(col);
 
         let ptr_size = self.pointer_size();
         let u32_size = Size::from_bits(32);
@@ -27,10 +23,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_static.into()].iter()));
         let loc_layout = self.layout_of(loc_ty)?;
 
-        let file_alloc = self.tcx.allocate_bytes(filename.as_bytes());
+        let file_alloc = self.tcx.allocate_bytes(filename.as_str().as_bytes());
         let file_ptr = Pointer::new(file_alloc, Size::ZERO);
         let file = Scalar::Ptr(self.tag_static_base_pointer(file_ptr));
-        let file_len = Scalar::from_uint(filename.len() as u128, ptr_size);
+        let file_len = Scalar::from_uint(filename.as_str().len() as u128, ptr_size);
 
         let location = self.allocate(loc_layout, MemoryKind::Stack);
 
@@ -48,7 +44,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         alloc.write_scalar(layout, line_out, line.into(), u32_size)?;
         alloc.write_scalar(layout, col_out, col.into(), u32_size)?;
 
-        self.write_scalar(location.ptr, dest)?;
-        Ok(())
+        Ok(location)
     }
 }
