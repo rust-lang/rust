@@ -469,6 +469,10 @@ fn wait(state_and_queue: &AtomicUsize, current_state: usize) {
     // dangling reference). Guard against spurious wakeups by reparking
     // ourselves until we are signaled.
     while !node.signaled.load(Ordering::Acquire) {
+        // If the managing thread happens to signal and unpark us before we can
+        // park ourselves, the result could be this thread never gets unparked.
+        // Luckily `park` comes with the guarantee that if it got an `unpark`
+        // just before on an unparked thread is does not park.
         thread::park();
     }
 }
