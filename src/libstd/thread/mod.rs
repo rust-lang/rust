@@ -250,7 +250,7 @@ pub use self::local::{LocalKey, AccessError};
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
