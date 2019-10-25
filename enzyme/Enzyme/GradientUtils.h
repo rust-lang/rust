@@ -894,74 +894,218 @@ endCheck:
             return nullptr;
             report_fatal_error("unable to unwrap");
     }
+
+    //! returns true indices
+    std::vector<std::pair</*sublimit*/Value*, /*loop limits*/std::vector<std::pair<LoopContext, Value*>>>> getSubLimits(BasicBlock* ctx) {
+        std::vector<LoopContext> contexts;
+        for (BasicBlock* blk = ctx; blk != nullptr; ) {
+            LoopContext idx;
+            if (!getContext(blk, idx)) {
+                break;
+            }
+            contexts.emplace_back(idx);
+            indices.
+            if (idx.parent) {
+                blk = idx.parent->getHeader();
+            } else {
+                blk = nullptr;
+            }
+        }
+
+        std::vector<BasicBlock*> allocationPreheaders(contexts.size(), nullptr);
+        std::vector<Value*> limits(contexts.size(), nullptr);
+        for(int i=contexts.size()-1; i >= 0; i--) {
+            if (i == contexts.size() - 1) {
+                allocationPreheaders[i] = contexts[i].preheader;
+            else if (contexts.dynamic) {
+                allocationPreheaders[i] = contexts[i].preheader;
+            } else {
+                allocationPreheaders[i] = allocationPreheaders[i+1];
+            }
+              
+            if (idx.dynamic) {
+                limits[i] = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1);
+            } else {
+                //while (limits[i] == nullptr) {
+                    ValueToValueMapTy emptyMap;
+                    IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
+                    limits[i] = unwrapM(idx.limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                    if (limits[i] == nullptr) {
+                        assert(allocationPreheaders[i]);
+                        llvm::errs() << *oldFunc << "\n";
+                        llvm::errs() << *newFunc << "\n";
+                        llvm::errs() << "needed value " << *idx.limit << " at " << allocationPreheaders[i]->getName() << "\n";
+                    }
+                    assert(limits[i] != nullptr);
+                    //TODO allow triangular arrays per above
+                /*
+                    if (limits[i] == nullptr) {
+                        int firstDifferent = j+1;
+                        while (allocationPreheaders[firstDifferent] == allocationPreheaders[i]) {
+                            firstDifferent++;
+                            assert(firstDifferent < contexts.size());
+                        }
+                        allocationPreheaders[i] = allocationPreheaders[firstDifferent];
+                    }
+                }*/
+            }
+        }
+        
+        std::vector<std::pair<Value*, std::vector<Value*>> sublimits;
+
+        Value* size = nullptr;
+        std::vector<std::pair<LoopContext, Value*>> lims;
+        for(int i=0; i < contexts.size(); i++) {
+          lims.push_back(std::make_pair(contexts[i], limits[i]));
+          if (size == nullptr) {
+              size = limits[i];
+          } else {
+              size = allocationBuilder.CreateNUWMul(size, limits[i]);
+          }
+
+          if (idx.dynamic) {
+            sublimits.push_back(std::make_pair(size, lims));
+            size = nullptr;
+            break;
+          }
+        }
+
+        if (size != nullptr) {
+          sublimits.push_back(std::make_pair(size, lims));
+        }
+        return sublimits;
+    }
    
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
     AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, CallInst** freeLocation, Instruction** lastScopeAllocLocation) {
         assert(ctx);
         assert(T);
-        LoopContext lc;
-        bool inLoop = getContext(ctx, lc);
+
+        auto sublimits = getSubLimits(ctx);
+
+        /* goes from inner loop to outer loop*/
+        Type* nextType = T;
+        std::vector<Instruction*> mallocs;
+        for(const auto sublimit: sublimits) {
+            nextType = PointerType::getUnqual(nextType);
+        }
 
         assert(inversionAllocs && "must be able to allocate inverted caches");
         IRBuilder<> entryBuilder(inversionAllocs);
         entryBuilder.setFastMathFlags(getFast());
+        AllocaInst* alloc = entryBuilder.CreateAlloca(T, nullptr, name+"_cache");
+                
+        Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
+        auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64(ctx->getContext()));
 
-        if (!inLoop) {
+        Value* storeInto = alloc;
+        for(int i=sublimits.size()-1; i>=0; i--) {
+            const auto& containedloops = sublimits[i].second;
+
+            IRBuilder <> allocationBuilder(&containedloops.back().preheader->back());
+            auto firstallocation = CallInst::CreateMalloc(
+                    &allocationBuilder.GetInsertBlock()->back(),
+                    size->getType(),
+                    nextType,
+                    ConstantInt::get(size->getType(), allocationBuilder.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(T)/8), size, nullptr, name+"_malloccache");
+            CallInst* malloccall = dyn_cast<CallInst>(firstallocation);
+            if (malloccall == nullptr) {
+                malloccall = cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
+            }
+            malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+            malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+
+            //allocationBuilder.GetInsertBlock()->getInstList().push_back(cast<Instruction>(allocation));
+            cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
+            mallocs.push_back(firstallocation);
+           
+            if (sublimits[i].second.back().dynamic) {
+                IRBuilder <> build(placeToStore.getNextNode());
+                Value* allocation = build.CreateLoad(holderAlloc);
+                Value* foo = v.CreateNUWAdd(dynamicPHI, ConstantInt::get(Type::getInt64(ctx->getContext()), 1));
+                Value* realloc_size = v.CreateNUWMul(foo, sublimits[i].first);
+                Value* idxs[2] = {
+                    v.CreatePointerCast(allocation, BPTy),
+                    v.CreateNUWMul(
+                        ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(T)/8), realloc_size
+                    )
+                };
+
+                Value* realloccall = nullptr;
+                allocation = v.CreatePointerCast(realloccall = v.CreateCall(realloc, idxs, name+"_realloccache"), allocation->getType());
+                if (lastScopeAllocLocation) {
+                    *lastScopeAllocLocation = cast<Instruction>(allocation);
+                }
+                    v.CreateStore(allocation, holderAlloc);
+                allocationBuilder.CreateStore(mallocs[i], placetostore);
+            }
+            allocationBuilder.CreateStore(mallocs[i], placetostore);
+
+            if (freeLocation) {
+                assert(reverseBlocks.size());
+
+                IRBuilder<> tbuild(reverseBlocks[outermostPreheader]);
+                tbuild.setFastMathFlags(getFast());
+
+                // ensure we are before the terminator if it exists
+                if (tbuild.GetInsertBlock()->size()) {
+                      tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getFirstNonPHI());
+                }
+
+                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(tbuild.CreateLoad(holderAlloc), Type::getInt8PtrTy(outermostPreheader->getContext())), tbuild.GetInsertBlock()));
+                ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+                if (ci->getParent()==nullptr) {
+                    tbuild.Insert(ci);
+                }
+                *freeLocation = ci;
+            }
+
+            IRBuilder <> v(ctx->getFirstNonPHI());
+            v.setFastMathFlags(getFast());
+
+            SmallVector<Value*,3> indices;
+            SmallVector<Value*,3> limits;
+            PHINode* dynamicPHI = nullptr;
+
+            for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
+              indices.push_back(idx.var);
+
+              if (idx.dynamic) {
+                dynamicPHI = idx.var;
+                assert(dynamicPHI);
+                llvm::errs() << "saw idx.dynamic:" << *dynamicPHI << "\n";
+                assert(idx.parent == nullptr);
+                break;
+              }
+
+              if (idx.parent == nullptr) break;
+              ValueToValueMapTy emptyMap;
+              auto limitm1 = unwrapM(idx.limit, v, emptyMap, /*lookupIfAble*/false);
+              assert(limitm1);
+              auto lim = v.CreateNUWAdd(limitm1, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
+              if (limits.size() != 0) {
+                lim = v.CreateNUWMul(lim, limits.back());
+              }
+              limits.push_back(lim);
+            }
+
+            if (dynamicPHI != nullptr) {
+            }
+
+        }
+
+
+
+
+        if (sublimits.size() == 0) {
             return entryBuilder.CreateAlloca(T, nullptr, name+"_cache");
         } else {
 
-            BasicBlock* outermostPreheader = nullptr;
-
-            for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-                if (idx.parent == nullptr) {
-                    outermostPreheader = idx.preheader;
-                }
-                if (idx.parent == nullptr) break;
-            }
+            BasicBlock* outermostPreheader = contexts.back().preheader;
             assert(outermostPreheader);
 
             IRBuilder <> allocationBuilder(&outermostPreheader->back());
 
-            Value* size = nullptr;
-            static std::map<BasicBlock*, Value*> sizecache;
-            if (sizecache.find(lc.header) != sizecache.end()) {
-                size = sizecache[lc.header];
-            } else {
-                for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-                  //TODO handle allocations for dynamic loops
-                  if (idx.dynamic && idx.parent != nullptr) {
-                    assert(idx.var);
-                    assert(idx.var->getParent());
-                    assert(idx.var->getParent()->getParent());
-                    llvm::errs() << *idx.var->getParent()->getParent() << "\n"
-                        << "idx.var=" <<*idx.var << "\n"
-                        << "idx.limit=" <<*idx.limit << "\n";
-                    llvm::errs() << "cannot handle non-outermost dynamic loop\n";
-                    assert(0 && "cannot handle non-outermost dynamic loop");
-                  }
-                  Value* ns = nullptr;
-                  Type* intT = idx.dynamic ? cast<PointerType>(idx.limit->getType())->getElementType() : idx.limit->getType();
-                  if (idx.dynamic) {
-                    ns = ConstantInt::get(intT, 1);
-                  } else {
-                    Value* limitm1 = nullptr;
-                    ValueToValueMapTy emptyMap;
-                    limitm1 = unwrapM(idx.limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
-                    if (limitm1 == nullptr) {
-                        assert(outermostPreheader);
-                        assert(outermostPreheader->getParent());
-                        llvm::errs() << *outermostPreheader->getParent() << "\n";
-                        llvm::errs() << "needed value " << *idx.limit << " at " << allocationBuilder.GetInsertBlock()->getName() << "\n";
-                    }
-                    assert(limitm1);
-                    ns = allocationBuilder.CreateNUWAdd(limitm1, ConstantInt::get(intT, 1));
-                  }
-                  if (size == nullptr) size = ns;
-                  else size = allocationBuilder.CreateNUWMul(size, ns);
-                  if (idx.parent == nullptr) break;
-                }
-                sizecache[lc.header] = size;
-            }
 
             auto firstallocation = CallInst::CreateMalloc(
                     &allocationBuilder.GetInsertBlock()->back(),
@@ -980,7 +1124,6 @@ endCheck:
             if (lastScopeAllocLocation)
                 *lastScopeAllocLocation = firstallocation;
             allocationBuilder.CreateStore(firstallocation, holderAlloc);
-
 
             if (freeLocation) {
                 assert(reverseBlocks.size());
@@ -1030,17 +1173,6 @@ endCheck:
               }
               limits.push_back(lim);
             }
-
-            /*
-            Value* idx = nullptr;
-            for(unsigned i=0; i<indices.size(); i++) {
-              if (i == 0) {
-                idx = indices[i];
-              } else {
-                auto mul = v.CreateNUWMul(indices[i], limits[i-1]);
-                idx = v.CreateNUWAdd(idx, mul);
-              }
-            }*/
 
             if (dynamicPHI != nullptr) {
                 Type *BPTy = Type::getInt8PtrTy(v.GetInsertBlock()->getContext());
@@ -1118,14 +1250,10 @@ endCheck:
               limits.push_back(lim);
             }
 
-            Value* idx = nullptr;
-            for(unsigned i=0; i<indices.size(); i++) {
-              if (i == 0) {
-                idx = indices[i];
-              } else {
-                auto mul = v.CreateNUWMul(indices[i], limits[i-1]);
-                idx = v.CreateNUWAdd(idx, mul);
-              }
+            Value* idx = indices[0];
+            for(unsigned i=1; i<indices.size(); i++) {
+              Value* mul = v.CreateNUWMul(indices[i], limits[i-1]);
+              idx = v.CreateNUWAdd(idx, mul);
             }
 
             Value* allocation = nullptr;
@@ -1152,6 +1280,7 @@ endCheck:
         }
 
     }
+
     void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
         assert(ctx);
         assert(inst);
@@ -1223,13 +1352,9 @@ endCheck:
               limits.push_back(lim);
             }
 
-            Value* idx = nullptr;
-            for(unsigned i=0; i<indices.size(); i++) {
-              if (i == 0) {
-                idx = indices[i];
-              } else {
-                idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[i], limits[i-1]));
-              }
+            Value* idx = indices[0];
+            for(unsigned i=1; i<indices.size(); i++) {
+              idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[i], limits[i-1]));
             }
 
             Value* idxs[] = {idx};
