@@ -4,7 +4,6 @@ fn main() {
     match 0 {
         (.. PAT) => {}
         //~^ ERROR `..X` range patterns are not supported
-        //~| ERROR exclusive range pattern syntax is experimental
     }
 }
 

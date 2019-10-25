@@ -30,6 +30,28 @@ crate struct GatedSpans {
     crate or_patterns: Lock<Vec<Span>>,
     /// Spans collected for gating `const_extern_fn`, e.g. `const extern fn foo`.
     crate const_extern_fn: Lock<Vec<Span>>,
+    /// Spans collected for gating `trait_alias`, e.g. `trait Foo = Ord + Eq;`.
+    pub trait_alias: Lock<Vec<Span>>,
+    /// Spans collected for gating `associated_type_bounds`, e.g. `Iterator<Item: Ord>`.
+    pub associated_type_bounds: Lock<Vec<Span>>,
+    /// Spans collected for gating `crate_visibility_modifier`, e.g. `crate fn`.
+    pub crate_visibility_modifier: Lock<Vec<Span>>,
+    /// Spans collected for gating `const_generics`, e.g. `const N: usize`.
+    pub const_generics: Lock<Vec<Span>>,
+    /// Spans collected for gating `decl_macro`, e.g. `macro m() {}`.
+    pub decl_macro: Lock<Vec<Span>>,
+    /// Spans collected for gating `box_patterns`, e.g. `box 0`.
+    pub box_patterns: Lock<Vec<Span>>,
+    /// Spans collected for gating `exclusive_range_pattern`, e.g. `0..2`.
+    pub exclusive_range_pattern: Lock<Vec<Span>>,
+    /// Spans collected for gating `try_blocks`, e.g. `try { a? + b? }`.
+    pub try_blocks: Lock<Vec<Span>>,
+    /// Spans collected for gating `label_break_value`, e.g. `'label: { ... }`.
+    pub label_break_value: Lock<Vec<Span>>,
+    /// Spans collected for gating `box_syntax`, e.g. `box $expr`.
+    pub box_syntax: Lock<Vec<Span>>,
+    /// Spans collected for gating `type_ascription`, e.g. `42: usize`.
+    pub type_ascription: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.

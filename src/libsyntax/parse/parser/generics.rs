@@ -55,10 +55,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_const_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+        let lo = self.token.span;
+
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
+
+        self.sess.gated_spans.const_generics.borrow_mut().push(lo.to(self.prev_span));
 
         Ok(GenericParam {
             ident,

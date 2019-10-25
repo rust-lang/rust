@@ -115,6 +115,15 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    = note: for more information, see https://github.com/rust-lang/rust/issues/52662
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
+error[E0658]: associated type bounds are unstable
+  --> $DIR/feature-gate-associated_type_bounds.rs:75:23
+   |
+LL | accept_path!(Iterator<Item: Ord>);
+   |                       ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52662
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/feature-gate-associated_type_bounds.rs:54:14
    |
@@ -139,7 +148,7 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    |
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
-error: aborting due to 16 previous errors
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0562, E0658.
 For more information about an error, try `rustc --explain E0562`.

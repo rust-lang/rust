@@ -3,6 +3,8 @@
 
 // check-pass
 
+#![feature(box_patterns)]
+
 fn main() {}
 
 macro_rules! accept_pat {

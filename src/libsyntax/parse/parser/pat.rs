@@ -324,7 +324,9 @@ impl<'a> Parser<'a> {
                 self.parse_pat_ident(BindingMode::ByRef(mutbl))?
             } else if self.eat_keyword(kw::Box) {
                 // Parse `box pat`
-                PatKind::Box(self.parse_pat_with_range_pat(false, None)?)
+                let pat = self.parse_pat_with_range_pat(false, None)?;
+                self.sess.gated_spans.box_patterns.borrow_mut().push(lo.to(self.prev_span));
+                PatKind::Box(pat)
             } else if self.can_be_ident_pat() {
                 // Parse `ident @ pat`
                 // This can give false positives and parse nullary enums,
@@ -609,6 +611,11 @@ impl<'a> Parser<'a> {
         Ok(PatKind::Mac(mac))
     }
 
+    fn excluded_range_end(&self, span: Span) -> RangeEnd {
+        self.sess.gated_spans.exclusive_range_pattern.borrow_mut().push(span);
+        RangeEnd::Excluded
+    }
+
     /// Parse a range pattern `$path $form $end?` where `$form = ".." | "..." | "..=" ;`.
     /// The `$path` has already been parsed and the next token is the `$form`.
     fn parse_pat_range_starting_with_path(
@@ -618,7 +625,7 @@ impl<'a> Parser<'a> {
         path: Path
     ) -> PResult<'a, PatKind> {
         let (end_kind, form) = match self.token.kind {
-            token::DotDot => (RangeEnd::Excluded, ".."),
+            token::DotDot => (self.excluded_range_end(self.token.span), ".."),
             token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
             token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
             _ => panic!("can only parse `..`/`...`/`..=` for ranges (checked above)"),
@@ -641,7 +648,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::DotDotEq) {
             (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
         } else if self.eat(&token::DotDot) {
-            (RangeEnd::Excluded, "..")
+            (self.excluded_range_end(op_span), "..")
         } else {
             panic!("impossible case: we already matched on a range-operator token")
         };
