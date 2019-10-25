@@ -4158,6 +4158,7 @@ dependencies = [
  "dlmalloc",
  "fortanix-sgx-abi",
  "hashbrown 0.6.2",
+ "libc",
  "hermit-abi",
  "panic_abort",
  "panic_unwind",
