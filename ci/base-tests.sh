@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -ex
 
-# for faster build, share target dir between subcrates
-CARGO_TARGET_DIR=$(pwd)/target/
-export CARGO_TARGET_DIR
-
 echo "Running clippy base tests"
 
 PATH=$PATH:./node_modules/.bin

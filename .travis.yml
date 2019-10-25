@@ -25,6 +25,7 @@ env:
    - secure: "OKulfkA5OGd/d1IhvBKzRkHQwMcWjzrzbimo7+5NhkUkWxndAzl+719TB3wWvIh1i2wXXrEXsyZkXM5FtRrHm55v1VKQ5ibjEvFg1w3NIg81iDyoLq186fLqywvxGkOAFPrsePPsBj5USd5xvhwwbrjO6L7/RK6Z8shBwOSc41s="
 
 before_install:
+  - export CARGO_TARGET_DIR="$TRAVIS_BUILD_DIR/target"
   - curl -sSL https://sh.rustup.rs | sh -s -- -y --default-toolchain=nightly --profile=minimal
   - export PATH="$HOME/.cargo/bin:$PATH"
 install:
@@ -51,6 +52,15 @@ matrix:
   include:
     # Builds that are executed for every PR
     - os: linux
+    # i686 toolchain could run on x86_64 system.
+    - os: linux
+      env: HOST_TOOLCHAIN=i686-unknown-linux-gnu
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libssl-dev:i386     # openssl dev in Cargo.toml
+      if: branch IN (auto, try)
     - os: windows
       env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
 
@@ -117,7 +127,7 @@ before_script:
     SYSROOT=$(rustc --print sysroot)
     case "$TRAVIS_OS_NAME" in
       windows ) export PATH="${SYSROOT}/bin:${PATH}" ;;
-      linux ) export LD_LIBRARY_PATH="${SYSROOT}/lib" ;;
+      linux ) export LD_LIBRARY_PATH="${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" ;;
       osx )
         # See <https://github.com/nteract/nteract/issues/1523#issuecomment-301623519>
         sudo mkdir -p /usr/local/lib
