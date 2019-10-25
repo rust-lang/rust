@@ -5,8 +5,20 @@ set -e
 
 cd "$(dirname "$0")"
 
-if [[ "$CI" == true ]] || ! command -v rustup-toolchain-install-master > /dev/null; then
-    cargo install -Z install-upgrade rustup-toolchain-install-master --bin rustup-toolchain-install-master
+ERRNO=0
+RTIM_PATH=$(command -v rustup-toolchain-install-master) || ERRNO=$?
+CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}
+
+# Check if people also install RTIM in other locations beside
+# ~/.cargo/bin
+if [[ "$ERRNO" -ne 0 ]] || [[ "$RTIM_PATH" == $CARGO_HOME/bin/rustup-toolchain-install-master ]]; then
+    cargo install -Z install-upgrade rustup-toolchain-install-master
+else
+    VERSION=$(rustup-toolchain-install-master -V | grep -o "[0-9.]*")
+    REMOTE=$(cargo search rustup-toolchain-install-master | grep -o "[0-9.]*")
+    echo "info: skipping updating rustup-toolchain-install-master at $RTIM_PATH"
+    echo "      current version : $VERSION"
+    echo "      remote version  : $REMOTE"
 fi
 
 RUST_COMMIT=$(git ls-remote https://github.com/rust-lang/rust master | awk '{print $1}')
