@@ -123,7 +123,9 @@ sgx_entry:
 /*  reset user state */
 /*    - DF flag: x86-64 ABI requires DF to be unset at function entry/exit */
 /*    - AC flag: AEX on misaligned memory accesses leaks side channel info */
+    pushfq
     andq $~0x40400, (%rsp)
+    popfq
 
 /*  check for debug buffer pointer */
     testb  $0xff,DEBUG(%rip)
