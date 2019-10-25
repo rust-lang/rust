@@ -422,15 +422,18 @@ impl<T> [T] {
     /// use two pointers to refer to a range of elements in memory, as is
     /// common in C++.
     ///
-    /// It can also be useful to check if a reference or pointer to an element
-    /// refers to an element of this slice:
+    /// It can also be useful to check if a pointer to an element refers to an
+    /// element of this slice:
     ///
     /// ```
-    /// let a = [1,2,3];
-    /// let x = &a[1];
-    /// let y = &5;
-    /// assert!(a.as_ptr_range().contains(x));
-    /// assert!(!a.as_ptr_range().contains(y));
+    /// #![feature(slice_ptr_range)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let x = &a[1] as *const _;
+    /// let y = &5 as *const _;
+    ///
+    /// assert!(a.as_ptr_range().contains(&x));
+    /// assert!(!a.as_ptr_range().contains(&y));
     /// ```
     ///
     /// [`as_ptr`]: #method.as_ptr
