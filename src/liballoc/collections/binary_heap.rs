@@ -648,6 +648,42 @@ impl<T: Ord> BinaryHeap<T> {
             self.extend(other.drain());
         }
     }
+
+    /// Returns an iterator which retrieves elements in heap order.
+    /// The retrieved elements will be removed from the original heap.
+    /// The remaining elements are removed on drop in heap order.
+    ///
+    /// Note:
+    /// * `.drain_sorted()` is O(n lg n); much slower than `.drain()`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_drain_sorted)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
+    /// assert_eq!(heap.len(), 5);
+    ///
+    /// let removed = heap.drain_sorted()
+    ///     .take(3).collect::<Vec<_>>(); // removes 3 elements in heap order
+    ///
+    /// assert_eq!(removed, vec![5, 4, 3]);
+    /// assert_eq!(heap.len(), 2);
+    ///
+    /// drop(drain_sorted); // removes remaining elements in heap order
+    ///
+    /// assert_eq!(heap.len(), 0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
+    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
+        DrainSorted {
+            inner: self,
+        }
+    }
 }
 
 impl<T> BinaryHeap<T> {
@@ -918,47 +954,6 @@ impl<T> BinaryHeap<T> {
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<'_, T> {
         Drain { iter: self.data.drain(..) }
-    }
-
-    /// Returns an iterator which retrieves elements in heap order.
-    /// The retrieved elements will be removed from the original heap.
-    ///
-    /// Note:
-    /// * Unlike other `.drain()` methods, this method removes elements *lazily*.
-    /// In order to remove elements in heap order, you need to retrieve elements explicitly.
-    /// * The remaining elements are removed on drop in arbitrary order.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(binary_heap_drain_sorted)]
-    /// use std::collections::BinaryHeap;
-    ///
-    /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
-    /// assert_eq!(heap.len(), 5);
-    ///
-    /// let len = heap.len();
-    /// let removed = heap.drain_sorted()
-    ///     .take(len).collect::<Vec<_>>(); // removes all elements in *heap* order
-    /// assert_eq!(removed, vec![5, 4, 3, 2, 1]);
-    /// assert_eq!(heap.len(), 0);
-    ///
-    ///
-    /// let mut heap = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
-    /// assert_eq!(heap.len(), 5);
-    ///
-    /// let drain_sorted = heap.drain_sorted();
-    /// drop(drain_sorted); // removes all elements in *arbitrary* order
-    /// assert_eq!(heap.len(), 0);
-    /// ```
-    #[inline]
-    #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
-        DrainSorted {
-            inner: self,
-        }
     }
 
     /// Drops all items from the binary heap.
@@ -1263,15 +1258,15 @@ impl<T> FusedIterator for Drain<'_, T> {}
 /// [`BinaryHeap`]: struct.BinaryHeap.html
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 #[derive(Debug)]
-pub struct DrainSorted<'a, T> {
+pub struct DrainSorted<'a, T: Ord> {
     inner: &'a mut BinaryHeap<T>,
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<'a, T> Drop for DrainSorted<'a, T> {
-    /// Removes heap elements in arbitrary order for efficiency.
+impl<'a, T: Ord> Drop for DrainSorted<'a, T> {
+    /// Removes heap elements in heap order.
     fn drop(&mut self) {
-        self.inner.drain();
+        while let Some(_) = self.inner.pop() {}
     }
 }
 
