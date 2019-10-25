@@ -1469,7 +1469,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          (such as entering an empty infinite loop) by inserting llvm.sideeffect"),
 }
 
-pub fn default_lib_output() -> CrateType {
+pub const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 

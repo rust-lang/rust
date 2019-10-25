@@ -295,6 +295,8 @@ fn configure_and_expand_inner<'a>(
         krate
     });
 
+    util::check_attr_crate_type(&krate.attrs, &mut resolver.lint_buffer);
+
     syntax_ext::plugin_macro_defs::inject(
         &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
     );
