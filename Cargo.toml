@@ -45,6 +45,10 @@ features = ["compression", "read", "std"] # We don't need WASM support
 #[patch.crates-io]
 #gimli = { path = "../" }
 
+[patch.crates-io]
+# FIXME switch back to crates.io once gimli-rs/object#133 is published
+object = { git = "https://github.com/gimli-rs/object.git" }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 

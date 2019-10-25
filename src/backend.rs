@@ -149,13 +149,7 @@ impl WriteDebugInfo for ObjectProduct {
             }
             DebugRelocName::Symbol(id) => {
                 let symbol_id = self.function_symbol(*symbol_map.get_index(id).unwrap().0);
-                let symbol = self.object.symbol(symbol_id);
-
-                // A symbol gets a section assigned when `add_symbol_data` is called.
-                let section = symbol.section.expect("Symbol not defined");
-                let symbol_offset = symbol.value;
-
-                (self.object.section_symbol(section), symbol_offset)
+                self.object.symbol_section_and_offset(symbol_id).expect("Debug reloc for undef sym???")
             }
         };
         self.object.add_relocation(from.0, Relocation {

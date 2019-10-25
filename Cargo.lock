@@ -162,7 +162,7 @@ source = "git+https://github.com/CraneStation/cranelift.git#387593d6c94d291e614c
 dependencies = [
  "cranelift-codegen 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.46.1 (git+https://github.com/CraneStation/cranelift.git)",
- "object 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "object 0.14.0 (git+https://github.com/gimli-rs/object.git)",
  "target-lexicon 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -341,7 +341,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "object"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/gimli-rs/object.git#50391629ce0691dda4fb6ea57cf920cee80130c6"
 dependencies = [
  "crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -431,7 +431,7 @@ dependencies = [
  "indexmap 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.64 (registry+https://github.com/rust-lang/crates.io-index)",
  "libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "object 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "object 0.14.0 (git+https://github.com/gimli-rs/object.git)",
  "target-lexicon 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -629,7 +629,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum mach 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "86dd2487cdfea56def77b88438a2c915fb45113c5319bfe7e14306ca4cd0b0e1"
 "checksum miniz_oxide 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "304f66c19be2afa56530fa7c39796192eef38618da8d19df725ad7c6d6b2aaae"
 "checksum nodrop 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
-"checksum object 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "81afbc5773e99efe9533d8a539dfac37e531dcd0f4eeb41584bae03ccf76d4c2"
+"checksum object 0.14.0 (git+https://github.com/gimli-rs/object.git)" = "<none>"
 "checksum plain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 "checksum proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)" = "cf3d2011ab5c909338f7887f4fc896d35932e29146c12c8d01da6b22a80ba759"
 "checksum proc-macro2 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "90cf5f418035b98e655e9cdb225047638296b862b42411c4e45bb88d700f7fc0"
