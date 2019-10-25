@@ -359,7 +359,7 @@ impl Definitions {
 
     #[inline]
     pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
-        self.node_to_def_index.get(&node).cloned()
+        self.node_to_def_index.get(&node).copied()
     }
 
     #[inline]
@@ -413,7 +413,7 @@ impl Definitions {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if def_id.krate == LOCAL_CRATE {
-            self.def_index_to_span.get(&def_id.index).cloned()
+            self.def_index_to_span.get(&def_id.index).copied()
         } else {
             None
         }
@@ -525,7 +525,7 @@ impl Definitions {
     }
 
     pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {
-        self.expansions_that_defined.get(&index).cloned().unwrap_or(ExpnId::root())
+        self.expansions_that_defined.get(&index).copied().unwrap_or(ExpnId::root())
     }
 
     pub fn parent_module_of_macro_def(&self, expn_id: ExpnId) -> DefId {
