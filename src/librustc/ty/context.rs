@@ -2930,14 +2930,18 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
         // lower bounds from `size_hint` agree they are correct.
         Ok(match iter.size_hint() {
             (1, Some(1)) => {
-                f(&[iter.next().unwrap()?])
+                let t0 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0])
             }
             (2, Some(2)) => {
                 let t0 = iter.next().unwrap()?;
                 let t1 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
                 f(&[t0, t1])
             }
             (0, Some(0)) => {
+                assert!(iter.next().is_none());
                 f(&[])
             }
             _ => {

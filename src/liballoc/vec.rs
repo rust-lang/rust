@@ -358,6 +358,44 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Decomposes a `Vec<T>` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the vector (in elements), and the allocated capacity of the
+    /// data (in elements). These are the same arguments in the same
+    /// order as the arguments to [`from_raw_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `Vec` with the [`from_raw_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts`]: #method.from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// let v: Vec<i32> = vec![-1, 0, 1];
+    ///
+    /// let (ptr, len, cap) = v.into_raw_parts();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr as *mut u32;
+    ///
+    ///     Vec::from_raw_parts(ptr, len, cap)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
+        let mut me = mem::ManuallyDrop::new(self);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    }
+
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
     /// # Safety
@@ -389,7 +427,12 @@ impl<T> Vec<T> {
     /// use std::ptr;
     /// use std::mem;
     ///
-    /// let mut v = vec![1, 2, 3];
+    /// let v = vec![1, 2, 3];
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    /// // Prevent running `v`'s destructor so we are in complete control
+    /// // of the allocation.
+    /// let mut v = mem::ManuallyDrop::new(v);
     ///
     /// // Pull out the various important pieces of information about `v`
     /// let p = v.as_mut_ptr();
@@ -397,10 +440,6 @@ impl<T> Vec<T> {
     /// let cap = v.capacity();
     ///
     /// unsafe {
-    ///     // Cast `v` into the void: no destructor run, so we are in
-    ///     // complete control of the allocation to which `p` points.
-    ///     mem::forget(v);
-    ///
     ///     // Overwrite memory with 4, 5, 6
     ///     for i in 0..len as isize {
     ///         ptr::write(p.offset(i), 4 + i);
