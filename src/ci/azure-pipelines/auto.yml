@@ -315,6 +315,7 @@ jobs:
 
       # 32/64 bit MSVC and GNU deployment
       dist-x86_64-msvc:
+        MSYS_BITS: 64
         RUST_CONFIGURE_ARGS: >
           --build=x86_64-pc-windows-msvc
           --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
@@ -324,6 +325,7 @@ jobs:
         DIST_REQUIRE_ALL_TOOLS: 1
         DEPLOY: 1
       dist-i686-msvc:
+        MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: >
           --build=i686-pc-windows-msvc
           --target=i586-pc-windows-msvc
