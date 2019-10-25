@@ -146,6 +146,15 @@ pub fn handle_on_type_formatting(
     // `text.char_at(position) == typed_char`.
     position.offset = position.offset - TextUnit::of_char('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
+
+    // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
+    // but it requires precise cursor positioning to work, and one can't
+    // position the cursor with on_type formatting. So, let's just toggle this
+    // feature off here, hoping that we'll enable it one day, 😿.
+    if char_typed == '>' {
+        return Ok(None);
+    }
+
     let edit = world.analysis().on_char_typed(position, char_typed)?;
     let mut edit = match edit {
         Some(it) => it,
