@@ -812,7 +812,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_location(
                 &mut self,
-                body_cache: & $($mutability)? BodyCache<&'_ $($mutability)? Body<'tcx>>,
+                body_cache: body_cache_type!($($mutability)? '_, 'tcx),
                 location: Location
             ) {
                 let basic_block = & $($mutability)? body_cache[location.block];

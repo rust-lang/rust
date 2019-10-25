@@ -1,7 +1,7 @@
 use crate::borrow_check::nll::region_infer::values::{PointIndex, RegionValueElements};
 use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Body, Local, Location};
+use rustc::mir::{Local, Location, ReadOnlyBodyCache};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
 
@@ -60,9 +60,9 @@ impl LocalUseMap {
     crate fn build(
         live_locals: &Vec<Local>,
         elements: &RegionValueElements,
-        body: &Body<'_>,
+        body_cache: &ReadOnlyBodyCache<'_, '_>,
     ) -> Self {
-        let nones = IndexVec::from_elem_n(None, body.local_decls.len());
+        let nones = IndexVec::from_elem_n(None, body_cache.local_decls.len());
         let mut local_use_map = LocalUseMap {
             first_def_at: nones.clone(),
             first_use_at: nones.clone(),
@@ -75,11 +75,11 @@ impl LocalUseMap {
         }
 
         let mut locals_with_use_data: IndexVec<Local, bool> =
-            IndexVec::from_elem_n(false, body.local_decls.len());
+            IndexVec::from_elem_n(false, body_cache.local_decls.len());
         live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, elements, locals_with_use_data }
-            .visit_body(body);
+            .visit_body(body_cache);
 
         local_use_map
     }

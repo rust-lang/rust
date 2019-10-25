@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::mir::{self, Body, ClearCrossCrate, Local, LocalInfo, Location};
+use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBodyCache};
 use rustc::mir::{Mutability, Place, PlaceRef, PlaceBase, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_index::vec::Idx;
@@ -529,14 +529,14 @@ fn suggest_ampmut_self<'tcx>(
 // by trying (3.), then (2.) and finally falling back on (1.).
 fn suggest_ampmut<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
-    let locations = body.find_assignments(local);
+    let locations = body_cache.find_assignments(local);
     if !locations.is_empty() {
-        let assignment_rhs_span = body.source_info(locations[0]).span;
+        let assignment_rhs_span = body_cache.source_info(locations[0]).span;
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             if let (true, Some(ws_pos)) = (
                 src.starts_with("&'"),

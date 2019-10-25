@@ -75,24 +75,24 @@ impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct RequiresStorage<'mir, 'tcx> {
-    body: &'mir Body<'tcx>,
+    body_cache: &'mir ReadOnlyBodyCache<'mir, 'tcx>,
     borrowed_locals:
         RefCell<DataflowResultsRefCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>,
 }
 
 impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
     pub fn new(
-        body: &'mir Body<'tcx>,
+        body_cache: &'mir ReadOnlyBodyCache<'mir, 'tcx>,
         borrowed_locals: &'mir DataflowResults<'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>,
     ) -> Self {
         RequiresStorage {
-            body,
-            borrowed_locals: RefCell::new(DataflowResultsCursor::new(borrowed_locals, body)),
+            body_cache,
+            borrowed_locals: RefCell::new(DataflowResultsCursor::new(borrowed_locals, body_cache)),
         }
     }
 
     pub fn body(&self) -> &Body<'tcx> {
-        self.body
+        &self.body_cache
     }
 }
 
@@ -100,13 +100,13 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
     type Idx = Local;
     fn name() -> &'static str { "requires_storage" }
     fn bits_per_block(&self) -> usize {
-        self.body.local_decls.len()
+        self.body_cache.local_decls.len()
     }
 
     fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
         // Nothing is live on function entry (generators only have a self
         // argument, and we don't care about that)
-        assert_eq!(1, self.body.arg_count);
+        assert_eq!(1, self.body_cache.arg_count);
     }
 
     fn before_statement_effect(&self, sets: &mut GenKillSet<Self::Idx>, loc: Location) {
@@ -114,7 +114,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         // statement.
         self.check_for_borrow(sets, loc);
 
-        let stmt = &self.body[loc.block].statements[loc.statement_index];
+        let stmt = &self.body_cache[loc.block].statements[loc.statement_index];
         match stmt.kind {
             StatementKind::StorageDead(l) => sets.kill(l),
             StatementKind::Assign(box(ref place, _))
@@ -146,7 +146,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         if let TerminatorKind::Call {
             destination: Some((Place { base: PlaceBase::Local(local), .. }, _)),
             ..
-        } = self.body[loc.block].terminator().kind {
+        } = self.body_cache[loc.block].terminator().kind {
             sets.gen(local);
         }
     }
@@ -159,7 +159,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         if let TerminatorKind::Call {
             destination: Some((ref place, _)),
             ..
-        } = self.body[loc.block].terminator().kind {
+        } = self.body_cache[loc.block].terminator().kind {
             if let Some(local) = place.as_local() {
                 sets.kill(local);
             }
@@ -187,7 +187,7 @@ impl<'mir, 'tcx> RequiresStorage<'mir, 'tcx> {
             sets,
             borrowed_locals: &self.borrowed_locals,
         };
-        visitor.visit_location(self.body, loc);
+        visitor.visit_location(&self.body_cache, loc);
     }
 
     /// Gen locals that are newly borrowed. This includes borrowing any part of

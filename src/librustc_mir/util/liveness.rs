@@ -57,17 +57,17 @@ pub struct LivenessResult {
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
 pub fn liveness_of_locals(
-    body: &Body<'_>,
+    body_cache: &ReadOnlyBodyCache<'_, '_>,
 ) -> LivenessResult {
-    let num_live_vars = body.local_decls.len();
+    let num_live_vars = body_cache.local_decls.len();
 
-    let def_use: IndexVec<_, DefsUses> = body
+    let def_use: IndexVec<_, DefsUses> = body_cache
         .basic_blocks()
         .iter()
         .map(|b| block(b, num_live_vars))
         .collect();
 
-    let mut outs: IndexVec<_, LiveVarSet> = body
+    let mut outs: IndexVec<_, LiveVarSet> = body_cache
         .basic_blocks()
         .indices()
         .map(|_| LiveVarSet::new_empty(num_live_vars))
@@ -83,18 +83,18 @@ pub fn liveness_of_locals(
     // FIXME(ecstaticmorse): Reverse post-order on the reverse CFG may generate a better iteration
     // order when cycles are present, but the overhead of computing the reverse CFG may outweigh
     // any benefits. Benchmark this and find out.
-    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks().len());
-    for (bb, _) in traversal::postorder(body) {
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body_cache.basic_blocks().len());
+    for (bb, _) in traversal::postorder(body_cache) {
         dirty_queue.insert(bb);
     }
 
     // Add blocks which are not reachable from START_BLOCK to the work queue. These blocks will
     // be processed after the ones added above.
-    for bb in body.basic_blocks().indices() {
+    for bb in body_cache.basic_blocks().indices() {
         dirty_queue.insert(bb);
     }
 
-    let predecessors = body.unwrap_predecessors();
+    let predecessors = body_cache.predecessors();
 
     while let Some(bb) = dirty_queue.pop() {
         // bits = use ∪ (bits - def)

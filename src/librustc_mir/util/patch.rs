@@ -127,21 +127,21 @@ impl<'tcx> MirPatch<'tcx> {
         self.make_nop.push(loc);
     }
 
-    pub fn apply(self, body: &mut Body<'tcx>) {
+    pub fn apply(self, body_cache: &mut BodyCache<&'_ mut Body<'tcx>>) {
         debug!("MirPatch: make nops at: {:?}", self.make_nop);
         for loc in self.make_nop {
-            body.make_statement_nop(loc);
+            body_cache.make_statement_nop(loc);
         }
         debug!("MirPatch: {:?} new temps, starting from index {}: {:?}",
-               self.new_locals.len(), body.local_decls.len(), self.new_locals);
+               self.new_locals.len(), body_cache.local_decls.len(), self.new_locals);
         debug!("MirPatch: {} new blocks, starting from index {}",
-               self.new_blocks.len(), body.basic_blocks().len());
-        body.basic_blocks_mut().extend(self.new_blocks);
-        body.local_decls.extend(self.new_locals);
+               self.new_blocks.len(), body_cache.basic_blocks().len());
+        body_cache.basic_blocks_mut().extend(self.new_blocks);
+        body_cache.local_decls.extend(self.new_locals);
         for (src, patch) in self.patch_map.into_iter_enumerated() {
             if let Some(patch) = patch {
                 debug!("MirPatch: patching block {:?}", src);
-                body[src].terminator_mut().kind = patch;
+                body_cache[src].terminator_mut().kind = patch;
             }
         }
 
@@ -159,9 +159,9 @@ impl<'tcx> MirPatch<'tcx> {
                    stmt, loc, delta);
             loc.statement_index += delta;
             let source_info = Self::source_info_for_index(
-                &body[loc.block], loc
+                &body_cache[loc.block], loc
             );
-            body[loc.block].statements.insert(
+            body_cache[loc.block].statements.insert(
                 loc.statement_index, Statement {
                     source_info,
                     kind: stmt

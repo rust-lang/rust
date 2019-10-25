@@ -14,7 +14,6 @@ pub struct Cache {
     predecessors: Option<IndexVec<BasicBlock, Vec<BasicBlock>>>,
 }
 
-
 //impl<'tcx, T> rustc_serialize::Encodable for Cache<'tcx, T> {
 //    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
 //        Encodable::encode(&(), s)
@@ -261,6 +260,11 @@ pub struct ReadOnlyBodyCache<'a, 'tcx> {
 }
 
 impl ReadOnlyBodyCache<'a, 'tcx> {
+    #[inline]
+    pub fn predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+        self.cache.predecessors.as_ref().unwrap()
+    }
+
     #[inline]
     pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
         self.cache.unwrap_predecessors_for(bb)
