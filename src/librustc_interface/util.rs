@@ -559,7 +559,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                                 None
                             );
                             if let Some(candidate) = lev_candidate {
-                                session.buffer_lint_with_diagnostic(
+                                session.buffer_lint_with_diagnostic_late(
                                     lint::builtin::UNKNOWN_CRATE_TYPES,
                                     ast::CRATE_NODE_ID,
                                     span,
@@ -572,7 +572,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                                         )
                                 );
                             } else {
-                                session.buffer_lint(
+                                session.buffer_lint_late(
                                     lint::builtin::UNKNOWN_CRATE_TYPES,
                                     ast::CRATE_NODE_ID,
                                     span,
