@@ -19,6 +19,7 @@ LL | /     pub fn new() -> Self {
 LL | |         Bar
 LL | |     }
    | |_____^
+   |
 help: try this
    |
 LL | #[derive(Default)]
@@ -31,6 +32,7 @@ LL | /     pub fn new() -> LtKo<'c> {
 LL | |         unimplemented!()
 LL | |     }
    | |_____^
+   |
 help: try this
    |
 LL | impl Default for LtKo<'c> {

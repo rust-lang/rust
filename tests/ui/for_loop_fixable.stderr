@@ -15,6 +15,7 @@ error: this range is empty so this for loop will never run
    |
 LL |     for i in 10..=0 {
    |              ^^^^^^
+   |
 help: consider using the following if you are attempting to iterate over this range in reverse
    |
 LL |     for i in (0..=10).rev() {
@@ -25,6 +26,7 @@ error: this range is empty so this for loop will never run
    |
 LL |     for i in MAX_LEN..0 {
    |              ^^^^^^^^^^
+   |
 help: consider using the following if you are attempting to iterate over this range in reverse
    |
 LL |     for i in (0..MAX_LEN).rev() {
@@ -35,6 +37,7 @@ error: this range is empty so this for loop will never run
    |
 LL |     for i in 10..5 + 4 {
    |              ^^^^^^^^^
+   |
 help: consider using the following if you are attempting to iterate over this range in reverse
    |
 LL |     for i in (5 + 4..10).rev() {
@@ -45,6 +48,7 @@ error: this range is empty so this for loop will never run
    |
 LL |     for i in (5 + 2)..(3 - 1) {
    |              ^^^^^^^^^^^^^^^^
+   |
 help: consider using the following if you are attempting to iterate over this range in reverse
    |
 LL |     for i in ((3 - 1)..(5 + 2)).rev() {

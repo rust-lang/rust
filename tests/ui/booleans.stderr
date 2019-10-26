@@ -72,6 +72,7 @@ error: this boolean expression can be simplified
    |
 LL |     let _ = a == b && c == 5 && a == b;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: try
    |
 LL |     let _ = a == b && c == 5;
@@ -84,6 +85,7 @@ error: this boolean expression can be simplified
    |
 LL |     let _ = a == b && c == 5 && b == a;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: try
    |
 LL |     let _ = a == b && c == 5;
@@ -120,6 +122,7 @@ error: this boolean expression can be simplified
    |
 LL |     let _ = a != b || !(a != b || c == d);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: try
    |
 LL |     let _ = c != d || a != b;

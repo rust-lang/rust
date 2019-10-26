@@ -27,6 +27,7 @@ error: large size difference between variants
    |
 LL |     ContainingLargeEnum(LargeEnum),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: consider boxing the large fields to reduce the total size of the enum
    |
 LL |     ContainingLargeEnum(Box<LargeEnum>),
@@ -61,6 +62,7 @@ error: large size difference between variants
    |
 LL |     StructLikeLarge2 { x: [i32; 8000] },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: consider boxing the large fields to reduce the total size of the enum
    |
 LL |     StructLikeLarge2 { x: Box<[i32; 8000]> },

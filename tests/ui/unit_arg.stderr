@@ -18,6 +18,7 @@ LL |       foo({
 LL | |         1;
 LL | |     });
    | |_____^
+   |
 help: if you intended to pass a unit value, use a unit literal instead
    |
 LL |     foo(());
@@ -28,6 +29,7 @@ error: passing a unit value to a function
    |
 LL |     foo(foo(1));
    |         ^^^^^^
+   |
 help: if you intended to pass a unit value, use a unit literal instead
    |
 LL |     foo(());
@@ -42,6 +44,7 @@ LL | |         foo(1);
 LL | |         foo(2);
 LL | |     });
    | |_____^
+   |
 help: if you intended to pass a unit value, use a unit literal instead
    |
 LL |     foo(());
@@ -52,6 +55,7 @@ error: passing a unit value to a function
    |
 LL |     foo3({}, 2, 2);
    |          ^^
+   |
 help: if you intended to pass a unit value, use a unit literal instead
    |
 LL |     foo3((), 2, 2);
@@ -65,6 +69,7 @@ LL |       b.bar({
 LL | |         1;
 LL | |     });
    | |_____^
+   |
 help: if you intended to pass a unit value, use a unit literal instead
    |
 LL |     b.bar(());

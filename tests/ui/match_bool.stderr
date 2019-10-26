@@ -36,6 +36,7 @@ LL | |             println!("Noooo!");
 LL | |         },
 LL | |     };
    | |_____^
+   |
 help: consider using an if/else expression
    |
 LL |     if !test {
@@ -53,6 +54,7 @@ LL | |         },
 LL | |         _ => (),
 LL | |     };
    | |_____^
+   |
 help: consider using an if/else expression
    |
 LL |     if !test {
@@ -70,6 +72,7 @@ LL | |         },
 LL | |         _ => (),
 LL | |     };
    | |_____^
+   |
 help: consider using an if/else expression
    |
 LL |     if !(test && test) {
@@ -96,6 +99,7 @@ LL | |         },
 LL | |         },
 LL | |     };
    | |_____^
+   |
 help: consider using an if/else expression
    |
 LL |     if test {

@@ -19,6 +19,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a += 1 + a;
    |     ^^^^^^^^^^
+   |
 help: Did you mean a = a + 1 or a = a + 1 + a? Consider replacing it with
    |
 LL |     a += 1;
@@ -33,6 +34,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a -= a - 1;
    |     ^^^^^^^^^^
+   |
 help: Did you mean a = a - 1 or a = a - (a - 1)? Consider replacing it with
    |
 LL |     a -= 1;
@@ -47,6 +49,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a *= a * 99;
    |     ^^^^^^^^^^^
+   |
 help: Did you mean a = a * 99 or a = a * a * 99? Consider replacing it with
    |
 LL |     a *= 99;
@@ -61,6 +64,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a *= 42 * a;
    |     ^^^^^^^^^^^
+   |
 help: Did you mean a = a * 42 or a = a * 42 * a? Consider replacing it with
    |
 LL |     a *= 42;
@@ -75,6 +79,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a /= a / 2;
    |     ^^^^^^^^^^
+   |
 help: Did you mean a = a / 2 or a = a / (a / 2)? Consider replacing it with
    |
 LL |     a /= 2;
@@ -89,6 +94,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a %= a % 5;
    |     ^^^^^^^^^^
+   |
 help: Did you mean a = a % 5 or a = a % (a % 5)? Consider replacing it with
    |
 LL |     a %= 5;
@@ -103,6 +109,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a &= a & 1;
    |     ^^^^^^^^^^
+   |
 help: Did you mean a = a & 1 or a = a & a & 1? Consider replacing it with
    |
 LL |     a &= 1;
@@ -117,6 +124,7 @@ error: variable appears on both sides of an assignment operation
    |
 LL |     a *= a * a;
    |     ^^^^^^^^^^
+   |
 help: Did you mean a = a * a or a = a * a * a? Consider replacing it with
    |
 LL |     a *= a;

@@ -23,6 +23,7 @@ error: writing `&Vec<_>` instead of `&[_]` involves one more reference and canno
    |
 LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
    |              ^^^^^^^^
+   |
 help: change this to
    |
 LL | fn cloned(x: &[u8]) -> Vec<u8> {
@@ -41,6 +42,7 @@ error: writing `&String` instead of `&str` involves a new object where a slice w
    |
 LL | fn str_cloned(x: &String) -> String {
    |                  ^^^^^^^
+   |
 help: change this to
    |
 LL | fn str_cloned(x: &str) -> String {
@@ -63,6 +65,7 @@ error: writing `&String` instead of `&str` involves a new object where a slice w
    |
 LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
    |                                            ^^^^^^^
+   |
 help: change this to
    |
 LL | fn false_positive_capacity(x: &Vec<u8>, y: &str) {

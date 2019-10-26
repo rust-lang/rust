@@ -59,6 +59,7 @@ error: this argument is passed by value, but not consumed in the function body
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                             ^^^^^^
+   |
 help: consider changing the type to
    |
 LL | fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
@@ -79,6 +80,7 @@ error: this argument is passed by value, but not consumed in the function body
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                                                     ^^^^^^^^
+   |
 help: consider changing the type to
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {

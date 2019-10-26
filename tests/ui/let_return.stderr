@@ -20,6 +20,7 @@ LL |         let x = 5;
    |         ---------- unnecessary let binding
 LL |         x
    |         ^
+   |
 help: return the expression directly
    |
 LL |         

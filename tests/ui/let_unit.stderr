@@ -23,6 +23,7 @@ LL | |         .map(|_| ())
 LL | |         .next()
 LL | |         .unwrap();
    | |__________________^
+   |
 help: omit the `let` binding
    |
 LL |     v

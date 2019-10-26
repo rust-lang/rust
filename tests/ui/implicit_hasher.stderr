@@ -19,6 +19,7 @@ error: impl for `HashMap` should be generalized over different hashers
    |
 LL | impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
    |                                    ^^^^^^^^^^^^^
+   |
 help: consider adding a type parameter
    |
 LL | impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for (HashMap<K, V, S>,) {
@@ -33,6 +34,7 @@ error: impl for `HashMap` should be generalized over different hashers
    |
 LL | impl Foo<i16> for HashMap<String, String> {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: consider adding a type parameter
    |
 LL | impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashMap<String, String, S> {
@@ -47,6 +49,7 @@ error: impl for `HashSet` should be generalized over different hashers
    |
 LL | impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
    |                                ^^^^^^^^^^
+   |
 help: consider adding a type parameter
    |
 LL | impl<T: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashSet<T, S> {
@@ -61,6 +64,7 @@ error: impl for `HashSet` should be generalized over different hashers
    |
 LL | impl Foo<i16> for HashSet<String> {
    |                   ^^^^^^^^^^^^^^^
+   |
 help: consider adding a type parameter
    |
 LL | impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashSet<String, S> {
@@ -75,6 +79,7 @@ error: parameter of type `HashMap` should be generalized over different hashers
    |
 LL | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                       ^^^^^^^^^^^^^^^^^
+   |
 help: consider adding a type parameter
    |
 LL | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _set: &mut HashSet<i32>) {}
@@ -85,6 +90,7 @@ error: parameter of type `HashSet` should be generalized over different hashers
    |
 LL | pub fn foo(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>) {}
    |                                                     ^^^^^^^^^^^^
+   |
 help: consider adding a type parameter
    |
 LL | pub fn foo<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {}
@@ -98,6 +104,7 @@ LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
 ...
 LL | gen!(impl);
    | ----------- in this macro invocation
+   |
 help: consider adding a type parameter
    |
 LL |         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
@@ -115,6 +122,7 @@ LL |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>)
 ...
 LL | gen!(fn bar);
    | ------------- in this macro invocation
+   |
 help: consider adding a type parameter
    |
 LL |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32, S>, _set: &mut HashSet<i32>) {}
@@ -128,6 +136,7 @@ LL |         pub fn $name(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32>)
 ...
 LL | gen!(fn bar);
    | ------------- in this macro invocation
+   |
 help: consider adding a type parameter
    |
 LL |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {}
