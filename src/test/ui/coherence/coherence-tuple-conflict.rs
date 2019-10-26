@@ -1,7 +1,3 @@
-// revisions: old re
-
-#![cfg_attr(re, feature(re_rebalance_coherence))]
-
 use std::fmt::Debug;
 use std::default::Default;
 
@@ -17,8 +13,7 @@ impl<T> MyTrait for (T,T) {
 }
 
 impl<A,B> MyTrait for (A,B) {
-//[old]~^ ERROR E0119
-//[re]~^^ ERROR E0119
+//~^ ERROR E0119
     fn get(&self) -> usize { self.dummy }
 }
 

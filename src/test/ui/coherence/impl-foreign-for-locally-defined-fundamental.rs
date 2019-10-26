@@ -1,5 +1,4 @@
 #![feature(fundamental)]
-#![feature(re_rebalance_coherence)]
 
 // compile-flags:--crate-name=test
 // aux-build:coherence_lib.rs

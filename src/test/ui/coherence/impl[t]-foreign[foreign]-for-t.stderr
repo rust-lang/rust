@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/impl[t]-foreign[foreign]-for-t.rs:12:6
+  --> $DIR/impl[t]-foreign[foreign]-for-t.rs:10:6
    |
 LL | impl<T> Remote1<u32> for T {
    |      ^ type parameter `T` must be used as the type parameter for some local type

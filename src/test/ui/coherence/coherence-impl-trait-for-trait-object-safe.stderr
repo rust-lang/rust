@@ -1,0 +1,11 @@
+error[E0038]: the trait `NotObjectSafe` cannot be made into an object
+  --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:7:6
+   |
+LL | trait NotObjectSafe { fn eq(&self, other: Self); }
+   |                          -- method `eq` references the `Self` type in its parameters or return type
+LL | impl NotObjectSafe for dyn NotObjectSafe { }
+   |      ^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -8,15 +8,18 @@ LL | impl<R> External for (Q, R) {}
            - impl<'a, 'b, 'c, T, U, V, W> complex_impl_support::External for (T, complex_impl_support::M<'a, 'b, 'c, std::boxed::Box<U>, V, W>)
              where <U as std::ops::FnOnce<(T,)>>::Output == V, <V as std::iter::Iterator>::Item == T, 'b : 'a, T : 'a, U: std::ops::FnOnce<(T,)>, U : 'static, V: std::iter::Iterator, V: std::clone::Clone, W: std::ops::Add, <W as std::ops::Add>::Output: std::marker::Copy;
 
-error[E0210]: type parameter `R` must be used as the type parameter for some local type (e.g., `MyStruct<R>`)
-  --> $DIR/complex-impl.rs:9:6
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/complex-impl.rs:9:1
    |
 LL | impl<R> External for (Q, R) {}
-   |      ^ type parameter `R` must be used as the type parameter for some local type
+   | ^^^^^^^^^^^^^^^^^^^^^------
+   | |                    |
+   | |                    this is not defined in the current crate because tuples are always foreign
+   | impl doesn't use only types from inside the current crate
    |
-   = note: only traits defined in the current crate can be implemented for a type parameter
+   = note: define and implement a trait or new type instead
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0119, E0210.
-For more information about an error, try `rustc --explain E0119`.
+Some errors have detailed explanations: E0117, E0119.
+For more information about an error, try `rustc --explain E0117`.
