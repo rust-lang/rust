@@ -197,6 +197,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
             return TAG_INVALID_SPAN.encode(self)
         }
 
+        // HACK(eddyb) there's no way to indicate which crate a Span is coming
+        // from right now, so decoding would fail to find the SourceFile if
+        // it's not local to the crate the Span is found in.
+        if self.source_file_cache.is_imported() {
+            return TAG_INVALID_SPAN.encode(self)
+        }
+
         TAG_VALID_SPAN.encode(self)?;
         span.lo.encode(self)?;
 
@@ -379,6 +386,7 @@ impl<'tcx> EncodeContext<'tcx> {
             .filter(|source_file| {
                 // No need to re-export imported source_files, as any downstream
                 // crate will import them from their original source.
+                // FIXME(eddyb) the `Span` encoding should take that into account.
                 !source_file.is_imported()
             })
             .map(|source_file| {
