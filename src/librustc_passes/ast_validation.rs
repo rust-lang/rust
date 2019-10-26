@@ -73,6 +73,8 @@ struct AstValidator<'a> {
     /// these booleans.
     warning_period_57979_didnt_record_next_impl_trait: bool,
     warning_period_57979_impl_trait_in_proj: bool,
+
+    lint_buffer: &'a mut lint::LintBuffer,
 }
 
 impl<'a> AstValidator<'a> {
@@ -229,7 +231,7 @@ impl<'a> AstValidator<'a> {
         err.emit();
     }
 
-    fn check_decl_no_pat<ReportFn: Fn(Span, bool)>(&self, decl: &FnDecl, report_err: ReportFn) {
+    fn check_decl_no_pat<F: FnMut(Span, bool)>(decl: &FnDecl, mut report_err: F) {
         for arg in &decl.inputs {
             match arg.pat.kind {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), _, None) |
@@ -460,7 +462,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match ty.kind {
             TyKind::BareFn(ref bfty) => {
                 self.check_fn_decl(&bfty.decl);
-                self.check_decl_no_pat(&bfty.decl, |span, _| {
+                Self::check_decl_no_pat(&bfty.decl, |span, _| {
                     struct_span_err!(self.session, span, E0561,
                                      "patterns aren't allowed in function pointer types").emit();
                 });
@@ -483,7 +485,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             TyKind::ImplTrait(_, ref bounds) => {
                 if self.is_impl_trait_banned {
                     if self.warning_period_57979_impl_trait_in_proj {
-                        self.session.buffer_lint(
+                        self.lint_buffer.buffer_lint(
                             NESTED_IMPL_TRAIT, ty.id, ty.span,
                             "`impl Trait` is not allowed in path parameters");
                     } else {
@@ -494,7 +496,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 if let Some(outer_impl_trait) = self.outer_impl_trait {
                     if outer_impl_trait.should_warn_instead_of_error() {
-                        self.session.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint_with_diagnostic(
                             NESTED_IMPL_TRAIT, ty.id, ty.span,
                             "nested `impl Trait` is not allowed",
                             BuiltinLintDiagnostics::NestedImplTrait {
@@ -634,9 +636,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
                         self.check_trait_fn_not_const(sig.header.constness);
                         if block.is_none() {
-                            self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
                                 if mut_ident {
-                                    self.session.buffer_lint(
+                                    self.lint_buffer.buffer_lint(
                                         lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
                                         trait_item.id, span,
                                         "patterns aren't allowed in methods without bodies");
@@ -655,7 +657,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if attr::contains_name(&item.attrs, sym::warn_directory_ownership) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
-                    self.session.buffer_lint(lint, item.id, item.span, msg);
+                    self.lint_buffer.buffer_lint(lint, item.id, item.span, msg);
                 }
             }
             ItemKind::Union(ref vdata, _) => {
@@ -686,7 +688,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match fi.kind {
             ForeignItemKind::Fn(ref decl, _) => {
                 self.check_fn_decl(decl);
-                self.check_decl_no_pat(decl, |span, _| {
+                Self::check_decl_no_pat(decl, |span, _| {
                     struct_span_err!(self.session, span, E0130,
                                      "patterns aren't allowed in foreign function declarations")
                         .span_label(span, "pattern not allowed in foreign function").emit();
@@ -840,7 +842,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-pub fn check_crate(session: &Session, krate: &Crate) -> bool {
+pub fn check_crate(session: &Session, krate: &Crate, lints: &mut lint::LintBuffer) -> bool {
     let mut validator = AstValidator {
         session,
         has_proc_macro_decls: false,
@@ -849,6 +851,7 @@ pub fn check_crate(session: &Session, krate: &Crate) -> bool {
         is_assoc_ty_bound_banned: false,
         warning_period_57979_didnt_record_next_impl_trait: false,
         warning_period_57979_impl_trait_in_proj: false,
+        lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
 

@@ -586,7 +586,7 @@ pub fn rustc_deprecation_message(depr: &RustcDeprecation, path: &str) -> (String
 }
 
 pub fn early_report_deprecation(
-    sess: &Session,
+    lint_buffer: &'a mut lint::LintBuffer,
     message: &str,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
@@ -597,7 +597,7 @@ pub fn early_report_deprecation(
     }
 
     let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
-    sess.buffer_lint_with_diagnostic(lint, CRATE_NODE_ID, span, message, diag);
+    lint_buffer.buffer_lint_with_diagnostic(lint, CRATE_NODE_ID, span, message, diag);
 }
 
 fn late_report_deprecation(

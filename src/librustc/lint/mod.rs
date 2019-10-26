@@ -643,13 +643,29 @@ impl LintBuffer {
         }
     }
 
-    pub fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
+    fn take(&mut self, id: ast::NodeId) -> Vec<BufferedEarlyLint> {
         self.map.remove(&id).unwrap_or_default()
     }
 
-    pub fn get_any(&self) -> Option<&[BufferedEarlyLint]> {
-        let key = self.map.keys().next().map(|k| *k);
-        key.map(|k| &self.map[&k][..])
+    pub fn buffer_lint<S: Into<MultiSpan>>(
+        &mut self,
+        lint: &'static Lint,
+        id: ast::NodeId,
+        sp: S,
+        msg: &str,
+    ) {
+        self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
+    }
+
+    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
+        &mut self,
+        lint: &'static Lint,
+        id: ast::NodeId,
+        sp: S,
+        msg: &str,
+        diagnostic: BuiltinLintDiagnostics,
+    ) {
+        self.add_lint(lint, id, sp.into(), msg, diagnostic)
     }
 }
 
@@ -779,7 +795,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
     let store = &tcx.lint_store;
     let mut builder = LintLevelMapBuilder {
-        levels: LintLevelSets::builder(tcx.sess, &store),
+        levels: LintLevelSets::builder(tcx.sess, false, &store),
         tcx: tcx,
         store: store,
     };

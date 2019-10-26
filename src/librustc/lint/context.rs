@@ -34,7 +34,6 @@ use crate::util::common::time;
 
 use errors::DiagnosticBuilder;
 use std::slice;
-use std::default::Default as StdDefault;
 use rustc_data_structures::sync::{self, ParallelIterator, join, par_iter};
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
@@ -584,12 +583,13 @@ impl<'a> EarlyContext<'a> {
         lint_store: &'a LintStore,
         krate: &'a ast::Crate,
         buffered: LintBuffer,
+        warn_about_weird_lints: bool,
     ) -> EarlyContext<'a> {
         EarlyContext {
             sess,
             krate,
             lint_store,
-            builder: LintLevelSets::builder(sess, lint_store),
+            builder: LintLevelSets::builder(sess, warn_about_weird_lints, lint_store),
             buffered,
         }
     }
@@ -1490,9 +1490,10 @@ fn early_lint_crate<T: EarlyLintPass>(
     krate: &ast::Crate,
     pass: T,
     buffered: LintBuffer,
+    warn_about_weird_lints: bool,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(sess, lint_store, krate, buffered),
+        context: EarlyContext::new(sess, lint_store, krate, buffered, warn_about_weird_lints),
         pass,
     };
 
@@ -1514,22 +1515,19 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     lint_store: &LintStore,
     krate: &ast::Crate,
     pre_expansion: bool,
+    lint_buffer: Option<LintBuffer>,
     builtin_lints: T,
 ) {
-    let (mut passes, mut buffered): (Vec<_>, _) = if pre_expansion {
-        (
-            lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect(),
-            LintBuffer::default(),
-        )
+    let mut passes: Vec<_> = if pre_expansion {
+        lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect()
     } else {
-        (
-            lint_store.early_passes.iter().map(|p| (p)()).collect(),
-            sess.buffered_lints.borrow_mut().take().unwrap(),
-        )
+        lint_store.early_passes.iter().map(|p| (p)()).collect()
     };
+    let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {
-        buffered = early_lint_crate(sess, lint_store, krate, builtin_lints, buffered);
+        buffered = early_lint_crate(sess, lint_store, krate, builtin_lints, buffered,
+            pre_expansion);
 
         if !passes.is_empty() {
             buffered = early_lint_crate(
@@ -1538,6 +1536,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                 krate,
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 buffered,
+                pre_expansion,
             );
         }
     } else {
@@ -1549,6 +1548,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                     krate,
                     EarlyLintPassObjects { lints: slice::from_mut(pass) },
                     buffered,
+                    pre_expansion,
                 )
             });
         }

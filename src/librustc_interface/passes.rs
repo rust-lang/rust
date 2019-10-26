@@ -267,6 +267,7 @@ fn configure_and_expand_inner<'a>(
             lint_store,
             &krate,
             true,
+            None,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new());
     });
 
@@ -292,6 +293,8 @@ fn configure_and_expand_inner<'a>(
         }
         krate
     });
+
+    util::check_attr_crate_type(&krate.attrs, &mut resolver.lint_buffer());
 
     syntax_ext::plugin_macro_defs::inject(
         &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
@@ -366,7 +369,7 @@ fn configure_and_expand_inner<'a>(
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
-            sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            resolver.lint_buffer().buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
@@ -395,7 +398,7 @@ fn configure_and_expand_inner<'a>(
     }
 
     let has_proc_macro_decls = time(sess, "AST validation", || {
-        ast_validation::check_crate(sess, &krate)
+        ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
 
@@ -464,7 +467,7 @@ fn configure_and_expand_inner<'a>(
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
             let lint = lint::Lint::from_parser_lint_id(lint_id);
-            sess.buffer_lint(lint, id, span, &msg);
+            resolver.lint_buffer().buffer_lint(lint, id, span, &msg);
         }
     });
 
@@ -496,6 +499,7 @@ pub fn lower_to_hir(
             lint_store,
             &krate,
             false,
+            Some(std::mem::take(resolver.lint_buffer())),
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         )
     });

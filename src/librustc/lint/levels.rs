@@ -44,8 +44,12 @@ impl LintLevelSets {
         return me
     }
 
-    pub fn builder<'a>(sess: &'a Session, store: &LintStore) -> LintLevelsBuilder<'a> {
-        LintLevelsBuilder::new(sess, LintLevelSets::new(sess, store))
+    pub fn builder<'a>(
+        sess: &'a Session,
+        warn_about_weird_lints: bool,
+        store: &LintStore,
+    ) -> LintLevelsBuilder<'a> {
+        LintLevelsBuilder::new(sess, warn_about_weird_lints, LintLevelSets::new(sess, store))
     }
 
     fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
@@ -160,14 +164,18 @@ pub struct BuilderPush {
 }
 
 impl<'a> LintLevelsBuilder<'a> {
-    pub fn new(sess: &'a Session, sets: LintLevelSets) -> LintLevelsBuilder<'a> {
+    pub fn new(
+        sess: &'a Session,
+        warn_about_weird_lints: bool,
+        sets: LintLevelSets,
+    ) -> LintLevelsBuilder<'a> {
         assert_eq!(sets.list.len(), 1);
         LintLevelsBuilder {
             sess,
             sets,
             cur: 0,
             id_to_set: Default::default(),
-            warn_about_weird_lints: sess.buffered_lints.borrow().is_some(),
+            warn_about_weird_lints,
         }
     }
 
