@@ -21,17 +21,17 @@ use syntax_pos::Span;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        debug!("elaborate_drops({:?} @ {:?})", src, body.span);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+        debug!("elaborate_drops({:?} @ {:?})", src, body_cache.span);
 
         let def_id = src.def_id();
         let param_env = tcx.param_env(src.def_id()).with_reveal_all();
-        let move_data = match MoveData::gather_moves(body, tcx) {
+        let move_data = match MoveData::gather_moves(body_cache, tcx) {
             Ok(move_data) => move_data,
             Err(_) => bug!("No `move_errors` should be allowed in MIR borrowck"),
         };
         let elaborate_patch = {
-            let body = &*body;
+            let body = &*body_cache;
             let env = MoveDataParamEnv {
                 move_data,
                 param_env,
@@ -56,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 patch: MirPatch::new(body),
             }.elaborate()
         };
-        elaborate_patch.apply(body);
+        elaborate_patch.apply(body_cache);
     }
 }
 

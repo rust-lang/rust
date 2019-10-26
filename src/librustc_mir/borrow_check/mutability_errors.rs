@@ -377,7 +377,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         },
                     ))) => Some(suggest_ampmut(
                         self.infcx.tcx,
-                        &self.body_cache,
+                        self.body_cache,
                         *local,
                         local_decl,
                         opt_ty_info,
@@ -529,7 +529,7 @@ fn suggest_ampmut_self<'tcx>(
 // by trying (3.), then (2.) and finally falling back on (1.).
 fn suggest_ampmut<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,

@@ -115,7 +115,7 @@ mod relate_tys;
 pub(crate) fn type_check<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
     promoted_cache: &IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
@@ -168,7 +168,7 @@ pub(crate) fn type_check<'tcx>(
         &mut borrowck_context,
         &universal_region_relations,
         |mut cx| {
-            cx.equate_inputs_and_outputs(body_cache, universal_regions, &normalized_inputs_and_output);
+            cx.equate_inputs_and_outputs(body_cache.body(), universal_regions, &normalized_inputs_and_output);
             liveness::generate(&mut cx, body_cache, elements, flow_inits, move_data, location_table);
 
             translate_outlives_facts(cx.borrowck_context);
@@ -185,7 +185,7 @@ fn type_check_internal<'a, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body_cache: &ReadOnlyBodyCache<'a, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'a, 'tcx>,
     promoted_cache: &'a IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
@@ -195,7 +195,7 @@ fn type_check_internal<'a, 'tcx, R>(
 ) -> R where {
     let mut checker = TypeChecker::new(
         infcx,
-        body_cache,
+        body_cache.body(),
         mir_def_id,
         param_env,
         region_bound_pairs,
@@ -204,14 +204,14 @@ fn type_check_internal<'a, 'tcx, R>(
         universal_region_relations,
     );
     let errors_reported = {
-        let mut verifier = TypeVerifier::new(&mut checker, body_cache, promoted_cache);
+        let mut verifier = TypeVerifier::new(&mut checker, body_cache.body(), promoted_cache);
         verifier.visit_body(body_cache);
         verifier.errors_reported
     };
 
     if !errors_reported {
         // if verifier failed, don't do further checks to avoid ICEs
-        checker.typeck_mir(body_cache);
+        checker.typeck_mir(body_cache.body());
     }
 
     extra(&mut checker)
@@ -385,7 +385,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_body(&mut self, body_cache: &ReadOnlyBodyCache<'_, 'tcx>) {
+    fn visit_body(&mut self, body_cache: ReadOnlyBodyCache<'_, 'tcx>) {
         self.sanitize_type(&"return type", body_cache.return_ty());
         for local_decl in &body_cache.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
@@ -464,7 +464,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 match kind {
                     StaticKind::Promoted(promoted, _) => {
                         if !self.errors_reported {
-                            let promoted_body_cache = &self.promoted_cache[*promoted];
+                            let promoted_body_cache = self.promoted_cache[*promoted];
                             self.sanitize_promoted(promoted_body_cache, location);
 
                             let promoted_ty = promoted_body_cache.return_ty();
@@ -535,7 +535,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         place_ty
     }
 
-    fn sanitize_promoted(&mut self, promoted_body_cache: &ReadOnlyBodyCache<'b, 'tcx>, location: Location) {
+    fn sanitize_promoted(&mut self, promoted_body_cache: ReadOnlyBodyCache<'b, 'tcx>, location: Location) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.

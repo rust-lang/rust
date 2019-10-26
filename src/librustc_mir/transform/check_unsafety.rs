@@ -528,7 +528,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
         hir::BodyOwnerKind::Static(_) => (true, false),
     };
     let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
-    checker.visit_body(body);
+    checker.visit_body(body.read_only());
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
     UnsafetyCheckResult {

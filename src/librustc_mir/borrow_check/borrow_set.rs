@@ -90,7 +90,7 @@ crate enum LocalsStateAtExit {
 impl LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
-        body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+        body_cache: ReadOnlyBodyCache<'_, 'tcx>,
         move_data: &MoveData<'tcx>
     ) -> Self {
         struct HasStorageDead(BitSet<Local>);
@@ -123,7 +123,7 @@ impl LocalsStateAtExit {
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
         tcx: TyCtxt<'tcx>,
-        body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+        body_cache: ReadOnlyBodyCache<'_, 'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>,
     ) -> Self {
@@ -139,7 +139,7 @@ impl<'tcx> BorrowSet<'tcx> {
                 LocalsStateAtExit::build(locals_are_invalidated_at_exit, body_cache, move_data),
         };
 
-        for (block, block_data) in traversal::preorder(body_cache) {
+        for (block, block_data) in traversal::preorder(&body_cache) {
             visitor.visit_basic_block_data(block, block_data);
         }
 

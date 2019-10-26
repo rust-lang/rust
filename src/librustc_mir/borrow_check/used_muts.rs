@@ -32,7 +32,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 never_initialized_mut_locals: &mut never_initialized_mut_locals,
                 mbcx: self,
             };
-            visitor.visit_body(&visitor.mbcx.body_cache);
+            visitor.visit_body(visitor.mbcx.body_cache);
         }
 
         // Take the union of the existed `used_mut` set with those variables we've found were

@@ -186,7 +186,7 @@ use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind, Instance};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
-use rustc::mir::{self, BodyCache, Location, PlaceBase, Static, StaticKind};
+use rustc::mir::{self, Location, PlaceBase, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::{MonoItem, InstantiationMode};
 use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
@@ -1248,15 +1248,15 @@ fn collect_neighbours<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     debug!("collect_neighbours: {:?}", instance.def_id());
-    let body = tcx.instance_mir(instance.def);
-    let body_cache = BodyCache::new(body).read_only();
+    let body_cache = tcx.instance_mir(instance.def);
+    let body = body_cache.body();
 
     MirNeighborCollector {
         tcx,
         body: &body,
         output,
         param_substs: instance.substs,
-    }.visit_body(&body_cache);
+    }.visit_body(body_cache);
 }
 
 fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {

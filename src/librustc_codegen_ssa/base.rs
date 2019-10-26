@@ -31,7 +31,6 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
-use rustc::mir::BodyCache;
 use rustc::mir::mono::{CodegenUnitNameBuilder, CodegenUnit, MonoItem};
 use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
@@ -375,8 +374,6 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let lldecl = cx.get_fn(instance);
 
     let mir = cx.tcx().instance_mir(instance.def);
-    // TODO(nashenas88) move this into instance_mir before merging PR
-    let mir = BodyCache::new(mir);
     mir::codegen_mir::<Bx>(cx, lldecl, mir, instance, sig);
 }
 

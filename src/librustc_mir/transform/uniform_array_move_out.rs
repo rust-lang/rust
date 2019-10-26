@@ -37,14 +37,14 @@ use crate::util::patch::MirPatch;
 pub struct UniformArrayMoveOut;
 
 impl<'tcx> MirPass<'tcx> for UniformArrayMoveOut {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let mut patch = MirPatch::new(body);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+        let mut patch = MirPatch::new(body_cache);
         let param_env = tcx.param_env(src.def_id());
         {
-            let mut visitor = UniformArrayMoveOutVisitor{body, patch: &mut patch, tcx, param_env};
-            visitor.visit_body(body);
+            let mut visitor = UniformArrayMoveOutVisitor{ body: body_cache, patch: &mut patch, tcx, param_env};
+            visitor.visit_body(body_cache.read_only());
         }
-        patch.apply(body);
+        patch.apply(body_cache);
     }
 }
 
@@ -184,18 +184,18 @@ pub struct RestoreSubsliceArrayMoveOut<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let mut patch = MirPatch::new(body);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+        let mut patch = MirPatch::new(body_cache);
         let param_env = tcx.param_env(src.def_id());
         {
             let mut visitor = RestoreDataCollector {
-                locals_use: IndexVec::from_elem(LocalUse::new(), &body.local_decls),
+                locals_use: IndexVec::from_elem(LocalUse::new(), &body_cache.local_decls),
                 candidates: vec![],
             };
-            visitor.visit_body(body);
+            visitor.visit_body(body_cache.read_only());
 
             for candidate in &visitor.candidates {
-                let statement = &body[candidate.block].statements[candidate.statement_index];
+                let statement = &body_cache[candidate.block].statements[candidate.statement_index];
                 if let StatementKind::Assign(box(ref dst_place, ref rval)) = statement.kind {
                     if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
                         let items : Vec<_> = items.iter().map(|item| {
@@ -203,7 +203,7 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
                                 if let Some(local) = place.as_local() {
                                     let local_use = &visitor.locals_use[local];
                                     let opt_index_and_place =
-                                        Self::try_get_item_source(local_use, body);
+                                        Self::try_get_item_source(local_use, body_cache);
                                     // each local should be used twice:
                                     //  in assign and in aggregate statements
                                     if local_use.use_count == 2 && opt_index_and_place.is_some() {
@@ -218,7 +218,7 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
                         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
                             let src_ty =
-                                Place::ty_from(src_place.base, src_place.projection, body, tcx).ty;
+                                Place::ty_from(src_place.base, src_place.projection, body_cache.body(), tcx).ty;
                             if let ty::Array(_, ref size_o) = src_ty.kind {
                                 size_o.try_eval_usize(tcx, param_env)
                             } else {
@@ -232,7 +232,7 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
                 }
             }
         }
-        patch.apply(body);
+        patch.apply(body_cache);
     }
 }
 

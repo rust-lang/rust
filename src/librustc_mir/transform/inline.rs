@@ -38,9 +38,9 @@ struct CallSite<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            Inliner { tcx, source }.run_pass(body);
+            Inliner { tcx, source }.run_pass(body_cache);
         }
     }
 }
@@ -51,7 +51,7 @@ struct Inliner<'tcx> {
 }
 
 impl Inliner<'tcx> {
-    fn run_pass(&self, caller_body: &mut Body<'tcx>) {
+    fn run_pass(&self, caller_body_cache: &mut BodyCache<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
         // allow us to try and fetch the fully optimized MIR of a
@@ -73,11 +73,11 @@ impl Inliner<'tcx> {
         if self.tcx.hir().body_owner_kind(id).is_fn_or_closure()
             && self.source.promoted.is_none()
         {
-            for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
+            for (bb, bb_data) in caller_body_cache.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
-                                                                    bb_data,
-                                                                    caller_body,
-                                                                    param_env) {
+                                                                     bb_data,
+                                                                     caller_body_cache,
+                                                                     param_env) {
                     callsites.push_back(callsite);
                 }
             }
@@ -127,19 +127,19 @@ impl Inliner<'tcx> {
                     continue;
                 };
 
-                let start = caller_body.basic_blocks().len();
+                let start = caller_body_cache.basic_blocks().len();
                 debug!("attempting to inline callsite {:?} - body={:?}", callsite, callee_body);
-                if !self.inline_call(callsite, caller_body, callee_body) {
+                if !self.inline_call(callsite, caller_body_cache, callee_body) {
                     debug!("attempting to inline callsite {:?} - failure", callsite);
                     continue;
                 }
                 debug!("attempting to inline callsite {:?} - success", callsite);
 
                 // Add callsites from inlined function
-                for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated().skip(start) {
+                for (bb, bb_data) in caller_body_cache.basic_blocks().iter_enumerated().skip(start) {
                     if let Some(new_callsite) = self.get_valid_function_call(bb,
                                                                              bb_data,
-                                                                             caller_body,
+                                                                             caller_body_cache,
                                                                              param_env) {
                         // Don't inline the same function multiple times.
                         if callsite.callee != new_callsite.callee {
@@ -160,8 +160,8 @@ impl Inliner<'tcx> {
         // Simplify if we inlined anything.
         if changed {
             debug!("running simplify cfg on {:?}", self.source);
-            CfgSimplifier::new(caller_body).simplify();
-            remove_dead_blocks(caller_body);
+            CfgSimplifier::new(caller_body_cache).simplify();
+            remove_dead_blocks(caller_body_cache);
         }
     }
 
@@ -377,23 +377,23 @@ impl Inliner<'tcx> {
 
     fn inline_call(&self,
                    callsite: CallSite<'tcx>,
-                   caller_body: &mut Body<'tcx>,
-                   mut callee_body: Body<'tcx>) -> bool {
+                   caller_body: &mut BodyCache<'tcx>,
+                   mut callee_body_cache: BodyCache<'tcx>) -> bool {
         let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("inlined {:?} into {:?}", callsite.callee, self.source);
 
-                let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
-                let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
+                let mut local_map = IndexVec::with_capacity(callee_body_cache.local_decls.len());
+                let mut scope_map = IndexVec::with_capacity(callee_body_cache.source_scopes.len());
 
-                for mut scope in callee_body.source_scopes.iter().cloned() {
+                for mut scope in callee_body_cache.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
                         // FIXME(eddyb) is this really needed?
                         // (also note that it's always overwritten below)
-                        scope.span = callee_body.span;
+                        scope.span = callee_body_cache.span;
                     }
 
                     // FIXME(eddyb) this doesn't seem right at all.
@@ -405,8 +405,8 @@ impl Inliner<'tcx> {
                     scope_map.push(idx);
                 }
 
-                for loc in callee_body.vars_and_temps_iter() {
-                    let mut local = callee_body.local_decls[loc].clone();
+                for loc in callee_body_cache.vars_and_temps_iter() {
+                    let mut local = callee_body_cache.local_decls[loc].clone();
 
                     local.source_info.scope =
                         scope_map[local.source_info.scope];
@@ -445,7 +445,7 @@ impl Inliner<'tcx> {
                         BorrowKind::Mut { allow_two_phase_borrow: false },
                         destination.0);
 
-                    let ty = dest.ty(caller_body, self.tcx);
+                    let ty = dest.ty(caller_body.body(), self.tcx);
 
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
@@ -486,7 +486,7 @@ impl Inliner<'tcx> {
                     caller_body.var_debug_info.push(var_debug_info);
                 }
 
-                for (bb, mut block) in callee_body.basic_blocks_mut().drain_enumerated(..) {
+                for (bb, mut block) in callee_body_cache.basic_blocks_mut().drain_enumerated(..) {
                     integrator.visit_basic_block_data(bb, &mut block);
                     caller_body.basic_blocks_mut().push(block);
                 }

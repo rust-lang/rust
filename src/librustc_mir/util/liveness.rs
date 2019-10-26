@@ -57,7 +57,7 @@ pub struct LivenessResult {
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
 pub fn liveness_of_locals(
-    body_cache: &ReadOnlyBodyCache<'_, '_>,
+    body_cache: ReadOnlyBodyCache<'_, '_>,
 ) -> LivenessResult {
     let num_live_vars = body_cache.local_decls.len();
 
@@ -84,7 +84,7 @@ pub fn liveness_of_locals(
     // order when cycles are present, but the overhead of computing the reverse CFG may outweigh
     // any benefits. Benchmark this and find out.
     let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body_cache.basic_blocks().len());
-    for (bb, _) in traversal::postorder(body_cache) {
+    for (bb, _) in traversal::postorder(body_cache.body()) {
         dirty_queue.insert(bb);
     }
 

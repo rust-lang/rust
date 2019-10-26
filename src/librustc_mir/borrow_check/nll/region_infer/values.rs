@@ -92,7 +92,7 @@ impl RegionValueElements {
     /// Pushes all predecessors of `index` onto `stack`.
     crate fn push_predecessors(
         &self,
-        body_cache: &ReadOnlyBodyCache<'_, '_>,
+        body_cache: ReadOnlyBodyCache<'_, '_>,
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {

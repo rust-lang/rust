@@ -60,7 +60,7 @@ impl LocalUseMap {
     crate fn build(
         live_locals: &Vec<Local>,
         elements: &RegionValueElements,
-        body_cache: &ReadOnlyBodyCache<'_, '_>,
+        body_cache: ReadOnlyBodyCache<'_, '_>,
     ) -> Self {
         let nones = IndexVec::from_elem_n(None, body_cache.local_decls.len());
         let mut local_use_map = LocalUseMap {

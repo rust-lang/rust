@@ -8,7 +8,7 @@ use crate::traits::*;
 
 use rustc_error_codes::*;
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(
         &mut self,
         mut bx: Bx,

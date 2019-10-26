@@ -5,7 +5,7 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
-use rustc::mir::{self, Body, Location, Local};
+use rustc::mir::{self, Body, BodyCache, Location, Local};
 use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
@@ -26,7 +26,7 @@ use crate::dataflow::has_rustc_mir_with;
 pub struct SanityCheck;
 
 impl<'tcx> MirPass<'tcx> for SanityCheck {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -37,37 +37,37 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 
         let attributes = tcx.get_attrs(def_id);
         let param_env = tcx.param_env(def_id);
-        let move_data = MoveData::gather_moves(body, tcx).unwrap();
+        let move_data = MoveData::gather_moves(body_cache, tcx).unwrap();
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
-        let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
+        let dead_unwinds = BitSet::new_empty(body_cache.basic_blocks().len());
         let flow_inits =
-            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
-                        MaybeInitializedPlaces::new(tcx, body, &mdpe),
+            do_dataflow(tcx, body_cache, def_id, &attributes, &dead_unwinds,
+                        MaybeInitializedPlaces::new(tcx, body_cache, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_uninits =
-            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
-                        MaybeUninitializedPlaces::new(tcx, body, &mdpe),
+            do_dataflow(tcx, body_cache, def_id, &attributes, &dead_unwinds,
+                        MaybeUninitializedPlaces::new(tcx, body_cache, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_def_inits =
-            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
-                        DefinitelyInitializedPlaces::new(tcx, body, &mdpe),
+            do_dataflow(tcx, body_cache, def_id, &attributes, &dead_unwinds,
+                        DefinitelyInitializedPlaces::new(tcx, body_cache, &mdpe),
                         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_indirectly_mut =
-            do_dataflow(tcx, body, def_id, &attributes, &dead_unwinds,
-                        IndirectlyMutableLocals::new(tcx, body, param_env),
+            do_dataflow(tcx, body_cache, def_id, &attributes, &dead_unwinds,
+                        IndirectlyMutableLocals::new(tcx, body_cache, param_env),
                         |_, i| DebugFormatted::new(&i));
 
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_init).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_inits);
+            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_inits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_uninit).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_uninits);
+            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_uninits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
+            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_def_inits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_indirectly_mut);
+            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_indirectly_mut);
         }
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");

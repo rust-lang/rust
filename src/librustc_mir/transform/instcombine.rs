@@ -1,7 +1,8 @@
 //! Performs various peephole optimizations.
 
 use rustc::mir::{
-    Constant, Location, Place, PlaceBase, PlaceRef, Body, Operand, ProjectionElem, Rvalue, Local
+    Constant, Location, Place, PlaceBase, PlaceRef, Body, BodyCache, Operand, ProjectionElem,
+    Rvalue, Local
 };
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{self, TyCtxt};
@@ -13,7 +14,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -23,13 +24,13 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
         let optimizations = {
-            let mut optimization_finder = OptimizationFinder::new(body, tcx);
-            optimization_finder.visit_body(body);
+            let mut optimization_finder = OptimizationFinder::new(body_cache, tcx);
+            optimization_finder.visit_body(body_cache.read_only());
             optimization_finder.optimizations
         };
 
         // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body_cache);
     }
 }
 

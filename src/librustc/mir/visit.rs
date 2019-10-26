@@ -67,10 +67,10 @@ use syntax_pos::Span;
 
 macro_rules! body_cache_type {
     (mut $a:lifetime, $tcx:lifetime) => {
-        &mut BodyCache<& $a mut Body<$tcx>>
+        &mut BodyCache<$tcx>
     };
     ($a:lifetime, $tcx:lifetime) => {
-        &ReadOnlyBodyCache<$a, $tcx>
+        ReadOnlyBodyCache<$a, $tcx>
     };
 }
 

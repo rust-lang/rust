@@ -9,7 +9,7 @@ use crate::mir::operand::OperandRef;
 
 use super::FunctionCx;
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'b, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant_to_operand(
         &mut self,
         bx: &mut Bx,

@@ -28,7 +28,7 @@ mod trace;
 /// performed before
 pub(super) fn generate<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -48,7 +48,7 @@ pub(super) fn generate<'tcx>(
         let mut drop_used = Vec::new();
         polonius::populate_access_facts(
             typeck,
-            &body_cache,
+            body_cache,
             location_table,
             move_data,
             &mut drop_used,

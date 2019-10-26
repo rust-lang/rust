@@ -32,7 +32,7 @@ use std::rc::Rc;
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -41,7 +41,7 @@ pub(super) fn trace(
 ) {
     debug!("trace()");
 
-    let local_use_map = &LocalUseMap::build(&live_locals, elements, &body_cache);
+    let local_use_map = &LocalUseMap::build(&live_locals, elements, body_cache);
 
     let cx = LivenessContext {
         typeck,
@@ -71,7 +71,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    body_cache: &'me ReadOnlyBodyCache<'me, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'me, 'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,
@@ -211,7 +211,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
 
             if self.use_live_at.insert(p) {
-                self.cx.elements.push_predecessors(&self.cx.body_cache, p, &mut self.stack)
+                self.cx.elements.push_predecessors(self.cx.body_cache, p, &mut self.stack)
             }
         }
     }

@@ -16,8 +16,8 @@ use syntax_pos::DUMMY_SP;
 use super::FunctionCx;
 use crate::traits::*;
 
-pub fn non_ssa_locals<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'b, 'tcx, Bx>
+pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    fx: &FunctionCx<'a, 'tcx, Bx>
 ) -> BitSet<mir::Local> {
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -56,8 +56,8 @@ pub fn non_ssa_locals<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    fx: &'mir FunctionCx<'a, 'b, 'tcx, Bx>,
+struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+    fx: &'mir FunctionCx<'a, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -65,8 +65,8 @@ struct LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     first_assignment: IndexVec<mir::Local, Location>,
 }
 
-impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx> {
-    fn new(fx: &'mir FunctionCx<'a, 'b, 'tcx, Bx>) -> Self {
+impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
+    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let dominators = fx.mir.dominators();
@@ -232,8 +232,8 @@ impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, '
 
 }
 
-impl<'mir, 'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
-    for LocalAnalyzer<'mir, 'a, 'b, 'tcx, Bx>
+impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
+    for LocalAnalyzer<'mir, 'a, 'tcx, Bx>
 {
     fn visit_assign(&mut self,
                     place: &mir::Place<'tcx>,

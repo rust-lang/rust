@@ -12,7 +12,7 @@ crate trait FindAssignments {
 impl<'a, 'tcx> FindAssignments for ReadOnlyBodyCache<'a, 'tcx>{
     fn find_assignments(&self, local: Local) -> Vec<Location>{
             let mut visitor = FindLocalAssignmentVisitor{ needle: local, locations: vec![]};
-            visitor.visit_body(self);
+            visitor.visit_body(*self);
             visitor.locations
     }
 }

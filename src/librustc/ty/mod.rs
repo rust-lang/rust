@@ -18,7 +18,7 @@ use crate::infer::canonical::Canonical;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
-use crate::mir::Body;
+use crate::mir::ReadOnlyBodyCache;
 use crate::mir::interpret::{GlobalId, ErrorHandled};
 use crate::mir::GeneratorLayout;
 use crate::session::CrateDisambiguator;
@@ -2985,10 +2985,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
-    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
+    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> ReadOnlyBodyCache<'tcx, 'tcx> {
         match instance {
             ty::InstanceDef::Item(did) => {
-                self.optimized_mir(did)
+                self.optimized_mir(did).read_only()
             }
             ty::InstanceDef::VtableShim(..) |
             ty::InstanceDef::ReifyShim(..) |
@@ -2998,7 +2998,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) => {
-                self.mir_shims(instance)
+                self.mir_shims(instance).read_only()
             }
         }
     }
@@ -3023,7 +3023,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
-        self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
+        self.optimized_mir(def_id).body().generator_layout.as_ref().unwrap()
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

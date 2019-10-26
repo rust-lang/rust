@@ -1,7 +1,7 @@
 use rustc_index::vec::IndexVec;
-//use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-//use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
-//use crate::ich::StableHashingContext;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
+use crate::ich::StableHashingContext;
 use crate::mir::{BasicBlock, BasicBlockData, Body, LocalDecls, Location, Successors};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
@@ -14,23 +14,23 @@ pub struct Cache {
     predecessors: Option<IndexVec<BasicBlock, Vec<BasicBlock>>>,
 }
 
-//impl<'tcx, T> rustc_serialize::Encodable for Cache<'tcx, T> {
-//    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-//        Encodable::encode(&(), s)
-//    }
-//}
-//
-//impl<'tcx, T> rustc_serialize::Decodable for Cache<'tcx, T> {
-//    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-//        Decodable::decode(d).map(|_v: ()| Self::new())
-//    }
-//}
-//
-//impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for Cache<'tcx, T> {
-//    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
-//        // Do nothing.
-//    }
-//}
+impl rustc_serialize::Encodable for Cache {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&(), s)
+    }
+}
+
+impl rustc_serialize::Decodable for Cache {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        Decodable::decode(d).map(|_v: ()| Self::new())
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for Cache {
+    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+        // Do nothing.
+    }
+}
 
 macro_rules! get_predecessors {
     (mut $self:ident, $block:expr, $body:expr) => {
@@ -98,13 +98,13 @@ impl Cache {
 
     #[inline]
     /// This will recompute the predecessors cache if it is not available
-    pub fn predecessors(&mut self, body: &Body<'_>) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+    fn predecessors(&mut self, body: &Body<'_>) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         self.ensure_predecessors(body);
         self.predecessors.as_ref().unwrap()
     }
 
     #[inline]
-    pub fn predecessors_for(&mut self, bb: BasicBlock, body: &Body<'_>) -> &[BasicBlock] {
+    fn predecessors_for(&mut self, bb: BasicBlock, body: &Body<'_>) -> &[BasicBlock] {
         &self.predecessors(body)[bb]
     }
 
@@ -136,109 +136,58 @@ impl Cache {
     }
 }
 
-pub struct BodyCache<T> {
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct BodyCache<'tcx> {
     cache: Cache,
-    body: T,
+    body: Body<'tcx>,
 }
 
-impl<T> BodyCache<T> {
-    pub fn new(body: T) -> Self {
+impl BodyCache<'tcx> {
+    pub fn new(body: Body<'tcx>) -> Self {
         Self {
             cache: Cache::new(),
-            body
+            body,
         }
     }
 }
 
-impl<'a, 'tcx> BodyCache<&'a Body<'tcx>> {
-    #[inline]
-    pub fn predecessors_for(&mut self, bb: BasicBlock) -> &[BasicBlock] {
-        self.cache.predecessors_for(bb, self.body)
+impl BodyCache<'tcx> {
+    pub fn ensure_predecessors(&mut self) {
+        self.cache.ensure_predecessors(&self.body);
     }
 
-    #[inline]
-    pub fn body(&self) -> &'a Body<'tcx> {
-        self.body
+    pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+        self.cache.predecessors(&self.body)
     }
 
-    #[inline]
-    pub fn read_only(mut self) -> ReadOnlyBodyCache<'a, 'tcx> {
-        self.cache.ensure_predecessors(self.body);
+    pub fn read_only(&self) -> ReadOnlyBodyCache<'_, '_> {
+        assert!(self.cache.predecessors.is_some(), "");
         ReadOnlyBodyCache {
-            cache: self.cache,
-            body: self.body,
+            cache: &self.cache,
+            body: &self.body,
         }
     }
 
-    #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        &self.body.basic_blocks
-    }
-}
-
-impl<'a, 'tcx> Deref for BodyCache<&'a Body<'tcx>> {
-    type Target = Body<'tcx>;
-
-    fn deref(&self) -> &Self::Target {
-        self.body
-    }
-}
-
-impl<'a, 'tcx> Index<BasicBlock> for BodyCache<&'a Body<'tcx>> {
-    type Output = BasicBlockData<'tcx>;
-
-    #[inline]
-    fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.body[index]
-    }
-}
-
-impl<'a, 'tcx> BodyCache<&'a mut Body<'tcx>> {
-    #[inline]
     pub fn body(&self) -> &Body<'tcx> {
-        self.body
+        &self.body
     }
 
-    #[inline]
     pub fn body_mut(&mut self) -> &mut Body<'tcx> {
-        self.body
+        &mut self.body
     }
 
-    #[inline]
-    pub fn read_only(mut self) -> ReadOnlyBodyCache<'a, 'tcx> {
-        self.cache.ensure_predecessors(self.body);
-        ReadOnlyBodyCache {
-            cache: self.cache,
-            body: self.body,
-        }
-    }
-
-    #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        &self.body.basic_blocks
-    }
-
-    #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         self.cache.basic_blocks_mut(&mut self.body)
     }
-}
 
-impl<'a, 'tcx> Deref for BodyCache<&'a mut Body<'tcx>> {
-    type Target = Body<'tcx>;
-
-    fn deref(&self) -> &Self::Target {
-        self.body
+    pub fn basic_blocks_and_local_decls_mut(
+        &mut self
+    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
+        self.cache.basic_blocks_and_local_decls_mut(&mut self.body)
     }
 }
 
-impl<'a, 'tcx> DerefMut for BodyCache<&'a mut Body<'tcx>> {
-    fn deref_mut(&mut self) -> &mut Body<'tcx> {
-        self.body
-    }
-}
-
-impl<'a, 'tcx> Index<BasicBlock> for BodyCache<&'a mut Body<'tcx>> {
+impl<'tcx> Index<BasicBlock> for BodyCache<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
     #[inline]
@@ -247,15 +196,29 @@ impl<'a, 'tcx> Index<BasicBlock> for BodyCache<&'a mut Body<'tcx>> {
     }
 }
 
-impl<'a, 'tcx> IndexMut<BasicBlock> for BodyCache<&'a mut Body<'tcx>> {
+impl<'tcx> IndexMut<BasicBlock> for BodyCache<'tcx> {
     fn index_mut(&mut self, index: BasicBlock) -> &mut Self::Output {
-        self.cache.invalidate_predecessors();
-        &mut self.body.basic_blocks[index]
+        &mut self.basic_blocks_mut()[index]
     }
 }
 
+impl<'tcx> Deref for BodyCache<'tcx> {
+    type Target = Body<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.body
+    }
+}
+
+impl<'tcx> DerefMut for BodyCache<'tcx> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.body
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct ReadOnlyBodyCache<'a, 'tcx> {
-    cache: Cache,
+    cache: &'a Cache,
     body: &'a Body<'tcx>,
 }
 
@@ -288,13 +251,6 @@ impl ReadOnlyBodyCache<'a, 'tcx> {
     #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(self)
-    }
-
-    pub fn to_owned(self) -> BodyCache<&'a Body<'tcx>> {
-        BodyCache {
-            cache: self.cache,
-            body: self.body,
-        }
     }
 }
 
@@ -357,5 +313,21 @@ impl Index<BasicBlock> for ReadOnlyBodyCache<'a, 'tcx> {
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.body[index]
+    }
+}
+
+CloneTypeFoldableAndLiftImpls! {
+    Cache,
+}
+
+impl_stable_hash_for!(struct BodyCache<'tcx> {
+    cache,
+    body,
+});
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for BodyCache<'tcx> {
+        cache,
+        body
     }
 }

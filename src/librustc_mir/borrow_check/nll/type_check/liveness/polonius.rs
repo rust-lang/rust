@@ -97,7 +97,7 @@ fn add_var_uses_regions(typeck: &mut TypeChecker<'_, 'tcx>, local: Local, ty: Ty
 
 pub(super) fn populate_access_facts(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body_cache: &ReadOnlyBodyCache<'_, 'tcx>,
+    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
     location_table: &LocationTable,
     move_data: &MoveData<'_>,
     drop_used: &mut Vec<(Local, Location)>,

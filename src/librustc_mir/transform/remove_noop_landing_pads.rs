@@ -9,18 +9,18 @@ use crate::util::patch::MirPatch;
 /// code for these.
 pub struct RemoveNoopLandingPads;
 
-pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body_cache: &mut BodyCache<'tcx>) {
     if tcx.sess.no_landing_pads() {
         return
     }
-    debug!("remove_noop_landing_pads({:?})", body);
+    debug!("remove_noop_landing_pads({:?})", body_cache.body());
 
-    RemoveNoopLandingPads.remove_nop_landing_pads(body)
+    RemoveNoopLandingPads.remove_nop_landing_pads(body_cache)
 }
 
 impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        remove_noop_landing_pads(tcx, body);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+        remove_noop_landing_pads(tcx, body_cache);
     }
 }
 
@@ -84,26 +84,26 @@ impl RemoveNoopLandingPads {
         }
     }
 
-    fn remove_nop_landing_pads(&self, body: &mut Body<'_>) {
+    fn remove_nop_landing_pads(&self, body_cache: &mut BodyCache<'_>) {
         // make sure there's a single resume block
         let resume_block = {
-            let patch = MirPatch::new(body);
+            let patch = MirPatch::new(body_cache);
             let resume_block = patch.resume_block();
-            patch.apply(body);
+            patch.apply(body_cache);
             resume_block
         };
         debug!("remove_noop_landing_pads: resume block is {:?}", resume_block);
 
         let mut jumps_folded = 0;
         let mut landing_pads_removed = 0;
-        let mut nop_landing_pads = BitSet::new_empty(body.basic_blocks().len());
+        let mut nop_landing_pads = BitSet::new_empty(body_cache.basic_blocks().len());
 
         // This is a post-order traversal, so that if A post-dominates B
         // then A will be visited before B.
-        let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
+        let postorder: Vec<_> = traversal::postorder(body_cache).map(|(bb, _)| bb).collect();
         for bb in postorder {
             debug!("  processing {:?}", bb);
-            for target in body[bb].terminator_mut().successors_mut() {
+            for target in body_cache[bb].terminator_mut().successors_mut() {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
@@ -111,7 +111,7 @@ impl RemoveNoopLandingPads {
                 }
             }
 
-            match body[bb].terminator_mut().unwind_mut() {
+            match body_cache[bb].terminator_mut().unwind_mut() {
                 Some(unwind) => {
                     if *unwind == Some(resume_block) {
                         debug!("    removing noop landing pad");
@@ -123,7 +123,7 @@ impl RemoveNoopLandingPads {
                 _ => {}
             }
 
-            let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);
+            let is_nop_landing_pad = self.is_nop_landing_pad(bb, body_cache, &nop_landing_pads);
             if is_nop_landing_pad {
                 nop_landing_pads.insert(bb);
             }

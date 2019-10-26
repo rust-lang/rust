@@ -102,7 +102,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
-    input_promoted: &IndexVec<Promoted, Body<'tcx>>,
+    input_promoted: &IndexVec<Promoted, BodyCache<'tcx>>,
     def_id: DefId,
 ) -> BorrowCheckResult<'tcx> {
     debug!("do_mir_borrowck(def_id = {:?})", def_id);
@@ -162,14 +162,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
-    let mut body: Body<'tcx> = input_body.clone();
+    let body: Body<'tcx> = input_body.clone();
     let mut promoted = input_promoted.clone();
-    let mut promoted_cache: IndexVec<Promoted, BodyCache<&mut Body<'tcx>>> = input_promoted.clone().iter_mut().map(|body| BodyCache::new(body)).collect();
-    let mut body_cache = BodyCache::new(&mut body);
+    let mut body_cache = BodyCache::new(body);
     let free_regions =
-        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body_cache, &mut promoted_cache);
-    let body_cache = BodyCache::new(&body).read_only(); // no further changes
-    let promoted: IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>> = promoted_cache.into_iter().map(|body_cache| body_cache.read_only()).collect();
+        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body_cache, &mut promoted);
+    let body_cache = body_cache.read_only(); // no further changes
+    let promoted: IndexVec<_, _> = promoted.iter().map(|body_cache| body_cache.read_only()).collect();
 
     let location_table = &LocationTable::new(&body_cache);
 
@@ -198,14 +197,14 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
     let borrow_set = Rc::new(BorrowSet::build(
-            tcx, &body_cache, locals_are_invalidated_at_exit, &mdpe.move_data));
+            tcx, body_cache, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
     let (regioncx, polonius_output, opt_closure_req) = nll::compute_regions(
         infcx,
         def_id,
         free_regions,
-        &body_cache,
+        body_cache,
         &promoted,
         &local_names,
         &upvars,
@@ -1338,7 +1337,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             _ => bug!("temporary initialized in arguments"),
                         };
 
-                        let bbd = &self.body_cache[loc.block];
+                        let bbd = &self.body_cache.body()[loc.block];
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
@@ -1860,7 +1859,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
                             this.move_data.moves[*moi].source.is_predecessor_of(
-                                location, &this.body_cache,
+                                location, this.body_cache,
                             )
                         }) {
                             return;

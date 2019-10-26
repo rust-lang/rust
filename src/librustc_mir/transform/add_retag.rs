@@ -59,12 +59,12 @@ fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
 }
 
 impl<'tcx> MirPass<'tcx> for AddRetag {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
-        let (span, arg_count) = (body.span, body.arg_count);
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let (span, arg_count) = (body_cache.span, body_cache.arg_count);
+        let (basic_blocks, local_decls) = body_cache.basic_blocks_and_local_decls_mut();
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.

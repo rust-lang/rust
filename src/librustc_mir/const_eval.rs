@@ -354,7 +354,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def, None) {
-            Ok(body) => body,
+            Ok(body_cache) => body_cache.body(),
             Err(err) => {
                 if let err_unsup!(NoMirFor(ref path)) = err.kind {
                     return Err(
@@ -697,7 +697,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(
-        |body| eval_body_using_ecx(&mut ecx, cid, body)
+        |body_cache| eval_body_using_ecx(&mut ecx, cid, body_cache.body())
     ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.ptr.assert_ptr().alloc_id,

@@ -276,8 +276,8 @@ define_per_def_tables! {
     // Also, as an optimization, a missing entry indicates an empty `&[]`.
     inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
-    mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
-    promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
+    mir: Table<DefIndex, Lazy!(mir::BodyCache<'tcx>)>,
+    promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::BodyCache<'tcx>>)>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
