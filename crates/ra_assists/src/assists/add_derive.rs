@@ -8,7 +8,9 @@ use ra_syntax::{
 use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: add_derive
+//
 // Adds a new `#[derive()]` clause to a struct or enum.
+//
 // ```
 // struct Point {
 //     x: u32,

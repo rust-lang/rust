@@ -9,7 +9,9 @@ use ra_syntax::{
 use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: add_impl
+//
 // Adds a new inherent impl for a type
+//
 // ```
 // struct Ctx<T: Clone> {
 //      data: T,<|>

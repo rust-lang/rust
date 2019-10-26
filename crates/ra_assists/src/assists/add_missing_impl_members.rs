@@ -13,7 +13,9 @@ enum AddMissingImplMembersMode {
 }
 
 // Assist: add_impl_missing_members
+//
 // Adds scaffold for required impl members
+//
 // ```
 // trait T {
 //     Type X;

@@ -7,7 +7,9 @@ use ra_syntax::{
 use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: add_explicit_type
+//
 // Specify type for a let binding
+//
 // ```
 // fn main() {
 //     let x<|> = 92;
