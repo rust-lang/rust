@@ -22,7 +22,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxToken, TextRange, TextUnit, TokenAtOffset,
 };
-use ra_text_edit::{TextEdit, TextEditBuilder};
+use ra_text_edit::TextEdit;
 
 use crate::{db::RootDatabase, source_change::SingleFileChange, SourceChange, SourceFileEdit};
 
@@ -49,13 +49,12 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     let indent = node_indent(&file, comment.syntax())?;
     let inserted = format!("\n{}{} ", indent, prefix);
     let cursor_position = position.offset + TextUnit::of_str(&inserted);
-    let mut edit = TextEditBuilder::default();
-    edit.insert(position.offset, inserted);
+    let edit = TextEdit::insert(position.offset, inserted);
 
     Some(
         SourceChange::source_file_edit(
             "on enter",
-            SourceFileEdit { edit: edit.finish(), file_id: position.file_id },
+            SourceFileEdit { edit, file_id: position.file_id },
         )
         .with_cursor(FilePosition { offset: cursor_position, file_id: position.file_id }),
     )

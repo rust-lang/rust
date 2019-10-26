@@ -9,16 +9,14 @@ use crate::{
 };
 use hir::{Ty, TypeCtor};
 use ra_syntax::{ast::AstNode, TextRange, TextUnit};
-use ra_text_edit::TextEditBuilder;
+use ra_text_edit::TextEdit;
 
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
     let edit = {
         let receiver_range =
             ctx.dot_receiver.as_ref().expect("no receiver available").syntax().text_range();
         let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
-        let mut builder = TextEditBuilder::default();
-        builder.replace(delete_range, snippet.to_string());
-        builder.finish()
+        TextEdit::replace(delete_range, snippet.to_string())
     };
     CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)
         .detail(detail)
