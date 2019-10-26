@@ -23,10 +23,10 @@ LL |     Variant6(isize),
    |     ^^^^^^^^^^^^^^^
 
 error: enum is never used: `Enum3`
-  --> $DIR/lint-dead-code-5.rs:18:1
+  --> $DIR/lint-dead-code-5.rs:18:6
    |
 LL | enum Enum3 {
-   | ^^^^^^^^^^
+   |      ^^^^^
 
 error: aborting due to 4 previous errors
 

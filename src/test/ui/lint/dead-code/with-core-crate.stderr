@@ -1,11 +1,11 @@
 error: function is never used: `foo`
-  --> $DIR/fail-no-dead-code-core.rs:7:1
+  --> $DIR/with-core-crate.rs:7:4
    |
 LL | fn foo() {
-   | ^^^^^^^^
+   |    ^^^
    |
 note: lint level defined here
-  --> $DIR/fail-no-dead-code-core.rs:1:9
+  --> $DIR/with-core-crate.rs:1:9
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
