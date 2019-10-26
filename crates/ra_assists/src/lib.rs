@@ -97,6 +97,7 @@ mod assists {
     mod apply_demorgan;
     mod flip_comma;
     mod flip_binexpr;
+    mod flip_trait_bound;
     mod change_visibility;
     mod fill_match_arms;
     mod merge_match_arms;
@@ -123,6 +124,7 @@ mod assists {
             merge_match_arms::merge_match_arms,
             flip_comma::flip_comma,
             flip_binexpr::flip_binexpr,
+            flip_trait_bound::flip_trait_bound,
             introduce_variable::introduce_variable,
             replace_if_let_with_match::replace_if_let_with_match,
             split_import::split_import,
