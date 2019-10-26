@@ -39,6 +39,7 @@ fn test_single2() {
     use foo2::Bar;
 
     let _x : Box<Bar>; //~ ERROR expected type, found function `Bar`
+    let _x : Bar(); //~ ERROR expected type, found function `Bar`
 }
 
 fn test_list2() {

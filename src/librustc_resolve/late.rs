@@ -316,22 +316,8 @@ impl<'a> PathSource<'a> {
     }
 }
 
-struct LateResolutionVisitor<'a, 'b> {
-    r: &'b mut Resolver<'a>,
-
-    /// The module that represents the current item scope.
-    parent_scope: ParentScope<'a>,
-
-    /// The current set of local scopes for types and values.
-    /// FIXME #4948: Reuse ribs to avoid allocation.
-    ribs: PerNS<Vec<Rib<'a>>>,
-
-    /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'a, NodeId>>,
-
-    /// The trait that the current context can refer to.
-    current_trait_ref: Option<(Module<'a>, TraitRef)>,
-
+#[derive(Default)]
+struct DiagnosticMetadata {
     /// The current trait's associated types' ident, used for diagnostic suggestions.
     current_trait_assoc_types: Vec<Ident>,
 
@@ -350,6 +336,29 @@ struct LateResolutionVisitor<'a, 'b> {
 
     /// Only used for better errors on `fn(): fn()`.
     current_type_ascription: Vec<Span>,
+
+    /// Only used for better errors on `let <pat>: <expr, not type>;`.
+    current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
+}
+
+struct LateResolutionVisitor<'a, 'b> {
+    r: &'b mut Resolver<'a>,
+
+    /// The module that represents the current item scope.
+    parent_scope: ParentScope<'a>,
+
+    /// The current set of local scopes for types and values.
+    /// FIXME #4948: Reuse ribs to avoid allocation.
+    ribs: PerNS<Vec<Rib<'a>>>,
+
+    /// The current set of local scopes, for labels.
+    label_ribs: Vec<Rib<'a, NodeId>>,
+
+    /// The trait that the current context can refer to.
+    current_trait_ref: Option<(Module<'a>, TraitRef)>,
+
+    /// Fields used to add information to diagnostic errors.
+    diagnostic_metadata: DiagnosticMetadata,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -373,7 +382,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.resolve_expr(expr, None);
     }
     fn visit_local(&mut self, local: &'tcx Local) {
+        let local_spans = match local.pat.kind {
+            // We check for this to avoid tuple struct fields.
+            PatKind::Wild => None,
+            _ => Some((
+                local.pat.span,
+                local.ty.as_ref().map(|ty| ty.span),
+                local.init.as_ref().map(|init| init.span),
+            )),
+        };
+        let original = replace(&mut self.diagnostic_metadata.current_let_binding, local_spans);
         self.resolve_local(local);
+        self.diagnostic_metadata.current_let_binding = original;
     }
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.kind {
@@ -415,7 +435,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         }
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, sp: Span, _: NodeId) {
-        let previous_value = replace(&mut self.current_function, Some(sp));
+        let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));
         debug!("(resolving function) entering function");
         let rib_kind = match fn_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
@@ -441,7 +461,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 debug!("(resolving function) leaving function");
             })
         });
-        self.current_function = previous_value;
+        self.diagnostic_metadata.current_function = previous_value;
     }
 
     fn visit_generics(&mut self, generics: &'tcx Generics) {
@@ -475,7 +495,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         // (We however cannot ban `Self` for defaults on *all* generic
         // lists; e.g. trait generics can usefully refer to `Self`,
         // such as in the case of `trait Add<Rhs = Self>`.)
-        if self.current_self_item.is_some() { // (`Some` if + only if we are in ADT's generics.)
+        if self.diagnostic_metadata.current_self_item.is_some() {
+            // (`Some` if + only if we are in ADT's generics.)
             default_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
         }
 
@@ -527,12 +548,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             },
             label_ribs: Vec::new(),
             current_trait_ref: None,
-            current_trait_assoc_types: Vec::new(),
-            current_self_type: None,
-            current_self_item: None,
-            current_function: None,
-            unused_labels: Default::default(),
-            current_type_ascription: Vec::new(),
+            diagnostic_metadata: DiagnosticMetadata::default(),
         }
     }
 
@@ -892,16 +908,22 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
         // Handle nested impls (inside fn bodies)
-        let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
+        let previous_value = replace(
+            &mut self.diagnostic_metadata.current_self_type,
+            Some(self_type.clone()),
+        );
         let result = f(self);
-        self.current_self_type = previous_value;
+        self.diagnostic_metadata.current_self_type = previous_value;
         result
     }
 
     fn with_current_self_item<T>(&mut self, self_item: &Item, f: impl FnOnce(&mut Self) -> T) -> T {
-        let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
+        let previous_value = replace(
+            &mut self.diagnostic_metadata.current_self_item,
+            Some(self_item.id),
+        );
         let result = f(self);
-        self.current_self_item = previous_value;
+        self.diagnostic_metadata.current_self_item = previous_value;
         result
     }
 
@@ -912,14 +934,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let trait_assoc_types = replace(
-            &mut self.current_trait_assoc_types,
+            &mut self.diagnostic_metadata.current_trait_assoc_types,
             trait_items.iter().filter_map(|item| match &item.kind {
                 TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
                 _ => None,
             }).collect(),
         );
         let result = f(self);
-        self.current_trait_assoc_types = trait_assoc_types;
+        self.diagnostic_metadata.current_trait_assoc_types = trait_assoc_types;
         result
     }
 
@@ -1746,7 +1768,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
         if let Some(label) = label {
-            self.unused_labels.insert(id, label.ident.span);
+            self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
             self.with_label_rib(NormalRibKind, |this| {
                 let ident = label.ident.modern_and_legacy();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
@@ -1850,7 +1872,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                     Some(node_id) => {
                         // Since this res is a label, it is never read.
                         self.r.label_res_map.insert(expr.id, node_id);
-                        self.unused_labels.remove(&node_id);
+                        self.diagnostic_metadata.unused_labels.remove(&node_id);
                     }
                 }
 
@@ -1912,9 +1934,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 }
             }
             ExprKind::Type(ref type_expr, _) => {
-                self.current_type_ascription.push(type_expr.span);
+                self.diagnostic_metadata.current_type_ascription.push(type_expr.span);
                 visit::walk_expr(self, expr);
-                self.current_type_ascription.pop();
+                self.diagnostic_metadata.current_type_ascription.pop();
             }
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
@@ -2073,7 +2095,7 @@ impl<'a> Resolver<'a> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         visit::walk_crate(&mut late_resolution_visitor, krate);
-        for (id, span) in late_resolution_visitor.unused_labels.iter() {
+        for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
             self.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
         }
     }
