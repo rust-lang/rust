@@ -255,3 +255,21 @@ fn main() {
 "#####,
     )
 }
+
+#[test]
+fn doctest_introduce_variable() {
+    check(
+        "introduce_variable",
+        r#####"
+fn main() {
+    <|>(1 + 2)<|> * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    let var_name = (1 + 2);
+    var_name * 4;
+}
+"#####,
+    )
+}
