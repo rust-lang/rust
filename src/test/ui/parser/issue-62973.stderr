@@ -13,9 +13,11 @@ error: expected one of `,` or `}`, found `{`
   --> $DIR/issue-62973.rs:6:25
    |
 LL | fn p() { match s { v, E { [) {) }
-   |                -        ^ expected one of `,` or `}` here
-   |                |
-   |                while parsing this struct
+   |        -       -       -^ expected one of `,` or `}` here
+   |        |       |       |
+   |        |       |       help: `}` may belong here
+   |        |       while parsing this struct
+   |        unclosed delimiter
 
 error: struct literals are not allowed here
   --> $DIR/issue-62973.rs:6:16

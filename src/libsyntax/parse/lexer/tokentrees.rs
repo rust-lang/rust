@@ -80,6 +80,13 @@ impl<'a> TokenTreesReader<'a> {
                     .struct_span_err(self.token.span, msg);
                 for &(_, sp) in &self.open_braces {
                     err.span_label(sp, "un-closed delimiter");
+                    self.unmatched_braces.push(UnmatchedBrace {
+                        expected_delim: token::DelimToken::Brace,
+                        found_delim: None,
+                        found_span: self.token.span,
+                        unclosed_span: Some(sp),
+                        candidate_span: None,
+                    });
                 }
 
                 if let Some((delim, _)) = self.open_braces.last() {
@@ -170,7 +177,7 @@ impl<'a> TokenTreesReader<'a> {
                             let (tok, _) = self.open_braces.pop().unwrap();
                             self.unmatched_braces.push(UnmatchedBrace {
                                 expected_delim: tok,
-                                found_delim: other,
+                                found_delim: Some(other),
                                 found_span: self.token.span,
                                 unclosed_span: unclosed_delimiter,
                                 candidate_span: candidate,
