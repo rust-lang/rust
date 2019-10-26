@@ -66,6 +66,7 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
+    pub skip_llvm_rebuild: bool,
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -243,6 +244,7 @@ struct Install {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
+    skip_llvm_rebuild: Option<bool>,
     optimize: Option<bool>,
     thin_lto: Option<bool>,
     release_debuginfo: Option<bool>,
@@ -513,6 +515,7 @@ impl Config {
             }
             set(&mut config.ninja, llvm.ninja);
             llvm_assertions = llvm.assertions;
+            set(&mut config.skip_llvm_rebuild, llvm.skip_llvm_rebuild);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);

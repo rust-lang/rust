@@ -824,8 +824,10 @@ def bootstrap(help_triggered):
     parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
-    parser.add_argument('--skip-llvm-rebuild', dest='skip_llvm_rebuild', action='store_true', default=None)
-    parser.add_argument('--no-skip-llvm-rebuild', dest='skip_llvm_rebuild', action='store_false')
+    parser.add_argument('--skip-llvm-rebuild',
+                        dest='skip_llvm_rebuild', action='store_true', default=None)
+    parser.add_argument('--no-skip-llvm-rebuild',
+                        dest='skip_llvm_rebuild', action='store_false')
 
     args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
