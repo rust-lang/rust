@@ -61,7 +61,7 @@ metrics.
 
 This flag instructs LLVM to use [link time
 optimizations](https://llvm.org/docs/LinkTimeOptimization.html) to produce
-better optimized code using whole-program analysis at the cost of longer
+better optimized code, using whole-program analysis, at the cost of longer
 linking time.
 
 This flag may take one of the following values:
@@ -74,7 +74,7 @@ This flag may take one of the following values:
   This is similar to "fat", but takes substantially less time to run while
   still achieving performance gains similar to "fat".
 
-If `-C lto` is not specified, then it will attempt to perform "thin local LTO"
+If `-C lto` is not specified, then the compiler will attempt to perform "thin local LTO"
 which performs "thin" LTO on the local crate only across its [codegen
 units](#codegen-units). In this case, LTO is disabled if codegen units is 1 or
 optimizations are disabled ([`-C opt-level=0`](#opt-level)).
@@ -244,7 +244,7 @@ Increasing parallelism may speed up compile times, but may also produce slower
 code. Setting this to 1 may improve the performance of generated code, but may
 be slower to compile.
 
-The default if not specified is 16.
+The default, if not specified, is 16.
 
 ## remark
 
@@ -272,7 +272,7 @@ Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 
 This flag lets you control the optimization level.
 
-* `0`: no optimizations, also turn on [`cfg(debug_assertions)`](#debug-assertions).
+* `0`: no optimizations, also turns on [`cfg(debug_assertions)`](#debug-assertions).
 * `1`: basic optimizations
 * `2`: some optimizations
 * `3`: all optimizations
@@ -292,7 +292,7 @@ or off. It takes one of the following values:
 * `y`, `yes`, `on`, or no value: Enable debug-assertions.
 * `n`, `no`, or `off`: Disable debug-assertions.
 
-If not specified, debug assertions are enabled only if the
+If not specified, debug assertions are automatically enabled only if the
 [opt-level](#opt-level) is 0.
 
 ## inline-threshold
