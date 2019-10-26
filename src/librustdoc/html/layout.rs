@@ -150,6 +150,14 @@ pub fn render<T: Print, S: Print>(
                     Search multiple things at once by splitting your query with comma (e.g., \
                     <code>str,u8</code> or <code>String,struct:Vec,test</code>)\
                 </p>\
+                <p>\
+                    You can look for items with an exact name by putting double quotes around \
+                    your request: <code>\"string\"</code>\
+                </p>\
+                <p>\
+                    Look for items inside another one by searching for a path: \
+                    <code>vec::Vec</code>\
+                </p>\
             </div>\
         </div>\
     </aside>\
