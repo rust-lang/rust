@@ -1,11 +1,23 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-/// Flip binary expression assist.
+// Assist: flip_binexpr
+//
+// Flips operands of a binary expression.
+//
+// ```
+// fn main() {
+//     let _ = 90 +<|> 2;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let _ = 2 + 90;
+// }
+// ```
 pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();

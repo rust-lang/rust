@@ -52,6 +52,12 @@ fn collect_assists() -> Result<Vec<Assist>> {
             );
 
             let doc = take_until(lines.by_ref(), "```").trim().to_string();
+            assert!(
+                doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with("."),
+                "\n\n{}: assist docs should be proper sentences, with capitalization and a full stop at the end.\n\n{}\n\n",
+                id, doc,
+            );
+
             let before = take_until(lines.by_ref(), "```");
 
             assert_eq!(lines.next().unwrap().as_str(), "->");

@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AstToken},
@@ -9,6 +7,22 @@ use ra_syntax::{
 use crate::assist_ctx::AssistBuilder;
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: inline_local_variable
+//
+// Inlines local variable.
+//
+// ```
+// fn main() {
+//     let x<|> = 1 + 2;
+//     x * 4;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     (1 + 2) * 4;
+// }
+// ```
 pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let let_stmt = ctx.node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
