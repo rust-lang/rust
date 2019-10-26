@@ -1,5 +1,8 @@
 # Assists
 
+Cursor position or selection is signified by `┃` character.
+
+
 ## `add_derive`
 
 Adds a new `#[derive()]` clause to a struct or enum.
@@ -8,7 +11,7 @@ Adds a new `#[derive()]` clause to a struct or enum.
 // BEFORE
 struct Point {
     x: u32,
-    y: u32,<|>
+    y: u32,┃
 }
 
 // AFTER
@@ -26,7 +29,7 @@ Specify type for a let binding.
 ```rust
 // BEFORE
 fn main() {
-    let x<|> = 92;
+    let x┃ = 92;
 }
 
 // AFTER
@@ -42,7 +45,7 @@ Adds a new inherent impl for a type.
 ```rust
 // BEFORE
 struct Ctx<T: Clone> {
-     data: T,<|>
+     data: T,┃
 }
 
 // AFTER
@@ -69,7 +72,7 @@ trait T {
 
 impl T for () {
     Type X = ();
-    fn foo(&self) {}<|>
+    fn foo(&self) {}┃
 
 }
 
@@ -100,7 +103,7 @@ trait T {
     fn bar(&self) {}
 }
 
-impl T for () {<|>
+impl T for () {┃
 
 }
 
@@ -128,7 +131,7 @@ This means something of the form `!x` or `x != y`.
 ```rust
 // BEFORE
 fn main() {
-    if x != 4 ||<|> !y {}
+    if x != 4 ||┃ !y {}
 }
 
 // AFTER
@@ -143,7 +146,7 @@ Adds or changes existing visibility specifier.
 
 ```rust
 // BEFORE
-fn<|> frobnicate() {}
+┃fn frobnicate() {}
 
 // AFTER
 pub(crate) fn frobnicate() {}
@@ -156,7 +159,7 @@ Replace a large conditional with a guarded return.
 ```rust
 // BEFORE
 fn main() {
-    <|>if cond {
+    ┃if cond {
         foo();
         bar();
     }
@@ -182,7 +185,7 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        <|>
+        ┃
     }
 }
 
@@ -204,7 +207,7 @@ Flips operands of a binary expression.
 ```rust
 // BEFORE
 fn main() {
-    let _ = 90 +<|> 2;
+    let _ = 90 +┃ 2;
 }
 
 // AFTER
@@ -220,7 +223,7 @@ Flips two comma-separated items.
 ```rust
 // BEFORE
 fn main() {
-    ((1, 2),<|> (3, 4));
+    ((1, 2),┃ (3, 4));
 }
 
 // AFTER
@@ -236,7 +239,7 @@ Inlines local variable.
 ```rust
 // BEFORE
 fn main() {
-    let x<|> = 1 + 2;
+    let x┃ = 1 + 2;
     x * 4;
 }
 
@@ -253,7 +256,7 @@ Extracts subexpression into a variable.
 ```rust
 // BEFORE
 fn main() {
-    <|>(1 + 2)<|> * 4;
+    ┃(1 + 2)┃ * 4;
 }
 
 // AFTER

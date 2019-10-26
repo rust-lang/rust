@@ -146,7 +146,7 @@ fn doctest_change_visibility() {
     check(
         "change_visibility",
         r#####"
-fn<|> frobnicate() {}
+<|>fn frobnicate() {}
 "#####,
         r#####"
 pub(crate) fn frobnicate() {}
