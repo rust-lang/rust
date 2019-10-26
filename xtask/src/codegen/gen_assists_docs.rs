@@ -51,7 +51,7 @@ fn collect_assists() -> Result<Vec<Assist>> {
                 id
             );
 
-            let doc = take_until(lines.by_ref(), "```");
+            let doc = take_until(lines.by_ref(), "```").trim().to_string();
             let before = take_until(lines.by_ref(), "```");
 
             assert_eq!(lines.next().unwrap().as_str(), "->");

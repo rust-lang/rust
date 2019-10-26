@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
@@ -13,6 +11,17 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: change_visibility
+//
+// Adds or changes existing visibility specifier.
+//
+// ```
+// fn<|> frobnicate() {}
+// ```
+// ->
+// ```
+// pub(crate) fn frobnicate() {}
+// ```
 pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     if let Some(vis) = ctx.node_at_offset::<ast::Visibility>() {
         return change_vis(ctx, vis);

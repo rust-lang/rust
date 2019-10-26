@@ -5,11 +5,13 @@ use ra_syntax::SyntaxNode;
 use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: apply_demorgan
+//
 // Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
 // This transforms expressions of the form `!l || !r` into `!(l && r)`.
 // This also works with `&&`. This assist can only be applied with the cursor
 // on either `||` or `&&`, with both operands being a negation of some kind.
 // This means something of the form `!x` or `x != y`.
+//
 // ```
 // fn main() {
 //     if x != 4 ||<|> !y {}
