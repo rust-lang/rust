@@ -159,6 +159,17 @@ fn fix_path_for_mac() -> Result<()> {
 }
 
 fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
+    let npm_version = Cmd {
+        unix: r"npm --version",
+        windows: r"cmd.exe /c npm.cmd --version",
+        work_dir: "./editors/code",
+    }
+    .run();
+
+    if npm_version.is_err() {
+        eprintln!("\nERROR: `npm --version` failed, `npm` is required to build the VS Code plugin")
+    }
+
     Cmd { unix: r"npm ci", windows: r"cmd.exe /c npm.cmd ci", work_dir: "./editors/code" }.run()?;
     Cmd {
         unix: r"npm run package",
