@@ -721,11 +721,11 @@ impl<T> MaybeUninit<T> {
         &mut *self.value
     }
 
-    /// Get a slice of assume-initialized items.
+    /// Assuming all the elements are initialized, get a slice to them.
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` items
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized causes undefined behavior.
     #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
@@ -734,11 +734,11 @@ impl<T> MaybeUninit<T> {
         &*(slice as *const [Self] as *const [T])
     }
 
-    /// Get a mutable slice of assume-initialized items.
+    /// Assuming all the elements are initialized, get a mutable slice to them.
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` items
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
     /// really are in an initialized state.
     /// Calling this when the content is not yet fully initialized causes undefined behavior.
     #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
