@@ -203,3 +203,55 @@ fn handle(action: Action) {
 "#####,
     )
 }
+
+#[test]
+fn doctest_flip_binexpr() {
+    check(
+        "flip_binexpr",
+        r#####"
+fn main() {
+    let _ = 90 +<|> 2;
+}
+"#####,
+        r#####"
+fn main() {
+    let _ = 2 + 90;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_flip_comma() {
+    check(
+        "flip_comma",
+        r#####"
+fn main() {
+    ((1, 2),<|> (3, 4));
+}
+"#####,
+        r#####"
+fn main() {
+    ((3, 4), (1, 2));
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_inline_local_variable() {
+    check(
+        "inline_local_variable",
+        r#####"
+fn main() {
+    let x<|> = 1 + 2;
+    x * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    (1 + 2) * 4;
+}
+"#####,
+    )
+}

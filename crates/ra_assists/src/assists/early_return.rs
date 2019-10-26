@@ -14,7 +14,9 @@ use crate::{
 };
 
 // Assist: convert_to_guarded_return
+//
 // Replace a large conditional with a guarded return.
+//
 // ```
 // fn main() {
 //     <|>if cond {

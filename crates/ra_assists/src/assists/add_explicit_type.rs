@@ -8,7 +8,7 @@ use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: add_explicit_type
 //
-// Specify type for a let binding
+// Specify type for a let binding.
 //
 // ```
 // fn main() {

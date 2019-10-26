@@ -14,7 +14,7 @@ enum AddMissingImplMembersMode {
 
 // Assist: add_impl_missing_members
 //
-// Adds scaffold for required impl members
+// Adds scaffold for required impl members.
 //
 // ```
 // trait T {
@@ -50,7 +50,9 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
 }
 
 // Assist: add_impl_default_members
-// Adds scaffold for overriding default impl members
+//
+// Adds scaffold for overriding default impl members.
+//
 // ```
 // trait T {
 //     Type X;

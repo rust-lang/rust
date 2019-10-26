@@ -21,7 +21,7 @@ struct Point {
 
 ## `add_explicit_type`
 
-Specify type for a let binding
+Specify type for a let binding.
 
 ```rust
 // BEFORE
@@ -37,7 +37,7 @@ fn main() {
 
 ## `add_impl`
 
-Adds a new inherent impl for a type
+Adds a new inherent impl for a type.
 
 ```rust
 // BEFORE
@@ -57,7 +57,7 @@ impl<T: Clone> Ctx<T> {
 
 ## `add_impl_default_members`
 
-Adds scaffold for overriding default impl members
+Adds scaffold for overriding default impl members.
 
 ```rust
 // BEFORE
@@ -90,7 +90,7 @@ impl T for () {
 
 ## `add_impl_missing_members`
 
-Adds scaffold for required impl members
+Adds scaffold for required impl members.
 
 ```rust
 // BEFORE
@@ -194,5 +194,54 @@ fn handle(action: Action) {
         Action::Move { distance } => (),
         Action::Stop => (),
     }
+}
+```
+
+## `flip_binexpr`
+
+Flips operands of a binary expression.
+
+```rust
+// BEFORE
+fn main() {
+    let _ = 90 +<|> 2;
+}
+
+// AFTER
+fn main() {
+    let _ = 2 + 90;
+}
+```
+
+## `flip_comma`
+
+Flips two comma-separated items.
+
+```rust
+// BEFORE
+fn main() {
+    ((1, 2),<|> (3, 4));
+}
+
+// AFTER
+fn main() {
+    ((3, 4), (1, 2));
+}
+```
+
+## `inline_local_variable`
+
+Inlines local variable.
+
+```rust
+// BEFORE
+fn main() {
+    let x<|> = 1 + 2;
+    x * 4;
+}
+
+// AFTER
+fn main() {
+    (1 + 2) * 4;
 }
 ```
