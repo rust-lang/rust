@@ -177,15 +177,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We want to read at most `count` bytes
             let mut bytes = vec![0; count as usize];
             let result = handle.file.read(&mut bytes).map(|c| c as i64);
-            let written_count = this.try_unwrap_io_result(result)?;
-            // `try_unwrap_io_result` returns Ok(`-1`) if `result` is an error. There is no other
-            // way of returning `-1` because the `Ok` variant of `result` contains the number of
-            // written bytes, which is a possitive value.
-            if written_count != -1 {
-                // If reading to `bytes` did not fail, we write those bytes to the buffer.
+            // If reading to `bytes` did not fail, we write those bytes to the buffer.
+            if result.is_ok() {
                 this.memory.write_bytes(buf, bytes)?;
             }
-            Ok(written_count)
+            this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
         }
