@@ -297,12 +297,20 @@ If not specified, debug assertions are automatically enabled only if the
 
 ## inline-threshold
 
-This option lets you set the threshold for inlining a function. It takes a
-positive integer as a value. Inlining is based on a cost model, where a higher
-threshold will allow more inlining.
+This option lets you set the default threshold for inlining a function. It
+takes an unsigned integer as a value. Inlining is based on a cost model, where
+a higher threshold will allow more inlining.
 
-The default depends on the [opt-level](#opt-level). Current values are between
-25 to 275.
+The default depends on the [opt-level](#opt-level):
+
+| opt-level | Threshold |
+|-----------|-----------|
+| 0         | N/A, only inlines always-inline functions |
+| 1         | N/A, only inlines always-inline functions and LLVM lifetime intrinsics |
+| 2         | 225 |
+| 3         | 275 |
+| s         | 75 |
+| z         | 25 |
 
 ## panic
 
