@@ -424,13 +424,7 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_parameter_with_attrs()
-                    .map_err(|mut e| e.cancel())
-                {
-                    "method"
-                } else {
-                    "function"
-                };
+                let kw_name = self.recover_first_param();
                 self.consume_block(token::Paren);
                 let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
                     self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
@@ -477,13 +471,7 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_parameter_with_attrs()
-                        .map_err(|mut e| e.cancel())
-                    {
-                        ("fn", "method", false)
-                    } else {
-                        ("fn", "function", false)
-                    }
+                    ("fn", self.recover_first_param(), false)
                 } else if self.check(&token::OpenDelim(token::Brace)) {
                     ("struct", "struct", false)
                 } else {
@@ -503,6 +491,16 @@ impl<'a> Parser<'a> {
             }
         }
         self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)
+    }
+
+    fn recover_first_param(&mut self) -> &'static str {
+        match self.parse_outer_attributes()
+            .and_then(|_| self.parse_self_param())
+            .map_err(|mut e| e.cancel())
+        {
+            Ok(Some(_)) => "method",
+            _ => "function",
+        }
     }
 
     /// This is the fall-through for parsing items.
@@ -861,9 +859,7 @@ impl<'a> Parser<'a> {
             let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
-            let decl = self.parse_fn_decl_with_self(|p| {
-                p.parse_param_general(true, false, |_| true)
-            })?;
+            let decl = self.parse_fn_decl_with_self(|_| true)?;
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1034,15 +1030,11 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
 
-            let decl = self.parse_fn_decl_with_self(|p: &mut Parser<'a>| {
-                // This is somewhat dubious; We don't want to allow
-                // argument names to be left off if there is a
-                // definition...
-
-                // We don't allow argument names to be left off in edition 2018.
-                let is_name_required = p.token.span.rust_2018();
-                p.parse_param_general(true, false, |_| is_name_required)
-            })?;
+            // This is somewhat dubious; We don't want to allow
+            // argument names to be left off if there is a definition...
+            //
+            // We don't allow argument names to be left off in edition 2018.
+            let decl = self.parse_fn_decl_with_self(|t| t.span.rust_2018())?;
             generics.where_clause = self.parse_where_clause()?;
 
             let sig = ast::MethodSig {

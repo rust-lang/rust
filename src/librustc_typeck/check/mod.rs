@@ -533,10 +533,16 @@ pub struct EnclosingBreakables<'tcx> {
 
 impl<'tcx> EnclosingBreakables<'tcx> {
     fn find_breakable(&mut self, target_id: hir::HirId) -> &mut BreakableCtxt<'tcx> {
-        let ix = *self.by_id.get(&target_id).unwrap_or_else(|| {
+        self.opt_find_breakable(target_id).unwrap_or_else(|| {
             bug!("could not find enclosing breakable with id {}", target_id);
-        });
-        &mut self.stack[ix]
+        })
+    }
+
+    fn opt_find_breakable(&mut self, target_id: hir::HirId) -> Option<&mut BreakableCtxt<'tcx>> {
+        match self.by_id.get(&target_id) {
+            Some(ix) => Some(&mut self.stack[*ix]),
+            None => None,
+        }
     }
 }
 
@@ -2341,7 +2347,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
             // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
             if !span.is_desugaring(DesugaringKind::CondTemporary) &&
-                !span.is_desugaring(DesugaringKind::Async)
+                !span.is_desugaring(DesugaringKind::Async) &&
+                !orig_span.is_desugaring(DesugaringKind::Await)
             {
                 self.diverges.set(Diverges::WarnedAlways);
 

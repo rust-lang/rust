@@ -1,18 +1,18 @@
-error: expected identifier, found reserved keyword `async`
+error: expected identifier, found keyword `async`
   --> $DIR/edition-keywords-2018-2015-parsing.rs:8:13
    |
 LL |     let mut async = 1;
-   |             ^^^^^ expected identifier, found reserved keyword
+   |             ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut r#async = 1;
    |             ^^^^^^^
 
-error: expected identifier, found reserved keyword `async`
+error: expected identifier, found keyword `async`
   --> $DIR/edition-keywords-2018-2015-parsing.rs:18:13
    |
 LL |     module::async();
-   |             ^^^^^ expected identifier, found reserved keyword
+   |             ^^^^^ expected identifier, found keyword
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     module::r#async();

@@ -58,6 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
+        wbcx.visit_generator_interior_types();
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
@@ -428,6 +429,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .user_provided_sigs
                 .insert(def_id, c_sig.clone());
         }
+    }
+
+    fn visit_generator_interior_types(&mut self) {
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        self.tables.generator_interior_types = fcx_tables.generator_interior_types.clone();
     }
 
     fn visit_opaque_types(&mut self, span: Span) {
