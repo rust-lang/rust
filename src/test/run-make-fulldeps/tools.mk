@@ -81,6 +81,22 @@ ifdef IS_MSVC
 else
 	EXTRACFLAGS := -lws2_32 -luserenv
 	EXTRACXXFLAGS := -lstdc++
+	# So this is a bit hacky: we can't use the DLL version of libstdc++ because
+	# it pulls in the DLL version of libgcc, which means that we end up with 2
+	# instances of the DW2 unwinding implementation. This is a problem on
+	# i686-pc-windows-gnu because each module (DLL/EXE) needs to register its
+	# unwind information with the unwinding implementation, and libstdc++'s
+	# __cxa_throw won't see the unwinding info we registered with our statically
+	# linked libgcc.
+	#
+	# Now, simply statically linking libstdc++ would fix this problem, except
+	# that it is compiled with the expectation that pthreads is dynamically
+	# linked as a DLL and will fail to link with a statically linked libpthread.
+	#
+	# So we end up with the following hack: we link use static-nobundle to only
+	# link the parts of libstdc++ that we actually use, which doesn't include
+	# the dependency on the pthreads DLL.
+	EXTRARSCXXFLAGS := -l static-nobundle=stdc++
 endif
 else
 ifeq ($(UNAME),Darwin)
@@ -98,6 +114,7 @@ ifeq ($(UNAME),OpenBSD)
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
 	EXTRACXXFLAGS := -lstdc++
+	EXTRARSCXXFLAGS := -lstdc++
 endif
 endif
 endif

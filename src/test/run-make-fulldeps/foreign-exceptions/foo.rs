@@ -2,6 +2,9 @@
 // are ignored by catch_unwind. Also tests that Rust panics can unwind through
 // C++ code.
 
+// For linking libstdc++ on MinGW
+#![cfg_attr(all(windows, target_env = "gnu"), feature(static_nobundle))]
+
 #![feature(unwind_attributes)]
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
