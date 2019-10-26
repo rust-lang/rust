@@ -14,6 +14,11 @@
 # =============================================================================
 [llvm]
 
+# Skip rebuilding LLVM. If set to true, `bootstrap.py` will not rebuild LLVM.
+# This can be used or overridden with the command-line arguments
+# --skip-llvm-rebuild and --no-skip-llvm-rebuild as well.
+# skip-llvm-rebuild = false
+
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
 

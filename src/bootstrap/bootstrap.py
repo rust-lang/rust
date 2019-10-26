@@ -330,6 +330,7 @@ class RustBuild(object):
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
         self.verbose = False
+        self.skip_llvm_rebuild = False
 
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
@@ -734,6 +735,9 @@ class RustBuild(object):
             if module.endswith("llvm-project"):
                 if self.get_toml('llvm-config') and self.get_toml('lld') != 'true':
                     continue
+                if self.skip_llvm_rebuild:
+                    print("Skipping llvm-project rebuild")
+                    continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)
@@ -820,6 +824,8 @@ def bootstrap(help_triggered):
     parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
+    parser.add_argument('--skip-llvm-rebuild', dest='skip_llvm_rebuild', action='store_true', default=None)
+    parser.add_argument('--no-skip-llvm-rebuild', dest='skip_llvm_rebuild', action='store_false')
 
     args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
@@ -839,6 +845,17 @@ def bootstrap(help_triggered):
     config_verbose = build.get_toml('verbose', 'build')
     if config_verbose is not None:
         build.verbose = max(build.verbose, int(config_verbose))
+
+    config_skip_llvm_rebuild = build.get_toml('skip-llvm-rebuild')
+    if args.skip_llvm_rebuild is not None:
+        # explicit cli arg is the strongest truth, ignore config file
+        build.skip_llvm_rebuild = args.skip_llvm_rebuild
+    elif config_skip_llvm_rebuild is not None:
+        # explicit config arg, no cli arg, trust the config file
+        build.skip_llvm_rebuild = config_skip_llvm_rebuild == 'true'
+    else:
+        # no config, no cli arg, defaulting to not skipping
+        build.skip_llvm_rebuild = False
 
     build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
 
