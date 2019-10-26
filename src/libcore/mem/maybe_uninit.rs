@@ -260,26 +260,32 @@ impl<T> MaybeUninit<T> {
 
     /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
+    /// Note: in a future Rust version this method may become unnecessary
+    /// when array literal syntax allows
+    /// [repeating const expressions](https://github.com/rust-lang/rust/issues/49147).
+    /// The example below could then use `let mut buf = [MaybeUninit::<u8>::uninit(); 32];`.
+    ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// #![feature(maybe_uninit_uninit_array, maybe_uninit_extra, maybe_uninit_slice_assume_init)]
+    ///
     /// use std::mem::MaybeUninit;
     ///
-    /// let input = b"Foo";
-    /// let f = u8::to_ascii_uppercase;
+    /// extern "C" {
+    ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
+    /// }
     ///
-    /// let mut buffer: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
-    /// let vec;
-    /// let output = if let Some(buffer) = buffer.get_mut(..input.len()) {
-    ///     buffer.iter_mut().zip(input).for_each(|(a, b)| { a.write(f(b)); });
-    ///     unsafe { MaybeUninit::slice_get_ref(buffer) }
-    /// } else {
-    ///     vec = input.iter().map(f).collect::<Vec<u8>>();
-    ///     &vec
-    /// };
+    /// /// Returns a (possibly smaller) slice of data that was actually read
+    /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
+    ///     unsafe {
+    ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
+    ///         MaybeUninit::slice_get_ref(&buf[..len])
+    ///     }
+    /// }
     ///
-    /// assert_eq!(output, b"FOO");
+    /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
+    /// let data = read(&mut buf);
     /// ```
     #[unstable(feature = "maybe_uninit_uninit_array", issue = "0")]
     #[inline(always)]
