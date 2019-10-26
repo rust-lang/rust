@@ -52,6 +52,7 @@ error[E0573]: expected type, found function `Bar`
    |
 LL |     let _x : Bar();
    |              ^^^^^ not a type
+   |
 help: use `=` if you meant to assign
    |
 LL |     let _x = Bar();
