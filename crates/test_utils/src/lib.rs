@@ -1,4 +1,10 @@
-//! FIXME: write short doc here
+//! Assorted testing utilities.
+//!
+//! Most notable things are:
+//!
+//! * Rich text comparison, which outputs a diff.
+//! * Extracting markup (mainly, `<|>` markers) out of fixture strings.
+//! * marks (see the eponymous module).
 
 #[macro_use]
 pub mod marks;
@@ -43,7 +49,7 @@ pub fn extract_offset(text: &str) -> (TextUnit, String) {
     }
 }
 
-pub fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
+fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
     let cursor_pos = text.find(CURSOR_MARKER)?;
     let mut new_text = String::with_capacity(text.len() - CURSOR_MARKER.len());
     new_text.push_str(&text[..cursor_pos]);
@@ -59,10 +65,32 @@ pub fn extract_range(text: &str) -> (TextRange, String) {
     }
 }
 
-pub fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
+fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     let (start, text) = try_extract_offset(text)?;
     let (end, text) = try_extract_offset(&text)?;
     Some((TextRange::from_to(start, end), text))
+}
+
+pub enum RangeOrOffset {
+    Range(TextRange),
+    Offset(TextUnit),
+}
+
+impl From<RangeOrOffset> for TextRange {
+    fn from(selection: RangeOrOffset) -> Self {
+        match selection {
+            RangeOrOffset::Range(it) => it,
+            RangeOrOffset::Offset(it) => TextRange::from_to(it, it),
+        }
+    }
+}
+
+pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
+    if let Some((range, text)) = try_extract_range(text) {
+        return (RangeOrOffset::Range(range), text);
+    }
+    let (offset, text) = extract_offset(text);
+    (RangeOrOffset::Offset(offset), text)
 }
 
 /// Extracts ranges, marked with `<tag> </tag>` paris from the `text`

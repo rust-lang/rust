@@ -245,3 +245,20 @@ fn main() {
     (1 + 2) * 4;
 }
 ```
+
+## `introduce_variable`
+
+Extracts subexpression into a variable.
+
+```rust
+// BEFORE
+fn main() {
+    <|>(1 + 2)<|> * 4;
+}
+
+// AFTER
+fn main() {
+    let var_name = (1 + 2);
+    var_name * 4;
+}
+```

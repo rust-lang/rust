@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use format_buf::format;
 use hir::db::HirDatabase;
 use ra_syntax::{
@@ -14,6 +12,22 @@ use test_utils::tested_by;
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: introduce_variable
+//
+// Extracts subexpression into a variable.
+//
+// ```
+// fn main() {
+//     <|>(1 + 2)<|> * 4;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let var_name = (1 + 2);
+//     var_name * 4;
+// }
+// ```
 pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     if ctx.frange.range.is_empty() {
         return None;
