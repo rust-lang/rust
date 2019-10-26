@@ -15,6 +15,7 @@ error: you seem to want to iterate on a map's values
    |
 LL |     for (_, v) in &*m {
    |                   ^^^
+   |
 help: use the corresponding method
    |
 LL |     for v in (*m).values() {
@@ -25,6 +26,7 @@ error: you seem to want to iterate on a map's values
    |
 LL |     for (_, v) in &mut m {
    |                   ^^^^^^
+   |
 help: use the corresponding method
    |
 LL |     for v in m.values_mut() {
@@ -35,6 +37,7 @@ error: you seem to want to iterate on a map's values
    |
 LL |     for (_, v) in &mut *m {
    |                   ^^^^^^^
+   |
 help: use the corresponding method
    |
 LL |     for v in (*m).values_mut() {
@@ -45,6 +48,7 @@ error: you seem to want to iterate on a map's keys
    |
 LL |     for (k, _value) in rm {
    |                        ^^
+   |
 help: use the corresponding method
    |
 LL |     for k in rm.keys() {

@@ -25,6 +25,7 @@ LL | |             println!("Hello world!");
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
@@ -41,6 +42,7 @@ LL | |             println!("Hello world!");
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
@@ -57,6 +59,7 @@ LL | |             println!("Hello world!");
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
@@ -73,6 +76,7 @@ LL | |             println!("Hello world!");
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if x == "hello" && x == "world" && y == "world" && y == "hello" {
@@ -89,6 +93,7 @@ LL | |             println!("world!")
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if 42 == 1337 && 'a' != 'A' {
@@ -106,6 +111,7 @@ LL | |             println!("world!")
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if y == "world" {
@@ -123,6 +129,7 @@ LL | |             println!("world!")
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
@@ -142,6 +149,7 @@ LL | |         }
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if y == "world" {
@@ -164,6 +172,7 @@ LL | |         }
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
@@ -186,6 +195,7 @@ LL | |         }
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
@@ -208,6 +218,7 @@ LL | |         }
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if x == "hello" {
@@ -230,6 +241,7 @@ LL | |         }
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     } else if let Some(42) = Some(42) {
@@ -249,6 +261,7 @@ LL | |             println!("Hello world!");
 LL | |         }
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if x == "hello" && y == "world" { // Collapsible

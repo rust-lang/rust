@@ -15,6 +15,7 @@ error: using `print!()` with a format string that ends in a single newline
    |
 LL |     print!("Hello {}/n", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: use `println!` instead
    |
 LL |     println!("Hello {}", "world");
@@ -25,6 +26,7 @@ error: using `print!()` with a format string that ends in a single newline
    |
 LL |     print!("Hello {} {}/n", "world", "#2");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: use `println!` instead
    |
 LL |     println!("Hello {} {}", "world", "#2");
@@ -35,6 +37,7 @@ error: using `print!()` with a format string that ends in a single newline
    |
 LL |     print!("{}/n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^
+   |
 help: use `println!` instead
    |
 LL |     println!("{}", 1265);
@@ -45,6 +48,7 @@ error: using `print!()` with a format string that ends in a single newline
    |
 LL |     print!("//n"); // should fail
    |     ^^^^^^^^^^^^^^
+   |
 help: use `println!` instead
    |
 LL |     println!("/"); // should fail
@@ -58,6 +62,7 @@ LL | |         "
 LL | | "
 LL | |     );
    | |_____^
+   |
 help: use `println!` instead
    |
 LL |     println!(
@@ -72,6 +77,7 @@ LL | |         r"
 LL | | "
 LL | |     );
    | |_____^
+   |
 help: use `println!` instead
    |
 LL |     println!(

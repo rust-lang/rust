@@ -15,6 +15,7 @@ error: `dbg!` macro is intended as a debugging tool
    |
 LL |     if dbg!(n <= 1) {
    |        ^^^^^^^^^^^^
+   |
 help: ensure to avoid having uses of it in version control
    |
 LL |     if n <= 1 {
@@ -25,6 +26,7 @@ error: `dbg!` macro is intended as a debugging tool
    |
 LL |         dbg!(1)
    |         ^^^^^^^
+   |
 help: ensure to avoid having uses of it in version control
    |
 LL |         1
@@ -35,6 +37,7 @@ error: `dbg!` macro is intended as a debugging tool
    |
 LL |         dbg!(n * factorial(n - 1))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: ensure to avoid having uses of it in version control
    |
 LL |         n * factorial(n - 1)
@@ -45,6 +48,7 @@ error: `dbg!` macro is intended as a debugging tool
    |
 LL |     dbg!(42);
    |     ^^^^^^^^
+   |
 help: ensure to avoid having uses of it in version control
    |
 LL |     42;
@@ -55,6 +59,7 @@ error: `dbg!` macro is intended as a debugging tool
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |     ^^^^^^^^^^^^^^^^^^^^
+   |
 help: ensure to avoid having uses of it in version control
    |
 LL |     dbg!(dbg!(42));
@@ -65,6 +70,7 @@ error: `dbg!` macro is intended as a debugging tool
    |
 LL |     foo(3) + dbg!(factorial(4));
    |              ^^^^^^^^^^^^^^^^^^
+   |
 help: ensure to avoid having uses of it in version control
    |
 LL |     foo(3) + factorial(4);

@@ -39,6 +39,7 @@ error: this is a decimal constant
    |
 LL |     let fail8 = 0123;
    |                 ^^^^
+   |
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
 LL |     let fail8 = 123;

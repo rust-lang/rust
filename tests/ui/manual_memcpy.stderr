@@ -35,6 +35,7 @@ error: it looks like you're manually copying between slices
    |
 LL |     for i in 10..256 {
    |              ^^^^^^^
+   |
 help: try replacing the loop by
    |
 LL |     for i in dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)])

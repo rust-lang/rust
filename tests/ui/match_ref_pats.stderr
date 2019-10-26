@@ -23,6 +23,7 @@ LL | |         &(v, 1) => println!("{}", v),
 LL | |         _ => println!("none"),
 LL | |     }
    | |_____^
+   |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL |     match *tup {
@@ -37,6 +38,7 @@ LL | |         &Some(v) => println!("{:?}", v),
 LL | |         &None => println!("none"),
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     match w {
@@ -51,6 +53,7 @@ LL | /     if let &None = a {
 LL | |         println!("none");
 LL | |     }
    | |_____^
+   |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL |     if let None = *a {
@@ -63,6 +66,7 @@ LL | /     if let &None = &b {
 LL | |         println!("none");
 LL | |     }
    | |_____^
+   |
 help: try
    |
 LL |     if let None = b {
@@ -76,6 +80,7 @@ LL | |             &Foo::A => println!("A"),
 LL | |             _ => println!("Wild"),
 LL | |         }
    | |_________^
+   |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL |         match *foo_variant!(0) {
