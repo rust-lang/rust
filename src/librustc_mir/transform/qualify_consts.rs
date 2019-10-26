@@ -878,13 +878,11 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 }
             },
             ValueSource::Rvalue(&Rvalue::Repeat(ref operand, _)) => {
-                let candidate = Candidate::Repeat(location);
-                let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
-                                     IsNotPromotable::in_operand(self, operand);
-                debug!("assign: self.def_id={:?} operand={:?}", self.def_id, operand);
-                if !not_promotable && self.tcx.features().const_in_array_repeat_expressions {
-                    debug!("assign: candidate={:?}", candidate);
-                    self.promotion_candidates.push(candidate);
+                debug!("assign: self.cx.mode={:?} self.def_id={:?} location={:?} operand={:?}",
+                       self.cx.mode, self.def_id, location, operand);
+                if self.should_promote_repeat_expression(operand) &&
+                        self.tcx.features().const_in_array_repeat_expressions {
+                    self.promotion_candidates.push(Candidate::Repeat(location));
                 }
             },
             _ => {},
@@ -1148,6 +1146,15 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         candidates
+    }
+
+    /// Returns `true` if the operand of a repeat expression is promotable.
+    fn should_promote_repeat_expression(&self, operand: &Operand<'tcx>) -> bool {
+        let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
+                             IsNotPromotable::in_operand(self, operand);
+        debug!("should_promote_repeat_expression: operand={:?} not_promotable={:?}",
+               operand, not_promotable);
+        !not_promotable
     }
 }
 
