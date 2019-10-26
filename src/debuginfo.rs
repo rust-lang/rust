@@ -252,7 +252,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         tcx: TyCtxt,
         context: &Context,
         isa: &dyn cranelift::codegen::isa::TargetIsa,
-        source_info_set: &indexmap::IndexSet<SourceInfo>,
+        source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
     ) {
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
 
@@ -292,7 +292,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 line_program.row().address_offset = offset as u64;
                 if !srcloc.is_default() {
                     let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
-                    create_row_for_span(line_program, source_info.span);
+                    create_row_for_span(line_program, source_info.0);
                 } else {
                     create_row_for_span(line_program, self.mir_span);
                 }

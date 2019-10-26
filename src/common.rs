@@ -286,7 +286,9 @@ pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub clif_comments: crate::pretty_clif::CommentWriter,
     pub constants_cx: &'clif mut crate::constant::ConstantCx,
     pub caches: &'clif mut Caches<'tcx>,
-    pub source_info_set: indexmap::IndexSet<SourceInfo>,
+
+    // FIXME switch back to `SourceInfo`, once it derives `Eq` and `Hash` again.
+    pub source_info_set: indexmap::IndexSet<(Span, mir::SourceScope)>,
 }
 
 impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
@@ -365,7 +367,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     pub fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
-        let (index, _) = self.source_info_set.insert_full(source_info);
+        let (index, _) = self.source_info_set.insert_full((source_info.span, source_info.scope));
         self.bcx.set_srcloc(SourceLoc::new(index as u32));
     }
 }

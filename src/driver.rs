@@ -184,10 +184,7 @@ fn run_aot(
 
     let mut module = new_module("some_file".to_string());
 
-    let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None
-        // macOS debuginfo doesn't work yet (see #303)
-        && !tcx.sess.target.target.options.is_like_osx
-    {
+    let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
         let debug = DebugContext::new(
             tcx,
             module.target_config().pointer_type().bytes() as u8,
