@@ -408,7 +408,7 @@ declare_lint! {
 pub mod parser {
     declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
-        Warn,
+        Deny,
         "ill-formed attribute inputs that were previously accepted and used in practice",
         @future_incompatible = super::FutureIncompatibleInfo {
             reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
