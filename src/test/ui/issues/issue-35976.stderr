@@ -3,6 +3,7 @@ error: the `wait` method cannot be invoked on a trait object
    |
 LL |     arg.wait();
    |         ^^^^
+   |
 help: another candidate was found in the following trait, perhaps add a `use` for it:
    |
 LL | use private::Future;

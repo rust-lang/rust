@@ -3,6 +3,7 @@ error[E0061]: this function takes 1 parameter but 0 parameters were supplied
    |
 LL |     let _: Result<(), String> = Ok();
    |                                 ^^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     let _: Result<(), String> = Ok(());
@@ -34,6 +35,7 @@ LL | fn bar(():()) {}
 ...
 LL |     bar();
    |     ^^^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     bar(());
@@ -47,6 +49,7 @@ LL |     fn baz(self, (): ()) { }
 ...
 LL |     S.baz();
    |       ^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     S.baz(());
@@ -60,6 +63,7 @@ LL |     fn generic<T>(self, _: T) { }
 ...
 LL |     S.generic::<()>();
    |       ^^^^^^^
+   |
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     S.generic::<()>(());

@@ -3,6 +3,7 @@ error[E0412]: cannot find type `Foo` in this scope
    |
 LL | type Output = Option<Foo>;
    |                      ^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use foo::Foo;

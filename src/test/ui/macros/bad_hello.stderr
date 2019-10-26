@@ -3,6 +3,7 @@ error: format argument must be a string literal
    |
 LL |     println!(3 + 4);
    |              ^^^^^
+   |
 help: you might be missing a string literal to format with
    |
 LL |     println!("{}", 3 + 4);
@@ -13,6 +14,7 @@ error: format argument must be a string literal
    |
 LL |     println!(3, 4);
    |              ^
+   |
 help: you might be missing a string literal to format with
    |
 LL |     println!("{} {}", 3, 4);

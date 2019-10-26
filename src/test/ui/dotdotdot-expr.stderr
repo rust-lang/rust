@@ -3,6 +3,7 @@ error: unexpected token: `...`
    |
 LL |     let _redemptive = 1...21;
    |                        ^^^
+   |
 help: use `..` for an exclusive range
    |
 LL |     let _redemptive = 1..21;

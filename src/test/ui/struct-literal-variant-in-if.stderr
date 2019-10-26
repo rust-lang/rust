@@ -3,6 +3,7 @@ error: struct literals are not allowed here
    |
 LL |     if x == E::I { field1: true, field2: 42 } {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::I { field1: true, field2: 42 }) {}
@@ -13,6 +14,7 @@ error: struct literals are not allowed here
    |
 LL |     if x == E::V { field: false } {}
    |             ^^^^^^^^^^^^^^^^^^^^^
+   |
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::V { field: false }) {}
@@ -23,6 +25,7 @@ error: struct literals are not allowed here
    |
 LL |     if x == E::J { field: -42 } {}
    |             ^^^^^^^^^^^^^^^^^^^
+   |
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::J { field: -42 }) {}
@@ -33,6 +36,7 @@ error: struct literals are not allowed here
    |
 LL |     if x == E::K { field: "" } {}
    |             ^^^^^^^^^^^^^^^^^^
+   |
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::K { field: "" }) {}

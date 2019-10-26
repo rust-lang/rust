@@ -5,6 +5,7 @@ LL |     let _n = m.iter().map(|_, b| {
    |                       ^^^ ------ takes 2 distinct arguments
    |                       |
    |                       expected closure that takes a single 2-tuple as argument
+   |
 help: change the closure to accept a tuple instead of individual arguments
    |
 LL |     let _n = m.iter().map(|(_, b)| {

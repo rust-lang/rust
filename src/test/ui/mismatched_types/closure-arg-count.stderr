@@ -5,6 +5,7 @@ LL |     [1, 2, 3].sort_by(|| panic!());
    |               ^^^^^^^ -- takes 0 arguments
    |               |
    |               expected closure that takes 2 arguments
+   |
 help: consider changing the closure to take and ignore the expected arguments
    |
 LL |     [1, 2, 3].sort_by(|_, _| panic!());
@@ -25,6 +26,7 @@ LL |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
    |               ^^^^^^^ ----------------- takes a single 2-tuple as argument
    |               |
    |               expected closure that takes 2 distinct arguments
+   |
 help: change the closure to take multiple arguments instead of a single tuple
    |
 LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
@@ -37,6 +39,7 @@ LL |     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
    |               ^^^^^^^ ----------------------------- takes a single 2-tuple as argument
    |               |
    |               expected closure that takes 2 distinct arguments
+   |
 help: change the closure to take multiple arguments instead of a single tuple
    |
 LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
@@ -52,6 +55,7 @@ LL |     f(|| panic!());
    |     ^ -- takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
+   |
 help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(|_| panic!());
@@ -67,6 +71,7 @@ LL |     f(  move    || panic!());
    |     ^   ---------- takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
+   |
 help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(  move    |_| panic!());
@@ -79,6 +84,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
    |                                                     ^^^ ------ takes 2 distinct arguments
    |                                                     |
    |                                                     expected closure that takes a single 2-tuple as argument
+   |
 help: change the closure to accept a tuple instead of individual arguments
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
@@ -91,6 +97,7 @@ LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
    |                                                     ^^^ ------------- takes 2 distinct arguments
    |                                                     |
    |                                                     expected closure that takes a single 2-tuple as argument
+   |
 help: change the closure to accept a tuple instead of individual arguments
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);

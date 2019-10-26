@@ -3,6 +3,7 @@ error: unexpected token: `<-`
    |
 LL |     x <- y;
    |       ^^
+   |
 help: if you meant to write a comparison against a negative value, add a space in between `<` and `-`
    |
 LL |     x < - y;

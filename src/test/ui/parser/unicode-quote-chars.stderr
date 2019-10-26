@@ -3,6 +3,7 @@ error: unknown start of token: \u{201c}
    |
 LL |     println!(“hello world”);
    |              ^
+   |
 help: Unicode characters '“' (Left Double Quotation Mark) and '”' (Right Double Quotation Mark) look like '"' (Quotation Mark), but are not
    |
 LL |     println!("hello world");
@@ -13,6 +14,7 @@ error: unknown start of token: \u{201d}
    |
 LL |     println!(“hello world”);
    |                          ^
+   |
 help: Unicode character '”' (Right Double Quotation Mark) looks like '"' (Quotation Mark), but it is not
    |
 LL |     println!(“hello world");

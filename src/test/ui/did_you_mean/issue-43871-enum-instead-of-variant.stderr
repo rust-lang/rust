@@ -3,6 +3,7 @@ error[E0423]: expected function, found enum `Option`
    |
 LL |     let x = Option(1);
    |             ^^^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |     let x = std::option::Option::None(1);
@@ -15,6 +16,7 @@ error[E0532]: expected tuple struct/variant, found enum `Option`
    |
 LL |     if let Option(_) = x {
    |            ^^^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |     if let std::option::Option::None(_) = x {
@@ -27,6 +29,7 @@ error[E0532]: expected tuple struct/variant, found enum `Example`
    |
 LL |     if let Example(_) = y {
    |            ^^^^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |     if let Example::Ex(_) = y {
@@ -45,6 +48,7 @@ error[E0423]: expected function, found enum `ManyVariants`
    |
 LL |     let z = ManyVariants();
    |             ^^^^^^^^^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |     let z = ManyVariants::One();

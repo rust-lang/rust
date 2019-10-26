@@ -3,6 +3,7 @@ error[E0426]: use of undeclared label `'fo`
    |
 LL |         break 'fo;
    |               ^^^
+   |
 help: a label with a similar name exists in this scope
    |
 LL |         break 'foo;
@@ -13,6 +14,7 @@ error[E0426]: use of undeclared label `'bor`
    |
 LL |         continue 'bor;
    |                  ^^^^
+   |
 help: a label with a similar name exists in this scope
    |
 LL |         continue 'bar;
@@ -23,6 +25,7 @@ error[E0426]: use of undeclared label `'longlable`
    |
 LL |             break 'longlable;
    |                   ^^^^^^^^^^
+   |
 help: a label with a similar name exists in this scope
    |
 LL |             break 'longlabel1;

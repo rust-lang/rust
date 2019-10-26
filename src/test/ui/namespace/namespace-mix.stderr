@@ -42,6 +42,7 @@ LL |         V {},
 ...
 LL |     check(m7::V);
    |           ^^^^^ did you mean `m7::V { /* fields */ }`?
+   |
 help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
@@ -58,6 +59,7 @@ error[E0423]: expected value, found struct variant `xm7::V`
    |
 LL |     check(xm7::V);
    |           ^^^^^^ did you mean `xm7::V { /* fields */ }`?
+   |
 help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);

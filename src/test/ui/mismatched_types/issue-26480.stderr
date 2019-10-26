@@ -6,6 +6,7 @@ LL |                   $arr.len() * size_of($arr[0]));
 ...
 LL |     write!(hello);
    |     -------------- in this macro invocation
+   |
 help: you can convert an `usize` to `u64` and panic if the converted value wouldn't fit
    |
 LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
