@@ -107,9 +107,13 @@ r#####"
 }
 
 fn generate_docs(assists: &[Assist], mode: Mode) -> Result<()> {
-    let mut buf = String::from("# Assists\n");
+    let mut buf = String::from(
+        "# Assists\n\nCursor position or selection is signified by `┃` character.\n\n",
+    );
 
     for assist in assists {
+        let before = assist.before.replace("<|>", "┃"); // Unicode pseudo-graphics bar
+        let after = assist.after.replace("<|>", "┃");
         let docs = format!(
             "
 ## `{}`
@@ -124,7 +128,7 @@ fn generate_docs(assists: &[Assist], mode: Mode) -> Result<()> {
 {}
 ```
 ",
-            assist.id, assist.doc, assist.before, assist.after
+            assist.id, assist.doc, before, after
         );
         buf.push_str(&docs);
     }

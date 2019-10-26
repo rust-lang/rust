@@ -16,7 +16,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // Adds or changes existing visibility specifier.
 //
 // ```
-// fn<|> frobnicate() {}
+// <|>fn frobnicate() {}
 // ```
 // ->
 // ```
