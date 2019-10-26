@@ -1,5 +1,4 @@
 import * as fs from 'fs'
-import * as jsonc from 'jsonc-parser'
 import * as path from 'path'
 import * as vscode from 'vscode'
 
@@ -44,26 +43,21 @@ export function load() {
 
 // Find current theme on disk
 function loadThemeNamed(themeName: string) {
-    for (const extension of vscode.extensions.all) {
-        const extensionPath: string = extension.extensionPath
-        const extensionPackageJsonPath: string = path.join(extensionPath, 'package.json')
-        if (!checkFileExists(extensionPackageJsonPath)) {
-            continue
-        }
-        const packageJsonText: string = readFileText(extensionPackageJsonPath)
-        const packageJson: any = jsonc.parse(packageJsonText)
-        if (packageJson.contributes && packageJson.contributes.themes) {
-            for (const theme of packageJson.contributes.themes) {
-                const id = theme.id || theme.label
-                if (id === themeName) {
-                    const themeRelativePath: string = theme.path
-                    const themeFullPath: string = path.join(extensionPath, themeRelativePath)
-                    loadThemeFile(themeFullPath)
-                }
-            }
-        }
 
-    }
+    const themePaths = vscode.extensions.all
+        .filter(extension => extension.extensionKind === vscode.ExtensionKind.UI)
+        .filter(extension => extension.packageJSON.contributes)
+        .filter(extension => extension.packageJSON.contributes.themes)
+        .reduce((list, extension) => {
+            const paths = extension.packageJSON.contributes.themes
+                .filter((element: any) => (element.id || element.label) === themeName)
+                .map((element: any) => path.join(extension.extensionPath, element.path))
+            return list.concat(paths)
+        }, Array<string>());
+
+
+    themePaths.forEach(loadThemeFile);
+
     const customization: any = vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations');
     if (customization && customization.textMateRules) {
         loadColors(customization.textMateRules)
@@ -71,9 +65,11 @@ function loadThemeNamed(themeName: string) {
 }
 
 function loadThemeFile(themePath: string) {
+
     if (checkFileExists(themePath)) {
         const themeContentText: string = readFileText(themePath)
-        const themeContent: any = jsonc.parse(themeContentText)
+
+        const themeContent: any = JSON.parse(themeContentText)
 
         if (themeContent && themeContent.tokenColors) {
             loadColors(themeContent.tokenColors)
