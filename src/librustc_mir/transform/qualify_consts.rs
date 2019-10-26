@@ -206,6 +206,9 @@ trait Qualif {
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Downcast(..) => qualif,
 
+                // FIXME(eddyb) shouldn't this be masked *after* including the
+                // index local? Then again, it's `usize` which is neither
+                // `HasMutInterior` nor `NeedsDrop`.
                 ProjectionElem::Index(local) => qualif || Self::in_local(cx, *local),
             }
         } else {
@@ -442,6 +445,7 @@ impl Qualif for IsNotPromotable {
             StaticKind::Promoted(_, _) => unreachable!(),
             StaticKind::Static => {
                 // Only allow statics (not consts) to refer to other statics.
+                // FIXME(eddyb) does this matter at all for promotion?
                 let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
 
                 !allowed ||
@@ -674,6 +678,7 @@ struct Checker<'a, 'tcx> {
 
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
+    unchecked_promotion_candidates: Vec<Candidate>,
 
     /// If `true`, do not emit errors to the user, merely collect them in `errors`.
     suppress_errors: bool,
@@ -703,7 +708,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
         assert!(def_id.is_local());
         let mut rpo = traversal::reverse_postorder(body);
-        let temps = promote_consts::collect_temps(body, &mut rpo);
+        let (temps, unchecked_promotion_candidates) =
+            promote_consts::collect_temps_and_candidates(tcx, body, &mut rpo);
         rpo.reset();
 
         let param_env = tcx.param_env(def_id);
@@ -742,6 +748,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             rpo,
             temp_promotion_state: temps,
             promotion_candidates: vec![],
+            unchecked_promotion_candidates,
             errors: vec![],
             suppress_errors: false,
         }
@@ -828,6 +835,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
                     // Don't promote BorrowKind::Shallow borrows, as they don't
                     // reach codegen.
+                    // FIXME(eddyb) the two other kinds of borrow (`Shallow` and `Unique`)
+                    // aren't promoted here but *could* be promoted as part of a larger
+                    // value because `IsNotPromotable` isn't being set for them,
+                    // need to figure out what is the intended behavior.
 
                     // We might have a candidate for promotion.
                     let candidate = Candidate::Ref(location);
@@ -967,6 +978,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut seen_blocks = BitSet::new_empty(body.basic_blocks().len());
         let mut bb = START_BLOCK;
+        let mut has_controlflow_error = false;
         loop {
             seen_blocks.insert(bb.index());
 
@@ -1007,6 +1019,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
+                    has_controlflow_error = true;
                     self.not_const(ops::Loop);
                     validator.check_op(ops::Loop);
                     break;
@@ -1036,9 +1049,28 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Collect all the temps we need to promote.
         let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
 
-        debug!("qualify_const: promotion_candidates={:?}", self.promotion_candidates);
-        for candidate in &self.promotion_candidates {
-            match *candidate {
+        // HACK(eddyb) don't try to validate promotion candidates if any
+        // parts of the control-flow graph were skipped due to an error.
+        let promotion_candidates = if has_controlflow_error {
+            let unleash_miri = self
+                .tcx
+                .sess
+                .opts
+                .debugging_opts
+                .unleash_the_miri_inside_of_you;
+            if !unleash_miri {
+                self.tcx.sess.delay_span_bug(
+                    body.span,
+                    "check_const: expected control-flow error(s)",
+                );
+            }
+            self.promotion_candidates.clone()
+        } else {
+            self.valid_promotion_candidates()
+        };
+        debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
+        for candidate in promotion_candidates {
+            match candidate {
                 Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
                     if let StatementKind::Assign(box(_, Rvalue::Repeat(
                         Operand::Move(place),
@@ -1074,6 +1106,49 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
+    }
+
+    /// Get the subset of `unchecked_promotion_candidates` that are eligible
+    /// for promotion.
+    // FIXME(eddyb) replace the old candidate gathering with this.
+    fn valid_promotion_candidates(&self) -> Vec<Candidate> {
+        // Sanity-check the promotion candidates.
+        let candidates = promote_consts::validate_candidates(
+            self.tcx,
+            self.body,
+            self.def_id,
+            &self.temp_promotion_state,
+            &self.unchecked_promotion_candidates,
+        );
+
+        if candidates != self.promotion_candidates {
+            let report = |msg, candidate| {
+                let span = match candidate {
+                    Candidate::Ref(loc) |
+                    Candidate::Repeat(loc) => self.body.source_info(loc).span,
+                    Candidate::Argument { bb, .. } => {
+                        self.body[bb].terminator().source_info.span
+                    }
+                };
+                self.tcx.sess.span_err(span, &format!("{}: {:?}", msg, candidate));
+            };
+
+            for &c in &self.promotion_candidates {
+                if !candidates.contains(&c) {
+                    report("invalidated old candidate", c);
+                }
+            }
+
+            for &c in &candidates {
+                if !self.promotion_candidates.contains(&c) {
+                    report("extra new candidate", c);
+                }
+            }
+
+            bug!("promotion candidate validation mismatches (see above)");
+        }
+
+        candidates
     }
 }
 
@@ -1644,6 +1719,10 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
+// FIXME(eddyb) this is only left around for the validation logic
+// in `promote_consts`, see the comment in `validate_operand`.
+pub(super) const QUALIF_ERROR_BIT: u8 = 1 << IsNotPromotable::IDX;
+
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
@@ -1653,7 +1732,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
-        return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
+        return (QUALIF_ERROR_BIT, tcx.arena.alloc(BitSet::new_empty(0)));
     }
 
     Checker::new(tcx, def_id, body, Mode::Const).check_const()
@@ -1695,29 +1774,33 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             let (temps, candidates) = {
                 let mut checker = Checker::new(tcx, def_id, body, mode);
                 if let Mode::ConstFn = mode {
-                    if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                        checker.check_const();
-                    } else if tcx.is_min_const_fn(def_id) {
+                    let use_min_const_fn_checks =
+                        !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
+                        tcx.is_min_const_fn(def_id);
+                    if use_min_const_fn_checks {
                         // Enforce `min_const_fn` for stable `const fn`s.
                         use super::qualify_min_const_fn::is_min_const_fn;
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
                             error_min_const_fn_violation(tcx, span, err);
-                        } else {
-                            // this should not produce any errors, but better safe than sorry
-                            // FIXME(#53819)
-                            checker.check_const();
+                            return;
                         }
-                    } else {
-                        // Enforce a constant-like CFG for `const fn`.
-                        checker.check_const();
+
+                        // `check_const` should not produce any errors, but better safe than sorry
+                        // FIXME(#53819)
+                        // NOTE(eddyb) `check_const` is actually needed for promotion inside
+                        // `min_const_fn` functions.
                     }
+
+                    // Enforce a constant-like CFG for `const fn`.
+                    checker.check_const();
                 } else {
                     while let Some((bb, data)) = checker.rpo.next() {
                         checker.visit_basic_block_data(bb, data);
                     }
                 }
 
-                (checker.temp_promotion_state, checker.promotion_candidates)
+                let promotion_candidates = checker.valid_promotion_candidates();
+                (checker.temp_promotion_state, promotion_candidates)
             };
 
             // Do the actual promotion, now that we know what's viable.

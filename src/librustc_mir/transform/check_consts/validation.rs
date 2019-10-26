@@ -369,11 +369,10 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         // it depends on `HasMutInterior` being set for mutable borrows as well as values with
         // interior mutability.
         if let Rvalue::Ref(_, kind, ref borrowed_place) = *rvalue {
-            let rvalue_has_mut_interior = HasMutInterior::in_rvalue(
-                &self.item,
-                self.qualifs.has_mut_interior.get(),
-                rvalue,
-            );
+            let rvalue_has_mut_interior = {
+                let has_mut_interior = self.qualifs.has_mut_interior.get();
+                HasMutInterior::in_rvalue(&self.item, &|l| has_mut_interior.contains(l), rvalue)
+            };
 
             if rvalue_has_mut_interior {
                 let is_derived_from_illegal_borrow = match borrowed_place.as_local() {

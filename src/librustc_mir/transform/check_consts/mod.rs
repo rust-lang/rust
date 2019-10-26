@@ -11,7 +11,7 @@ use rustc::ty::{self, TyCtxt};
 pub use self::qualifs::Qualif;
 
 pub mod ops;
-mod qualifs;
+pub mod qualifs;
 mod resolver;
 pub mod validation;
 
@@ -23,6 +23,7 @@ pub struct Item<'mir, 'tcx> {
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     mode: validation::Mode,
+    for_promotion: bool,
 }
 
 impl Item<'mir, 'tcx> {
@@ -41,6 +42,28 @@ impl Item<'mir, 'tcx> {
             def_id,
             param_env,
             mode,
+            for_promotion: false,
+        }
+    }
+
+    // HACK(eddyb) this is to get around the panic for a runtime fn from `Item::new`.
+    // Also, it allows promoting `&mut []`.
+    pub fn for_promotion(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        body: &'mir mir::Body<'tcx>,
+    ) -> Self {
+        let param_env = tcx.param_env(def_id);
+        let mode = validation::Mode::for_item(tcx, def_id)
+            .unwrap_or(validation::Mode::ConstFn);
+
+        Item {
+            body,
+            tcx,
+            def_id,
+            param_env,
+            mode,
+            for_promotion: true,
         }
     }
 }
