@@ -961,7 +961,7 @@ pub const ALL_LINTS: [Lint; 332] = [
     },
     Lint {
         name: "manual_mul_add",
-        group: "perf",
+        group: "nursery",
         desc: "Using `a.mul_add(b, c)` for floating points has higher numerical precision than `a * b + c`",
         deprecation: None,
         module: "mul_add",

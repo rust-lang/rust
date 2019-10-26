@@ -15,7 +15,9 @@ declare_clippy_lint! {
     /// `c`. Depending on the target architecture, `mul_add()` may be more
     /// performant.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** This lint can emit semantic incorrect suggestions.
+    /// For example, for `a * b * c + d` the suggestion `a * b.mul_add(c, d)`
+    /// is emitted, which is equivalent to `a * (b * c + d)`. (#4735)
     ///
     /// **Example:**
     ///
@@ -35,7 +37,7 @@ declare_clippy_lint! {
     /// let foo = a.mul_add(b, c);
     /// ```
     pub MANUAL_MUL_ADD,
-    perf,
+    nursery,
     "Using `a.mul_add(b, c)` for floating points has higher numerical precision than `a * b + c`"
 }
 
