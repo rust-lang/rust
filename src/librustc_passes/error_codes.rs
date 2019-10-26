@@ -554,7 +554,7 @@ trait Foo {
 
 E0666: r##"
 `impl Trait` types cannot appear nested in the
-generic types of other `impl Trait` types.
+generic arguments of other `impl Trait` types.
 
 Example of erroneous code:
 
