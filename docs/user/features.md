@@ -118,57 +118,6 @@ impl Debug<|> for Foo {
 }
 ```
 
-- Change Visibility
-
-```rust
-// before:
-<|>fn foo() {}
-
-// after:
-<|>pub(crate) fn foo() {}
-
-// after:
-<|>pub fn foo() {}
-```
-
-- Fill match arms
-
-```rust
-// before:
-enum A {
-    As,
-    Bs,
-    Cs(String),
-    Ds(String, String),
-    Es{x: usize, y: usize}
-}
-
-fn main() {
-    let a = A::As;
-    match a<|> {}
-}
-
-// after:
-enum A {
-    As,
-    Bs,
-    Cs(String),
-    Ds(String, String),
-    Es{x: usize, y: usize}
-}
-
-fn main() {
-    let a = A::As;
-    match <|>a {
-        A::As => (),
-        A::Bs => (),
-        A::Cs(_) => (),
-        A::Ds(_, _) => (),
-        A::Es{x, y} => (),
-    }
-}
-```
-
 - Fill struct fields
 
 ```rust

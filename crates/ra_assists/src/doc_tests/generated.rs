@@ -142,6 +142,19 @@ fn main() {
 }
 
 #[test]
+fn doctest_change_visibility() {
+    check(
+        "change_visibility",
+        r#####"
+fn<|> frobnicate() {}
+"#####,
+        r#####"
+pub(crate) fn frobnicate() {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check(
         "convert_to_guarded_return",
@@ -160,6 +173,32 @@ fn main() {
     }
     foo();
     bar();
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_fill_match_arms() {
+    check(
+        "fill_match_arms",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        <|>
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move{ distance } => (),
+        Action::Stop => (),
+    }
 }
 "#####,
     )

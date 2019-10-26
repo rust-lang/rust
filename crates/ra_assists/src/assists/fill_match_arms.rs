@@ -7,6 +7,30 @@ use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: fill_match_arms
+//
+// Adds missing clauses to a `match` expression.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         <|>
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move{ distance } => (),
+//         Action::Stop => (),
+//     }
+// }
+// ```
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;

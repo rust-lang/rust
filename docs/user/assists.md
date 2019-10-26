@@ -137,6 +137,18 @@ fn main() {
 }
 ```
 
+## `change_visibility`
+
+Adds or changes existing visibility specifier.
+
+```rust
+// BEFORE
+fn<|> frobnicate() {}
+
+// AFTER
+pub(crate) fn frobnicate() {}
+```
+
 ## `convert_to_guarded_return`
 
 Replace a large conditional with a guarded return.
@@ -157,5 +169,30 @@ fn main() {
     }
     foo();
     bar();
+}
+```
+
+## `fill_match_arms`
+
+Adds missing clauses to a `match` expression.
+
+```rust
+// BEFORE
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        <|>
+    }
+}
+
+// AFTER
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move{ distance } => (),
+        Action::Stop => (),
+    }
 }
 ```
