@@ -3,6 +3,7 @@ error: character literal may only contain one codepoint
    |
 LL | static c: char = '●●';
    |                  ^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL | static c: char = "●●";
@@ -13,6 +14,7 @@ error: character literal may only contain one codepoint
    |
 LL |     let ch: &str = '●●';
    |                    ^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let ch: &str = "●●";

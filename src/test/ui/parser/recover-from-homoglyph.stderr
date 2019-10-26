@@ -3,6 +3,7 @@ error: unknown start of token: \u{37e}
    |
 LL |     println!("");
    |                 ^
+   |
 help: Unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it is not
    |
 LL |     println!("");

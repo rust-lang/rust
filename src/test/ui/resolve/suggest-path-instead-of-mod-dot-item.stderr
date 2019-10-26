@@ -27,6 +27,7 @@ error[E0423]: expected value, found module `a::b`
    |
 LL |     a::b.J
    |     ^^^^
+   |
 help: a constant with a similar name exists
    |
 LL |     a::I.J
@@ -57,6 +58,7 @@ error[E0423]: expected value, found module `a::b`
    |
 LL |     a::b.f()
    |     ^^^^
+   |
 help: a constant with a similar name exists
    |
 LL |     a::I.f()

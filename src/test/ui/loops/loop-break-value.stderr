@@ -11,6 +11,7 @@ error[E0571]: `break` with value from a `while` loop
    |
 LL |         break ();
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `while` loop
    |
 LL |         break;
@@ -21,6 +22,7 @@ error[E0571]: `break` with value from a `while` loop
    |
 LL |             break 'while_loop 123;
    |             ^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `while` loop
    |
 LL |             break;
@@ -31,6 +33,7 @@ error[E0571]: `break` with value from a `while let` loop
    |
 LL |         if break () {
    |            ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `while let` loop
    |
 LL |         if break {
@@ -41,6 +44,7 @@ error[E0571]: `break` with value from a `while let` loop
    |
 LL |         break None;
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `while let` loop
    |
 LL |         break;
@@ -51,6 +55,7 @@ error[E0571]: `break` with value from a `while let` loop
    |
 LL |             break 'while_let_loop "nope";
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `while let` loop
    |
 LL |             break;
@@ -61,6 +66,7 @@ error[E0571]: `break` with value from a `for` loop
    |
 LL |         break ();
    |         ^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `for` loop
    |
 LL |         break;
@@ -71,6 +77,7 @@ error[E0571]: `break` with value from a `for` loop
    |
 LL |         break [()];
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `for` loop
    |
 LL |         break;
@@ -81,6 +88,7 @@ error[E0571]: `break` with value from a `for` loop
    |
 LL |             break 'for_loop Some(17);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
 help: instead, use `break` on its own without a value inside this `for` loop
    |
 LL |             break;

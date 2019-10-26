@@ -3,6 +3,7 @@ error: expected identifier, found keyword `await`
    |
 LL |     pub mod await {
    |             ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     pub mod r#await {
@@ -13,6 +14,7 @@ error: expected identifier, found keyword `await`
    |
 LL |         pub struct await;
    |                    ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |         pub struct r#await;
@@ -23,6 +25,7 @@ error: expected identifier, found keyword `await`
    |
 LL | use self::outer_mod::await::await;
    |                      ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use self::outer_mod::r#await::await;
@@ -33,6 +36,7 @@ error: expected identifier, found keyword `await`
    |
 LL | use self::outer_mod::await::await;
    |                             ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use self::outer_mod::await::r#await;
@@ -43,6 +47,7 @@ error: expected identifier, found keyword `await`
    |
 LL | struct Foo { await: () }
    |              ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | struct Foo { r#await: () }
@@ -53,6 +58,7 @@ error: expected identifier, found keyword `await`
    |
 LL | impl Foo { fn await() {} }
    |               ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | impl Foo { fn r#await() {} }
@@ -63,6 +69,7 @@ error: expected identifier, found keyword `await`
    |
 LL | macro_rules! await {
    |              ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | macro_rules! r#await {

@@ -3,6 +3,7 @@ error[E0423]: expected function, found trait `Bar`
    |
 LL |     Bar();
    |     ^^^ not a function
+   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use foo1::Bar;
@@ -17,6 +18,7 @@ error[E0423]: expected function, found trait `Bar`
    |
 LL |     Bar();
    |     ^^^
+   |
 help: a unit struct with a similar name exists
    |
 LL |     Baz();
@@ -35,6 +37,7 @@ error[E0573]: expected type, found function `Bar`
    |
 LL |     let _x : Box<Bar>;
    |                  ^^^ not a type
+   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use foo1::Bar;
@@ -49,6 +52,7 @@ error[E0573]: expected type, found function `Bar`
    |
 LL |     let _x: Box<Bar>;
    |                 ^^^
+   |
 help: a struct with a similar name exists
    |
 LL |     let _x: Box<Baz>;

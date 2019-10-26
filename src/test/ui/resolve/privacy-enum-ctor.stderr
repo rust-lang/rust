@@ -3,6 +3,7 @@ error[E0423]: expected value, found enum `n::Z`
    |
 LL |         n::Z;
    |         ^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |         m::Z::Fn;
@@ -17,6 +18,7 @@ error[E0423]: expected value, found enum `Z`
    |
 LL |         Z;
    |         ^
+   |
 help: a function with a similar name exists
    |
 LL |         f;
@@ -46,6 +48,7 @@ error[E0423]: expected value, found enum `m::E`
    |
 LL |     let _: E = m::E;
    |                ^^^^
+   |
 help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
@@ -81,6 +84,7 @@ error[E0423]: expected value, found enum `E`
    |
 LL |     let _: E = E;
    |                ^
+   |
 help: try using one of the enum's variants
    |
 LL |     let _: E = E::Fn;
@@ -112,6 +116,7 @@ error[E0412]: cannot find type `Z` in this scope
    |
 LL |     let _: Z = m::n::Z;
    |            ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z;
@@ -126,6 +131,7 @@ error[E0423]: expected value, found enum `m::n::Z`
    |
 LL |     let _: Z = m::n::Z;
    |                ^^^^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |     let _: Z = m::Z::Fn;
@@ -140,6 +146,7 @@ error[E0412]: cannot find type `Z` in this scope
    |
 LL |     let _: Z = m::n::Z::Fn;
    |            ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Fn;
@@ -154,6 +161,7 @@ error[E0412]: cannot find type `Z` in this scope
    |
 LL |     let _: Z = m::n::Z::Struct;
    |            ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Struct;
@@ -179,6 +187,7 @@ error[E0412]: cannot find type `Z` in this scope
    |
 LL |     let _: Z = m::n::Z::Unit {};
    |            ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Unit {};
@@ -237,6 +246,7 @@ LL |         let _ = Z::Unit();
    |                 ^^^^^^^--
    |                 |
    |                 call expression requires function
+   |
 help: `Z::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |         let _ = Z::Unit;
@@ -267,6 +277,7 @@ LL |     let _: E = m::E::Unit();
    |                ^^^^^^^^^^--
    |                |
    |                call expression requires function
+   |
 help: `m::E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = m::E::Unit;
@@ -297,6 +308,7 @@ LL |     let _: E = E::Unit();
    |                ^^^^^^^--
    |                |
    |                call expression requires function
+   |
 help: `E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = E::Unit;

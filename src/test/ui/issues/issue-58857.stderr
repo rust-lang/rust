@@ -3,6 +3,7 @@ error: negative trait bounds are not supported
    |
 LL | impl<A: !Valid> Conj<A>{}
    |       ^^^^^^^^ negative trait bounds are not supported
+   |
    = help: remove the trait bound
 
 error: aborting due to previous error

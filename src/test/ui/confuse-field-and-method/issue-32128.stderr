@@ -6,6 +6,7 @@ LL | struct Example {
 ...
 LL |     demo.example(1);
    |          ^^^^^^^ field, not a method
+   |
 help: to call the function stored in `example`, surround the field access with parentheses
    |
 LL |     (demo.example)(1);

@@ -3,6 +3,7 @@ error: expected identifier, found keyword `async`
    |
 LL |     let mut async = 1;
    |             ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut r#async = 1;
@@ -13,6 +14,7 @@ error: expected identifier, found keyword `async`
    |
 LL |     module::async();
    |             ^^^^^ expected identifier, found keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     module::r#async();

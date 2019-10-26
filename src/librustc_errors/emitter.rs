@@ -1583,27 +1583,26 @@ impl EmitterWriter {
         Ok(())
     }
 
-    fn emit_messages_default(&mut self,
-                             level: &Level,
-                             message: &[(String, Style)],
-                             code: &Option<DiagnosticId>,
-                             span: &MultiSpan,
-                             children: &[SubDiagnostic],
-                             suggestions: &[CodeSuggestion]) {
+    fn emit_messages_default(
+        &mut self,
+        level: &Level,
+        message: &[(String, Style)],
+        code: &Option<DiagnosticId>,
+        span: &MultiSpan,
+        children: &[SubDiagnostic],
+        suggestions: &[CodeSuggestion],
+    ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
             self.get_max_line_num(span, children).to_string().len()
         };
 
-        match self.emit_message_default(span,
-                                        message,
-                                        code,
-                                        level,
-                                        max_line_num_len,
-                                        false) {
+        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
             Ok(()) => {
-                if !children.is_empty() {
+                if !children.is_empty() || suggestions.iter().any(|s| {
+                    s.style != SuggestionStyle::CompletelyHidden
+                }) {
                     let mut buffer = StyledBuffer::new();
                     if !self.short_message {
                         draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);

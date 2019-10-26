@@ -6,6 +6,7 @@ LL |       match Foo {
 LL | |         x: 3
 LL | |     } {
    | |_____^
+   |
 help: surround the struct literal with parentheses
    |
 LL |     match (Foo {

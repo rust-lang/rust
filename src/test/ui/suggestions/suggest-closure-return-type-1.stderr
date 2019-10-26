@@ -3,6 +3,7 @@ error[E0282]: type annotations needed for the closure `fn() -> [_; 0]`
    |
 LL |     let _v = || -> _ { [] };
    |                        ^^ cannot infer type
+   |
 help: give this closure an explicit return type without `_` placeholders
    |
 LL |     let _v = || -> [_; 0] { [] };
