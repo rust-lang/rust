@@ -386,8 +386,17 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
+            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "install");
+            cargo.arg("xargo");
+            // Configure `cargo install` path. cargo adds a `bin/`.
+            cargo.env("CARGO_INSTALL_ROOT", &builder.out);
+
+            let mut cargo = Command::from(cargo);
+            if !try_run(builder, &mut cargo) {
+                return;
+            }
+
             // # Run `cargo miri setup`.
-            // As a side-effect, this will install xargo.
             let mut cargo = tool::prepare_tool_cargo(
                 builder,
                 compiler,
@@ -412,9 +421,7 @@ impl Step for Miri {
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
-            // Configure `cargo install` path, and let cargo-miri know that that's where
-            // xargo ends up.
-            cargo.env("CARGO_INSTALL_ROOT", &builder.out); // cargo adds a `bin/`
+            // Let cargo-miri know where xargo ended up.
             cargo.env("XARGO", builder.out.join("bin").join("xargo"));
 
             let mut cargo = Command::from(cargo);
