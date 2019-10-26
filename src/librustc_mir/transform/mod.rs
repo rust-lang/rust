@@ -1,7 +1,7 @@
 use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Body, MirPhase, Promoted};
+use rustc::mir::{self, Body, MirPhase, Promoted};
 use rustc::ty::{TyCtxt, InstanceDef};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -38,12 +38,12 @@ pub mod inline;
 pub mod uniform_array_move_out;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
-    self::qualify_consts::provide(providers);
     self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_built,
         mir_const,
+        mir_const_qualif,
         mir_validated,
         optimized_mir,
         is_mir_available,
@@ -201,14 +201,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(hir_id) {
-        // Ensure that we compute the `mir_const_qualif` for constants at
-        // this point, before we steal the mir-const result.
-        let _ = tcx.mir_const_qualif(def_id);
-    }
-
+) -> mir::BodyAndPromoteds<'tcx> {
     let mut body = tcx.mir_const(def_id).steal();
     let qualify_and_promote_pass = qualify_consts::QualifyAndPromoteConstants::default();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
@@ -216,8 +209,18 @@ fn mir_validated(
         &qualify_and_promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
-    let promoted = qualify_and_promote_pass.promoted.into_inner();
-    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
+
+    // If an error occurs and no result is generated, mark this MIR unpromotable.
+    let err = qualify_consts::PromotionResults::QualifsInConst(qualify_consts::QUALIF_ERROR_BIT);
+    qualify_and_promote_pass
+        .results
+        .into_inner()
+        .unwrap_or(err)
+        .into_query_result(tcx, body)
+}
+
+fn mir_const_qualif(tcx: TyCtxt<'tcx>, def_id: DefId) -> u8 {
+    tcx.mir_validated(def_id).qualifs_in_const()
 }
 
 fn run_optimization_passes<'tcx>(
@@ -292,8 +295,7 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     // execute before we can steal.
     tcx.ensure().mir_borrowck(def_id);
 
-    let (body, _) = tcx.mir_validated(def_id);
-    let mut body = body.steal();
+    let mut body = tcx.mir_validated(def_id).body.steal();
     run_optimization_passes(tcx, &mut body, def_id, None);
     tcx.arena.alloc(body)
 }
@@ -304,12 +306,11 @@ fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promot
     }
 
     tcx.ensure().mir_borrowck(def_id);
-    let (_, promoted) = tcx.mir_validated(def_id);
-    let mut promoted = promoted.steal();
 
-    for (p, mut body) in promoted.iter_enumerated_mut() {
+    let mut promoteds = tcx.mir_validated(def_id).promoteds.steal();
+    for (p, mut body) in promoteds.iter_enumerated_mut() {
         run_optimization_passes(tcx, &mut body, def_id, Some(p));
     }
 
-    tcx.intern_promoted(promoted)
+    tcx.intern_promoted(promoteds)
 }

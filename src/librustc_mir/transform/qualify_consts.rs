@@ -13,7 +13,6 @@ use rustc::hir::def_id::DefId;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
-use rustc::ty::query::Providers;
 use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
 use rustc::mir::traversal::ReversePostorder;
@@ -260,8 +259,7 @@ trait Qualif {
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty).unwrap_or(false)
                     } else {
-                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
-
+                        let bits = cx.tcx.at(constant.span).mir_const_qualif(def_id);
                         let qualif = PerQualif::decode_from_bits(bits).0[Self::IDX];
 
                         // Just in case the type is more specific than
@@ -955,7 +953,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 
     /// Check a whole const, static initializer or const fn.
-    fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
+    fn check_const(&mut self) -> u8 {
         use crate::transform::check_consts as new_checker;
 
         debug!("const-checking {} {:?}", self.mode, self.def_id);
@@ -977,7 +975,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut seen_blocks = BitSet::new_empty(body.basic_blocks().len());
         let mut bb = START_BLOCK;
-        let mut has_controlflow_error = false;
         loop {
             seen_blocks.insert(bb.index());
 
@@ -1018,7 +1015,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
-                    has_controlflow_error = true;
                     self.not_const(ops::Loop);
                     validator.check_op(ops::Loop);
                     break;
@@ -1045,57 +1041,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        // Collect all the temps we need to promote.
-        let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
-
-        // HACK(eddyb) don't try to validate promotion candidates if any
-        // parts of the control-flow graph were skipped due to an error.
-        let promotion_candidates = if has_controlflow_error {
-            let unleash_miri = self
-                .tcx
-                .sess
-                .opts
-                .debugging_opts
-                .unleash_the_miri_inside_of_you;
-            if !unleash_miri {
-                self.tcx.sess.delay_span_bug(
-                    body.span,
-                    "check_const: expected control-flow error(s)",
-                );
-            }
-            self.promotion_candidates.clone()
-        } else {
-            self.valid_promotion_candidates()
-        };
-        debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
-        for candidate in promotion_candidates {
-            match candidate {
-                Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(box(_, Rvalue::Repeat(
-                        Operand::Move(place),
-                        _
-                    ))) = &self.body[bb].statements[stmt_idx].kind {
-                        if let Some(index) = place.as_local() {
-                            promoted_temps.insert(index);
-                        }
-                    }
-                }
-                Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(
-                        box(
-                            _,
-                            Rvalue::Ref(_, _, place)
-                        )
-                    ) = &self.body[bb].statements[stmt_idx].kind {
-                        if let Some(index) = place.as_local() {
-                            promoted_temps.insert(index);
-                        }
-                    }
-                }
-                Candidate::Argument { .. } => {}
-            }
-        }
-
         let mut qualifs = self.qualifs_in_local(RETURN_PLACE);
 
         // Account for errors in consts by using the
@@ -1104,7 +1049,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             qualifs = self.qualifs_in_any_value_of_ty(body.return_ty());
         }
 
-        (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
+        qualifs.encode_to_bits()
     }
 
     /// Get the subset of `unchecked_promotion_candidates` that are eligible
@@ -1711,42 +1656,42 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
-    *providers = Providers {
-        mir_const_qualif,
-        ..*providers
-    };
-}
-
 // FIXME(eddyb) this is only left around for the validation logic
 // in `promote_consts`, see the comment in `validate_operand`.
 pub(super) const QUALIF_ERROR_BIT: u8 = 1 << IsNotPromotable::IDX;
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
-    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
-    // cannot yet be stolen), because `mir_validated()`, which steals
-    // from `mir_const(), forces this query to execute before
-    // performing the steal.
-    let body = &tcx.mir_const(def_id).borrow();
-
-    if body.return_ty().references_error() {
-        tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
-        return (QUALIF_ERROR_BIT, tcx.arena.alloc(BitSet::new_empty(0)));
-    }
-
-    Checker::new(tcx, def_id, body, Mode::Const).check_const()
+pub enum PromotionResults<'tcx> {
+    Promoteds(IndexVec<Promoted, Body<'tcx>>),
+    QualifsInConst(u8),
 }
 
-pub struct QualifyAndPromoteConstants<'tcx> {
-    pub promoted: Cell<IndexVec<Promoted, Body<'tcx>>>,
-}
+impl<'tcx> PromotionResults<'tcx> {
+    pub fn into_query_result(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: Body<'tcx>,
+    ) -> BodyAndPromoteds<'tcx> {
+        let body = tcx.alloc_steal_mir(body);
+        match self {
+            Self::Promoteds(promoteds) => BodyAndPromoteds {
+                body,
+                promoteds: tcx.alloc_steal_promoted(promoteds),
+                qualifs_in_const: None,
+            },
 
-impl<'tcx> Default for QualifyAndPromoteConstants<'tcx> {
-    fn default() -> Self {
-        QualifyAndPromoteConstants {
-            promoted: Cell::new(IndexVec::new()),
+            // FIXME: Make `promoteds` an `Option` to avoid the arena allocation?
+            Self::QualifsInConst(qualifs) => BodyAndPromoteds {
+                body,
+                promoteds: tcx.alloc_steal_promoted(IndexVec::new()),
+                qualifs_in_const: Some(qualifs),
+            }
         }
     }
+}
+
+#[derive(Default)]
+pub struct QualifyAndPromoteConstants<'tcx> {
+    pub results: Cell<Option<PromotionResults<'tcx>>>,
 }
 
 impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
@@ -1803,17 +1748,19 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             };
 
             // Do the actual promotion, now that we know what's viable.
-            self.promoted.set(
-                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
-            );
+            let promoteds =
+                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates);
+            self.results.set(Some(PromotionResults::Promoteds(promoteds)));
         } else {
             check_short_circuiting_in_const_local(tcx, body, mode);
 
-            let promoted_temps = match mode {
-                Mode::Const => tcx.mir_const_qualif(def_id).1,
-                _ => Checker::new(tcx, def_id, body, mode).check_const().1,
-            };
-            remove_drop_and_storage_dead_on_promoted_locals(body, promoted_temps);
+            let mut checker = Checker::new(tcx, def_id, body, mode);
+
+            let qualifs = checker.check_const();
+            let candidates = checker.valid_promotion_candidates();
+            extend_lifetimes_and_suppress_moves_in_repeat_for_const_and_static(body, &candidates);
+
+            self.results.set(Some(PromotionResults::QualifsInConst(qualifs)));
         }
 
         if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {
@@ -1874,19 +1821,47 @@ fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>,
     }
 }
 
-/// In `const` and `static` everything without `StorageDead`
-/// is `'static`, we don't have to create promoted MIR fragments,
-/// just remove `Drop` and `StorageDead` on "promoted" locals.
-fn remove_drop_and_storage_dead_on_promoted_locals(
+/// In `const` and `static` everything without `StorageDead` is `'static`, so we don't have to
+/// create promoted MIR fragments. Instead, remove `Drop` and `StorageDead` on "promoted" locals
+/// and turn moves of promotable locals into copies inside `Rvalue::Repeat`.
+fn extend_lifetimes_and_suppress_moves_in_repeat_for_const_and_static(
     body: &mut Body<'tcx>,
-    promoted_temps: &BitSet<Local>,
+    promotion_candidates: &Vec<Candidate>,
 ) {
-    debug!("run_pass: promoted_temps={:?}", promoted_temps);
+    debug!("run_pass: promotion_candidates={:?}", promotion_candidates);
+
+    let mut remove_drop_and_storage_dead = BitSet::new_empty(body.local_decls.len());
+
+    for candidate in promotion_candidates {
+        match *candidate {
+            Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
+                let op = match &mut body[bb].statements[stmt_idx].kind {
+                    StatementKind::Assign(box(_, Rvalue::Repeat(op, _))) => op,
+                    _ => bug!("Can't find assign corresponding to repeat"),
+                };
+
+                if let Operand::Move(_) = op {
+                    *op = op.to_copy();
+                }
+            }
+            Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
+                if let StatementKind::Assign(box( _, Rvalue::Ref(_, _, place)))
+                    = &body[bb].statements[stmt_idx].kind
+                {
+                    if let Some(local) = place.as_local() {
+                        remove_drop_and_storage_dead.insert(local);
+                    }
+                }
+            }
+
+            Candidate::Argument { .. } => {}
+        }
+    }
 
     for block in body.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::StorageDead(index) => !promoted_temps.contains(index),
+                StatementKind::StorageDead(index) => !remove_drop_and_storage_dead.contains(index),
                 _ => true
             }
         });
@@ -1898,7 +1873,7 @@ fn remove_drop_and_storage_dead_on_promoted_locals(
                 ..
             } => {
                 if let Some(index) = location.as_local() {
-                    if promoted_temps.contains(index) {
+                    if remove_drop_and_storage_dead.contains(index) {
                         terminator.kind = TerminatorKind::Goto { target: *target };
                     }
                 }

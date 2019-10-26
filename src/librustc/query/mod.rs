@@ -93,8 +93,8 @@ rustc_queries! {
         /// Maps DefId's that have an associated `mir::Body` to the result
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
-        query mir_const_qualif(key: DefId) -> (u8, &'tcx BitSet<mir::Local>) {
-            desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
+        query mir_const_qualif(key: DefId) -> u8 {
+            desc { |tcx| "computing qualifs for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
@@ -110,11 +110,8 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) ->
-            (
-                &'tcx Steal<mir::Body<'tcx>>,
-                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
-            ) {
+        query mir_validated(key: DefId) -> mir::BodyAndPromoteds<'tcx> {
+            desc { |tcx| "promoting and checking `{}`", tcx.def_path_str(key) }
             no_hash
         }
 

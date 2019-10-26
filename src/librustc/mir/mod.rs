@@ -14,6 +14,7 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::layout::VariantIdx;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
+use crate::ty::steal::Steal;
 use crate::ty::{
     self, AdtDef, CanonicalUserTypeAnnotations, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
@@ -2562,6 +2563,26 @@ rustc_index::newtype_index! {
     pub struct Promoted {
         derive [HashStable]
         DEBUG_FORMAT = "promoted[{}]"
+    }
+}
+
+/// The result of the `mir_validated` query: a `Body` and the promoted `Body`s corresponding to
+/// each promoted temp in that MIR.
+///
+/// This also holds the result of the `mir_const_qualif` query, which is computed during promotion,
+/// but must be encoded seperately since we need to know the qualifs for `const`s in external
+/// crates to do promotion in the local one.
+#[derive(Clone, HashStable)]
+pub struct BodyAndPromoteds<'tcx> {
+    pub body: &'tcx Steal<Body<'tcx>>,
+    pub promoteds: &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>,
+    pub qualifs_in_const: Option<u8>,
+}
+
+impl<'tcx> BodyAndPromoteds<'tcx> {
+    pub fn qualifs_in_const(&self) -> u8 {
+        self.qualifs_in_const
+            .expect("`qualifs_in_const` must only be called if the `Body` was a `const`")
     }
 }
 

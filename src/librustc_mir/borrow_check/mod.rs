@@ -86,13 +86,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
-    let (input_body, promoted) = tcx.mir_validated(def_id);
+    let validated_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
-        let input_body: &Body<'_> = &input_body.borrow();
-        let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, def_id)
+        let input_body: &Body<'_> = &validated_mir.body.borrow();
+        let promoteds: &IndexVec<_, _> = &validated_mir.promoteds.borrow();
+        do_mir_borrowck(&infcx, input_body, promoteds, def_id)
     });
     debug!("mir_borrowck done");
 
