@@ -1329,6 +1329,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hermit-abi"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f22b8f315b98f415780ddbe9163c7dbbc5a07225b6d102ace1d8aeef85775140"
+dependencies = [
+ "compiler_builtins",
+ "libc",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
 name = "hex"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4159,6 +4170,7 @@ dependencies = [
  "dlmalloc",
  "fortanix-sgx-abi",
  "hashbrown 0.6.2",
+ "hermit-abi",
  "libc",
  "panic_abort",
  "panic_unwind",

@@ -502,12 +502,12 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(any(target_os = "solaris", target_os = "haiku", target_os = "hermit"))]
+    #[cfg(any(target_os = "solaris", target_os = "haiku"))]
     pub fn file_type(&self) -> io::Result<FileType> {
         lstat(&self.path()).map(|m| m.file_type())
     }
 
-    #[cfg(not(any(target_os = "solaris", target_os = "haiku", target_os = "hermit")))]
+    #[cfg(not(any(target_os = "solaris", target_os = "haiku")))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -530,7 +530,6 @@ impl DirEntry {
               target_os = "haiku",
               target_os = "l4re",
               target_os = "fuchsia",
-              target_os = "hermit",
               target_os = "redox"))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -561,8 +560,7 @@ impl DirEntry {
               target_os = "linux",
               target_os = "emscripten",
               target_os = "l4re",
-              target_os = "haiku",
-              target_os = "hermit"))]
+              target_os = "haiku"))]
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()

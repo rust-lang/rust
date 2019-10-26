@@ -49,7 +49,6 @@ cfg_if::cfg_if! {
 #[cfg(target_os = "solaris")]    pub mod solaris;
 #[cfg(target_os = "emscripten")] pub mod emscripten;
 #[cfg(target_os = "fuchsia")]    pub mod fuchsia;
-#[cfg(target_os = "hermit")]     pub mod hermit;
 #[cfg(target_os = "redox")]      pub mod redox;
 #[cfg(target_os = "wasi")]       pub mod wasi;
 #[cfg(target_os = "vxworks")]    pub mod vxworks;

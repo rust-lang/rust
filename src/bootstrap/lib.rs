@@ -160,7 +160,7 @@ mod job {
     }
 }
 
-#[cfg(any(target_os = "haiku", not(any(unix, windows))))]
+#[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
 mod job {
     pub unsafe fn setup(_build: &mut crate::Build) {
     }
