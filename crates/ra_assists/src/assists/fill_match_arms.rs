@@ -26,7 +26,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //
 // fn handle(action: Action) {
 //     match action {
-//         Action::Move{ distance } => (),
+//         Action::Move { distance } => (),
 //         Action::Stop => (),
 //     }
 // }
@@ -154,7 +154,7 @@ mod tests {
                     A::Bs => (),
                     A::Cs(_) => (),
                     A::Ds(_, _) => (),
-                    A::Es{ x, y } => (),
+                    A::Es { x, y } => (),
                 }
             }
             "#,
@@ -207,7 +207,7 @@ mod tests {
 
             fn foo(a: &mut A) {
                 match <|>a {
-                    A::Es{ x, y } => (),
+                    A::Es { x, y } => (),
                 }
             }
             "#,
