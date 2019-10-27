@@ -1205,27 +1205,41 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses `extern` followed by an optional ABI string, or nothing.
+    /// Parses `extern string_literal?`.
+    /// If `extern` is not found, the Rust ABI is used.
+    /// If `extern` is found and a `string_literal` does not follow, the C ABI is used.
     fn parse_extern_abi(&mut self) -> PResult<'a, Abi> {
         Ok(if self.eat_keyword(kw::Extern) {
-            let ext_sp = self.prev_span;
-            self.parse_opt_abi()?.unwrap_or_else(|| Abi::new(sym::C, ext_sp))
+            self.parse_opt_abi()?
         } else {
             Abi::default()
         })
     }
 
-    /// Parses a string as an ABI spec on an extern type or module.
-    fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
-        match self.token.kind {
-            token::Literal(token::Lit { kind: token::Str, symbol, suffix }) |
-            token::Literal(token::Lit { kind: token::StrRaw(..), symbol, suffix }) => {
-                self.expect_no_suffix(self.token.span, "an ABI spec", suffix);
-                self.bump();
-                Ok(Some(Abi::new(symbol, self.prev_span)))
+    /// Parses a string literal as an ABI spec.
+    /// If one is not found, the "C" ABI is used.
+    fn parse_opt_abi(&mut self) -> PResult<'a, Abi> {
+        let span = if self.token.can_begin_literal_or_bool() {
+            let ast::Lit { span, kind, .. } = self.parse_lit()?;
+            match kind {
+                ast::LitKind::Str(symbol, _) => return Ok(Abi::new(symbol, span)),
+                ast::LitKind::Err(_) => {}
+                _ => {
+                    self.struct_span_err(span, "non-string ABI literal")
+                        .span_suggestion(
+                            span,
+                            "specify the ABI with a string literal",
+                            "\"C\"".to_string(),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                }
             }
-            _ => Ok(None),
-        }
+            span
+        } else {
+            self.prev_span
+        };
+        Ok(Abi::new(sym::C, span))
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
