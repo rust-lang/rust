@@ -3,17 +3,14 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
     SyntaxKind::{RAW_STRING, STRING},
-    SyntaxToken, TextRange, TextUnit,
+    TextRange, TextUnit,
 };
 use rustc_lexer;
 
 use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let token = ctx.token_at_offset().right_biased()?;
-    if token.kind() != STRING {
-        return None;
-    }
+    let token = ctx.find_token_at_offset(STRING)?;
     let text = token.text().as_str();
     let usual_string_range = find_usual_string_range(text)?;
     let start_of_inside = usual_string_range.start().to_usize() + 1;
@@ -44,7 +41,7 @@ pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
 }
 
 pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let token = raw_string_token(&ctx)?;
+    let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();
     let usual_string_range = find_usual_string_range(text)?;
     ctx.add_action(AssistId("make_usual_string"), "make usual string", |edit| {
@@ -60,7 +57,7 @@ pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
 }
 
 pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let token = raw_string_token(&ctx)?;
+    let token = ctx.find_token_at_offset(RAW_STRING)?;
     ctx.add_action(AssistId("add_hash"), "add hash to raw string", |edit| {
         edit.target(token.text_range());
         edit.insert(token.text_range().start() + TextUnit::of_char('r'), "#");
@@ -70,7 +67,7 @@ pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 }
 
 pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let token = raw_string_token(&ctx)?;
+    let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();
     if text.starts_with("r\"") {
         // no hash to remove
@@ -89,10 +86,6 @@ pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
         edit.replace(token.text_range(), format!("r{}", result));
     });
     ctx.build()
-}
-
-fn raw_string_token(ctx: &AssistCtx<impl HirDatabase>) -> Option<SyntaxToken> {
-    ctx.token_at_offset().right_biased().filter(|it| it.kind() == RAW_STRING)
 }
 
 fn count_hashes(s: &str) -> usize {

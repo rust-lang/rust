@@ -19,7 +19,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let comma = ctx.token_at_offset().find(|leaf| leaf.kind() == T![,])?;
+    let comma = ctx.find_token_at_offset(T![,])?;
     let prev = non_trivia_sibling(comma.clone().into(), Direction::Prev)?;
     let next = non_trivia_sibling(comma.clone().into(), Direction::Next)?;
 
