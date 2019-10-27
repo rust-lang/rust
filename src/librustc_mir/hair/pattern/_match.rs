@@ -646,6 +646,41 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    // Returns the set of constructors covered by `self` but not by
+    // anything in `other_ctors`.
+    fn subtract_ctors(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        other_ctors: &Vec<Constructor<'tcx>>,
+    ) -> Vec<Constructor<'tcx>> {
+        let mut refined_ctors = vec![self.clone()];
+        for other_ctor in other_ctors {
+            if other_ctor == self {
+                // If a constructor appears in a `match` arm, we can
+                // eliminate it straight away.
+                refined_ctors = vec![]
+            } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, other_ctor) {
+                // Refine the required constructors for the type by subtracting
+                // the range defined by the current constructor pattern.
+                refined_ctors = interval.subtract_from(tcx, param_env, refined_ctors);
+            }
+
+            // If the constructor patterns that have been considered so far
+            // already cover the entire range of values, then we know the
+            // constructor is not missing, and we can move on to the next one.
+            if refined_ctors.is_empty() {
+                break;
+            }
+        }
+
+        // If a constructor has not been matched, then it is missing.
+        // We add `refined_ctors` instead of `self`, because then we can
+        // provide more detailed error information about precisely which
+        // ranges have been omitted.
+        refined_ctors
+    }
+
     /// This returns one wildcard pattern for each argument to this constructor.
     fn wildcard_subpatterns<'a>(
         &self,
@@ -1313,33 +1348,7 @@ impl<'tcx> MissingConstructors<'tcx> {
     /// Iterate over all_ctors \ used_ctors
     fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
         self.all_ctors.iter().flat_map(move |req_ctor| {
-            let mut refined_ctors = vec![req_ctor.clone()];
-            for used_ctor in &self.used_ctors {
-                if used_ctor == req_ctor {
-                    // If a constructor appears in a `match` arm, we can
-                    // eliminate it straight away.
-                    refined_ctors = vec![]
-                } else if let Some(interval) =
-                    IntRange::from_ctor(self.tcx, self.param_env, used_ctor)
-                {
-                    // Refine the required constructors for the type by subtracting
-                    // the range defined by the current constructor pattern.
-                    refined_ctors = interval.subtract_from(self.tcx, self.param_env, refined_ctors);
-                }
-
-                // If the constructor patterns that have been considered so far
-                // already cover the entire range of values, then we know the
-                // constructor is not missing, and we can move on to the next one.
-                if refined_ctors.is_empty() {
-                    break;
-                }
-            }
-
-            // If a constructor has not been matched, then it is missing.
-            // We add `refined_ctors` instead of `req_ctor`, because then we can
-            // provide more detailed error information about precisely which
-            // ranges have been omitted.
-            refined_ctors
+            req_ctor.subtract_ctors(self.tcx, self.param_env, &self.used_ctors)
         })
     }
 }
