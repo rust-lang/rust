@@ -14,6 +14,31 @@ use crate::{
     AssistId,
 };
 
+// This function produces sequence of text edits into edit
+// to import the target path in the most appropriate scope given
+// the cursor position
+pub fn auto_import_text_edit(
+    // Ideally the position of the cursor, used to
+    position: &SyntaxNode,
+    // The statement to use as anchor (last resort)
+    anchor: &SyntaxNode,
+    // The path to import as a sequence of strings
+    target: &[SmolStr],
+    edit: &mut TextEditBuilder,
+) {
+    let container = position.ancestors().find_map(|n| {
+        if let Some(module) = ast::Module::cast(n.clone()) {
+            return module.item_list().map(|it| it.syntax().clone());
+        }
+        ast::SourceFile::cast(n).map(|it| it.syntax().clone())
+    });
+
+    if let Some(container) = container {
+        let action = best_action_for_target(container, anchor.clone(), target);
+        make_assist(&action, target, edit);
+    }
+}
+
 pub(crate) fn add_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
@@ -552,7 +577,7 @@ fn apply_auto_import(
     }
 }
 
-pub fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
+fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
     let mut ps = Vec::<SmolStr>::with_capacity(10);
     match path.kind {
         hir::PathKind::Abs => ps.push("".into()),
@@ -566,31 +591,6 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
         ps.push(s.name.to_string().into());
     }
     Some(ps)
-}
-
-// This function produces sequence of text edits into edit
-// to import the target path in the most appropriate scope given
-// the cursor position
-pub fn auto_import_text_edit(
-    // Ideally the position of the cursor, used to
-    position: &SyntaxNode,
-    // The statement to use as anchor (last resort)
-    anchor: &SyntaxNode,
-    // The path to import as a sequence of strings
-    target: &[SmolStr],
-    edit: &mut TextEditBuilder,
-) {
-    let container = position.ancestors().find_map(|n| {
-        if let Some(module) = ast::Module::cast(n.clone()) {
-            return module.item_list().map(|it| it.syntax().clone());
-        }
-        ast::SourceFile::cast(n).map(|it| it.syntax().clone())
-    });
-
-    if let Some(container) = container {
-        let action = best_action_for_target(container, anchor.clone(), target);
-        make_assist(&action, target, edit);
-    }
 }
 
 #[cfg(test)]
