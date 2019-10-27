@@ -173,7 +173,7 @@ fn test_doc_comment_single_line_block_strips_suffix_whitespace() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("this is mod foo", module.doc_comment_text().unwrap());
+    assert_eq!("this is mod foo ", module.doc_comment_text().unwrap());
 }
 
 #[test]
@@ -191,7 +191,27 @@ fn test_doc_comment_multi_line_block_strips_suffix() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("        this\n        is\n        mod foo", module.doc_comment_text().unwrap());
+    assert_eq!(
+        "        this\n        is\n        mod foo\n        ",
+        module.doc_comment_text().unwrap()
+    );
+}
+
+#[test]
+fn test_comments_preserve_trailing_whitespace() {
+    let file = SourceFile::parse(
+        r#"
+/// Representation of a Realm.   
+/// In the specification these are called Realm Records.
+struct Realm {}"#,
+    )
+    .ok()
+    .unwrap();
+    let def = file.syntax().descendants().find_map(StructDef::cast).unwrap();
+    assert_eq!(
+        "Representation of a Realm.   \nIn the specification these are called Realm Records.",
+        def.doc_comment_text().unwrap()
+    );
 }
 
 #[test]

@@ -120,7 +120,7 @@ pub trait DocCommentsOwner: AstNode {
                 has_comments = true;
                 let prefix_len = comment.prefix().len();
 
-                let line = comment.text().as_str();
+                let line: &str = comment.text().as_str();
 
                 // Determine if the prefix or prefix + 1 char is stripped
                 let pos =
@@ -136,7 +136,10 @@ pub trait DocCommentsOwner: AstNode {
                     line.len()
                 };
 
-                line[pos..end].trim_end().to_owned()
+                // Note that we do not trim the end of the line here
+                // since whitespace can have special meaning at the end
+                // of a line in markdown.
+                line[pos..end].to_owned()
             })
             .join("\n");
 
