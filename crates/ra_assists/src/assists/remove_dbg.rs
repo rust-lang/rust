@@ -1,12 +1,26 @@
-//! FIXME: write short doc here
-
-use crate::{Assist, AssistCtx, AssistId};
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     TextUnit, T,
 };
 
+use crate::{Assist, AssistCtx, AssistId};
+
+// Assist: remove_dbg
+//
+// Removes `dbg!()` macro call.
+//
+// ```
+// fn main() {
+//     <|>dbg!(92);
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     92;
+// }
+// ```
 pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
 

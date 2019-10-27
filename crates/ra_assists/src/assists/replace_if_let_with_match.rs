@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use format_buf::format;
 use hir::db::HirDatabase;
 use ra_fmt::extract_trivial_expression;
@@ -7,6 +5,32 @@ use ra_syntax::{ast, AstNode};
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: replace_if_let_with_match
+//
+// Replaces `if let` with an else branch with a `match` expression.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     <|>if let Action::Move { distance } = action {
+//         foo(distance)
+//     } else {
+//         bar()
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => foo(distance),
+//         _ => bar(),
+//     }
+// }
+// ```
 pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
