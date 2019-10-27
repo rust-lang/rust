@@ -2,7 +2,7 @@
 
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo::find_node_at_offset,
+    algo::ancestors_at_offset,
     ast::{self, ArgListOwner},
     AstNode, SyntaxNode, TextUnit,
 };
@@ -82,13 +82,15 @@ enum FnCallNode {
 
 impl FnCallNode {
     fn with_node(syntax: &SyntaxNode, offset: TextUnit) -> Option<FnCallNode> {
-        if let Some(expr) = find_node_at_offset::<ast::CallExpr>(syntax, offset) {
-            return Some(FnCallNode::CallExpr(expr));
-        }
-        if let Some(expr) = find_node_at_offset::<ast::MethodCallExpr>(syntax, offset) {
-            return Some(FnCallNode::MethodCallExpr(expr));
-        }
-        None
+        ancestors_at_offset(syntax, offset).find_map(|node| {
+            if let Some(expr) = ast::CallExpr::cast(node.clone()) {
+                Some(FnCallNode::CallExpr(expr))
+            } else if let Some(expr) = ast::MethodCallExpr::cast(node.clone()) {
+                Some(FnCallNode::MethodCallExpr(expr))
+            } else {
+                None
+            }
+        })
     }
 
     fn name_ref(&self) -> Option<ast::NameRef> {
@@ -437,5 +439,27 @@ By default this method stops actor's `Context`."#
         );
         let call_info = analysis.call_info(position).unwrap();
         assert!(call_info.is_none());
+    }
+
+    #[test]
+    fn test_nested_method_in_lamba() {
+        let info = call_info(
+            r#"struct Foo;
+
+impl Foo {
+    fn bar(&self, _: u32) { }
+}
+
+fn bar(_: u32) { }
+
+fn main() {
+    let foo = Foo;
+    std::thread::spawn(move || foo.bar(<|>));
+}"#,
+        );
+
+        assert_eq!(info.parameters(), ["&self", "_: u32"]);
+        assert_eq!(info.active_parameter, Some(1));
+        assert_eq!(info.label(), "fn bar(&self, _: u32)");
     }
 }
