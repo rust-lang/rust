@@ -385,7 +385,7 @@ language_item_table! {
 
     EhPersonalityLangItem,       "eh_personality",     eh_personality,          Target::Fn;
     EhUnwindResumeLangItem,      "eh_unwind_resume",   eh_unwind_resume,        Target::Fn;
-    MSVCTryFilterLangItem,       "msvc_try_filter",    msvc_try_filter,         Target::Static;
+    EhCatchTypeinfoLangItem,     "eh_catch_typeinfo",  eh_catch_typeinfo,       Target::Static;
 
     OwnedBoxLangItem,            "owned_box",          owned_box,               Target::Struct;
 

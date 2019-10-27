@@ -899,9 +899,9 @@ fn codegen_msvc_try(
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
-        let tydesc = match bx.tcx().lang_items().msvc_try_filter() {
+        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
             Some(did) => bx.get_static(did),
-            None => bug!("msvc_try_filter not defined"),
+            None => bug!("eh_catch_typeinfo not defined, but needed for SEH unwinding"),
         };
         let funclet = catchpad.catch_pad(cs, &[tydesc, bx.const_i32(0), slot]);
 
@@ -975,7 +975,14 @@ fn codegen_gnu_try(
         // rust_try ignores the selector.
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
-        catch.add_clause(vals, bx.const_null(bx.type_i8p()));
+        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
+            Some(tydesc) => {
+                let tydesc = bx.get_static(tydesc);
+                bx.bitcast(tydesc, bx.type_i8p())
+            }
+            None => bx.const_null(bx.type_i8p()),
+        };
+        catch.add_clause(vals, tydesc);
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let bitcast = catch.bitcast(local_ptr, bx.type_ptr_to(bx.type_i8p()));

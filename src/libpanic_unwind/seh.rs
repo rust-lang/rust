@@ -213,12 +213,13 @@ extern "C" {
     static TYPE_INFO_VTABLE: *const u8;
 }
 
-// We use #[lang = "msvc_try_filter"] here as this is the type descriptor which
+// We use #[lang = "eh_catch_typeinfo"] here as this is the type descriptor which
 // we'll use in LLVM's `catchpad` instruction which ends up also being passed as
 // an argument to the C++ personality function.
 //
 // Again, I'm not entirely sure what this is describing, it just seems to work.
-#[cfg_attr(not(test), lang = "msvc_try_filter")]
+#[cfg_attr(bootstrap, lang = "msvc_try_filter")]
+#[cfg_attr(not(any(test, bootstrap)), lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),

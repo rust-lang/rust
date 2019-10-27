@@ -252,7 +252,8 @@ the source code.
   - `eh_personality`: `libpanic_unwind/gcc.rs` (GNU)
   - `eh_personality`: `libpanic_unwind/seh.rs` (SEH)
   - `eh_unwind_resume`: `libpanic_unwind/gcc.rs` (GCC)
-  - `msvc_try_filter`: `libpanic_unwind/seh.rs` (SEH)
+  - `eh_catch_typeinfo`: `libpanic_unwind/seh.rs` (SEH)
+  - `eh_catch_typeinfo`: `libpanic_unwind/emcc.rs` (EMCC)
   - `panic`: `libcore/panicking.rs`
   - `panic_bounds_check`: `libcore/panicking.rs`
   - `panic_impl`: `libcore/panicking.rs`
