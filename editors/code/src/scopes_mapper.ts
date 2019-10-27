@@ -8,15 +8,21 @@ let mappings = new Map<string, string[]>()
 
 
 const defaultMapping = new Map<string, string[]>([
+    ['comment', ['comment']],
+    ['string', ['string']],
+    ['keyword', ['keyword']],
+    ['keyword.control', ['keyword.control', 'keyword', 'keyword.other']],
     ['keyword.unsafe', ['storage.modifier', 'keyword.other', 'keyword.control']],
     ['function', ['entity.name.function']],
     ['parameter', ['variable.parameter']],
+    ['constant', ['constant', 'variable']],
     ['type', ['entity.name.type']],
     ['builtin', ['variable.language', 'support.type', 'support.type']],
     ['text', ['string', 'string.quoted', 'string.regexp']],
     ['attribute', ['keyword']],
     ['literal', ['string', 'string.quoted', 'string.regexp']],
     ['macro', ['support.other']],
+    ['variable', ['variable']],
     ['variable.mut', ['variable']],
     ['field', ['variable.object.property']],
     ['module', ['entity.name.section']]
