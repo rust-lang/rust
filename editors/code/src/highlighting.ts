@@ -66,15 +66,14 @@ export class Highlighter {
             textDecoration?: string
         ): [string, vscode.TextEditorDecorationType] => {
 
-            const foundRule = scopesMapper.toRule(tag, scopes.find) || scopes.find(tag)
+            const rule = scopesMapper.toRule(tag, scopes.find)
 
-
-
-            if (foundRule) {
-                const decor = createDecorationFromTextmate(foundRule);
+            if (rule) {
+                const decor = createDecorationFromTextmate(rule);
                 return [tag, decor];
             }
             else {
+                console.log('Missing theme for: ' + tag);
                 const color = new vscode.ThemeColor('ralsp.' + tag);
                 const decor = vscode.window.createTextEditorDecorationType({
                     color,

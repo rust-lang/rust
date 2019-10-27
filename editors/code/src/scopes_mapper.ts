@@ -8,11 +8,11 @@ let mappings = new Map<string, string[]>()
 
 
 const defaultMapping = new Map<string, string[]>([
-    ['comment', ['comment']],
+    ['comment', ['comment', 'comment.block', 'comment.line', 'comment.block.documentation']],
     ['string', ['string']],
     ['keyword', ['keyword']],
     ['keyword.control', ['keyword.control', 'keyword', 'keyword.other']],
-    ['keyword.unsafe', ['storage.modifier', 'keyword.other', 'keyword.control']],
+    ['keyword.unsafe', ['storage.modifier', 'keyword.other', 'keyword.control', 'keyword']],
     ['function', ['entity.name.function']],
     ['parameter', ['variable.parameter']],
     ['constant', ['constant', 'variable']],
@@ -23,9 +23,9 @@ const defaultMapping = new Map<string, string[]>([
     ['literal', ['string', 'string.quoted', 'string.regexp']],
     ['macro', ['support.other']],
     ['variable', ['variable']],
-    ['variable.mut', ['variable']],
-    ['field', ['variable.object.property']],
-    ['module', ['entity.name.section']]
+    ['variable.mut', ['variable', 'storage.modifier']],
+    ['field', ['variable.object.property', 'meta.field.declaration', 'meta.definition.property', 'variable.other',]],
+    ['module', ['entity.name.section', 'entity.other']]
 ]
 )
 function find(scope: string): string[] {
@@ -33,7 +33,7 @@ function find(scope: string): string[] {
 }
 
 export function toRule(scope: string, intoRule: (scope: string) => TextMateRuleSettings | undefined): TextMateRuleSettings | undefined {
-    return find(scope).map(intoRule).find(rule => rule !== null)
+    return find(scope).map(intoRule).filter(rule => rule !== undefined)[0];
 }
 
 
