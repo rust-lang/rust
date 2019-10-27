@@ -2,7 +2,7 @@ import seedrandom = require('seedrandom');
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as scopes from './scopes'
-
+import * as scopesMapper from './scopes_mapper';
 
 import { Server } from './server';
 
@@ -65,10 +65,13 @@ export class Highlighter {
             tag: string,
             textDecoration?: string
         ): [string, vscode.TextEditorDecorationType] => {
-            const scope = scopes.find(tag)
 
-            if (scope) {
-                const decor = createDecorationFromTextmate(scope);
+            const foundRule = scopesMapper.toRule(tag, scopes.find) || scopes.find(tag)
+
+
+
+            if (foundRule) {
+                const decor = createDecorationFromTextmate(foundRule);
                 return [tag, decor];
             }
             else {

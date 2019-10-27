@@ -16,16 +16,16 @@ export interface TextMateRuleSettings {
 }
 
 // Current theme colors
-const colors = new Map<string, TextMateRuleSettings>()
+const rules = new Map<string, TextMateRuleSettings>()
 
 export function find(scope: string): TextMateRuleSettings | undefined {
-    return colors.get(scope)
+    return rules.get(scope)
 }
 
 // Load all textmate scopes in the currently active theme
 export function load() {
     // Remove any previous theme
-    colors.clear()
+    rules.clear()
     // Find out current color theme
     const themeName = vscode.workspace.getConfiguration('workbench').get('colorTheme')
 
@@ -95,21 +95,21 @@ function loadColors(textMateRules: TextMateRule[]): void {
     for (const rule of textMateRules) {
 
         if (typeof rule.scope === 'string') {
-            const existingRule = colors.get(rule.scope);
+            const existingRule = rules.get(rule.scope);
             if (existingRule) {
-                colors.set(rule.scope, mergeRuleSettings(existingRule, rule.settings))
+                rules.set(rule.scope, mergeRuleSettings(existingRule, rule.settings))
             }
             else {
-                colors.set(rule.scope, rule.settings)
+                rules.set(rule.scope, rule.settings)
             }
         } else if (rule.scope instanceof Array) {
             for (const scope of rule.scope) {
-                const existingRule = colors.get(scope);
+                const existingRule = rules.get(scope);
                 if (existingRule) {
-                    colors.set(scope, mergeRuleSettings(existingRule, rule.settings))
+                    rules.set(scope, mergeRuleSettings(existingRule, rule.settings))
                 }
                 else {
-                    colors.set(scope, rule.settings)
+                    rules.set(scope, rule.settings)
                 }
             }
         }

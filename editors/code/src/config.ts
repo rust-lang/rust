@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as scopes from './scopes';
+import * as scopesMapper from './scopes_mapper';
 import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
@@ -49,6 +50,7 @@ export class Config {
         
         Server.highlighter.removeHighlights();
         scopes.load()
+        scopesMapper.load()
         if (config.has('highlightingOn')) {
 
             this.highlightingOn = config.get('highlightingOn') as boolean;
