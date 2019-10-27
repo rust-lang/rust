@@ -402,13 +402,6 @@ impl Token {
         }
     }
 
-    crate fn expect_lit(&self) -> Lit {
-        match self.kind {
-            Literal(lit) => lit,
-            _ => panic!("`expect_lit` called on non-literal"),
-        }
-    }
-
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
     pub fn can_begin_literal_or_bool(&self) -> bool {
