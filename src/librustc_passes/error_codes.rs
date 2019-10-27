@@ -552,6 +552,30 @@ trait Foo {
 ```
 "##,
 
+E0666: r##"
+`impl Trait` types cannot appear nested in the
+generic arguments of other `impl Trait` types.
+
+Example of erroneous code:
+
+```compile_fail,E0666
+trait MyGenericTrait<T> {}
+trait MyInnerTrait {}
+
+fn foo(bar: impl MyGenericTrait<impl MyInnerTrait>) {}
+```
+
+Type parameters for `impl Trait` types must be
+explicitly defined as named generic parameters:
+
+```
+trait MyGenericTrait<T> {}
+trait MyInnerTrait {}
+
+fn foo<T: MyInnerTrait>(bar: impl MyGenericTrait<T>) {}
+```
+"##,
+
 E0695: r##"
 A `break` statement without a label appeared inside a labeled block.
 
@@ -605,7 +629,6 @@ Switch to the Rust 2018 edition to use `async fn`.
 ;
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
-    E0666, // nested `impl Trait` is illegal
     E0667, // `impl Trait` in projections
     E0696, // `continue` pointing to a labeled block
     E0706, // `async fn` in trait
