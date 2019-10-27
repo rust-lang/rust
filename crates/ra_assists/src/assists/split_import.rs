@@ -8,7 +8,7 @@ use ra_syntax::{ast, AstNode, TextUnit, T};
 use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == T![::])?;
+    let colon_colon = ctx.find_token_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?;
     let top_path = successors(Some(path), |it| it.parent_path()).last()?;
 

@@ -96,7 +96,7 @@ fn add_missing_impl_members_inner(
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<Assist> {
-    let impl_node = ctx.node_at_offset::<ast::ImplBlock>()?;
+    let impl_node = ctx.find_node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
 
     let trait_def = {

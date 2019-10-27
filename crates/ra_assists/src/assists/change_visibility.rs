@@ -23,7 +23,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // pub(crate) fn frobnicate() {}
 // ```
 pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    if let Some(vis) = ctx.node_at_offset::<ast::Visibility>() {
+    if let Some(vis) = ctx.find_node_at_offset::<ast::Visibility>() {
         return change_vis(ctx, vis);
     }
     add_vis(ctx)

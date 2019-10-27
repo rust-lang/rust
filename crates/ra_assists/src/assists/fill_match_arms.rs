@@ -32,7 +32,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
+    let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 
     // We already have some match arms, so we don't provide any assists.

@@ -27,7 +27,7 @@ use ra_syntax::ast::{AstNode, MatchArm};
 // }
 // ```
 pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let current_arm = ctx.node_at_offset::<MatchArm>()?;
+    let current_arm = ctx.find_node_at_offset::<MatchArm>()?;
 
     // We check if the following match arm matches this one. We could, but don't,
     // compare to the previous match arm as well.

@@ -33,7 +33,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_arm = ctx.node_at_offset::<MatchArm>()?;
+    let match_arm = ctx.find_node_at_offset::<MatchArm>()?;
     let guard = match_arm.guard()?;
     let space_before_guard = guard.syntax().prev_sibling_or_token();
 
@@ -91,7 +91,7 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
 // }
 // ```
 pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_arm: MatchArm = ctx.node_at_offset::<MatchArm>()?;
+    let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let last_match_pat = match_arm.pats().last()?;
 
     let arm_body = match_arm.expr()?;

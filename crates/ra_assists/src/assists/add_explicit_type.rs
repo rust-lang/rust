@@ -22,7 +22,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let stmt = ctx.node_at_offset::<LetStmt>()?;
+    let stmt = ctx.find_node_at_offset::<LetStmt>()?;
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;
     // Must be a binding

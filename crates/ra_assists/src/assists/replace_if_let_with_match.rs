@@ -8,7 +8,7 @@ use ra_syntax::{ast, AstNode};
 use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let if_expr: ast::IfExpr = ctx.node_at_offset()?;
+    let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
     let expr = cond.expr()?;
