@@ -381,9 +381,7 @@ impl Token {
         match self.kind {
             OpenDelim(Brace) => true,
             Interpolated(ref nt) => match **nt {
-                NtExpr(..) => true,
-                NtBlock(..) => true,
-                NtLiteral(..) => true,
+                NtExpr(..) | NtBlock(..) | NtLiteral(..) => true,
                 _ => false,
             }
             _ => self.can_begin_literal_or_bool(),
