@@ -5,8 +5,7 @@ use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, Ty};
 use syntax_pos::DUMMY_SP;
 
-use super::Item as ConstCx;
-use super::validation::Mode;
+use super::{ConstKind, Item as ConstCx};
 
 #[derive(Clone, Copy)]
 pub struct QualifSet(u8);
@@ -236,13 +235,17 @@ impl Qualif for HasMutInterior {
                     // mutably without consequences.
                     match ty.kind {
                         // Inside a `static mut`, &mut [...] is also allowed.
-                        ty::Array(..) | ty::Slice(_) if cx.mode == Mode::StaticMut => {},
+                        | ty::Array(..)
+                        | ty::Slice(_)
+                        if cx.const_kind == Some(ConstKind::StaticMut)
+                        => {},
 
-                        // FIXME(eddyb) the `cx.for_promotion` condition
-                        // seems unnecessary, given that this is merely a ZST.
-                        ty::Array(_, len)
-                            if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
-                                && cx.for_promotion => {},
+                        // FIXME(eddyb): We only return false for `&mut []` outside a const
+                        // context which seems unnecessary given that this is merely a ZST.
+                        | ty::Array(_, len)
+                        if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
+                            && cx.const_kind == None
+                        => {},
 
                         _ => return true,
                     }
