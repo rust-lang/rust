@@ -30,10 +30,7 @@ impl ModDir {
             None => path.push(&name.to_string()),
             Some(attr_path) => {
                 if self.root_non_dir_owner {
-                    // Workaround for relative path API: turn `lib.rs` into ``.
-                    if !path.pop() {
-                        path = RelativePathBuf::default();
-                    }
+                    assert!(path.pop());
                 }
                 path.push(attr_path);
             }
@@ -48,17 +45,13 @@ impl ModDir {
         name: &Name,
         attr_path: Option<&SmolStr>,
     ) -> Result<(FileId, ModDir), RelativePathBuf> {
-        let empty_path = RelativePathBuf::default();
         let file_id = file_id.original_file(db);
 
         let mut candidate_files = Vec::new();
         match attr_to_path(attr_path) {
             Some(attr_path) => {
-                let base = if self.root_non_dir_owner {
-                    self.path.parent().unwrap_or(&empty_path)
-                } else {
-                    &self.path
-                };
+                let base =
+                    if self.root_non_dir_owner { self.path.parent().unwrap() } else { &self.path };
                 candidate_files.push(base.join(attr_path))
             }
             None => {

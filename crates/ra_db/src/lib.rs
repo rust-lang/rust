@@ -134,10 +134,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     ) -> Option<FileId> {
         let path = {
             let mut path = self.0.file_relative_path(anchor);
-            // Workaround for relative path API: turn `lib.rs` into ``.
-            if !path.pop() {
-                path = RelativePathBuf::default();
-            }
+            assert!(path.pop());
             path.push(relative_path);
             path.normalize()
         };
