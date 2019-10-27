@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{self, db::HirDatabase};
 use ra_syntax::{
     ast::{self, NameOwner},
@@ -14,9 +12,9 @@ use crate::{
     AssistId,
 };
 
-// This function produces sequence of text edits into edit
-// to import the target path in the most appropriate scope given
-// the cursor position
+/// This function produces sequence of text edits into edit
+/// to import the target path in the most appropriate scope given
+/// the cursor position
 pub fn auto_import_text_edit(
     // Ideally the position of the cursor, used to
     position: &SyntaxNode,
@@ -39,6 +37,19 @@ pub fn auto_import_text_edit(
     }
 }
 
+// Assist: add_import
+//
+// Adds a use statement for a given fully-qualified path.
+//
+// ```
+// fn process(map: std::collections::<|>HashMap<String, String>) {}
+// ```
+// ->
+// ```
+// use std::collections::HashMap;
+//
+// fn process(map: HashMap<String, String>) {}
+// ```
 pub(crate) fn add_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements

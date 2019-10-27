@@ -99,24 +99,10 @@ Stop `cargo watch`
 
 ### Assists (Code Actions)
 
-These are triggered in a particular context via light bulb. We use custom code on
-the VS Code side to be able to position cursor. `<|>` signifies cursor
+Assists, or code actions, are small local refactorings, available in a particular context.
+They are usually triggered by a shortcut or by clicking a light bulb icon in the editor.
 
-See [assists.md](./assists.md)
-
-- Import path
-
-```rust
-// before:
-impl std::fmt::Debug<|> for Foo {
-}
-
-// after:
-use std::fmt::Debug;
-
-impl Debug<|> for Foo {
-}
-```
+See [assists.md](./assists.md) for the list of available assists.
 
 ### Magic Completions
 

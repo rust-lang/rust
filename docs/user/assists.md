@@ -136,6 +136,20 @@ impl T for () {
 }
 ```
 
+## `add_import`
+
+Adds a use statement for a given fully-qualified path.
+
+```rust
+// BEFORE
+fn process(map: std::collections::┃HashMap<String, String>) {}
+
+// AFTER
+use std::collections::HashMap;
+
+fn process(map: HashMap<String, String>) {}
+```
+
 ## `apply_demorgan`
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
