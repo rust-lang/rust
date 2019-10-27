@@ -39,7 +39,7 @@ pub fn auto_import_text_edit(
     }
 }
 
-pub(crate) fn add_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
@@ -53,7 +53,7 @@ pub(crate) fn add_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     }
 
     let module = path.syntax().ancestors().find_map(ast::Module::cast);
-    let anchor = match module.and_then(|it| it.item_list()) {
+    let position = match module.and_then(|it| it.item_list()) {
         Some(item_list) => item_list.syntax().clone(),
         None => {
             let current_file = path.syntax().ancestors().find_map(ast::SourceFile::cast)?;
@@ -61,11 +61,9 @@ pub(crate) fn add_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         }
     };
 
-    ctx.add_action(AssistId("add_import"), format!("import {}", fmt_segments(&segments)), |edit| {
-        apply_auto_import(&anchor, &path, &segments, edit.text_edit_builder());
-    });
-
-    ctx.build()
+    ctx.add_assist(AssistId("add_import"), format!("import {}", fmt_segments(&segments)), |edit| {
+        apply_auto_import(&position, &path, &segments, edit.text_edit_builder());
+    })
 }
 
 fn collect_path_segments_raw(

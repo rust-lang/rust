@@ -21,7 +21,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let x: i32 = 92;
 // }
 // ```
-pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let stmt = ctx.find_node_at_offset::<LetStmt>()?;
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;
@@ -47,11 +47,10 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
         return None;
     }
 
-    ctx.add_action(AssistId("add_explicit_type"), "add explicit type", |edit| {
+    ctx.add_assist(AssistId("add_explicit_type"), "add explicit type", |edit| {
         edit.target(pat_range);
         edit.insert(name_range.end(), format!(": {}", ty.display(db)));
-    });
-    ctx.build()
+    })
 }
 
 /// Returns true if any type parameter is unknown

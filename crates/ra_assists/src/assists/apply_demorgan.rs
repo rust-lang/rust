@@ -23,7 +23,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     if !(x == 4 && y) {}
 // }
 // ```
-pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn apply_demorgan(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
@@ -39,13 +39,12 @@ pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
     let not_lhs = undo_negation(lhs)?;
     let not_rhs = undo_negation(rhs)?;
 
-    ctx.add_action(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
+    ctx.add_assist(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
         edit.target(op_range);
         edit.replace(op_range, opposite_op);
         edit.replace(lhs_range, format!("!({}", not_lhs));
         edit.replace(rhs_range, format!("{})", not_rhs));
-    });
-    ctx.build()
+    })
 }
 
 // Return the opposite text for a given logical operator, if it makes sense

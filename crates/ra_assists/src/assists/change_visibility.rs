@@ -29,7 +29,7 @@ pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
     add_vis(ctx)
 }
 
-fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+fn add_vis(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
         T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
         _ => false,
@@ -57,13 +57,11 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         (vis_offset(field.syntax()), ident.text_range())
     };
 
-    ctx.add_action(AssistId("change_visibility"), "make pub(crate)", |edit| {
+    ctx.add_assist(AssistId("change_visibility"), "make pub(crate)", |edit| {
         edit.target(target);
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
-    });
-
-    ctx.build()
+    })
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextUnit {
@@ -77,24 +75,20 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
         .unwrap_or_else(|| node.text_range().start())
 }
 
-fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: ast::Visibility) -> Option<Assist> {
+fn change_vis(ctx: AssistCtx<impl HirDatabase>, vis: ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
-        ctx.add_action(AssistId("change_visibility"), "change to pub(crate)", |edit| {
+        return ctx.add_assist(AssistId("change_visibility"), "change to pub(crate)", |edit| {
             edit.target(vis.syntax().text_range());
             edit.replace(vis.syntax().text_range(), "pub(crate)");
             edit.set_cursor(vis.syntax().text_range().start())
         });
-
-        return ctx.build();
     }
     if vis.syntax().text() == "pub(crate)" {
-        ctx.add_action(AssistId("change_visibility"), "change to pub", |edit| {
+        return ctx.add_assist(AssistId("change_visibility"), "change to pub", |edit| {
             edit.target(vis.syntax().text_range());
             edit.replace(vis.syntax().text_range(), "pub");
             edit.set_cursor(vis.syntax().text_range().start());
         });
-
-        return ctx.build();
     }
     None
 }

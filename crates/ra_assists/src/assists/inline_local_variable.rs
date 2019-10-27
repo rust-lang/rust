@@ -23,7 +23,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     (1 + 2) * 4;
 // }
 // ```
-pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
         ast::Pat::BindPat(pat) => pat,
@@ -93,7 +93,7 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
 
-    ctx.add_action(
+    ctx.add_assist(
         AssistId("inline_local_variable"),
         "inline local variable",
         move |edit: &mut AssistBuilder| {
@@ -107,9 +107,7 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
             }
             edit.set_cursor(delete_range.start())
         },
-    );
-
-    ctx.build()
+    )
 }
 
 #[cfg(test)]

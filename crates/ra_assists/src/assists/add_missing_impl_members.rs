@@ -91,7 +91,7 @@ pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> O
 }
 
 fn add_missing_impl_members_inner(
-    mut ctx: AssistCtx<impl HirDatabase>,
+    ctx: AssistCtx<impl HirDatabase>,
     mode: AddMissingImplMembersMode,
     assist_id: &'static str,
     label: &'static str,
@@ -133,7 +133,7 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
-    ctx.add_action(AssistId(assist_id), label, |edit| {
+    ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
         let items = missing_items
             .into_iter()
@@ -150,9 +150,7 @@ fn add_missing_impl_members_inner(
 
         edit.replace_ast(impl_item_list, new_impl_item_list);
         edit.set_cursor(cursor_position);
-    });
-
-    ctx.build()
+    })
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {

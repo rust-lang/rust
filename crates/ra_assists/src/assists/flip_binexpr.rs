@@ -18,7 +18,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let _ = 2 + 90;
 // }
 // ```
-pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn flip_binexpr(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
@@ -34,16 +34,14 @@ pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         return None;
     }
 
-    ctx.add_action(AssistId("flip_binexpr"), "flip binary expression", |edit| {
+    ctx.add_assist(AssistId("flip_binexpr"), "flip binary expression", |edit| {
         edit.target(op_range);
         if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }
         edit.replace(lhs.text_range(), rhs.text());
         edit.replace(rhs.text_range(), lhs.text());
-    });
-
-    ctx.build()
+    })
 }
 
 enum FlipAction {
