@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display};
 
-use hir::{Docs, Documentation, HasSource};
+use hir::{Docs, Documentation, HasSource, HirDisplay};
 use join_to_string::join;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use std::convert::From;
@@ -41,6 +41,33 @@ impl FunctionSignature {
         let doc = function.docs(db);
         let ast_node = function.source(db).ast;
         FunctionSignature::from(&ast_node).with_doc_opt(doc)
+    }
+
+    pub(crate) fn from_struct(db: &db::RootDatabase, st: hir::Struct) -> Self {
+        let doc = st.docs(db);
+
+        let node: ast::StructDef = st.source(db).ast;
+
+        let params = st
+            .fields(db)
+            .into_iter()
+            .map(|field: hir::StructField| {
+                let name = field.name(db);
+                let ty = field.ty(db);
+                format!("{}: {}", name, ty.display(db))
+            })
+            .collect();
+
+        FunctionSignature {
+            visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+            name: node.name().map(|n| n.text().to_string()),
+            ret_type: node.name().map(|n| n.text().to_string()),
+            parameters: /*param_list(node)*/ params,
+            generic_parameters: generic_parameters(&node),
+            where_predicates: where_predicates(&node),
+            doc: None,
+        }
+        .with_doc_opt(doc)
     }
 }
 

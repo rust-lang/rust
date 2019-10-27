@@ -20,24 +20,27 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let name_ref = calling_node.name_ref()?;
 
     let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-    let function = match &calling_node {
+    let (mut call_info, has_self) = match &calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: apply subst
             let (callable_def, _subst) = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
-                hir::CallableDef::Function(it) => it,
+                hir::CallableDef::Function(it) => {
+                    (CallInfo::with_fn(db, it), it.data(db).has_self_param())
+                }
+                hir::CallableDef::Struct(it) => (CallInfo::with_struct(db, it), false),
                 //FIXME: handle other callables
                 _ => return None,
             }
         }
-        FnCallNode::MethodCallExpr(expr) => analyzer.resolve_method_call(&expr)?,
+        FnCallNode::MethodCallExpr(expr) => {
+            let function = analyzer.resolve_method_call(&expr)?;
+            (CallInfo::with_fn(db, function), function.data(db).has_self_param())
+        }
     };
-
-    let mut call_info = CallInfo::new(db, function);
 
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
-    let has_self = function.data(db).has_self_param();
 
     if num_params == 1 {
         if !has_self {
@@ -115,8 +118,14 @@ impl FnCallNode {
 }
 
 impl CallInfo {
-    fn new(db: &RootDatabase, function: hir::Function) -> Self {
+    fn with_fn(db: &RootDatabase, function: hir::Function) -> Self {
         let signature = FunctionSignature::from_hir(db, function);
+
+        CallInfo { signature, active_parameter: None }
+    }
+
+    fn with_struct(db: &RootDatabase, st: hir::Struct) -> Self {
+        let signature = FunctionSignature::from_struct(db, st);
 
         CallInfo { signature, active_parameter: None }
     }
@@ -461,5 +470,21 @@ fn main() {
         assert_eq!(info.parameters(), ["&self", "_: u32"]);
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(info.label(), "fn bar(&self, _: u32)");
+    }
+    
+    fn works_for_tuple_structs() {
+        let info = call_info(
+            r#"
+/// A cool tuple struct
+struct TS(String, i32);
+fn main() {
+    let s = TS("".into(), <|>);
+}"#,
+        );
+
+        //assert_eq!(info.label(), "struct TS(String, i32)");
+        assert_eq!(info.label(), "fn TS(0: {unknown}, 1: i32) -> TS");
+        assert_eq!(info.doc().map(|it| it.into()), Some("A cool tuple struct".to_string()));
+        assert_eq!(info.active_parameter, Some(1));
     }
 }
