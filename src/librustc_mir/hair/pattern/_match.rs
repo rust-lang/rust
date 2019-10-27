@@ -792,10 +792,80 @@ pub enum Usefulness<'tcx> {
 }
 
 impl<'tcx> Usefulness<'tcx> {
+    fn new_useful(preference: WitnessPreference) -> Self {
+        match preference {
+            ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
+            LeaveOutWitness => Useful,
+        }
+    }
+
     fn is_useful(&self) -> bool {
         match *self {
             NotUseful => false,
             _ => true,
+        }
+    }
+
+    fn apply_constructor(
+        self,
+        cx: &MatchCheckCtxt<'_, 'tcx>,
+        ctor: &Constructor<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        match self {
+            UsefulWithWitness(witnesses) => UsefulWithWitness(
+                witnesses
+                    .into_iter()
+                    .map(|witness| witness.apply_constructor(cx, &ctor, ty))
+                    .collect(),
+            ),
+            x => x,
+        }
+    }
+
+    fn apply_wildcard(self, ty: Ty<'tcx>) -> Self {
+        match self {
+            UsefulWithWitness(witnesses) => {
+                let wild = Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
+                UsefulWithWitness(
+                    witnesses
+                        .into_iter()
+                        .map(|mut witness| {
+                            witness.0.push(wild.clone());
+                            witness
+                        })
+                        .collect(),
+                )
+            }
+            x => x,
+        }
+    }
+
+    fn apply_missing_ctors(
+        self,
+        cx: &MatchCheckCtxt<'_, 'tcx>,
+        ty: Ty<'tcx>,
+        missing_ctors: &MissingConstructors<'tcx>,
+    ) -> Self {
+        match self {
+            UsefulWithWitness(witnesses) => {
+                let new_patterns: Vec<_> =
+                    missing_ctors.iter().map(|ctor| ctor.apply_wildcards(cx, ty)).collect();
+                // Add the new patterns to each witness
+                UsefulWithWitness(
+                    witnesses
+                        .into_iter()
+                        .flat_map(|witness| {
+                            new_patterns.iter().map(move |pat| {
+                                let mut witness = witness.clone();
+                                witness.0.push(pat.clone());
+                                witness
+                            })
+                        })
+                        .collect(),
+                )
+            }
+            x => x,
         }
     }
 }
@@ -1399,10 +1469,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
         return if rows.is_empty() {
-            match witness_preference {
-                ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-                LeaveOutWitness => Useful,
-            }
+            Usefulness::new_useful(witness_preference)
         } else {
             NotUseful
         };
@@ -1527,79 +1594,62 @@ pub fn is_useful<'p, 'a, 'tcx>(
         } else {
             let matrix = matrix.specialize_wildcard();
             let v = v.to_tail();
-            match is_useful(cx, &matrix, &v, witness_preference, hir_id) {
-                UsefulWithWitness(witnesses) => {
-                    let cx = &*cx;
-                    // In this case, there's at least one "free"
-                    // constructor that is only matched against by
-                    // wildcard patterns.
-                    //
-                    // There are 2 ways we can report a witness here.
-                    // Commonly, we can report all the "free"
-                    // constructors as witnesses, e.g., if we have:
-                    //
-                    // ```
-                    //     enum Direction { N, S, E, W }
-                    //     let Direction::N = ...;
-                    // ```
-                    //
-                    // we can report 3 witnesses: `S`, `E`, and `W`.
-                    //
-                    // However, there are 2 cases where we don't want
-                    // to do this and instead report a single `_` witness:
-                    //
-                    // 1) If the user is matching against a non-exhaustive
-                    // enum, there is no point in enumerating all possible
-                    // variants, because the user can't actually match
-                    // against them themselves, e.g., in an example like:
-                    // ```
-                    //     let err: io::ErrorKind = ...;
-                    //     match err {
-                    //         io::ErrorKind::NotFound => {},
-                    //     }
-                    // ```
-                    // we don't want to show every possible IO error,
-                    // but instead have `_` as the witness (this is
-                    // actually *required* if the user specified *all*
-                    // IO errors, but is probably what we want in every
-                    // case).
-                    //
-                    // 2) If the user didn't actually specify a constructor
-                    // in this arm, e.g., in
-                    // ```
-                    //     let x: (Direction, Direction, bool) = ...;
-                    //     let (_, _, false) = x;
-                    // ```
-                    // we don't want to show all 16 possible witnesses
-                    // `(<direction-1>, <direction-2>, true)` - we are
-                    // satisfied with `(_, _, true)`. In this case,
-                    // `used_ctors` is empty.
-                    let new_patterns = if is_non_exhaustive || missing_ctors.all_ctors_are_missing()
-                    {
-                        // All constructors are unused. Add a wild pattern
-                        // rather than each individual constructor.
-                        vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
-                    } else {
-                        // Construct for each missing constructor a "wild" version of this
-                        // constructor, that matches everything that can be built with
-                        // it. For example, if `ctor` is a `Constructor::Variant` for
-                        // `Option::Some`, we get the pattern `Some(_)`.
-                        missing_ctors.iter().map(|ctor| ctor.apply_wildcards(cx, pcx.ty)).collect()
-                    };
-                    // Add the new patterns to each witness
-                    let new_witnesses = witnesses
-                        .into_iter()
-                        .flat_map(|witness| {
-                            new_patterns.iter().map(move |pat| {
-                                let mut witness = witness.clone();
-                                witness.0.push(pat.clone());
-                                witness
-                            })
-                        })
-                        .collect();
-                    UsefulWithWitness(new_witnesses)
-                }
-                result => result,
+            let usefulness = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+
+            // In this case, there's at least one "free"
+            // constructor that is only matched against by
+            // wildcard patterns.
+            //
+            // There are 2 ways we can report a witness here.
+            // Commonly, we can report all the "free"
+            // constructors as witnesses, e.g., if we have:
+            //
+            // ```
+            //     enum Direction { N, S, E, W }
+            //     let Direction::N = ...;
+            // ```
+            //
+            // we can report 3 witnesses: `S`, `E`, and `W`.
+            //
+            // However, there are 2 cases where we don't want
+            // to do this and instead report a single `_` witness:
+            //
+            // 1) If the user is matching against a non-exhaustive
+            // enum, there is no point in enumerating all possible
+            // variants, because the user can't actually match
+            // against them themselves, e.g., in an example like:
+            // ```
+            //     let err: io::ErrorKind = ...;
+            //     match err {
+            //         io::ErrorKind::NotFound => {},
+            //     }
+            // ```
+            // we don't want to show every possible IO error,
+            // but instead have `_` as the witness (this is
+            // actually *required* if the user specified *all*
+            // IO errors, but is probably what we want in every
+            // case).
+            //
+            // 2) If the user didn't actually specify a constructor
+            // in this arm, e.g., in
+            // ```
+            //     let x: (Direction, Direction, bool) = ...;
+            //     let (_, _, false) = x;
+            // ```
+            // we don't want to show all 16 possible witnesses
+            // `(<direction-1>, <direction-2>, true)` - we are
+            // satisfied with `(_, _, true)`. In this case,
+            // `used_ctors` is empty.
+            if is_non_exhaustive || missing_ctors.all_ctors_are_missing() {
+                // All constructors are unused. Add a wild pattern
+                // rather than each individual constructor.
+                usefulness.apply_wildcard(pcx.ty)
+            } else {
+                // Construct for each missing constructor a "wild" version of this
+                // constructor, that matches everything that can be built with
+                // it. For example, if `ctor` is a `Constructor::Variant` for
+                // `Option::Some`, we get the pattern `Some(_)`.
+                usefulness.apply_missing_ctors(cx, pcx.ty, &missing_ctors)
             }
         }
     }
@@ -1621,18 +1671,10 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
     let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
     let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    match v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns) {
-        Some(v) => match is_useful(cx, &matrix, &v, witness_preference, hir_id) {
-            UsefulWithWitness(witnesses) => UsefulWithWitness(
-                witnesses
-                    .into_iter()
-                    .map(|witness| witness.apply_constructor(cx, &ctor, lty))
-                    .collect(),
-            ),
-            result => result,
-        },
-        None => NotUseful,
-    }
+    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
+        .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id))
+        .map(|u| u.apply_constructor(cx, &ctor, lty))
+        .unwrap_or(NotUseful)
 }
 
 /// Determines the constructors that the given pattern can be specialized to.
