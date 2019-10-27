@@ -1567,7 +1567,6 @@ impl<T> Option<Option<T>> {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(option_flattening)]
     /// let x: Option<Option<u32>> = Some(Some(6));
     /// assert_eq!(Some(6), x.flatten());
     ///
@@ -1579,13 +1578,12 @@ impl<T> Option<Option<T>> {
     /// ```
     /// Flattening once only removes one level of nesting:
     /// ```
-    /// #![feature(option_flattening)]
     /// let x: Option<Option<Option<u32>>> = Some(Some(Some(6)));
     /// assert_eq!(Some(Some(6)), x.flatten());
     /// assert_eq!(Some(6), x.flatten().flatten());
     /// ```
     #[inline]
-    #[unstable(feature = "option_flattening", issue = "60258")]
+    #[stable(feature = "option_flattening", since = "1.40.0")]
     pub fn flatten(self) -> Option<T> {
         self.and_then(convert::identity)
     }
