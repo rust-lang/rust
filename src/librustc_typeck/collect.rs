@@ -1983,19 +1983,18 @@ fn predicates_defined_on(
     );
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
-        let span = tcx.def_span(def_id);
         debug!(
             "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
             def_id,
             inferred_outlives,
         );
-        result.predicates = tcx.arena.alloc_from_iter(
-            result.predicates.iter().copied().chain(
-                // FIXME(eddyb) use better spans - maybe add `Span`s
-                // to `inferred_outlives_of` predicates as well?
-                inferred_outlives.iter().map(|&p| (p, span)),
-            ),
-        );
+        if result.predicates.is_empty() {
+            result.predicates = inferred_outlives;
+        } else {
+            result.predicates = tcx.arena.alloc_from_iter(
+                result.predicates.iter().chain(inferred_outlives).copied(),
+            );
+        }
     }
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
