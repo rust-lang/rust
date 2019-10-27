@@ -3,22 +3,34 @@
 //! After a const evaluation has computed a value, before we destroy the const evaluator's session
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
 
-use rustc::ty::{Ty, self};
-use rustc::mir::interpret::{InterpResult, ErrorHandled};
-use rustc::hir;
 use super::validity::RefTracking;
-use rustc_data_structures::fx::FxHashSet;
+use rustc::hir;
+use rustc::mir::interpret::{ErrorHandled, InterpResult};
+use rustc::ty::{self, Ty};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use syntax::ast::Mutability;
 
 use super::{
-    ValueVisitor, MemoryKind, AllocId, MPlaceTy, Scalar,
+    AllocId, Allocation, InterpCx, Machine, MemoryKind, MPlaceTy, Scalar, ValueVisitor,
 };
-use crate::const_eval::{CompileTimeInterpreter, CompileTimeEvalContext};
 
-struct InternVisitor<'rt, 'mir, 'tcx> {
+struct InternVisitor<'rt, 'mir, 'tcx, M>
+where
+    M: Machine<
+        'mir,
+        'tcx,
+        MemoryKinds = !,
+        PointerTag = (),
+        ExtraFnVal = !,
+        FrameExtra = (),
+        MemoryExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    >,
+{
     /// The ectx from which we intern.
-    ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
+    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     /// Previously encountered safe references.
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, Mutability, InternMode)>,
     /// A list of all encountered allocations. After type-based interning, we traverse this list to
@@ -58,18 +70,28 @@ struct IsStaticOrFn;
 /// `immutable` things might become mutable if `ty` is not frozen.
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).
-fn intern_shallow<'rt, 'mir, 'tcx>(
-    ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
+fn intern_shallow<'rt, 'mir, 'tcx, M>(
+    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
     mode: InternMode,
     alloc_id: AllocId,
     mutability: Mutability,
     ty: Option<Ty<'tcx>>,
-) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
-    trace!(
-        "InternVisitor::intern {:?} with {:?}",
-        alloc_id, mutability,
-    );
+) -> InterpResult<'tcx, Option<IsStaticOrFn>>
+where
+    M: Machine<
+        'mir,
+        'tcx,
+        MemoryKinds = !,
+        PointerTag = (),
+        ExtraFnVal = !,
+        FrameExtra = (),
+        MemoryExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    >,
+{
+    trace!("InternVisitor::intern {:?} with {:?}", alloc_id, mutability,);
     // remove allocation
     let tcx = ecx.tcx;
     let (kind, mut alloc) = match ecx.memory.alloc_map.remove(&alloc_id) {
@@ -130,7 +152,20 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
     Ok(None)
 }
 
-impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
+impl<'rt, 'mir, 'tcx, M> InternVisitor<'rt, 'mir, 'tcx, M>
+where
+    M: Machine<
+        'mir,
+        'tcx,
+        MemoryKinds = !,
+        PointerTag = (),
+        ExtraFnVal = !,
+        FrameExtra = (),
+        MemoryExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    >,
+{
     fn intern_shallow(
         &mut self,
         alloc_id: AllocId,
@@ -148,15 +183,27 @@ impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
     }
 }
 
-impl<'rt, 'mir, 'tcx>
-    ValueVisitor<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>
+impl<'rt, 'mir, 'tcx, M>
+    ValueVisitor<'mir, 'tcx, M>
 for
-    InternVisitor<'rt, 'mir, 'tcx>
+    InternVisitor<'rt, 'mir, 'tcx, M>
+where
+    M: Machine<
+        'mir,
+        'tcx,
+        MemoryKinds = !,
+        PointerTag = (),
+        ExtraFnVal = !,
+        FrameExtra = (),
+        MemoryExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    >,
 {
     type V = MPlaceTy<'tcx>;
 
     #[inline(always)]
-    fn ecx(&self) -> &CompileTimeEvalContext<'mir, 'tcx> {
+    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
         &self.ecx
     }
 
@@ -265,12 +312,25 @@ for
     }
 }
 
-pub fn intern_const_alloc_recursive(
-    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
+pub fn intern_const_alloc_recursive<M>(
+    ecx: &mut InterpCx<'mir, 'tcx, M>,
     // The `mutability` of the place, ignoring the type.
     place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
-) -> InterpResult<'tcx> {
+) -> InterpResult<'tcx>
+where
+    M: Machine<
+        'mir,
+        'tcx,
+        MemoryKinds = !,
+        PointerTag = (),
+        ExtraFnVal = !,
+        FrameExtra = (),
+        MemoryExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    >,
+{
     let tcx = ecx.tcx;
     let (base_mutability, base_intern_mode) = match place_mut {
         Some(hir::Mutability::Immutable) => (Mutability::Immutable, InternMode::Static),
