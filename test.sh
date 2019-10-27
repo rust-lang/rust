@@ -22,7 +22,7 @@ echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib
 
 echo "[JIT] mini_core_hello_world"
-JIT_ARGS="abc bcd" SHOULD_RUN=1 $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs
+JIT_ARGS="abc bcd" SHOULD_RUN=1 $RUSTC --crate-type bin -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
 $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g
@@ -88,7 +88,7 @@ echo "[TEST] rust-lang/regex example shootout-regex-dna"
 ../cargo.sh clean
 # Make sure `[codegen mono items] start` doesn't poison the diff
 ../cargo.sh build --example shootout-regex-dna
-cat examples/regexdna-input.txt | ../cargo.sh run --example shootout-regex-dna > res.txt
+cat examples/regexdna-input.txt | ../cargo.sh run --example shootout-regex-dna | grep -v "Spawned thread" > res.txt
 diff -u res.txt examples/regexdna-output.txt
 
 echo "[TEST] rust-lang/regex tests"

@@ -1,6 +1,7 @@
 #![feature(
     no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
-    untagged_unions, decl_macro, rustc_attrs, transparent_unions, optin_builtin_traits
+    untagged_unions, decl_macro, rustc_attrs, transparent_unions, optin_builtin_traits,
+    thread_local,
 )]
 #![no_core]
 #![allow(dead_code)]
@@ -550,4 +551,12 @@ struct PanicLocation {
     file: &'static str,
     line: u32,
     column: u32,
+}
+
+#[no_mangle]
+pub fn get_tls() -> u8 {
+    #[thread_local]
+    static A: u8 = 42;
+
+    A
 }

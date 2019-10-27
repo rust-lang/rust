@@ -9,7 +9,6 @@ git clone https://github.com/rust-lang/regex.git || echo "rust-lang/regex has al
 pushd regex
 git checkout -- .
 git checkout 341f207c1071f7290e3f228c710817c280c8dca1
-git apply ../crate_patches/regex.patch
 popd
 
 git clone https://github.com/ebobby/simple-raytracer || echo "ebobby/simple-raytracer has already been cloned"

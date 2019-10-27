@@ -212,6 +212,7 @@ fn data_id_for_alloc_id<B: Backend>(
             &format!("__alloc_{}", alloc_id.0),
             Linkage::Local,
             false,
+            false,
             Some(align.bytes() as u8),
         )
         .unwrap()
@@ -238,11 +239,14 @@ fn data_id_for_static(
         .pref
         .bytes();
 
+    let attrs = tcx.codegen_fn_attrs(def_id);
+
     let data_id = module
         .declare_data(
             &*symbol_name,
             linkage,
             is_mutable,
+            attrs.flags.contains(rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags::THREAD_LOCAL),
             Some(align.try_into().unwrap()),
         )
         .unwrap();

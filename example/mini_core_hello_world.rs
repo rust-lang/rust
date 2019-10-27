@@ -1,8 +1,11 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
-#![feature(no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns, never_type, linkage, extern_types)]
+#![feature(
+    no_core, unboxed_closures, start, lang_items, box_syntax, slice_patterns, never_type, linkage,
+    extern_types, thread_local
+)]
 #![no_core]
-#![allow(dead_code)]
+#![allow(dead_code, non_camel_case_types)]
 
 extern crate mini_core;
 
@@ -276,6 +279,78 @@ fn main() {
     extern_nullptr as *const ();
     let slice_ptr = &[] as *const [u8];
     slice_ptr as *const u8;
+
+    #[cfg(not(jit))]
+    test_tls();
+}
+
+#[repr(C)]
+enum c_void {
+    _1,
+    _2,
+}
+
+type c_int = i32;
+type c_ulong = u64;
+
+type pthread_t = c_ulong;
+
+#[repr(C)]
+struct pthread_attr_t {
+    __size: [u64; 7],
+}
+
+#[link(name = "pthread")]
+extern "C" {
+    fn pthread_attr_init(attr: *mut pthread_attr_t) -> c_int;
+
+    fn pthread_create(
+        native: *mut pthread_t,
+        attr: *const pthread_attr_t,
+        f: extern "C" fn(_: *mut c_void) -> *mut c_void,
+        value: *mut c_void
+    ) -> c_int;
+
+    fn pthread_join(
+        native: pthread_t,
+        value: *mut *mut c_void
+    ) -> c_int;
+}
+
+#[thread_local]
+#[cfg(not(jit))]
+static mut TLS: u8 = 42;
+
+#[cfg(not(jit))]
+extern "C" fn mutate_tls(_: *mut c_void) -> *mut c_void {
+    unsafe { TLS = 0; }
+    0 as *mut c_void
+}
+
+#[cfg(not(jit))]
+fn test_tls() {
+    unsafe {
+        let mut attr: pthread_attr_t = intrinsics::init();
+        let mut thread: pthread_t = 0;
+
+        assert_eq!(TLS, 42);
+
+        if pthread_attr_init(&mut attr) != 0 {
+            assert!(false);
+        }
+
+        if pthread_create(&mut thread, &attr, mutate_tls, 0 as *mut c_void) != 0 {
+            assert!(false);
+        }
+
+        let mut res = 0 as *mut c_void;
+        pthread_join(thread, &mut res);
+
+        // TLS of main thread must not have been changed by the other thread.
+        assert_eq!(TLS, 42);
+
+        puts("TLS works!\n\0" as *const str as *const u8);
+    }
 }
 
 // Copied ui/issues/issue-61696.rs

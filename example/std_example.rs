@@ -12,6 +12,10 @@ fn main() {
     let stderr = ::std::io::stderr();
     let mut stderr = stderr.lock();
 
+    std::thread::spawn(move || {
+        println!("Hello from another thread!");
+    });
+
     writeln!(stderr, "some {} text", "<unknown>").unwrap();
 
     let _ = std::process::Command::new("true").env("c", "d").spawn();
