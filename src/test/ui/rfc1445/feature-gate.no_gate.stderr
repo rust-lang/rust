@@ -1,12 +1,21 @@
-error[E0658]: the semantics of constant patterns is not yet settled
-  --> $DIR/feature-gate.rs:13:1
+error[E0658]: use of unstable library feature 'structural_match'
+  --> $DIR/feature-gate.rs:29:6
    |
-LL | #[structural_match]
-   | ^^^^^^^^^^^^^^^^^^^
+LL | impl std::marker::StructuralPartialEq for Foo { }
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/31434
    = help: add `#![feature(structural_match)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: use of unstable library feature 'structural_match'
+  --> $DIR/feature-gate.rs:31:6
+   |
+LL | impl std::marker::StructuralEq for Foo { }
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/31434
+   = help: add `#![feature(structural_match)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

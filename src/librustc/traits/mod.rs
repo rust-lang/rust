@@ -239,6 +239,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Computing common supertype in the pattern guard for the arms of a match expression
     MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
 
+    /// Constants in patterns must have `Structural` type.
+    ConstPatternStructural,
+
     /// Computing common supertype in an if expression
     IfExpression(Box<IfExpressionCause>),
 

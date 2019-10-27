@@ -2167,6 +2167,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ConstSized => {
                 err.note("constant expressions must have a statically known size");
             }
+            ObligationCauseCode::ConstPatternStructural => {
+                err.note("constants used for pattern-matching must derive `PartialEq` and `Eq`");
+            }
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
             }

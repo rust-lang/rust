@@ -126,6 +126,85 @@ pub trait Unsize<T: ?Sized> {
     // Empty.
 }
 
+/// Required trait for constants used in pattern matches.
+///
+/// Any type that derives `PartialEq` automatically implements this trait,
+/// *regardless* of whether its type-parameters implement `Eq`.
+///
+/// If a `const` item contains some type that does not implement this trait,
+/// then that type either (1.) does not implement `PartialEq` (which means the
+/// constant will not provide that comparison method, which code generation
+/// assumes is available), or (2.) it implements *its own* version of
+/// `PartialEq` (which we assume does not conform to a structural-equality
+/// comparison).
+///
+/// In either of the two scenarios above, we reject usage of such a constant in
+/// a pattern match.
+///
+/// See also the [structural match RFC][RFC1445], and [issue 63438][] which
+/// motivated migrating from attribute-based design to this trait.
+///
+/// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
+/// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
+#[cfg(not(bootstrap))]
+#[unstable(feature = "structural_match", issue = "31434")]
+#[rustc_on_unimplemented(message="the type `{Self}` does not `#[derive(PartialEq)]`")]
+#[lang = "structural_peq"]
+pub trait StructuralPartialEq {
+    // Empty.
+}
+
+/// Required trait for constants used in pattern matches.
+///
+/// Any type that derives `Eq` automatically implements this trait, *regardless*
+/// of whether its type-parameters implement `Eq`.
+///
+/// This is a hack to workaround a limitation in our type-system.
+///
+/// Background:
+///
+/// We want to require that types of consts used in pattern matches
+/// have the attribute `#[derive(PartialEq, Eq)]`.
+///
+/// In a more ideal world, we could check that requirement by just checking that
+/// the given type implements both (1.) the `StructuralPartialEq` trait *and*
+/// (2.) the `Eq` trait. However, you can have ADTs that *do* `derive(PartialEq, Eq)`,
+/// and be a case that we want the compiler to accept, and yet the constant's
+/// type fails to implement `Eq`.
+///
+/// Namely, a case like this:
+///
+/// ```rust
+/// #[derive(PartialEq, Eq)]
+/// struct Wrap<X>(X);
+/// fn higher_order(_: &()) { }
+/// const CFN: Wrap<fn(&())> = Wrap(higher_order);
+/// fn main() {
+///     match CFN {
+///         CFN => {}
+///         _ => {}
+///     }
+/// }
+/// ```
+///
+/// (The problem in the above code is that `Wrap<fn(&())>` does not implement
+/// `PartialEq`, nor `Eq`, because `for<'a> fn(&'a _)` does not implement those
+/// traits.)
+///
+/// Therefore, we cannot rely on naive check for `StructuralPartialEq` and
+/// mere `Eq`.
+///
+/// As a hack to work around this, we use two separate traits injected by each
+/// of the two derives (`#[derive(PartialEq)]` and `#[derive(Eq)]`) and check
+/// that both of them are present as part of structural-match checking.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "structural_match", issue = "31434")]
+#[rustc_on_unimplemented(message="the type `{Self}` does not `#[derive(Eq)]`")]
+#[lang = "structural_teq"]
+pub trait StructuralEq {
+    // Empty.
+}
+
 /// Types whose values can be duplicated simply by copying bits.
 ///
 /// By default, variable bindings have 'move semantics.' In other
@@ -437,6 +516,14 @@ macro_rules! impls{
                 $t
             }
         }
+
+        #[cfg(not(bootstrap))]
+        #[unstable(feature = "structural_match", issue = "31434")]
+        impl<T: ?Sized> StructuralPartialEq for $t<T> { }
+
+        #[cfg(not(bootstrap))]
+        #[unstable(feature = "structural_match", issue = "31434")]
+        impl<T: ?Sized> StructuralEq for $t<T> { }
         )
 }
 

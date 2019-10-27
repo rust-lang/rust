@@ -1,5 +1,5 @@
 error: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/issue-61118-match-slice-forbidden-without-eq.rs:15:9
+  --> $DIR/issue-61188-match-slice-forbidden-without-eq.rs:15:9
    |
 LL |         A => (),
    |         ^
