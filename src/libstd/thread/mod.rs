@@ -1742,3 +1742,12 @@ mod tests {
     // NOTE: the corresponding test for stderr is in ui/thread-stderr, due
     // to the test harness apparently interfering with stderr configuration.
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Futures/task integration
+////////////////////////////////////////////////////////////////////////////////
+
+mod block_on_future;
+
+#[unstable(feature = "block_on_future", issue = "0")]
+pub use self::block_on_future::block_on_future;
