@@ -56,6 +56,10 @@ pub struct Opts {
     /// Format all packages, and also their local path-based dependencies
     #[structopt(long = "all")]
     format_all: bool,
+
+    /// Run rustfmt in check mode
+    #[structopt(long = "check")]
+    check: bool,
 }
 
 fn main() {
@@ -104,6 +108,12 @@ fn execute() -> i32 {
 
     let strategy = CargoFmtStrategy::from_opts(&opts);
     let mut rustfmt_args = opts.rustfmt_options;
+    if opts.check {
+        let check_flag = String::from("--check");
+        if !rustfmt_args.contains(&check_flag) {
+            rustfmt_args.push(check_flag);
+        }
+    }
     if let Some(message_format) = opts.message_format {
         if let Err(msg) = convert_message_format_to_rustfmt_args(&message_format, &mut rustfmt_args)
         {
@@ -553,6 +563,7 @@ mod cargo_fmt_tests {
         assert_eq!(false, o.quiet);
         assert_eq!(false, o.verbose);
         assert_eq!(false, o.version);
+        assert_eq!(false, o.check);
         assert_eq!(empty, o.packages);
         assert_eq!(empty, o.rustfmt_options);
         assert_eq!(false, o.format_all);
@@ -571,6 +582,7 @@ mod cargo_fmt_tests {
             "p2",
             "--message-format",
             "short",
+            "--check",
             "--",
             "--edition",
             "2018",
@@ -578,6 +590,7 @@ mod cargo_fmt_tests {
         assert_eq!(true, o.quiet);
         assert_eq!(false, o.verbose);
         assert_eq!(false, o.version);
+        assert_eq!(true, o.check);
         assert_eq!(vec!["p1", "p2"], o.packages);
         assert_eq!(vec!["--edition", "2018"], o.rustfmt_options);
         assert_eq!(false, o.format_all);
@@ -606,12 +619,12 @@ mod cargo_fmt_tests {
     fn mandatory_separator() {
         assert!(
             Opts::clap()
-                .get_matches_from_safe(&["test", "--check"])
+                .get_matches_from_safe(&["test", "--emit"])
                 .is_err()
         );
         assert!(
             !Opts::clap()
-                .get_matches_from_safe(&["test", "--", "--check"])
+                .get_matches_from_safe(&["test", "--", "--emit"])
                 .is_err()
         );
     }
