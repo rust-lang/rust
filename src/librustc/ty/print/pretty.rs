@@ -919,7 +919,10 @@ pub trait PrettyPrinter<'tcx>:
             },
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Char) =>
                 p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap())),
-            (ConstValue::Scalar(_), ty::RawPtr(_)) => p!(write("{{pointer}}")),
+            (ConstValue::Scalar(Scalar::Raw { data, size }), ty::RawPtr(_)) => {
+                p!(write("{:#01$x} ", data, size as usize * 2));
+                self = self.pretty_print_type(&ct.ty)?;
+            }
             (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::FnPtr(_)) => {
                 let instance = {
                     let alloc_map = self.tcx().alloc_map.lock();
