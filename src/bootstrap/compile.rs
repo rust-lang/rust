@@ -157,6 +157,12 @@ fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: 
         copy_and_stamp(Path::new(&src), "libunwind.a");
     }
 
+    if builder.config.sanitizers && compiler.stage != 0 {
+        // The sanitizers are only copied in stage1 or above,
+        // to avoid creating dependency on LLVM.
+        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+    }
+
     target_deps
 }
 
@@ -264,32 +270,30 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
-
-        if builder.config.sanitizers && compiler.stage != 0 {
-            // The sanitizers are only copied in stage1 or above,
-            // to avoid creating dependency on LLVM.
-            copy_sanitizers(builder, &target_compiler, target);
-        }
     }
 }
 
 /// Copies sanitizer runtime libraries into target libdir.
-fn copy_sanitizers(builder: &Builder<'_>, target_compiler: &Compiler, target: Interned<String>) {
+fn copy_sanitizers(builder: &Builder<'_>,
+                   compiler: &Compiler,
+                   target: Interned<String>) -> Vec<PathBuf> {
+    let mut target_deps = Vec::new();
+
     let sanitizers = supported_sanitizers(target);
     if sanitizers.is_empty() {
-        return;
+        return target_deps;
     }
 
     let llvm_config: PathBuf = builder.ensure(native::Llvm {
-        target: target_compiler.host,
+        target: compiler.host,
     });
     if builder.config.dry_run {
-        return;
+        return target_deps;
     }
 
     // The compiler-rt installs sanitizer runtimes into clang resource directory.
     let clang_resourcedir = clang_resourcedir(&llvm_config);
-    let libdir = builder.sysroot_libdir(*target_compiler, target);
+    let libdir = builder.sysroot_libdir(*compiler, target);
 
     for (path, name) in &sanitizers {
         let src = clang_resourcedir.join(path);
@@ -310,7 +314,11 @@ fn copy_sanitizers(builder: &Builder<'_>, target_compiler: &Compiler, target: In
                 .expect("failed to execute `install_name_tool`");
             assert!(status.success());
         }
+
+        target_deps.push(dst);
     }
+
+    target_deps
 }
 
 /// Returns path to clang's resource directory.
