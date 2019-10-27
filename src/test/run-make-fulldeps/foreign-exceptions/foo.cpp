@@ -8,6 +8,7 @@ void println(const char* s) {
 }
 
 struct exception {};
+struct rust_panic {};
 
 struct drop_check {
     bool* ok;
@@ -45,7 +46,7 @@ extern "C" {
         x.ok = NULL;
         try {
             cb();
-        } catch (exception e) {
+        } catch (rust_panic e) {
             assert(false && "shouldn't be able to catch a rust panic");
         } catch (...) {
             println("caught foreign exception in catch (...)");

@@ -61,7 +61,6 @@ cfg_if::cfg_if! {
 }
 
 mod dwarf;
-mod windows;
 
 // Entry point for catching an exception, implemented using the `try` intrinsic
 // in the compiler.
