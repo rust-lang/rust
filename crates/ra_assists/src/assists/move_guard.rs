@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast,
@@ -9,6 +7,31 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: move_guard_to_arm_body
+//
+// Moves match guard into match arm body.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } <|>if distance > 10 => foo(),
+//         _ => (),
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => if distance > 10 { foo() },
+//         _ => (),
+//     }
+// }
+// ```
 pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_arm = ctx.node_at_offset::<MatchArm>()?;
     let guard = match_arm.guard()?;
@@ -42,6 +65,31 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
     ctx.build()
 }
 
+// Assist: move_arm_cond_to_match_guard
+//
+// Moves if expression from match arm body into a guard.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => <|>if distance > 10 { foo() },
+//         _ => (),
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } if distance > 10 => foo(),
+//         _ => (),
+//     }
+// }
+// ```
 pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_arm: MatchArm = ctx.node_at_offset::<MatchArm>()?;
     let last_match_pat = match_arm.pats().last()?;

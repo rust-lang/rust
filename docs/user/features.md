@@ -154,45 +154,6 @@ fn main() {
 }
 ```
 
-- Flip `,`
-
-```rust
-// before:
-fn foo(x: usize,<|> dim: (usize, usize)) {}
-// after:
-fn foo(dim: (usize, usize), x: usize) {}
-```
-
-- Introduce variable:
-
-```rust
-// before:
-fn foo() {
-    foo(<|>1 + 1<|>);
-}
-
-// after:
-fn foo() {
-    let var_name = 1 + 1;
-    foo(var_name);
-}
-```
-
-- Inline local variable:
-
-```rust
-// before:
-fn foo() {
-    let a<|> = 1 + 1;
-    let b = a * 10;
-}
-
-// after:
-fn foo() {
-    let b = (1 + 1) * 10;
-}
-```
-
 - Remove `dbg!`
 
 ```rust
@@ -245,41 +206,6 @@ use crate:<|>:db::{RootDatabase, FileSymbol};
 use crate::{<|>db::{RootDatabase, FileSymbol}};
 ```
 
-- Flip binary expression
-
-```rust
-// before:
-fn foo() {
-    if 1 <<|> 2 {
-        println!("Who would have thought?");
-    }
-}
-// after:
-fn foo() {
-    if 2 ><|> 1 {
-        println!("Who would have thought?");
-    }
-}
-```
-
-- Move guard expression to match arm body
-```rust
-// before:
-fn f() {
-    match x {
-        <|>y @ 4 | y @ 5    if y > 5 => true,
-        _ => false
-    }
-}
-// after:
-fn f() {
-    match x {
-        y @ 4 | y @ 5 => if y > 5 { <|>true },
-        _ => false
-    }
-}
-```
-
 - Move if condition to match arm guard
 ```rust
 // before:
@@ -307,16 +233,6 @@ fn f() {
         _ => true
     }
 }
-```
-
-- Move type bounds to where clause
-
-```rust
-// before:
-fn foo<T: u32, F: FnOnce(T) -> T>() {}
-
-// after:
-fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
 ```
 
 - Make raw string unescaped

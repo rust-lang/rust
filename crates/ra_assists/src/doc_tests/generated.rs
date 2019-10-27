@@ -273,3 +273,100 @@ fn main() {
 "#####,
     )
 }
+
+#[test]
+fn doctest_merge_match_arms() {
+    check(
+        "merge_match_arms",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        <|>Action::Move(..) => foo(),
+        Action::Stop => foo(),
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move(..) | Action::Stop => foo(),
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_move_arm_cond_to_match_guard() {
+    check(
+        "move_arm_cond_to_match_guard",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } => <|>if distance > 10 { foo() },
+        _ => (),
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } if distance > 10 => foo(),
+        _ => (),
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_move_bounds_to_where_clause() {
+    check(
+        "move_bounds_to_where_clause",
+        r#####"
+fn apply<T, U, <|>F: FnOnce(T) -> U>(f: F, x: T) -> U {
+    f(x)
+}
+"#####,
+        r#####"
+fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
+    f(x)
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_move_guard_to_arm_body() {
+    check(
+        "move_guard_to_arm_body",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } <|>if distance > 10 => foo(),
+        _ => (),
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } => if distance > 10 { foo() },
+        _ => (),
+    }
+}
+"#####,
+    )
+}

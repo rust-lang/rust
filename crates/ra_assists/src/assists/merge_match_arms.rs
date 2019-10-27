@@ -1,9 +1,31 @@
-//! FIXME: write short doc here
-
 use crate::{Assist, AssistCtx, AssistId, TextRange, TextUnit};
 use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, MatchArm};
 
+// Assist: merge_match_arms
+//
+// Merges identical match arms.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         <|>Action::Move(..) => foo(),
+//         Action::Stop => foo(),
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move(..) | Action::Stop => foo(),
+//     }
+// }
+// ```
 pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let current_arm = ctx.node_at_offset::<MatchArm>()?;
 
