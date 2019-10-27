@@ -142,6 +142,21 @@ impl T for () {
 }
 
 #[test]
+fn doctest_add_import() {
+    check(
+        "add_import",
+        r#####"
+fn process(map: std::collections::<|>HashMap<String, String>) {}
+"#####,
+        r#####"
+use std::collections::HashMap;
+
+fn process(map: HashMap<String, String>) {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_apply_demorgan() {
     check(
         "apply_demorgan",
