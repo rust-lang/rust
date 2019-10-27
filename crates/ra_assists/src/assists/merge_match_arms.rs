@@ -26,7 +26,7 @@ use ra_syntax::ast::{AstNode, MatchArm};
 //     }
 // }
 // ```
-pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn merge_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let current_arm = ctx.find_node_at_offset::<MatchArm>()?;
 
     // We check if the following match arm matches this one. We could, but don't,
@@ -52,7 +52,7 @@ pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<A
 
     let cursor_to_end = current_arm.syntax().text_range().end() - ctx.frange.range.start();
 
-    ctx.add_action(AssistId("merge_match_arms"), "merge match arms", |edit| {
+    ctx.add_assist(AssistId("merge_match_arms"), "merge match arms", |edit| {
         fn contains_placeholder(a: &MatchArm) -> bool {
             a.pats().any(|x| match x {
                 ra_syntax::ast::Pat::PlaceholderPat(..) => true,
@@ -80,9 +80,7 @@ pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<A
         edit.target(current_arm.syntax().text_range());
         edit.replace(TextRange::from_to(start, end), arm);
         edit.set_cursor(start + offset);
-    });
-
-    ctx.build()
+    })
 }
 
 #[cfg(test)]

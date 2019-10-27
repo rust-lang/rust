@@ -82,12 +82,12 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         f(ctx)
     }
 
-    pub(crate) fn add_action(
-        &mut self,
+    pub(crate) fn add_assist(
+        mut self,
         id: AssistId,
         label: impl Into<String>,
         f: impl FnOnce(&mut AssistBuilder),
-    ) -> &mut Self {
+    ) -> Option<Assist> {
         let label = AssistLabel { label: label.into(), id };
         match &mut self.assist {
             Assist::Unresolved(labels) => labels.push(label),
@@ -100,10 +100,6 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
                 labels_actions.push((label, action));
             }
         }
-        self
-    }
-
-    pub(crate) fn build(self) -> Option<Assist> {
         Some(self.assist)
     }
 

@@ -31,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 
@@ -53,7 +53,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     };
     let variant_list = enum_def.variant_list()?;
 
-    ctx.add_action(AssistId("fill_match_arms"), "fill match arms", |edit| {
+    ctx.add_assist(AssistId("fill_match_arms"), "fill match arms", |edit| {
         let indent_level = IndentLevel::from_node(match_arm_list.syntax());
 
         let new_arm_list = {
@@ -67,9 +67,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
         edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
         edit.replace_ast(match_arm_list, new_arm_list);
-    });
-
-    ctx.build()
+    })
 }
 
 fn is_trivial(arm: &ast::MatchArm) -> bool {

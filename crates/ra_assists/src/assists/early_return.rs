@@ -35,7 +35,7 @@ use crate::{
 //     bar();
 // }
 // ```
-pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let expr = if_expr.condition()?.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
@@ -75,7 +75,7 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
     let cursor_position = ctx.frange.range.start();
 
-    ctx.add_action(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
+    ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
         let new_if_expr =
             if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
@@ -105,8 +105,7 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
         edit.target(if_expr.syntax().text_range());
         edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
         edit.set_cursor(cursor_position);
-    });
-    ctx.build()
+    })
 }
 
 #[cfg(test)]

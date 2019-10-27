@@ -21,7 +21,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     92;
 // }
 // ```
-pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
 
     if !is_valid_macrocall(&macro_call, "dbg")? {
@@ -58,13 +58,11 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         text.slice(without_parens).to_string()
     };
 
-    ctx.add_action(AssistId("remove_dbg"), "remove dbg!()", |edit| {
+    ctx.add_assist(AssistId("remove_dbg"), "remove dbg!()", |edit| {
         edit.target(macro_call.syntax().text_range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
-    });
-
-    ctx.build()
+    })
 }
 
 /// Verifies that the given macro_call actually matches the given name

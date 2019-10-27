@@ -31,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
@@ -42,14 +42,12 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    ctx.add_action(AssistId("replace_if_let_with_match"), "replace with match", |edit| {
+    ctx.add_assist(AssistId("replace_if_let_with_match"), "replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
         edit.target(if_expr.syntax().text_range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);
         edit.set_cursor(if_expr.syntax().text_range().start())
-    });
-
-    ctx.build()
+    })
 }
 
 fn build_match_expr(

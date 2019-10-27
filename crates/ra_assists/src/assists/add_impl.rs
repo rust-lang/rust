@@ -27,10 +27,10 @@ use crate::{Assist, AssistCtx, AssistId};
 //
 // }
 // ```
-pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+pub(crate) fn add_impl(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
-    ctx.add_action(AssistId("add_impl"), "add impl", |edit| {
+    ctx.add_assist(AssistId("add_impl"), "add impl", |edit| {
         edit.target(nominal.syntax().text_range());
         let type_params = nominal.type_param_list();
         let start_offset = nominal.syntax().text_range().end();
@@ -54,9 +54,7 @@ pub(crate) fn add_impl(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         edit.set_cursor(start_offset + TextUnit::of_str(&buf));
         buf.push_str("\n}");
         edit.insert(start_offset, buf);
-    });
-
-    ctx.build()
+    })
 }
 
 #[cfg(test)]
