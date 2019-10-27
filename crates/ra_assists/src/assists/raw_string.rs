@@ -155,10 +155,17 @@ fn count_hashes(s: &str) -> usize {
 }
 
 fn find_usual_string_range(s: &str) -> Option<TextRange> {
-    Some(TextRange::from_to(
-        TextUnit::from(s.find('"')? as u32),
-        TextUnit::from(s.rfind('"')? as u32),
-    ))
+    let left_quote = s.find('"')?;
+    let right_quote = s.rfind('"')?;
+    if left_quote == right_quote {
+        // `s` only contains one quote
+        None
+    } else {
+        Some(TextRange::from_to(
+            TextUnit::from(left_quote as u32),
+            TextUnit::from(right_quote as u32),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -264,6 +271,30 @@ string"###;
                 let s = <|>r#"random string"#;
             }
             "##,
+        )
+    }
+
+    #[test]
+    fn make_raw_string_not_works_on_partial_string() {
+        check_assist_not_applicable(
+            make_raw_string,
+            r#"
+            fn f() {
+                let s = "foo<|>
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn make_usual_string_not_works_on_partial_string() {
+        check_assist_not_applicable(
+            make_usual_string,
+            r#"
+            fn main() {
+                let s = r#"bar<|>
+            }
+            "#,
         )
     }
 
