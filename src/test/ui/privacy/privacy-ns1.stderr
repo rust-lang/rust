@@ -1,6 +1,9 @@
-error[E0423]: expected function, found trait `Bar`
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
   --> $DIR/privacy-ns1.rs:20:5
    |
+LL |     pub struct Baz;
+   |     --------------- similarly named unit struct `Baz` defined here
+...
 LL |     Bar();
    |     ^^^
    |
@@ -20,6 +23,9 @@ LL | use foo3::Bar;
 error[E0573]: expected type, found function `Bar`
   --> $DIR/privacy-ns1.rs:35:17
    |
+LL |     pub struct Baz;
+   |     --------------- similarly named struct `Baz` defined here
+...
 LL |     let _x: Box<Bar>;
    |                 ^^^
    |
@@ -36,9 +42,12 @@ LL | use foo2::Bar;
 LL | use foo3::Bar;
    |
 
-error[E0425]: cannot find function `Bar` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Bar` in this scope
   --> $DIR/privacy-ns1.rs:50:5
    |
+LL |     pub struct Baz;
+   |     --------------- similarly named unit struct `Baz` defined here
+...
 LL |     Bar();
    |     ^^^
    |
@@ -58,6 +67,9 @@ LL | use foo3::Bar;
 error[E0412]: cannot find type `Bar` in this scope
   --> $DIR/privacy-ns1.rs:51:17
    |
+LL |     pub struct Baz;
+   |     --------------- similarly named struct `Baz` defined here
+...
 LL |     let _x: Box<Bar>;
    |                 ^^^
    |

@@ -613,9 +613,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
-            let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              res.descr(),
-                              hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
+            let msg = format!(
+                "expected tuple struct or tuple variant, found {} `{}`",
+                res.descr(),
+                hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)),
+            );
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
             match (res, &pat.kind) {
                 (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {

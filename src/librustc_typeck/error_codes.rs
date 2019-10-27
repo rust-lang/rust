@@ -4346,11 +4346,12 @@ enum X {
     Entry,
 }
 
-X::Entry(); // error: expected function, found `X::Entry`
+X::Entry(); // error: expected function, tuple struct or tuple variant,
+            // found `X::Entry`
 
 // Or even simpler:
 let x = 0i32;
-x(); // error: expected function, found `i32`
+x(); // error: expected function, tuple struct or tuple variant, found `i32`
 ```
 
 Only functions and methods can be called using `()`. Example:

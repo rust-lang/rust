@@ -1,7 +1,7 @@
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 use crate::path_names_to_string;
-use crate::diagnostics::{add_typo_suggestion, ImportSuggestion, TypoSuggestion};
+use crate::diagnostics::{ImportSuggestion, TypoSuggestion};
 use crate::late::{LateResolutionVisitor, RibKind};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
@@ -254,18 +254,19 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         }
 
         // Try Levenshtein algorithm.
-        let levenshtein_worked = add_typo_suggestion(
-            &mut err, self.lookup_typo_candidate(path, ns, is_expected, span), ident_span
-        );
+        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
+        let levenshtein_worked = self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
 
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
-            if self.smart_resolve_context_dependent_help(&mut err,
-                                                         span,
-                                                         source,
-                                                         res,
-                                                         &path_str,
-                                                         &fallback_label) {
+            if self.smart_resolve_context_dependent_help(
+                &mut err,
+                span,
+                source,
+                res,
+                &path_str,
+                &fallback_label,
+            ) {
                 return (err, candidates);
             }
         }

@@ -4,5 +4,5 @@ enum Foo {
 
 fn main() {
     let f = Foo::Variant(42);
-    //~^ ERROR expected function, found struct variant `Foo::Variant`
+    //~^ ERROR expected function, tuple struct or tuple variant, found struct variant `Foo::Variant`
 }

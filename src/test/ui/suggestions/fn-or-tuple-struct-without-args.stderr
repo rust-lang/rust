@@ -1,6 +1,8 @@
 error[E0423]: expected value, found struct variant `E::B`
   --> $DIR/fn-or-tuple-struct-without-args.rs:36:16
    |
+LL |     A(usize),
+   |     -------- similarly named tuple variant `A` defined here
 LL |     B { a: usize },
    |     -------------- `E::B` defined here
 ...
