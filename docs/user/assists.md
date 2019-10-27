@@ -265,3 +265,96 @@ fn main() {
     var_name * 4;
 }
 ```
+
+## `merge_match_arms`
+
+Merges identical match arms.
+
+```rust
+// BEFORE
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        ┃Action::Move(..) => foo(),
+        Action::Stop => foo(),
+    }
+}
+
+// AFTER
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move(..) | Action::Stop => foo(),
+    }
+}
+```
+
+## `move_arm_cond_to_match_guard`
+
+Moves if expression from match arm body into a guard.
+
+```rust
+// BEFORE
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } => ┃if distance > 10 { foo() },
+        _ => (),
+    }
+}
+
+// AFTER
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } if distance > 10 => foo(),
+        _ => (),
+    }
+}
+```
+
+## `move_bounds_to_where_clause`
+
+Moves inline type bounds to a where clause.
+
+```rust
+// BEFORE
+fn apply<T, U, ┃F: FnOnce(T) -> U>(f: F, x: T) -> U {
+    f(x)
+}
+
+// AFTER
+fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
+    f(x)
+}
+```
+
+## `move_guard_to_arm_body`
+
+Moves match guard into match arm body.
+
+```rust
+// BEFORE
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } ┃if distance > 10 => foo(),
+        _ => (),
+    }
+}
+
+// AFTER
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } => if distance > 10 { foo() },
+        _ => (),
+    }
+}
+```

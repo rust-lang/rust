@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner, TypeBoundsOwner},
@@ -9,6 +7,21 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: move_bounds_to_where_clause
+//
+// Moves inline type bounds to a where clause.
+//
+// ```
+// fn apply<T, U, <|>F: FnOnce(T) -> U>(f: F, x: T) -> U {
+//     f(x)
+// }
+// ```
+// ->
+// ```
+// fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
+//     f(x)
+// }
+// ```
 pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let type_param_list = ctx.node_at_offset::<ast::TypeParamList>()?;
 
