@@ -52,36 +52,18 @@ pub(crate) fn add_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         return None;
     }
 
-    if let Some(module) = path.syntax().ancestors().find_map(ast::Module::cast) {
-        if let (Some(item_list), Some(name)) = (module.item_list(), module.name()) {
-            ctx.add_action(
-                AssistId("add_import"),
-                format!("import {} in mod {}", fmt_segments(&segments), name.text()),
-                |edit| {
-                    apply_auto_import(
-                        item_list.syntax(),
-                        &path,
-                        &segments,
-                        edit.text_edit_builder(),
-                    );
-                },
-            );
+    let module = path.syntax().ancestors().find_map(ast::Module::cast);
+    let anchor = match module.and_then(|it| it.item_list()) {
+        Some(item_list) => item_list.syntax().clone(),
+        None => {
+            let current_file = path.syntax().ancestors().find_map(ast::SourceFile::cast)?;
+            current_file.syntax().clone()
         }
-    } else {
-        let current_file = path.syntax().ancestors().find_map(ast::SourceFile::cast)?;
-        ctx.add_action(
-            AssistId("add_import"),
-            format!("import {} in the current file", fmt_segments(&segments)),
-            |edit| {
-                apply_auto_import(
-                    current_file.syntax(),
-                    &path,
-                    &segments,
-                    edit.text_edit_builder(),
-                );
-            },
-        );
-    }
+    };
+
+    ctx.add_action(AssistId("add_import"), format!("import {}", fmt_segments(&segments)), |edit| {
+        apply_auto_import(&anchor, &path, &segments, edit.text_edit_builder());
+    });
 
     ctx.build()
 }
@@ -595,8 +577,9 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn test_auto_import_add_use_no_anchor() {
