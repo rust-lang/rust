@@ -256,6 +256,19 @@ fn main() {
 }
 
 #[test]
+fn doctest_flip_trait_bound() {
+    check(
+        "flip_trait_bound",
+        r#####"
+fn foo<T: Clone +<|> Copy>() { }
+"#####,
+        r#####"
+fn foo<T: Copy + Clone>() { }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_local_variable() {
     check(
         "inline_local_variable",

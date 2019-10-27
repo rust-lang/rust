@@ -248,6 +248,18 @@ fn main() {
 }
 ```
 
+## `flip_trait_bound`
+
+Flips two trait bounds.
+
+```rust
+// BEFORE
+fn foo<T: Clone +┃ Copy>() { }
+
+// AFTER
+fn foo<T: Copy + Clone>() { }
+```
+
 ## `inline_local_variable`
 
 Inlines local variable.
