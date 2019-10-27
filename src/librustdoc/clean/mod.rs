@@ -28,10 +28,10 @@ use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, Attribute, AttrStyle, AttrItem, Ident};
 use syntax::attr;
-use syntax_expand::base::MacroKind;
 use syntax::parse::lexer::comments;
 use syntax::source_map::DUMMY_SP;
-use syntax::symbol::{Symbol, kw, sym};
+use syntax_pos::symbol::{Symbol, kw, sym};
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{self, Pos, FileName};
 
 use std::collections::hash_map::Entry;

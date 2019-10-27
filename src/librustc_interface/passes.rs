@@ -502,7 +502,7 @@ pub fn lower_to_hir(
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
-        syntax_expand::hygiene::clear_syntax_context_map();
+        syntax_pos::hygiene::clear_syntax_context_map();
     }
 
     Ok(hir_forest)

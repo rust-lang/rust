@@ -4,9 +4,9 @@ use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{Ident, Symbol, kw, sym};
 use syntax_expand::expand::ExpansionConfig;
-use syntax_expand::hygiene::AstPass;
 use syntax_expand::base::{ExtCtxt, Resolver};
 use syntax_pos::DUMMY_SP;
+use syntax_pos::hygiene::AstPass;
 
 pub fn inject(
     mut krate: ast::Crate,

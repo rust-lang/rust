@@ -24,7 +24,7 @@ use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
-use syntax_expand::allocator::AllocatorKind;
+use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;

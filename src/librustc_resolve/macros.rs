@@ -14,20 +14,21 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
-use syntax_expand::base::{self, InvocationRes, Indeterminate, SpecialDerives};
-use syntax_expand::base::{MacroKind, SyntaxExtension};
-use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
-use syntax_expand::hygiene::{self, ExpnId, ExpnData, ExpnKind};
-use syntax_expand::compile_declarative_macro;
+use syntax::expand::SpecialDerives;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, kw, sym};
+use syntax_expand::base::{self, InvocationRes, Indeterminate};
+use syntax_expand::base::SyntaxExtension;
+use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
+use syntax_expand::compile_declarative_macro;
+use syntax_pos::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::hygiene::AstPass;
+use syntax_pos::hygiene::{MacroKind, AstPass};
 
 type Res = def::Res<NodeId>;
 

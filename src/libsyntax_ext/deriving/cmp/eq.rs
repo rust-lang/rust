@@ -3,9 +3,10 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Ident, Expr, MetaItem, GenericArg};
-use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
+use syntax::expand::SpecialDerives;
 use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
+use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
 
 pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,

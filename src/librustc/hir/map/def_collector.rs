@@ -2,10 +2,10 @@ use crate::hir::map::definitions::*;
 use crate::hir::def_id::DefIndex;
 
 use syntax::ast::*;
-use syntax_expand::hygiene::ExpnId;
 use syntax::visit;
 use syntax::symbol::{kw, sym};
 use syntax::parse::token::{self, Token};
+use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
 /// Creates `DefId`s for nodes in the AST.

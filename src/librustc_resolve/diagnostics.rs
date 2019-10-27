@@ -10,12 +10,12 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Ident, Path};
-use syntax_expand::base::MacroKind;
 use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};

@@ -25,7 +25,7 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
-use syntax_expand::allocator::{global_allocator_spans, AllocatorKind};
+use syntax::expand::allocator::{global_allocator_spans, AllocatorKind};
 use syntax::symbol::{Symbol, sym};
 use syntax::span_fatal;
 use syntax_pos::{Span, DUMMY_SP};
