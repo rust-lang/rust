@@ -20,6 +20,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::ast::Name;
 use syntax_pos::Span;
 
+use std::mem;
+
 // helper functions, broken out by category:
 mod simplify;
 mod test;
@@ -665,7 +667,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Candidate<'pat, 'tcx> {
     // span of the original pattern that gave rise to this candidate
     span: Span,
@@ -883,7 +885,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Test for the remaining candidates.
-        self.test_candidates(
+        self.test_candidates_with_or(
             span,
             unmatched_candidates,
             block,
@@ -1023,6 +1025,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Some(block)
         } else {
             None
+        }
+    }
+
+    fn test_candidates_with_or<'pat, 'b, 'c>(
+        &mut self,
+        span: Span,
+        candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
+        block: BasicBlock,
+        otherwise_block: Option<BasicBlock>,
+        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
+    ) {
+        let match_pair = &candidates.first().unwrap().match_pairs[0];
+        // FIXME(dlrobertson): This could use some cleaning up.
+        if let PatKind::Or { ref pats } = *match_pair.pattern.kind {
+            let match_pairs = mem::take(&mut candidates.first_mut().unwrap().match_pairs);
+            let mut new_candidates = pats.iter().map(|pat| {
+                let mut candidate = (*candidates.first().unwrap()).clone();
+                candidate.match_pairs = match_pairs.clone();
+                candidate.match_pairs[0].pattern = pat;
+                candidate
+            }).collect::<Vec<_>>();
+            let mut new_candidate_refs = new_candidates.iter_mut().collect::<Vec<_>>();
+            for candidate in candidates.iter_mut().skip(1) {
+                new_candidate_refs.push(candidate);
+            }
+            self.test_candidates(span, &mut *new_candidate_refs, block,
+                otherwise_block, fake_borrows);
+            for candidate in new_candidates.iter_mut() {
+                if !candidate.match_pairs.is_empty() {
+                    candidate.match_pairs.remove(0);
+                }
+            }
+        } else {
+            self.test_candidates(span, candidates, block,
+                otherwise_block, fake_borrows)
         }
     }
 

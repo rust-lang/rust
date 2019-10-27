@@ -1480,8 +1480,14 @@ fn pat_constructors<'tcx>(
                 Some(vec![Slice(pat_len)])
             }
         }
-        PatKind::Or { .. } => {
-            bug!("support for or-patterns has not been fully implemented yet.");
+        PatKind::Or { ref pats } => {
+            let mut v = vec![];
+            for pat in pats {
+                if let Some(ctors) = pat_constructors(cx, pat, pcx) {
+                    v.extend(ctors);
+                }
+            }
+            Some(v)
         }
     }
 }
@@ -2053,8 +2059,14 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             }
         }
 
-        PatKind::Or { .. } => {
-            bug!("support for or-patterns has not been fully implemented yet.");
+        PatKind::Or { ref pats } => {
+            let mut specialized_pats = vec![];
+            for pat in pats {
+                if let Some(s) = specialize(cx, &[pat], constructor, wild_patterns) {
+                    specialized_pats.extend(s);
+                }
+            }
+            Some(SmallVec::from_vec(specialized_pats))
         }
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", r[0], wild_patterns, head);
