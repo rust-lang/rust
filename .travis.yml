@@ -14,6 +14,7 @@ cache:
 before_cache:
   - cargo install -Z install-upgrade cargo-cache --debug
   - cargo cache --autoclean
+  - find $HOME/.cargo/bin/ ! -type d -exec strip {} \;
 
 env:
  global:
