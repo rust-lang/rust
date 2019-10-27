@@ -22,11 +22,14 @@ pub fn obligations<'a, 'tcx>(
     ty: Ty<'tcx>,
     span: Span,
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
-    let mut wf = WfPredicates { infcx,
-                                param_env,
-                                body_id,
-                                span,
-                                out: vec![] };
+    let mut wf = WfPredicates {
+        infcx,
+        param_env,
+        body_id,
+        span,
+        out: vec![],
+        item: None,
+    };
     if wf.compute(ty) {
         debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
         let result = wf.normalize();
@@ -47,8 +50,9 @@ pub fn trait_obligations<'a, 'tcx>(
     body_id: hir::HirId,
     trait_ref: &ty::TraitRef<'tcx>,
     span: Span,
+    item: Option<&'tcx hir::Item>,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
     wf.normalize()
 }
@@ -60,7 +64,7 @@ pub fn predicate_obligations<'a, 'tcx>(
     predicate: &ty::Predicate<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
+    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
 
     // (*) ok to skip binders, because wf code is prepared for it
     match *predicate {
@@ -107,6 +111,7 @@ struct WfPredicates<'a, 'tcx> {
     body_id: hir::HirId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
+    item: Option<&'tcx hir::Item>,
 }
 
 /// Controls whether we "elaborate" supertraits and so forth on the WF
@@ -157,33 +162,162 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 .collect()
     }
 
-    /// Pushes the obligations required for `trait_ref` to be WF into
-    /// `self.out`.
+    /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
+        let tcx = self.infcx.tcx;
         let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
 
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
 
+        let item = &self.item;
+        let extend_cause_with_original_assoc_item_obligation = |
+            cause: &mut traits::ObligationCause<'_>,
+            pred: &ty::Predicate<'_>,
+            trait_assoc_items: ty::AssocItemsIterator<'_>,
+        | {
+            let item_span = item.map(|i| tcx.sess.source_map().def_span(i.span));
+            match pred {
+                ty::Predicate::Projection(proj) => {
+                    // The obligation comes not from the current `impl` nor the `trait` being
+                    // implemented, but rather from a "second order" obligation, like in
+                    // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs`:
+                    //
+                    //   error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
+                    //     --> $DIR/point-at-type-on-obligation-failure.rs:13:5
+                    //      |
+                    //   LL |     type Ok;
+                    //      |          -- associated type defined here
+                    //   ...
+                    //   LL | impl Bar for Foo {
+                    //      | ---------------- in this `impl` item
+                    //   LL |     type Ok = ();
+                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //      |
+                    //      = note: expected type `u32`
+                    //                 found type `()`
+                    //
+                    // FIXME: we would want to point a span to all places that contributed to this
+                    // obligation. In the case above, it should be closer to:
+                    //
+                    //   error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
+                    //     --> $DIR/point-at-type-on-obligation-failure.rs:13:5
+                    //      |
+                    //   LL |     type Ok;
+                    //      |          -- associated type defined here
+                    //   LL |     type Sibling: Bar2<Ok=Self::Ok>;
+                    //      |     -------------------------------- obligation set here
+                    //   ...
+                    //   LL | impl Bar for Foo {
+                    //      | ---------------- in this `impl` item
+                    //   LL |     type Ok = ();
+                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //   ...
+                    //   LL | impl Bar2 for Foo2 {
+                    //      | ---------------- in this `impl` item
+                    //   LL |     type Ok = u32;
+                    //      |     -------------- obligation set here
+                    //      |
+                    //      = note: expected type `u32`
+                    //                 found type `()`
+                    if let Some(hir::ItemKind::Impl(.., impl_items)) = item.map(|i| &i.kind) {
+                        let trait_assoc_item = tcx.associated_item(proj.projection_def_id());
+                        if let Some(impl_item) = impl_items.iter().filter(|item| {
+                            item.ident == trait_assoc_item.ident
+                        }).next() {
+                            cause.span = impl_item.span;
+                            cause.code = traits::AssocTypeBound(
+                                item_span,
+                                trait_assoc_item.ident.span,
+                            );
+                        }
+                    }
+                }
+                ty::Predicate::Trait(proj) => {
+                    // An associated item obligation born out of the `trait` failed to be met.
+                    // Point at the `impl` that failed the obligation, the associated item that
+                    // needed to meet the obligation, and the definition of that associated item,
+                    // which should hold the obligation in most cases. An example can be seen in
+                    // `src/test/ui/associated-types/point-at-type-on-obligation-failure-2.rs`:
+                    //
+                    //   error[E0277]: the trait bound `bool: Bar` is not satisfied
+                    //     --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
+                    //      |
+                    //   LL |     type Assoc: Bar;
+                    //      |          ----- associated type defined here
+                    //   ...
+                    //   LL | impl Foo for () {
+                    //      | --------------- in this `impl` item
+                    //   LL |     type Assoc = bool;
+                    //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+                    //
+                    // FIXME: if the obligation comes from the where clause in the `trait`, we
+                    // should point at it:
+                    //
+                    //   error[E0277]: the trait bound `bool: Bar` is not satisfied
+                    //     --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
+                    //      |
+                    //      | trait Foo where <Self as Foo>>::Assoc: Bar {
+                    //      |                 -------------------------- obligation set here
+                    //   LL |     type Assoc;
+                    //      |          ----- associated type defined here
+                    //   ...
+                    //   LL | impl Foo for () {
+                    //      | --------------- in this `impl` item
+                    //   LL |     type Assoc = bool;
+                    //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+                    if let (
+                        ty::Projection(ty::ProjectionTy { item_def_id, .. }),
+                        Some(hir::ItemKind::Impl(.., impl_items)),
+                    ) = (&proj.skip_binder().self_ty().kind, item.map(|i| &i.kind)) {
+                        if let Some((impl_item, trait_assoc_item)) = trait_assoc_items
+                            .filter(|i| i.def_id == *item_def_id)
+                            .next()
+                            .and_then(|trait_assoc_item| impl_items.iter()
+                                .filter(|i| i.ident == trait_assoc_item.ident)
+                                .next()
+                                .map(|impl_item| (impl_item, trait_assoc_item)))
+                        {
+                            cause.span = impl_item.span;
+                            cause.code = traits::AssocTypeBound(
+                                item_span,
+                                trait_assoc_item.ident.span,
+                            );
+                        }
+                    }
+                }
+                _ => {}
+            }
+        };
+
         if let Elaborate::All = elaborate {
+            let trait_assoc_items = tcx.associated_items(trait_ref.def_id);
+
             let predicates = obligations.iter()
-                                        .map(|obligation| obligation.predicate.clone())
-                                        .collect();
-            let implied_obligations = traits::elaborate_predicates(self.infcx.tcx, predicates);
+                .map(|obligation| obligation.predicate.clone())
+                .collect();
+            let implied_obligations = traits::elaborate_predicates(tcx, predicates);
             let implied_obligations = implied_obligations.map(|pred| {
-                traits::Obligation::new(cause.clone(), param_env, pred)
+                let mut cause = cause.clone();
+                extend_cause_with_original_assoc_item_obligation(
+                    &mut cause,
+                    &pred,
+                    trait_assoc_items.clone(),
+                );
+                traits::Obligation::new(cause, param_env, pred)
             });
             self.out.extend(implied_obligations);
         }
 
         self.out.extend(obligations);
 
-        self.out.extend(
-            trait_ref.substs.types()
-                            .filter(|ty| !ty.has_escaping_bound_vars())
-                            .map(|ty| traits::Obligation::new(cause.clone(),
-                                                              param_env,
-                                                              ty::Predicate::WellFormed(ty))));
+        self.out.extend(trait_ref.substs.types()
+            .filter(|ty| !ty.has_escaping_bound_vars())
+            .map(|ty| traits::Obligation::new(
+                cause.clone(),
+                param_env,
+                ty::Predicate::WellFormed(ty),
+            )));
     }
 
     /// Pushes the obligations required for `trait_ref::Item` to be WF

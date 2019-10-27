@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
+   |
+LL |     type Assoc: Bar;
+   |          ----- associated type defined here
+...
+LL | impl Foo for () {
+   | --------------- in this `impl` item
+LL |     type Assoc = bool;
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

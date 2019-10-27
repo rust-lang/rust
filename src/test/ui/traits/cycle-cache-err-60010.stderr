@@ -7,10 +7,15 @@ LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
    = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
 
 error[E0275]: overflow evaluating the requirement `RootDatabase: SourceDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:30:6
+  --> $DIR/cycle-cache-err-60010.rs:31:5
    |
+LL |     type Storage;
+   |          ------- associated type defined here
+...
 LL | impl Database for RootDatabase {
-   |      ^^^^^^^^
+   | ------------------------------ in this `impl` item
+LL |     type Storage = SalsaStorage;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
    = note: required because it appears within the type `SalsaStorage`
