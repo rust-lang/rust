@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! This module defines `AssistCtx` -- the API surface that is exposed to assists.
 
 use hir::db::HirDatabase;
 use ra_db::FileRange;
