@@ -5,6 +5,8 @@ LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |                -- -- lifetime `'b` defined here      ^ returning this value requires that `'a` must outlive `'b`
    |                |
    |                lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/regions-infer-not-param.rs:19:63
@@ -13,6 +15,8 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |                   |
    |                   lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
   --> $DIR/regions-infer-not-param.rs:19:63
@@ -21,6 +25,10 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |                   -- -- lifetime `'b` defined here            ^ returning this value requires that `'a` must outlive `'b`
    |                   |
    |                   lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+help: `'b` and `'a` must be the same: replace one with the other
 
 error: aborting due to 3 previous errors
 

@@ -7,6 +7,8 @@ LL | fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
    |                      lifetime `'a` defined here
 LL |     S { pointer: &mut *p.pointer }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

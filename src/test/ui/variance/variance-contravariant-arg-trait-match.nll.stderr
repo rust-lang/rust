@@ -8,6 +8,8 @@ LL | fn get_min_from_max<'min, 'max, G>()
 ...
 LL |     impls_get::<G,&'min i32>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: lifetime may not live long enough
   --> $DIR/variance-contravariant-arg-trait-match.rs:21:5
@@ -19,6 +21,8 @@ LL | fn get_max_from_min<'min, 'max, G>()
 ...
 LL |     impls_get::<G,&'max i32>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: aborting due to 2 previous errors
 

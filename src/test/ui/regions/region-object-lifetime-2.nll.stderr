@@ -7,6 +7,8 @@ LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
    |                                          lifetime `'a` defined here
 LL |     x.borrowed()
    |     ^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

@@ -8,6 +8,8 @@ LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
 ...
 LL |     v
    |     ^ returning this value requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: lifetime may not live long enough
   --> $DIR/variance-use-invariant-struct-1.rs:19:5
@@ -19,6 +21,8 @@ LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
 ...
 LL |     v
    |     ^ returning this value requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: aborting due to 2 previous errors
 

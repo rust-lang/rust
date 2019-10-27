@@ -8,6 +8,8 @@ LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
 ...
 LL |     ss
    |     ^^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

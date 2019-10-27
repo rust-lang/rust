@@ -45,10 +45,8 @@ LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |     });
    | |______^ `cell_a` escapes the function body here
-
-help: the following changes may resolve your lifetime errors
    |
-   = help: replace `'a` with `'static`
+   = help: consider replacing `'a` with `'static`
 
 error: aborting due to previous error
 

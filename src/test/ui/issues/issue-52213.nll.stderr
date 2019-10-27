@@ -8,6 +8,8 @@ LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
 LL |     match (&t,) {
 LL |         ((u,),) => u,
    |                    ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

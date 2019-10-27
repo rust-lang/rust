@@ -10,6 +10,8 @@ LL | |             Some(ref next) => next.get(),
 LL | |             None => &self.val
 LL | |         }
    | |_________^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

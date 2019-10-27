@@ -8,6 +8,8 @@ LL | fn _bad_st<'a, 'b, T>(x: St<'a, 'b, T>)
 ...
 LL |     let _failure_proves_not_implied_outlives_region_b: &'b T = &x.f0;
    |                                                        ^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/implied-region-constraints.rs:40:64
@@ -19,6 +21,8 @@ LL | fn _bad_en7<'a, 'b, T>(x: En7<'a, 'b, T>)
 ...
 LL |             let _failure_proves_not_implied_outlives_region_b: &'b T = &x;
    |                                                                ^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to 2 previous errors
 
