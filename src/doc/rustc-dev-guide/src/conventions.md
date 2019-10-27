@@ -114,14 +114,12 @@ you introduce some code following one strategy, then change it
 dramatically (versus adding to it) in a later commit, that
 'back-and-forth' can be confusing.
 
-**If you run rustfmt and the file was not already formatted, isolate
-that into its own commit.** This is really the same as the previous
-rule, but it's worth highlighting. It's ok to rustfmt files, but since
-we do not currently run rustfmt all the time, that can introduce a lot
-of noise into your commit. Please isolate that into its own
-commit. This also makes rebases a lot less painful, since rustfmt
-tends to cause a lot of merge conflicts, and having those isolated
-into their own commit makes them easier to resolve.
+**Only run rustfmt on new content.** One day, we might enforce formatting
+for the rust-lang/rust repo. Meanwhile, we prefer that rustfmt not be run
+on existing code as that will generate large diffs and will make git blame
+harder to sift through. However, running `rustfmt` on new content, e.g. a
+new file or a largely new part of a file is ok. Small formatting adjustments
+nearby code you are already changing for other purposes are also ok.
 
 **No merges.** We do not allow merge commits into our history, other
 than those by bors. If you get a merge conflict, rebase instead via a
