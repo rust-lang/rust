@@ -72,10 +72,26 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
         let code = source.error_code(res.is_some());
-        let (base_msg, fallback_label, base_span) = if let Some(res) = res {
+        let (base_msg, fallback_label, base_span, could_be_expr) = if let Some(res) = res {
             (format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
                 format!("not a {}", expected),
-                span)
+                span,
+                match res {
+                    Res::Def(DefKind::Fn, _) => {
+                        // Verify whether this is a fn call or an Fn used as a type.
+                        self.r.session.source_map().span_to_snippet(span).map(|snippet| {
+                            snippet.ends_with(')')
+                        }).unwrap_or(false)
+                    }
+                    Res::Def(DefKind::Ctor(..), _) |
+                    Res::Def(DefKind::Method, _) |
+                    Res::Def(DefKind::Const, _) |
+                    Res::Def(DefKind::AssocConst, _) |
+                    Res::SelfCtor(_) |
+                    Res::PrimTy(_) |
+                    Res::Local(_) => true,
+                    _ => false,
+                })
         } else {
             let item_span = path.last().unwrap().ident.span;
             let (mod_prefix, mod_str) = if path.len() == 1 {
@@ -94,7 +110,8 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             };
             (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                 format!("not found in {}", mod_str),
-                item_span)
+                item_span,
+                false)
         };
 
         let code = DiagnosticId::Error(code.into());
@@ -134,7 +151,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                     "`self` value is a keyword only available in methods with a `self` parameter",
                 ),
             });
-            if let Some(span) = &self.current_function {
+            if let Some(span) = &self.diagnostic_metadata.current_function {
                 err.span_label(*span, "this function doesn't have a `self` parameter");
             }
             return (err, Vec::new());
@@ -257,6 +274,18 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if !levenshtein_worked {
             err.span_label(base_span, fallback_label);
             self.type_ascription_suggestion(&mut err, base_span);
+            match self.diagnostic_metadata.current_let_binding {
+                Some((pat_sp, Some(ty_sp), None))
+                if ty_sp.contains(base_span) && could_be_expr => {
+                    err.span_suggestion_short(
+                        pat_sp.between(ty_sp),
+                        "use `=` if you meant to assign",
+                        " = ".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {}
+            }
         }
         (err, candidates)
     }
@@ -491,7 +520,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Fields are generally expected in the same contexts as locals.
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
-            if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
+            if let Some(node_id) = self.diagnostic_metadata.current_self_type.as_ref()
+                .and_then(extract_node_id)
+            {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.r.partial_res_map.get(&node_id) {
                     match resolution.base_res() {
@@ -510,7 +541,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             }
         }
 
-        for assoc_type_ident in &self.current_trait_assoc_types {
+        for assoc_type_ident in &self.diagnostic_metadata.current_trait_assoc_types {
             if *assoc_type_ident == ident {
                 return Some(AssocSuggestion::AssocItem);
             }
@@ -644,11 +675,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         err: &mut DiagnosticBuilder<'_>,
         base_span: Span,
     ) {
-        debug!("type_ascription_suggetion {:?}", base_span);
         let cm = self.r.session.source_map();
         let base_snippet = cm.span_to_snippet(base_span);
-        debug!("self.current_type_ascription {:?}", self.current_type_ascription);
-        if let Some(sp) = self.current_type_ascription.last() {
+        if let Some(sp) = self.diagnostic_metadata.current_type_ascription.last() {
             let mut sp = *sp;
             loop {
                 // Try to find the `:`; bail on first non-':' / non-whitespace.
