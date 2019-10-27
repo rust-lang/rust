@@ -1,15 +1,25 @@
-error[E0391]: cycle detected when const checking `A`
+error[E0391]: cycle detected when promoting and checking `A`
   --> $DIR/issue-23302-3.rs:1:16
    |
 LL | const A: i32 = B;
    |                ^
    |
-note: ...which requires const checking `B`...
+note: ...which requires computing qualifs for `B`...
+  --> $DIR/issue-23302-3.rs:3:1
+   |
+LL | const B: i32 = A;
+   | ^^^^^^^^^^^^^^^^^
+note: ...which requires promoting and checking `B`...
   --> $DIR/issue-23302-3.rs:3:16
    |
 LL | const B: i32 = A;
    |                ^
-   = note: ...which again requires const checking `A`, completing the cycle
+note: ...which requires computing qualifs for `A`...
+  --> $DIR/issue-23302-3.rs:1:1
+   |
+LL | const A: i32 = B;
+   | ^^^^^^^^^^^^^^^^^
+   = note: ...which again requires promoting and checking `A`, completing the cycle
 note: cycle used when processing `A`
   --> $DIR/issue-23302-3.rs:1:1
    |

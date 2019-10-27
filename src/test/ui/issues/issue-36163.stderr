@@ -1,15 +1,25 @@
-error[E0391]: cycle detected when const checking `Foo::B::{{constant}}#0`
+error[E0391]: cycle detected when promoting and checking `Foo::B::{{constant}}#0`
   --> $DIR/issue-36163.rs:4:9
    |
 LL |     B = A,
    |         ^
    |
-note: ...which requires const checking `A`...
+note: ...which requires computing qualifs for `A`...
+  --> $DIR/issue-36163.rs:1:1
+   |
+LL | const A: isize = Foo::B as isize;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires promoting and checking `A`...
   --> $DIR/issue-36163.rs:1:18
    |
 LL | const A: isize = Foo::B as isize;
    |                  ^^^^^^^^^^^^^^^
-   = note: ...which again requires const checking `Foo::B::{{constant}}#0`, completing the cycle
+note: ...which requires computing qualifs for `Foo::B::{{constant}}#0`...
+  --> $DIR/issue-36163.rs:4:9
+   |
+LL |     B = A,
+   |         ^
+   = note: ...which again requires promoting and checking `Foo::B::{{constant}}#0`, completing the cycle
 note: cycle used when processing `Foo::B::{{constant}}#0`
   --> $DIR/issue-36163.rs:4:9
    |
