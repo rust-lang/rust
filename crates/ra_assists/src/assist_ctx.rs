@@ -14,8 +14,8 @@ use crate::{AssistAction, AssistId, AssistLabel};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Assist {
-    Unresolved(Vec<AssistLabel>),
-    Resolved(Vec<(AssistLabel, AssistAction)>),
+    Unresolved { label: AssistLabel },
+    Resolved { label: AssistLabel, action: AssistAction },
 }
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
@@ -54,7 +54,6 @@ pub(crate) struct AssistCtx<'a, DB> {
     pub(crate) frange: FileRange,
     source_file: SourceFile,
     should_compute_edit: bool,
-    assist: Assist,
 }
 
 impl<'a, DB> Clone for AssistCtx<'a, DB> {
@@ -64,7 +63,6 @@ impl<'a, DB> Clone for AssistCtx<'a, DB> {
             frange: self.frange,
             source_file: self.source_file.clone(),
             should_compute_edit: self.should_compute_edit,
-            assist: self.assist.clone(),
         }
     }
 }
@@ -75,32 +73,30 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         F: FnOnce(AssistCtx<DB>) -> T,
     {
         let parse = db.parse(frange.file_id);
-        let assist =
-            if should_compute_edit { Assist::Resolved(vec![]) } else { Assist::Unresolved(vec![]) };
 
-        let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit, assist };
+        let ctx = AssistCtx { db, frange, source_file: parse.tree(), should_compute_edit };
         f(ctx)
     }
 
     pub(crate) fn add_assist(
-        mut self,
+        self,
         id: AssistId,
         label: impl Into<String>,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<Assist> {
         let label = AssistLabel { label: label.into(), id };
-        match &mut self.assist {
-            Assist::Unresolved(labels) => labels.push(label),
-            Assist::Resolved(labels_actions) => {
-                let action = {
-                    let mut edit = AssistBuilder::default();
-                    f(&mut edit);
-                    edit.build()
-                };
-                labels_actions.push((label, action));
-            }
-        }
-        Some(self.assist)
+        let assist = if self.should_compute_edit {
+            let action = {
+                let mut edit = AssistBuilder::default();
+                f(&mut edit);
+                edit.build()
+            };
+            Assist::Resolved { label, action }
+        } else {
+            Assist::Unresolved { label }
+        };
+
+        Some(assist)
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
