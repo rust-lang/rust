@@ -1,21 +1,32 @@
-//! Assist for swapping traits inside of a trait bound list
-//!
-//! E.g. `A + B` => `B + A` when the cursor is placed by the `+` inside of a
-//! trait bound list
-
 use hir::db::HirDatabase;
-use ra_syntax::{algo::non_trivia_sibling, ast::TypeBoundList, Direction, T};
+use ra_syntax::{
+    algo::non_trivia_sibling,
+    ast::{self, AstNode},
+    Direction, T,
+};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-/// Flip trait bound assist.
+// Assist: flip_trait_bound
+//
+// Flips two trait bounds.
+//
+// ```
+// fn foo<T: Clone +<|> Copy>() { }
+// ```
+// ->
+// ```
+// fn foo<T: Copy + Clone>() { }
+// ```
 pub(crate) fn flip_trait_bound(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    // Make sure we're in a `TypeBoundList`
-    ctx.node_at_offset::<TypeBoundList>()?;
-
     // We want to replicate the behavior of `flip_binexpr` by only suggesting
     // the assist when the cursor is on a `+`
-    let plus = ctx.token_at_offset().find(|tkn| tkn.kind() == T![+])?;
+    let plus = ctx.find_token_at_offset(T![+])?;
+
+    // Make sure we're in a `TypeBoundList`
+    if ast::TypeBoundList::cast(plus.parent()).is_none() {
+        return None;
+    }
 
     let (before, after) = (
         non_trivia_sibling(plus.clone().into(), Direction::Prev)?,
