@@ -1279,43 +1279,76 @@ impl<'tcx> IntRange<'tcx> {
     }
 }
 
-type MissingConstructors<'a, 'tcx, F> =
-    std::iter::FlatMap<std::slice::Iter<'a, Constructor<'tcx>>, Vec<Constructor<'tcx>>, F>;
-// Compute a set of constructors equivalent to `all_ctors \ used_ctors`. This
-// returns an iterator, so that we only construct the whole set if needed.
-fn compute_missing_ctors<'a, 'tcx>(
+// A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
+struct MissingConstructors<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    all_ctors: &'a Vec<Constructor<'tcx>>,
-    used_ctors: &'a Vec<Constructor<'tcx>>,
-) -> MissingConstructors<'a, 'tcx, impl FnMut(&'a Constructor<'tcx>) -> Vec<Constructor<'tcx>>> {
-    all_ctors.iter().flat_map(move |req_ctor| {
-        let mut refined_ctors = vec![req_ctor.clone()];
-        for used_ctor in used_ctors {
-            if used_ctor == req_ctor {
-                // If a constructor appears in a `match` arm, we can
-                // eliminate it straight away.
-                refined_ctors = vec![]
-            } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, used_ctor) {
-                // Refine the required constructors for the type by subtracting
-                // the range defined by the current constructor pattern.
-                refined_ctors = interval.subtract_from(tcx, param_env, refined_ctors);
+    all_ctors: Vec<Constructor<'tcx>>,
+    used_ctors: Vec<Constructor<'tcx>>,
+}
+
+impl<'tcx> MissingConstructors<'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        all_ctors: Vec<Constructor<'tcx>>,
+        used_ctors: Vec<Constructor<'tcx>>,
+    ) -> Self {
+        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
+    }
+
+    fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
+        (self.all_ctors, self.used_ctors)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter().next().is_none()
+    }
+    /// Whether this contains all the constructors for the given type or only a
+    /// subset.
+    fn all_ctors_are_missing(&self) -> bool {
+        self.used_ctors.is_empty()
+    }
+
+    /// Iterate over all_ctors \ used_ctors
+    fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
+        self.all_ctors.iter().flat_map(move |req_ctor| {
+            let mut refined_ctors = vec![req_ctor.clone()];
+            for used_ctor in &self.used_ctors {
+                if used_ctor == req_ctor {
+                    // If a constructor appears in a `match` arm, we can
+                    // eliminate it straight away.
+                    refined_ctors = vec![]
+                } else if let Some(interval) =
+                    IntRange::from_ctor(self.tcx, self.param_env, used_ctor)
+                {
+                    // Refine the required constructors for the type by subtracting
+                    // the range defined by the current constructor pattern.
+                    refined_ctors = interval.subtract_from(self.tcx, self.param_env, refined_ctors);
+                }
+
+                // If the constructor patterns that have been considered so far
+                // already cover the entire range of values, then we know the
+                // constructor is not missing, and we can move on to the next one.
+                if refined_ctors.is_empty() {
+                    break;
+                }
             }
 
-            // If the constructor patterns that have been considered so far
-            // already cover the entire range of values, then we know the
-            // constructor is not missing, and we can move on to the next one.
-            if refined_ctors.is_empty() {
-                break;
-            }
-        }
+            // If a constructor has not been matched, then it is missing.
+            // We add `refined_ctors` instead of `req_ctor`, because then we can
+            // provide more detailed error information about precisely which
+            // ranges have been omitted.
+            refined_ctors
+        })
+    }
+}
 
-        // If a constructor has not been matched, then it is missing.
-        // We add `refined_ctors` instead of `req_ctor`, because then we can
-        // provide more detailed error information about precisely which
-        // ranges have been omitted.
-        refined_ctors
-    })
+impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ctors: Vec<_> = self.iter().collect();
+        write!(f, "{:?}", ctors)
+    }
 }
 
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
@@ -1426,6 +1459,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
         let all_ctors = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
 
+        let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+        let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
+
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
         // from the first column.
@@ -1449,14 +1485,11 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // non-wildcard patterns in the current column. To determine if
         // the set is empty, we can check that `.peek().is_none()`, so
         // we only fully construct them on-demand, because they're rarely used and can be big.
-        let mut missing_ctors =
-            compute_missing_ctors(cx.tcx, cx.param_env, &all_ctors, &used_ctors).peekable();
+        let missing_ctors = MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, used_ctors);
 
-        let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-        let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
         debug!(
             "missing_ctors.empty()={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
-            missing_ctors.peek().is_none(),
+            missing_ctors.is_empty(),
             is_privately_empty,
             is_declared_nonexhaustive
         );
@@ -1467,8 +1500,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
             || is_declared_nonexhaustive
             || (pcx.ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching);
 
-        if missing_ctors.peek().is_none() && !is_non_exhaustive {
-            drop(missing_ctors); // It was borrowing `all_ctors`, which we want to move.
+        if missing_ctors.is_empty() && !is_non_exhaustive {
+            let (all_ctors, _) = missing_ctors.into_inner();
             split_grouped_constructors(
                 cx.tcx,
                 cx.param_env,
@@ -1532,7 +1565,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
                     // `(<direction-1>, <direction-2>, true)` - we are
                     // satisfied with `(_, _, true)`. In this case,
                     // `used_ctors` is empty.
-                    let new_patterns = if is_non_exhaustive || used_ctors.is_empty() {
+                    let new_patterns = if is_non_exhaustive || missing_ctors.all_ctors_are_missing()
+                    {
                         // All constructors are unused. Add a wild pattern
                         // rather than each individual constructor.
                         vec![Pat { ty: pcx.ty, span: DUMMY_SP, kind: box PatKind::Wild }]
@@ -1541,7 +1575,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
                         // constructor, that matches everything that can be built with
                         // it. For example, if `ctor` is a `Constructor::Variant` for
                         // `Option::Some`, we get the pattern `Some(_)`.
-                        missing_ctors.map(|ctor| ctor.apply_wildcards(cx, pcx.ty)).collect()
+                        missing_ctors.iter().map(|ctor| ctor.apply_wildcards(cx, pcx.ty)).collect()
                     };
                     // Add the new patterns to each witness
                     let new_witnesses = witnesses
