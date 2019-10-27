@@ -36,7 +36,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let if_expr: ast::IfExpr = ctx.node_at_offset()?;
+    let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let expr = if_expr.condition()?.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
     if if_expr.else_branch().is_some() {

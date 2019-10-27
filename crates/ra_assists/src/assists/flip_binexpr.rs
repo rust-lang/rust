@@ -19,7 +19,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let expr = ctx.node_at_offset::<BinExpr>()?;
+    let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
     let op_range = expr.op_token()?.text_range();

@@ -8,7 +8,7 @@ use ra_syntax::{
 };
 
 pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let macro_call = ctx.node_at_offset::<ast::MacroCall>()?;
+    let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
 
     if !is_valid_macrocall(&macro_call, "dbg")? {
         return None;

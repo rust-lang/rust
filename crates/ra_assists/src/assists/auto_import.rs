@@ -547,7 +547,7 @@ pub fn auto_import_text_edit(
 }
 
 pub(crate) fn auto_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let path: ast::Path = ctx.node_at_offset()?;
+    let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
         return None;

@@ -115,7 +115,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         self.token_at_offset().find(|it| it.kind() == kind)
     }
 
-    pub(crate) fn node_at_offset<N: AstNode>(&self) -> Option<N> {
+    pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
     pub(crate) fn covering_element(&self) -> SyntaxElement {
