@@ -46,7 +46,7 @@ fn dummy2() {
     impl !Send for TestType {}
 
     is_send(Box::new(TestType));
-    //~^ ERROR the trait bound `dummy2::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `dummy2::TestType` cannot be sent between threads safely
 }
 
 fn dummy3() {
@@ -64,5 +64,5 @@ fn main() {
     // This will complain about a missing Send impl because `Sync` is implement *just*
     // for T that are `Send`. Look at #20366 and #19950
     is_sync(Outer2(TestType));
-    //~^ ERROR the trait bound `main::TestType: std::marker::Sync` is not satisfied
+    //~^ ERROR `main::TestType` cannot be sent between threads safely
 }
