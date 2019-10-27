@@ -14,7 +14,6 @@ use crate::sess::ParseSess;
 use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
-use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{self, BytePos};
 use syntax_pos::{FileName, Span};
 
@@ -1230,7 +1229,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
                 self.head("extern");
-                self.word_nbsp(nmod.abi.to_string());
+                self.print_abi(nmod.abi);
                 self.bopen();
                 self.print_foreign_mod(nmod, &item.attrs);
                 self.bclose(item.span);
@@ -2823,7 +2822,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_ty_fn(&mut self,
-                       abi: abi::Abi,
+                       abi: ast::Abi,
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
@@ -2884,12 +2883,16 @@ impl<'a> State<'a> {
         self.print_asyncness(header.asyncness.node);
         self.print_unsafety(header.unsafety);
 
-        if header.abi != Abi::Rust {
+        if header.abi.symbol != sym::Rust {
             self.word_nbsp("extern");
-            self.word_nbsp(header.abi.to_string());
+            self.print_abi(header.abi);
         }
 
         self.s.word("fn")
+    }
+
+    fn print_abi(&mut self, abi: ast::Abi) {
+        self.word_nbsp(format!("\"{}\"", abi.symbol));
     }
 
     crate fn print_unsafety(&mut self, s: ast::Unsafety) {

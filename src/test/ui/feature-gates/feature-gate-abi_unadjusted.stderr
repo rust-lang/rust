@@ -1,10 +1,8 @@
 error[E0658]: unadjusted ABI is an implementation detail and perma-unstable
-  --> $DIR/feature-gate-abi_unadjusted.rs:1:1
+  --> $DIR/feature-gate-abi_unadjusted.rs:1:8
    |
-LL | / extern "unadjusted" fn foo() {
-LL | |
-LL | | }
-   | |_^
+LL | extern "unadjusted" fn foo() {
+   |        ^^^^^^^^^^^^
    |
    = help: add `#![feature(abi_unadjusted)]` to the crate attributes to enable
 

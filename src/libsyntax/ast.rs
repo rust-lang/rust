@@ -38,7 +38,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_target::spec::abi::Abi;
 
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
@@ -2358,6 +2357,27 @@ impl Item {
     }
 }
 
+/// A reference to an ABI.
+///
+/// In AST our notion of an ABI is still syntactic unlike in `rustc_target::spec::abi::Abi`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, PartialEq)]
+pub struct Abi {
+    pub symbol: Symbol,
+    pub span: Span,
+}
+
+impl Abi {
+    pub fn new(symbol: Symbol, span: Span) -> Self {
+        Self { symbol, span }
+    }
+}
+
+impl Default for Abi {
+    fn default() -> Self {
+        Self::new(sym::Rust, DUMMY_SP)
+    }
+}
+
 /// A function header.
 ///
 /// All the information between the visibility and the name of the function is
@@ -2376,7 +2396,7 @@ impl Default for FnHeader {
             unsafety: Unsafety::Normal,
             asyncness: dummy_spanned(IsAsync::NotAsync),
             constness: dummy_spanned(Constness::NotConst),
-            abi: Abi::Rust,
+            abi: Abi::default(),
         }
     }
 }

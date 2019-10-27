@@ -12,7 +12,7 @@ mod diagnostics;
 use diagnostics::Error;
 
 use crate::ast::{
-    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
+    self, Abi, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
 use crate::parse::{PResult, Directory, DirectoryOwnership};
@@ -28,7 +28,6 @@ use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::ThinVec;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
-use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
 use log::debug;
 
@@ -1208,46 +1207,25 @@ impl<'a> Parser<'a> {
 
     /// Parses `extern` followed by an optional ABI string, or nothing.
     fn parse_extern_abi(&mut self) -> PResult<'a, Abi> {
-        if self.eat_keyword(kw::Extern) {
-            Ok(self.parse_opt_abi()?.unwrap_or(Abi::C))
+        Ok(if self.eat_keyword(kw::Extern) {
+            let ext_sp = self.prev_span;
+            self.parse_opt_abi()?.unwrap_or_else(|| Abi::new(sym::C, ext_sp))
         } else {
-            Ok(Abi::Rust)
-        }
+            Abi::default()
+        })
     }
 
-    /// Parses a string as an ABI spec on an extern type or module. Consumes
-    /// the `extern` keyword, if one is found.
+    /// Parses a string as an ABI spec on an extern type or module.
     fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
         match self.token.kind {
             token::Literal(token::Lit { kind: token::Str, symbol, suffix }) |
             token::Literal(token::Lit { kind: token::StrRaw(..), symbol, suffix }) => {
                 self.expect_no_suffix(self.token.span, "an ABI spec", suffix);
                 self.bump();
-                match abi::lookup(&symbol.as_str()) {
-                    Some(abi) => Ok(Some(abi)),
-                    None => {
-                        self.error_on_invalid_abi(symbol);
-                        Ok(None)
-                    }
-                }
+                Ok(Some(Abi::new(symbol, self.prev_span)))
             }
             _ => Ok(None),
         }
-    }
-
-    /// Emit an error where `symbol` is an invalid ABI.
-    fn error_on_invalid_abi(&self, symbol: Symbol) {
-        let prev_span = self.prev_span;
-        struct_span_err!(
-            self.sess.span_diagnostic,
-            prev_span,
-            E0703,
-            "invalid ABI: found `{}`",
-            symbol
-        )
-        .span_label(prev_span, "invalid ABI")
-        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
-        .emit();
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.

@@ -32,7 +32,7 @@ use rls_data::{SigElement, Signature};
 use rustc::hir::def::{Res, DefKind};
 use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
-
+use syntax_pos::sym;
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
@@ -157,6 +157,12 @@ fn text_sig(text: String) -> Signature {
     }
 }
 
+fn push_abi(text: &mut String, abi: ast::Abi) {
+    if abi.symbol != sym::Rust {
+        text.push_str(&format!("extern \"{}\" ", abi.symbol));
+    }
+}
+
 impl Sig for ast::Ty {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let id = Some(self.id);
@@ -231,11 +237,7 @@ impl Sig for ast::Ty {
                 if f.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                if f.abi != rustc_target::spec::abi::Abi::Rust {
-                    text.push_str("extern");
-                    text.push_str(&f.abi.to_string());
-                    text.push(' ');
-                }
+                push_abi(&mut text, f.abi);
                 text.push_str("fn(");
 
                 let mut defs = vec![];
@@ -385,11 +387,7 @@ impl Sig for ast::Item {
                 if header.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                if header.abi != rustc_target::spec::abi::Abi::Rust {
-                    text.push_str("extern");
-                    text.push_str(&header.abi.to_string());
-                    text.push(' ');
-                }
+                push_abi(&mut text, header.abi);
                 text.push_str("fn ");
 
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
@@ -948,11 +946,7 @@ fn make_method_signature(
     if m.header.unsafety == ast::Unsafety::Unsafe {
         text.push_str("unsafe ");
     }
-    if m.header.abi != rustc_target::spec::abi::Abi::Rust {
-        text.push_str("extern");
-        text.push_str(&m.header.abi.to_string());
-        text.push(' ');
-    }
+    push_abi(&mut text, m.header.abi);
     text.push_str("fn ");
 
     let mut sig = name_and_generics(text, 0, generics, id, ident, scx)?;

@@ -1,35 +1,35 @@
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:11:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:11:12
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:17:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:17:12
    |
 LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:12
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:29:5
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:29:12
    |
 LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
