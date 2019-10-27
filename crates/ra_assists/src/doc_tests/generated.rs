@@ -40,6 +40,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_add_hash() {
+    check(
+        "add_hash",
+        r#####"
+fn main() {
+    r#"Hello,<|> World!"#;
+}
+"#####,
+        r#####"
+fn main() {
+    r##"Hello, World!"##;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_impl() {
     check(
         "add_impl",
@@ -275,6 +292,40 @@ fn main() {
 }
 
 #[test]
+fn doctest_make_raw_string() {
+    check(
+        "make_raw_string",
+        r#####"
+fn main() {
+    "Hello,<|> World!";
+}
+"#####,
+        r#####"
+fn main() {
+    r#"Hello, World!"#;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_make_usual_string() {
+    check(
+        "make_usual_string",
+        r#####"
+fn main() {
+    r#"Hello,<|> "World!""#;
+}
+"#####,
+        r#####"
+fn main() {
+    "Hello, \"World!\"";
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_merge_match_arms() {
     check(
         "merge_match_arms",
@@ -367,6 +418,81 @@ fn handle(action: Action) {
         _ => (),
     }
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_dbg() {
+    check(
+        "remove_dbg",
+        r#####"
+fn main() {
+    <|>dbg!(92);
+}
+"#####,
+        r#####"
+fn main() {
+    92;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_hash() {
+    check(
+        "remove_hash",
+        r#####"
+fn main() {
+    r#"Hello,<|> World!"#;
+}
+"#####,
+        r#####"
+fn main() {
+    r"Hello, World!";
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_if_let_with_match() {
+    check(
+        "replace_if_let_with_match",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    <|>if let Action::Move { distance } = action {
+        foo(distance)
+    } else {
+        bar()
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } => foo(distance),
+        _ => bar(),
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_split_import() {
+    check(
+        "split_import",
+        r#####"
+use std::<|>collections::HashMap;
+"#####,
+        r#####"
+use std::{collections::HashMap};
 "#####,
     )
 }

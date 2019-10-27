@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     SyntaxKind::{RAW_STRING, STRING},
@@ -9,6 +7,21 @@ use rustc_lexer;
 
 use crate::{Assist, AssistCtx, AssistId};
 
+// Assist: make_raw_string
+//
+// Adds `r#` to a plain string literal.
+//
+// ```
+// fn main() {
+//     "Hello,<|> World!";
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     r#"Hello, World!"#;
+// }
+// ```
 pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(STRING)?;
     let text = token.text().as_str();
@@ -40,6 +53,21 @@ pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     ctx.build()
 }
 
+// Assist: make_usual_string
+//
+// Turns a raw string into a plain string.
+//
+// ```
+// fn main() {
+//     r#"Hello,<|> "World!""#;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     "Hello, \"World!\"";
+// }
+// ```
 pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();
@@ -56,6 +84,21 @@ pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
     ctx.build()
 }
 
+// Assist: add_hash
+//
+// Adds a hash to a raw string literal.
+//
+// ```
+// fn main() {
+//     r#"Hello,<|> World!"#;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     r##"Hello, World!"##;
+// }
+// ```
 pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     ctx.add_action(AssistId("add_hash"), "add hash to raw string", |edit| {
@@ -66,6 +109,21 @@ pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     ctx.build()
 }
 
+// Assist: remove_hash
+//
+// Removes a hash from a raw string literal.
+//
+// ```
+// fn main() {
+//     r#"Hello,<|> World!"#;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     r"Hello, World!";
+// }
+// ```
 pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let text = token.text().as_str();

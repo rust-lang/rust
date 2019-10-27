@@ -38,6 +38,22 @@ fn main() {
 }
 ```
 
+## `add_hash`
+
+Adds a hash to a raw string literal.
+
+```rust
+// BEFORE
+fn main() {
+    r#"Hello,┃ World!"#;
+}
+
+// AFTER
+fn main() {
+    r##"Hello, World!"##;
+}
+```
+
 ## `add_impl`
 
 Adds a new inherent impl for a type.
@@ -266,6 +282,38 @@ fn main() {
 }
 ```
 
+## `make_raw_string`
+
+Adds `r#` to a plain string literal.
+
+```rust
+// BEFORE
+fn main() {
+    "Hello,┃ World!";
+}
+
+// AFTER
+fn main() {
+    r#"Hello, World!"#;
+}
+```
+
+## `make_usual_string`
+
+Turns a raw string into a plain string.
+
+```rust
+// BEFORE
+fn main() {
+    r#"Hello,┃ "World!""#;
+}
+
+// AFTER
+fn main() {
+    "Hello, \"World!\"";
+}
+```
+
 ## `merge_match_arms`
 
 Merges identical match arms.
@@ -357,4 +405,75 @@ fn handle(action: Action) {
         _ => (),
     }
 }
+```
+
+## `remove_dbg`
+
+Removes `dbg!()` macro call.
+
+```rust
+// BEFORE
+fn main() {
+    ┃dbg!(92);
+}
+
+// AFTER
+fn main() {
+    92;
+}
+```
+
+## `remove_hash`
+
+Removes a hash from a raw string literal.
+
+```rust
+// BEFORE
+fn main() {
+    r#"Hello,┃ World!"#;
+}
+
+// AFTER
+fn main() {
+    r"Hello, World!";
+}
+```
+
+## `replace_if_let_with_match`
+
+Replaces `if let` with an else branch with a `match` expression.
+
+```rust
+// BEFORE
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    ┃if let Action::Move { distance } = action {
+        foo(distance)
+    } else {
+        bar()
+    }
+}
+
+// AFTER
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move { distance } => foo(distance),
+        _ => bar(),
+    }
+}
+```
+
+## `split_import`
+
+Wraps the tail of import into braces.
+
+```rust
+// BEFORE
+use std::┃collections::HashMap;
+
+// AFTER
+use std::{collections::HashMap};
 ```
