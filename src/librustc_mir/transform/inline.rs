@@ -230,6 +230,11 @@ impl Inliner<'tcx> {
 
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
 
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
+            debug!("`#[track_caller]` present - not inlining");
+            return false;
+        }
+
         let hinted = match codegen_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
