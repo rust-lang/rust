@@ -237,7 +237,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
 }
 
 pub enum OrphanCheckErr<'tcx> {
-    NonLocalInputType(Vec<(Ty<'tcx>, bool)>),
+    NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
     UncoveredTy(Ty<'tcx>),
 }
 
