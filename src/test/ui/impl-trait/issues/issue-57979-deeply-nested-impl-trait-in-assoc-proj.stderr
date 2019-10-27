@@ -27,3 +27,4 @@ LL |     pub fn demo(_: impl Quux<Assoc=super::Deeper<impl Foo<impl Bar>>>) { }
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0666`.

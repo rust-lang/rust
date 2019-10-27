@@ -239,7 +239,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short(
                     colon_sp,
                     "use `=` if you meant to assign",
-                    "=".to_string(),
+                    " =".to_string(),
                     Applicability::MachineApplicable
                 );
                 err.emit();

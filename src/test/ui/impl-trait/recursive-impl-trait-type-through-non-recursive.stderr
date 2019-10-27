@@ -1,5 +1,5 @@
 error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:7:22
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:7:22
    |
 LL | fn recursive_id() -> impl Sized {
    |                      ^^^^^^^^^^ expands to a recursive type
@@ -7,7 +7,7 @@ LL | fn recursive_id() -> impl Sized {
    = note: type resolves to itself
 
 error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:11:23
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:11:23
    |
 LL | fn recursive_id2() -> impl Sized {
    |                       ^^^^^^^^^^ expands to a recursive type
@@ -15,7 +15,7 @@ LL | fn recursive_id2() -> impl Sized {
    = note: type resolves to itself
 
 error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:17:24
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:17:24
    |
 LL | fn recursive_wrap() -> impl Sized {
    |                        ^^^^^^^^^^ expands to a recursive type
@@ -23,7 +23,7 @@ LL | fn recursive_wrap() -> impl Sized {
    = note: expanded type is `((impl Sized,),)`
 
 error[E0720]: opaque type expands to a recursive type
-  --> $DIR/recursive-impl-trait-type--through-non-recursize.rs:21:25
+  --> $DIR/recursive-impl-trait-type-through-non-recursive.rs:21:25
    |
 LL | fn recursive_wrap2() -> impl Sized {
    |                         ^^^^^^^^^^ expands to a recursive type

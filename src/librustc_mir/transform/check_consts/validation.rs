@@ -1,24 +1,23 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc::hir::{self, def_id::DefId};
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
 use rustc::ty::cast::CastTy;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty;
 use rustc_index::bit_set::BitSet;
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
-use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
 
-use crate::dataflow as old_dataflow;
-use super::{Item, Qualif, is_lang_panic_fn};
-use super::resolver::{FlowSensitiveResolver, IndirectlyMutableResults, QualifResolver};
-use super::qualifs::{HasMutInterior, NeedsDrop};
+use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use self::old_dataflow::IndirectlyMutableLocals;
 use super::ops::{self, NonConstOp};
+use super::qualifs::{HasMutInterior, NeedsDrop};
+use super::resolver::FlowSensitiveAnalysis;
+use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckOpResult {
@@ -27,73 +26,75 @@ pub enum CheckOpResult {
     Allowed,
 }
 
-/// What kind of item we are in.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Mode {
-    /// A `static` item.
-    Static,
-    /// A `static mut` item.
-    StaticMut,
-    /// A `const fn` item.
-    ConstFn,
-    /// A `const` item or an anonymous constant (e.g. in array lengths).
-    Const,
+pub type IndirectlyMutableResults<'mir, 'tcx> =
+    old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
+
+struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
+    cursor: dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>>,
+    in_any_value_of_ty: BitSet<Local>,
 }
 
-impl Mode {
-    /// Returns the validation mode for the item with the given `DefId`, or `None` if this item
-    /// does not require validation (e.g. a non-const `fn`).
-    pub fn for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Self> {
-        use hir::BodyOwnerKind as HirKind;
+impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
+    pub fn new(
+        q: Q,
+        item: &'a Item<'mir, 'tcx>,
+        dead_unwinds: &BitSet<BasicBlock>,
+    ) -> Self {
+        let analysis = FlowSensitiveAnalysis::new(q, item);
+        let results =
+            dataflow::Engine::new(item.tcx, item.body, item.def_id, dead_unwinds, analysis)
+                .iterate_to_fixpoint();
+        let cursor = dataflow::ResultsCursor::new(item.body, results);
 
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-
-        let mode = match tcx.hir().body_owner_kind(hir_id) {
-            HirKind::Closure => return None,
-
-            HirKind::Fn if tcx.is_const_fn(def_id) => Mode::ConstFn,
-            HirKind::Fn => return None,
-
-            HirKind::Const => Mode::Const,
-
-            HirKind::Static(hir::MutImmutable) => Mode::Static,
-            HirKind::Static(hir::MutMutable) => Mode::StaticMut,
-        };
-
-        Some(mode)
-    }
-
-    pub fn is_static(self) -> bool {
-        match self {
-            Mode::Static | Mode::StaticMut => true,
-            Mode::ConstFn | Mode::Const => false,
+        let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
+        for (local, decl) in item.body.local_decls.iter_enumerated() {
+            if Q::in_any_value_of_ty(item, decl.ty) {
+                in_any_value_of_ty.insert(local);
+            }
         }
-    }
 
-    /// Returns `true` if the value returned by this item must be `Sync`.
-    ///
-    /// This returns false for `StaticMut` since all accesses to one are `unsafe` anyway.
-    pub fn requires_sync(self) -> bool {
-        match self {
-            Mode::Static => true,
-            Mode::ConstFn | Mode::Const |  Mode::StaticMut => false,
-        }
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Mode::Const => write!(f, "constant"),
-            Mode::Static | Mode::StaticMut => write!(f, "static"),
-            Mode::ConstFn => write!(f, "constant function"),
+        QualifCursor {
+            cursor,
+            in_any_value_of_ty,
         }
     }
 }
 
 pub struct Qualifs<'a, 'mir, 'tcx> {
-    has_mut_interior: FlowSensitiveResolver<'a, 'mir, 'tcx, HasMutInterior>,
-    needs_drop: FlowSensitiveResolver<'a, 'mir, 'tcx, NeedsDrop>,
+    has_mut_interior: QualifCursor<'a, 'mir, 'tcx, HasMutInterior>,
+    needs_drop: QualifCursor<'a, 'mir, 'tcx, NeedsDrop>,
+    indirectly_mutable: IndirectlyMutableResults<'mir, 'tcx>,
+}
+
+impl Qualifs<'a, 'mir, 'tcx> {
+    fn indirectly_mutable(&mut self, local: Local, location: Location) -> bool {
+        self.indirectly_mutable.seek(location);
+        self.indirectly_mutable.get().contains(local)
+    }
+
+    /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
+    ///
+    /// Only updates the cursor if absolutely necessary
+    fn needs_drop_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+        if !self.needs_drop.in_any_value_of_ty.contains(local) {
+            return false;
+        }
+
+        self.needs_drop.cursor.seek_before(location);
+        self.needs_drop.cursor.get().contains(local)
+            || self.indirectly_mutable(local, location)
+    }
+
+    /// Returns `true` if `local` is `HasMutInterior`, but requires the `has_mut_interior` and
+    /// `indirectly_mutable` cursors to be updated beforehand.
+    fn has_mut_interior_eager_seek(&self, local: Local) -> bool {
+        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
+            return false;
+        }
+
+        self.has_mut_interior.cursor.get().contains(local)
+            || self.indirectly_mutable.get().contains(local)
+    }
 }
 
 pub struct Validator<'a, 'mir, 'tcx> {
@@ -128,53 +129,43 @@ impl Deref for Validator<'_, 'mir, 'tcx> {
     }
 }
 
-pub fn compute_indirectly_mutable_locals<'mir, 'tcx>(
-    item: &Item<'mir, 'tcx>,
-) -> RefCell<IndirectlyMutableResults<'mir, 'tcx>> {
-    let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
-
-    let indirectly_mutable_locals = old_dataflow::do_dataflow(
-        item.tcx,
-        item.body,
-        item.def_id,
-        &item.tcx.get_attrs(item.def_id),
-        &dead_unwinds,
-        old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
-        |_, local| old_dataflow::DebugFormatted::new(&local),
-    );
-
-    let indirectly_mutable_locals = old_dataflow::DataflowResultsCursor::new(
-        indirectly_mutable_locals,
-        item.body,
-    );
-
-    RefCell::new(indirectly_mutable_locals)
-}
-
 impl Validator<'a, 'mir, 'tcx> {
     pub fn new(
         item: &'a Item<'mir, 'tcx>,
-        indirectly_mutable_locals: &'a RefCell<IndirectlyMutableResults<'mir, 'tcx>>,
     ) -> Self {
         let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
 
-        let needs_drop = FlowSensitiveResolver::new(
+        let needs_drop = QualifCursor::new(
             NeedsDrop,
             item,
-            indirectly_mutable_locals,
             &dead_unwinds,
         );
 
-        let has_mut_interior = FlowSensitiveResolver::new(
+        let has_mut_interior = QualifCursor::new(
             HasMutInterior,
             item,
-            indirectly_mutable_locals,
             &dead_unwinds,
+        );
+
+        let indirectly_mutable = old_dataflow::do_dataflow(
+            item.tcx,
+            item.body,
+            item.def_id,
+            &item.tcx.get_attrs(item.def_id),
+            &dead_unwinds,
+            old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body, item.param_env),
+            |_, local| old_dataflow::DebugFormatted::new(&local),
+        );
+
+        let indirectly_mutable = old_dataflow::DataflowResultsCursor::new(
+            indirectly_mutable,
+            item.body,
         );
 
         let qualifs = Qualifs {
             needs_drop,
             has_mut_interior,
+            indirectly_mutable,
         };
 
         Validator {
@@ -185,14 +176,6 @@ impl Validator<'a, 'mir, 'tcx> {
             derived_from_illegal_borrow: BitSet::new_empty(item.body.local_decls.len()),
             suppress_errors: false,
         }
-    }
-
-    /// Resets the `QualifResolver`s used by this `Validator` and returns them so they can be
-    /// reused.
-    pub fn into_qualifs(mut self) -> Qualifs<'a, 'mir, 'tcx> {
-        self.qualifs.needs_drop.reset();
-        self.qualifs.has_mut_interior.reset();
-        self.qualifs
     }
 
     pub fn take_errors(&mut self) -> Vec<(Span, String)> {
@@ -343,7 +326,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let is_thread_local = self.tcx.has_attr(*def_id, sym::thread_local);
                 if is_thread_local {
                     self.check_op(ops::ThreadLocalAccess);
-                } else if self.mode == Mode::Static && context.is_mutating_use() {
+                } else if self.const_kind() == ConstKind::Static && context.is_mutating_use() {
                     // this is not strictly necessary as miri will also bail out
                     // For interior mutability we can't really catch this statically as that
                     // goes through raw pointers and intermediate temporaries, so miri has
@@ -369,10 +352,16 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         // it depends on `HasMutInterior` being set for mutable borrows as well as values with
         // interior mutability.
         if let Rvalue::Ref(_, kind, ref borrowed_place) = *rvalue {
-            let rvalue_has_mut_interior = {
-                let has_mut_interior = self.qualifs.has_mut_interior.get();
-                HasMutInterior::in_rvalue(&self.item, &|l| has_mut_interior.contains(l), rvalue)
-            };
+            // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually seek
+            // the cursors beforehand.
+            self.qualifs.has_mut_interior.cursor.seek_before(location);
+            self.qualifs.indirectly_mutable.seek(location);
+
+            let rvalue_has_mut_interior = HasMutInterior::in_rvalue(
+                &self.item,
+                &|local| self.qualifs.has_mut_interior_eager_seek(local),
+                rvalue,
+            );
 
             if rvalue_has_mut_interior {
                 let is_derived_from_illegal_borrow = match borrowed_place.as_local() {
@@ -467,9 +456,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         trace!("visit_statement: statement={:?} location={:?}", statement, location);
 
-        self.qualifs.needs_drop.visit_statement(statement, location);
-        self.qualifs.has_mut_interior.visit_statement(statement, location);
-
         match statement.kind {
             StatementKind::Assign(..) => {
                 self.super_statement(statement, location);
@@ -487,15 +473,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::AscribeUserType(..) |
             StatementKind::Nop => {}
         }
-    }
-
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
-
-        self.qualifs.needs_drop.visit_terminator(terminator, location);
-        self.qualifs.has_mut_interior.visit_terminator(terminator, location);
-
-        self.super_terminator(terminator, location);
     }
 
     fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
@@ -576,7 +553,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_drop.contains(local)
+                    self.qualifs.needs_drop_lazy_seek(local, location)
                 } else {
                     true
                 };

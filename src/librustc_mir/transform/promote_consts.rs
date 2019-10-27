@@ -12,7 +12,6 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
-use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
@@ -30,7 +29,7 @@ use rustc_target::spec::abi::Abi;
 
 use std::{iter, mem, usize};
 
-use crate::transform::check_consts::{qualifs, Item as ConstCx};
+use crate::transform::check_consts::{qualifs, Item, ConstKind, is_lang_panic_fn};
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -224,17 +223,12 @@ pub fn collect_temps_and_candidates(
     (collector.temps, collector.candidates)
 }
 
+/// Checks whether locals that appear in a promotion context (`Candidate`) are actually promotable.
+///
+/// This wraps an `Item`, and has access to all fields of that `Item` via `Deref` coercion.
 struct Validator<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    body: &'a Body<'tcx>,
-    is_static: bool,
-    is_static_mut: bool,
-    is_non_const_fn: bool,
+    item: Item<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
-
-    // FIXME(eddyb) deduplicate the data in this vs other fields.
-    const_cx: ConstCx<'a, 'tcx>,
 
     /// Explicit promotion happens e.g. for constant arguments declared via
     /// `rustc_args_required_const`.
@@ -245,14 +239,17 @@ struct Validator<'a, 'tcx> {
     explicit: bool,
 }
 
+impl std::ops::Deref for Validator<'a, 'tcx> {
+    type Target = Item<'a, 'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item
+    }
+}
+
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
-    fn is_const_panic_fn(&self, def_id: DefId) -> bool {
-        Some(def_id) == self.tcx.lang_items().panic_fn() ||
-        Some(def_id) == self.tcx.lang_items().begin_panic_fn()
-    }
-
     fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
         match candidate {
             Candidate::Ref(loc) => {
@@ -317,13 +314,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if self.qualif_local::<qualifs::NeedsDrop>(base) {
                             return Err(Unpromotable);
                         }
+
                         if let BorrowKind::Mut { .. } = kind {
                             let ty = place.ty(self.body, self.tcx).ty;
 
                             // In theory, any zero-sized value could be borrowed
                             // mutably without consequences. However, only &mut []
                             // is allowed right now, and only in functions.
-                            if self.is_static_mut {
+                            if self.const_kind == Some(ConstKind::StaticMut) {
                                 // Inside a `static mut`, &mut [...] is also allowed.
                                 match ty.kind {
                                     ty::Array(..) | ty::Slice(_) => {}
@@ -333,7 +331,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 // FIXME(eddyb) the `self.is_non_const_fn` condition
                                 // seems unnecessary, given that this is merely a ZST.
                                 match len.try_eval_usize(self.tcx, self.param_env) {
-                                    Some(0) if self.is_non_const_fn => {},
+                                    Some(0) if self.const_kind.is_none() => {},
                                     _ => return Err(Unpromotable),
                                 }
                             } else {
@@ -386,7 +384,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box(_, rhs)) => {
-                        Q::in_rvalue(&self.const_cx, per_local, rhs)
+                        Q::in_rvalue(&self.item, per_local, rhs)
                     }
                     _ => {
                         span_bug!(statement.source_info.span, "{:?} is not an assignment",
@@ -398,7 +396,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match &terminator.kind {
                     TerminatorKind::Call { func, args, .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_call(&self.const_cx, per_local, func, args, return_ty)
+                        Q::in_call(&self.item, per_local, func, args, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -462,8 +460,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             } => {
                 // Only allow statics (not consts) to refer to other statics.
                 // FIXME(eddyb) does this matter at all for promotion?
-                let allowed = self.is_static || self.is_static_mut;
-                if !allowed {
+                let is_static = self.const_kind.map_or(false, |k| k.is_static());
+                if !is_static {
                     return Err(Unpromotable);
                 }
 
@@ -490,7 +488,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
 
                     ProjectionElem::Field(..) => {
-                        if self.is_non_const_fn {
+                        if self.const_kind.is_none() {
                             let base_ty =
                                 Place::ty_from(place.base, proj_base, self.body, self.tcx).ty;
                             if let Some(def) = base_ty.ty_adt_def() {
@@ -545,7 +543,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if self.is_non_const_fn => {
+            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if self.const_kind.is_none() => {
                 let operand_ty = operand.ty(self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
@@ -559,7 +557,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) if self.is_non_const_fn => {
+            Rvalue::BinaryOp(op, ref lhs, _) if self.const_kind.is_none() => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
@@ -600,17 +598,17 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.
-                    if self.is_static_mut {
+                    if self.const_kind == Some(ConstKind::StaticMut) {
                         // Inside a `static mut`, &mut [...] is also allowed.
                         match ty.kind {
                             ty::Array(..) | ty::Slice(_) => {}
                             _ => return Err(Unpromotable),
                         }
                     } else if let ty::Array(_, len) = ty.kind {
-                        // FIXME(eddyb) the `self.is_non_const_fn` condition
-                        // seems unnecessary, given that this is merely a ZST.
+                        // FIXME(eddyb): We only return `Unpromotable` for `&mut []` inside a
+                        // const context which seems unnecessary given that this is merely a ZST.
                         match len.try_eval_usize(self.tcx, self.param_env) {
-                            Some(0) if self.is_non_const_fn => {},
+                            Some(0) if self.const_kind.is_none() => {},
                             _ => return Err(Unpromotable),
                         }
                     } else {
@@ -683,7 +681,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        if !self.explicit && self.is_non_const_fn {
+        if !self.explicit && self.const_kind.is_none() {
             if let ty::FnDef(def_id, _) = fn_ty.kind {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
@@ -697,7 +695,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             ty::FnDef(def_id, _) => {
                 self.tcx.is_const_fn(def_id) ||
                 self.tcx.is_unstable_const_fn(def_id).is_some() ||
-                self.is_const_panic_fn(def_id)
+                is_lang_panic_fn(self.tcx, self.def_id)
             }
             _ => false,
         };
@@ -714,6 +712,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 }
 
+// FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 pub fn validate_candidates(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -722,32 +721,10 @@ pub fn validate_candidates(
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
     let mut validator = Validator {
-        tcx,
-        param_env: tcx.param_env(def_id),
-        body,
-        is_static: false,
-        is_static_mut: false,
-        is_non_const_fn: false,
+        item: Item::new(tcx, def_id, body),
         temps,
-
-        const_cx: ConstCx::for_promotion(tcx, def_id, body),
-
         explicit: false,
     };
-
-    // FIXME(eddyb) remove the distinctions that make this necessary.
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    match tcx.hir().body_owner_kind(id) {
-        hir::BodyOwnerKind::Closure => validator.is_non_const_fn = true,
-        hir::BodyOwnerKind::Fn => {
-            if !tcx.is_const_fn(def_id) {
-                validator.is_non_const_fn = true;
-            }
-        },
-        hir::BodyOwnerKind::Static(hir::MutImmutable) => validator.is_static = true,
-        hir::BodyOwnerKind::Static(hir::MutMutable) => validator.is_static_mut = true,
-        _ => {}
-    }
 
     candidates.iter().copied().filter(|&candidate| {
         validator.explicit = match candidate {
