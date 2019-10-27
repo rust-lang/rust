@@ -720,23 +720,25 @@ impl<'tcx> Constructor<'tcx> {
     /// must have as many elements as this constructor's arity.
     ///
     /// Examples:
-    /// self: Single
-    /// ty: tuple of 3 elements
-    /// pats: [10, 20, _]           => (10, 20, _)
+    /// `self`: `Constructor::Single`
+    /// `ty`: `(u32, u32, u32)`
+    /// `pats`: `[10, 20, _]`
+    /// returns `(10, 20, _)`
     ///
-    /// self: Option::Some
-    /// ty: Option<bool>
-    /// pats: [false]  => Some(false)
+    /// `self`: `Constructor::Variant(Option::Some)`
+    /// `ty`: `Option<bool>`
+    /// `pats`: `[false]`
+    /// returns `Some(false)`
     fn apply<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ty: Ty<'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Pat<'tcx> {
-        let mut pats = pats.into_iter();
+        let mut subpatterns = pats.into_iter();
         let pat = match ty.kind {
             ty::Adt(..) | ty::Tuple(..) => {
-                let pats = pats
+                let subpatterns = subpatterns
                     .enumerate()
                     .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
                     .collect();
@@ -747,20 +749,20 @@ impl<'tcx> Constructor<'tcx> {
                             adt_def: adt,
                             substs,
                             variant_index: self.variant_index_for_adt(cx, adt),
-                            subpatterns: pats,
+                            subpatterns,
                         }
                     } else {
-                        PatKind::Leaf { subpatterns: pats }
+                        PatKind::Leaf { subpatterns }
                     }
                 } else {
-                    PatKind::Leaf { subpatterns: pats }
+                    PatKind::Leaf { subpatterns }
                 }
             }
 
-            ty::Ref(..) => PatKind::Deref { subpattern: pats.nth(0).unwrap() },
+            ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
 
             ty::Slice(_) | ty::Array(..) => {
-                PatKind::Slice { prefix: pats.collect(), slice: None, suffix: vec![] }
+                PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
             }
 
             _ => match *self {
@@ -779,8 +781,8 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let pats = self.wildcard_subpatterns(cx, ty).rev();
-        self.apply(cx, ty, pats)
+        let subpatterns = self.wildcard_subpatterns(cx, ty).rev();
+        self.apply(cx, ty, subpatterns)
     }
 }
 
