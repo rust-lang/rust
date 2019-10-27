@@ -873,6 +873,16 @@ fn test_iterator_take_while() {
 }
 
 #[test]
+fn test_iterator_map_while() {
+    let xs = [3, 2, 1, 0, 1, 2, 3];
+    let mut iter = xs.iter().map_while(|&x| 6_i32.checked_div(x));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(6));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_iterator_skip_while() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [15, 16, 17, 19];
@@ -1479,6 +1489,7 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().take(5).size_hint(), (5, Some(5)));
     assert_eq!(c.clone().skip(5).size_hint().1, None);
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
+    assert_eq!(c.clone().map_while(Some).size_hint(), (0, None));
     assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().enumerate().size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (usize::MAX, None));
@@ -1493,6 +1504,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().skip(3).size_hint(), (7, Some(7)));
     assert_eq!(vi.clone().skip(12).size_hint(), (0, Some(0)));
     assert_eq!(vi.clone().take_while(|_| false).size_hint(), (0, Some(10)));
+    assert_eq!(vi.clone().map_while(Some).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().skip_while(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().enumerate().size_hint(), (10, Some(10)));
     assert_eq!(vi.clone().chain(v2).size_hint(), (13, Some(13)));
@@ -2662,6 +2674,23 @@ fn test_take_while_folds() {
     let mut iter = (10..50).take_while(|&x| x != 40);
     assert_eq!(iter.try_fold(0, i8::checked_add), None);
     assert_eq!(iter.next(), Some(20));
+}
+
+#[test]
+fn test_map_while_folds() {
+    let mut iter = "defghi".chars().map_while(|c| c.to_digit(16));
+    let mut next = || iter.try_fold((), |(), x| Err(x)).err();
+    assert_eq!(next(), Some(13));
+    assert_eq!(next(), Some(14));
+    assert_eq!(next(), Some(15));
+    assert_eq!(next(), None);
+
+    let mut iter = "abcdefghi".chars().map_while(|c| c.to_digit(16));
+    let f = |x: u8, y: u32| x.checked_mul(3)?.checked_add(y as u8);
+    assert_eq!(iter.try_fold(0, f), None);
+    assert_eq!(iter.clone().next(), Some(14));
+    assert_eq!(iter.try_fold(0, f), Some(57));
+    assert_eq!(iter.next(), None);
 }
 
 #[test]

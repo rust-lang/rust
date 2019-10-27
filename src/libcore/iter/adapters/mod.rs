@@ -1613,6 +1613,103 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
 impl<I, P> FusedIterator for TakeWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
 
+/// An iterator that only transforms elements as long as the transformation succeeds.
+///
+/// This `struct` is created by the [`map_while`] method on [`Iterator`]. See its
+/// documentation for more.
+///
+/// [`map_while`]: trait.Iterator.html#method.map_while
+/// [`Iterator`]: trait.Iterator.html
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "iter_map_while", issue = "0")]
+#[derive(Clone)]
+pub struct MapWhile<I, F> {
+    iter: I,
+    flag: bool,
+    f: F,
+}
+
+impl<I, F> MapWhile<I, F> {
+    pub(super) fn new(iter: I, f: F) -> Self {
+        Self {
+            iter,
+            flag: false,
+            f,
+        }
+    }
+}
+
+#[unstable(feature = "iter_map_while", issue = "0")]
+impl<I: fmt::Debug, F> fmt::Debug for MapWhile<I, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MapWhile")
+            .field("iter", &self.iter)
+            .field("flag", &self.flag)
+            .finish()
+    }
+}
+
+#[unstable(feature = "iter_map_while", issue = "0")]
+impl<I: Iterator, B, F> Iterator for MapWhile<I, F>
+where
+    F: FnMut(I::Item) -> Option<B>,
+{
+    type Item = B;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.find(|_| true)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.flag {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper) // can't know a lower bound, due to the predicate
+        }
+    }
+
+    #[inline]
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        fn map<'a, T, B, Acc, R: Try<Ok = Acc>>(
+            flag: &'a mut bool,
+            f: &'a mut impl FnMut(T) -> Option<B>,
+            mut fold: impl FnMut(Acc, B) -> R + 'a,
+        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
+            move |acc, x| match f(x) {
+                None => {
+                    *flag = true;
+                    LoopState::Break(Try::from_ok(acc))
+                }
+                Some(x) => LoopState::from_try(fold(acc, x)),
+            }
+        }
+
+        if self.flag {
+            Try::from_ok(init)
+        } else {
+            let flag = &mut self.flag;
+            let f = &mut self.f;
+            self.iter.try_fold(init, map(flag, f, fold)).into_try()
+        }
+    }
+}
+
+#[unstable(feature = "iter_map_while", issue = "0")]
+impl<I, B, F> FusedIterator for MapWhile<I, F>
+where
+    I: FusedIterator,
+    F: FnMut(I::Item) -> Option<B>,
+{
+}
+
 /// An iterator that skips over `n` elements of `iter`.
 ///
 /// This `struct` is created by the [`skip`] method on [`Iterator`]. See its

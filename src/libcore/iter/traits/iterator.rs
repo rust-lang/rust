@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use crate::cmp::{self, Ordering};
 use crate::ops::{Add, Try};
 
@@ -5,7 +7,7 @@ use super::super::LoopState;
 use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{Flatten, FlatMap};
 use super::super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
-use super::super::{Zip, Sum, Product, FromIterator};
+use super::super::{Zip, Sum, Product, FromIterator, MapWhile};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 
@@ -971,6 +973,57 @@ pub trait Iterator {
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
         TakeWhile::new(self, predicate)
+    }
+
+    /// Creates an iterator that transforms elements until a transformation fails.
+    ///
+    /// `map_while` creates an iterator that calls the given closure on each
+    /// element. If the closure returns [`Some(element)`][`Some`], then that
+    /// element is returned. If the closure returns [`None`], then iteration stops.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_map_while)]
+    ///
+    /// let iter = (0..).map_while(|x| std::char::from_digit(x, 16));
+    /// assert!(iter.eq("0123456789abcdef".chars()));
+    /// ```
+    ///
+    /// Note that `map_while` consumes the first element of the iterator for
+    /// which the transformation fails:
+    ///
+    /// ```
+    /// #![feature(iter_map_while)]
+    ///
+    /// use std::convert::TryFrom;
+    ///
+    /// let xs: &[i32] = &[2, 1, 0, -1, -2];
+    /// let mut iter = xs.iter();
+    ///
+    /// // the first three elements are collected, and the fourth element is discarded
+    /// let vec: Vec<_> = iter
+    ///     .by_ref()
+    ///     .map_while(|&x| u32::try_from(x).ok())
+    ///     .collect();
+    ///
+    /// assert_eq!(vec, vec![2, 1, 0]);
+    /// assert_eq!(iter.next(), Some(&-2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    #[inline]
+    #[unstable(feature = "iter_map_while", issue = "0")]
+    fn map_while<B, F>(self, f: F) -> MapWhile<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Option<B>,
+    {
+        MapWhile::new(self, f)
     }
 
     /// Creates an iterator that skips the first `n` elements.

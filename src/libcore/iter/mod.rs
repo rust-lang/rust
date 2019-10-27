@@ -348,7 +348,7 @@ pub use self::traits::TrustedLen;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Rev, Cycle, Chain, Zip, Map, Filter, FilterMap, Enumerate};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{Peekable, SkipWhile, TakeWhile, Skip, Take, Scan, FlatMap};
+pub use self::adapters::{Peekable, SkipWhile, TakeWhile, MapWhile, Skip, Take, Scan, FlatMap};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Fuse, Inspect};
 #[stable(feature = "iter_cloned", since = "1.1.0")]
