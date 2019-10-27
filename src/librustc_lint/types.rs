@@ -891,11 +891,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         sp: Span,
         note: &str,
         help: Option<&str>,
+        is_foreign_item: bool,
     ) {
         let mut diag = self.cx.struct_span_lint(
             IMPROPER_CTYPES,
             sp,
-            &format!("`extern` block uses type `{}`, which is not FFI-safe", ty),
+            &format!(
+                "`extern` {} uses type `{}`, which is not FFI-safe",
+                if is_foreign_item { "block" } else { "fn" },
+                ty,
+            ),
         );
         diag.span_label(sp, "not FFI-safe");
         if let Some(help) = help {
@@ -910,7 +915,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         diag.emit();
     }
 
-    fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
+    fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>, is_foreign_item: bool) -> bool {
         struct ProhibitOpaqueTypes<'tcx> {
             ty: Option<Ty<'tcx>>,
         };
@@ -934,6 +939,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 sp,
                 "opaque types have no C equivalent",
                 None,
+                is_foreign_item,
             );
             true
         } else {
@@ -941,10 +947,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
+    fn check_type_for_ffi_and_report_errors(
+        &mut self,
+        sp: Span,
+        ty: Ty<'tcx>,
+        is_foreign_item: bool,
+    ) {
         // We have to check for opaque types before `normalize_erasing_regions`,
         // which will replace opaque types with their underlying concrete type.
-        if self.check_for_opaque_ty(sp, ty) {
+        if self.check_for_opaque_ty(sp, ty, is_foreign_item) {
             // We've already emitted an error due to an opaque type.
             return;
         }
@@ -953,27 +964,29 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, "composed only of `PhantomData`", None);
+                self.emit_ffi_unsafe_type_lint(
+                    ty, sp, "composed only of `PhantomData`", None, is_foreign_item);
             }
             FfiResult::FfiUnsafe { ty, reason, help } => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
+                self.emit_ffi_unsafe_type_lint(
+                    ty, sp, reason, help, is_foreign_item);
             }
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl) {
+    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl, is_foreign_item: bool) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
+            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, is_foreign_item);
         }
 
         if let hir::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
             if !ret_ty.is_unit() {
-                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
+                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, is_foreign_item);
             }
         }
     }
@@ -981,7 +994,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let ty = self.cx.tcx.type_of(def_id);
-        self.check_type_for_ffi_and_report_errors(span, ty);
+        self.check_type_for_ffi_and_report_errors(span, ty, true);
     }
 
     fn is_internal_abi(&self, abi: Abi) -> bool {
@@ -1000,7 +1013,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
         if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id, decl);
+                    vis.check_foreign_fn(it.hir_id, decl, true);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
                     vis.check_foreign_static(it.hir_id, ty.span);
@@ -1029,7 +1042,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
 
         let mut vis = ImproperCTypesVisitor { cx };
         if !vis.is_internal_abi(abi) {
-            vis.check_foreign_fn(hir_id, decl);
+            vis.check_foreign_fn(hir_id, decl, false);
         }
     }
 }
