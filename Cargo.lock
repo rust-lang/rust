@@ -3135,7 +3135,6 @@ dependencies = [
  "serialize",
  "smallvec",
  "syntax",
- "syntax_expand",
  "syntax_pos",
 ]
 
@@ -3451,7 +3450,6 @@ dependencies = [
  "rustc_target",
  "serialize",
  "syntax",
- "syntax_expand",
  "syntax_pos",
  "tempfile",
 ]
@@ -3707,7 +3705,6 @@ dependencies = [
  "rustc_index",
  "rustc_target",
  "syntax",
- "syntax_expand",
  "syntax_pos",
 ]
 

@@ -18,7 +18,7 @@ use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast::*;
 use syntax::visit::{self, Visitor};
-use syntax_expand::base::SpecialDerives;
+use syntax::expand::SpecialDerives;
 use syntax::source_map::{respan, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;

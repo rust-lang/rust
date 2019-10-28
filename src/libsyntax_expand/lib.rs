@@ -28,9 +28,8 @@ macro_rules! panictry {
 mod placeholders;
 mod proc_macro_server;
 
-pub use syntax_pos::hygiene;
+crate use syntax_pos::hygiene;
 pub use mbe::macro_rules::compile_declarative_macro;
-pub mod allocator;
 pub mod base;
 pub mod build;
 pub mod expand;

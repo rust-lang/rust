@@ -288,6 +288,27 @@ pub fn stream_to_parser_with_base_dir<'a>(
     Parser::new(sess, stream, Some(base_dir), true, false, None)
 }
 
+/// Runs the given subparser `f` on the tokens of the given `attr`'s item.
+pub fn parse_in_attr<'a, T>(
+    sess: &'a ParseSess,
+    attr: &ast::Attribute,
+    mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+) -> PResult<'a, T> {
+    let mut parser = Parser::new(
+        sess,
+        attr.tokens.clone(),
+        None,
+        false,
+        false,
+        Some("attribute"),
+    );
+    let result = f(&mut parser)?;
+    if parser.token != token::Eof {
+        parser.unexpected()?;
+    }
+    Ok(result)
+}
+
 // NOTE(Centril): The following probably shouldn't be here but it acknowledges the
 // fact that architecturally, we are using parsing (read on below to understand why).
 

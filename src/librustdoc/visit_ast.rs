@@ -8,9 +8,9 @@ use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::ty::TyCtxt;
 use syntax::ast;
-use syntax_expand::base::MacroKind;
 use syntax::source_map::Spanned;
 use syntax::symbol::sym;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{self, Span};
 
 use std::mem;

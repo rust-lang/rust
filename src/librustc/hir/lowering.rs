@@ -64,7 +64,7 @@ use syntax::ast;
 use syntax::ptr::P as AstP;
 use syntax::ast::*;
 use syntax::errors;
-use syntax_expand::base::SpecialDerives;
+use syntax::expand::SpecialDerives;
 use syntax::print::pprust;
 use syntax::parse::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};

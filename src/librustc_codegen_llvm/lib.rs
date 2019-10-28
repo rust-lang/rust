@@ -39,7 +39,6 @@ extern crate rustc_driver as _;
 
 #[macro_use] extern crate log;
 extern crate syntax;
-extern crate syntax_expand;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
@@ -49,7 +48,7 @@ use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModul
 use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
-use syntax_expand::allocator::AllocatorKind;
+use syntax::expand::allocator::AllocatorKind;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::Arc;

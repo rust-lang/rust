@@ -14,7 +14,7 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
-use syntax_expand::proc_macro::is_proc_macro_attr;
+use syntax::expand::is_proc_macro_attr;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
