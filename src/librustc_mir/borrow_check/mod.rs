@@ -10,7 +10,7 @@ use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
     ClearCrossCrate, Local, Location, Body, BodyCache, Mutability, Operand, Place, PlaceBase,
-    PlaceElem, PlaceRef, ReadOnlyBodyCache, Static, StaticKind
+    PlaceElem, PlaceRef, ReadOnlyBodyCache, Static, StaticKind, read_only
 };
 use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
@@ -167,8 +167,8 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut body_cache = BodyCache::new(body);
     let free_regions =
         nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body_cache, &mut promoted);
-    let body_cache = body_cache.read_only(); // no further changes
-    let promoted: IndexVec<_, _> = promoted.iter().map(|body_cache| body_cache.read_only()).collect();
+    let body_cache = read_only!(body_cache); // no further changes
+    let promoted: IndexVec<_, _> = promoted.iter_mut().map(|body_cache| read_only!(body_cache)).collect();
 
     let location_table = &LocationTable::new(&body_cache);
 
@@ -492,7 +492,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
     type FlowState = Flows<'cx, 'tcx>;
 
     fn body(&self) -> &'cx Body<'tcx> {
-        &self.body_cache
+        self.body_cache.body()
     }
 
     fn visit_block_entry(&mut self, bb: BasicBlock, flow_state: &Self::FlowState) {

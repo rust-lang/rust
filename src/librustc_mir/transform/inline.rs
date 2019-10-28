@@ -514,7 +514,7 @@ impl Inliner<'tcx> {
         &self,
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
-        caller_body: &mut Body<'tcx>,
+        caller_body_cache: &mut BodyCache<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -543,12 +543,12 @@ impl Inliner<'tcx> {
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
-            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
+            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body_cache);
+            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body_cache);
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.kind {
+            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body_cache.body(), tcx).ty.kind {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");
@@ -568,13 +568,13 @@ impl Inliner<'tcx> {
                     ));
 
                     // Spill to a local to make e.g., `tmp0`.
-                    self.create_temp_if_necessary(tuple_field, callsite, caller_body)
+                    self.create_temp_if_necessary(tuple_field, callsite, caller_body_cache)
                 });
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
             args.into_iter()
-                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body))
+                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body_cache))
                 .collect()
         }
     }
@@ -585,14 +585,14 @@ impl Inliner<'tcx> {
         &self,
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
-        caller_body: &mut Body<'tcx>,
+        caller_body_cache: &mut BodyCache<'tcx>,
     ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
         if let Operand::Move(place) = &arg {
             if let Some(local) = place.as_local() {
-                if caller_body.local_kind(local) == LocalKind::Temp {
+                if caller_body_cache.local_kind(local) == LocalKind::Temp {
                     // Reuse the operand if it's a temporary already
                     return local;
                 }
@@ -603,16 +603,16 @@ impl Inliner<'tcx> {
         // Otherwise, create a temporary for the arg
         let arg = Rvalue::Use(arg);
 
-        let ty = arg.ty(caller_body, self.tcx);
+        let ty = arg.ty(caller_body_cache.body(), self.tcx);
 
         let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
-        let arg_tmp = caller_body.local_decls.push(arg_tmp);
+        let arg_tmp = caller_body_cache.local_decls.push(arg_tmp);
 
         let stmt = Statement {
             source_info: callsite.location,
             kind: StatementKind::Assign(box(Place::from(arg_tmp), arg)),
         };
-        caller_body[callsite.bb].statements.push(stmt);
+        caller_body_cache[callsite.bb].statements.push(stmt);
         arg_tmp
     }
 }

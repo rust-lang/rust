@@ -759,7 +759,7 @@ fn compute_layout<'tcx>(
     // Use a liveness analysis to compute locals which are live across a suspension point
     let LivenessInfo {
         live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness
-    } = locals_live_across_suspend_points(tcx, body_cache.read_only(), source, movable);
+    } = locals_live_across_suspend_points(tcx, read_only!(body_cache), source, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types

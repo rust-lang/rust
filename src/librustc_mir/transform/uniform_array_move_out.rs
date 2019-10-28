@@ -41,8 +41,9 @@ impl<'tcx> MirPass<'tcx> for UniformArrayMoveOut {
         let mut patch = MirPatch::new(body_cache);
         let param_env = tcx.param_env(src.def_id());
         {
+            let read_only_cache = read_only!(body_cache);
             let mut visitor = UniformArrayMoveOutVisitor{ body: body_cache, patch: &mut patch, tcx, param_env};
-            visitor.visit_body(body_cache.read_only());
+            visitor.visit_body(read_only_cache);
         }
         patch.apply(body_cache);
     }
@@ -188,11 +189,12 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
         let mut patch = MirPatch::new(body_cache);
         let param_env = tcx.param_env(src.def_id());
         {
+            let read_only_cache = read_only!(body_cache);
             let mut visitor = RestoreDataCollector {
                 locals_use: IndexVec::from_elem(LocalUse::new(), &body_cache.local_decls),
                 candidates: vec![],
             };
-            visitor.visit_body(body_cache.read_only());
+            visitor.visit_body(read_only_cache);
 
             for candidate in &visitor.candidates {
                 let statement = &body_cache[candidate.block].statements[candidate.statement_index];

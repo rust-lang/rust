@@ -125,6 +125,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
 
     debug!("make_shim({:?}) = {:?}", instance, result.body());
 
+    result.ensure_predecessors();
     tcx.arena.alloc(result)
 }
 
@@ -928,5 +929,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyCache<'_> {
         |_, _| Ok(()),
     );
 
-    tcx.arena.alloc(BodyCache::new(body))
+    let mut body_cache = BodyCache::new(body);
+    body_cache.ensure_predecessors();
+    tcx.arena.alloc(body_cache)
 }

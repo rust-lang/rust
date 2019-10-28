@@ -21,7 +21,7 @@
 
 use rustc::mir::{
     Constant, Local, LocalKind, Location, Place, Body, BodyCache, Operand, Rvalue,
-    StatementKind
+    StatementKind, read_only
 };
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -40,10 +40,10 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
 
         let mut def_use_analysis = DefUseAnalysis::new(body_cache);
         loop {
-            def_use_analysis.analyze(body_cache.read_only());
+            def_use_analysis.analyze(read_only!(body_cache));
 
             if eliminate_self_assignments(body_cache, &def_use_analysis) {
-                def_use_analysis.analyze(body_cache.read_only());
+                def_use_analysis.analyze(read_only!(body_cache));
             }
 
             let mut changed = false;

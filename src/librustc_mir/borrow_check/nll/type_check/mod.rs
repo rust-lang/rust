@@ -540,7 +540,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
 
-        let parent_body = mem::replace(&mut self.body, &promoted_body_cache);
+        let parent_body = mem::replace(&mut self.body, promoted_body_cache.body());
 
         // Use new sets of constraints and closure bounds so that we can
         // modify their locations.

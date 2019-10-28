@@ -516,7 +516,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
 
     // N.B., this borrow is valid because all the consumers of
     // `mir_built` force this.
-    let body = &tcx.mir_built(def_id).borrow();
+    let body_cache = &tcx.mir_built(def_id).borrow();
 
     let param_env = tcx.param_env(def_id);
 
@@ -527,8 +527,10 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
         hir::BodyOwnerKind::Const |
         hir::BodyOwnerKind::Static(_) => (true, false),
     };
-    let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
-    checker.visit_body(body.read_only());
+    let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body_cache, tcx, param_env);
+    let mut cache = body_cache.cache().clone();
+    let read_only_cache = ReadOnlyBodyCache::from_external_cache(&mut cache, body_cache.body());
+    checker.visit_body(read_only_cache);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
     UnsafetyCheckResult {

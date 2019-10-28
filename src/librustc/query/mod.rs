@@ -147,7 +147,13 @@ rustc_queries! {
                         crate::mir::Promoted,
                         crate::mir::BodyCache<'tcx>
                     >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
-                promoted.map(|p| &*tcx.arena.alloc(p))
+                promoted.map(|p| {
+                    let cache = tcx.arena.alloc(p);
+                    for body_cache in cache.iter_mut() {
+                        body_cache.ensure_predecessors();
+                    }
+                    &*cache
+                })
             }
         }
     }

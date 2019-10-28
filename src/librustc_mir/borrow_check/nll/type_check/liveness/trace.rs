@@ -302,7 +302,8 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
         }
 
-        for &pred_block in self.cx.body_cache.predecessors_for(block).iter() {
+        let body_cache = self.cx.body_cache;
+        for &pred_block in body_cache.predecessors_for(block).iter() {
             debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)

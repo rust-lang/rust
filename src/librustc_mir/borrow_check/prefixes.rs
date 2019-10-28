@@ -56,7 +56,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         Prefixes {
             next: Some(place_ref),
             kind,
-            body: &self.body_cache,
+            body: self.body_cache.body(),
             tcx: self.infcx.tcx,
         }
     }

@@ -38,7 +38,9 @@ use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
-pub use crate::mir::cache::{BodyCache, ReadOnlyBodyCache};
+// TODO(nashenas88) Cache only exported for use in librustc_mir/transform/check_unsafety.rs
+pub use crate::mir::cache::{BodyCache, Cache, ReadOnlyBodyCache};
+pub use crate::read_only;
 
 pub mod cache;
 pub mod interpret;

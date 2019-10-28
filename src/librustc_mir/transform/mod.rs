@@ -334,6 +334,7 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyCache<'_> {
     let (body, _) = tcx.mir_validated(def_id);
     let mut body_cache = body.steal();
     run_optimization_passes(tcx, &mut body_cache, def_id, None);
+    body_cache.ensure_predecessors();
     tcx.arena.alloc(body_cache)
 }
 
@@ -348,6 +349,7 @@ fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promot
 
     for (p, mut body_cache) in promoted.iter_enumerated_mut() {
         run_optimization_passes(tcx, &mut body_cache, def_id, Some(p));
+        body_cache.ensure_predecessors();
     }
 
     tcx.intern_promoted(promoted)

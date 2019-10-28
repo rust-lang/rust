@@ -151,6 +151,16 @@ impl BodyCache<'tcx> {
     }
 }
 
+#[macro_export]
+macro_rules! read_only {
+    ($body_cache:expr) => {
+        {
+            $body_cache.ensure_predecessors();
+            $body_cache.unwrap_read_only()
+        }
+    };
+}
+
 impl BodyCache<'tcx> {
     pub fn ensure_predecessors(&mut self) {
         self.cache.ensure_predecessors(&self.body);
@@ -160,12 +170,8 @@ impl BodyCache<'tcx> {
         self.cache.predecessors(&self.body)
     }
 
-    pub fn read_only(&self) -> ReadOnlyBodyCache<'_, '_> {
-        assert!(self.cache.predecessors.is_some(), "");
-        ReadOnlyBodyCache {
-            cache: &self.cache,
-            body: &self.body,
-        }
+    pub fn unwrap_read_only(&self) -> ReadOnlyBodyCache<'_, 'tcx> {
+        ReadOnlyBodyCache::new(&self.cache, &self.body)
     }
 
     pub fn body(&self) -> &Body<'tcx> {
@@ -175,6 +181,8 @@ impl BodyCache<'tcx> {
     pub fn body_mut(&mut self) -> &mut Body<'tcx> {
         &mut self.body
     }
+
+    pub fn cache(&self) -> &Cache { &self.cache }
 
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         self.cache.basic_blocks_mut(&mut self.body)
@@ -223,6 +231,24 @@ pub struct ReadOnlyBodyCache<'a, 'tcx> {
 }
 
 impl ReadOnlyBodyCache<'a, 'tcx> {
+    fn new(cache: &'a Cache, body: &'a Body<'tcx>) -> Self {
+        assert!(
+            cache.predecessors.is_some(),
+            "Cannot construct ReadOnlyBodyCache without computed predecessors");
+        Self {
+            cache,
+            body,
+        }
+    }
+
+    pub fn from_external_cache(cache: &'a mut Cache, body: &'a Body<'tcx>) -> Self {
+        cache.ensure_predecessors(body);
+        Self {
+            cache,
+            body,
+        }
+    }
+
     #[inline]
     pub fn predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         self.cache.predecessors.as_ref().unwrap()

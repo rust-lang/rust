@@ -2,7 +2,7 @@
 
 use rustc::mir::{
     Constant, Location, Place, PlaceBase, PlaceRef, Body, BodyCache, Operand, ProjectionElem,
-    Rvalue, Local
+    Rvalue, Local, read_only
 };
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{self, TyCtxt};
@@ -24,8 +24,9 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
         let optimizations = {
+            let read_only_cache = read_only!(body_cache);
             let mut optimization_finder = OptimizationFinder::new(body_cache, tcx);
-            optimization_finder.visit_body(body_cache.read_only());
+            optimization_finder.visit_body(read_only_cache);
             optimization_finder.optimizations
         };
 

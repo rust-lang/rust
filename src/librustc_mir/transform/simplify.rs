@@ -296,11 +296,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
         trace!("running SimplifyLocals on {:?}", source);
         let locals = {
+            let read_only_cache = read_only!(body_cache);
             let mut marker = DeclMarker {
                 locals: BitSet::new_empty(body_cache.local_decls.len()),
                 body: body_cache,
             };
-            marker.visit_body(body_cache.read_only());
+            marker.visit_body(read_only_cache);
             // Return pointer and arguments are always live
             marker.locals.insert(RETURN_PLACE);
             for arg in body_cache.args_iter() {

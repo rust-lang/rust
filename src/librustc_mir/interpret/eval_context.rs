@@ -303,11 +303,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(self.tcx.promoted_mir(did)[promoted].read_only());
+            return Ok(self.tcx.promoted_mir(did)[promoted].unwrap_read_only());
         }
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
-                Ok(self.tcx.optimized_mir(did).read_only())
+                Ok(self.tcx.optimized_mir(did).unwrap_read_only())
             } else {
                 throw_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
             },

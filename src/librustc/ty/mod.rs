@@ -2988,7 +2988,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> ReadOnlyBodyCache<'tcx, 'tcx> {
         match instance {
             ty::InstanceDef::Item(did) => {
-                self.optimized_mir(did).read_only()
+                self.optimized_mir(did).unwrap_read_only()
             }
             ty::InstanceDef::VtableShim(..) |
             ty::InstanceDef::ReifyShim(..) |
@@ -2998,7 +2998,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) => {
-                self.mir_shims(instance).read_only()
+                self.mir_shims(instance).unwrap_read_only()
             }
         }
     }
