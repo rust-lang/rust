@@ -57,7 +57,7 @@ pub fn get_concurrency() -> usize {
     #[cfg(target_os = "hermit")]
     fn num_cpus() -> usize {
         // FIXME: Implement num_cpus on HermitCore
-        1      
+        1
     }
 
     #[cfg(any(
