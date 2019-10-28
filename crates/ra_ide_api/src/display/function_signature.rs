@@ -16,6 +16,7 @@ use crate::{
 pub enum SigKind {
     Function,
     Struct,
+    EnumVariant,
 }
 
 /// Contains information about a function signature
@@ -70,9 +71,42 @@ impl FunctionSignature {
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
             name: node.name().map(|n| n.text().to_string()),
             ret_type: node.name().map(|n| n.text().to_string()),
-            parameters: /*param_list(node)*/ params,
+            parameters: params,
             generic_parameters: generic_parameters(&node),
             where_predicates: where_predicates(&node),
+            doc: None,
+        }
+        .with_doc_opt(doc)
+    }
+
+    pub(crate) fn from_enum_variant(db: &db::RootDatabase, variant: hir::EnumVariant) -> Self {
+        let doc = variant.docs(db);
+
+        let parent_name = match variant.parent_enum(db).name(db) {
+            Some(name) => name.to_string(),
+            None => "missing".into(),
+        };
+
+        let name = format!("{}::{}", parent_name, variant.name(db).unwrap());
+
+        let params = variant
+            .fields(db)
+            .into_iter()
+            .map(|field: hir::StructField| {
+                let name = field.name(db);
+                let ty = field.ty(db);
+                format!("{}: {}", name, ty.display(db))
+            })
+            .collect();
+
+        FunctionSignature {
+            kind: SigKind::EnumVariant,
+            visibility: None,
+            name: Some(name),
+            ret_type: None,
+            parameters: params,
+            generic_parameters: vec![],
+            where_predicates: vec![],
             doc: None,
         }
         .with_doc_opt(doc)
@@ -120,6 +154,7 @@ impl Display for FunctionSignature {
             match self.kind {
                 SigKind::Function => write!(f, "fn {}", name)?,
                 SigKind::Struct => write!(f, "struct {}", name)?,
+                SigKind::EnumVariant => write!(f, "{}", name)?,
             }
         }
 

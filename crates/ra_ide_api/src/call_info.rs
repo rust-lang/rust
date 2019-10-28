@@ -29,7 +29,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                     (CallInfo::with_fn(db, it), it.data(db).has_self_param())
                 }
                 hir::CallableDef::Struct(it) => (CallInfo::with_struct(db, it), false),
-                hir::CallableDef::EnumVariant(_it) => return None,
+                hir::CallableDef::EnumVariant(it) => (CallInfo::with_enum_variant(db, it), false),
             }
         }
         FnCallNode::MethodCallExpr(expr) => {
@@ -125,6 +125,12 @@ impl CallInfo {
 
     fn with_struct(db: &RootDatabase, st: hir::Struct) -> Self {
         let signature = FunctionSignature::from_struct(db, st);
+
+        CallInfo { signature, active_parameter: None }
+    }
+
+    fn with_enum_variant(db: &RootDatabase, variant: hir::EnumVariant) -> Self {
+        let signature = FunctionSignature::from_enum_variant(db, variant);
 
         CallInfo { signature, active_parameter: None }
     }
@@ -484,5 +490,29 @@ fn main() {
         assert_eq!(info.label(), "struct TS(0: u32, 1: i32) -> TS");
         assert_eq!(info.doc().map(|it| it.into()), Some("A cool tuple struct".to_string()));
         assert_eq!(info.active_parameter, Some(1));
+    }
+
+    #[test]
+    fn works_for_enum_variants() {
+        let info = call_info(
+            r#"
+enum E {
+    /// A Variant
+    A(i32),
+    /// Another
+    B,
+    /// And C
+    C(a: i32, b: i32)
+}
+
+fn main() {
+    let a = E::A(<|>);
+}
+            "#,
+        );
+
+        assert_eq!(info.label(), "E::A(0: i32)");
+        assert_eq!(info.doc().map(|it| it.into()), Some("A Variant".to_string()));
+        assert_eq!(info.active_parameter, Some(0));
     }
 }
