@@ -542,7 +542,6 @@ impl<'tcx> EncodeContext<'tcx> {
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
-        let has_panic_handler = *tcx.sess.has_panic_handler.try_get().unwrap_or(&false);
 
         let root = self.lazy(CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -553,7 +552,7 @@ impl<'tcx> EncodeContext<'tcx> {
             panic_strategy: tcx.sess.panic_strategy(),
             edition: tcx.sess.edition(),
             has_global_allocator: has_global_allocator,
-            has_panic_handler: has_panic_handler,
+            has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
             has_default_lib_allocator: has_default_lib_allocator,
             plugin_registrar_fn: tcx.plugin_registrar_fn(LOCAL_CRATE).map(|id| id.index),
             proc_macro_decls_static: if is_proc_macro {
