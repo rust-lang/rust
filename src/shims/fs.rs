@@ -176,12 +176,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             // We want to read at most `count` bytes
             let mut bytes = vec![0; count as usize];
-            let result = handle.file.read(&mut bytes).map(|c| c as i64);
-            // If reading to `bytes` did not fail, we write those bytes to the buffer.
-            if result.is_ok() {
-                this.memory.write_bytes(buf, bytes)?;
+            let result = handle.file.read(&mut bytes);
+
+            if let Ok(c) = result {
+                // Check that we read less than `i64::MAX` bytes.
+                if c > (i64::max_value() as usize) {
+                    throw_unsup_format!("Number of read bytes {} is larger than the maximum value", c);
+                }
+                // If reading to `bytes` did not fail, we write those bytes to the buffer.
+                this.memory.write_bytes(buf, bytes)?
             }
-            this.try_unwrap_io_result(result)
+
+            this.try_unwrap_io_result(result.map(|c| c as i64))
         } else {
             this.handle_not_found()
         }
@@ -207,8 +213,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
-            let result = handle.file.write(&bytes).map(|c| c as i64);
-            this.try_unwrap_io_result(result)
+            let result = handle.file.write(&bytes);
+
+            if let Ok(c) = result {
+                // Check that we wrote less than `i64::MAX` bytes.
+                if c > (i64::max_value() as usize) {
+                    throw_unsup_format!("Number of written bytes {} is larger than the maximum value", c);
+                }
+            }
+
+            this.try_unwrap_io_result(result.map(|c| c as i64))
         } else {
             this.handle_not_found()
         }
