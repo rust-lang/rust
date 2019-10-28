@@ -1,3 +1,16 @@
+//! Low-level Rust lexer.
+//!
+//! Tokens produced by this lexer are not yet ready for parsing the Rust syntax,
+//! for that see `libsyntax::parse::lexer`, which converts this basic token stream
+//! into wide tokens used by actual parser.
+//!
+//! The purpose of this crate is to convert raw sources into a labeled sequence
+//! of well-known token types, so building an actual Rust token stream will
+//! be easier.
+//!
+//! Main entity of this crate is [`TokenKind`] enum which represents common
+//! lexeme types.
+
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 
@@ -6,70 +19,12 @@ pub mod unescape;
 
 use crate::cursor::{Cursor, EOF_CHAR};
 
+/// Parsed token.
+/// It doesn't contain information about data that has been parsed,
+/// only the type of the token and its size.
 pub struct Token {
     pub kind: TokenKind,
     pub len: usize,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TokenKind {
-    LineComment,
-    BlockComment { terminated: bool },
-    Whitespace,
-    Ident,
-    RawIdent,
-    Literal { kind: LiteralKind, suffix_start: usize },
-    Lifetime { starts_with_number: bool },
-    Semi,
-    Comma,
-    Dot,
-    OpenParen,
-    CloseParen,
-    OpenBrace,
-    CloseBrace,
-    OpenBracket,
-    CloseBracket,
-    At,
-    Pound,
-    Tilde,
-    Question,
-    Colon,
-    Dollar,
-    Eq,
-    Not,
-    Lt,
-    Gt,
-    Minus,
-    And,
-    Or,
-    Plus,
-    Star,
-    Slash,
-    Caret,
-    Percent,
-    Unknown,
-}
-use self::TokenKind::*;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LiteralKind {
-    Int { base: Base, empty_int: bool },
-    Float { base: Base, empty_exponent: bool },
-    Char { terminated: bool },
-    Byte { terminated: bool },
-    Str { terminated: bool },
-    ByteStr { terminated: bool },
-    RawStr { n_hashes: usize, started: bool, terminated: bool },
-    RawByteStr { n_hashes: usize, started: bool, terminated: bool },
-}
-use self::LiteralKind::*;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Base {
-    Binary,
-    Octal,
-    Hexadecimal,
-    Decimal,
 }
 
 impl Token {
@@ -78,6 +33,130 @@ impl Token {
     }
 }
 
+/// Enum represening common lexeme types.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TokenKind {
+    // Multi-char tokens:
+
+    /// "// comment"
+    LineComment,
+    /// "/* block comment */"
+    /// Block comments can be recursive, so the sequence like "/* /* */"
+    /// will not be considered terminated and will result in a parsing error.
+    BlockComment { terminated: bool },
+    /// Any whitespace characters sequence.
+    Whitespace,
+    /// "ident" or "continue"
+    /// At this step keywords are also considered identifiers.
+    Ident,
+    /// "r#ident"
+    RawIdent,
+    /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
+    Literal { kind: LiteralKind, suffix_start: usize },
+    /// "'a"
+    Lifetime { starts_with_number: bool },
+
+    // One-char tokens:
+
+    /// ";"
+    Semi,
+    /// ","
+    Comma,
+    /// "."
+    Dot,
+    /// "("
+    OpenParen,
+    /// ")"
+    CloseParen,
+    /// "{"
+    OpenBrace,
+    /// "}"
+    CloseBrace,
+    /// "["
+    OpenBracket,
+    /// "]"
+    CloseBracket,
+    /// "@"
+    At,
+    /// "#"
+    Pound,
+    /// "~"
+    Tilde,
+    /// "?"
+    Question,
+    /// ":"
+    Colon,
+    /// "$"
+    Dollar,
+    /// "="
+    Eq,
+    /// "!"
+    Not,
+    /// "<"
+    Lt,
+    /// ">"
+    Gt,
+    /// "-"
+    Minus,
+    /// "&"
+    And,
+    /// "|"
+    Or,
+    /// "+"
+    Plus,
+    /// "*"
+    Star,
+    /// "/"
+    Slash,
+    /// "^"
+    Caret,
+    /// "%"
+    Percent,
+
+    /// Unknown token, not expected by the lexer, e.g. "№"
+    Unknown,
+}
+use self::TokenKind::*;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LiteralKind {
+    /// "12_u8", "0o100", "0b120i99"
+    Int { base: Base, empty_int: bool },
+    /// "12.34f32", "0b100.100"
+    Float { base: Base, empty_exponent: bool },
+    /// "'a'", "'\\'", "'''", "';"
+    Char { terminated: bool },
+    /// "b'a'", "b'\\'", "b'''", "b';"
+    Byte { terminated: bool },
+    /// ""abc"", ""abc"
+    Str { terminated: bool },
+    /// "b"abc"", "b"abc"
+    ByteStr { terminated: bool },
+    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a"
+    RawStr { n_hashes: usize, started: bool, terminated: bool },
+    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a"
+    RawByteStr { n_hashes: usize, started: bool, terminated: bool },
+}
+use self::LiteralKind::*;
+
+/// Base of numeric literal encoding according to its prefix.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Base {
+    /// Literal starts with "0b".
+    Binary,
+    /// Literal starts with "0o".
+    Octal,
+    /// Literal starts with "0x".
+    Hexadecimal,
+    /// Literal doesn't contain a prefix.
+    Decimal,
+}
+
+/// `rustc` allows files to have a shebang, e.g. "#!/usr/bin/rustrun",
+/// but shebang isn't a part of rust syntax, so this function
+/// skips the line if it starts with a shebang ("#!").
+/// Line won't be skipped if it represents a valid Rust syntax
+/// (e.g. "#![deny(missing_docs)]").
 pub fn strip_shebang(input: &str) -> Option<usize> {
     debug_assert!(!input.is_empty());
     if !input.starts_with("#!") || input.starts_with("#![") {
@@ -86,11 +165,13 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     Some(input.find('\n').unwrap_or(input.len()))
 }
 
+/// Parses the first token from the provided input string.
 pub fn first_token(input: &str) -> Token {
     debug_assert!(!input.is_empty());
     Cursor::new(input).advance_token()
 }
 
+/// Creates an iterator that produces tokens from the input string.
 pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
     std::iter::from_fn(move || {
         if input.is_empty() {
@@ -102,10 +183,9 @@ pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-// See [UAX #31](http://unicode.org/reports/tr31) for definitions of these
-// classes.
-
 /// True if `c` is considered a whitespace according to Rust language definition.
+/// See [Rust language reference](https://doc.rust-lang.org/reference/whitespace.html)
+/// for definitions of these classes.
 pub fn is_whitespace(c: char) -> bool {
     // This is Pattern_White_Space.
     //
@@ -137,6 +217,8 @@ pub fn is_whitespace(c: char) -> bool {
 }
 
 /// True if `c` is valid as a first character of an identifier.
+/// See [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html) for
+/// a formal definition of valid identifier name.
 pub fn is_id_start(c: char) -> bool {
     // This is XID_Start OR '_' (which formally is not a XID_Start).
     // We also add fast-path for ascii idents
@@ -147,6 +229,8 @@ pub fn is_id_start(c: char) -> bool {
 }
 
 /// True if `c` is valid as a non-first character of an identifier.
+/// See [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html) for
+/// a formal definition of valid identifier name.
 pub fn is_id_continue(c: char) -> bool {
     // This is exactly XID_Continue.
     // We also add fast-path for ascii idents
@@ -159,15 +243,21 @@ pub fn is_id_continue(c: char) -> bool {
 
 
 impl Cursor<'_> {
+    /// Parses a token from the input string.
     fn advance_token(&mut self) -> Token {
         let first_char = self.bump().unwrap();
         let token_kind = match first_char {
+            // Slash, comment or block comment.
             '/' => match self.nth_char(0) {
                 '/' => self.line_comment(),
                 '*' => self.block_comment(),
                 _ => Slash,
             },
+
+            // Whitespace sequence.
             c if is_whitespace(c) => self.whitespace(),
+
+            // Raw string literal or identifier.
             'r' => match (self.nth_char(0), self.nth_char(1)) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
@@ -181,6 +271,8 @@ impl Cursor<'_> {
                 }
                 _ => self.ident(),
             },
+
+            // Byte literal, byte string literal, raw byte string literal or identifier.
             'b' => match (self.nth_char(0), self.nth_char(1)) {
                 ('\'', _) => {
                     self.bump();
@@ -214,13 +306,20 @@ impl Cursor<'_> {
                 }
                 _ => self.ident(),
             },
+
+            // Identifier (this should be checked after other variant that can
+            // start as identifier).
             c if is_id_start(c) => self.ident(),
+
+            // Numeric literal.
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
                 let suffix_start = self.len_consumed();
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
+
+            // One-symbol tokens.
             ';' => Semi,
             ',' => Comma,
             '.' => Dot,
@@ -247,7 +346,11 @@ impl Cursor<'_> {
             '*' => Star,
             '^' => Caret,
             '%' => Percent,
+
+            // Lifetime or character literal.
             '\'' => self.lifetime_or_char(),
+
+            // String literal.
             '"' => {
                 let terminated = self.double_quoted_string();
                 let suffix_start = self.len_consumed();
@@ -291,6 +394,9 @@ impl Cursor<'_> {
                     self.bump();
                     depth -= 1;
                     if depth == 0 {
+                        // This block comment is closed, so for a construction like "/* */ */"
+                        // there will be a successfully parsed block comment "/* */"
+                        // and " */" will be processed separately.
                         break;
                     }
                 }
@@ -335,6 +441,7 @@ impl Cursor<'_> {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         let mut base = Base::Decimal;
         if first_digit == '0' {
+            // Attempt to parse encoding base.
             let has_digits = match self.nth_char(0) {
                 'b' => {
                     base = Base::Binary;
@@ -351,17 +458,21 @@ impl Cursor<'_> {
                     self.bump();
                     self.eat_hexadecimal_digits()
                 }
+                // Not a base prefix.
                 '0'..='9' | '_' | '.' | 'e' | 'E' => {
                     self.eat_decimal_digits();
                     true
                 }
-                // just a 0
+                // Just a 0.
                 _ => return Int { base, empty_int: false },
             };
+            // Base prefix was provided, but there were no digits
+            // after it, e.g. "0x".
             if !has_digits {
                 return Int { base, empty_int: true };
             }
         } else {
+            // No base prefix, parse number in the usual way.
             self.eat_decimal_digits();
         };
 
@@ -400,6 +511,9 @@ impl Cursor<'_> {
     fn lifetime_or_char(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '\'');
         let mut starts_with_number = false;
+
+        // Check if the first symbol after '\'' is a valid identifier
+        // character or a number (not a digit followed by '\'').
         if (is_id_start(self.nth_char(0))
             || self.nth_char(0).is_digit(10) && {
                 starts_with_number = true;
@@ -408,6 +522,8 @@ impl Cursor<'_> {
             && self.nth_char(1) != '\''
         {
             self.bump();
+
+            // Skip the identifier.
             while is_id_continue(self.nth_char(0)) {
                 self.bump();
             }
@@ -420,6 +536,8 @@ impl Cursor<'_> {
                 Lifetime { starts_with_number }
             };
         }
+
+        // This is not a lifetime (checked above), parse a char literal.
         let terminated = self.single_quoted_string();
         let suffix_start = self.len_consumed();
         if terminated {
@@ -431,24 +549,32 @@ impl Cursor<'_> {
 
     fn single_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '\'');
-        // parse `'''` as a single char literal
+        // Parse `'''` as a single char literal.
         if self.nth_char(0) == '\'' && self.nth_char(1) == '\'' {
             self.bump();
         }
+        // Parse until either quotes are terminated or error is detected.
         let mut first = true;
         loop {
             match self.nth_char(0) {
+                // Probably beginning of the comment, which we don't want to include
+                // to the error report.
                 '/' if !first => break,
+                // Newline without following '\'' means unclosed quote, stop parsing.
                 '\n' if self.nth_char(1) != '\'' => break,
+                // End of file, stop parsing.
                 EOF_CHAR if self.is_eof() => break,
+                // Quotes are terminated, finish parsing.
                 '\'' => {
                     self.bump();
                     return true;
                 }
+                // Escaped slash is considered one character, so bump twice.
                 '\\' => {
                     self.bump();
                     self.bump();
                 }
+                // Skip the character.
                 _ => {
                     self.bump();
                 }
@@ -458,6 +584,8 @@ impl Cursor<'_> {
         false
     }
 
+    /// Eats double-quoted string and returns true
+    /// if string is terminated.
     fn double_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
         loop {
@@ -476,8 +604,11 @@ impl Cursor<'_> {
         }
     }
 
+    /// Eats the double-quoted string and returns a tuple of
+    /// (amount of the '#' symbols, raw string started, raw string terminated)
     fn raw_double_quoted_string(&mut self) -> (usize, bool, bool) {
         debug_assert!(self.prev() == 'r');
+        // Count opening '#' symbols.
         let n_hashes = {
             let mut acc: usize = 0;
             loop {
@@ -489,6 +620,8 @@ impl Cursor<'_> {
             }
         };
 
+        // Skip the string itself and check that amount of closing '#'
+        // symbols is equal to the amount of opening ones.
         loop {
             match self.bump() {
                 Some('"') => {
@@ -549,6 +682,7 @@ impl Cursor<'_> {
         if self.eat_decimal_digits() { Ok(()) } else { Err(()) }
     }
 
+    // Eats the suffix if it's an identifier.
     fn eat_literal_suffix(&mut self) {
         if !is_id_start(self.nth_char(0)) {
             return;
