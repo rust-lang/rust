@@ -1,21 +1,21 @@
 # Documenting rustc
 
-You might want to build documentation of the various components 
+You might want to build documentation of the various components
 available like the standard library. There’s two ways to go about this.
- You can run rustdoc directly on the file to make sure the HTML is 
- correct, which is fast. Alternatively, you can build the documentation 
- as part of the  build process through x.py. Both are viable methods 
+ You can run rustdoc directly on the file to make sure the HTML is
+ correct, which is fast. Alternatively, you can build the documentation
+ as part of the  build process through x.py. Both are viable methods
  since documentation  is more about the content.
 
 ## Document everything
 
-   ```bash
-   ./x.py doc
-   ```
+```ignore
+./x.py doc
+```
 
 ## If you want to avoid the whole Stage 2 build
 
-```bash
+```ignore
 ./x.py doc --stage 1
 ```
 
@@ -24,10 +24,10 @@ and then it documents the files.
 
 ## Document specific components
 
-```bash
-   ./x.py doc src/doc/book
-   ./x.py doc src/doc/nomicon
-   ./x.py doc src/doc/book src/libstd
+```ignore
+./x.py doc src/doc/book
+./x.py doc src/doc/nomicon
+./x.py doc src/doc/book src/libstd
 ```
 
 Much like individual tests or building certain components you can build only
@@ -41,14 +41,14 @@ But, when enabled, compiler documentation does include internal items.
 
 Next open up config.toml and make sure these two lines are set to true:
 
-```bash
+```toml
 docs = true
 compiler-docs = true
 ```
 
 When you want to build the compiler docs as well run this command:
 
-```bash
+```ignore
 ./x.py doc
 ```
 
