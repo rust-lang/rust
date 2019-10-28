@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashMap;
 
 use super::{
     Immediate, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
-    Memory, Machine, PointerArithmetic, FnVal, StackPopInfo
+    Memory, Machine, StackPopInfo
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -86,7 +86,7 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     /// The block that is currently executed (or will be executed after the above call stacks
     /// return).
     /// If this is `None`, we are unwinding and this function doesn't need any clean-up.
-    /// Just continue the same as with
+    /// Just continue the same as with `Resume`.
     pub block: Option<mir::BasicBlock>,
 
     /// The index of the currently evaluated statement.
@@ -563,7 +563,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `cleanup` block for the function, which is responsible for running
     /// `Drop` impls for any locals that have been initialized at this point.
     /// The cleanup block ends with a special `Resume` terminator, which will
-    /// cause us to continue unwinding where we left off.
+    /// cause us to continue unwinding.
     pub(super) fn pop_stack_frame(
         &mut self,
         unwinding: bool
@@ -829,26 +829,5 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames
-    }
-
-    /// Resolve the function at the specified slot in the provided
-    /// vtable. An index of '0' corresponds to the first method
-    /// declared in the trait of the provided vtable
-    pub fn get_vtable_slot(
-        &self,
-        vtable: Scalar<M::PointerTag>,
-        idx: usize
-    ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
-        let ptr_size = self.pointer_size();
-        // Skip over the 'drop_ptr', 'size', and 'align' fields
-        let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
-        let vtable_slot = self.memory.check_ptr_access(
-            vtable_slot,
-            ptr_size,
-            self.tcx.data_layout.pointer_align.abi,
-        )?.expect("cannot be a ZST");
-        let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
-            .read_ptr_sized(self, vtable_slot)?.not_undef()?;
-        Ok(self.memory.get_fn(fn_ptr)?)
     }
 }

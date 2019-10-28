@@ -268,9 +268,12 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        extra: Self::FrameExtra,
-    ) -> InterpResult<'tcx, StackPopInfo>;
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _extra: Self::FrameExtra,
+    ) -> InterpResult<'tcx, StackPopInfo> {
+        // By default, we do not support unwinding from panics
+        Ok(StackPopInfo::Normal)
+    }
 
     fn int_to_ptr(
         _mem: &Memory<'mir, 'tcx, Self>,
