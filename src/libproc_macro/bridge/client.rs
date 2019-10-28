@@ -15,8 +15,9 @@ macro_rules! define_handles {
         }
 
         impl HandleCounters {
-            // FIXME(#53451) public to work around `Cannot create local mono-item` ICE.
-            pub extern "C" fn get() -> &'static Self {
+            // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+            // a wrapper `fn` pointer, once `const fn` can reference `static`s.
+            extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
                     $($oty: AtomicUsize::new(1),)*
                     $($ity: AtomicUsize::new(1),)*
@@ -333,14 +334,14 @@ impl Bridge<'_> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Client<F> {
+    // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+    // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
     pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
     pub(super) f: F,
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
-// affecting not only the function itself, but also the `BridgeState` `thread_local!`.
-pub extern "C" fn __run_expand1(
+extern "C" fn run_expand1(
     mut bridge: Bridge<'_>,
     f: fn(crate::TokenStream) -> crate::TokenStream,
 ) -> Buffer<u8> {
@@ -385,15 +386,13 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
-            run: __run_expand1,
+            run: run_expand1,
             f,
         }
     }
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
-// affecting not only the function itself, but also the `BridgeState` `thread_local!`.
-pub extern "C" fn __run_expand2(
+extern "C" fn run_expand2(
     mut bridge: Bridge<'_>,
     f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
 ) -> Buffer<u8> {
@@ -441,7 +440,7 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
     ) -> Self {
         Client {
             get_handle_counters: HandleCounters::get,
-            run: __run_expand2,
+            run: run_expand2,
             f,
         }
     }
