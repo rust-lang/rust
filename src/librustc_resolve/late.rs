@@ -199,21 +199,36 @@ impl<'a> PathSource<'a> {
     }
 
     fn descr_expected(self) -> &'static str {
-        match self {
+        match &self {
             PathSource::Type => "type",
             PathSource::Trait(_) => "trait",
-            PathSource::Pat => "unit struct/variant or constant",
+            PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct => "struct, variant or union type",
-            PathSource::TupleStruct => "tuple struct/variant",
+            PathSource::TupleStruct => "tuple struct or tuple variant",
             PathSource::TraitItem(ns) => match ns {
                 TypeNS => "associated type",
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match parent.map(|p| &p.kind) {
+            PathSource::Expr(parent) => match &parent.as_ref().map(|p| &p.kind) {
                 // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
-                Some(&ExprKind::Call(..)) => "function",
+                Some(ExprKind::Call(call_expr, _)) => {
+                    match &call_expr.kind {
+                        ExprKind::Path(_, path) => {
+                            let mut msg = "function";
+                            if let Some(segment) = path.segments.iter().last() {
+                                if let Some(c) = segment.ident.to_string().chars().next() {
+                                    if c.is_uppercase() {
+                                        msg = "function, tuple struct or tuple variant";
+                                    }
+                                }
+                            }
+                            msg
+                        }
+                        _ => "function"
+                    }
+                }
                 _ => "value",
             },
         }

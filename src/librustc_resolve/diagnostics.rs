@@ -58,21 +58,6 @@ fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
     impl_span
 }
 
-crate fn add_typo_suggestion(
-    err: &mut DiagnosticBuilder<'_>, suggestion: Option<TypoSuggestion>, span: Span
-) -> bool {
-    if let Some(suggestion) = suggestion {
-        let msg = format!(
-            "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
-        );
-        err.span_suggestion(
-            span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
-        );
-        return true;
-    }
-    false
-}
-
 impl<'a> Resolver<'a> {
     crate fn add_module_candidates(
         &mut self,
@@ -641,7 +626,7 @@ impl<'a> Resolver<'a> {
         let suggestion = self.early_lookup_typo_candidate(
             ScopeSet::Macro(macro_kind), parent_scope, ident, is_expected
         );
-        add_typo_suggestion(err, suggestion, ident.span);
+        self.add_typo_suggestion(err, suggestion, ident.span);
 
         if macro_kind == MacroKind::Derive &&
            (ident.as_str() == "Send" || ident.as_str() == "Sync") {
@@ -651,6 +636,33 @@ impl<'a> Resolver<'a> {
         if self.macro_names.contains(&ident.modern()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
+    }
+
+    crate fn add_typo_suggestion(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        suggestion: Option<TypoSuggestion>,
+        span: Span,
+    ) -> bool {
+        if let Some(suggestion) = suggestion {
+            let msg = format!(
+                "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
+            );
+            err.span_suggestion(
+                span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
+            );
+            let def_span = suggestion.res.opt_def_id()
+                .and_then(|def_id| self.definitions.opt_span(def_id));
+            if let Some(span) = def_span {
+                err.span_label(span, &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
+                ));
+            }
+            return true;
+        }
+        false
     }
 }
 

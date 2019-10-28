@@ -46,6 +46,9 @@ LL |     import();
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:28:11
    |
+LL |     pub enum B { B1 }
+   |     ----------------- similarly named enum `B` defined here
+...
 LL |     foo::<A>();
    |           ^
    |
@@ -61,6 +64,9 @@ LL | use bar::A;
 error[E0412]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:29:11
    |
+LL |     pub enum B { B1 }
+   |     ----------------- similarly named enum `B` defined here
+...
 LL |     foo::<C>();
    |           ^
    |
@@ -76,6 +82,9 @@ LL | use bar::C;
 error[E0412]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:30:11
    |
+LL |     pub enum B { B1 }
+   |     ----------------- similarly named enum `B` defined here
+...
 LL |     foo::<D>();
    |           ^
    |

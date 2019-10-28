@@ -2,7 +2,10 @@ error[E0573]: expected type, found const parameter `C`
   --> $DIR/struct-with-invalid-const-param.rs:4:23
    |
 LL | struct S<const C: u8>(C);
-   |                       ^ help: a struct with a similar name exists: `S`
+   | ----------------------^--
+   | |                     |
+   | |                     help: a struct with a similar name exists: `S`
+   | similarly named struct `S` defined here
 
 warning: the feature `const_generics` is incomplete and may cause the compiler to crash
   --> $DIR/struct-with-invalid-const-param.rs:1:12

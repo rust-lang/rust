@@ -9,7 +9,7 @@ help: there is an enum variant `Fruit::Apple`; try using the variant's enum
 LL | fn should_return_fruit() -> Fruit {
    |                             ^^^^^
 
-error[E0425]: cannot find function `Apple` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
   --> $DIR/issue-35675.rs:9:5
    |
 LL |     Apple(5)
@@ -29,7 +29,7 @@ LL | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 not a type
    |                                 help: try using the variant's enum: `Fruit`
 
-error[E0425]: cannot find function `Apple` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
   --> $DIR/issue-35675.rs:15:5
    |
 LL |     Apple(5)
