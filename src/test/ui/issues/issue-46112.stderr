@@ -5,7 +5,7 @@ LL | fn main() { test(Ok(())); }
    |                     ^^
    |                     |
    |                     expected enum `std::option::Option`, found ()
-   |                     help: try using a variant of the expected type: `Some(())`
+   |                     help: try using a variant of the expected enum: `Some(())`
    |
    = note: expected type `std::option::Option<()>`
               found type `()`
