@@ -235,11 +235,20 @@ impl LoweringContext<'_> {
     /// ```
     fn lower_expr_let(&mut self, span: Span, pat: &Pat, scrutinee: &Expr) -> hir::ExprKind {
         // If we got here, the `let` expression is not allowed.
-        self.sess
-            .struct_span_err(span, "`let` expressions are not supported here")
-            .note("only supported directly in conditions of `if`- and `while`-expressions")
-            .note("as well as when nested within `&&` and parenthesis in those conditions")
-            .emit();
+
+        if self.sess.opts.unstable_features.is_nightly_build() {
+            self.sess
+                .struct_span_err(span, "`let` expressions are not supported here")
+                .note("only supported directly in conditions of `if`- and `while`-expressions")
+                .note("as well as when nested within `&&` and parenthesis in those conditions")
+                .emit();
+        }
+        else {
+            self.sess
+                .struct_span_err(span, "expected expression, found statement (`let`)")
+                .note("variable declaration using `let` is a statement")
+                .emit();
+        }
 
         // For better recovery, we emit:
         // ```
