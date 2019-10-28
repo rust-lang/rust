@@ -124,7 +124,6 @@ for ::syntax::attr::StabilityLevel {
 
 impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason, suggestion });
 
-
 impl_stable_hash_for!(enum ::syntax::attr::IntType {
     SignedInt(int_ty),
     UnsignedInt(uint_ty)
@@ -133,6 +132,11 @@ impl_stable_hash_for!(enum ::syntax::attr::IntType {
 impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
     Signed(int_ty),
     Unsigned(int_ty),
+    Unsuffixed
+});
+
+impl_stable_hash_for!(enum ::syntax::ast::LitFloatType {
+    Suffixed(float_ty),
     Unsuffixed
 });
 
@@ -148,8 +152,7 @@ impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Byte(value),
     Char(value),
     Int(value, lit_int_type),
-    Float(value, float_ty),
-    FloatUnsuffixed(value),
+    Float(value, lit_float_type),
     Bool(value),
     Err(value)
 });
@@ -159,6 +162,7 @@ impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
 impl_stable_hash_for!(enum ::syntax::ast::IntTy { Isize, I8, I16, I32, I64, I128 });
 impl_stable_hash_for!(enum ::syntax::ast::UintTy { Usize, U8, U16, U32, U64, U128 });
 impl_stable_hash_for!(enum ::syntax::ast::FloatTy { F32, F64 });
+impl_stable_hash_for!(enum ::rustc_target::abi::FloatTy { F32, F64 });
 impl_stable_hash_for!(enum ::syntax::ast::Unsafety { Unsafe, Normal });
 impl_stable_hash_for!(enum ::syntax::ast::Constness { Const, NotConst });
 impl_stable_hash_for!(enum ::syntax::ast::Defaultness { Default, Final });

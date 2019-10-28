@@ -18,8 +18,8 @@ use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
-use syntax::ast::{self, FloatTy};
-use rustc_target::abi::HasDataLayout;
+use rustc_target::abi::{FloatTy, HasDataLayout};
+use syntax::ast;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
@@ -1335,7 +1335,7 @@ fn generic_simd_intrinsic(
             },
             ty::Float(f) => {
                 return_error!("unsupported element type `{}` of floating-point vector `{}`",
-                              f, in_ty);
+                              f.name_str(), in_ty);
             },
             _ => {
                 return_error!("`{}` is not a floating-point type", in_ty);

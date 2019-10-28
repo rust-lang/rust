@@ -157,17 +157,18 @@ impl LitKind {
             }
             LitKind::Int(n, ty) => {
                 let suffix = match ty {
-                    ast::LitIntType::Unsigned(ty) => Some(ty.to_symbol()),
-                    ast::LitIntType::Signed(ty) => Some(ty.to_symbol()),
+                    ast::LitIntType::Unsigned(ty) => Some(ty.name()),
+                    ast::LitIntType::Signed(ty) => Some(ty.name()),
                     ast::LitIntType::Unsuffixed => None,
                 };
                 (token::Integer, sym::integer(n), suffix)
             }
             LitKind::Float(symbol, ty) => {
-                (token::Float, symbol, Some(ty.to_symbol()))
-            }
-            LitKind::FloatUnsuffixed(symbol) => {
-                (token::Float, symbol, None)
+                let suffix = match ty {
+                    ast::LitFloatType::Suffixed(ty) => Some(ty.name()),
+                    ast::LitFloatType::Unsuffixed => None,
+                };
+                (token::Float, symbol, suffix)
             }
             LitKind::Bool(value) => {
                 let symbol = if value { kw::True } else { kw::False };
@@ -244,12 +245,12 @@ fn filtered_float_lit(symbol: Symbol, suffix: Option<Symbol>, base: u32)
         return Err(LitError::NonDecimalFloat(base));
     }
     Ok(match suffix {
-        Some(suf) => match suf {
-            sym::f32 => LitKind::Float(symbol, ast::FloatTy::F32),
-            sym::f64 => LitKind::Float(symbol, ast::FloatTy::F64),
+        Some(suf) => LitKind::Float(symbol, ast::LitFloatType::Suffixed(match suf {
+            sym::f32 => ast::FloatTy::F32,
+            sym::f64 => ast::FloatTy::F64,
             _ => return Err(LitError::InvalidFloatSuffix),
-        }
-        None => LitKind::FloatUnsuffixed(symbol)
+        })),
+        None => LitKind::Float(symbol, ast::LitFloatType::Unsuffixed)
     })
 }
 
