@@ -244,7 +244,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                 }
                 let span = if let Some(local) = place.as_local() {
-                    let decl = &self.body.local_decls[local];
+                    let decl = &self.body_cache.local_decls[local];
                     Some(decl.source_info.span)
                 } else {
                     None

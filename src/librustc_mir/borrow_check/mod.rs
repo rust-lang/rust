@@ -1152,7 +1152,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // (e.g., `x = ...`) so long as it has never been initialized
         // before (at this point in the flow).
         if let Some(local) = place_span.0.as_local() {
-            if let Mutability::Not = self.body+cache.local_decls[local].mutability {
+            if let Mutability::Not = self.body_cache.local_decls[local].mutability {
                 // check for reassignments to immutable local variables
                 self.check_if_reassignment_to_immutable_state(
                     location,
@@ -1306,7 +1306,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Operand::Move(ref place) | Operand::Copy(ref place) => {
                 match place.as_local() {
                     Some(local) if !self.body_cache.local_decls[local].is_user_variable() => {
-                        if self.body.local_decls[local].ty.is_mutable_ptr() {
+                        if self.body_cache.local_decls[local].ty.is_mutable_ptr() {
                             // The variable will be marked as mutable by the borrow.
                             return;
                         }

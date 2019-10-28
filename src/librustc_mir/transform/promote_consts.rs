@@ -831,7 +831,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.temps[temp] = TempState::PromotedOut;
         }
 
-        let num_stmts = self.source_cacje[loc.block].statements.len();
+        let num_stmts = self.source_cache[loc.block].statements.len();
         let new_temp = self.promoted_cache.local_decls.push(
             LocalDecl::new_temp(self.source_cache.local_decls[temp].ty,
                                 self.source_cache.local_decls[temp].source_info.span));

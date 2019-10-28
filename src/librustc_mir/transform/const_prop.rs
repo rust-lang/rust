@@ -8,7 +8,7 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, BodyCache, Operand, Local, UnOp,
-    Rvalue. StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate,
+    Rvalue, StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate,
     SourceInfo, BinOp, SourceScope, SourceScopeData, LocalDecl, BasicBlock, ReadOnlyBodyCache,
     read_only, RETURN_PLACE
 };

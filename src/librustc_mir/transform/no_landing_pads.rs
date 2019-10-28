@@ -18,7 +18,7 @@ impl<'tcx> NoLandingPads<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads<'tcx> {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
-        no_landing_pads(tcx, body)
+        no_landing_pads(tcx, body_cache)
     }
 }
 
