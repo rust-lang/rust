@@ -3902,7 +3902,7 @@ name = "rustdoc"
 version = "0.0.0"
 dependencies = [
  "minifier",
- "pulldown-cmark 0.5.3",
+ "pulldown-cmark 0.6.1",
  "rustc-rayon 0.3.0",
  "tempfile",
 ]

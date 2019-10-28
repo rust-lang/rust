@@ -368,11 +368,11 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
         }
 
         let event = self.inner.next();
-        if let Some(Event::Start(Tag::Header(level))) = event {
+        if let Some(Event::Start(Tag::Heading(level))) = event {
             let mut id = String::new();
             for event in &mut self.inner {
                 match &event {
-                    Event::End(Tag::Header(..)) => break,
+                    Event::End(Tag::Heading(..)) => break,
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
                     }
@@ -386,16 +386,16 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                 let mut html_header = String::new();
                 html::push_html(&mut html_header, self.buf.iter().cloned());
                 let sec = builder.push(level as u32, html_header, id.clone());
-                self.buf.push_front(Event::InlineHtml(format!("{} ", sec).into()));
+                self.buf.push_front(Event::Html(format!("{} ", sec).into()));
             }
 
-            self.buf.push_back(Event::InlineHtml(format!("</a></h{}>", level).into()));
+            self.buf.push_back(Event::Html(format!("</a></h{}>", level).into()));
 
             let start_tags = format!("<h{level} id=\"{id}\" class=\"section-header\">\
                                       <a href=\"#{id}\">",
                                      id = id,
                                      level = level);
-            return Some(Event::InlineHtml(start_tags.into()));
+            return Some(Event::Html(start_tags.into()));
         }
         event
     }
@@ -553,15 +553,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
 
 pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes,
                                            enable_per_target_ignores: bool) {
-    let mut parser = Parser::new(doc);
-    let mut prev_offset = 0;
+    let mut parser = Parser::new(doc).into_offset_iter();
     let mut nb_lines = 0;
     let mut register_header = None;
-    while let Some(event) = parser.next() {
+    let mut prev_offset = 0;
+    while let Some((event, offset)) = parser.next() {
         match event {
             Event::Start(Tag::CodeBlock(s)) => {
-                let offset = parser.get_offset();
-
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
@@ -571,8 +569,7 @@ pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes
                     continue;
                 }
                 let mut test_s = String::new();
-
-                while let Some(Event::Text(s)) = parser.next() {
+                while let Some((Event::Text(s), _)) = parser.next() {
                     test_s.push_str(&s);
                 }
 
@@ -581,12 +578,12 @@ pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes
                     .map(|l| map_line(l).for_code())
                     .collect::<Vec<Cow<'_, str>>>()
                     .join("\n");
-                nb_lines += doc[prev_offset..offset].lines().count();
+                nb_lines += doc[prev_offset..offset.end].lines().count();
                 let line = tests.get_line() + nb_lines;
                 tests.add_test(text, block_info, line);
-                prev_offset = offset;
+                prev_offset = offset.start;
             }
-            Event::Start(Tag::Header(level)) => {
+            Event::Start(Tag::Heading(level)) => {
                 register_header = Some(level as u32);
             }
             Event::Text(ref s) if register_header.is_some() => {
@@ -766,7 +763,7 @@ impl MarkdownHtml<'_> {
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event {
-            Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
+            Event::Html(text) => Event::Text(text),
             _ => event
         });
 
@@ -823,10 +820,10 @@ pub fn plain_summary_line(md: &str) -> String {
             let next_event = next_event.unwrap();
             let (ret, is_in) = match next_event {
                 Event::Start(Tag::Paragraph) => (None, 1),
-                Event::Start(Tag::Header(_)) => (None, 1),
+                Event::Start(Tag::Heading(_)) => (None, 1),
                 Event::Code(code) => (Some(format!("`{}`", code)), 0),
                 Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
-                Event::End(Tag::Paragraph) | Event::End(Tag::Header(_)) => (None, -1),
+                Event::End(Tag::Paragraph) | Event::End(Tag::Heading(_)) => (None, -1),
                 _ => (None, 0),
             };
             if is_in > 0 || (is_in < 0 && self.is_in > 0) {
@@ -925,16 +922,14 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
         return code_blocks;
     }
 
-    let mut p = Parser::new_ext(md, opts());
+    let mut p = Parser::new_ext(md, opts()).into_offset_iter();
 
-    let mut code_block_start = 0;
+    let mut code_block = None;
     let mut code_start = 0;
     let mut is_fenced = false;
-    let mut previous_offset = 0;
+    let mut previous_offset = Range { start: 0, end: 0 };
     let mut in_rust_code_block = false;
-    while let Some(event) = p.next() {
-        let offset = p.get_offset();
-
+    while let Some((event, offset_range)) = p.next() {
         match event {
             Event::Start(Tag::CodeBlock(syntax)) => {
                 let lang_string = if syntax.is_empty() {
@@ -945,55 +940,40 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
 
                 if lang_string.rust {
                     in_rust_code_block = true;
+                    code_block = Some(offset_range.clone());
 
-                    code_start = offset;
-                    code_block_start = match md[previous_offset..offset].find("```") {
-                        Some(fence_idx) => {
+                    code_start = match md[offset_range.clone()].find("```") {
+                        Some(_) => {
                             is_fenced = true;
-                            previous_offset + fence_idx
+                            offset_range.start + md[offset_range.clone()]
+                                .lines()
+                                .next()
+                                .map_or(0, |x| x.len() + 1)
                         }
                         None => {
                             is_fenced = false;
-                            offset
+                            offset_range.start
                         }
                     };
+                    previous_offset = Range { start: code_start, end: offset_range.end };
                 }
             }
             Event::End(Tag::CodeBlock(syntax)) if in_rust_code_block => {
                 in_rust_code_block = false;
 
-                let code_block_end = if is_fenced {
-                    let fence_str = &md[previous_offset..offset]
-                        .chars()
-                        .rev()
-                        .collect::<String>();
-                    fence_str
-                        .find("```")
-                        .map(|fence_idx| offset - fence_idx)
-                        .unwrap_or_else(|| offset)
-                } else if md
-                    .as_bytes()
-                    .get(offset)
-                    .map(|b| *b == b'\n')
-                    .unwrap_or_default()
-                {
-                    offset - 1
-                } else {
-                    offset
-                };
-
                 let code_end = if is_fenced {
-                    previous_offset
+                    let last_len = md[previous_offset.clone()]
+                        .lines()
+                        .last()
+                        .map_or(0, |l| l.len());
+                    previous_offset.end - last_len
                 } else {
-                    code_block_end
+                    previous_offset.end
                 };
 
                 code_blocks.push(RustCodeBlock {
                     is_fenced,
-                    range: Range {
-                        start: code_block_start,
-                        end: code_block_end,
-                    },
+                    range: code_block.clone().unwrap(),
                     code: Range {
                         start: code_start,
                         end: code_end,
@@ -1007,8 +987,6 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
             }
             _ => (),
         }
-
-        previous_offset = offset;
     }
 
     code_blocks

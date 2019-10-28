@@ -33,7 +33,6 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             FileName::Custom(String::from("doctest")),
             dox[code_block.code].to_owned(),
         );
-
         let validation_status = {
             let mut has_syntax_errors = false;
             let mut only_whitespace = true;
