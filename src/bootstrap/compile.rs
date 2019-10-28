@@ -657,11 +657,11 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
             if let Some(ref s) = builder.config.llvm_ldflags {
                 cargo.env("LLVM_LINKER_FLAGS", s);
             }
-            // Building with a static libstdc++ is only supported on linux right now,
+            // Building with a static libstdc++ is only supported on linux and mingw right now,
             // not for MSVC or macOS
             if builder.config.llvm_static_stdcpp &&
                !target.contains("freebsd") &&
-               !target.contains("windows") &&
+               !target.contains("msvc") &&
                !target.contains("apple") {
                 let file = compiler_file(builder,
                                          builder.cxx(target).unwrap(),
