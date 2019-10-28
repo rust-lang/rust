@@ -154,8 +154,8 @@ use crate::raw_vec::RawVec;
 /// println!("{}", v[6]); // it will panic!
 /// ```
 ///
-/// In conclusion: always check if the index you want to get really exists
-/// before doing it.
+/// Use [`get`] and [`get_mut`] if you want to check whether the index is in
+/// the `Vec`.
 ///
 /// # Slicing
 ///
@@ -277,6 +277,8 @@ use crate::raw_vec::RawVec;
 /// The order has changed in the past and may change again.
 ///
 /// [`vec!`]: ../../std/macro.vec.html
+/// [`get`]: ../../std/vec/struct.Vec.html#method.get
+/// [`get_mut`]: ../../std/vec/struct.Vec.html#method.get_mut
 /// [`Index`]: ../../std/ops/trait.Index.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`&str`]: ../../std/primitive.str.html
