@@ -1,8 +1,9 @@
 use crate::cmp;
 use crate::fmt;
-use crate::ops::{Add, AddAssign, Try};
-use crate::usize;
 use crate::intrinsics;
+use crate::ops::{Add, AddAssign, Try};
+use crate::slice;
+use crate::usize;
 
 use super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
 use super::{LoopState, from_fn};
@@ -234,6 +235,29 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
           T: Copy
 {}
 
+#[stable(feature = "slice_iter_adapter_as_ref", since = "1.40.0")]
+impl<'a, T> AsRef<[T]> for Copied<slice::Iter<'a, T>> {
+    fn as_ref(&self) -> &[T] {
+        self.it.as_ref()
+    }
+}
+impl<'a, T> Copied<slice::Iter<'a, T>> {
+    /// This simply calls the parent method. For more information, see
+    /// [`Iter::as_slice`][slice::Iter::as_slice].
+    #[unstable(feature = "slice_iter_adapter_as_slice", issue = "0")]
+    pub fn as_slice(&self) -> &'a [T] {
+        self.it.as_slice()
+    }
+}
+impl<'a, T> Copied<slice::IterMut<'a, T>> {
+    /// This simply calls the parent method. For more information, see
+    /// [`IterMut::as_slice`][slice::IterMut::as_slice].
+    #[unstable(feature = "slice_iter_adapter_as_slice", issue = "0")]
+    pub fn as_slice(&self) -> &[T] {
+        self.it.as_slice()
+    }
+}
+
 /// An iterator that clones the elements of an underlying iterator.
 ///
 /// This `struct` is created by the [`cloned`] method on [`Iterator`]. See its
@@ -356,6 +380,29 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
     where I: TrustedLen<Item=&'a T>,
           T: Clone
 {}
+
+#[stable(feature = "slice_iter_adapter_as_ref", since = "1.40.0")]
+impl<'a, T> AsRef<[T]> for Cloned<slice::Iter<'a, T>> {
+    fn as_ref(&self) -> &[T] {
+        self.it.as_ref()
+    }
+}
+impl<'a, T> Cloned<slice::Iter<'a, T>> {
+    /// This simply calls the parent method. For more information, see
+    /// [`Iter::as_slice`][slice::Iter::as_slice].
+    #[unstable(feature = "slice_iter_adapter_as_slice", issue = "0")]
+    pub fn as_slice(&self) -> &'a [T] {
+        self.it.as_slice()
+    }
+}
+impl<'a, T> Cloned<slice::IterMut<'a, T>> {
+    /// This simply calls the parent method. For more information, see
+    /// [`IterMut::as_slice`][slice::IterMut::as_slice].
+    #[unstable(feature = "slice_iter_adapter_as_slice", issue = "0")]
+    pub fn as_slice(&self) -> &[T] {
+        self.it.as_slice()
+    }
+}
 
 /// An iterator that repeats endlessly.
 ///
@@ -1222,6 +1269,28 @@ unsafe impl<I> TrustedLen for Enumerate<I>
     where I: TrustedLen,
 {}
 
+#[stable(feature = "slice_iter_adapter_as_ref", since = "1.40.0")]
+impl<'a, T> AsRef<[T]> for Enumerate<slice::Iter<'a, T>> {
+    fn as_ref(&self) -> &[T] {
+        self.iter.as_ref()
+    }
+}
+impl<'a, T> Enumerate<slice::Iter<'a, T>> {
+    /// This simply calls the parent method. For more information, see
+    /// [`Iter::as_slice`][slice::Iter::as_slice].
+    #[unstable(feature = "slice_iter_adapter_as_slice", issue = "0")]
+    pub fn as_slice(&self) -> &'a [T] {
+        self.iter.as_slice()
+    }
+}
+impl<'a, T> Enumerate<slice::IterMut<'a, T>> {
+    /// This simply calls the parent method. For more information, see
+    /// [`IterMut::as_slice`][slice::IterMut::as_slice].
+    #[unstable(feature = "slice_iter_adapter_as_slice", issue = "0")]
+    pub fn as_slice(&self) -> &[T] {
+        self.iter.as_slice()
+    }
+}
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.

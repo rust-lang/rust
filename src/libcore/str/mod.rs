@@ -651,6 +651,19 @@ impl<'a> Chars<'a> {
     }
 }
 
+#[stable(feature = "chars_as_ref", since = "1.40.0")]
+impl<'a> AsRef<str> for Chars<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+#[stable(feature = "chars_as_ref", since = "1.40.0")]
+impl<'a> AsRef<[u8]> for Chars<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_str().as_bytes()
+    }
+}
+
 /// An iterator over the [`char`]s of a string slice, and their positions.
 ///
 /// [`char`]: ../../std/primitive.char.html
@@ -728,6 +741,19 @@ impl<'a> CharIndices<'a> {
     }
 }
 
+#[stable(feature = "chars_as_ref", since = "1.40.0")]
+impl<'a> AsRef<str> for CharIndices<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+#[stable(feature = "chars_as_ref", since = "1.40.0")]
+impl<'a> AsRef<[u8]> for CharIndices<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_str().as_bytes()
+    }
+}
+
 /// An iterator over the bytes of a string slice.
 ///
 /// This struct is created by the [`bytes`] method on [`str`].
@@ -738,6 +764,18 @@ impl<'a> CharIndices<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
+
+impl<'a> Bytes<'a> {
+    /// Views the underlying data as a subslice of the original data.
+    ///
+    /// This has the same lifetime as the original slice, and so the
+    /// iterator can continue to be used while this exists.
+    #[unstable(feature = "bytes_as_bytes", issue = "0")]
+    #[inline]
+    pub fn as_bytes(&self) -> &'a [u8] {
+        self.0.as_slice()
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for Bytes<'_> {
@@ -845,6 +883,13 @@ unsafe impl TrustedRandomAccess for Bytes<'_> {
         self.0.get_unchecked(i)
     }
     fn may_have_side_effect() -> bool { false }
+}
+
+#[stable(feature = "bytes_as_ref", since = "1.40.0")]
+impl<'a> AsRef<[u8]> for Bytes<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 /// This macro generates a Clone impl for string pattern API
