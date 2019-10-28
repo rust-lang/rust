@@ -32,7 +32,6 @@ use syntax::parse::parser::emit_unclosed_delims;
 use syntax::source_map::Spanned;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, FileName};
-use rustc_index::bit_set::BitSet;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -122,9 +121,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     optimized_mir => { tcx.arena.alloc(cdata.get_optimized_mir(tcx, def_id.index)) }
     promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
-    mir_const_qualif => {
-        (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
-    }
+    mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }

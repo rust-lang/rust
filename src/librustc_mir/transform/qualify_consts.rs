@@ -258,7 +258,7 @@ trait Qualif {
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty).unwrap_or(false)
                     } else {
-                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let bits = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = PerQualif::decode_from_bits(bits).0[Self::IDX];
 
@@ -682,7 +682,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 
     /// Check a whole const, static initializer or const fn.
-    fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
+    fn check_const(&mut self) -> u8 {
         use crate::transform::check_consts as new_checker;
 
         debug!("const-checking {} {:?}", self.mode, self.def_id);
@@ -704,7 +704,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut seen_blocks = BitSet::new_empty(body.basic_blocks().len());
         let mut bb = START_BLOCK;
-        let mut has_controlflow_error = false;
         loop {
             seen_blocks.insert(bb.index());
 
@@ -745,7 +744,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
-                    has_controlflow_error = true;
                     self.not_const(ops::Loop);
                     validator.check_op(ops::Loop);
                     break;
@@ -772,51 +770,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        // Collect all the temps we need to promote.
-        let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
-
-        // HACK: if parts of the control-flow graph were skipped due to an error, don't try to
-        // promote anything, since that can cause errors in a `const` if e.g. rvalue static
-        // promotion is attempted within a loop body.
-        let unleash_miri = self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
-        let promotion_candidates = if has_controlflow_error && !unleash_miri {
-            self.tcx.sess.delay_span_bug(
-                body.span,
-                "check_const: expected control-flow error(s)",
-            );
-
-            vec![]
-        } else {
-            promote_consts::validate_candidates(
-                self.tcx,
-                self.body,
-                self.def_id,
-                &self.temp_promotion_state,
-                &self.unchecked_promotion_candidates,
-            )
-        };
-
-        debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
-        for candidate in promotion_candidates {
-            match candidate {
-                Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(box( _, Rvalue::Ref(_, _, place)))
-                        = &self.body[bb].statements[stmt_idx].kind
-                    {
-                        if let PlaceBase::Local(local) = place.base {
-                            promoted_temps.insert(local);
-                        }
-                    }
-                }
-
-                // Only rvalue-static promotion requires extending the lifetime of the promoted
-                // local.
-                Candidate::Argument { .. } | Candidate::Repeat(_) => {}
-            }
-        }
-
-        let qualifs = self.qualifs_in_local(RETURN_PLACE);
-        (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
+        self.qualifs_in_local(RETURN_PLACE).encode_to_bits()
     }
 }
 
@@ -1346,7 +1300,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 // in `promote_consts`, see the comment in `validate_operand`.
 pub(super) const QUALIF_ERROR_BIT: u8 = 1 << 2;
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
+fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1355,7 +1309,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
-        return (QUALIF_ERROR_BIT, tcx.arena.alloc(BitSet::new_empty(0)));
+        return QUALIF_ERROR_BIT;
     }
 
     Checker::new(tcx, def_id, body, Mode::Const).check_const()
@@ -1436,11 +1390,11 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
         } else {
             check_short_circuiting_in_const_local(tcx, body, mode);
 
-            let promoted_temps = match mode {
-                Mode::Const => tcx.mir_const_qualif(def_id).1,
-                _ => Checker::new(tcx, def_id, body, mode).check_const().1,
+            match mode {
+                Mode::Const => tcx.mir_const_qualif(def_id),
+                _ => Checker::new(tcx, def_id, body, mode).check_const(),
             };
-            remove_drop_and_storage_dead_on_promoted_locals(body, promoted_temps);
+            remove_drop_and_storage_dead_on_promoted_locals(body, unimplemented!());
         }
 
         if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {

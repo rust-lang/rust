@@ -538,7 +538,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         // is gone - we can always promote constants even if they
                         // fail to pass const-checking, as compilation would've
                         // errored independently and promotion can't change that.
-                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
                         if bits == super::qualify_consts::QUALIF_ERROR_BIT {
                             self.tcx.sess.delay_span_bug(
                                 constant.span,
