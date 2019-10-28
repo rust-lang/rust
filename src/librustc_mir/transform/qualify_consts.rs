@@ -1857,8 +1857,10 @@ fn extend_lifetimes_and_suppress_moves_in_repeat_for_const_and_static(
                     _ => bug!("Can't find assign corresponding to repeat"),
                 };
 
+                // FIXME: Trying to fix #65732 by changing this `Move` to a `Copy` causes bugs
+                // later during type checking. Figure out what to do here.
                 if let Operand::Move(_) = op {
-                    *op = op.to_copy();
+                    // *op = op.to_copy();
                 }
             }
             Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
