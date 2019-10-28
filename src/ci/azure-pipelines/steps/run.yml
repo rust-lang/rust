@@ -48,86 +48,106 @@ steps:
 - bash: python src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
   displayName: "Collect CPU-usage statistics in the background"
 
-- bash: printenv | sort
-  displayName: Show environment variables
+- bash: src/ci/scripts/dump-environment.sh
+  displayName: Show the current environment
 
-- bash: |
-    set -e
-    df -h
-    du . | sort -nr | head -n100
-  displayName: Show disk usage
-  # FIXME: this hasn't been tested, but maybe it works on Windows? Should test!
-  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
+- bash: src/ci/scripts/install-sccache.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install sccache
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- template: install-sccache.yml
-- template: install-clang.yml
+- bash: src/ci/scripts/install-clang.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install clang
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
-# Switch to XCode 9.3 on OSX since it seems to be the last version that supports
-# i686-apple-darwin. We'll eventually want to upgrade this and it will probably
-# force us to drop i686-apple-darwin, but let's keep the wheels turning for now.
-- bash: |
-    set -e
-    sudo xcode-select --switch /Applications/Xcode_9.3.app
-  displayName: Switch to Xcode 9.3 (OSX)
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+- bash: src/ci/scripts/switch-xcode.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Switch to Xcode 9.3
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- template: install-windows-build-deps.yml
+- bash: src/ci/scripts/install-wix.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install wix
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
-# Looks like docker containers have IPv6 disabled by default, so let's turn it
-# on since libstd tests require it
-- bash: |
-    set -e
-    sudo mkdir -p /etc/docker
-    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
-    sudo service docker restart
-  displayName: Enable IPv6
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Linux'))
+- bash: src/ci/scripts/install-innosetup.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install InnoSetup
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/windows-symlink-build-dir.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Ensure the build happens on C:\ instead of D:\
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/disable-git-crlf-conversion.sh
+  displayName: "Disable git automatic line ending conversion (on C:/)"
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/install-msys2.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+    SYSTEM_WORKFOLDER: $(System.Workfolder)
+  displayName: Install msys2
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/install-msys2-packages.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+    SYSTEM_WORKFOLDER: $(System.Workfolder)
+  displayName: Install msys2 packages
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/install-mingw.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+    SYSTEM_WORKFOLDER: $(System.Workfolder)
+  displayName: Install MinGW
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/install-ninja.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Install ninja
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+
+- bash: src/ci/scripts/enable-docker-ipv6.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Enable IPv6 on Docker
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Disable automatic line ending conversion (again). On Windows, when we're
 # installing dependencies, something switches the git configuration directory or
 # re-enables autocrlf. We've not tracked down the exact cause -- and there may
 # be multiple -- but this should ensure submodules are checked out with the
 # appropriate line endings.
-- bash: git config --replace-all --global core.autocrlf false
-  displayName: "Disable git automatic line ending conversion"
+- bash: src/ci/scripts/disable-git-crlf-conversion.sh
+  displayName: Disable git automatic line ending conversion
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
-# Check out all our submodules, but more quickly than using git by using one of
-# our custom scripts
-- bash: |
-    set -e
-    mkdir -p $HOME/rustsrc
-    $BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc
-  condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Check out submodules (Unix)
-- script: |
-    if not exist C:\cache\rustsrc\NUL mkdir C:\cache\rustsrc
-    sh src/ci/init_repo.sh . /c/cache/rustsrc
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Check out submodules (Windows)
+- bash: src/ci/scripts/checkout-submodules.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Checkout submodules
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
-# See also the disable for autocrlf above, this just checks that it worked
-#
-# We check both in rust-lang/rust and in a submodule to make sure both are
-# accurate. Submodules are checked out significantly later than the main
-# repository in this script, so settings can (and do!) change between then.
-#
-# Linux (and maybe macOS) builders don't currently have dos2unix so just only
-# run this step on Windows.
-- bash: |
-    set -x
-    # print out the git configuration so we can better investigate failures in
-    # the following
-    git config --list --show-origin
-    dos2unix -ih Cargo.lock src/tools/rust-installer/install-template.sh
-    endings=$(dos2unix -ic Cargo.lock src/tools/rust-installer/install-template.sh)
-    # if endings has non-zero length, error out
-    if [ -n "$endings" ]; then exit 1 ; fi
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
-  displayName: Verify line endings are LF
+- bash: src/ci/scripts/verify-line-endings.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  displayName: Verify line endings
+  condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Ensure the `aws` CLI is installed so we can deploy later on, cache docker
 # images, etc.
-- bash: src/ci/install-awscli.sh
+- bash: src/ci/scripts/install-awscli.sh
   env:
     AGENT_OS: $(Agent.OS)
   condition: and(succeeded(), not(variables.SKIP_JOB))
