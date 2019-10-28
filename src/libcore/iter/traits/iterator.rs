@@ -384,6 +384,9 @@ pub trait Iterator {
     ///
     /// In other words, it links two iterators together, in a chain. 🔗
     ///
+    /// [`once`] is commonly used to adapt a single value into a chain of
+    /// other kinds of iteration.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -408,9 +411,6 @@ pub trait Iterator {
     /// [`Iterator`] itself. For example, slices (`&[T]`) implement
     /// [`IntoIterator`], and so can be passed to `chain()` directly:
     ///
-    /// [`IntoIterator`]: trait.IntoIterator.html
-    /// [`Iterator`]: trait.Iterator.html
-    ///
     /// ```
     /// let s1 = &[1, 2, 3];
     /// let s2 = &[4, 5, 6];
@@ -425,6 +425,21 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(&6));
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// If you work with Windows API, you may wish to convert [`OsStr`] to `Vec<u16>`:
+    ///
+    /// ```
+    /// #[cfg(windows)]
+    /// fn os_str_to_utf16(s: &std::ffi::OsStr) -> Vec<u16> {
+    ///     use std::os::windows::ffi::OsStrExt;
+    ///     s.encode_wide().chain(std::iter::once(0)).collect()
+    /// }
+    /// ```
+    ///
+    /// [`once`]: fn.once.html
+    /// [`Iterator`]: trait.Iterator.html
+    /// [`IntoIterator`]: trait.IntoIterator.html
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
