@@ -1,3 +1,6 @@
+/// Note: most tests relevant to this file can be found (at the time of writing)
+/// in src/tests/ui/pattern/usefulness.
+///
 /// This file includes the logic for exhaustiveness and usefulness checking for
 /// pattern-matching. Specifically, given a list of patterns for a type, we can
 /// tell whether:
