@@ -34,9 +34,9 @@ impl Future for WakeFromRemoteThreadFuture {
             let wake_by_ref = self.wake_by_ref;
             self.join_handle = Some(spawn(move || {
                 if wake_by_ref {
-                    waker.wake();
-                } else {
                     waker.wake_by_ref();
+                } else {
+                    waker.wake();
                 }
             }));
             Poll::Pending
