@@ -378,12 +378,12 @@ fn orphan_check_trait_ref<'tcx>(
         //      Let Ti be the first such type.
         //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
         //
-        fn uncover_fundamental_ty<'a>(
-            tcx: TyCtxt<'_>,
-            ty: Ty<'a>,
+        fn uncover_fundamental_ty<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            ty: Ty<'tcx>,
             in_crate: InCrate,
-        ) -> Vec<Ty<'a>> {
-            if fundamental_ty(ty) && !ty_is_local(tcx, ty, in_crate) {
+        ) -> Vec<Ty<'tcx>> {
+            if fundamental_ty(ty) && ty_is_non_local(tcx, ty, in_crate).is_some() {
                 ty.walk_shallow().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).collect()
             } else {
                 vec![ty]
