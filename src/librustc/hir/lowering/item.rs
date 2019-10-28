@@ -18,7 +18,6 @@ use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast::*;
 use syntax::visit::{self, Visitor};
-use syntax::expand::SpecialDerives;
 use syntax::source_map::{respan, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
@@ -227,13 +226,7 @@ impl LoweringContext<'_> {
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis, None);
-        let mut attrs = self.lower_attrs_extendable(&i.attrs);
-        if self.resolver.has_derives(i.id, SpecialDerives::PARTIAL_EQ | SpecialDerives::EQ) {
-            // Add `#[structural_match]` if the item derived both `PartialEq` and `Eq`.
-            let ident = Ident::new(sym::structural_match, i.span);
-            attrs.push(attr::mk_attr_outer(attr::mk_word_item(ident)));
-        }
-        let attrs = attrs.into();
+        let attrs = self.lower_attrs(&i.attrs);
 
         if let ItemKind::MacroDef(ref def) = i.kind {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {

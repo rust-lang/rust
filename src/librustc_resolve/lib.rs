@@ -937,8 +937,6 @@ pub struct Resolver<'a> {
     /// Some built-in derives mark items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    /// FIXME: Find a way for `PartialEq` and `Eq` to emulate `#[structural_match]`
-    /// by marking the produced impls rather than the original items.
     special_derives: FxHashMap<ExpnId, SpecialDerives>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.

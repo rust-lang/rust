@@ -9,8 +9,6 @@ bitflags::bitflags! {
     /// Built-in derives that need some extra tracking beyond the usual macro functionality.
     #[derive(Default)]
     pub struct SpecialDerives: u8 {
-        const PARTIAL_EQ = 1 << 0;
-        const EQ         = 1 << 1;
         const COPY       = 1 << 2;
     }
 }
