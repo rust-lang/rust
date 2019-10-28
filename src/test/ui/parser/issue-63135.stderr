@@ -32,7 +32,7 @@ error: expected one of `:` or `|`, found `)`
   --> $DIR/issue-63135.rs:3:16
    |
 LL | fn i(n{...,f #
-   |                ^ expected one of `:` or `|` here
+   |                ^ expected one of `:` or `|`
 
 error: aborting due to 5 previous errors
 

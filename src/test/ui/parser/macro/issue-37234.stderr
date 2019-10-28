@@ -2,7 +2,7 @@ error: expected one of `.`, `;`, `?`, or an operator, found `""`
   --> $DIR/issue-37234.rs:3:19
    |
 LL |         let x = 5 "";
-   |                   ^^ expected one of `.`, `;`, `?`, or an operator here
+   |                   ^^ expected one of `.`, `;`, `?`, or an operator
 ...
 LL |     failed!();
    |     ---------- in this macro invocation

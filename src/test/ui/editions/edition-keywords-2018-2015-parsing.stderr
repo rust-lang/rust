@@ -36,7 +36,7 @@ error: macro expansion ends with an incomplete expression: expected one of `move
   --> <::edition_kw_macro_2015::passes_ident macros>:1:22
    |
 LL | ($ i : ident) => ($ i)
-   |                      ^ expected one of `move`, `|`, or `||` here
+   |                      ^ expected one of `move`, `|`, or `||`
    | 
   ::: $DIR/edition-keywords-2018-2015-parsing.rs:16:8
    |

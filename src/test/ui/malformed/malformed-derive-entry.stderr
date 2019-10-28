@@ -2,13 +2,13 @@ error: expected one of `)`, `,`, or `::`, found `(`
   --> $DIR/malformed-derive-entry.rs:1:14
    |
 LL | #[derive(Copy(Bad))]
-   |              ^ expected one of `)`, `,`, or `::` here
+   |              ^ expected one of `)`, `,`, or `::`
 
 error: expected one of `)`, `,`, or `::`, found `=`
   --> $DIR/malformed-derive-entry.rs:4:14
    |
 LL | #[derive(Copy="bad")]
-   |              ^ expected one of `)`, `,`, or `::` here
+   |              ^ expected one of `)`, `,`, or `::`
 
 error: malformed `derive` attribute input
   --> $DIR/malformed-derive-entry.rs:7:1

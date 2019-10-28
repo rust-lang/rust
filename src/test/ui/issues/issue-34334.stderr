@@ -14,7 +14,7 @@ error: expected one of `,` or `>`, found `=`
   --> $DIR/issue-34334.rs:2:29
    |
 LL |     let sr: Vec<(u32, _, _) = vec![];
-   |         ---                 ^ expected one of `,` or `>` here
+   |         ---                 ^ expected one of `,` or `>`
    |         | |
    |         | help: use `=` if you meant to assign
    |         while parsing the type for `sr`

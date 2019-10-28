@@ -2,7 +2,7 @@ error: expected one of `)` or `,`, found `(`
   --> $DIR/test3.rs:5:27
    |
 LL |         struct S3(pub($t) ());
-   |                           ^ expected one of `)` or `,` here
+   |                           ^ expected one of `)` or `,`
 ...
 LL |     define_struct! { foo }
    |     ---------------------- in this macro invocation
