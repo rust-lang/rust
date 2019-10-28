@@ -62,12 +62,24 @@ impl<'tcx> Instance<'tcx> {
         )
     }
 
-    fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
+    pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         let ty = self.ty(tcx);
         match ty.kind {
             ty::FnDef(..) |
             // Shims currently have type FnPtr. Not sure this should remain.
-            ty::FnPtr(_) => ty.fn_sig(tcx),
+            ty::FnPtr(_) => {
+                let mut sig = ty.fn_sig(tcx);
+                if let InstanceDef::VtableShim(..) = self.def {
+                    // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
+                    sig = sig.map_bound(|mut sig| {
+                        let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                        inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                        sig
+                    });
+                }
+                sig
+            }
             ty::Closure(def_id, substs) => {
                 let sig = substs.as_closure().sig(def_id, tcx);
 
@@ -108,22 +120,8 @@ impl<'tcx> Instance<'tcx> {
                     )
                 })
             }
-            _ => bug!("unexpected type {:?} in Instance::fn_sig_noadjust", ty)
+            _ => bug!("unexpected type {:?} in Instance::fn_sig", ty)
         }
-    }
-
-    pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let mut fn_sig = self.fn_sig_noadjust(tcx);
-        if let InstanceDef::VtableShim(..) = self.def {
-            // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-            fn_sig = fn_sig.map_bound(|mut fn_sig| {
-                let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
-                inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
-                fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
-                fn_sig
-            });
-        }
-        fn_sig
     }
 }
 
