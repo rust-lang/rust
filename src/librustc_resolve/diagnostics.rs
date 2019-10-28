@@ -782,7 +782,10 @@ impl<'a> Resolver<'a> {
             );
             let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
                 LOCAL_CRATE => self.definitions.opt_span(def_id),
-                _ => Some(self.cstore().get_span_untracked(def_id, self.session)),
+                _ => Some(self.session.source_map().def_span(self.cstore().get_span_untracked(
+                    def_id,
+                    self.session,
+                ))),
             });
             if let Some(span) = def_span {
                 err.span_label(

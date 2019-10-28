@@ -22,7 +22,7 @@ LL | #[tests]
   ::: $SRC_DIR/libcore/macros.rs:LL:COL
    |
 LL |     pub macro test($item:item) { /* compiler built-in */ }
-   |     ------------------------------------------------------ similarly named attribute macro `test` defined here
+   |     -------------------------- similarly named attribute macro `test` defined here
 
 error: cannot find attribute `deprcated` in this scope
   --> $DIR/attribute-typos.rs:1:3

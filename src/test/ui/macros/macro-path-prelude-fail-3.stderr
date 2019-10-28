@@ -7,7 +7,7 @@ LL |     inline!();
   ::: $SRC_DIR/libcore/macros.rs:LL:COL
    |
 LL |     macro_rules! line { () => { /* compiler built-in */ } }
-   |     ------------------------------------------------------- similarly named macro `line` defined here
+   |     ----------------- similarly named macro `line` defined here
 
 error: aborting due to previous error
 
