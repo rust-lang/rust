@@ -27,8 +27,8 @@ use syntax_pos::{Span, DUMMY_SP};
 /// There is one `DefPathTable` for each crate.
 #[derive(Clone, Default, RustcDecodable, RustcEncodable)]
 pub struct DefPathTable {
-    index_to_key: Vec<DefKey>,
-    def_path_hashes: Vec<DefPathHash>,
+    index_to_key: IndexVec<DefIndex, DefKey>,
+    def_path_hashes: IndexVec<DefIndex, DefPathHash>,
 }
 
 impl DefPathTable {
@@ -53,14 +53,14 @@ impl DefPathTable {
 
     #[inline(always)]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.index_to_key[index.index()]
+        self.index_to_key[index]
     }
 
     #[inline(always)]
     pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
-        let ret = self.def_path_hashes[index.index()];
-        debug!("def_path_hash({:?}) = {:?}", index, ret);
-        return ret
+        let hash = self.def_path_hashes[index];
+        debug!("def_path_hash({:?}) = {:?}", index, hash);
+        hash
     }
 
     pub fn add_def_path_hashes_to(&self,
@@ -92,7 +92,7 @@ impl DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
-    def_index_to_node: Vec<ast::NodeId>,
+    def_index_to_node: IndexVec<DefIndex, ast::NodeId>,
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
     /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
@@ -375,7 +375,7 @@ impl Definitions {
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
-            let node_id = self.def_index_to_node[def_id.index.index()];
+            let node_id = self.def_index_to_node[def_id.index];
             if node_id != ast::DUMMY_NODE_ID {
                 return Some(node_id);
             }
@@ -404,7 +404,7 @@ impl Definitions {
 
     #[inline]
     pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
-        let node_id = self.def_index_to_node[def_index.index()];
+        let node_id = self.def_index_to_node[def_index];
         self.node_to_hir_id[node_id]
     }
 
