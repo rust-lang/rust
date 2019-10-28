@@ -389,7 +389,7 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         extern "C" fn run(
             bridge: Bridge<'_>,
-            f: fn(crate::TokenStream) -> crate::TokenStream,
+            f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |input| f(crate::TokenStream(input)).0)
         }
@@ -407,7 +407,7 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
     ) -> Self {
         extern "C" fn run(
             bridge: Bridge<'_>,
-            f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
+            f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |(input, input2)| {
                 f(crate::TokenStream(input), crate::TokenStream(input2)).0
