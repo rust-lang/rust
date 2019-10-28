@@ -973,7 +973,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                    max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
                    !max_vis.get().is_at_least(directive.vis.get(), &*self) {
                     let msg =
-                        "glob import doesn't reexport anything because no candidate is public enough";
+                    "glob import doesn't reexport anything because no candidate is public enough";
                     self.r.session.buffer_lint(UNUSED_IMPORTS, directive.id, directive.span, msg);
                 }
                 return None;
