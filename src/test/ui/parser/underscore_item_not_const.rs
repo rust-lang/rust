@@ -25,6 +25,6 @@ use _ as g; //~ ERROR expected identifier, found reserved identifier `_`
 trait _ {} //~ ERROR expected identifier, found reserved identifier `_`
 trait _ = Copy; //~ ERROR expected identifier, found reserved identifier `_`
 macro_rules! _ { () => {} } //~ ERROR expected identifier, found reserved identifier `_`
-union _ { f: u8 } //~ ERROR expected one of `!` or `::`, found `_`
+union _ { f: u8 } //~ ERROR expected one of `!` or `::`, found reserved identifier `_`
 
 fn main() {}

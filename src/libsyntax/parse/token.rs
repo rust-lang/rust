@@ -143,34 +143,35 @@ impl Lit {
 
 pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
+    token_can_begin_expr(&ident_token)
+}
 
+pub(crate) fn token_can_begin_expr(ident_token: &Token) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
-    [
-        kw::Async,
-
-        // FIXME: remove when `await!(..)` syntax is removed
-        // https://github.com/rust-lang/rust/issues/60610
-        kw::Await,
-
-        kw::Do,
-        kw::Box,
-        kw::Break,
-        kw::Continue,
-        kw::False,
-        kw::For,
-        kw::If,
-        kw::Let,
-        kw::Loop,
-        kw::Match,
-        kw::Move,
-        kw::Return,
-        kw::True,
-        kw::Unsafe,
-        kw::While,
-        kw::Yield,
-        kw::Static,
-    ].contains(&name)
+    match ident_token.kind {
+        TokenKind::Ident(ident, _) => [
+            kw::Async,
+            kw::Do,
+            kw::Box,
+            kw::Break,
+            kw::Continue,
+            kw::False,
+            kw::For,
+            kw::If,
+            kw::Let,
+            kw::Loop,
+            kw::Match,
+            kw::Move,
+            kw::Return,
+            kw::True,
+            kw::Unsafe,
+            kw::While,
+            kw::Yield,
+            kw::Static,
+        ].contains(&ident),
+        _=> false,
+    }
 }
 
 fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {

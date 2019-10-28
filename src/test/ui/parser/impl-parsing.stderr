@@ -26,7 +26,7 @@ error: expected `impl`, found `FAIL`
   --> $DIR/impl-parsing.rs:11:16
    |
 LL | default unsafe FAIL
-   |                ^^^^ expected `impl` here
+   |                ^^^^ expected `impl`
 
 error: aborting due to 5 previous errors
 

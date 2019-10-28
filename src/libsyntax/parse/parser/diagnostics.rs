@@ -6,7 +6,7 @@ use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::parse::token::{self, TokenKind};
+use crate::parse::token::{self, TokenKind, token_can_begin_expr};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::{kw, sym};
@@ -274,23 +274,23 @@ impl<'a> Parser<'a> {
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
         let expect = tokens_to_string(&expected[..]);
-        let actual = self.this_token_to_string();
+        let actual = self.this_token_descr();
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
             let short_expect = if expected.len() > 6 {
                 format!("{} possible tokens", expected.len())
             } else {
                 expect.clone()
             };
-            (format!("expected one of {}, found `{}`", expect, actual),
+            (format!("expected one of {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
                 format!("expected one of {} here", short_expect)))
         } else if expected.is_empty() {
-            (format!("unexpected token: `{}`", actual),
+            (format!("unexpected token: {}", actual),
                 (self.prev_span, "unexpected token after this".to_string()))
         } else {
-            (format!("expected {}, found `{}`", expect, actual),
+            (format!("expected {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
-                format!("expected {} here", expect)))
+                format!("expected {}", expect)))
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.fatal(&msg_exp);
@@ -326,58 +326,28 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let is_semi_suggestable = expected.iter().any(|t| match t {
-            TokenType::Token(token::Semi) => true, // We expect a `;` here.
-            _ => false,
-        }) && ( // A `;` would be expected before the current keyword.
-            self.token.is_keyword(kw::Break) ||
-            self.token.is_keyword(kw::Continue) ||
-            self.token.is_keyword(kw::For) ||
-            self.token.is_keyword(kw::If) ||
-            self.token.is_keyword(kw::Let) ||
-            self.token.is_keyword(kw::Loop) ||
-            self.token.is_keyword(kw::Match) ||
-            self.token.is_keyword(kw::Return) ||
-            self.token.is_keyword(kw::While)
-        );
         let sm = self.sess.source_map();
-        match (sm.lookup_line(self.token.span.lo()), sm.lookup_line(sp.lo())) {
-            (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
-                // The spans are in different lines, expected `;` and found `let` or `return`.
-                // High likelihood that it is only a missing `;`.
-                err.span_suggestion_short(
-                    label_sp,
-                    "a semicolon may be missing here",
-                    ";".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-                err.emit();
-                return Ok(true);
-            }
-            (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                // When the spans are in the same line, it means that the only content between
-                // them is whitespace, point at the found token in that case:
-                //
-                // X |     () => { syntax error };
-                //   |                    ^^^^^ expected one of 8 possible tokens here
-                //
-                // instead of having:
-                //
-                // X |     () => { syntax error };
-                //   |                   -^^^^^ unexpected token
-                //   |                   |
-                //   |                   expected one of 8 possible tokens here
-                err.span_label(self.token.span, label_exp);
-            }
-            _ if self.prev_span == syntax_pos::DUMMY_SP => {
-                // Account for macro context where the previous span might not be
-                // available to avoid incorrect output (#54841).
-                err.span_label(self.token.span, "unexpected token");
-            }
-            _ => {
-                err.span_label(sp, label_exp);
-                err.span_label(self.token.span, "unexpected token");
-            }
+        if self.prev_span == DUMMY_SP {
+            // Account for macro context where the previous span might not be
+            // available to avoid incorrect output (#54841).
+            err.span_label(self.token.span, label_exp);
+        } else if !sm.is_multiline(self.token.span.shrink_to_hi().until(sp.shrink_to_lo())) {
+            // When the spans are in the same line, it means that the only content between
+            // them is whitespace, point at the found token in that case:
+            //
+            // X |     () => { syntax error };
+            //   |                    ^^^^^ expected one of 8 possible tokens here
+            //
+            // instead of having:
+            //
+            // X |     () => { syntax error };
+            //   |                   -^^^^^ unexpected token
+            //   |                   |
+            //   |                   expected one of 8 possible tokens here
+            err.span_label(self.token.span, label_exp);
+        } else {
+            err.span_label(sp, label_exp);
+            err.span_label(self.token.span, "unexpected token");
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
@@ -902,18 +872,62 @@ impl<'a> Parser<'a> {
             }
         }
         let sm = self.sess.source_map();
-        match (sm.lookup_line(prev_sp.lo()), sm.lookup_line(sp.lo())) {
-            (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                // When the spans are in the same line, it means that the only content
-                // between them is whitespace, point only at the found token.
-                err.span_label(sp, label_exp);
-            }
-            _ => {
-                err.span_label(prev_sp, label_exp);
-                err.span_label(sp, "unexpected token");
-            }
+        if !sm.is_multiline(prev_sp.until(sp)) {
+            // When the spans are in the same line, it means that the only content
+            // between them is whitespace, point only at the found token.
+            err.span_label(sp, label_exp);
+        } else {
+            err.span_label(prev_sp, label_exp);
+            err.span_label(sp, "unexpected token");
         }
         Err(err)
+    }
+
+    pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {
+        if self.eat(&token::Semi) {
+            return Ok(());
+        }
+        let sm = self.sess.source_map();
+        let msg = format!("expected `;`, found `{}`", self.this_token_descr());
+        let appl = Applicability::MachineApplicable;
+        if self.token.span == DUMMY_SP || self.prev_span == DUMMY_SP {
+            // Likely inside a macro, can't provide meaninful suggestions.
+            return self.expect(&token::Semi).map(|_| ());
+        } else if !sm.is_multiline(self.prev_span.until(self.token.span)) {
+            // The current token is in the same line as the prior token, not recoverable.
+        } else if self.look_ahead(1, |t| t == &token::CloseDelim(token::Brace)
+            || token_can_begin_expr(t) && t.kind != token::Colon
+        ) && [token::Comma, token::Colon].contains(&self.token.kind) {
+            // Likely typo: `,` → `;` or `:` → `;`. This is triggered if the current token is
+            // either `,` or `:`, and the next token could either start a new statement or is a
+            // block close. For example:
+            //
+            //   let x = 32:
+            //   let y = 42;
+            self.bump();
+            let sp = self.prev_span;
+            self.struct_span_err(sp, &msg)
+                .span_suggestion(sp, "change this to `;`", ";".to_string(), appl)
+                .emit();
+            return Ok(())
+        } else if self.look_ahead(0, |t| t == &token::CloseDelim(token::Brace) || (
+                token_can_begin_expr(t)
+                && t != &token::Semi
+                && t != &token::Pound // Avoid triggering with too many trailing `#` in raw string.
+        )) {
+            // Missing semicolon typo. This is triggered if the next token could either start a
+            // new statement or is a block close. For example:
+            //
+            //   let x = 32
+            //   let y = 42;
+            let sp = self.prev_span.shrink_to_hi();
+            self.struct_span_err(sp, &msg)
+                .span_label(self.token.span, "unexpected token")
+                .span_suggestion_short(sp, "add `;` here", ";".to_string(), appl)
+                .emit();
+            return Ok(())
+        }
+        self.expect(&token::Semi).map(|_| ()) // Error unconditionally
     }
 
     pub(super) fn parse_semi_or_incorrect_foreign_fn_body(
@@ -943,7 +957,7 @@ impl<'a> Parser<'a> {
                 Err(mut err) => {
                     err.cancel();
                     mem::replace(self, parser_snapshot);
-                    self.expect(&token::Semi)?;
+                    self.expect_semi()?;
                 }
             }
         } else {

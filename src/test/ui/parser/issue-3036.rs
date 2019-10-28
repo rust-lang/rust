@@ -2,5 +2,5 @@
 
 fn main()
 {
-    let x = 3
-} //~ ERROR: expected one of `.`, `;`, `?`, or an operator, found `}`
+    let x = 3 //~ ERROR: expected `;`
+}
