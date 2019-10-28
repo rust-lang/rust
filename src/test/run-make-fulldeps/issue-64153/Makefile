@@ -1,5 +1,9 @@
 -include ../tools.mk
 
+# `llvm-objdump`'s output looks different on windows than on other platforms.
+# It should be enough to check on Unix platforms, so:
+# ignore-windows
+
 # Staticlibs don't include Rust object files from upstream crates if the same
 # code was already pulled into the lib via LTO. However, the bug described in
 # https://github.com/rust-lang/rust/issues/64153 lead to this exclusion not
