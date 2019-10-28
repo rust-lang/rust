@@ -1455,40 +1455,6 @@ fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>,
     }
 }
 
-/// In `const` and `static` everything without `StorageDead`
-/// is `'static`, we don't have to create promoted MIR fragments,
-/// just remove `Drop` and `StorageDead` on "promoted" locals.
-fn remove_drop_and_storage_dead_on_promoted_locals(
-    body: &mut Body<'tcx>,
-    promoted_temps: &BitSet<Local>,
-) {
-    debug!("run_pass: promoted_temps={:?}", promoted_temps);
-
-    for block in body.basic_blocks_mut() {
-        block.statements.retain(|statement| {
-            match statement.kind {
-                StatementKind::StorageDead(index) => !promoted_temps.contains(index),
-                _ => true
-            }
-        });
-        let terminator = block.terminator_mut();
-        match &terminator.kind {
-            TerminatorKind::Drop {
-                location,
-                target,
-                ..
-            } => {
-                if let Some(index) = location.as_local() {
-                    if promoted_temps.contains(index) {
-                        terminator.kind = TerminatorKind::Goto { target: *target };
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
 fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId) {
     let ty = body.return_ty();
     tcx.infer_ctxt().enter(|infcx| {
