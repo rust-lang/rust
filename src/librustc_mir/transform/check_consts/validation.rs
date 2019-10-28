@@ -17,7 +17,7 @@ use self::old_dataflow::IndirectlyMutableLocals;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
+use super::{ConstKind, Item, Qualif, QualifSet, is_lang_panic_fn};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckOpResult {
@@ -85,6 +85,19 @@ impl Qualifs<'a, 'mir, 'tcx> {
             || self.indirectly_mutable(local, location)
     }
 
+    /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
+    ///
+    /// Only updates the cursor if absolutely necessary.
+    fn has_mut_interior_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
+            return false;
+        }
+
+        self.has_mut_interior.cursor.seek_before(location);
+        self.has_mut_interior.cursor.get().contains(local)
+            || self.indirectly_mutable(local, location)
+    }
+
     /// Returns `true` if `local` is `HasMutInterior`, but requires the `has_mut_interior` and
     /// `indirectly_mutable` cursors to be updated beforehand.
     fn has_mut_interior_eager_seek(&self, local: Local) -> bool {
@@ -94,6 +107,37 @@ impl Qualifs<'a, 'mir, 'tcx> {
 
         self.has_mut_interior.cursor.get().contains(local)
             || self.indirectly_mutable.get().contains(local)
+    }
+
+    fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> QualifSet {
+        // Find the `Return` terminator if one exists.
+        //
+        // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
+        // qualifs for the return type.
+        let return_block = item.body
+            .basic_blocks()
+            .iter_enumerated()
+            .find(|(_, block)| {
+                match block.terminator().kind {
+                    TerminatorKind::Return => true,
+                    _ => false,
+                }
+            })
+            .map(|(bb, _)| bb);
+
+        let return_block = match return_block {
+            None => return QualifSet::in_any_value_of_ty(item, item.body.return_ty()),
+            Some(bb) => bb,
+        };
+
+        let return_loc = item.body.terminator_loc(return_block);
+
+        let mut qualifs = QualifSet::default();
+
+        qualifs.set::<NeedsDrop>(self.needs_drop_lazy_seek(RETURN_PLACE, return_loc));
+        qualifs.set::<HasMutInterior>(self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc));
+
+        qualifs
     }
 }
 
