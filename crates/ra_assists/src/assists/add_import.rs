@@ -124,9 +124,9 @@ fn fmt_segments_raw(segments: &[SmolStr], buf: &mut String) {
     }
 }
 
-// Returns the numeber of common segments.
+/// Returns the number of common segments.
 fn compare_path_segments(left: &[SmolStr], right: &[ast::PathSegment]) -> usize {
-    left.iter().zip(right).filter(|(l, r)| compare_path_segment(l, r)).count()
+    left.iter().zip(right).take_while(|(l, r)| compare_path_segment(l, r)).count()
 }
 
 fn compare_path_segment(a: &SmolStr, b: &ast::PathSegment) -> bool {
@@ -147,7 +147,7 @@ fn compare_path_segment_with_name(a: &SmolStr, b: &ast::Name) -> bool {
     a == b.text()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum ImportAction {
     Nothing,
     // Add a brand new use statement.
@@ -217,9 +217,17 @@ impl ImportAction {
             (
                 ImportAction::AddNestedImport { common_segments: n, .. },
                 ImportAction::AddInTreeList { common_segments: m, .. },
-            ) => n > m,
-            (
+            )
+            | (
                 ImportAction::AddInTreeList { common_segments: n, .. },
+                ImportAction::AddNestedImport { common_segments: m, .. },
+            )
+            | (
+                ImportAction::AddInTreeList { common_segments: n, .. },
+                ImportAction::AddInTreeList { common_segments: m, .. },
+            )
+            | (
+                ImportAction::AddNestedImport { common_segments: n, .. },
                 ImportAction::AddNestedImport { common_segments: m, .. },
             ) => n > m,
             (ImportAction::AddInTreeList { .. }, _) => true,
@@ -289,7 +297,7 @@ fn walk_use_tree_for_best_action(
         common if common == left.len() && left.len() == right.len() => {
             // e.g: target is std::fmt and we can have
             // 1- use std::fmt;
-            // 2- use std::fmt:{ ... }
+            // 2- use std::fmt::{ ... }
             if let Some(list) = tree_list {
                 // In case 2 we need to add self to the nested list
                 // unless it's already there
@@ -863,6 +871,29 @@ use std::fmt::{ Display, nested::Debug};
 
 impl Display<|> for Foo {
 }
+",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_use_nested_import() {
+        check_assist(
+            add_import,
+            "
+use crate::{
+    ty::{Substs, Ty},
+    AssocItem,
+};
+
+fn foo() { crate::ty::lower<|>::trait_env() }
+",
+            "
+use crate::{
+    ty::{Substs, Ty, lower},
+    AssocItem,
+};
+
+fn foo() { lower<|>::trait_env() }
 ",
         );
     }
