@@ -108,6 +108,7 @@ jobs:
     - name: Install Rust (rustup)
       run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
       if: matrix.os != 'macos-latest'
+      shell: bash
     - name: Install Rust (macos)
       run: |
         curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
