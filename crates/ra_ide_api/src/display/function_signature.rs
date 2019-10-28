@@ -51,36 +51,46 @@ impl FunctionSignature {
         FunctionSignature::from(&ast_node).with_doc_opt(doc)
     }
 
-    pub(crate) fn from_struct(db: &db::RootDatabase, st: hir::Struct) -> Self {
-        let doc = st.docs(db);
-
+    pub(crate) fn from_struct(db: &db::RootDatabase, st: hir::Struct) -> Option<Self> {
         let node: ast::StructDef = st.source(db).ast;
+        match node.kind() {
+            ast::StructKind::Named(_) => return None,
+            _ => (),
+        };
 
         let params = st
             .fields(db)
             .into_iter()
             .map(|field: hir::StructField| {
-                let name = field.name(db);
                 let ty = field.ty(db);
-                format!("{}: {}", name, ty.display(db))
+                format!("{}", ty.display(db))
             })
             .collect();
 
-        FunctionSignature {
-            kind: SigKind::Struct,
-            visibility: node.visibility().map(|n| n.syntax().text().to_string()),
-            name: node.name().map(|n| n.text().to_string()),
-            ret_type: node.name().map(|n| n.text().to_string()),
-            parameters: params,
-            generic_parameters: generic_parameters(&node),
-            where_predicates: where_predicates(&node),
-            doc: None,
-        }
-        .with_doc_opt(doc)
+        Some(
+            FunctionSignature {
+                kind: SigKind::Struct,
+                visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+                name: node.name().map(|n| n.text().to_string()),
+                ret_type: node.name().map(|n| n.text().to_string()),
+                parameters: params,
+                generic_parameters: generic_parameters(&node),
+                where_predicates: where_predicates(&node),
+                doc: None,
+            }
+            .with_doc_opt(st.docs(db)),
+        )
     }
 
-    pub(crate) fn from_enum_variant(db: &db::RootDatabase, variant: hir::EnumVariant) -> Self {
-        let doc = variant.docs(db);
+    pub(crate) fn from_enum_variant(
+        db: &db::RootDatabase,
+        variant: hir::EnumVariant,
+    ) -> Option<Self> {
+        let node: ast::EnumVariant = variant.source(db).ast;
+        match node.kind() {
+            ast::StructKind::Named(_) | ast::StructKind::Unit => return None,
+            _ => (),
+        };
 
         let parent_name = match variant.parent_enum(db).name(db) {
             Some(name) => name.to_string(),
@@ -99,17 +109,19 @@ impl FunctionSignature {
             })
             .collect();
 
-        FunctionSignature {
-            kind: SigKind::EnumVariant,
-            visibility: None,
-            name: Some(name),
-            ret_type: None,
-            parameters: params,
-            generic_parameters: vec![],
-            where_predicates: vec![],
-            doc: None,
-        }
-        .with_doc_opt(doc)
+        Some(
+            FunctionSignature {
+                kind: SigKind::EnumVariant,
+                visibility: None,
+                name: Some(name),
+                ret_type: None,
+                parameters: params,
+                generic_parameters: vec![],
+                where_predicates: vec![],
+                doc: None,
+            }
+            .with_doc_opt(variant.docs(db)),
+        )
     }
 }
 
