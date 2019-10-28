@@ -29,8 +29,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                     (CallInfo::with_fn(db, it), it.data(db).has_self_param())
                 }
                 hir::CallableDef::Struct(it) => (CallInfo::with_struct(db, it), false),
-                //FIXME: handle other callables
-                _ => return None,
+                hir::CallableDef::EnumVariant(_it) => return None,
             }
         }
         FnCallNode::MethodCallExpr(expr) => {
@@ -476,14 +475,13 @@ fn main() {
         let info = call_info(
             r#"
 /// A cool tuple struct
-struct TS(String, i32);
+struct TS(u32, i32);
 fn main() {
-    let s = TS("".into(), <|>);
+    let s = TS(0, <|>);
 }"#,
         );
 
-        //assert_eq!(info.label(), "struct TS(String, i32)");
-        assert_eq!(info.label(), "fn TS(0: {unknown}, 1: i32) -> TS");
+        assert_eq!(info.label(), "struct TS(0: u32, 1: i32) -> TS");
         assert_eq!(info.doc().map(|it| it.into()), Some("A cool tuple struct".to_string()));
         assert_eq!(info.active_parameter, Some(1));
     }

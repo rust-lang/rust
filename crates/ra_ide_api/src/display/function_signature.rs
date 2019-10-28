@@ -12,9 +12,16 @@ use crate::{
     display::{generic_parameters, where_predicates},
 };
 
+#[derive(Debug)]
+pub enum SigKind {
+    Function,
+    Struct,
+}
+
 /// Contains information about a function signature
 #[derive(Debug)]
 pub struct FunctionSignature {
+    pub kind: SigKind,
     /// Optional visibility
     pub visibility: Option<String>,
     /// Name of the function
@@ -59,6 +66,7 @@ impl FunctionSignature {
             .collect();
 
         FunctionSignature {
+            kind: SigKind::Struct,
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
             name: node.name().map(|n| n.text().to_string()),
             ret_type: node.name().map(|n| n.text().to_string()),
@@ -86,6 +94,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
         }
 
         FunctionSignature {
+            kind: SigKind::Function,
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
             name: node.name().map(|n| n.text().to_string()),
             ret_type: node
@@ -108,7 +117,10 @@ impl Display for FunctionSignature {
         }
 
         if let Some(name) = &self.name {
-            write!(f, "fn {}", name)?;
+            match self.kind {
+                SigKind::Function => write!(f, "fn {}", name)?,
+                SigKind::Struct => write!(f, "struct {}", name)?,
+            }
         }
 
         if !self.generic_parameters.is_empty() {
