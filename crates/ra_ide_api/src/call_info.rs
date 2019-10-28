@@ -476,7 +476,7 @@ fn main() {
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(info.label(), "fn bar(&self, _: u32)");
     }
-    
+
     fn works_for_tuple_structs() {
         let info = call_info(
             r#"
