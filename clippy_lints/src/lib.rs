@@ -37,8 +37,6 @@ extern crate rustc_typeck;
 #[allow(unused_extern_crates)]
 extern crate syntax;
 #[allow(unused_extern_crates)]
-extern crate syntax_expand;
-#[allow(unused_extern_crates)]
 extern crate syntax_pos;
 
 use rustc::lint::{self, LintId};
