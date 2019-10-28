@@ -1039,6 +1039,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     new_errors,
                 );
             }
+        } else {
+            self.errors = validator.take_errors();
         }
 
         let mut qualifs = self.qualifs_in_local(RETURN_PLACE);
@@ -1056,6 +1058,21 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     /// for promotion.
     // FIXME(eddyb) replace the old candidate gathering with this.
     fn valid_promotion_candidates(&self) -> Vec<Candidate> {
+        // HACK(eddyb) don't try to validate promotion candidates if any
+        // parts of the control-flow graph were skipped due to an error.
+        let forbidden_control_flow = self.errors
+            .iter()
+            .find(|(_, e)| e.starts_with("IfOrMatch") || e.starts_with("Loop"))
+            .is_some();
+
+        // We suppress all errors if miri is unleashed, so we can't know if parts of the CFG were
+        // skipped.
+        let miri_unleashed = self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
+        if forbidden_control_flow || miri_unleashed {
+            debug!("valid_promotion_candidates: skipping validation...");
+            return self.promotion_candidates.clone();
+        }
+
         // Sanity-check the promotion candidates.
         let candidates = promote_consts::validate_candidates(
             self.tcx,
