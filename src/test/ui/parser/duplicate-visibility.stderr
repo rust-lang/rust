@@ -1,4 +1,4 @@
-error: expected one of `(`, `fn`, `static`, or `type`, found `pub`
+error: expected one of `(`, `fn`, `static`, or `type`, found keyword `pub`
   --> $DIR/duplicate-visibility.rs:3:9
    |
 LL |     pub pub fn foo();

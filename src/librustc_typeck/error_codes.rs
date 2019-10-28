@@ -3891,6 +3891,25 @@ details.
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
 "##,
 
+E0587: r##"
+A type has both `packed` and `align` representation hints.
+
+Erroneous code example:
+
+```compile_fail,E0587
+#[repr(packed, align(8))] // error!
+struct Umbrella(i32);
+```
+
+You cannot use `packed` and `align` hints on a same type. If you want to pack a
+type to a given size, you should provide a size to packed:
+
+```
+#[repr(packed)] // ok!
+struct Umbrella(i32);
+```
+"##,
+
 E0588: r##"
 A type with `packed` representation hint has a field with `align`
 representation hint.
@@ -5098,7 +5117,6 @@ struct B<const X: A>; // ok!
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
 //  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
-    E0587, // type has conflicting packed and align representation hints
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)

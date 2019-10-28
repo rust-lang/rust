@@ -1,4 +1,4 @@
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `true`
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found keyword `true`
   --> $DIR/raw-literal-keywords.rs:2:10
    |
 LL |     r#if true { }

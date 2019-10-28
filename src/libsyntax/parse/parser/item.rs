@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::Use) {
             // USE ITEM
             let item_ = ItemKind::Use(P(self.parse_use_tree()?));
-            self.expect(&token::Semi)?;
+            self.expect_semi()?;
 
             let span = lo.to(self.prev_span);
             let item = self.mk_item(span, Ident::invalid(), item_, vis, attrs);
@@ -526,7 +526,7 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
             if delim != MacDelimiter::Brace {
-                self.expect(&token::Semi)?;
+                self.expect_semi()?;
             }
 
             Ok(Some(Mac {
@@ -776,7 +776,7 @@ impl<'a> Parser<'a> {
         let typ = self.parse_ty()?;
         self.expect(&token::Eq)?;
         let expr = self.parse_expr()?;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok((name, ImplItemKind::Const(typ, expr), Generics::default()))
     }
 
@@ -813,7 +813,7 @@ impl<'a> Parser<'a> {
 
             let bounds = self.parse_generic_bounds(None)?;
             tps.where_clause = self.parse_where_clause()?;
-            self.expect(&token::Semi)?;
+            self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_span);
             if is_auto == IsAuto::Yes {
@@ -927,7 +927,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok((ident, TraitItemKind::Const(ty, default), Generics::default()))
     }
 
@@ -951,7 +951,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
 
         Ok((ident, TraitItemKind::Type(bounds, default), generics))
     }
@@ -1054,7 +1054,7 @@ impl<'a> Parser<'a> {
         } else {
             (orig_name, None)
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
 
         let span = lo.to(self.prev_span);
         Ok(self.mk_item(span, item_name, ItemKind::ExternCrate(orig_name), visibility, attrs))
@@ -1217,7 +1217,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         let hi = self.token.span;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok(ForeignItem {
             ident,
             attrs,
@@ -1235,7 +1235,7 @@ impl<'a> Parser<'a> {
 
         let ident = self.parse_ident()?;
         let hi = self.token.span;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok(ast::ForeignItem {
             ident,
             attrs,
@@ -1282,7 +1282,7 @@ impl<'a> Parser<'a> {
 
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         let item = match m {
             Some(m) => ItemKind::Static(ty, m, e),
             None => ItemKind::Const(ty, e),
@@ -1344,7 +1344,7 @@ impl<'a> Parser<'a> {
             let ty = self.parse_ty()?;
             AliasKind::Weak(ty)
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok((ident, alias, tps))
     }
 
@@ -1468,7 +1468,7 @@ impl<'a> Parser<'a> {
         } else if self.token == token::OpenDelim(token::Paren) {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
             generics.where_clause = self.parse_where_clause()?;
-            self.expect(&token::Semi)?;
+            self.expect_semi()?;
             body
         } else {
             let token_str = self.this_token_descr();

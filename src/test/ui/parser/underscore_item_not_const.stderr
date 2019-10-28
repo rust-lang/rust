@@ -82,7 +82,7 @@ error: expected identifier, found reserved identifier `_`
 LL | macro_rules! _ { () => {} }
    |              ^ expected identifier, found reserved identifier
 
-error: expected one of `!` or `::`, found `_`
+error: expected one of `!` or `::`, found reserved identifier `_`
   --> $DIR/underscore_item_not_const.rs:28:7
    |
 LL | union _ { f: u8 }

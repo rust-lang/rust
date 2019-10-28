@@ -206,8 +206,9 @@ pub enum ObligationCauseCode<'tcx> {
     SizedReturnType,
     /// Yield type must be Sized
     SizedYieldType,
-    /// [T,..n] --> T must be Copy
-    RepeatVec,
+    /// [T,..n] --> T must be Copy. If `true`, suggest `const_in_array_repeat_expression` feature
+    /// flag.
+    RepeatVec(bool),
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
     FieldSized { adt_kind: AdtKind, last: bool },

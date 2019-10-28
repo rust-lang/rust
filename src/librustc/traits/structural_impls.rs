@@ -494,7 +494,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::SizedArgumentType => Some(super::SizedArgumentType),
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),
-            super::RepeatVec => Some(super::RepeatVec),
+            super::RepeatVec(suggest_flag) => Some(super::RepeatVec(suggest_flag)),
             super::FieldSized { adt_kind, last } => Some(super::FieldSized { adt_kind, last }),
             super::ConstSized => Some(super::ConstSized),
             super::ConstPatternStructural => Some(super::ConstPatternStructural),
