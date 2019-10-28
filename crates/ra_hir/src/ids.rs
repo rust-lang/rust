@@ -11,7 +11,7 @@ use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Parse, SyntaxNode};
 
 use crate::{
-    db::{AstDatabase, DefDatabase, InternDatabase},
+    db::{AstDatabase, InternDatabase},
     AstId, Crate, FileAstId, Module, Source,
 };
 
@@ -238,13 +238,13 @@ pub(crate) struct LocationCtx<DB> {
     file_id: HirFileId,
 }
 
-impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
+impl<'a, DB> LocationCtx<&'a DB> {
     pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
         LocationCtx { db, module, file_id }
     }
 }
 
-impl<'a, DB: DefDatabase + AstDatabase> LocationCtx<&'a DB> {
+impl<'a, DB: AstDatabase> LocationCtx<&'a DB> {
     pub(crate) fn to_def<N, DEF>(self, ast: &N) -> DEF
     where
         N: AstNode,
@@ -255,24 +255,24 @@ impl<'a, DB: DefDatabase + AstDatabase> LocationCtx<&'a DB> {
 }
 
 pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<N>) -> Self;
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<N>;
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<N>) -> Self;
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<N>;
 
-    fn from_ast(ctx: LocationCtx<&(impl AstDatabase + DefDatabase)>, ast: &N) -> Self {
+    fn from_ast(ctx: LocationCtx<&impl AstDatabase>, ast: &N) -> Self {
         let items = ctx.db.ast_id_map(ctx.file_id);
         let item_id = items.ast_id(ast);
         Self::from_ast_id(ctx, item_id)
     }
-    fn from_ast_id(ctx: LocationCtx<&impl DefDatabase>, ast_id: FileAstId<N>) -> Self {
+    fn from_ast_id(ctx: LocationCtx<&impl InternDatabase>, ast_id: FileAstId<N>) -> Self {
         let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::intern(ctx.db, loc)
     }
-    fn source(self, db: &(impl AstDatabase + DefDatabase)) -> Source<N> {
+    fn source(self, db: &impl AstDatabase) -> Source<N> {
         let loc = self.lookup_intern(db);
         let ast = loc.ast_id.to_node(db);
         Source { file_id: loc.ast_id.file_id(), ast }
     }
-    fn module(self, db: &impl DefDatabase) -> Module {
+    fn module(self, db: &impl InternDatabase) -> Module {
         let loc = self.lookup_intern(db);
         loc.module
     }
@@ -283,10 +283,10 @@ pub struct FunctionId(salsa::InternId);
 impl_intern_key!(FunctionId);
 
 impl AstItemDef<ast::FnDef> for FunctionId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::FnDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::FnDef>) -> Self {
         db.intern_function(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::FnDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::FnDef> {
         db.lookup_intern_function(self)
     }
 }
@@ -295,10 +295,10 @@ impl AstItemDef<ast::FnDef> for FunctionId {
 pub struct StructId(salsa::InternId);
 impl_intern_key!(StructId);
 impl AstItemDef<ast::StructDef> for StructId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
         db.intern_struct(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::StructDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StructDef> {
         db.lookup_intern_struct(self)
     }
 }
@@ -307,10 +307,10 @@ impl AstItemDef<ast::StructDef> for StructId {
 pub struct EnumId(salsa::InternId);
 impl_intern_key!(EnumId);
 impl AstItemDef<ast::EnumDef> for EnumId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::EnumDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::EnumDef>) -> Self {
         db.intern_enum(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::EnumDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::EnumDef> {
         db.lookup_intern_enum(self)
     }
 }
@@ -319,10 +319,10 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 pub struct ConstId(salsa::InternId);
 impl_intern_key!(ConstId);
 impl AstItemDef<ast::ConstDef> for ConstId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::ConstDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ConstDef>) -> Self {
         db.intern_const(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::ConstDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ConstDef> {
         db.lookup_intern_const(self)
     }
 }
@@ -331,10 +331,10 @@ impl AstItemDef<ast::ConstDef> for ConstId {
 pub struct StaticId(salsa::InternId);
 impl_intern_key!(StaticId);
 impl AstItemDef<ast::StaticDef> for StaticId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::StaticDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StaticDef>) -> Self {
         db.intern_static(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::StaticDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StaticDef> {
         db.lookup_intern_static(self)
     }
 }
@@ -343,10 +343,10 @@ impl AstItemDef<ast::StaticDef> for StaticId {
 pub struct TraitId(salsa::InternId);
 impl_intern_key!(TraitId);
 impl AstItemDef<ast::TraitDef> for TraitId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::TraitDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::TraitDef>) -> Self {
         db.intern_trait(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::TraitDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::TraitDef> {
         db.lookup_intern_trait(self)
     }
 }
@@ -355,10 +355,10 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 pub struct TypeAliasId(salsa::InternId);
 impl_intern_key!(TypeAliasId);
 impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
-    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::TypeAliasDef>) -> Self {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::TypeAliasDef>) -> Self {
         db.intern_type_alias(loc)
     }
-    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::TypeAliasDef> {
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::TypeAliasDef> {
         db.lookup_intern_type_alias(self)
     }
 }
