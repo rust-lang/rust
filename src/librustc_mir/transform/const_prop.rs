@@ -42,7 +42,9 @@ const MAX_ALLOC_LIMIT: u64 = 1024;
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+    ) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;

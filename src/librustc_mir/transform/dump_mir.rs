@@ -18,8 +18,9 @@ impl<'tcx> MirPass<'tcx> for Marker {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body_cache: &mut BodyCache<'tcx>) {
-    }
+    fn run_pass(
+        &self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body_cache: &mut BodyCache<'tcx>
+    ) {}
 }
 
 pub struct Disambiguator {

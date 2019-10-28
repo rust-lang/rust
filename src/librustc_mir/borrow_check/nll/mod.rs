@@ -298,7 +298,13 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
     // information
-    dump_annotation(infcx, body_cache.body(), def_id, &regioncx, &closure_region_requirements, errors_buffer);
+    dump_annotation(
+        infcx,
+        body_cache.body(),
+        def_id,
+        &regioncx,
+        &closure_region_requirements,
+        errors_buffer);
 
     (regioncx, polonius_output, closure_region_requirements)
 }

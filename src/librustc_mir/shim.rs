@@ -165,7 +165,9 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
         .collect()
 }
 
-fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> BodyCache<'tcx> {
+fn build_drop_shim<'tcx>(
+    tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>
+) -> BodyCache<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     // Check if this is a generator, if so, return the drop glue for it

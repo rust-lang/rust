@@ -87,7 +87,9 @@ impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
     ) -> Self {
         RequiresStorage {
             body_cache,
-            borrowed_locals: RefCell::new(DataflowResultsCursor::new(borrowed_locals, body_cache.body())),
+            borrowed_locals: RefCell::new(
+                DataflowResultsCursor::new(borrowed_locals, body_cache.body())
+            ),
         }
     }
 

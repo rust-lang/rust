@@ -106,7 +106,8 @@ impl LocalsStateAtExit {
         if locals_are_invalidated_at_exit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
-            let mut has_storage_dead = HasStorageDead(BitSet::new_empty(body_cache.local_decls.len()));
+            let mut has_storage_dead
+                = HasStorageDead(BitSet::new_empty(body_cache.local_decls.len()));
             has_storage_dead.visit_body(body_cache);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {

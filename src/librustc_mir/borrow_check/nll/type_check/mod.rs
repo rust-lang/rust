@@ -168,8 +168,17 @@ pub(crate) fn type_check<'tcx>(
         &mut borrowck_context,
         &universal_region_relations,
         |mut cx| {
-            cx.equate_inputs_and_outputs(body_cache.body(), universal_regions, &normalized_inputs_and_output);
-            liveness::generate(&mut cx, body_cache, elements, flow_inits, move_data, location_table);
+            cx.equate_inputs_and_outputs(
+                body_cache.body(),
+                universal_regions,
+                &normalized_inputs_and_output);
+            liveness::generate(
+                &mut cx,
+                body_cache,
+                elements,
+                flow_inits,
+                move_data,
+                location_table);
 
             translate_outlives_facts(cx.borrowck_context);
         },
@@ -535,7 +544,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         place_ty
     }
 
-    fn sanitize_promoted(&mut self, promoted_body_cache: ReadOnlyBodyCache<'b, 'tcx>, location: Location) {
+    fn sanitize_promoted(
+        &mut self,
+        promoted_body_cache: ReadOnlyBodyCache<'b, 'tcx>,
+        location: Location
+    ) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.

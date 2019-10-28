@@ -61,8 +61,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(&the_place_err.base, proj_base, self.body_cache.body(), self.infcx.tcx).ty
-                ));
+                    Place::ty_from(
+                        &the_place_err.base,
+                        proj_base,
+                        self.body_cache.body(),
+                        self.infcx.tcx
+                    ).ty));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
                 if self.is_upvar_field_projection(access_place.as_ref()).is_some() {

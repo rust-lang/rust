@@ -56,7 +56,9 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+    fn run_pass(
+        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+    ) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body_cache.body());
         simplify_cfg(body_cache);
     }
@@ -293,7 +295,9 @@ pub fn remove_dead_blocks(body_cache: &mut BodyCache<'_>) {
 pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+    ) {
         trace!("running SimplifyLocals on {:?}", source);
         let locals = {
             let read_only_cache = read_only!(body_cache);

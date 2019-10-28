@@ -338,7 +338,7 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyCache<'_> {
     tcx.arena.alloc(body_cache)
 }
 
-fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promoted, BodyCache<'tcx>> {
+fn promoted_mir(tcx: TyCtxt, def_id: DefId) -> &IndexVec<Promoted, BodyCache> {
     if tcx.is_constructor(def_id) {
         return tcx.intern_promoted(IndexVec::new());
     }

@@ -42,7 +42,8 @@ impl<'tcx> MirPass<'tcx> for UniformArrayMoveOut {
         let param_env = tcx.param_env(src.def_id());
         {
             let read_only_cache = read_only!(body_cache);
-            let mut visitor = UniformArrayMoveOutVisitor{ body: body_cache, patch: &mut patch, tcx, param_env};
+            let mut visitor
+                = UniformArrayMoveOutVisitor{ body: body_cache, patch: &mut patch, tcx, param_env};
             visitor.visit_body(read_only_cache);
         }
         patch.apply(body_cache);
@@ -219,8 +220,12 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
 
                         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
-                            let src_ty =
-                                Place::ty_from(src_place.base, src_place.projection, body_cache.body(), tcx).ty;
+                            let src_ty = Place::ty_from(
+                                src_place.base,
+                                src_place.projection,
+                                body_cache.body(),
+                                tcx
+                            ).ty;
                             if let ty::Array(_, ref size_o) = src_ty.kind {
                                 size_o.try_eval_usize(tcx, param_env)
                             } else {

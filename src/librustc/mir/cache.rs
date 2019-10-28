@@ -43,7 +43,11 @@ macro_rules! get_predecessors {
 
 macro_rules! impl_predecessor_locations {
     ( ( $($pub:ident)? )  $name:ident $($mutability:ident)?) => {
-        $($pub)? fn $name<'a>(&'a $($mutability)? self, loc: Location, body: &'a Body<'a>) -> impl Iterator<Item = Location> + 'a {
+        $($pub)? fn $name<'a>(
+            &'a $($mutability)? self,
+            loc: Location,
+            body: &'a Body<'a>
+        ) -> impl Iterator<Item = Location> + 'a {
             let if_zero_locations = if loc.statement_index == 0 {
                 let predecessor_blocks = get_predecessors!($($mutability)? self, loc.block, body);
                 let num_predecessor_blocks = predecessor_blocks.len();
@@ -119,7 +123,10 @@ impl Cache {
     impl_predecessor_locations!(() unwrap_predecessor_locations);
 
     #[inline]
-    pub fn basic_blocks_mut<'a, 'tcx>(&mut self, body: &'a mut Body<'tcx>) -> &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+    pub fn basic_blocks_mut<'a, 'tcx>(
+        &mut self,
+        body: &'a mut Body<'tcx>
+    ) -> &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         debug!("bbm: Clearing predecessors cache for body at: {:?}", body.span.data());
         self.invalidate_predecessors();
         &mut body.basic_blocks

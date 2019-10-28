@@ -31,7 +31,9 @@ use crate::util::def_use::DefUseAnalysis;
 pub struct CopyPropagation;
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+    ) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
@@ -100,7 +102,10 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                                     let maybe_action = match operand {
                                         Operand::Copy(ref src_place) |
                                         Operand::Move(ref src_place) => {
-                                            Action::local_copy(&body_cache, &def_use_analysis, src_place)
+                                            Action::local_copy(
+                                                &body_cache,
+                                                &def_use_analysis,
+                                                src_place)
                                         }
                                         Operand::Constant(ref src_constant) => {
                                             Action::constant(src_constant)
@@ -129,8 +134,8 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     }
                 }
 
-                changed =
-                    action.perform(body_cache, &def_use_analysis, dest_local, location, tcx) || changed;
+                changed = action.perform(body_cache, &def_use_analysis, dest_local, location, tcx)
+                    || changed;
                 // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
                 // regenerating the chains.
                 break
@@ -273,7 +278,8 @@ impl<'tcx> Action<'tcx> {
                 }
 
                 // Replace all uses of the destination local with the source local.
-                def_use_analysis.replace_all_defs_and_uses_with(dest_local, body_cache, src_local, tcx);
+                def_use_analysis
+                    .replace_all_defs_and_uses_with(dest_local, body_cache, src_local, tcx);
 
                 // Finally, zap the now-useless assignment instruction.
                 debug!("  Deleting assignment");

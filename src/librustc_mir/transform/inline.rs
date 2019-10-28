@@ -38,7 +38,9 @@ struct CallSite<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+    ) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(body_cache);
         }
@@ -136,7 +138,8 @@ impl Inliner<'tcx> {
                 debug!("attempting to inline callsite {:?} - success", callsite);
 
                 // Add callsites from inlined function
-                for (bb, bb_data) in caller_body_cache.basic_blocks().iter_enumerated().skip(start) {
+                for (bb, bb_data) in caller_body_cache.basic_blocks().iter_enumerated().skip(start)
+                {
                     if let Some(new_callsite) = self.get_valid_function_call(bb,
                                                                              bb_data,
                                                                              caller_body_cache,
@@ -543,8 +546,10 @@ impl Inliner<'tcx> {
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body_cache);
-            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body_cache);
+            let self_
+                = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body_cache);
+            let tuple
+                = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body_cache);
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);

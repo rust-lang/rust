@@ -64,10 +64,20 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
             sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_uninits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
-            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_def_inits);
+            sanity_check_via_rustc_peek(
+                tcx,
+                body_cache.body(),
+                def_id,
+                &attributes,
+                &flow_def_inits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
-            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_indirectly_mut);
+            sanity_check_via_rustc_peek(
+                tcx,
+                body_cache.body(),
+                def_id,
+                &attributes,
+                &flow_indirectly_mut);
         }
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");

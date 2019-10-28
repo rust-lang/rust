@@ -205,9 +205,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            let ty =
-                Place::ty_from(used_place.base, used_place.projection, self.body_cache.body(), self.infcx.tcx)
-                    .ty;
+            let ty = Place::ty_from(
+                used_place.base,
+                used_place.projection,
+                self.body_cache.body(),
+                self.infcx.tcx
+            ).ty;
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck_tables_of(id);
@@ -619,7 +622,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let union_ty = |place_base, place_projection| {
-            let ty = Place::ty_from(place_base, place_projection, self.body_cache.body(), self.infcx.tcx).ty;
+            let ty = Place::ty_from(
+                place_base,
+                place_projection,
+                self.body_cache.body(),
+                self.infcx.tcx
+            ).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
         let describe_place = |place| self.describe_place(place).unwrap_or_else(|| "_".to_owned());
@@ -1174,11 +1182,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         // FIXME use a better heuristic than Spans
-        let reference_desc = if return_span == self.body_cache.source_info(borrow.reserve_location).span {
-            "reference to"
-        } else {
-            "value referencing"
-        };
+        let reference_desc
+            = if return_span == self.body_cache.source_info(borrow.reserve_location).span {
+                "reference to"
+            } else {
+                "value referencing"
+            };
 
         let (place_desc, note) = if let Some(place_desc) = opt_place_desc {
             let local_kind = if let Some(local) = borrow.borrowed_place.as_local() {
@@ -1623,7 +1632,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(&place.base, proj_base, self.body_cache.body(), tcx).ty.is_box(),
+                                Place::ty_from(
+                                    &place.base,
+                                    proj_base,
+                                    self.body_cache.body(),
+                                    tcx
+                                ).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1631,7 +1645,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(&place.base, proj_base, self.body_cache.body(), tcx).ty;
+                        let base_ty = Place::ty_from(
+                            &place.base,
+                            proj_base,
+                            self.body_cache.body(),
+                            tcx
+                        ).ty;
                         match base_ty.kind {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor
@@ -1734,7 +1753,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // Next, look through the rest of the block, checking if we are assigning the
             // `target` (that is, the place that contains our borrow) to anything.
             let mut annotated_closure = None;
-            for stmt in &self.body_cache[location.block].statements[location.statement_index + 1..] {
+            for stmt in &self.body_cache[location.block].statements[location.statement_index + 1..]
+            {
                 debug!(
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
