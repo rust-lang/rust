@@ -56,7 +56,8 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME,
         ASYNC_KW,
         TRY_KW,
-        LOOP_KW
+        LOOP_KW,
+        FOR_KW,
     ]);
 
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
