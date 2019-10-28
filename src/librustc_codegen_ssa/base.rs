@@ -574,8 +574,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     if need_metadata_module {
         // Codegen the encoded metadata.
-        let _prof_timer = tcx.prof.generic_activity("codegen_crate_metadata");
-
         let metadata_cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                                 &["crate"],
                                                                 Some("metadata")).as_str()
