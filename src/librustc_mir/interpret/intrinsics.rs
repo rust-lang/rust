@@ -3,6 +3,7 @@
 //! and miri.
 
 use syntax::symbol::Symbol;
+use syntax_pos::Span;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::ty::subst::SubstsRef;
@@ -15,6 +16,7 @@ use super::{
     Machine, PlaceTy, OpTy, InterpCx,
 };
 
+mod caller_location;
 mod type_name;
 
 fn numeric_intrinsic<'tcx, Tag>(
@@ -86,6 +88,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: PlaceTy<'tcx, M::PointerTag>,
@@ -94,6 +97,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
+            "caller_location" => {
+                let caller = self.tcx.sess.source_map().lookup_char_pos(span.lo());
+                let location = self.alloc_caller_location(
+                    Symbol::intern(&caller.file.name.to_string()),
+                    caller.line as u32,
+                    caller.col_display as u32 + 1,
+                )?;
+                self.write_scalar(location.ptr, dest)?;
+            }
+
             "min_align_of" |
             "pref_align_of" |
             "needs_drop" |
@@ -301,18 +314,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn() {
-            assert!(args.len() == 1);
-            // &(&'static str, &'static str, u32, u32)
-            let place = self.deref_operand(args[0])?;
-            let (msg, file, line, col) = (
-                self.mplace_field(place, 0)?,
-                self.mplace_field(place, 1)?,
-                self.mplace_field(place, 2)?,
-                self.mplace_field(place, 3)?,
+            // &'static str, &core::panic::Location { &'static str, u32, u32 }
+            assert!(args.len() == 2);
+
+            let msg_place = self.deref_operand(args[0])?;
+            let msg = Symbol::intern(self.read_str(msg_place)?);
+
+            let location = self.deref_operand(args[1])?;
+            let (file, line, col) = (
+                self.mplace_field(location, 0)?,
+                self.mplace_field(location, 1)?,
+                self.mplace_field(location, 2)?,
             );
 
-            let msg_place = self.deref_operand(msg.into())?;
-            let msg = Symbol::intern(self.read_str(msg_place)?);
             let file_place = self.deref_operand(file.into())?;
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;

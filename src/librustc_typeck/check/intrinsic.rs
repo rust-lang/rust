@@ -1,6 +1,7 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
+use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::subst::Subst;
@@ -65,7 +66,7 @@ fn equate_intrinsic_type<'tcx>(
 /// Returns `true` if the given intrinsic is unsafe to call or not.
 pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
-        "size_of" | "min_align_of" | "needs_drop" |
+        "size_of" | "min_align_of" | "needs_drop" | "caller_location" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "wrapping_add" | "wrapping_sub" | "wrapping_mul" |
         "saturating_add" | "saturating_sub" |
@@ -143,6 +144,15 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                  ], tcx.types.usize)
             }
             "rustc_peek" => (1, vec![param(0)], param(0)),
+            "caller_location" => (
+                0,
+                vec![],
+                tcx.mk_imm_ref(
+                    tcx.lifetimes.re_static,
+                    tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
+                        .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
+                ),
+            ),
             "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),
             "init" => (1, Vec::new(), param(0)),
             "uninit" => (1, Vec::new(), param(0)),

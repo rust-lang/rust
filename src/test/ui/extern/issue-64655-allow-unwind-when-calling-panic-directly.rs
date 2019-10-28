@@ -22,7 +22,7 @@
 //[thin]compile-flags: -C lto=thin
 //[fat]compile-flags: -C lto=fat
 
-#![feature(core_panic)]
+#![feature(core_panic, panic_internals)]
 
 // (For some reason, reproducing the LTO issue requires pulling in std
 // explicitly this way.)
@@ -51,7 +51,8 @@ fn main() {
 
         let _guard = Droppable;
         let s = "issue-64655-allow-unwind-when-calling-panic-directly.rs";
-        core::panicking::panic(&("???", s, 17, 4));
+        let location = core::panic::Location::internal_constructor(s, 17, 4);
+        core::panicking::panic("???", &location);
     });
 
     let wait = handle.join();

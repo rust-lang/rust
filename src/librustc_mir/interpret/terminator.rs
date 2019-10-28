@@ -255,7 +255,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Some(dest) => dest,
                     None => throw_ub!(Unreachable)
                 };
-                M::call_intrinsic(self, instance, args, dest)?;
+                M::call_intrinsic(self, span, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
                 self.goto_block(ret)?;
