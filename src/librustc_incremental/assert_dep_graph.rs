@@ -44,11 +44,10 @@ use rustc_data_structures::graph::implementation::{
 };
 use rustc::hir;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::ich::{ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
-use syntax::ast;
+use syntax::{ast, symbol::sym};
 use syntax_pos::Span;
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
@@ -78,7 +77,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
             assert!(tcx.sess.opts.debugging_opts.query_dep_graph,
                     "cannot use the `#[{}]` or `#[{}]` annotations \
                     without supplying `-Z query-dep-graph`",
-                    ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED);
+                    sym::rustc_if_this_changed, sym::rustc_then_this_would_need);
         }
 
         // Check paths.
@@ -114,7 +113,7 @@ impl IfThisChanged<'tcx> {
         let def_id = self.tcx.hir().local_def_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {
-            if attr.check_name(ATTR_IF_THIS_CHANGED) {
+            if attr.check_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     None => def_path_hash.to_dep_node(DepKind::Hir),
@@ -130,7 +129,7 @@ impl IfThisChanged<'tcx> {
                     }
                 };
                 self.if_this_changed.push((attr.span, def_id, dep_node));
-            } else if attr.check_name(ATTR_THEN_THIS_WOULD_NEED) {
+            } else if attr.check_name(sym::rustc_then_this_would_need) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     Some(n) => {
