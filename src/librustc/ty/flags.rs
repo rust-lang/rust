@@ -114,6 +114,7 @@ impl FlagComputation {
             }
 
             &ty::Placeholder(..) => {
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
             }
 
@@ -123,8 +124,7 @@ impl FlagComputation {
                 match infer {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) => {
-                    }
+                    ty::FreshFloatTy(_) => {}
 
                     ty::TyVar(_) |
                     ty::IntVar(_) |
@@ -245,14 +245,16 @@ impl FlagComputation {
             }
             ConstValue::Bound(debruijn, _) => self.add_binder(debruijn),
             ConstValue::Param(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_PARAMS);
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_PARAMS);
             }
             ConstValue::Placeholder(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_CT_PLACEHOLDER);
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
             }
-            ConstValue::Scalar(_) => { }
-            ConstValue::Slice { data: _, start: _, end: _ } => { }
-            ConstValue::ByRef { alloc: _, offset: _ } => { }
+            ConstValue::Scalar(_) => {}
+            ConstValue::Slice { .. } => {}
+            ConstValue::ByRef { .. } => {}
         }
     }
 
