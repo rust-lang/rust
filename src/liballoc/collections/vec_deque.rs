@@ -835,7 +835,8 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shortens the `VecDeque`, dropping excess elements from the back.
+    /// Shortens the `VecDeque`, keeping the first `len` elements and dropping
+    /// the rest.
     ///
     /// If `len` is greater than the `VecDeque`'s current length, this has no
     /// effect.
