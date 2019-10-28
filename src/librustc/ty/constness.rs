@@ -2,7 +2,7 @@ use crate::ty::query::Providers;
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::ty::TyCtxt;
-use syntax_pos::symbol::{sym, Symbol};
+use syntax_pos::symbol::Symbol;
 use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
@@ -13,14 +13,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.is_const_fn_raw(def_id) && match self.is_unstable_const_fn(def_id) {
             Some(feature_name) => {
                 // has a `rustc_const_unstable` attribute, check whether the user enabled the
-                // corresponding feature gate, const_constructor is not a lib feature, so has
-                // to be checked separately.
+                // corresponding feature gate.
                 self.features()
                     .declared_lib_features
                     .iter()
                     .any(|&(sym, _)| sym == feature_name)
-                    || (feature_name == sym::const_constructor
-                        && self.features().const_constructor)
             },
             // functions without const stability are either stable user written
             // const fn or the user is using feature gates and we thus don't
@@ -31,9 +28,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
     pub fn is_unstable_const_fn(self, def_id: DefId) -> Option<Symbol> {
-        if self.is_constructor(def_id) {
-            Some(sym::const_constructor)
-        } else if self.is_const_fn_raw(def_id) {
+        if self.is_const_fn_raw(def_id) {
             self.lookup_stability(def_id)?.const_stability
         } else {
             None
