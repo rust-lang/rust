@@ -1,52 +1,5 @@
-error: you are deriving `Hash` but have implemented `PartialEq` explicitly
-  --> $DIR/derive.rs:16:10
-   |
-LL | #[derive(Hash)]
-   |          ^^^^
-   |
-   = note: `#[deny(clippy::derive_hash_xor_eq)]` on by default
-note: `PartialEq` implemented here
-  --> $DIR/derive.rs:19:1
-   |
-LL | / impl PartialEq for Bar {
-LL | |     fn eq(&self, _: &Bar) -> bool {
-LL | |         true
-LL | |     }
-LL | | }
-   | |_^
-
-error: you are deriving `Hash` but have implemented `PartialEq` explicitly
-  --> $DIR/derive.rs:25:10
-   |
-LL | #[derive(Hash)]
-   |          ^^^^
-   |
-note: `PartialEq` implemented here
-  --> $DIR/derive.rs:28:1
-   |
-LL | / impl PartialEq<Baz> for Baz {
-LL | |     fn eq(&self, _: &Baz) -> bool {
-LL | |         true
-LL | |     }
-LL | | }
-   | |_^
-
-error: you are implementing `Hash` explicitly but have derived `PartialEq`
-  --> $DIR/derive.rs:37:1
-   |
-LL | / impl Hash for Bah {
-LL | |     fn hash<H: Hasher>(&self, _: &mut H) {}
-LL | | }
-   | |_^
-   |
-note: `PartialEq` implemented here
-  --> $DIR/derive.rs:34:10
-   |
-LL | #[derive(PartialEq)]
-   |          ^^^^^^^^^
-
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:44:1
+  --> $DIR/derive.rs:8:1
    |
 LL | / impl Clone for Qux {
 LL | |     fn clone(&self) -> Self {
@@ -57,7 +10,7 @@ LL | | }
    |
    = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:44:1
+  --> $DIR/derive.rs:8:1
    |
 LL | / impl Clone for Qux {
 LL | |     fn clone(&self) -> Self {
@@ -67,7 +20,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:68:1
+  --> $DIR/derive.rs:32:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |     fn clone(&self) -> Self {
@@ -77,7 +30,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:68:1
+  --> $DIR/derive.rs:32:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |     fn clone(&self) -> Self {
@@ -87,7 +40,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:80:1
+  --> $DIR/derive.rs:44:1
    |
 LL | / impl Clone for BigArray {
 LL | |     fn clone(&self) -> Self {
@@ -97,7 +50,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:80:1
+  --> $DIR/derive.rs:44:1
    |
 LL | / impl Clone for BigArray {
 LL | |     fn clone(&self) -> Self {
@@ -107,7 +60,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:92:1
+  --> $DIR/derive.rs:56:1
    |
 LL | / impl Clone for FnPtr {
 LL | |     fn clone(&self) -> Self {
@@ -117,7 +70,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:92:1
+  --> $DIR/derive.rs:56:1
    |
 LL | / impl Clone for FnPtr {
 LL | |     fn clone(&self) -> Self {
@@ -126,5 +79,5 @@ LL | |     }
 LL | | }
    | |_^
 
-error: aborting due to 7 previous errors
+error: aborting due to 4 previous errors
 

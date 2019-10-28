@@ -1,0 +1,49 @@
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> $DIR/derive_hash_xor_eq.rs:12:10
+   |
+LL | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: `#[deny(clippy::derive_hash_xor_eq)]` on by default
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:15:1
+   |
+LL | / impl PartialEq for Bar {
+LL | |     fn eq(&self, _: &Bar) -> bool {
+LL | |         true
+LL | |     }
+LL | | }
+   | |_^
+
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> $DIR/derive_hash_xor_eq.rs:21:10
+   |
+LL | #[derive(Hash)]
+   |          ^^^^
+   |
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:24:1
+   |
+LL | / impl PartialEq<Baz> for Baz {
+LL | |     fn eq(&self, _: &Baz) -> bool {
+LL | |         true
+LL | |     }
+LL | | }
+   | |_^
+
+error: you are implementing `Hash` explicitly but have derived `PartialEq`
+  --> $DIR/derive_hash_xor_eq.rs:33:1
+   |
+LL | / impl Hash for Bah {
+LL | |     fn hash<H: Hasher>(&self, _: &mut H) {}
+LL | | }
+   | |_^
+   |
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:30:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
