@@ -75,23 +75,6 @@ impl Future for Yield {
     }
 }
 
-struct NeverReady {
-}
-
-impl NeverReady {
-    fn new() -> Self {
-        NeverReady {}
-    }
-}
-
-impl Future for NeverReady {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Poll::Pending
-    }
-}
-
 struct WakerStore {
     waker: Option<Waker>,
 }
@@ -204,14 +187,6 @@ fn returns_result_from_task() {
 }
 
 #[test]
-#[should_panic]
-fn panics_if_waker_was_not_cloned_and_task_is_not_ready() {
-    block_on_future(async {
-        NeverReady::new().await;
-    });
-}
-
-#[test]
 fn does_not_panic_if_waker_is_cloned_and_used_a_lot_later() {
     let store = Arc::new(Mutex::new(WakerStore {
         waker: None,
@@ -226,4 +201,74 @@ fn does_not_panic_if_waker_is_cloned_and_used_a_lot_later() {
         WakeFromPreviouslyStoredWakerFuture::new(store.clone()).await;
         WakeFromPreviouslyStoredWakerFuture::new(store).await;
     });
+}
+
+struct WakeSynchronouslyFromOtherThreadFuture {
+    was_polled: bool,
+    use_clone: bool,
+}
+
+impl WakeSynchronouslyFromOtherThreadFuture {
+    fn new(use_clone: bool) -> Self {
+        WakeSynchronouslyFromOtherThreadFuture {
+            was_polled: false,
+            use_clone,
+        }
+    }
+}
+
+/// This is just a helper to transfer a waker by reference/pointer
+/// to another thread without the availability of scoped threads.
+struct WakerBox {
+    waker: *const Waker,
+}
+
+unsafe impl Send for WakerBox {}
+
+impl Future for WakeSynchronouslyFromOtherThreadFuture {
+    type Output = ();
+
+    fn poll(mut self: core::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if !self.was_polled {
+            self.was_polled = true;
+            // This captures the waker by pointer and passes it to the other thread,
+            // since we don't have a scoped thread API available here.
+            // The pointer is however guaranteed to be alive when we call it, due to
+            // joining the thread in this scope.
+            let waker_box = WakerBox {
+                waker: cx.waker() as *const Waker,
+            };
+            let use_clone = self.use_clone;
+            spawn(move ||{
+                let x = waker_box;
+                unsafe {
+                    if !use_clone {
+                        (*(x.waker as *mut Waker)).wake_by_ref();
+                    } else {
+                        let cloned_waker = (*(x.waker as *mut Waker)).clone();
+                        cloned_waker.wake_by_ref();
+                    }
+                }
+            }).join().unwrap();
+            Poll::Pending
+        } else {
+            Poll::Ready(())
+        }
+    }
+}
+
+#[test]
+fn wake_synchronously_by_ref_from_other_thread() {
+    block_on_future(async {
+        WakeSynchronouslyFromOtherThreadFuture::new(false).await;
+        Yield::new(10).await;
+    })
+}
+
+#[test]
+fn clone_and_wake_synchronously_from_other_thread() {
+    block_on_future(async {
+        WakeSynchronouslyFromOtherThreadFuture::new(true).await;
+        Yield::new(10).await;
+    })
 }
