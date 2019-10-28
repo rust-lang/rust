@@ -370,6 +370,7 @@ language_item_table! {
     PanicFnLangItem,             "panic",              panic_fn,                Target::Fn;
     PanicBoundsCheckFnLangItem,  "panic_bounds_check", panic_bounds_check_fn,   Target::Fn;
     PanicInfoLangItem,           "panic_info",         panic_info,              Target::Struct;
+    PanicLocationLangItem,       "panic_location",     panic_location,          Target::Struct;
     PanicImplLangItem,           "panic_impl",         panic_impl,              Target::Fn;
     // Libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanicFnLangItem,        "begin_panic",        begin_panic_fn,          Target::Fn;

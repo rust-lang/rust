@@ -1,8 +1,9 @@
 /// Panics the current thread.
 ///
 /// For details, see `std::macros`.
+#[cfg(bootstrap)]
 #[macro_export]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, panic_internals)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
@@ -17,6 +18,38 @@ macro_rules! panic {
     ($fmt:expr, $($arg:tt)+) => ({
         $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+),
                                      &($crate::file!(), $crate::line!(), $crate::column!()))
+    });
+}
+
+/// Panics the current thread.
+///
+/// For details, see `std::macros`.
+#[cfg(not(bootstrap))]
+#[macro_export]
+#[allow_internal_unstable(core_panic, panic_internals)]
+#[stable(feature = "core", since = "1.6.0")]
+macro_rules! panic {
+    () => (
+        $crate::panic!("explicit panic")
+    );
+    ($msg:expr) => ({
+        const LOC: &$crate::panic::Location<'_> = &$crate::panic::Location::internal_constructor(
+            $crate::file!(),
+            $crate::line!(),
+            $crate::column!(),
+        );
+        $crate::panicking::panic($msg, LOC)
+    });
+    ($msg:expr,) => (
+        $crate::panic!($msg)
+    );
+    ($fmt:expr, $($arg:tt)+) => ({
+        const LOC: &$crate::panic::Location<'_> = &$crate::panic::Location::internal_constructor(
+            $crate::file!(),
+            $crate::line!(),
+            $crate::column!(),
+        );
+        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+), LOC)
     });
 }
 

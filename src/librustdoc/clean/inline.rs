@@ -3,8 +3,8 @@
 use std::iter::once;
 
 use syntax::ast;
-use syntax_expand::base::MacroKind;
 use syntax::symbol::sym;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
 use rustc::hir;

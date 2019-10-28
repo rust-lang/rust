@@ -46,8 +46,8 @@ use std::{mem, ptr};
 use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
-use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{kw, sym, Symbol};
+use syntax_pos::symbol::{kw, sym, Symbol};
+use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
 use smallvec;

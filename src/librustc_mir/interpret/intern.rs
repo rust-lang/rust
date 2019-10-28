@@ -6,7 +6,6 @@
 use rustc::ty::{Ty, self};
 use rustc::mir::interpret::{InterpResult, ErrorHandled};
 use rustc::hir;
-use rustc::hir::def_id::DefId;
 use super::validity::RefTracking;
 use rustc_data_structures::fx::FxHashSet;
 
@@ -270,12 +269,12 @@ for
 
 pub fn intern_const_alloc_recursive(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    def_id: DefId,
+    // The `mutability` of the place, ignoring the type.
+    place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
-    // this `mutability` is the mutability of the place, ignoring the type
-    let (base_mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
+    let (base_mutability, base_intern_mode) = match place_mut {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
         Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),

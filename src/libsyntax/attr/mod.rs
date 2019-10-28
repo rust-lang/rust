@@ -15,7 +15,7 @@ use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned};
 use crate::parse::lexer::comments::doc_comment_style;
-use crate::parse::parser::Parser;
+use crate::parse;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
@@ -280,35 +280,10 @@ impl Attribute {
         self.item.meta(self.span)
     }
 
-    crate fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    {
-        let mut parser = Parser::new(
-            sess,
-            self.tokens.clone(),
-            None,
-            false,
-            false,
-            Some("attribute"),
-        );
-        let result = f(&mut parser)?;
-        if parser.token != token::Eof {
-            parser.unexpected()?;
-        }
-        Ok(result)
-    }
-
-    pub fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
-        if self.tokens.is_empty() {
-            return Ok(Vec::new());
-        }
-        self.parse(sess, |p| p.parse_derive_paths())
-    }
-
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         Ok(MetaItem {
             path: self.path.clone(),
-            kind: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
+            kind: parse::parse_in_attr(sess, self, |p| p.parse_meta_item_kind())?,
             span: self.span,
         })
     }

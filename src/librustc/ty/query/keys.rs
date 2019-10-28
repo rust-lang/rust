@@ -208,3 +208,13 @@ impl<'tcx, T> Key for Canonical<'tcx, T> {
         DUMMY_SP
     }
 }
+
+impl Key for (Symbol, u32, u32) {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}

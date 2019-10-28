@@ -35,7 +35,7 @@ use crate::fmt;
 pub struct PanicInfo<'a> {
     payload: &'a (dyn Any + Send),
     message: Option<&'a fmt::Arguments<'a>>,
-    location: Location<'a>,
+    location: &'a Location<'a>,
 }
 
 impl<'a> PanicInfo<'a> {
@@ -45,11 +45,16 @@ impl<'a> PanicInfo<'a> {
                 issue = "0")]
     #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
-                                location: Location<'a>)
-                                -> Self {
+    pub fn internal_constructor(
+        message: Option<&'a fmt::Arguments<'a>>,
+        location: &'a Location<'a>,
+    ) -> Self {
         struct NoPayload;
-        PanicInfo { payload: &NoPayload, location, message }
+        PanicInfo {
+            location,
+            message,
+            payload: &NoPayload,
+        }
     }
 
     #[doc(hidden)]
@@ -162,6 +167,7 @@ impl fmt::Display for PanicInfo<'_> {
 ///
 /// panic!("Normal panic");
 /// ```
+#[cfg_attr(not(bootstrap), lang = "panic_location")]
 #[derive(Debug)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
@@ -176,7 +182,7 @@ impl<'a> Location<'a> {
                           and related macros",
                 issue = "0")]
     #[doc(hidden)]
-    pub fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
+    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
         Location { file, line, col }
     }
 

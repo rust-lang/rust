@@ -8,6 +8,7 @@ use std::hash::Hash;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt};
+use syntax_pos::Span;
 
 use super::{
     Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
@@ -152,6 +153,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// If this returns successfully, the engine will take care of jumping to the next block.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: PlaceTy<'tcx, Self::PointerTag>,

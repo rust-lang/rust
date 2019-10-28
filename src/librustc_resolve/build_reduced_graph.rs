@@ -32,9 +32,6 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
-use syntax_expand::base::{MacroKind, SyntaxExtension};
-use syntax_expand::expand::AstFragment;
-use syntax_expand::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::print::pprust;
@@ -42,7 +39,9 @@ use syntax::{span_err, struct_span_err};
 use syntax::source_map::{respan, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
-
+use syntax_expand::base::SyntaxExtension;
+use syntax_expand::expand::AstFragment;
+use syntax_pos::hygiene::{MacroKind, ExpnId};
 use syntax_pos::{Span, DUMMY_SP};
 
 use log::debug;

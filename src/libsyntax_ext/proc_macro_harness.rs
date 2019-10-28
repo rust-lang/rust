@@ -3,6 +3,7 @@ use std::mem;
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
+use syntax::expand::is_proc_macro_attr;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
@@ -10,7 +11,6 @@ use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax_expand::base::{ExtCtxt, Resolver};
 use syntax_expand::expand::{AstFragment, ExpansionConfig};
-use syntax_expand::proc_macro::is_proc_macro_attr;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::AstPass;
 

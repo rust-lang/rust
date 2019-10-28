@@ -14,7 +14,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_index::vec::IndexVec;
-use syntax_expand::allocator::ALLOCATOR_METHODS;
+use syntax::expand::allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,

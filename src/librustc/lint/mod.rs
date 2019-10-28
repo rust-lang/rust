@@ -39,8 +39,8 @@ use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
-use syntax_expand::base::MacroKind;
 use syntax::symbol::{Symbol, sym};
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
