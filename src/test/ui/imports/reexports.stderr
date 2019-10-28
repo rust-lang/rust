@@ -1,29 +1,29 @@
 error[E0364]: `foo` is private, and cannot be re-exported
-  --> $DIR/reexports.rs:10:17
+  --> $DIR/reexports.rs:8:17
    |
 LL |         pub use super::foo;
    |                 ^^^^^^^^^^
    |
 note: consider marking `foo` as `pub` in the imported module
-  --> $DIR/reexports.rs:10:17
+  --> $DIR/reexports.rs:8:17
    |
 LL |         pub use super::foo;
    |                 ^^^^^^^^^^
 
 error[E0603]: module `foo` is private
-  --> $DIR/reexports.rs:35:15
+  --> $DIR/reexports.rs:33:15
    |
 LL |     use b::a::foo::S;
    |               ^^^
 
 error[E0603]: module `foo` is private
-  --> $DIR/reexports.rs:36:15
+  --> $DIR/reexports.rs:34:15
    |
 LL |     use b::b::foo::S as T;
    |               ^^^
 
-warning: this glob doesn't reexport anything because no canditate is public enough
-  --> $DIR/reexports.rs:11:17
+warning: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/reexports.rs:9:17
    |
 LL |         pub use super::*;
    |                 ^^^^^^^^
