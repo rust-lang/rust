@@ -1408,6 +1408,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn encode_metadata(self)-> EncodedMetadata {
+        let _prof_timer = self.prof.generic_activity("generate_crate_metadata");
         self.cstore.encode_metadata(self)
     }
 
