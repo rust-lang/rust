@@ -2112,9 +2112,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.note(&format!("required by cast to type `{}`",
                                   self.ty_to_string(target)));
             }
-            ObligationCauseCode::RepeatVec => {
+            ObligationCauseCode::RepeatVec(suggest_const_in_array_repeat_expression) => {
                 err.note("the `Copy` trait is required because the \
                           repeated element will be copied");
+                if suggest_const_in_array_repeat_expression {
+                    err.note("this array initializer can be evaluated at compile-time, for more \
+                              information, see issue \
+                              https://github.com/rust-lang/rust/issues/49147");
+                    if tcx.sess.opts.unstable_features.is_nightly_build() {
+                        err.help("add `#![feature(const_in_array_repeat_expression)]` to the \
+                                  crate attributes to enable");
+                    }
+                }
             }
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");

@@ -1110,3 +1110,28 @@ pub fn promote_candidates<'tcx>(
 
     promotions
 }
+
+/// This function returns `true` if the `const_in_array_repeat_expression` feature attribute should
+/// be suggested. This function is probably quite expensive, it shouldn't be run in the happy path.
+/// Feature attribute should be suggested if `operand` can be promoted and the feature is not
+/// enabled.
+crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_def_id: DefId,
+    body: &Body<'tcx>,
+    operand: &Operand<'tcx>,
+) -> bool {
+    let mut rpo = traversal::reverse_postorder(body);
+    let (temps, _) = collect_temps_and_candidates(tcx, body, &mut rpo);
+    let validator = Validator {
+        item: Item::new(tcx, mir_def_id, body),
+        temps: &temps,
+        explicit: false,
+    };
+
+    let should_promote = validator.validate_operand(operand).is_ok();
+    let feature_flag = tcx.features().const_in_array_repeat_expressions;
+    debug!("should_suggest_const_in_array_repeat_expressions_flag: mir_def_id={:?} \
+            should_promote={:?} feature_flag={:?}", mir_def_id, should_promote, feature_flag);
+    should_promote && !feature_flag
+}

@@ -16,6 +16,7 @@ use crate::borrow_check::nll::type_check::free_region_relations::{
 };
 use crate::borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
 use crate::borrow_check::nll::ToRegionVid;
+use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
@@ -1983,12 +1984,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let span = body.source_info(location).span;
                     let ty = operand.ty(body, tcx);
                     if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                        // To determine if `const_in_array_repeat_expression` feature gate should
+                        // be mentioned, need to check if the rvalue is promotable.
+                        let should_suggest =
+                            should_suggest_const_in_array_repeat_expressions_attribute(
+                                tcx, self.mir_def_id, body, operand);
+                        debug!("check_rvalue: should_suggest={:?}", should_suggest);
+
                         self.infcx.report_selection_error(
                             &traits::Obligation::new(
                                 ObligationCause::new(
                                     span,
                                     self.tcx().hir().def_index_to_hir_id(self.mir_def_id.index),
-                                    traits::ObligationCauseCode::RepeatVec,
+                                    traits::ObligationCauseCode::RepeatVec(should_suggest),
                                 ),
                                 self.param_env,
                                 ty::Predicate::Trait(ty::Binder::bind(ty::TraitPredicate {
