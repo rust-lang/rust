@@ -45,7 +45,7 @@ use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
-use syntax_expand::hygiene::ExpnKind;
+use syntax_pos::hygiene::ExpnKind;
 
 use crate::consts::{constant, Constant};
 use crate::reexport::*;
