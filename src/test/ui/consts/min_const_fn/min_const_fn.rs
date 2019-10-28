@@ -136,7 +136,6 @@ const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in const fn
 const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 //~^ ERROR trait bounds other than `Sized`
-//~| ERROR cannot return reference to temporary value
 
 const fn no_unsafe() { unsafe {} }
 

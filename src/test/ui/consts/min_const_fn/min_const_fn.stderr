@@ -286,17 +286,8 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0515]: cannot return reference to temporary value
-  --> $DIR/min_const_fn.rs:137:63
-   |
-LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
-   |                                                               ^--
-   |                                                               ||
-   |                                                               |temporary value created here
-   |                                                               returns a reference to data owned by the current function
-
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
-  --> $DIR/min_const_fn.rs:143:41
+  --> $DIR/min_const_fn.rs:142:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -305,7 +296,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:146:21
+  --> $DIR/min_const_fn.rs:145:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
@@ -314,7 +305,7 @@ LL | const fn no_fn_ptrs(_x: fn()) {}
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/min_const_fn.rs:148:27
+  --> $DIR/min_const_fn.rs:147:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
@@ -322,7 +313,7 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error: aborting due to 37 previous errors
+error: aborting due to 36 previous errors
 
-Some errors have detailed explanations: E0493, E0515, E0723.
+Some errors have detailed explanations: E0493, E0723.
 For more information about an error, try `rustc --explain E0493`.
