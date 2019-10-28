@@ -502,7 +502,7 @@ enum E {
     /// Another
     B,
     /// And C
-    C(a: i32, b: i32)
+    C { a: i32, b: i32 }
 }
 
 fn main() {
