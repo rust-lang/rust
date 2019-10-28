@@ -58,8 +58,8 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     if [ "$NO_PARALLEL_COMPILER" = "" ]; then
       RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler"
     fi
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
+    #RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
+    #RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
