@@ -279,7 +279,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,

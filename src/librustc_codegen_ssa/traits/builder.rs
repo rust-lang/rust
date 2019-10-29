@@ -2,7 +2,7 @@ use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
-use super::type_::ArgTypeMethods;
+use super::type_::ArgAbiMethods;
 use super::{HasCodegen, StaticBuilderMethods};
 use crate::common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate,
     SynchronizationScope};
@@ -25,7 +25,7 @@ pub enum OverflowOp {
 pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
     + DebugInfoBuilderMethods<'tcx>
-    + ArgTypeMethods<'tcx>
+    + ArgAbiMethods<'tcx>
     + AbiBuilderMethods<'tcx>
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>

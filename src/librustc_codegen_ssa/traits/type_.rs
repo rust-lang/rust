@@ -110,7 +110,7 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     ) -> Self::Type;
 }
 
-pub trait ArgTypeMethods<'tcx>: HasCodegen<'tcx> {
+pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
