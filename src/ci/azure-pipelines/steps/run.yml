@@ -6,11 +6,6 @@
 #
 # Check travis config for `gdb --batch` command to print all crash logs
 
-parameters:
-  # When this parameter is set to anything other than an empty string the tests
-  # will only be executed when the commit updates submodules
-  only_on_updated_submodules: ''
-
 steps:
 
 # Disable automatic line ending conversion, which is enabled by default on
@@ -26,21 +21,8 @@ steps:
 - checkout: self
   fetchDepth: 2
 
-# Set the SKIP_JOB environment variable if this job is supposed to only run
-# when submodules are updated and they were not. The following time consuming
-# tasks will be skipped when the environment variable is present.
-- ${{ if parameters.only_on_updated_submodules }}:
-  - bash: |
-      set -e
-      # Submodules pseudo-files inside git have the 160000 permissions, so when
-      # those files are present in the diff a submodule was updated.
-      if git diff HEAD^ | grep "^index .* 160000" >/dev/null 2>&1; then
-          echo "Executing the job since submodules are updated"
-      else
-          echo "Not executing this job since no submodules were updated"
-          echo "##vso[task.setvariable variable=SKIP_JOB;]1"
-      fi
-    displayName: Decide whether to run this job
+- bash: src/ci/scripts/should-skip-this.sh
+  displayName: Decide whether to run this job
 
 # Spawn a background process to collect CPU usage statistics which we'll upload
 # at the end of the build. See the comments in the script here for more
