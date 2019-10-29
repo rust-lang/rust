@@ -1,4 +1,4 @@
-error[E0164]: expected tuple struct or tuple variant, found method `<A>::new`
+error[E0164]: expected tuple struct or tuple variant, found method `A::new`
   --> $DIR/fn-in-pat.rs:11:9
    |
 LL |         A::new() => (),
