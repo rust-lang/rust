@@ -30,23 +30,22 @@ struct TerminatorCodegenHelper<'tcx> {
     funclet_bb: Option<mir::BasicBlock>,
 }
 
-// FIXME(eddyb) clean up the lifetimes in this impl.
-impl<'tcx> TerminatorCodegenHelper<'tcx> {
+impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// Returns the associated funclet from `FunctionCx::funclets` for the
     /// `funclet_bb` member if it is not `None`.
-    fn funclet<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
+    fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
-    ) -> Option<&'c Bx::Funclet> {
+        fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
+    ) -> Option<&'b Bx::Funclet> {
         match self.funclet_bb {
             Some(funcl) => fx.funclets[funcl].as_ref(),
             None => None,
         }
     }
 
-    fn lltarget<'b, 'c, Bx: BuilderMethods<'b, 'tcx>>(
+    fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (Bx::BasicBlock, bool) {
         let span = self.terminator.source_info.span;
@@ -64,9 +63,9 @@ impl<'tcx> TerminatorCodegenHelper<'tcx> {
     }
 
     /// Create a basic block.
-    fn llblock<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
+    fn llblock<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
         let (lltarget, is_cleanupret) = self.lltarget(fx, target);
@@ -84,9 +83,9 @@ impl<'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    fn funclet_br<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
+    fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         target: mir::BasicBlock,
     ) {
@@ -102,9 +101,9 @@ impl<'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the cleanup function `cleanup`.
-    fn do_call<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
+    fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         fn_abi: FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
@@ -152,7 +151,7 @@ impl<'tcx> TerminatorCodegenHelper<'tcx> {
 
     // Generate sideeffect intrinsic if jumping to any of the targets can form
     // a loop.
-    fn maybe_sideeffect<'b, Bx: BuilderMethods<'b, 'tcx>>(
+    fn maybe_sideeffect<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
         bx: &mut Bx,
