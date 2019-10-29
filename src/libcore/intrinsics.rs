@@ -1352,7 +1352,12 @@ extern "rust-intrinsic" {
     /// Internal hook used by Miri to implement unwinding.
     /// Perma-unstable: do not use
     #[cfg(not(bootstrap))]
-    pub fn miri_start_panic(data: u128) -> !;
+    // Note that the type is data is pretty arbitrary:
+    // we just need something that's guarnateed to be a fat
+    // pointer. Using `*mut [()]` instead of the actual type
+    // `*mut (Any + Send)` allows us to avoid making `Any` and `Send`
+    // lang items
+    pub fn miri_start_panic(data: *mut [()]) -> !;
 }
 
 // Some functions are defined here because they accidentally got made

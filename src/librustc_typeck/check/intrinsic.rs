@@ -385,7 +385,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "miri_start_panic" => {
-                (0, vec![tcx.types.u128], tcx.types.never)
+                (0, vec![tcx.mk_mut_ptr(tcx.mk_slice(tcx.mk_unit()))], tcx.types.never)
             }
 
             ref other => {
