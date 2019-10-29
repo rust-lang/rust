@@ -1,3 +1,5 @@
+//! Defines database & queries for macro expansion.
+
 use std::sync::Arc;
 
 use mbe::MacroRules;
