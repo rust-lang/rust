@@ -6,6 +6,7 @@ use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::ty::{self, Ty, Infer, TyVar};
 use crate::ty::print::Print;
 use syntax::source_map::DesugaringKind;
+use syntax::symbol::kw;
 use syntax_pos::Span;
 use errors::{Applicability, DiagnosticBuilder};
 
@@ -19,6 +20,7 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
     found_arg_pattern: Option<&'tcx Pat>,
     found_ty: Option<Ty<'tcx>>,
     found_closure: Option<&'tcx ExprKind>,
+    found_method_call: Option<&'tcx ExprKind>,
 }
 
 impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
@@ -35,6 +37,7 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
             found_arg_pattern: None,
             found_ty: None,
             found_closure: None,
+            found_method_call: None,
         }
     }
 
@@ -93,11 +96,12 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let (ExprKind::Closure(_, _fn_decl, _id, _sp, _), Some(_)) = (
-            &expr.kind,
-            self.node_matches_type(expr.hir_id),
-        ) {
-            self.found_closure = Some(&expr.kind);
+        if self.node_matches_type(expr.hir_id).is_some() {
+            match expr.kind {
+                ExprKind::Closure(..) => self.found_closure = Some(&expr.kind),
+                ExprKind::MethodCall(..) => self.found_method_call = Some(&expr.kind),
+                _ => {}
+            }
         }
         intravisit::walk_expr(self, expr);
     }
@@ -157,7 +161,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let ty_vars = self.type_variables.borrow();
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
-                return (name.to_string(), Some(var_origin.span));
+                if name != kw::SelfUpper {
+                    return (name.to_string(), Some(var_origin.span));
+                }
             }
         }
 
@@ -175,6 +181,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         body_id: Option<hir::BodyId>,
         span: Span,
         ty: Ty<'tcx>,
+        is_projection: bool,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let (name, name_sp) = self.extract_type_name(&ty, None);
@@ -210,6 +217,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // 3 |     let _ = x.sum() as f64;
             //   |               ^^^ cannot infer type for `S`
             span
+        } else if let Some(ExprKind::MethodCall(_, call_span, _)) = local_visitor.found_method_call {
+            // Point at the call instead of the whole expression:
+            // error[E0284]: type annotations needed
+            //  --> file.rs:2:5
+            //   |
+            // 2 |     vec![Ok(2)].into_iter().collect()?;
+            //   |                             ^^^^^^^ cannot infer type
+            //   |
+            //   = note: cannot resolve `<_ as std::ops::Try>::Ok == _`
+            if span.contains(*call_span) {
+                *call_span
+            } else {
+                span
+            }
         } else {
             span
         };
@@ -247,13 +268,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         //   |         consider giving `b` the explicit type `std::result::Result<i32, E>`, where
         //   |         the type parameter `E` is specified
         // ```
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            err_span,
-            E0282,
-            "type annotations needed{}",
-            ty_msg,
-        );
+        let mut err = if is_projection {
+            struct_span_err!(self.tcx.sess, err_span, E0284, "type annotations needed{}", ty_msg)
+        } else {
+            struct_span_err!(self.tcx.sess, err_span, E0282, "type annotations needed{}", ty_msg)
+        };
 
         let suffix = match local_visitor.found_ty {
             Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
@@ -334,6 +353,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 format!("consider giving this pattern {}", suffix)
             };
             err.span_label(pattern.span, msg);
+        } else if let Some(ExprKind::MethodCall(segment, ..)) = local_visitor.found_method_call {
+            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(segment.ident.span) {
+                if segment.args.is_none() {
+                    err.span_suggestion(
+                        segment.ident.span,
+                        "consider specifying the type argument in the method call",
+                        // FIXME: we don't know how many type arguments should be set here.
+                        format!("{}::<_>", snippet),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+            }
         }
         // Instead of the following:
         // error[E0282]: type annotations needed
@@ -351,7 +382,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         //   |               ^^^ cannot infer type for `S`
         //   |
         //   = note: type must be known at this point
-        let span = name_sp.unwrap_or(span);
+        let span = name_sp.unwrap_or(err_span);
         if !err.span.span_labels().iter().any(|span_label| {
                 span_label.label.is_some() && span_label.span == span
             }) && local_visitor.found_arg_pattern.is_none()

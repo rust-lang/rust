@@ -5359,7 +5359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.need_type_info_err((**self).body_id, sp, ty)
+                self.need_type_info_err((**self).body_id, sp, ty, false)
                     .note("type must be known at this point")
                     .emit();
             }

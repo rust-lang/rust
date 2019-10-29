@@ -2,7 +2,10 @@ error[E0282]: type annotations needed
   --> $DIR/issue-65611.rs:59:20
    |
 LL |     let x = buffer.last().unwrap().0.clone();
-   |                    ^^^^ cannot infer type for `T`
+   |                    ^^^^
+   |                    |
+   |                    cannot infer type for `T`
+   |                    help: consider specifying the type argument in the method call: `last::<_>`
    |
    = note: type must be known at this point
 
