@@ -2219,7 +2219,7 @@ rejected in your own crates.
 "##,
 
 E0736: r##"
-#[track_caller] and #[naked] cannot be applied to the same function.
+`#[track_caller]` and `#[naked]` cannot both be applied to the same function.
 
 Erroneous code example:
 
@@ -2233,6 +2233,57 @@ fn foo() {}
 
 This is primarily due to ABI incompatibilities between the two attributes.
 See [RFC 2091] for details on this and other limitations.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+E0738: r##"
+`#[track_caller]` cannot be used in traits yet. This is due to limitations in
+the compiler which are likely to be temporary. See [RFC 2091] for details on
+this and other restrictions.
+
+Erroneous example with a trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self);
+}
+
+impl Foo for u64 {
+    #[track_caller]
+    fn bar(&self) {}
+}
+```
+
+Erroneous example with a blanket trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    #[track_caller]
+    fn bar(&self) {}
+    fn baz(&self);
+}
+```
+
+Erroneous example with a trait method declaration:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self) {}
+
+    #[track_caller]
+    fn baz(&self);
+}
+```
+
+Note that while the compiler may be able to support the attribute in traits in
+the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,

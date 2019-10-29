@@ -11,7 +11,7 @@ test = false
 doctest = false
 
 [dependencies]
-bitflags = "1.0"
+bitflags = "1.2.1"
 log = "0.4"
 syntax = { path = "../libsyntax" }
 syntax_expand = { path = "../libsyntax_expand" }
