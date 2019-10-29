@@ -23,7 +23,7 @@ use crate::{
     Static, Struct, StructField, Trait, TypeAlias,
 };
 
-pub use hir_def::db::{
+pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
 };

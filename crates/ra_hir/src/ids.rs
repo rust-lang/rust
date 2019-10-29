@@ -15,7 +15,7 @@ use crate::{
     AstId, FileAstId, Module, Source,
 };
 
-pub use hir_def::expand::{
+pub use hir_expand::expand::{
     HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, MacroFileKind,
 };
 

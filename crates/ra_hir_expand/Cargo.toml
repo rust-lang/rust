@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "ra_hir_def"
+name = "ra_hir_expand"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 

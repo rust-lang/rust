@@ -991,7 +991,7 @@ dependencies = [
  "ra_arena 0.1.0",
  "ra_cfg 0.1.0",
  "ra_db 0.1.0",
- "ra_hir_def 0.1.0",
+ "ra_hir_expand 0.1.0",
  "ra_mbe 0.1.0",
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
@@ -1002,7 +1002,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_hir_def"
+name = "ra_hir_expand"
 version = "0.1.0"
 dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
