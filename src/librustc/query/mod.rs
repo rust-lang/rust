@@ -462,13 +462,11 @@ rustc_queries! {
         query const_field(
             key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
         ) -> &'tcx ty::Const<'tcx> {
-            eval_always
             no_force
             desc { "extract field of const" }
         }
 
         query const_caller_location(key: (syntax_pos::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
-            eval_always
             no_force
             desc { "get a &core::panic::Location referring to a span" }
         }
