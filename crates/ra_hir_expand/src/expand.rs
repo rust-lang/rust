@@ -39,20 +39,23 @@ macro_rules! impl_intern_key {
 /// finite (because everything bottoms out at the real `FileId`) and small
 /// (`MacroCallId` uses the location interner).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum HirFileId {
+pub struct HirFileId(HirFileIdRepr);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum HirFileIdRepr {
     FileId(FileId),
     MacroFile(MacroFile),
 }
 
 impl From<FileId> for HirFileId {
     fn from(id: FileId) -> Self {
-        HirFileId::FileId(id)
+        HirFileId(HirFileIdRepr::FileId(id))
     }
 }
 
 impl From<MacroFile> for HirFileId {
     fn from(id: MacroFile) -> Self {
-        HirFileId::MacroFile(id)
+        HirFileId(HirFileIdRepr::MacroFile(id))
     }
 }
 
@@ -60,9 +63,9 @@ impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
     pub fn original_file(self, db: &impl AstDatabase) -> FileId {
-        match self {
-            HirFileId::FileId(file_id) => file_id,
-            HirFileId::MacroFile(macro_file) => {
+        match self.0 {
+            HirFileIdRepr::FileId(file_id) => file_id,
+            HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
                 loc.ast_id.file_id().original_file(db)
             }
@@ -71,9 +74,9 @@ impl HirFileId {
 
     /// Get the crate which the macro lives in, if it is a macro file.
     pub fn macro_crate(self, db: &impl AstDatabase) -> Option<CrateId> {
-        match self {
-            HirFileId::FileId(_) => None,
-            HirFileId::MacroFile(macro_file) => {
+        match self.0 {
+            HirFileIdRepr::FileId(_) => None,
+            HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
                 Some(loc.def.krate)
             }
@@ -215,9 +218,11 @@ pub(crate) fn parse_or_expand_query(
     db: &impl AstDatabase,
     file_id: HirFileId,
 ) -> Option<SyntaxNode> {
-    match file_id {
-        HirFileId::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
-        HirFileId::MacroFile(macro_file) => db.parse_macro(macro_file).map(|it| it.syntax_node()),
+    match file_id.0 {
+        HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
+        HirFileIdRepr::MacroFile(macro_file) => {
+            db.parse_macro(macro_file).map(|it| it.syntax_node())
+        }
     }
 }
 
