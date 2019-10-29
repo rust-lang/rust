@@ -27,6 +27,7 @@ use crate::{
 };
 
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
+    let _p = profile("handle_analyzer_status");
     let mut buf = world.status();
     writeln!(buf, "\n\nrequests:").unwrap();
     let requests = world.latest_requests.read();
@@ -38,6 +39,7 @@ pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
 }
 
 pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -> Result<String> {
+    let _p = profile("handle_syntax_tree");
     let id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(id)?;
     let text_range = params.range.map(|p| p.conv_with(&line_index));
@@ -172,6 +174,7 @@ pub fn handle_document_symbol(
     world: WorldSnapshot,
     params: req::DocumentSymbolParams,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
+    let _p = profile("handle_document_symbol");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
@@ -210,6 +213,7 @@ pub fn handle_workspace_symbol(
     world: WorldSnapshot,
     params: req::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
+    let _p = profile("handle_workspace_symbol");
     let all_symbols = params.query.contains('#');
     let libs = params.query.contains('*');
     let query = {
@@ -253,6 +257,7 @@ pub fn handle_goto_definition(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
+    let _p = profile("handle_goto_definition");
     let position = params.try_conv_with(&world)?;
     let nav_info = match world.analysis().goto_definition(position)? {
         None => return Ok(None),
@@ -266,6 +271,7 @@ pub fn handle_goto_implementation(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoImplementationResponse>> {
+    let _p = profile("handle_goto_implementation");
     let position = params.try_conv_with(&world)?;
     let nav_info = match world.analysis().goto_implementation(position)? {
         None => return Ok(None),
@@ -279,6 +285,7 @@ pub fn handle_goto_type_definition(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoTypeDefinitionResponse>> {
+    let _p = profile("handle_goto_type_definition");
     let position = params.try_conv_with(&world)?;
     let nav_info = match world.analysis().goto_type_definition(position)? {
         None => return Ok(None),
@@ -292,6 +299,7 @@ pub fn handle_parent_module(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
+    let _p = profile("handle_parent_module");
     let position = params.try_conv_with(&world)?;
     world.analysis().parent_module(position)?.iter().try_conv_with_to_vec(&world)
 }
@@ -300,6 +308,7 @@ pub fn handle_runnables(
     world: WorldSnapshot,
     params: req::RunnablesParams,
 ) -> Result<Vec<req::Runnable>> {
+    let _p = profile("handle_runnables");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let offset = params.position.map(|it| it.conv_with(&line_index));
@@ -341,6 +350,7 @@ pub fn handle_decorations(
     world: WorldSnapshot,
     params: TextDocumentIdentifier,
 ) -> Result<Vec<Decoration>> {
+    let _p = profile("handle_decorations");
     let file_id = params.try_conv_with(&world)?;
     highlight(&world, file_id)
 }
@@ -389,6 +399,7 @@ pub fn handle_folding_range(
     world: WorldSnapshot,
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
+    let _p = profile("handle_folding_range");
     let file_id = params.text_document.try_conv_with(&world)?;
     let folds = world.analysis().folding_ranges(file_id)?;
     let text = world.analysis().file_text(file_id)?;
@@ -406,6 +417,7 @@ pub fn handle_signature_help(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SignatureHelp>> {
+    let _p = profile("handle_signature_help");
     let position = params.try_conv_with(&world)?;
     if let Some(call_info) = world.analysis().call_info(position)? {
         let active_parameter = call_info.active_parameter.map(|it| it as i64);
@@ -425,6 +437,7 @@ pub fn handle_hover(
     world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<Hover>> {
+    let _p = profile("handle_hover");
     let position = params.try_conv_with(&world)?;
     let info = match world.analysis().hover(position)? {
         None => return Ok(None),
@@ -523,6 +536,7 @@ pub fn handle_formatting(
     world: WorldSnapshot,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
+    let _p = profile("handle_formatting");
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_text(file_id)?;
 
@@ -645,6 +659,7 @@ pub fn handle_code_lens(
     world: WorldSnapshot,
     params: req::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
+    let _p = profile("handle_code_lens");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
@@ -705,6 +720,7 @@ enum CodeLensResolveData {
 }
 
 pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Result<CodeLens> {
+    let _p = profile("handle_code_lens_resolve");
     let data = code_lens.data.unwrap();
     let resolve = serde_json::from_value(data)?;
     match resolve {
@@ -776,6 +792,7 @@ pub fn publish_diagnostics(
     world: &WorldSnapshot,
     file_id: FileId,
 ) -> Result<req::PublishDiagnosticsParams> {
+    let _p = profile("publish_diagnostics");
     let uri = world.file_id_to_uri(file_id)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let diagnostics = world
@@ -798,6 +815,7 @@ pub fn publish_decorations(
     world: &WorldSnapshot,
     file_id: FileId,
 ) -> Result<req::PublishDecorationsParams> {
+    let _p = profile("publish_decorations");
     let uri = world.file_id_to_uri(file_id)?;
     Ok(req::PublishDecorationsParams { uri, decorations: highlight(&world, file_id)? })
 }
@@ -847,6 +865,7 @@ pub fn handle_inlay_hints(
     world: WorldSnapshot,
     params: InlayHintsParams,
 ) -> Result<Vec<InlayHint>> {
+    let _p = profile("handle_inlay_hints");
     let file_id = params.text_document.try_conv_with(&world)?;
     let analysis = world.analysis();
     let line_index = analysis.file_line_index(file_id)?;
