@@ -2,9 +2,11 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-impls-send.rs:20:1
    |
 LL | unsafe impl Send for (MyType, MyType) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^^^----------------
+   | |                    |
+   | |                    this is not defined in the current crate because tuples are always foreign
+   | impl doesn't use only types from inside the current crate
    |
-   = note: the impl does not reference only types defined in this crate
    = note: define and implement a trait or new type instead
 
 error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `&'static NotSync`
@@ -17,18 +19,22 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/coherence-impls-send.rs:28:1
    |
 LL | unsafe impl Send for [MyType] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^^^--------
+   | |                    |
+   | |                    this is not defined in the current crate because slices are always foreign
+   | impl doesn't use only types from inside the current crate
    |
-   = note: the impl does not reference only types defined in this crate
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-send.rs:32:1
    |
 LL | unsafe impl Send for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^^^------------------
+   | |                    |
+   | |                    this is not defined in the current crate because slices are always foreign
+   | impl doesn't use only types from inside the current crate
    |
-   = note: the impl does not reference only types defined in this crate
    = note: define and implement a trait or new type instead
 
 error: aborting due to 4 previous errors
