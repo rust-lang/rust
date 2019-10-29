@@ -2596,6 +2596,7 @@ where
 
             // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
+            EfiApi => bug!("eficall abi should be selected elsewhere"),
 
             Stdcall => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,

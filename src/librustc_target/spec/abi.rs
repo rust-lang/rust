@@ -21,6 +21,7 @@ pub enum Abi {
     Msp430Interrupt,
     X86Interrupt,
     AmdGpuKernel,
+    EfiApi,
 
     // Multiplatform / generic ABIs
     Rust,
@@ -58,6 +59,7 @@ const AbiDatas: &[AbiData] = &[
     AbiData {abi: Abi::Msp430Interrupt, name: "msp430-interrupt", generic: false },
     AbiData {abi: Abi::X86Interrupt, name: "x86-interrupt", generic: false },
     AbiData {abi: Abi::AmdGpuKernel, name: "amdgpu-kernel", generic: false },
+    AbiData {abi: Abi::EfiApi, name: "efiapi", generic: false },
 
     // Cross-platform ABIs
     AbiData {abi: Abi::Rust, name: "Rust", generic: true },
