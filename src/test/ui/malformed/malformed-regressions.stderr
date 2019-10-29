@@ -9,7 +9,7 @@ LL | #[doc]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[ignore]` or `#[ignore = "reason"]`
-  --> $DIR/malformed-regressions.rs:4:1
+  --> $DIR/malformed-regressions.rs:6:1
    |
 LL | #[ignore()]
    | ^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | #[ignore()]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
-  --> $DIR/malformed-regressions.rs:5:1
+  --> $DIR/malformed-regressions.rs:9:1
    |
 LL | #[inline = ""]
    | ^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL | #[inline = ""]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...")]`
-  --> $DIR/malformed-regressions.rs:6:1
+  --> $DIR/malformed-regressions.rs:12:1
    |
 LL | #[link]
    | ^^^^^^^
@@ -36,7 +36,7 @@ LL | #[link]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...")]`
-  --> $DIR/malformed-regressions.rs:7:1
+  --> $DIR/malformed-regressions.rs:15:1
    |
 LL | #[link = ""]
    | ^^^^^^^^^^^^

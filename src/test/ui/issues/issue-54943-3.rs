@@ -15,7 +15,6 @@ fn bar<'a>() {
     return;
 
     let _x = foo::<Vec<_>>(Vec::<&'a u32>::new());
-    //~^ ERROR the type `&'a u32` does not fulfill the required lifetime [E0477]
 }
 
 fn main() {}
