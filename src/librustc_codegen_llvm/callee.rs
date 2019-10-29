@@ -4,15 +4,15 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use crate::abi::FnAbi;
+use crate::abi::{FnAbi, FnAbiLlvmExt};
 use crate::attributes;
 use crate::llvm;
 use crate::context::CodegenCx;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::{self, TypeFoldable, Instance};
-use rustc::ty::layout::{FnAbiExt, LayoutOf, HasTyCtxt};
+use rustc::ty::{TypeFoldable, Instance};
+use rustc::ty::layout::{FnAbiExt, HasTyCtxt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -37,14 +37,14 @@ pub fn get_fn(
         return llfn;
     }
 
-    let sig = instance.fn_sig(cx.tcx());
     let sym = tcx.symbol_name(instance).name.as_str();
-    debug!("get_fn({:?}: {:?}) => {}", instance, sig, sym);
+    debug!("get_fn({:?}: {:?}) => {}", instance, instance.ty(cx.tcx()), sym);
+
+    let fn_abi = FnAbi::of_instance(cx, instance);
 
     let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
-        // Create a fn pointer with the substituted signature.
-        let fn_ptr_ty = tcx.mk_fn_ptr(sig);
-        let llptrty = cx.backend_type(cx.layout_of(fn_ptr_ty));
+        // Create a fn pointer with the new signature.
+        let llptrty = fn_abi.ptr_to_llvm_type(cx);
 
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
@@ -77,15 +77,16 @@ pub fn get_fn(
             llfn
         }
     } else {
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        let fn_abi = FnAbi::new(cx, sig, &[]);
         let llfn = cx.declare_fn(&sym, &fn_abi);
         debug!("get_fn: not casting pointer!");
 
         if instance.def.is_inline(tcx) {
             attributes::inline(cx, llfn, attributes::InlineAttr::Hint);
         }
-        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()), sig.abi);
+        // FIXME(eddyb) avoid this `Instance::fn_sig` call.
+        // Perhaps store the relevant information in `FnAbi`?
+        let sig_abi = instance.fn_sig(cx.tcx()).abi();
+        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()), sig_abi);
 
         let instance_def_id = instance.def_id();
 

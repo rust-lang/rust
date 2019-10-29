@@ -2,8 +2,9 @@ use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
-use rustc::ty::{self, Ty, Instance};
+use rustc::ty::{Ty, Instance};
 use rustc::ty::layout::Size;
+use rustc_target::abi::call::FnAbi;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 
@@ -17,7 +18,7 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,
-        sig: ty::FnSig<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Function,
         mir: &mir::Body<'_>,
     ) -> Option<FunctionDebugContext<Self::DIScope>>;

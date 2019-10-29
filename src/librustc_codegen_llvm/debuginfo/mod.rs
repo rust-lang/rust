@@ -16,7 +16,7 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::subst::{SubstsRef, GenericArgKind};
 
-use crate::abi::Abi;
+use crate::abi::{Abi, FnAbi};
 use crate::common::CodegenCx;
 use crate::builder::Builder;
 use crate::value::Value;
@@ -280,7 +280,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,
-        sig: ty::FnSig<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: &'ll Value,
         mir: &mir::Body<'_>,
     ) -> Option<FunctionDebugContext<&'ll DIScope>> {
@@ -308,6 +308,12 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
 
         let function_type_metadata = unsafe {
+            // FIXME(eddyb) avoid this `Instance::fn_sig` call, by
+            // rewriting `get_function_signature` to use `fn_abi` instead.
+            let sig = self.tcx().normalize_erasing_late_bound_regions(
+                ty::ParamEnv::reveal_all(),
+                &instance.fn_sig(self.tcx()),
+            );
             let fn_signature = get_function_signature(self, sig);
             llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), file_metadata, fn_signature)
         };
@@ -338,7 +344,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        if self.layout_of(sig.output()).abi.is_uninhabited() {
+        if fn_abi.ret.layout.abi.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
         }
 
@@ -390,6 +396,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         return Some(fn_debug_context);
 
+        // FIXME(eddyb) rewrite this to be based on `FnAbi` instead of `FnSig`.
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             sig: ty::FnSig<'tcx>,

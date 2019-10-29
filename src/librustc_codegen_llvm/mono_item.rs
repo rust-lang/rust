@@ -6,7 +6,7 @@ use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{self, TypeFoldable, Instance};
+use rustc::ty::{TypeFoldable, Instance};
 use rustc::ty::layout::{FnAbiExt, LayoutOf, HasTyCtxt};
 use rustc_codegen_ssa::traits::*;
 
@@ -43,12 +43,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 
-        let mono_sig = instance.fn_sig(self.tcx());
-        let mono_sig = self.tcx().normalize_erasing_late_bound_regions(
-            ty::ParamEnv::reveal_all(),
-            &mono_sig,
-        );
-        let fn_abi = FnAbi::new(self, mono_sig, &[]);
+        let fn_abi = FnAbi::of_instance(self, instance);
         let lldecl = self.declare_fn(symbol_name, &fn_abi);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
@@ -73,15 +68,18 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
         }
 
-        debug!("predefine_fn: mono_sig = {:?} instance = {:?}", mono_sig, instance);
+        debug!("predefine_fn: instance = {:?}", instance);
         if instance.def.is_inline(self.tcx) {
             attributes::inline(self, lldecl, attributes::InlineAttr::Hint);
         }
+        // FIXME(eddyb) avoid this `Instance::fn_sig` call.
+        // Perhaps store the relevant information in `FnAbi`?
+        let mono_sig_abi = instance.fn_sig(self.tcx()).abi();
         attributes::from_fn_attrs(
             self,
             lldecl,
             Some(instance.def.def_id()),
-            mono_sig.abi,
+            mono_sig_abi,
         );
 
         self.instances.borrow_mut().insert(instance, lldecl);
