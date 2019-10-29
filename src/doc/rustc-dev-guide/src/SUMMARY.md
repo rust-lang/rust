@@ -44,6 +44,7 @@
         - [Salsa](./salsa.md)
     - [Lexing and Parsing](./the-parser.md)
     - [`#[test]` Implementation](./test-implementation.md)
+    - [Panic Implementation](./panic-implementation.md)
     - [Macro expansion](./macro-expansion.md)
     - [Name resolution](./name-resolution.md)
     - [The HIR (High-level IR)](./hir.md)
