@@ -20,7 +20,7 @@ use crate::{
     resolve::Resolver,
     ty::Ty,
     type_ref::TypeRef,
-    AssocItem, Const, Function, HasSource, HirFileId, MacroFileKind, Path, Source, TraitRef,
+    AssocItem, AstId, Const, Function, HasSource, HirFileId, MacroFileKind, Path, Source, TraitRef,
     TypeAlias,
 };
 
@@ -256,7 +256,7 @@ impl ModuleImplBlocks {
                     }
 
                     //FIXME: we should really cut down on the boilerplate required to process a macro
-                    let ast_id = db.ast_id_map(file_id).ast_id(&macro_call).with_file_id(file_id);
+                    let ast_id = AstId::new(file_id, db.ast_id_map(file_id).ast_id(&macro_call));
                     if let Some(path) = macro_call
                         .path()
                         .and_then(|path| Path::from_src(Source { ast: path, file_id }, db))

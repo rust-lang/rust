@@ -1,0 +1,10 @@
+[package]
+edition = "2018"
+name = "ra_hir_def"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+ra_arena = { path = "../ra_arena" }
+ra_db = { path = "../ra_db" }
+ra_syntax = { path = "../ra_syntax" }

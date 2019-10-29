@@ -59,11 +59,11 @@ pub trait InternDatabase: SourceDatabase {
 /// incremental.
 #[salsa::query_group(AstDatabaseStorage)]
 pub trait AstDatabase: InternDatabase {
-    #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
+    #[salsa::invoke(crate::source_id::ast_id_map_query)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     #[salsa::transparent]
-    #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
+    #[salsa::invoke(crate::source_id::file_item_query)]
     fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> SyntaxNode;
 
     #[salsa::transparent]

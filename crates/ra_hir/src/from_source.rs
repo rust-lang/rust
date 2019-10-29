@@ -11,7 +11,7 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
     name::AsName,
-    Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
+    AstId, Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
     ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
@@ -183,7 +183,7 @@ impl Module {
             ModuleSource::Module(ref module) => {
                 assert!(!module.has_semi());
                 let ast_id_map = db.ast_id_map(src.file_id);
-                let item_id = ast_id_map.ast_id(module).with_file_id(src.file_id);
+                let item_id = AstId::new(src.file_id, ast_id_map.ast_id(module));
                 Some(item_id)
             }
             ModuleSource::SourceFile(_) => None,

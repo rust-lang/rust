@@ -567,7 +567,7 @@ where
             // inline module, just recurse
             raw::ModuleData::Definition { name, items, ast_id } => {
                 let module_id =
-                    self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
+                    self.push_child_module(name.clone(), AstId::new(self.file_id, *ast_id), None);
 
                 ModCollector {
                     def_collector: &mut *self.def_collector,
@@ -583,7 +583,7 @@ where
             }
             // out of line module, resolve, parse and recurse
             raw::ModuleData::Declaration { name, ast_id } => {
-                let ast_id = ast_id.with_file_id(self.file_id);
+                let ast_id = AstId::new(self.file_id, *ast_id);
                 match self.mod_dir.resolve_declaration(
                     self.def_collector.db,
                     self.file_id,
@@ -671,20 +671,17 @@ where
     }
 
     fn collect_macro(&mut self, mac: &raw::MacroData) {
+        let ast_id = AstId::new(self.file_id, mac.ast_id);
+
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                let macro_id = MacroDefId {
-                    ast_id: mac.ast_id.with_file_id(self.file_id),
-                    krate: self.def_collector.def_map.krate,
-                };
+                let macro_id = MacroDefId { ast_id, krate: self.def_collector.def_map.krate };
                 let macro_ = MacroDef { id: macro_id };
                 self.def_collector.define_macro(self.module_id, name.clone(), macro_, mac.export);
             }
             return;
         }
-
-        let ast_id = mac.ast_id.with_file_id(self.file_id);
 
         // Case 2: try to resolve in legacy scope and expand macro_rules, triggering
         // recursive item collection.
