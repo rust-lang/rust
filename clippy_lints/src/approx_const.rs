@@ -97,14 +97,11 @@ fn check_known_consts(cx: &LateContext<'_, '_>, e: &Expr, s: symbol::Symbol, mod
 fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
     if value.len() <= min_digits {
         false
+    } else if constant.to_string().starts_with(value) {
+        // The value is a truncated constant
+        true
     } else {
         let round_const = format!("{:.*}", value.len() - 2, constant);
-
-        let mut trunc_const = constant.to_string();
-        if trunc_const.len() > value.len() {
-            trunc_const.truncate(value.len());
-        }
-
-        (value == round_const) || (value == trunc_const)
+        value == round_const
     }
 }
