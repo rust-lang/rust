@@ -1005,13 +1005,13 @@ fn gen_fn<'ll, 'tcx>(
     output: Ty<'tcx>,
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
 ) -> &'ll Value {
-    let rust_fn_sig = cx.tcx.mk_fn_sig(
+    let rust_fn_sig = ty::Binder::bind(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust
-    );
+    ));
     let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
     let llfn = cx.declare_fn(name, &fn_abi);
     // FIXME(eddyb) find a nicer way to do this.

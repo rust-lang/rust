@@ -413,13 +413,13 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             return llfn;
         }
 
-        let sig = tcx.mk_fn_sig(
+        let sig = ty::Binder::bind(tcx.mk_fn_sig(
             iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
             tcx.types.never,
             false,
             hir::Unsafety::Unsafe,
             Abi::C
-        );
+        ));
 
         let fn_abi = FnAbi::of_fn_ptr(self, sig, &[]);
         let llfn = self.declare_fn("rust_eh_unwind_resume", &fn_abi);

@@ -488,11 +488,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // available - right now `sig` is only needed for getting the `abi`
         // and figuring out how many extra args were passed to a C-variadic `fn`.
         let sig = callee.layout.ty.fn_sig(bx.tcx());
-        let sig = bx.tcx().normalize_erasing_late_bound_regions(
-            ty::ParamEnv::reveal_all(),
-            &sig,
-        );
-        let abi = sig.abi;
+        let abi = sig.abi();
 
         // Handle intrinsics old codegen wants Expr's for, ourselves.
         let intrinsic = match def {
@@ -501,6 +497,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => None
         };
         let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
+
+        let extra_args = &args[sig.inputs().skip_binder().len()..];
+        let extra_args = extra_args.iter().map(|op_arg| {
+            let op_ty = op_arg.ty(*self.mir, bx.tcx());
+            self.monomorphize(&op_ty)
+        }).collect::<Vec<_>>();
+
+        let fn_abi = match instance {
+            Some(instance) => FnAbi::of_instance(&bx, instance, &extra_args),
+            None => FnAbi::of_fn_ptr(&bx, sig, &extra_args)
+        };
 
         if intrinsic == Some("transmute") {
             if let Some(destination_ref) = destination.as_ref() {
@@ -515,22 +522,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // we can do what we like. Here, we declare that transmuting
                 // into an uninhabited type is impossible, so anything following
                 // it must be unreachable.
-                assert_eq!(bx.layout_of(sig.output()).abi, layout::Abi::Uninhabited);
+                assert_eq!(fn_abi.ret.layout.abi, layout::Abi::Uninhabited);
                 bx.unreachable();
             }
             return;
         }
-
-        let extra_args = &args[sig.inputs().len()..];
-        let extra_args = extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.ty(*self.mir, bx.tcx());
-            self.monomorphize(&op_ty)
-        }).collect::<Vec<_>>();
-
-        let fn_abi = match instance {
-            Some(instance) => FnAbi::of_instance(&bx, instance, &extra_args),
-            None => FnAbi::of_fn_ptr(&bx, sig, &extra_args)
-        };
 
         // For normal codegen, this Miri-specific intrinsic is just a NOP.
         if intrinsic == Some("miri_start_panic") {
