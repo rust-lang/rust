@@ -545,7 +545,7 @@ fn make_assist_add_nested_import(
         if add_colon_colon {
             buf.push_str("::");
         }
-        buf.push_str("{ ");
+        buf.push_str("{");
         if add_self {
             buf.push_str("self, ");
         }
@@ -734,7 +734,7 @@ impl std::io<|> for Foo {
 }
     ",
             "
-use std::{ io, fmt};
+use std::{io, fmt};
 
 impl io<|> for Foo {
 }
@@ -753,7 +753,7 @@ impl std::fmt::Debug<|> for Foo {
 }
     ",
             "
-use std::fmt::{ self, Debug, };
+use std::fmt::{self, Debug, };
 
 impl Debug<|> for Foo {
 }
@@ -772,7 +772,7 @@ impl std::fmt<|> for Foo {
 }
     ",
             "
-use std::fmt::{ self, Debug};
+use std::fmt::{self, Debug};
 
 impl fmt<|> for Foo {
 }
@@ -848,7 +848,7 @@ impl std::fmt::nested::Display<|> for Foo {
 }
 ",
             "
-use std::fmt::{ nested::Display, Debug};
+use std::fmt::{nested::Display, Debug};
 
 impl Display<|> for Foo {
 }
@@ -867,7 +867,7 @@ impl std::fmt::Display<|> for Foo {
 }
 ",
             "
-use std::fmt::{ Display, nested::Debug};
+use std::fmt::{Display, nested::Debug};
 
 impl Display<|> for Foo {
 }
