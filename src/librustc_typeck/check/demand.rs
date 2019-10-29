@@ -172,10 +172,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }).peekable();
 
             if compatible_variants.peek().is_some() {
-                let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
+                let expr_text = self.tcx.sess
+                    .source_map()
+                    .span_to_snippet(expr.span)
+                    .unwrap_or_else(|_| {
+                        print::to_string(print::NO_ANN, |s| s.print_expr(expr))
+                    });
                 let suggestions = compatible_variants
                     .map(|v| format!("{}({})", v, expr_text));
-                let msg = "try using a variant of the expected type";
+                let msg = "try using a variant of the expected enum";
                 err.span_suggestions(expr.span, msg, suggestions, Applicability::MaybeIncorrect);
             }
         }
