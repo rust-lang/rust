@@ -1,5 +1,5 @@
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:12:1
+  --> $DIR/feature-gate-abi.rs:13:1
    |
 LL | extern "rust-intrinsic" fn f1() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | extern "rust-intrinsic" fn f1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:14:1
+  --> $DIR/feature-gate-abi.rs:15:1
    |
 LL | extern "platform-intrinsic" fn f2() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | extern "platform-intrinsic" fn f2() {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:16:1
+  --> $DIR/feature-gate-abi.rs:17:1
    |
 LL | extern "vectorcall" fn f3() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL | extern "vectorcall" fn f3() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:17:1
+  --> $DIR/feature-gate-abi.rs:18:1
    |
 LL | extern "rust-call" fn f4() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL | extern "rust-call" fn f4() {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:18:1
+  --> $DIR/feature-gate-abi.rs:19:1
    |
 LL | extern "msp430-interrupt" fn f5() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL | extern "msp430-interrupt" fn f5() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:19:1
+  --> $DIR/feature-gate-abi.rs:20:1
    |
 LL | extern "ptx-kernel" fn f6() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL | extern "ptx-kernel" fn f6() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:20:1
+  --> $DIR/feature-gate-abi.rs:21:1
    |
 LL | extern "x86-interrupt" fn f7() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL | extern "x86-interrupt" fn f7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:21:1
+  --> $DIR/feature-gate-abi.rs:22:1
    |
 LL | extern "thiscall" fn f8() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL | extern "thiscall" fn f8() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:22:1
+  --> $DIR/feature-gate-abi.rs:23:1
    |
 LL | extern "amdgpu-kernel" fn f9() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,8 +76,17 @@ LL | extern "amdgpu-kernel" fn f9() {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:24:1
+   |
+LL | extern "efiapi" fn f10() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:26:5
+  --> $DIR/feature-gate-abi.rs:28:5
    |
 LL |     extern "rust-intrinsic" fn m1();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +94,7 @@ LL |     extern "rust-intrinsic" fn m1();
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:28:5
+  --> $DIR/feature-gate-abi.rs:30:5
    |
 LL |     extern "platform-intrinsic" fn m2();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -94,7 +103,7 @@ LL |     extern "platform-intrinsic" fn m2();
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:30:5
+  --> $DIR/feature-gate-abi.rs:32:5
    |
 LL |     extern "vectorcall" fn m3();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -102,7 +111,7 @@ LL |     extern "vectorcall" fn m3();
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:31:5
+  --> $DIR/feature-gate-abi.rs:33:5
    |
 LL |     extern "rust-call" fn m4();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,7 +120,7 @@ LL |     extern "rust-call" fn m4();
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:32:5
+  --> $DIR/feature-gate-abi.rs:34:5
    |
 LL |     extern "msp430-interrupt" fn m5();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +129,7 @@ LL |     extern "msp430-interrupt" fn m5();
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:33:5
+  --> $DIR/feature-gate-abi.rs:35:5
    |
 LL |     extern "ptx-kernel" fn m6();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +138,7 @@ LL |     extern "ptx-kernel" fn m6();
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:34:5
+  --> $DIR/feature-gate-abi.rs:36:5
    |
 LL |     extern "x86-interrupt" fn m7();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +147,7 @@ LL |     extern "x86-interrupt" fn m7();
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:35:5
+  --> $DIR/feature-gate-abi.rs:37:5
    |
 LL |     extern "thiscall" fn m8();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -146,7 +155,7 @@ LL |     extern "thiscall" fn m8();
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:36:5
+  --> $DIR/feature-gate-abi.rs:38:5
    |
 LL |     extern "amdgpu-kernel" fn m9();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,8 +163,17 @@ LL |     extern "amdgpu-kernel" fn m9();
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:39:5
+   |
+LL |     extern "efiapi" fn m10();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:38:5
+  --> $DIR/feature-gate-abi.rs:41:5
    |
 LL |     extern "vectorcall" fn dm3() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,7 +181,7 @@ LL |     extern "vectorcall" fn dm3() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:39:5
+  --> $DIR/feature-gate-abi.rs:42:5
    |
 LL |     extern "rust-call" fn dm4() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -172,7 +190,7 @@ LL |     extern "rust-call" fn dm4() {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:40:5
+  --> $DIR/feature-gate-abi.rs:43:5
    |
 LL |     extern "msp430-interrupt" fn dm5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +199,7 @@ LL |     extern "msp430-interrupt" fn dm5() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:41:5
+  --> $DIR/feature-gate-abi.rs:44:5
    |
 LL |     extern "ptx-kernel" fn dm6() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -190,7 +208,7 @@ LL |     extern "ptx-kernel" fn dm6() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:42:5
+  --> $DIR/feature-gate-abi.rs:45:5
    |
 LL |     extern "x86-interrupt" fn dm7() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -199,7 +217,7 @@ LL |     extern "x86-interrupt" fn dm7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:43:5
+  --> $DIR/feature-gate-abi.rs:46:5
    |
 LL |     extern "thiscall" fn dm8() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -207,7 +225,7 @@ LL |     extern "thiscall" fn dm8() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:44:5
+  --> $DIR/feature-gate-abi.rs:47:5
    |
 LL |     extern "amdgpu-kernel" fn dm9() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -215,8 +233,17 @@ LL |     extern "amdgpu-kernel" fn dm9() {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:48:5
+   |
+LL |     extern "efiapi" fn dm10() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:51:5
+  --> $DIR/feature-gate-abi.rs:55:5
    |
 LL |     extern "rust-intrinsic" fn m1() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -224,7 +251,7 @@ LL |     extern "rust-intrinsic" fn m1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:53:5
+  --> $DIR/feature-gate-abi.rs:57:5
    |
 LL |     extern "platform-intrinsic" fn m2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -233,7 +260,7 @@ LL |     extern "platform-intrinsic" fn m2() {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:55:5
+  --> $DIR/feature-gate-abi.rs:59:5
    |
 LL |     extern "vectorcall" fn m3() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -241,7 +268,7 @@ LL |     extern "vectorcall" fn m3() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:56:5
+  --> $DIR/feature-gate-abi.rs:60:5
    |
 LL |     extern "rust-call" fn m4() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -250,7 +277,7 @@ LL |     extern "rust-call" fn m4() {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:57:5
+  --> $DIR/feature-gate-abi.rs:61:5
    |
 LL |     extern "msp430-interrupt" fn m5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -259,7 +286,7 @@ LL |     extern "msp430-interrupt" fn m5() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:58:5
+  --> $DIR/feature-gate-abi.rs:62:5
    |
 LL |     extern "ptx-kernel" fn m6() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -268,7 +295,7 @@ LL |     extern "ptx-kernel" fn m6() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:59:5
+  --> $DIR/feature-gate-abi.rs:63:5
    |
 LL |     extern "x86-interrupt" fn m7() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -277,7 +304,7 @@ LL |     extern "x86-interrupt" fn m7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:60:5
+  --> $DIR/feature-gate-abi.rs:64:5
    |
 LL |     extern "thiscall" fn m8() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -285,7 +312,7 @@ LL |     extern "thiscall" fn m8() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:61:5
+  --> $DIR/feature-gate-abi.rs:65:5
    |
 LL |     extern "amdgpu-kernel" fn m9() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -293,8 +320,17 @@ LL |     extern "amdgpu-kernel" fn m9() {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
-error[E0658]: intrinsics are subject to change
+error[E0658]: efiapi ABI is experimental and subject to change
   --> $DIR/feature-gate-abi.rs:66:5
+   |
+LL |     extern "efiapi" fn m10() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:71:5
    |
 LL |     extern "rust-intrinsic" fn im1() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -302,7 +338,7 @@ LL |     extern "rust-intrinsic" fn im1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:68:5
+  --> $DIR/feature-gate-abi.rs:73:5
    |
 LL |     extern "platform-intrinsic" fn im2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -311,7 +347,7 @@ LL |     extern "platform-intrinsic" fn im2() {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:70:5
+  --> $DIR/feature-gate-abi.rs:75:5
    |
 LL |     extern "vectorcall" fn im3() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -319,7 +355,7 @@ LL |     extern "vectorcall" fn im3() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:71:5
+  --> $DIR/feature-gate-abi.rs:76:5
    |
 LL |     extern "rust-call" fn im4() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -328,7 +364,7 @@ LL |     extern "rust-call" fn im4() {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:72:5
+  --> $DIR/feature-gate-abi.rs:77:5
    |
 LL |     extern "msp430-interrupt" fn im5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -337,7 +373,7 @@ LL |     extern "msp430-interrupt" fn im5() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:73:5
+  --> $DIR/feature-gate-abi.rs:78:5
    |
 LL |     extern "ptx-kernel" fn im6() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -346,7 +382,7 @@ LL |     extern "ptx-kernel" fn im6() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:74:5
+  --> $DIR/feature-gate-abi.rs:79:5
    |
 LL |     extern "x86-interrupt" fn im7() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -355,7 +391,7 @@ LL |     extern "x86-interrupt" fn im7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:75:5
+  --> $DIR/feature-gate-abi.rs:80:5
    |
 LL |     extern "thiscall" fn im8() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -363,7 +399,7 @@ LL |     extern "thiscall" fn im8() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:76:5
+  --> $DIR/feature-gate-abi.rs:81:5
    |
 LL |     extern "amdgpu-kernel" fn im9() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -371,8 +407,17 @@ LL |     extern "amdgpu-kernel" fn im9() {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:82:5
+   |
+LL |     extern "efiapi" fn im10() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:80:11
+  --> $DIR/feature-gate-abi.rs:86:11
    |
 LL | type A1 = extern "rust-intrinsic" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -380,7 +425,7 @@ LL | type A1 = extern "rust-intrinsic" fn();
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:81:11
+  --> $DIR/feature-gate-abi.rs:87:11
    |
 LL | type A2 = extern "platform-intrinsic" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -389,7 +434,7 @@ LL | type A2 = extern "platform-intrinsic" fn();
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:82:11
+  --> $DIR/feature-gate-abi.rs:88:11
    |
 LL | type A3 = extern "vectorcall" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -397,7 +442,7 @@ LL | type A3 = extern "vectorcall" fn();
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:83:11
+  --> $DIR/feature-gate-abi.rs:89:11
    |
 LL | type A4 = extern "rust-call" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -406,7 +451,7 @@ LL | type A4 = extern "rust-call" fn();
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:84:11
+  --> $DIR/feature-gate-abi.rs:90:11
    |
 LL | type A5 = extern "msp430-interrupt" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -415,7 +460,7 @@ LL | type A5 = extern "msp430-interrupt" fn();
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:85:11
+  --> $DIR/feature-gate-abi.rs:91:11
    |
 LL | type A6 = extern "ptx-kernel" fn ();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -424,7 +469,7 @@ LL | type A6 = extern "ptx-kernel" fn ();
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:86:11
+  --> $DIR/feature-gate-abi.rs:92:11
    |
 LL | type A7 = extern "x86-interrupt" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -433,7 +478,7 @@ LL | type A7 = extern "x86-interrupt" fn();
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:87:11
+  --> $DIR/feature-gate-abi.rs:93:11
    |
 LL | type A8 = extern "thiscall" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^
@@ -441,7 +486,7 @@ LL | type A8 = extern "thiscall" fn();
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:88:11
+  --> $DIR/feature-gate-abi.rs:94:11
    |
 LL | type A9 = extern "amdgpu-kernel" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -449,8 +494,17 @@ LL | type A9 = extern "amdgpu-kernel" fn();
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:95:12
+   |
+LL | type A10 = extern "efiapi" fn();
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:91:1
+  --> $DIR/feature-gate-abi.rs:98:1
    |
 LL | extern "rust-intrinsic" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -458,7 +512,7 @@ LL | extern "rust-intrinsic" {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:92:1
+  --> $DIR/feature-gate-abi.rs:99:1
    |
 LL | extern "platform-intrinsic" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -467,7 +521,7 @@ LL | extern "platform-intrinsic" {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:93:1
+  --> $DIR/feature-gate-abi.rs:100:1
    |
 LL | extern "vectorcall" {}
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -475,7 +529,7 @@ LL | extern "vectorcall" {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:94:1
+  --> $DIR/feature-gate-abi.rs:101:1
    |
 LL | extern "rust-call" {}
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -484,7 +538,7 @@ LL | extern "rust-call" {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:95:1
+  --> $DIR/feature-gate-abi.rs:102:1
    |
 LL | extern "msp430-interrupt" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -493,7 +547,7 @@ LL | extern "msp430-interrupt" {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:96:1
+  --> $DIR/feature-gate-abi.rs:103:1
    |
 LL | extern "ptx-kernel" {}
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -502,7 +556,7 @@ LL | extern "ptx-kernel" {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:97:1
+  --> $DIR/feature-gate-abi.rs:104:1
    |
 LL | extern "x86-interrupt" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -511,7 +565,7 @@ LL | extern "x86-interrupt" {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:98:1
+  --> $DIR/feature-gate-abi.rs:105:1
    |
 LL | extern "thiscall" {}
    | ^^^^^^^^^^^^^^^^^^^^
@@ -519,7 +573,7 @@ LL | extern "thiscall" {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: amdgpu-kernel ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:99:1
+  --> $DIR/feature-gate-abi.rs:106:1
    |
 LL | extern "amdgpu-kernel" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -527,54 +581,63 @@ LL | extern "amdgpu-kernel" {}
    = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add `#![feature(abi_amdgpu_kernel)]` to the crate attributes to enable
 
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi.rs:107:1
+   |
+LL | extern "efiapi" {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/65815
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:26:32
+  --> $DIR/feature-gate-abi.rs:28:32
    |
 LL |     extern "rust-intrinsic" fn m1();
    |                                ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:28:36
+  --> $DIR/feature-gate-abi.rs:30:36
    |
 LL |     extern "platform-intrinsic" fn m2();
    |                                    ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:12:33
+  --> $DIR/feature-gate-abi.rs:13:33
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |                                 ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:14:37
+  --> $DIR/feature-gate-abi.rs:15:37
    |
 LL | extern "platform-intrinsic" fn f2() {}
    |                                     ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:51:37
+  --> $DIR/feature-gate-abi.rs:55:37
    |
 LL |     extern "rust-intrinsic" fn m1() {}
    |                                     ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:53:41
+  --> $DIR/feature-gate-abi.rs:57:41
    |
 LL |     extern "platform-intrinsic" fn m2() {}
    |                                         ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:66:38
+  --> $DIR/feature-gate-abi.rs:71:38
    |
 LL |     extern "rust-intrinsic" fn im1() {}
    |                                      ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:68:42
+  --> $DIR/feature-gate-abi.rs:73:42
    |
 LL |     extern "platform-intrinsic" fn im2() {}
    |                                          ^^
 
-error: aborting due to 69 previous errors
+error: aborting due to 76 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

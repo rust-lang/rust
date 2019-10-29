@@ -905,6 +905,13 @@ impl Target {
                     abi
                 }
             },
+            Abi::EfiApi => {
+                if self.arch == "x86_64" {
+                    Abi::Win64
+                } else {
+                    Abi::C
+                }
+            },
             abi => abi
         }
     }
