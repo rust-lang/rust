@@ -104,15 +104,12 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
     Some(ret)
 }
 
-struct Collector<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct TempStateCollector<'a, 'tcx> {
     body: &'a Body<'tcx>,
     temps: IndexVec<Local, TempState>,
-    candidates: Vec<Candidate>,
-    span: Span,
 }
 
-impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for TempStateCollector<'_, 'tcx> {
     fn visit_local(&mut self,
                    &index: &Local,
                    context: PlaceContext,
@@ -166,18 +163,34 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         }
         *temp = TempState::Unpromotable;
     }
+}
 
+struct PromotionCandidateCollector<'mir, 'tcx> {
+    validator: Validator<'mir, 'tcx>,
+    candidates: Vec<Candidate>,
+    span: Span,
+}
+
+impl<'tcx> Visitor<'tcx> for PromotionCandidateCollector<'_, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
 
+        let tcx = self.validator.tcx;
+
         match *rvalue {
             Rvalue::Ref(..) => {
-                self.candidates.push(Candidate::Ref(location));
+                let candidate = Candidate::Ref(location);
+                if self.validator.validate_candidate(candidate).is_ok() {
+                    self.candidates.push(candidate);
+                }
             }
-            Rvalue::Repeat(..) if self.tcx.features().const_in_array_repeat_expressions => {
+            Rvalue::Repeat(..) if tcx.features().const_in_array_repeat_expressions => {
                 // FIXME(#49147) only promote the element when it isn't `Copy`
                 // (so that code that can copy it at runtime is unaffected).
-                self.candidates.push(Candidate::Repeat(location));
+                let candidate = Candidate::Repeat(location);
+                if self.validator.validate_candidate(candidate).is_ok() {
+                    self.candidates.push(candidate);
+                }
             }
             _ => {}
         }
@@ -188,23 +201,40 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                              location: Location) {
         self.super_terminator_kind(kind, location);
 
+        let Item { tcx, body, .. } = *self.validator.item;
+
         if let TerminatorKind::Call { ref func, .. } = *kind {
-            if let ty::FnDef(def_id, _) = func.ty(self.body, self.tcx).kind {
-                let fn_sig = self.tcx.fn_sig(def_id);
+            if let ty::FnDef(def_id, _) = func.ty(body, tcx).kind {
+                let fn_sig = tcx.fn_sig(def_id);
                 if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                    let name = self.tcx.item_name(def_id);
+                    let name = tcx.item_name(def_id);
                     // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
                     if name.as_str().starts_with("simd_shuffle") {
-                        self.candidates.push(Candidate::Argument {
-                            bb: location.block,
-                            index: 2,
-                        });
+                        let candidate = Candidate::Argument { bb: location.block, index: 2 };
+
+                        if self.validator.validate_candidate(candidate).is_ok() {
+                            self.candidates.push(candidate);
+                        } else {
+                            span_err!(
+                                tcx.sess, self.span, E0526,
+                                "shuffle indices are not constant",
+                            );
+                        }
                     }
                 }
 
-                if let Some(constant_args) = args_required_const(self.tcx, def_id) {
+                if let Some(constant_args) = args_required_const(tcx, def_id) {
                     for index in constant_args {
-                        self.candidates.push(Candidate::Argument { bb: location.block, index });
+                        let candidate = Candidate::Argument { bb: location.block, index };
+
+                        if self.validator.validate_candidate(candidate).is_ok() {
+                            self.candidates.push(candidate);
+                        } else {
+                            tcx.sess.span_err(
+                                self.span,
+                                &format!("argument {} is required to be a constant", index + 1),
+                            );
+                        }
                     }
                 }
             }
@@ -216,29 +246,45 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     }
 }
 
-pub fn collect_temps_and_candidates(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    rpo: &mut ReversePostorder<'_, 'tcx>,
+pub fn collect_temps_and_valid_candidates(
+    item: &Item<'_, 'tcx>,
+    mut rpo: &mut ReversePostorder<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
-    let mut collector = Collector {
-        tcx,
-        body,
-        temps: IndexVec::from_elem(TempState::Undefined, &body.local_decls),
-        candidates: vec![],
-        span: body.span,
+    let mut temp_state = TempStateCollector {
+        body: item.body,
+        temps: IndexVec::from_elem(TempState::Undefined, &item.body.local_decls),
     };
-    for (bb, data) in rpo {
-        collector.visit_basic_block_data(bb, data);
+
+    for (bb, data) in &mut rpo {
+        temp_state.visit_basic_block_data(bb, data);
     }
-    (collector.temps, collector.candidates)
+
+    let mut promotion = PromotionCandidateCollector {
+        span: item.body.span,
+        candidates: vec![],
+        validator: Validator {
+            item,
+            temps: &temp_state.temps,
+            explicit: false,
+        },
+    };
+
+    // FIXME: We need to visit blocks in RPO above to record all uses, but we probably don't need
+    // to do the same here? What happens if a BB is not visited during RPO traversal? I've observed
+    // this occur for generators.
+    for (bb, data) in &mut rpo {
+        promotion.visit_basic_block_data(bb, data);
+    }
+
+    let candidates = promotion.candidates;
+    (temp_state.temps, candidates)
 }
 
 /// Checks whether locals that appear in a promotion context (`Candidate`) are actually promotable.
 ///
 /// This wraps an `Item`, and has access to all fields of that `Item` via `Deref` coercion.
 struct Validator<'a, 'tcx> {
-    item: Item<'a, 'tcx>,
+    item: &'a Item<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
 
     /// Explicit promotion happens e.g. for constant arguments declared via
@@ -260,6 +306,7 @@ impl std::ops::Deref for Validator<'a, 'tcx> {
 
 struct Unpromotable;
 
+// FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 impl<'tcx> Validator<'_, 'tcx> {
     fn validate_candidate(&mut self, candidate: Candidate) -> Result<(), Unpromotable> {
         self.explicit = candidate.is_explicit_context();
@@ -717,28 +764,6 @@ impl<'tcx> Validator<'_, 'tcx> {
 
         Ok(())
     }
-}
-
-// FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
-pub fn validate_candidates(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    def_id: DefId,
-    temps: &IndexVec<Local, TempState>,
-    candidates: &[Candidate],
-) -> Vec<Candidate> {
-    let mut validator = Validator {
-        item: Item::new(tcx, def_id, body),
-        temps,
-        explicit: false,
-    };
-
-    candidates.iter().copied().filter(|&candidate| {
-        // FIXME(eddyb) also emit the errors for shuffle indices
-        // and `#[rustc_args_required_const]` arguments here.
-
-        validator.validate_candidate(candidate).is_ok()
-    }).collect()
 }
 
 struct Promoter<'a, 'tcx> {

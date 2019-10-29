@@ -678,7 +678,7 @@ struct Checker<'a, 'tcx> {
 
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
-    unchecked_promotion_candidates: Vec<Candidate>,
+    checked_promotion_candidates: Vec<Candidate>,
 
     /// If `true`, do not emit errors to the user, merely collect them in `errors`.
     suppress_errors: bool,
@@ -706,10 +706,14 @@ impl Deref for Checker<'a, 'tcx> {
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
+        use crate::transform::check_consts as new_checker;
+
         assert!(def_id.is_local());
+
+        let item = new_checker::Item::new(tcx, def_id, body);
         let mut rpo = traversal::reverse_postorder(body);
-        let (temps, unchecked_promotion_candidates) =
-            promote_consts::collect_temps_and_candidates(tcx, body, &mut rpo);
+        let (temps, checked_promotion_candidates) =
+            promote_consts::collect_temps_and_valid_candidates(&item, &mut rpo);
         rpo.reset();
 
         let param_env = tcx.param_env(def_id);
@@ -748,7 +752,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             rpo,
             temp_promotion_state: temps,
             promotion_candidates: vec![],
-            unchecked_promotion_candidates,
+            checked_promotion_candidates,
             errors: vec![],
             suppress_errors: false,
         }
@@ -1107,18 +1111,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
     }
 
-    /// Get the subset of `unchecked_promotion_candidates` that are eligible
-    /// for promotion.
+    /// Get the set of promotion candidates that the new promoter has deemed eligible for
+    /// promotion. These will be compared against the candidates generated above in `Checker`.
     // FIXME(eddyb) replace the old candidate gathering with this.
     fn valid_promotion_candidates(&self) -> Vec<Candidate> {
         // Sanity-check the promotion candidates.
-        let candidates = promote_consts::validate_candidates(
-            self.tcx,
-            self.body,
-            self.def_id,
-            &self.temp_promotion_state,
-            &self.unchecked_promotion_candidates,
-        );
+        let candidates = self.checked_promotion_candidates.clone();
 
         if candidates != self.promotion_candidates {
             let report = |msg, candidate| {
