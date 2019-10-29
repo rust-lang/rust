@@ -13,8 +13,8 @@ cache:
     - $HOME/.cargo
 before_cache:
   - cargo install -Z install-upgrade cargo-cache --debug
-  - cargo cache --autoclean
   - find $HOME/.cargo/bin/ ! -type d -exec strip {} \;
+  - cargo cache --autoclean
 
 env:
  global:
