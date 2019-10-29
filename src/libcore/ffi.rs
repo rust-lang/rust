@@ -18,8 +18,13 @@ use crate::ops::{Deref, DerefMut};
 /// stabilized, it is recommended to use a newtype wrapper around an empty
 /// byte array. See the [Nomicon] for details.
 ///
+/// One could use `std::os::raw::c_void` if they want to support old Rust
+/// compiler down to 1.1.0. After Rust 1.30.0, it was re-exported by
+/// this definition. For more information, please read [RFC 2521].
+///
 /// [pointer]: ../../std/primitive.pointer.html
 /// [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
+/// [RFC 2521]: https://github.com/rust-lang/rfcs/blob/master/text/2521-c_void-reunification.md
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
@@ -29,7 +34,7 @@ use crate::ops::{Deref, DerefMut};
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
 #[repr(u8)]
-#[stable(feature = "raw_os", since = "1.1.0")]
+#[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {
     #[unstable(feature = "c_void_variant", reason = "temporary implementation detail",
                issue = "0")]
