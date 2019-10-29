@@ -355,7 +355,8 @@ struct Unpromotable;
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 impl<'tcx> Validator<'_, 'tcx> {
     fn validate_candidate(&mut self, candidate: Candidate) -> Result<(), Unpromotable> {
-        self.explicit = candidate.is_explicit_context();
+        // Always use "explicit" rules for promotability inside a `const`, `static` or `const fn`.
+        self.explicit = candidate.is_explicit_context() || self.const_kind.is_some();
 
         match candidate {
             Candidate::Ref(loc) => {
@@ -781,7 +782,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        if !self.explicit && self.const_kind.is_none() {
+        if !self.explicit {
             if let ty::FnDef(def_id, _) = fn_ty.kind {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
