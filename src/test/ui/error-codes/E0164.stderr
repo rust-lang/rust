@@ -1,4 +1,4 @@
-error[E0164]: expected tuple struct or tuple variant, found associated constant `<Foo>::B`
+error[E0164]: expected tuple struct or tuple variant, found associated constant `Foo::B`
   --> $DIR/E0164.rs:9:9
    |
 LL |         Foo::B(i) => i,
