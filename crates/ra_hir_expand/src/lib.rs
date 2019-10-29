@@ -63,7 +63,7 @@ impl From<MacroFile> for HirFileId {
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
-    pub fn original_file(self, db: &impl AstDatabase) -> FileId {
+    pub fn original_file(self, db: &dyn AstDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
@@ -74,7 +74,7 @@ impl HirFileId {
     }
 
     /// Get the crate which the macro lives in, if it is a macro file.
-    pub fn macro_crate(self, db: &impl AstDatabase) -> Option<CrateId> {
+    pub fn macro_crate(self, db: &dyn AstDatabase) -> Option<CrateId> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
@@ -160,7 +160,7 @@ impl<N: AstNode> AstId<N> {
         self.file_id
     }
 
-    pub fn to_node(&self, db: &impl AstDatabase) -> N {
+    pub fn to_node(&self, db: &dyn AstDatabase) -> N {
         let root = db.parse_or_expand(self.file_id).unwrap();
         db.ast_id_map(self.file_id).get(self.file_ast_id).to_node(&root)
     }

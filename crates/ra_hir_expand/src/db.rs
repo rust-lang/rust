@@ -28,13 +28,13 @@ pub trait AstDatabase: SourceDatabase {
     fn macro_expand(&self, macro_call: MacroCallId) -> Result<Arc<tt::Subtree>, String>;
 }
 
-pub(crate) fn ast_id_map(db: &impl AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
+pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
     let map =
         db.parse_or_expand(file_id).map_or_else(AstIdMap::default, |it| AstIdMap::from_source(&it));
     Arc::new(map)
 }
 
-pub(crate) fn macro_def(db: &impl AstDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
+pub(crate) fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
     let macro_call = id.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, _) = mbe::ast_to_token_tree(&arg).or_else(|| {
@@ -48,7 +48,7 @@ pub(crate) fn macro_def(db: &impl AstDatabase, id: MacroDefId) -> Option<Arc<Mac
     Some(Arc::new(rules))
 }
 
-pub(crate) fn macro_arg(db: &impl AstDatabase, id: MacroCallId) -> Option<Arc<tt::Subtree>> {
+pub(crate) fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<tt::Subtree>> {
     let loc = db.lookup_intern_macro(id);
     let macro_call = loc.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
@@ -57,7 +57,7 @@ pub(crate) fn macro_arg(db: &impl AstDatabase, id: MacroCallId) -> Option<Arc<tt
 }
 
 pub(crate) fn macro_expand(
-    db: &impl AstDatabase,
+    db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<Arc<tt::Subtree>, String> {
     let loc = db.lookup_intern_macro(id);
@@ -73,7 +73,7 @@ pub(crate) fn macro_expand(
     Ok(Arc::new(tt))
 }
 
-pub(crate) fn parse_or_expand(db: &impl AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
+pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
@@ -83,7 +83,7 @@ pub(crate) fn parse_or_expand(db: &impl AstDatabase, file_id: HirFileId) -> Opti
 }
 
 pub(crate) fn parse_macro(
-    db: &impl AstDatabase,
+    db: &dyn AstDatabase,
     macro_file: MacroFile,
 ) -> Option<Parse<SyntaxNode>> {
     let _p = profile("parse_macro_query");
