@@ -743,7 +743,17 @@ pub fn validate_candidates(
         // FIXME(eddyb) also emit the errors for shuffle indices
         // and `#[rustc_args_required_const]` arguments here.
 
-        validator.validate_candidate(candidate).is_ok()
+        let is_promotable = validator.validate_candidate(candidate).is_ok();
+        match candidate {
+            Candidate::Argument { bb, index } if !is_promotable => {
+                let span = body[bb].terminator().source_info.span;
+                let msg = format!("argument {} is required to be a constant", index + 1);
+                tcx.sess.span_err(span, &msg);
+            }
+            _ => ()
+        }
+
+        is_promotable
     }).collect()
 }
 
