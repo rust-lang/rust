@@ -6,7 +6,7 @@ use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::{Sanitizer, OptLevel};
-use rustc::ty::{self, TyCtxt, PolyFnSig};
+use rustc::ty::TyCtxt;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -203,7 +203,7 @@ pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
     id: Option<DefId>,
-    sig: PolyFnSig<'tcx>,
+    abi: Abi,
 ) {
     let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or_else(|| CodegenFnAttrs::new());
@@ -276,8 +276,7 @@ pub fn from_fn_attrs(
         // Special attribute for allocator functions, which can't unwind.
         false
     } else {
-        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if sig.abi == Abi::Rust || sig.abi == Abi::RustCall {
+        if abi == Abi::Rust || abi == Abi::RustCall {
             // Any Rust method (or `extern "Rust" fn` or `extern
             // "rust-call" fn`) is explicitly allowed to unwind
             // (unless it has no-unwind attribute, handled above).

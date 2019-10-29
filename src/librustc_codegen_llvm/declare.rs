@@ -18,8 +18,7 @@ use crate::attributes;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::value::Value;
-use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::{FnAbiExt, LayoutOf};
+use rustc::ty::Ty;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -94,16 +93,14 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn declare_fn(
         &self,
         name: &str,
-        sig: PolyFnSig<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     ) -> &'ll Value {
-        debug!("declare_rust_fn(name={:?}, sig={:?})", name, sig);
-        let sig = self.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
+        debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        let fn_abi = FnAbi::new(self, sig, &[]);
         let llfn = declare_raw_fn(self, name, fn_abi.llvm_cconv(), fn_abi.llvm_type(self));
 
-        if self.layout_of(sig.output()).abi.is_uninhabited() {
+        // FIXME(eddyb) move into `FnAbi::apply_attrs_llfn`.
+        if fn_abi.ret.layout.abi.is_uninhabited() {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
         }
 

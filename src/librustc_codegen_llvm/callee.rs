@@ -4,14 +4,15 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
+use crate::abi::FnAbi;
 use crate::attributes;
 use crate::llvm;
 use crate::context::CodegenCx;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::{TypeFoldable, Instance};
-use rustc::ty::layout::{LayoutOf, HasTyCtxt};
+use rustc::ty::{self, TypeFoldable, Instance};
+use rustc::ty::layout::{FnAbiExt, LayoutOf, HasTyCtxt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -32,19 +33,19 @@ pub fn get_fn(
     assert!(!instance.substs.has_escaping_bound_vars());
     assert!(!instance.substs.has_param_types());
 
-    let sig = instance.fn_sig(cx.tcx());
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
     }
 
+    let sig = instance.fn_sig(cx.tcx());
     let sym = tcx.symbol_name(instance).name.as_str();
     debug!("get_fn({:?}: {:?}) => {}", instance, sig, sym);
 
-    // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(sig);
-    let llptrty = cx.backend_type(cx.layout_of(fn_ptr_ty));
-
     let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
+        // Create a fn pointer with the substituted signature.
+        let fn_ptr_ty = tcx.mk_fn_ptr(sig);
+        let llptrty = cx.backend_type(cx.layout_of(fn_ptr_ty));
+
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
         // functions.  If you have two crates that both bind the same C
@@ -76,14 +77,15 @@ pub fn get_fn(
             llfn
         }
     } else {
-        let llfn = cx.declare_fn(&sym, sig);
-        assert_eq!(cx.val_ty(llfn), llptrty);
+        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let fn_abi = FnAbi::new(cx, sig, &[]);
+        let llfn = cx.declare_fn(&sym, &fn_abi);
         debug!("get_fn: not casting pointer!");
 
         if instance.def.is_inline(tcx) {
             attributes::inline(cx, llfn, attributes::InlineAttr::Hint);
         }
-        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()), sig);
+        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()), sig.abi);
 
         let instance_def_id = instance.def_id();
 

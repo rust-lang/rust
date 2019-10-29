@@ -1,4 +1,3 @@
-use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;
 use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
@@ -14,7 +13,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
+use rustc::ty::layout::{self, FnAbiExt, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
@@ -1006,17 +1005,17 @@ fn gen_fn<'ll, 'tcx>(
     output: Ty<'tcx>,
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
 ) -> &'ll Value {
-    let rust_fn_sig = ty::Binder::bind(cx.tcx.mk_fn_sig(
+    let rust_fn_sig = cx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust
-    ));
-    let llfn = cx.declare_fn(name, rust_fn_sig);
+    );
+    let fn_abi = FnAbi::new(cx, rust_fn_sig, &[]);
+    let llfn = cx.declare_fn(name, &fn_abi);
     // FIXME(eddyb) find a nicer way to do this.
     unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
-    attributes::from_fn_attrs(cx, llfn, None, rust_fn_sig);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
     llfn

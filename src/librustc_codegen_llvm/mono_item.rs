@@ -1,3 +1,4 @@
+use crate::abi::FnAbi;
 use crate::attributes;
 use crate::base;
 use crate::context::CodegenCx;
@@ -5,8 +6,8 @@ use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{TypeFoldable, Instance};
-use rustc::ty::layout::{LayoutOf, HasTyCtxt};
+use rustc::ty::{self, TypeFoldable, Instance};
+use rustc::ty::layout::{FnAbiExt, LayoutOf, HasTyCtxt};
 use rustc_codegen_ssa::traits::*;
 
 pub use rustc::mir::mono::MonoItem;
@@ -43,9 +44,14 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 !instance.substs.has_param_types());
 
         let mono_sig = instance.fn_sig(self.tcx());
-        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-        let lldecl = self.declare_fn(symbol_name, mono_sig);
+        let mono_sig = self.tcx().normalize_erasing_late_bound_regions(
+            ty::ParamEnv::reveal_all(),
+            &mono_sig,
+        );
+        let fn_abi = FnAbi::new(self, mono_sig, &[]);
+        let lldecl = self.declare_fn(symbol_name, &fn_abi);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
+        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         base::set_link_section(lldecl, &attrs);
         if linkage == Linkage::LinkOnceODR ||
             linkage == Linkage::WeakODR {
@@ -75,7 +81,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             self,
             lldecl,
             Some(instance.def.def_id()),
-            mono_sig,
+            mono_sig.abi,
         );
 
         self.instances.borrow_mut().insert(instance, lldecl);

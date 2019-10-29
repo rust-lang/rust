@@ -1,7 +1,8 @@
 use super::BackendTypes;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{self, Instance};
+use rustc::ty::{Instance, Ty};
+use rustc_target::abi::call::FnAbi;
 
 pub trait DeclareMethods<'tcx>: BackendTypes {
     /// Declare a global value.
@@ -23,7 +24,7 @@ pub trait DeclareMethods<'tcx>: BackendTypes {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    fn declare_fn(&self, name: &str, sig: ty::PolyFnSig<'tcx>) -> Self::Function;
+    fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Function;
 
     /// Declare a global with an intention to define it.
     ///
