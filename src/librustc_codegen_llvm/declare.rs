@@ -13,7 +13,7 @@
 
 use crate::llvm;
 use crate::llvm::AttributePlace::Function;
-use crate::abi::{FnAbi, FnTypeLlvmExt};
+use crate::abi::{FnAbi, FnAbiLlvmExt};
 use crate::attributes;
 use crate::context::CodegenCx;
 use crate::type_::Type;

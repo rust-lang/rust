@@ -300,7 +300,7 @@ impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-pub trait FnTypeLlvmExt<'tcx> {
+pub trait FnAbiLlvmExt<'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
@@ -308,7 +308,7 @@ pub trait FnTypeLlvmExt<'tcx> {
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
 }
 
-impl<'tcx> FnTypeLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
+impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         let args_capacity: usize = self.args.iter().map(|arg|
             if arg.pad.is_some() { 1 } else { 0 } +
