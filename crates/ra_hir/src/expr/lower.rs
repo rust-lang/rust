@@ -16,7 +16,7 @@ use crate::{
     path::GenericArgs,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
     type_ref::TypeRef,
-    DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
+    AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
     Source,
 };
 
@@ -458,11 +458,10 @@ where
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::MacroCall(e) => {
-                let ast_id = self
-                    .db
-                    .ast_id_map(self.current_file_id)
-                    .ast_id(&e)
-                    .with_file_id(self.current_file_id);
+                let ast_id = AstId::new(
+                    self.current_file_id,
+                    self.db.ast_id_map(self.current_file_id).ast_id(&e),
+                );
 
                 if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
                     if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {

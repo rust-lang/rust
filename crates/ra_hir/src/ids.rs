@@ -264,7 +264,7 @@ pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
         Self::from_ast_id(ctx, item_id)
     }
     fn from_ast_id(ctx: LocationCtx<&impl InternDatabase>, ast_id: FileAstId<N>) -> Self {
-        let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
+        let loc = ItemLoc { module: ctx.module, ast_id: AstId::new(ctx.file_id, ast_id) };
         Self::intern(ctx.db, loc)
     }
     fn source(self, db: &impl AstDatabase) -> Source<N> {
