@@ -448,6 +448,7 @@ pub fn foo(mut r: WriteHandler<()>) {
 "#,
         );
 
+        assert_eq!(info.label(), "fn finished(&mut self, ctx: &mut Self::Context)".to_string());
         assert_eq!(info.parameters(), ["&mut self", "ctx: &mut Self::Context"]);
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(
