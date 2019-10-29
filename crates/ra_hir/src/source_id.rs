@@ -2,5 +2,5 @@
 
 pub use hir_expand::{
     ast_id_map::{AstIdMap, ErasedFileAstId, FileAstId},
-    expand::AstId,
+    AstId,
 };

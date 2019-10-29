@@ -15,9 +15,7 @@ use crate::{
     AstId, FileAstId, Module, Source,
 };
 
-pub use hir_expand::expand::{
-    HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, MacroFileKind,
-};
+pub use hir_expand::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, MacroFileKind};
 
 macro_rules! impl_intern_key {
     ($name:ident) => {
