@@ -75,17 +75,19 @@ impl AstIdMap {
     }
 
     pub fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
-        let ptr = SyntaxNodePtr::new(item.syntax());
-        let raw = match self.arena.iter().find(|(_id, i)| **i == ptr) {
+        let raw = self.erased_ast_id(item.syntax());
+        FileAstId { raw, _ty: PhantomData }
+    }
+    fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
+        let ptr = SyntaxNodePtr::new(item);
+        match self.arena.iter().find(|(_id, i)| **i == ptr) {
             Some((it, _)) => it,
             None => panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
-                item.syntax(),
+                item,
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
             ),
-        };
-
-        FileAstId { raw, _ty: PhantomData }
+        }
     }
 
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {

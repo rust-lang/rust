@@ -10,6 +10,7 @@ use crate::{
     HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, MacroFileKind,
 };
 
+// FIXME: rename to ExpandDatabase
 #[salsa::query_group(AstDatabaseStorage)]
 pub trait AstDatabase: SourceDatabase {
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
