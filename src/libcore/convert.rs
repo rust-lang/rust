@@ -220,11 +220,11 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Implementing [`Into`] for conversions to external types
 ///
-/// If the destination type is not part of the current crate
-/// then you can't implement [`From`] directly.
+/// Prior to Rust 1.40, if the destination type was not part of the current crate
+/// then you couldn't implement [`From`] directly.
 /// For example, take this code:
 ///
-/// ```compile_fail
+/// ```
 /// struct Wrapper<T>(Vec<T>);
 /// impl<T> From<Wrapper<T>> for Vec<T> {
 ///     fn from(w: Wrapper<T>) -> Vec<T> {
@@ -232,9 +232,8 @@ pub trait AsMut<T: ?Sized> {
 ///     }
 /// }
 /// ```
-/// This will fail to compile because we cannot implement a trait for a type
-/// if both the trait and the type are not defined by the current crate.
-/// This is due to Rust's orphaning rules. To bypass this, you can implement [`Into`] directly:
+/// This will fail to compile in older versions of the language because Rust's orphaning rules
+/// used to be a little bit more strict. To bypass this, you could implement [`Into`] directly:
 ///
 /// ```
 /// struct Wrapper<T>(Vec<T>);
