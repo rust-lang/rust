@@ -1013,7 +1013,9 @@ fn gen_fn<'ll, 'tcx>(
         hir::Unsafety::Unsafe,
         Abi::Rust
     ));
-    let llfn = cx.define_internal_fn(name, rust_fn_sig);
+    let llfn = cx.declare_fn(name, rust_fn_sig);
+    // FIXME(eddyb) find a nicer way to do this.
+    unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     attributes::from_fn_attrs(cx, llfn, None, rust_fn_sig);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);

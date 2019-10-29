@@ -130,28 +130,6 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn define_fn(
-        &self,
-        name: &str,
-        fn_sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
-        if self.get_defined_value(name).is_some() {
-            self.sess().fatal(&format!("symbol `{}` already defined", name))
-        } else {
-            self.declare_fn(name, fn_sig)
-        }
-    }
-
-    fn define_internal_fn(
-        &self,
-        name: &str,
-        fn_sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
-        let llfn = self.define_fn(name, fn_sig);
-        unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
-        llfn
-    }
-
     fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
         debug!("get_declared_value(name={:?})", name);
         let namebuf = SmallCStr::new(name);

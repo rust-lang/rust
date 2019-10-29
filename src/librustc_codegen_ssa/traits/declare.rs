@@ -38,20 +38,6 @@ pub trait DeclareMethods<'tcx>: BackendTypes {
     /// Use this function when you intend to define a global without a name.
     fn define_private_global(&self, ty: Self::Type) -> Self::Value;
 
-    /// Declare a Rust function with an intention to define it.
-    ///
-    /// Use this function when you intend to define a function. This function will
-    /// return panic if the name already has a definition associated with it. This
-    /// can happen with #[no_mangle] or #[export_name], for example.
-    fn define_fn(&self, name: &str, fn_sig: ty::PolyFnSig<'tcx>) -> Self::Value;
-
-    /// Declare a Rust function with an intention to define it.
-    ///
-    /// Use this function when you intend to define a function. This function will
-    /// return panic if the name already has a definition associated with it. This
-    /// can happen with #[no_mangle] or #[export_name], for example.
-    fn define_internal_fn(&self, name: &str, fn_sig: ty::PolyFnSig<'tcx>) -> Self::Value;
-
     /// Gets declared value by name.
     fn get_declared_value(&self, name: &str) -> Option<Self::Value>;
 
