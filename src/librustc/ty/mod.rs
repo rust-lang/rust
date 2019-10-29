@@ -85,8 +85,10 @@ pub use self::context::{
 
 pub use self::instance::{Instance, InstanceDef};
 
-pub use self::structural_match::search_for_structural_match_violation;
+pub use self::structural_match::search_type_for_structural_match_violation;
 pub use self::structural_match::type_marked_structural;
+pub use self::structural_match::register_structural_match_bounds;
+pub use self::structural_match::report_structural_match_violation;
 pub use self::structural_match::NonStructuralMatchTy;
 
 pub use self::trait_def::TraitDef;

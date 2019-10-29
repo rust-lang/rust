@@ -2,6 +2,7 @@ use crate::hir;
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ConstPatternStructural, TraitEngine};
 use rustc::traits::ObligationCause;
+use rustc::lint;
 
 use rustc_data_structures::fx::{FxHashSet};
 
@@ -14,6 +15,30 @@ use crate::ty::fold::{TypeFoldable, TypeVisitor};
 pub enum NonStructuralMatchTy<'tcx> {
     Adt(&'tcx AdtDef),
     Param,
+}
+
+pub fn report_structural_match_violation(tcx: TyCtxt<'tcx>,
+                                         non_sm_ty: NonStructuralMatchTy<'tcx>,
+                                         id: hir::HirId,
+                                         span: Span,
+                                         warn_instead_of_hard_error: bool) {
+    let adt_def = match non_sm_ty {
+        ty::NonStructuralMatchTy::Adt(adt_def) => adt_def,
+        ty::NonStructuralMatchTy::Param =>
+            bug!("use of constant whose type is a parameter inside a pattern"),
+    };
+    let path = tcx.def_path_str(adt_def.did);
+    let msg = format!("to use a constant of type `{}` in a pattern, \
+                       `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                      path, path);
+
+
+    if warn_instead_of_hard_error {
+        tcx.lint_hir(lint::builtin::INDIRECT_STRUCTURAL_MATCH, id, span, &msg);
+    } else {
+        // span_fatal avoids ICE from resolution of non-existent method (rare case).
+        tcx.sess.span_fatal(span, &msg);
+    }
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -41,18 +66,37 @@ pub enum NonStructuralMatchTy<'tcx> {
 /// For more background on why Rust has this requirement, and issues
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
-pub fn search_for_structural_match_violation<'tcx>(
+pub fn search_type_for_structural_match_violation<'tcx>(
     id: hir::HirId,
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<NonStructuralMatchTy<'tcx>> {
-    // FIXME: we should instead pass in an `infcx` from the outside.
+    // FIXME: consider passing in an `infcx` from the outside.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut search = Search { id, span, infcx, found: None, seen: FxHashSet::default() };
+        let mut search = SearchTy { id, span, infcx, found: None, seen: FxHashSet::default() };
         ty.visit_with(&mut search);
         search.found
     })
+}
+
+pub fn register_structural_match_bounds(fulfillment_cx: &mut traits::FulfillmentContext<'tcx>,
+                                        id: hir::HirId,
+                                        span: Span,
+                                        infcx: &InferCtxt<'_, 'tcx>,
+                                        adt_ty: Ty<'tcx>)
+{
+    let cause = ObligationCause::new(span, id, ConstPatternStructural);
+    // require `#[derive(PartialEq)]`
+    let structural_peq_def_id = infcx.tcx.lang_items().structural_peq_trait().unwrap();
+    fulfillment_cx.register_bound(
+        infcx, ty::ParamEnv::empty(), adt_ty, structural_peq_def_id, cause);
+    // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
+    // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
+    let cause = ObligationCause::new(span, id, ConstPatternStructural);
+    let structural_teq_def_id = infcx.tcx.lang_items().structural_teq_trait().unwrap();
+    fulfillment_cx.register_bound(
+        infcx, ty::ParamEnv::empty(), adt_ty, structural_teq_def_id, cause);
 }
 
 /// This method returns true if and only if `adt_ty` itself has been marked as
@@ -69,17 +113,8 @@ pub fn type_marked_structural(id: hir::HirId,
                               -> bool
 {
     let mut fulfillment_cx = traits::FulfillmentContext::new();
-    let cause = ObligationCause::new(span, id, ConstPatternStructural);
-    // require `#[derive(PartialEq)]`
-    let structural_peq_def_id = infcx.tcx.lang_items().structural_peq_trait().unwrap();
-    fulfillment_cx.register_bound(
-        infcx, ty::ParamEnv::empty(), adt_ty, structural_peq_def_id, cause);
-    // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
-    // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
-    let cause = ObligationCause::new(span, id, ConstPatternStructural);
-    let structural_teq_def_id = infcx.tcx.lang_items().structural_teq_trait().unwrap();
-    fulfillment_cx.register_bound(
-        infcx, ty::ParamEnv::empty(), adt_ty, structural_teq_def_id, cause);
+
+    register_structural_match_bounds(&mut fulfillment_cx, id, span, infcx, adt_ty);
 
     // We deliberately skip *reporting* fulfillment errors (via
     // `report_fulfillment_errors`), for two reasons:
@@ -96,7 +131,7 @@ pub fn type_marked_structural(id: hir::HirId,
 /// This implements the traversal over the structure of a given type to try to
 /// find instances of ADTs (specifically structs or enums) that do not implement
 /// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
-struct Search<'a, 'tcx> {
+struct SearchTy<'a, 'tcx> {
     id: hir::HirId,
     span: Span,
 
@@ -110,7 +145,7 @@ struct Search<'a, 'tcx> {
     seen: FxHashSet<hir::def_id::DefId>,
 }
 
-impl Search<'a, 'tcx> {
+impl SearchTy<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -120,9 +155,9 @@ impl Search<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<'tcx> for SearchTy<'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-        debug!("Search visiting ty: {:?}", ty);
+        debug!("SearchTy visiting ty: {:?}", ty);
 
         let (adt_def, substs) = match ty.kind {
             ty::Adt(adt_def, substs) => (adt_def, substs),
@@ -170,13 +205,13 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
         };
 
         if !self.seen.insert(adt_def.did) {
-            debug!("Search already seen adt_def: {:?}", adt_def);
+            debug!("SearchTy already seen adt_def: {:?}", adt_def);
             // let caller continue its search
             return false;
         }
 
         if !self.type_marked_structural(ty) {
-            debug!("Search found ty: {:?}", ty);
+            debug!("SearchTy found ty: {:?}", ty);
             self.found = Some(NonStructuralMatchTy::Adt(&adt_def));
             return true; // Halt visiting!
         }

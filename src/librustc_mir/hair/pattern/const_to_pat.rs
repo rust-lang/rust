@@ -1,7 +1,7 @@
 use crate::const_eval::const_variant_index;
 
 use rustc::hir;
-use rustc::lint;
+use rustc::hir::def_id::DefId;
 use rustc::mir::Field;
 use rustc::infer::InferCtxt;
 use rustc::traits::{ObligationCause, PredicateObligation};
@@ -15,23 +15,28 @@ use syntax_pos::Span;
 use std::cell::Cell;
 
 use super::{FieldPat, Pat, PatCtxt, PatKind};
+use super::structural_match::search_const_rhs_for_structural_match_violation;
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
+    ///
+    /// For literals, pass `None` as the `opt_const_def_id`; for a const
+    /// identifier, pass its `DefId`.
     pub(super) fn const_to_pat(
         &self,
         cv: &'tcx ty::Const<'tcx>,
+        opt_const_def_id: Option<DefId>,
         id: hir::HirId,
         span: Span,
     ) -> Pat<'tcx> {
-        debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
-        debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
+        debug!("const_def_to_pat: cv={:#?} const_def_id: {:?} id={:?}", cv, opt_const_def_id, id);
+        debug!("const_def_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
 
         self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
-            convert.to_pat(cv)
+            convert.to_pat(cv, opt_const_def_id)
         })
     }
 }
@@ -67,85 +72,77 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn tcx(&self) -> TyCtxt<'tcx> { self.infcx.tcx }
 
-    fn search_for_structural_match_violation(&self,
-                                             ty: Ty<'tcx>)
-                                             -> Option<ty::NonStructuralMatchTy<'tcx>>
+    fn search_const_def_for_structural_match_violation(&self, const_def_id: DefId)
     {
-        ty::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty)
+        assert!(const_def_id.is_local());
+        self.tcx().infer_ctxt().enter(|infcx| {
+            search_const_rhs_for_structural_match_violation(
+                &infcx, self.param_env, const_def_id, self.id, self.span);
+        });
+    }
+
+    fn search_ty_for_structural_match_violation(&self, ty: Ty<'tcx>)
+    {
+        let structural = ty::search_type_for_structural_match_violation(
+            self.id, self.span, self.tcx(), ty);
+        debug!("search_ty_for_structural_match_violation ty: {:?} returned: {:?}", ty, structural);
+        if let Some(non_sm_ty) = structural {
+
+            // double-check there even *is* a semantic `PartialEq` to dispatch to.
+            //
+            // (If there isn't, then we can safely issue a hard
+            // error, because that's never worked, due to compiler
+            // using `PartialEq::eq` in this scenario in the past.)
+            //
+            // Note: To fix rust-lang/rust#65466, one could lift this check
+            // *before* any structural-match checking, and unconditionally error
+            // if `PartialEq` is not implemented. However, that breaks stable
+            // code at the moment, because types like `for <'a> fn(&'a ())` do
+            // not *yet* implement `PartialEq`. So for now we leave this here.
+            let warn_instead_of_hard_error: bool = {
+                let partial_eq_trait_id = self.tcx().lang_items().eq_trait().unwrap();
+                let obligation: PredicateObligation<'_> =
+                    self.tcx().predicate_for_trait_def(
+                        self.param_env,
+                        ObligationCause::misc(self.span, self.id),
+                        partial_eq_trait_id,
+                        0,
+                        ty,
+                        &[]);
+                // FIXME: should this call a `predicate_must_hold` variant instead?
+                self.infcx.predicate_may_hold(&obligation)
+            };
+
+            debug!("call report_structural_match_violation non_sm_ty: {:?} id: {:?} warn: {:?}",
+                   non_sm_ty, self.id, warn_instead_of_hard_error);
+            ty::report_structural_match_violation(
+                self.tcx(), non_sm_ty, self.id, self.span, warn_instead_of_hard_error);
+        }
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
         ty::type_marked_structural(self.id, self.span, &self.infcx, ty)
     }
 
-    fn to_pat(&mut self, cv: &'tcx ty::Const<'tcx>) -> Pat<'tcx> {
-        // This method is just a wrapper handling a validity check; the heavy lifting is
-        // performed by the recursive `recur` method, which is not meant to be
-        // invoked except by this method.
-        //
-        // once indirect_structural_match is a full fledged error, this
-        // level of indirection can be eliminated
-
+    fn to_pat(&mut self,
+              cv: &'tcx ty::Const<'tcx>,
+              opt_const_def_id: Option<DefId>)
+              -> Pat<'tcx>
+    {
         let inlined_const_as_pat = self.recur(cv);
 
         if self.include_lint_checks && !self.saw_const_match_error.get() {
             // If we were able to successfully convert the const to some pat,
             // double-check that all types in the const implement `Structural`.
-
-            let structural = self.search_for_structural_match_violation(cv.ty);
-            debug!("search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
-                   cv.ty, structural);
-            if let Some(non_sm_ty) = structural {
-                let adt_def = match non_sm_ty {
-                    ty::NonStructuralMatchTy::Adt(adt_def) => adt_def,
-                    ty::NonStructuralMatchTy::Param =>
-                        bug!("use of constant whose type is a parameter inside a pattern"),
-                };
-                let path = self.tcx().def_path_str(adt_def.did);
-                let msg = format!(
-                    "to use a constant of type `{}` in a pattern, \
-                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                    path,
-                    path,
-                );
-
-                // double-check there even *is* a semantic `PartialEq` to dispatch to.
-                //
-                // (If there isn't, then we can safely issue a hard
-                // error, because that's never worked, due to compiler
-                // using `PartialEq::eq` in this scenario in the past.)
-                //
-                // Note: To fix rust-lang/rust#65466, one could lift this check
-                // *before* any structural-match checking, and unconditionally error
-                // if `PartialEq` is not implemented. However, that breaks stable
-                // code at the moment, because types like `for <'a> fn(&'a ())` do
-                // not *yet* implement `PartialEq`. So for now we leave this here.
-                let ty_is_partial_eq: bool = {
-                    let partial_eq_trait_id = self.tcx().lang_items().eq_trait().unwrap();
-                    let obligation: PredicateObligation<'_> =
-                        self.tcx().predicate_for_trait_def(
-                            self.param_env,
-                            ObligationCause::misc(self.span, self.id),
-                            partial_eq_trait_id,
-                            0,
-                            cv.ty,
-                            &[]);
-                    // FIXME: should this call a `predicate_must_hold` variant instead?
-                    self.infcx.predicate_may_hold(&obligation)
-                };
-
-                if !ty_is_partial_eq {
-                    // span_fatal avoids ICE from resolution of non-existent method (rare case).
-                    self.tcx().sess.span_fatal(self.span, &msg);
-                } else {
-                    self.tcx().lint_hir(lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                                        self.id,
-                                        self.span,
-                                        &msg);
+            match opt_const_def_id {
+                Some(const_def_id) if const_def_id.is_local() => {
+                    self.search_const_def_for_structural_match_violation(const_def_id);
+                }
+                _ => {
+                    self.search_ty_for_structural_match_violation(cv.ty);
                 }
             }
         }
-
         inlined_const_as_pat
     }
 
