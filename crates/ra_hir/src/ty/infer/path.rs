@@ -6,9 +6,11 @@ use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
+    ty::{lower, traits::TraitEnvironment, Canonical},
     ty::{Substs, Ty, TypableDef, TypeWalk},
-    AssocItem, HasGenericParams, Namespace, Path,
+    AssocItem, HasGenericParams, Name, Namespace, Path, Trait,
 };
+use std::sync::Arc;
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_path(
@@ -39,7 +41,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
-                path.segments.last().expect("path had at least one segment"),
+                &path.segments.last().expect("path had at least one segment").name,
                 id,
             )?
         } else {
@@ -125,7 +127,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
 
-                self.resolve_ty_assoc_item(ty, segment, id)
+                self.resolve_ty_assoc_item(ty, &segment.name, id)
             }
         }
     }
@@ -162,7 +164,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         let substs = Substs::build_for_def(self.db, item)
             .use_parent_substs(&trait_ref.substs)
-            .fill_with_unknown()
+            .fill_with_params()
             .build();
 
         self.write_assoc_resolution(id, item);
@@ -172,20 +174,29 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_ty_assoc_item(
         &mut self,
         ty: Ty,
-        segment: &PathSegment,
+        name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         if let Ty::Unknown = ty {
             return None;
         }
 
+        self.find_inherent_assoc_candidate(ty.clone(), name, id)
+            .or_else(|| self.find_trait_assoc_candidate(ty.clone(), name, id))
+    }
+
+    fn find_inherent_assoc_candidate(
+        &mut self,
+        ty: Ty,
+        name: &Name,
+        id: ExprOrPatId,
+    ) -> Option<(ValueNs, Option<Substs>)> {
         let krate = self.resolver.krate()?;
 
         // Find impl
-        // FIXME: consider trait candidates
         let item = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
             AssocItem::Function(func) => {
-                if segment.name == func.name(self.db) {
+                if *name == func.name(self.db) {
                     Some(AssocItem::Function(func))
                 } else {
                     None
@@ -193,7 +204,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
 
             AssocItem::Const(konst) => {
-                if konst.name(self.db).map_or(false, |n| n == segment.name) {
+                if konst.name(self.db).map_or(false, |n| n == *name) {
                     Some(AssocItem::Const(konst))
                 } else {
                     None
@@ -210,6 +221,65 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         self.write_assoc_resolution(id, item);
         Some((def, substs))
+    }
+
+    fn find_trait_assoc_candidate(
+        &mut self,
+        ty: Ty,
+        name: &Name,
+        _id: ExprOrPatId,
+    ) -> Option<(ValueNs, Option<Substs>)> {
+        let krate = self.resolver.krate()?;
+
+        let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
+
+        let env = lower::trait_env(self.db, &self.resolver);
+        // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
+        let traits_from_env = env
+            .trait_predicates_for_self_ty(&ty)
+            .map(|tr| tr.trait_)
+            .flat_map(|t| t.all_super_traits(self.db));
+        let traits = traits_from_env.chain(self.resolver.traits_in_scope(self.db));
+
+        'traits: for t in traits {
+            let data = t.trait_data(self.db);
+            let mut known_implemented = false;
+            for item in data.items() {
+                if let AssocItem::Function(f) = *item {
+                    if f.name(self.db) == *name {
+                        if !known_implemented {
+                            let goal = generic_implements_goal(
+                                self.db,
+                                env.clone(),
+                                t,
+                                canonical_ty.value.clone(),
+                            );
+                            if self.db.trait_solve(krate, goal).is_none() {
+                                continue 'traits;
+                            }
+                        }
+                        known_implemented = true;
+
+                        // we're picking this method
+                        let trait_substs = Substs::build_for_def(self.db, t)
+                            .push(ty.clone())
+                            .fill(std::iter::repeat_with(|| self.new_type_var()))
+                            .build();
+                        let substs = Substs::build_for_def(self.db, f)
+                            .use_parent_substs(&trait_substs)
+                            .fill_with_params()
+                            .build();
+                        self.obligations.push(super::Obligation::Trait(TraitRef {
+                            trait_: t,
+                            substs: trait_substs,
+                        }));
+                        return Some((ValueNs::Function(f), Some(substs)));
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {
@@ -241,4 +311,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None
         }
     }
+}
+
+// TODO remove duplication
+/// This creates Substs for a trait with the given Self type and type variables
+/// for all other parameters, to query Chalk with it.
+fn generic_implements_goal(
+    db: &impl HirDatabase,
+    env: Arc<TraitEnvironment>,
+    trait_: Trait,
+    self_ty: Canonical<Ty>,
+) -> Canonical<super::InEnvironment<super::Obligation>> {
+    let num_vars = self_ty.num_vars;
+    let substs = super::Substs::build_for_def(db, trait_)
+        .push(self_ty.value)
+        .fill_with_bound_vars(num_vars as u32)
+        .build();
+    let num_vars = substs.len() - 1 + self_ty.num_vars;
+    let trait_ref = TraitRef { trait_, substs };
+    let obligation = super::Obligation::Trait(trait_ref);
+    Canonical { num_vars, value: super::InEnvironment::new(env, obligation) }
 }

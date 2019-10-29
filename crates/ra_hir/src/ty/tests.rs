@@ -2782,12 +2782,159 @@ fn test() {
     [97; 99) 's1': S
     [105; 121) 'Defaul...efault': fn default<S>() -> Self
     [105; 123) 'Defaul...ault()': S
-    [133; 135) 's2': {unknown}
-    [138; 148) 'S::default': {unknown}
-    [138; 150) 'S::default()': {unknown}
+    [133; 135) 's2': S
+    [138; 148) 'S::default': fn default<S>() -> Self
+    [138; 150) 'S::default()': S
     [160; 162) 's3': S
     [165; 188) '<S as ...efault': fn default<S>() -> Self
     [165; 190) '<S as ...ault()': S
+    "###
+    );
+}
+
+#[test]
+fn infer_trait_assoc_method_generics_1() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn make() -> T;
+}
+struct S;
+impl Trait<u32> for S {}
+struct G<T>;
+impl<T> Trait<T> for G<T> {}
+fn test() {
+    let a = S::make();
+    let b = G::<u64>::make();
+    let c: f64 = G::make();
+}
+"#),
+        @r###"
+    [127; 211) '{     ...e(); }': ()
+    [137; 138) 'a': u32
+    [141; 148) 'S::make': fn make<S, u32>() -> T
+    [141; 150) 'S::make()': u32
+    [160; 161) 'b': u64
+    [164; 178) 'G::<u64>::make': fn make<G<u64>, u64>() -> T
+    [164; 180) 'G::<u6...make()': u64
+    [190; 191) 'c': f64
+    [199; 206) 'G::make': fn make<G<f64>, f64>() -> T
+    [199; 208) 'G::make()': f64
+    "###
+    );
+}
+
+#[test]
+fn infer_trait_assoc_method_generics_2() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn make<U>() -> (T, U);
+}
+struct S;
+impl Trait<u32> for S {}
+struct G<T>;
+impl<T> Trait<T> for G<T> {}
+fn test() {
+    let a = S::make::<i64>();
+    let b: (_, i64) = S::make();
+    let c = G::<u32>::make::<i64>();
+    let d: (u32, _) = G::make::<i64>();
+    let e: (u32, i64) = G::make();
+}
+"#),
+        @r###"
+    [135; 313) '{     ...e(); }': ()
+    [145; 146) 'a': (u32, i64)
+    [149; 163) 'S::make::<i64>': fn make<S, u32, i64>() -> (T, U)
+    [149; 165) 'S::mak...i64>()': (u32, i64)
+    [175; 176) 'b': (u32, i64)
+    [189; 196) 'S::make': fn make<S, u32, i64>() -> (T, U)
+    [189; 198) 'S::make()': (u32, i64)
+    [208; 209) 'c': (u32, i64)
+    [212; 233) 'G::<u3...:<i64>': fn make<G<u32>, u32, i64>() -> (T, U)
+    [212; 235) 'G::<u3...i64>()': (u32, i64)
+    [245; 246) 'd': (u32, i64)
+    [259; 273) 'G::make::<i64>': fn make<G<u32>, u32, i64>() -> (T, U)
+    [259; 275) 'G::mak...i64>()': (u32, i64)
+    [285; 286) 'e': (u32, i64)
+    [301; 308) 'G::make': fn make<G<u32>, u32, i64>() -> (T, U)
+    [301; 310) 'G::make()': (u32, i64)
+    "###
+    );
+}
+
+#[test]
+fn infer_trait_assoc_method_generics_3() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn make() -> (Self, T);
+}
+struct S<T>;
+impl Trait<i64> for S<i32> {}
+fn test() {
+    let a = S::make();
+}
+"#),
+        @r###"
+    [101; 127) '{     ...e(); }': ()
+    [111; 112) 'a': {unknown}
+    [115; 122) 'S::make': {unknown}
+    [115; 124) 'S::make()': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn infer_trait_assoc_method_generics_4() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn make() -> (Self, T);
+}
+struct S<T>;
+impl Trait<i64> for S<u64> {}
+impl Trait<i32> for S<u32> {}
+fn test() {
+    let a: (Self<i64>, _) = S::make();
+    let b: (_, u32) = S::make();
+}
+"#),
+        @r###"
+    [131; 206) '{     ...e(); }': ()
+    [141; 142) 'a': ({unknown}, {unknown})
+    [161; 168) 'S::make': {unknown}
+    [161; 170) 'S::make()': ({unknown}, {unknown})
+    [180; 181) 'b': ({unknown}, u32)
+    [194; 201) 'S::make': {unknown}
+    [194; 203) 'S::make()': ({unknown}, u32)
+    "###
+    );
+}
+
+#[test]
+fn infer_trait_assoc_method_generics_5() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn make<U>() -> (Self, T, U);
+}
+struct S<T>;
+impl Trait<i64> for S<u64> {}
+fn test() {
+    let a = <S as Trait<i64>>::make::<u8>();
+    let b: (S<u64>, _, _) = Trait::<i64>::make::<u8>();
+}
+"#),
+        @r###"
+    [107; 211) '{     ...>(); }': ()
+    [117; 118) 'a': (S<u64>, i64, u8)
+    [121; 150) '<S as ...::<u8>': fn make<S<u64>, i64, u8>() -> (Self, T, U)
+    [121; 152) '<S as ...<u8>()': (S<u64>, i64, u8)
+    [162; 163) 'b': (S<u64>, i64, u8)
+    [182; 206) 'Trait:...::<u8>': fn make<S<u64>, i64, u8>() -> (Self, T, U)
+    [182; 208) 'Trait:...<u8>()': (S<u64>, i64, u8)
     "###
     );
 }
