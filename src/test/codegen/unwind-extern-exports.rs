@@ -1,5 +1,5 @@
 // compile-flags: -C opt-level=0
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 #![crate_type = "lib"]
 #![feature(unwind_attributes)]

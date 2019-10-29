@@ -441,9 +441,9 @@ pub fn run_test(
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
-    // FIXME: Re-enable emscripten once it can catch panics again
+    // Emscripten can catch panics but other wasm targets cannot
     let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
-        && (cfg!(target_arch = "wasm32") || cfg!(target_os = "emscripten"));
+        && cfg!(target_arch = "wasm32") && !cfg!(target_os = "emscripten");
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
         let message = CompletedTest::new(desc, TrIgnored, None, Vec::new());
