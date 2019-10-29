@@ -25,7 +25,6 @@ pub mod rustc_peek;
 pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
-pub mod qualify_consts;
 pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod dump_mir;
@@ -238,18 +237,14 @@ fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(hir_id) {
-        // Ensure that we compute the `mir_const_qualif` for constants at
-        // this point, before we steal the mir-const result.
-        let _ = tcx.mir_const_qualif(def_id);
-    }
+    // Ensure that we compute the `mir_const_qualif` for constants at
+    // this point, before we steal the mir-const result.
+    let _ = tcx.mir_const_qualif(def_id);
 
     let mut body = tcx.mir_const(def_id).steal();
     let promote_pass = promote_consts::PromoteTemps::default();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
         // What we need to run borrowck etc.
-        &qualify_consts::QualifyAndPromoteConstants::default(),
         &promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
