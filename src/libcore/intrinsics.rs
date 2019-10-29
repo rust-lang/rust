@@ -1352,7 +1352,7 @@ extern "rust-intrinsic" {
     /// Internal hook used by Miri to implement unwinding.
     /// Perma-unstable: do not use
     #[cfg(not(bootstrap))]
-    pub fn miri_start_panic(data: *mut (dyn crate::any::Any + Send)) -> !;
+    pub fn miri_start_panic(data: u128) -> !;
 }
 
 // Some functions are defined here because they accidentally got made

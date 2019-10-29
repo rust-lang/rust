@@ -384,6 +384,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_unit())
             }
 
+            "miri_start_panic" => {
+                (0, vec![tcx.types.u128], tcx.types.never)
+            }
+
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
                                  "unrecognized intrinsic function: `{}`",

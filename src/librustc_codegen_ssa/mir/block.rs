@@ -528,6 +528,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => FnAbi::new(&bx, sig, &extra_args)
         };
 
+        // This should never be reachable at runtime:
+        // We should only emit a call to this intrinsic in #[cfg(miri)] mode,
+        // which means that we will never actually use the generate object files
+        // (we will just be interpreting the MIR)
+        if intrinsic == Some("miri_start_panic") {
+            bx.abort();
+            bx.unreachable();
+            return;
+        }
+
         // Emit a panic or a no-op for `panic_if_uninhabited`.
         if intrinsic == Some("panic_if_uninhabited") {
             let ty = instance.unwrap().substs.type_at(0);
