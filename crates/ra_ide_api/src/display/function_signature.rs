@@ -13,16 +13,16 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum SigKind {
+pub enum CallableKind {
     Function,
-    Struct,
-    EnumVariant,
+    StructConstructor,
+    VariantConstructor,
 }
 
 /// Contains information about a function signature
 #[derive(Debug)]
 pub struct FunctionSignature {
-    pub kind: SigKind,
+    pub kind: CallableKind,
     /// Optional visibility
     pub visibility: Option<String>,
     /// Name of the function
@@ -69,7 +69,7 @@ impl FunctionSignature {
 
         Some(
             FunctionSignature {
-                kind: SigKind::Struct,
+                kind: CallableKind::StructConstructor,
                 visibility: node.visibility().map(|n| n.syntax().text().to_string()),
                 name: node.name().map(|n| n.text().to_string()),
                 ret_type: node.name().map(|n| n.text().to_string()),
@@ -111,7 +111,7 @@ impl FunctionSignature {
 
         Some(
             FunctionSignature {
-                kind: SigKind::EnumVariant,
+                kind: CallableKind::VariantConstructor,
                 visibility: None,
                 name: Some(name),
                 ret_type: None,
@@ -140,7 +140,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
         }
 
         FunctionSignature {
-            kind: SigKind::Function,
+            kind: CallableKind::Function,
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
             name: node.name().map(|n| n.text().to_string()),
             ret_type: node
@@ -164,9 +164,9 @@ impl Display for FunctionSignature {
 
         if let Some(name) = &self.name {
             match self.kind {
-                SigKind::Function => write!(f, "fn {}", name)?,
-                SigKind::Struct => write!(f, "struct {}", name)?,
-                SigKind::EnumVariant => write!(f, "{}", name)?,
+                CallableKind::Function => write!(f, "fn {}", name)?,
+                CallableKind::StructConstructor => write!(f, "struct {}", name)?,
+                CallableKind::VariantConstructor => write!(f, "{}", name)?,
             }
         }
 
