@@ -2,7 +2,7 @@ use crate::abi::{FnAbi};
 use crate::common::*;
 use crate::type_::Type;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, LayoutOf, FnTypeExt, PointeeInfo, Size, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, FnAbiExt, PointeeInfo, Size, TyLayout};
 use rustc_target::abi::{FloatTy, TyLayoutMethods};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;

@@ -19,7 +19,7 @@ use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::value::Value;
 use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::{FnTypeExt, LayoutOf};
+use rustc::ty::layout::{FnAbiExt, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;

@@ -163,7 +163,7 @@ impl LlvmType for CastTarget {
     }
 }
 
-pub trait ArgTypeExt<'ll, 'tcx> {
+pub trait ArgAbiExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn store(
         &self,
@@ -179,7 +179,7 @@ pub trait ArgTypeExt<'ll, 'tcx> {
     );
 }
 
-impl ArgTypeExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     /// Gets the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {

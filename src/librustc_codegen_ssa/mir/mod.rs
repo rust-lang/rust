@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
-use rustc::ty::layout::{TyLayout, HasTyCtxt, FnTypeExt};
+use rustc::ty::layout::{TyLayout, HasTyCtxt, FnAbiExt};
 use rustc::mir::{self, Body};
 use rustc_target::abi::call::{FnAbi, PassMode};
 use crate::base;

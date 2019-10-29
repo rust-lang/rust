@@ -2487,7 +2487,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
     }
 }
 
-pub trait FnTypeExt<'tcx, C>
+pub trait FnAbiExt<'tcx, C>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
         + HasDataLayout
@@ -2507,7 +2507,7 @@ where
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
-impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
+impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
         + HasDataLayout
@@ -2528,7 +2528,7 @@ where
     }
 
     fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        FnTypeExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+        FnAbiExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`

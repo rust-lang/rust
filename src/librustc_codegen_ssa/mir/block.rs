@@ -1,7 +1,7 @@
 use rustc_index::vec::Idx;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnAbiExt};
 use rustc::mir::{self, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::PanicInfo;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
