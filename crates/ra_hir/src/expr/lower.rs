@@ -465,7 +465,7 @@ where
 
                 if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
                     if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
-                        let call_id = MacroCallLoc { def: def.id, ast_id }.id(self.db);
+                        let call_id = self.db.intern_macro(MacroCallLoc { def: def.id, ast_id });
                         let file_id = call_id.as_file(MacroFileKind::Expr);
                         if let Some(node) = self.db.parse_or_expand(file_id) {
                             if let Some(expr) = ast::Expr::cast(node) {

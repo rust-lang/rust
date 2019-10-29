@@ -1,8 +1,8 @@
-//! `ra_hir_def` contains initial "phases" of the compiler. Roughly, everything
-//! before types.
+//! `ra_hir_expand` deals with macro expansion.
 //!
-//! Note that we are in the process of moving parts of `ra_hir` into
-//! `ra_hir_def`, so this crates doesn't contain a lot at the moment.
+//! Specifically, it implements a concept of `MacroFile` -- a file whose syntax
+//! tree originates not from the text of some `FileId`, but from some macro
+//! expansion.
 
 pub mod db;
 pub mod ast_id_map;
@@ -116,19 +116,9 @@ pub struct MacroCallLoc {
 }
 
 impl MacroCallId {
-    pub fn loc(self, db: &impl AstDatabase) -> MacroCallLoc {
-        db.lookup_intern_macro(self)
-    }
-
     pub fn as_file(self, kind: MacroFileKind) -> HirFileId {
         let macro_file = MacroFile { macro_call_id: self, macro_file_kind: kind };
         macro_file.into()
-    }
-}
-
-impl MacroCallLoc {
-    pub fn id(self, db: &impl AstDatabase) -> MacroCallId {
-        db.intern_macro(self)
     }
 }
 
