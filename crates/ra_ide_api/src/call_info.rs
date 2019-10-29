@@ -36,6 +36,10 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
             let function = analyzer.resolve_method_call(&expr)?;
             (CallInfo::with_fn(db, function), function.data(db).has_self_param())
         }
+        FnCallNode::MacroCallExpr(expr) => {
+            let macro_def = analyzer.resolve_macro_call(db, &expr)?;
+            (CallInfo::with_macro(db, macro_def)?, false)
+        }
     };
 
     // If we have a calling expression let's find which argument we are on
@@ -77,9 +81,11 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     Some(call_info)
 }
 
+#[derive(Debug)]
 enum FnCallNode {
     CallExpr(ast::CallExpr),
     MethodCallExpr(ast::MethodCallExpr),
+    MacroCallExpr(ast::MacroCall),
 }
 
 impl FnCallNode {
@@ -89,6 +95,8 @@ impl FnCallNode {
                 Some(FnCallNode::CallExpr(expr))
             } else if let Some(expr) = ast::MethodCallExpr::cast(node.clone()) {
                 Some(FnCallNode::MethodCallExpr(expr))
+            } else if let Some(expr) = ast::MacroCall::cast(node.clone()) {
+                Some(FnCallNode::MacroCallExpr(expr))
             } else {
                 None
             }
@@ -105,6 +113,8 @@ impl FnCallNode {
             FnCallNode::MethodCallExpr(call_expr) => {
                 call_expr.syntax().children().filter_map(ast::NameRef::cast).nth(0)
             }
+
+            FnCallNode::MacroCallExpr(call_expr) => call_expr.path()?.segment()?.name_ref(),
         }
     }
 
@@ -112,6 +122,7 @@ impl FnCallNode {
         match self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
+            FnCallNode::MacroCallExpr(_) => None,
         }
     }
 }
@@ -131,6 +142,12 @@ impl CallInfo {
 
     fn with_enum_variant(db: &RootDatabase, variant: hir::EnumVariant) -> Option<Self> {
         let signature = FunctionSignature::from_enum_variant(db, variant)?;
+
+        Some(CallInfo { signature, active_parameter: None })
+    }
+
+    fn with_macro(db: &RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
+        let signature = FunctionSignature::from_macro(db, macro_def)?;
 
         Some(CallInfo { signature, active_parameter: None })
     }
@@ -548,5 +565,24 @@ fn main() {
 }
             "#,
         );
+    }
+
+    #[test]
+    fn fn_signature_for_macro() {
+        let info = call_info(
+            r#"
+/// empty macro
+macro_rules! foo {
+    () => {}
+}
+
+fn f() {
+    foo!(<|>);
+}
+        "#,
+        );
+
+        assert_eq!(info.label(), "foo!()");
+        assert_eq!(info.doc().map(|it| it.into()), Some("empty macro".to_string()));
     }
 }

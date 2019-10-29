@@ -17,6 +17,7 @@ pub enum CallableKind {
     Function,
     StructConstructor,
     VariantConstructor,
+    Macro,
 }
 
 /// Contains information about a function signature
@@ -123,6 +124,26 @@ impl FunctionSignature {
             .with_doc_opt(variant.docs(db)),
         )
     }
+
+    pub(crate) fn from_macro(db: &db::RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
+        let node: ast::MacroCall = macro_def.source(db).ast;
+
+        let params = vec![];
+
+        Some(
+            FunctionSignature {
+                kind: CallableKind::Macro,
+                visibility: None,
+                name: node.name().map(|n| n.text().to_string()),
+                ret_type: None,
+                parameters: params,
+                generic_parameters: vec![],
+                where_predicates: vec![],
+                doc: None,
+            }
+            .with_doc_opt(macro_def.docs(db)),
+        )
+    }
 }
 
 impl From<&'_ ast::FnDef> for FunctionSignature {
@@ -167,6 +188,7 @@ impl Display for FunctionSignature {
                 CallableKind::Function => write!(f, "fn {}", name)?,
                 CallableKind::StructConstructor => write!(f, "struct {}", name)?,
                 CallableKind::VariantConstructor => write!(f, "{}", name)?,
+                CallableKind::Macro => write!(f, "{}!", name)?,
             }
         }
 
