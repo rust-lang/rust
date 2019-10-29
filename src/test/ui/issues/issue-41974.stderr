@@ -16,10 +16,10 @@ LL | impl<T> Drop for T where T: A {
    |                  ^ implementing Drop requires a struct
 
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/issue-41974.rs:7:1
+  --> $DIR/issue-41974.rs:7:6
    |
 LL | impl<T> Drop for T where T: A {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `T` must be used as the type parameter for some local type
+   |      ^ type parameter `T` must be used as the type parameter for some local type
    |
    = note: only traits defined in the current crate can be implemented for a type parameter
 

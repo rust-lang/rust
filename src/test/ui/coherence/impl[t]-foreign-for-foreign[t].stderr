@@ -2,18 +2,22 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/impl[t]-foreign-for-foreign[t].rs:13:1
    |
 LL | impl Remote for Rc<Local> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^---------
+   | |               |
+   | |               `std::rc::Rc` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
    |
-   = note: the impl does not reference only types defined in this crate
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/impl[t]-foreign-for-foreign[t].rs:18:1
    |
 LL | impl<T> Remote for Arc<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   | ^^^^^^^^^^^^^^^^^^^------
+   | |                  |
+   | |                  `std::sync::Arc` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
    |
-   = note: the impl does not reference only types defined in this crate
    = note: define and implement a trait or new type instead
 
 error: aborting due to 2 previous errors
