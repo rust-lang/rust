@@ -529,7 +529,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_abi = match instance {
             Some(instance) => FnAbi::of_instance(&bx, instance, &extra_args),
-            None => FnAbi::new(&bx, sig, &extra_args)
+            None => FnAbi::of_fn_ptr(&bx, sig, &extra_args)
         };
 
         // This should never be reachable at runtime:

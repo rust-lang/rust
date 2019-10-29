@@ -239,7 +239,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         ty::ParamEnv::reveal_all(),
                         &sig,
                     );
-                    cx.fn_ptr_backend_type(&FnAbi::new(cx, sig, &[]))
+                    cx.fn_ptr_backend_type(&FnAbi::of_fn_ptr(cx, sig, &[]))
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };
