@@ -1081,87 +1081,90 @@ endCheck:
         return alloc;
     }
 
-    void storeInstructionInCache(BasicBlock* ctx, IRBuilder <>& BuilderM, Value* val, AllocaInst* cache) {
+    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache) {
         assert(ctx);
-        assert(val);
         assert(cache);
-        LoopContext lc;
-        bool inLoop = getContext(ctx, lc);
+        
+        auto sublimits = getSubLimits(ctx);
+			
+        ValueToValueMapTy available;
+        
+        Value* next = cache;
+        for(int i=sublimits.size()-1; i>=0; i--) {
+            next = BuilderM.CreateLoad(next);
 
-        if (!inLoop) {
-            BuilderM.CreateStore(val, cache);
-        } else {
-            IRBuilder <> v(BuilderM);
-            v.setFastMathFlags(getFast());
-
-            //Note for dynamic loops where the allocation is stored somewhere inside the loop,
-            // we must ensure that we load the allocation after the store ensuring memory exists
-            // This does not need to occur (and will find no such store) for nondynamic loops
-            // as memory is statically allocated in the preheader
-            for (auto I = BuilderM.GetInsertBlock()->rbegin(), E = BuilderM.GetInsertBlock()->rend(); I != E; I++) {
-                if (&*I == &*BuilderM.GetInsertPoint()) break;
-                if (auto si = dyn_cast<StoreInst>(&*I)) {
-                    if (si->getPointerOperand() == cache) {
-                        v.SetInsertPoint(getNextNonDebugInstruction(si));
-                    }   
-                }
-            }
+            const auto& containedloops = sublimits[i].second; 
 
             SmallVector<Value*,3> indices;
             SmallVector<Value*,3> limits;
-            PHINode* dynamicPHI = nullptr;
+            for(auto riter = containedloops.rbegin(), rend = containedloops.rend(); riter != rend; riter++) {
+              // Only include dynamic index on last iteration (== skip dynamic index on non-last iterations)
+              //if (i != 0 && riter+1 == rend) break;
 
-            for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-              indices.push_back(idx.var);
-
-              if (idx.dynamic) {
-                dynamicPHI = idx.var;
-                assert(dynamicPHI);
-                llvm::errs() << "saw idx.dynamic:" << *dynamicPHI << "\n";
-                assert(idx.parent == nullptr);
-                break;
+              const auto &idx = riter->first;
+              if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
+                indices.push_back(idx.antivar);
+                available[idx.var] = idx.antivar;
+              } else {
+                indices.push_back(idx.var);
+                available[idx.var] = idx.var;
               }
 
-              if (idx.parent == nullptr) break;
-              ValueToValueMapTy emptyMap;
-              auto limitm1 = unwrapM(idx.limit, v, emptyMap, /*lookupIfAble*/false);
-              assert(limitm1);
-              auto lim = v.CreateNUWAdd(limitm1, ConstantInt::get(idx.limit->getType(), 1));
-              if (limits.size() != 0) {
-                lim = v.CreateNUWMul(lim, limits.back());
+              Value* lim = unwrapM(riter->second, BuilderM, available, /*lookupIfAble*/true);
+              assert(lim);
+              if (limits.size() == 0) {
+                limits.push_back(lim);
+              } else {
+                limits.push_back(BuilderM.CreateNUWMul(lim, limits.back()));
               }
-              limits.push_back(lim);
             }
 
-            Value* idx = indices[0];
-            for(unsigned i=1; i<indices.size(); i++) {
-              Value* mul = v.CreateNUWMul(indices[i], limits[i-1]);
-              idx = v.CreateNUWAdd(idx, mul);
+            if (indices.size() > 0) {
+                Value* idx = indices[0];
+                for(unsigned i=1; i<indices.size(); i++) {
+                  idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[i], limits[i-1]));
+                }
+                next = BuilderM.CreateGEP(next, {idx});
             }
-
-            Value* allocation = nullptr;
-            if (dynamicPHI == nullptr) {
-				BasicBlock* outermostPreheader = nullptr;
-
-				for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-					if (idx.parent == nullptr) {
-						outermostPreheader = idx.preheader;
-					}
-					if (idx.parent == nullptr) break;
-				}
-				assert(outermostPreheader);
-
-                IRBuilder<> outerBuilder(&outermostPreheader->back());
-                allocation = outerBuilder.CreateLoad(cache);
-            } else {
-                allocation = v.CreateLoad(cache);
+            
+            /*
+            if (i != 0) {
+                //TODO
+                if (!sublimits[i].second.back().first.dynamic) {
+                    next = BuilderM.CreateGEP(next, sublimits[i].second.back().first.var);
+                } else {
+                    next = BuilderM.CreateGEP(next, sublimits[i].second.back().first.var);
+                }
             }
+            */
+        }
+        return next;
+    }
+    
+    LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
+        auto result = BuilderM.CreateLoad(getCachePointer(BuilderM, ctx, cache));
+        result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(ctx->getContext(), {}));
+        return result;
+    }
 
-            Value* idxs[] = {idx};
-            auto gep = v.CreateGEP(allocation, idxs);
-            v.CreateStore(val, gep);
+    void storeInstructionInCache(BasicBlock* ctx, IRBuilder <>& BuilderM, Value* val, AllocaInst* cache) {
+        IRBuilder <> v(BuilderM);
+        v.setFastMathFlags(getFast());
+
+        //Note for dynamic loops where the allocation is stored somewhere inside the loop,
+        // we must ensure that we load the allocation after the store ensuring memory exists
+        // This does not need to occur (and will find no such store) for nondynamic loops
+        // as memory is statically allocated in the preheader
+        for (auto I = BuilderM.GetInsertBlock()->rbegin(), E = BuilderM.GetInsertBlock()->rend(); I != E; I++) {
+            if (&*I == &*BuilderM.GetInsertPoint()) break;
+            if (auto si = dyn_cast<StoreInst>(&*I)) {
+                if (si->getPointerOperand() == cache) {
+                    v.SetInsertPoint(getNextNonDebugInstruction(si));
+                }   
+            }
         }
 
+        v.CreateStore(val, getCachePointer(v, ctx, cache));
     }
 
     void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
@@ -1196,56 +1199,6 @@ endCheck:
             lastScopeAlloc[inst] = lastalloc;
         }
         storeInstructionInCache(inst->getParent(), inst, cache);
-    }
-
-    LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
-        assert(ctx);
-        assert(cache);
-        LoopContext lc;
-        bool inLoop = getContext(ctx, lc);
-
-        if (!inLoop) {
-            auto result = BuilderM.CreateLoad(cache);
-            result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(ctx->getContext(), {}));
-            return result;
-        } else {
-
-			ValueToValueMapTy available;
-			for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx)) {
-			  if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
-				available[idx.var] = idx.antivar;
-			  } else {
-				available[idx.var] = idx.var;
-			  }
-			  if (idx.parent == nullptr) break;
-			}
-
-            SmallVector<Value*,3> indices;
-            SmallVector<Value*,3> limits;
-            for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-              indices.push_back(unwrapM(idx.var, BuilderM, available, /*lookupIfAble*/false));
-              if (idx.parent == nullptr) break;
-
-              auto limitm1 = unwrapM(idx.limit, BuilderM, available, /*lookupIfAble*/true);
-              assert(limitm1);
-              auto lim = BuilderM.CreateNUWAdd(limitm1, ConstantInt::get(idx.limit->getType(), 1));
-              if (limits.size() != 0) {
-                lim = BuilderM.CreateNUWMul(lim, limits.back());
-              }
-              limits.push_back(lim);
-            }
-
-            Value* idx = indices[0];
-            for(unsigned i=1; i<indices.size(); i++) {
-              idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[i], limits[i-1]));
-            }
-
-            Value* idxs[] = {idx};
-            Value* tolookup = BuilderM.CreateLoad(cache);
-            auto result = BuilderM.CreateLoad(BuilderM.CreateGEP(tolookup, idxs));
-            result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(result->getContext(), {}));
-            return result;
-        }
     }
 
     Instruction* fixLCSSA(Instruction* inst, const IRBuilder <>& BuilderM) {
