@@ -1910,6 +1910,7 @@ E0671: r##"
 
 Const parameters cannot depend on type parameters.
 The following is therefore invalid:
+
 ```compile_fail,E0741
 #![feature(const_generics)]
 
@@ -1933,13 +1934,13 @@ struct Foo<X = Box<Self>> {
 ```
 "##,
 
-E0741: r##"
+E0742: r##"
 Visibility is restricted to a module which isn't an ancestor of the current
 item.
 
 Erroneous code example:
 
-```compile_fail,E0741,edition2018
+```compile_fail,E0742,edition2018
 pub mod Sea {}
 
 pub (in crate::Sea) struct Shark; // error!
