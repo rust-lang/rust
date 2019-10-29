@@ -14,19 +14,6 @@ use ra_syntax::ast::{self, AstNode};
 
 use crate::{ast_id_map::FileAstId, db::AstDatabase};
 
-macro_rules! impl_intern_key {
-    ($name:ident) => {
-        impl salsa::InternKey for $name {
-            fn from_intern_id(v: salsa::InternId) -> Self {
-                $name(v)
-            }
-            fn as_intern_id(&self) -> salsa::InternId {
-                self.0
-            }
-        }
-    };
-}
-
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
 /// Rust are macros: each macro can be thought of as producing a "temporary
@@ -101,7 +88,14 @@ pub enum MacroFileKind {
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroCallId(salsa::InternId);
-impl_intern_key!(MacroCallId);
+impl salsa::InternKey for MacroCallId {
+    fn from_intern_id(v: salsa::InternId) -> Self {
+        MacroCallId(v)
+    }
+    fn as_intern_id(&self) -> salsa::InternId {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
