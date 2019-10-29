@@ -345,20 +345,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &args1[..]
         };
         let (drop_fn, fn_abi) = match ty.kind {
+            // FIXME(eddyb) perhaps move some of this logic into
+            // `Instance::resolve_drop_in_place`?
             ty::Dynamic(..) => {
-                let sig = drop_fn.fn_sig(self.cx.tcx());
-                let sig = self.cx.tcx().normalize_erasing_late_bound_regions(
-                    ty::ParamEnv::reveal_all(),
-                    &sig,
-                );
-                let fn_abi = FnAbi::new_vtable(&bx, sig, &[]);
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                    substs: drop_fn.substs,
+                };
+                let fn_abi = FnAbi::of_instance(&bx, virtual_drop, &[]);
                 let vtable = args[1];
                 args = &args[..1];
                 (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_abi), fn_abi)
             }
             _ => {
                 (bx.get_fn_addr(drop_fn),
-                 FnAbi::of_instance(&bx, drop_fn))
+                 FnAbi::of_instance(&bx, drop_fn, &[]))
             }
         };
         helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
@@ -439,7 +440,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_abi = FnAbi::of_instance(&bx, instance);
+        let fn_abi = FnAbi::of_instance(&bx, instance, &[]);
         let llfn = bx.get_fn_addr(instance);
 
         // Codegen the actual panic invoke/call.
@@ -474,6 +475,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => bug!("{} is not callable", callee.layout.ty),
         };
         let def = instance.map(|i| i.def);
+
+        if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
+            // Empty drop glue; a no-op.
+            let &(_, target) = destination.as_ref().unwrap();
+            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
+            helper.funclet_br(self, &mut bx, target);
+            return;
+        }
+
+        // FIXME(eddyb) avoid computing this if possible, when `instance` is
+        // available - right now `sig` is only needed for getting the `abi`
+        // and figuring out how many extra args were passed to a C-variadic `fn`.
         let sig = callee.layout.ty.fn_sig(bx.tcx());
         let sig = bx.tcx().normalize_erasing_late_bound_regions(
             ty::ParamEnv::reveal_all(),
@@ -514,18 +527,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.monomorphize(&op_ty)
         }).collect::<Vec<_>>();
 
-        let fn_abi = match def {
-            Some(ty::InstanceDef::Virtual(..)) => {
-                FnAbi::new_vtable(&bx, sig, &extra_args)
-            }
-            Some(ty::InstanceDef::DropGlue(_, None)) => {
-                // Empty drop glue; a no-op.
-                let &(_, target) = destination.as_ref().unwrap();
-                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-                helper.funclet_br(self, &mut bx, target);
-                return;
-            }
-            _ => FnAbi::new(&bx, sig, &extra_args)
+        let fn_abi = match instance {
+            Some(instance) => FnAbi::of_instance(&bx, instance, &extra_args),
+            None => FnAbi::new(&bx, sig, &extra_args)
         };
 
         // For normal codegen, this Miri-specific intrinsic is just a NOP.
@@ -549,7 +553,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_abi = FnAbi::of_instance(&bx, instance);
+                let fn_abi = FnAbi::of_instance(&bx, instance, &[]);
                 let llfn = bx.get_fn_addr(instance);
 
                 if let Some((_, target)) = destination.as_ref() {

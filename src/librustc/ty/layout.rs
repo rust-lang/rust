@@ -2347,9 +2347,8 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self;
     fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
-    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
     fn new_internal(
         cx: &C,
         sig: ty::FnSig<'tcx>,
@@ -2367,25 +2366,22 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self {
-        let sig = instance.fn_sig(cx.tcx());
-        let sig = cx
-            .tcx()
-            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        call::FnAbi::new(cx, sig, &[])
-    }
-
     fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
         call::FnAbi::new_internal(cx, sig, extra_args, |ty, _| ArgAbi::new(cx.layout_of(ty)))
     }
 
-    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        FnAbiExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        let sig = instance.fn_sig(cx.tcx());
+        let sig = cx
+            .tcx()
+            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+
+        call::FnAbi::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
             // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
-            if arg_idx == Some(0) {
+            if let (ty::InstanceDef::Virtual(..), Some(0)) = (&instance.def, arg_idx) {
                 let fat_pointer_ty = if layout.is_unsized() {
                     // unsized `self` is passed as a pointer to `self`
                     // FIXME (mikeyhew) change this to use &own if it is ever added to the language

@@ -40,7 +40,7 @@ pub fn get_fn(
     let sym = tcx.symbol_name(instance).name.as_str();
     debug!("get_fn({:?}: {:?}) => {}", instance, instance.ty(cx.tcx()), sym);
 
-    let fn_abi = FnAbi::of_instance(cx, instance);
+    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
 
     let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
         // Create a fn pointer with the new signature.
