@@ -1,4 +1,4 @@
-error: visibilities can only be restricted to ancestor modules
+error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/issue-50493.rs:8:12
    |
 LL |     pub(in restricted) field: usize,
@@ -12,4 +12,5 @@ LL | #[derive(Derive)]
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0616`.
+Some errors have detailed explanations: E0616, E0742.
+For more information about an error, try `rustc --explain E0616`.

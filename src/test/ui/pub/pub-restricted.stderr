@@ -53,7 +53,7 @@ LL | pub (xyz) fn xyz() {}
            `pub(super)`: visible only in the current module's parent
            `pub(in path::to::module)`: visible only on the specified path
 
-error: visibilities can only be restricted to ancestor modules
+error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/pub-restricted.rs:25:17
    |
 LL |         pub (in x) non_parent_invalid: usize,
@@ -61,4 +61,5 @@ LL |         pub (in x) non_parent_invalid: usize,
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0704`.
+Some errors have detailed explanations: E0704, E0742.
+For more information about an error, try `rustc --explain E0704`.
