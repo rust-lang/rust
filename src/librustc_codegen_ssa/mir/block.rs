@@ -24,13 +24,14 @@ use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
-struct TerminatorCodegenHelper<'a, 'tcx> {
-    bb: &'a mir::BasicBlock,
-    terminator: &'a mir::Terminator<'tcx>,
+struct TerminatorCodegenHelper<'tcx> {
+    bb: mir::BasicBlock,
+    terminator: &'tcx mir::Terminator<'tcx>,
     funclet_bb: Option<mir::BasicBlock>,
 }
 
-impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
+// FIXME(eddyb) clean up the lifetimes in this impl.
+impl<'tcx> TerminatorCodegenHelper<'tcx> {
     /// Returns the associated funclet from `FunctionCx::funclets` for the
     /// `funclet_bb` member if it is not `None`.
     fn funclet<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
@@ -132,7 +133,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
         } else {
             let llret = bx.call(fn_ptr, &llargs, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, llret);
-            if fx.mir[*self.bb].is_cleanup {
+            if fx.mir[self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested
                 // struct, there are "symmetry" issues that cause
@@ -151,15 +152,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
 
     // Generate sideeffect intrinsic if jumping to any of the targets can form
     // a loop.
-    fn maybe_sideeffect<'b, 'tcx2: 'b, Bx: BuilderMethods<'b, 'tcx2>>(
+    fn maybe_sideeffect<'b, Bx: BuilderMethods<'b, 'tcx>>(
         &self,
-        mir: mir::ReadOnlyBodyCache<'b, 'tcx>,
+        mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
         bx: &mut Bx,
         targets: &[mir::BasicBlock],
     ) {
         if bx.tcx().sess.opts.debugging_opts.insert_sideeffect {
-            if targets.iter().any(|target| {
-                *target <= *self.bb
+            if targets.iter().any(|&target| {
+                target <= self.bb
                     && target
                         .start_location()
                         .is_predecessor_of(self.bb.start_location(), mir)
@@ -173,9 +174,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator<'b>(
+    fn codegen_resume_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'b, 'tcx>,
+        helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
     ) {
         if let Some(funclet) = helper.funclet(self) {
@@ -201,9 +202,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_switchint_terminator<'b>(
+    fn codegen_switchint_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'b, 'tcx>,
+        helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
         discr: &mir::Operand<'tcx>,
         switch_ty: Ty<'tcx>,
@@ -316,9 +317,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
 
-    fn codegen_drop_terminator<'b>(
+    fn codegen_drop_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'b, 'tcx>,
+        helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
         location: &mir::Place<'tcx>,
         target: mir::BasicBlock,
@@ -367,9 +368,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                        unwind);
     }
 
-    fn codegen_assert_terminator<'b>(
+    fn codegen_assert_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'b, 'tcx>,
+        helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
         terminator: &mir::Terminator<'tcx>,
         cond: &mir::Operand<'tcx>,
@@ -446,9 +447,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
     }
 
-    fn codegen_call_terminator<'b>(
+    fn codegen_call_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'b, 'tcx>,
+        helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
@@ -807,14 +808,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         mut bx: Bx,
         bb: mir::BasicBlock,
-        terminator: &mir::Terminator<'tcx>
+        terminator: &'tcx mir::Terminator<'tcx>
     ) {
         debug!("codegen_terminator: {:?}", terminator);
 
         // Create the cleanup bundle, if needed.
         let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
         let helper = TerminatorCodegenHelper {
-            bb: &bb, terminator, funclet_bb
+            bb, terminator, funclet_bb
         };
 
         self.set_debug_loc(&mut bx, terminator.source_info);

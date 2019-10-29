@@ -1,6 +1,6 @@
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{TyLayout, HasTyCtxt, FnAbiExt};
-use rustc::mir::{self, Body, ReadOnlyBodyCache};
+use rustc::mir;
 use rustc_target::abi::call::{FnAbi, PassMode};
 use crate::base;
 use crate::traits::*;
@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: mir::ReadOnlyBodyCache<'a, 'tcx>,
+    mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -76,7 +76,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// All `VarDebuginfo` from the MIR body, partitioned by `Local`.
     /// This is `None` if no variable debuginfo/names are needed.
-    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'a mir::VarDebugInfo<'tcx>>>>,
+    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'tcx mir::VarDebugInfo<'tcx>>>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -122,7 +122,7 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Function,
-    mir: ReadOnlyBodyCache<'a, 'tcx>,
+    mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
@@ -156,7 +156,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }).collect();
 
     let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
-    let mir_body: &Body<'_> = mir.body();
+    let mir_body: &mir::Body<'_> = mir.body();
     let mut fx = FunctionCx {
         instance,
         mir,
@@ -248,8 +248,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn create_funclets<'a, 'b, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    mir: &'b Body<'tcx>,
+fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    mir: &'tcx mir::Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
