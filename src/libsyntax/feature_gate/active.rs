@@ -533,6 +533,9 @@ declare_features! (
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
 
+    /// Allows using the `efiapi` ABI.
+    (active, abi_efiapi, "1.40.0", Some(65815), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
