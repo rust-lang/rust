@@ -244,6 +244,7 @@ pub fn prepare_tool_cargo(
             path.ends_with("rls") ||
             path.ends_with("clippy") ||
             path.ends_with("miri") ||
+            path.ends_with("rustbook") ||
             path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
