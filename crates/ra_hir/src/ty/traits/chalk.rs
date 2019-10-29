@@ -66,13 +66,11 @@ impl ToChalk for Ty {
             }
             Ty::Bound(idx) => chalk_ir::Ty::BoundVar(idx as usize),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
-            // FIXME this is clearly incorrect, but probably not too incorrect
-            // and I'm not sure what to actually do with Ty::Unknown
-            // maybe an alternative would be `for<T> T`? (meaningless in rust, but expressible in chalk's Ty)
             // FIXME use Chalk's Dyn/Opaque once the bugs with that are fixed
             Ty::Unknown | Ty::Dyn(_) | Ty::Opaque(_) => {
-                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::max_value() }
-                    .to_ty::<ChalkIr>()
+                let parameters = Vec::new();
+                let name = TypeName::Error;
+                chalk_ir::ApplicationTy { name, parameters }.cast()
             }
         }
     }
@@ -92,6 +90,7 @@ impl ToChalk for Ty {
                         let parameters = from_chalk(db, apply_ty.parameters);
                         Ty::Apply(ApplicationTy { ctor, parameters })
                     }
+                    TypeName::Error => Ty::Unknown,
                     // FIXME handle TypeKindId::Trait/Type here
                     TypeName::TypeKindId(_) => unimplemented!(),
                     TypeName::Placeholder(idx) => {
@@ -323,9 +322,9 @@ where
 }
 
 impl ToChalk for Arc<super::TraitEnvironment> {
-    type Chalk = Arc<chalk_ir::Environment<ChalkIr>>;
+    type Chalk = chalk_ir::Environment<ChalkIr>;
 
-    fn to_chalk(self, db: &impl HirDatabase) -> Arc<chalk_ir::Environment<ChalkIr>> {
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Environment<ChalkIr> {
         let mut clauses = Vec::new();
         for pred in &self.predicates {
             if pred.is_error() {
@@ -340,7 +339,7 @@ impl ToChalk for Arc<super::TraitEnvironment> {
 
     fn from_chalk(
         _db: &impl HirDatabase,
-        _env: Arc<chalk_ir::Environment<ChalkIr>>,
+        _env: chalk_ir::Environment<ChalkIr>,
     ) -> Arc<super::TraitEnvironment> {
         unimplemented!()
     }
