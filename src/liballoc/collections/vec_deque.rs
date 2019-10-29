@@ -1141,7 +1141,7 @@ impl<T> VecDeque<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
-        self.drain(..);
+        self.truncate(0);
     }
 
     /// Returns `true` if the `VecDeque` contains an element equal to the
