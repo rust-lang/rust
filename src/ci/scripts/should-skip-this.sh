@@ -10,7 +10,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if [[ -z "${CI_ONLY_WHEN_SUBMODULES_CHANGED+x}" ]]; then
     echo "Executing the job since there is no skip rule in effect"
-elif git diff HEAD^ | grep "^index .* 160000" >/dev/null 2>&1; then
+elif git diff HEAD^ | grep --quiet "^index .* 160000"; then
     # Submodules pseudo-files inside git have the 160000 permissions, so when
     # those files are present in the diff a submodule was updated.
     echo "Executing the job since submodules are updated"
