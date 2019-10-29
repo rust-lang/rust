@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S -jump-threading -instsimplify -early-cse -simplifycfg | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg | FileCheck %s
 
 %struct.n = type { double, %struct.n* }
 
@@ -150,15 +150,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %cmp6 = icmp eq %struct.n* %node, null
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %for.body
 
-; CHECK: for.body.preheader:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
-; CHECK-NEXT:   br label %for.body
-
 ; CHECK: for.body:
-; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %malloccall, %for.body.preheader ], [ %_realloccache, %for.body ]
-; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ 0, %for.body.preheader ], [ %[[postidx:.+]], %for.body ]
-; CHECK-NEXT:   %[[cur:.+]] = phi %struct.n* [ %"node'", %for.body.preheader ], [ %"'ipl", %for.body ] 
-; CHECK-NEXT:   %val.08 = phi %struct.n* [ %node, %for.body.preheader ], [ %[[loadst:.+]], %for.body ]
+; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ] 
+; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
+; CHECK-NEXT:   %[[cur:.+]] = phi %struct.n* [ %"'ipl", %for.body ], [ %"node'", %entry ]
+; CHECK-NEXT:   %val.08 = phi %struct.n* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
 ; CHECK-NEXT:   %[[idx8:.+]] = shl i64 %[[preidx]], 3
 ; CHECK-NEXT:   %[[addalloc:.+]] = add i64 %[[idx8]], 8
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[addalloc]])

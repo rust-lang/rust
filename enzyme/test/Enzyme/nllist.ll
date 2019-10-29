@@ -305,17 +305,13 @@ attributes #4 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[firstcmp:.+]] = icmp eq %struct.n* %node, null
-; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader.preheader
-
-; CHECK: for.cond1.preheader.preheader:                    ; preds = %entry
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
-; CHECK-NEXT:   br label %for.cond1.preheader
+; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:
-; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %malloccall, %for.cond1.preheader.preheader ], [ %[[postrealloc:.+]], %for.cond.cleanup4 ]
-; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ 0, %for.cond1.preheader.preheader ], [ %[[postidx:.+]], %for.cond.cleanup4 ] 
-; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %"node'", %for.cond1.preheader.preheader ], [ %[[dstructload:.+]], %for.cond.cleanup4 ] 
-; CHECK-NEXT:   %val.020 = phi %struct.n* [ %node, %for.cond1.preheader.preheader ], [ %[[nextstruct:.+]], %for.cond.cleanup4 ]
+; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ] 
+; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.cond.cleanup4 ], [ 0, %entry ]
+; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %[[dstructload:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
+; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[nextstruct:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
 ; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[added:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
