@@ -1532,7 +1532,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                         );
                     };
                 }
-                if ty::search_for_structural_match_violation(
+                if ty::search_type_for_structural_match_violation(
                     param.hir_id, param.span, tcx, ty).is_some()
                 {
                     struct_span_err!(

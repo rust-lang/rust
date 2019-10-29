@@ -863,7 +863,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                         };
                         match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
                             Ok(value) => {
-                                let pattern = self.const_to_pat(value, id, span);
+                                let const_def_id = Some(instance.def_id());
+                                let pattern = self.const_to_pat(value, const_def_id, id, span);
                                 if !is_associated_const {
                                     return pattern;
                                 }
@@ -930,7 +931,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let ty = self.tables.expr_ty(expr);
                 match lit_to_const(&lit.node, self.tcx, ty, false) {
                     Ok(val) => {
-                        *self.const_to_pat(val, expr.hir_id, lit.span).kind
+                        *self.const_to_pat(val, None, expr.hir_id, lit.span).kind
                     },
                     Err(LitToConstError::UnparseableFloat) => {
                         self.errors.push(PatternError::FloatBug);
@@ -948,7 +949,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 };
                 match lit_to_const(&lit.node, self.tcx, ty, true) {
                     Ok(val) => {
-                        *self.const_to_pat(val, expr.hir_id, lit.span).kind
+                        *self.const_to_pat(val, None, expr.hir_id, lit.span).kind
                     },
                     Err(LitToConstError::UnparseableFloat) => {
                         self.errors.push(PatternError::FloatBug);
