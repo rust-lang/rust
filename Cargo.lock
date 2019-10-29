@@ -27,16 +27,16 @@ dependencies = [
 
 [[package]]
 name = "ammonia"
-version = "2.1.2"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "384d704f242a0a9faf793fff775a0be6ab9aa27edabffa097331d73779142520"
+checksum = "9e266e1f4be5ffa05309f650e2586fe1d3ae6034eb24025a7ae1dfecc330823a"
 dependencies = [
  "html5ever",
  "lazy_static 1.3.0",
  "maplit",
  "matches",
  "tendril",
- "url 1.7.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1363,16 +1363,16 @@ dependencies = [
 
 [[package]]
 name = "html5ever"
-version = "0.23.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ce65ac8028cf5a287a7dbf6c4e0a6cf2dcf022ed5b167a81bae66ebf599a8b7"
+checksum = "025483b0a1e4577bb28578318c886ee5f817dda6eb62473269349044406644cb"
 dependencies = [
  "log",
  "mac",
  "markup5ever",
- "proc-macro2 0.4.30",
- "quote 0.6.12",
- "syn 0.15.35",
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
+ "syn 1.0.5",
 ]
 
 [[package]]
@@ -1902,9 +1902,9 @@ checksum = "08cbb6b4fef96b6d77bfc40ec491b1690c779e77b05cd9f07f787ed376fd4c43"
 
 [[package]]
 name = "markup5ever"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1af46a727284117e09780d05038b1ce6fc9c76cc6df183c3dae5a8955a25e21"
+checksum = "65381d9d47506b8592b97c4efd936afcf673b09b059f2bef39c7211ee78b9d03"
 dependencies = [
  "log",
  "phf",
@@ -1925,9 +1925,9 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 
 [[package]]
 name = "mdbook"
-version = "0.3.1"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "949bb2acb2cff9fa5c375cf9c43e70b3dba0a974d9fe01c31285d7a84d2a0fa2"
+checksum = "9a070268274c566082efb6b2ace7743e43ba91a70d5c6982981e96d3c05ac81c"
 dependencies = [
  "ammonia",
  "chrono",
@@ -3103,6 +3103,7 @@ dependencies = [
  "failure",
  "mdbook",
  "mdbook-linkcheck",
+ "rustc-workspace-hack",
 ]
 
 [[package]]

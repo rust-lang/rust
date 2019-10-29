@@ -256,9 +256,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                 if self.r.is_accessible_from(vis, parent_scope.module) {
                                     vis
                                 } else {
-                                    let msg =
-                                        "visibilities can only be restricted to ancestor modules";
-                                    self.r.session.span_err(path.span, msg);
+                                    struct_span_err!(self.r.session, path.span, E0742,
+                                        "visibilities can only be restricted to ancestor modules")
+                                        .emit();
                                     ty::Visibility::Public
                                 }
                             }

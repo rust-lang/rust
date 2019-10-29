@@ -13,7 +13,7 @@
 // compile-flags: --test -C debug_assertions=yes
 // revisions: std core
 
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 
 #![cfg_attr(core, no_std)]
 

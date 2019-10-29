@@ -10,7 +10,7 @@ error[E0577]: expected module, found trait `Tr`
 LL | pub(in Tr) struct Z;
    |        ^^ not a module
 
-error: visibilities can only be restricted to ancestor modules
+error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/resolve-bad-visibility.rs:6:8
    |
 LL | pub(in std::vec) struct F;
@@ -30,4 +30,5 @@ LL | pub(in too_soon) struct H;
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0433`.
+Some errors have detailed explanations: E0433, E0742.
+For more information about an error, try `rustc --explain E0433`.
