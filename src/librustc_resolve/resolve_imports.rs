@@ -977,8 +977,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 if !is_prelude &&
                    max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
                    !max_vis.get().is_at_least(directive.vis.get(), &*self) {
-                    let msg = "A non-empty glob must import something with the glob's visibility";
-                    self.r.session.span_err(directive.span, msg);
+                    let msg =
+                    "glob import doesn't reexport anything because no candidate is public enough";
+                    self.r.session.buffer_lint(UNUSED_IMPORTS, directive.id, directive.span, msg);
                 }
                 return None;
             }
