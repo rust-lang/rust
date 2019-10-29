@@ -300,7 +300,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
 
             if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
-                v.visit_ty(ret_ty);
+                // In async functions, return types are desugared and redefined
+                // as an `impl Trait` existential type. Because of this, to match
+                // the definition paths when resolving nested types we need to
+                // start walking from the newly-created definition.
+                match sig.header.asyncness.node {
+                    ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                        v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
+                    }
+                    _ => v.visit_ty(ret_ty)
+                }
             }
 
             // walk the fn body
@@ -369,6 +378,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         &mut self,
         item: &'l ast::Item,
         decl: &'l ast::FnDecl,
+        header: &'l ast::FnHeader,
         ty_params: &'l ast::Generics,
         body: &'l ast::Block,
     ) {
@@ -391,7 +401,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     // FIXME: Opaque type desugaring prevents us from easily
                     // processing trait bounds. See `visit_ty` for more details.
                 } else {
-                    v.visit_ty(&ret_ty);
+                    // In async functions, return types are desugared and redefined
+                    // as an `impl Trait` existential type. Because of this, to match
+                    // the definition paths when resolving nested types we need to
+                    // start walking from the newly-created definition.
+                    match header.asyncness.node {
+                        ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                            v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
+                        }
+                        _ => v.visit_ty(ret_ty)
+                    }
                 }
             }
 
@@ -1315,8 +1334,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
             }
-            Fn(ref decl, .., ref ty_params, ref body) => {
-                self.process_fn(item, &decl, ty_params, &body)
+            Fn(ref decl, ref header, ref ty_params, ref body) => {
+                self.process_fn(item, &decl, &header, ty_params, &body)
             }
             Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
