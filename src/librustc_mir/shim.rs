@@ -67,10 +67,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             )
         }
         // We are generating a call back to our def-id, which the
-        // codegen backend knows to turn to an actual virtual call.
-        ty::InstanceDef::Virtual(def_id, _) |
-        // ...or we are generating a direct call to a function for which indirect calls must be
-        // codegen'd differently than direct ones (example: #[track_caller])
+        // codegen backend knows to turn to an actual call, be it
+        // a virtual call, or a direct call to a function for which
+        // indirect calls must be codegen'd differently than direct ones
+        // (such as `#[track_caller]`).
         ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(
                 tcx,
@@ -108,6 +108,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             } else {
                 bug!("builtin clone shim {:?} not supported", instance)
             }
+        }
+        ty::InstanceDef::Virtual(..) => {
+            bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)

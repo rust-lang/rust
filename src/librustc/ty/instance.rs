@@ -29,10 +29,15 @@ pub enum InstanceDef<'tcx> {
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
     ///
-    /// One example in the compiler today is functions annotated with `#[track_caller]`, which
-    /// must have their implicit caller location argument populated for a call. Because this is a
-    /// required part of the function's ABI but can't be tracked as a property of the function
-    /// pointer, we create a single "caller location" at the site where the function is reified.
+    /// One example is `<dyn Trait as Trait>::fn`, where the shim contains
+    /// a virtual call, which codegen supports only via a direct call to the
+    /// `<dyn Trait as Trait>::fn` instance (an `InstanceDef::Virtual`).
+    ///
+    /// Another example is functions annotated with `#[track_caller]`, which
+    /// must have their implicit caller location argument populated for a call.
+    /// Because this is a required part of the function's ABI but can't be tracked
+    /// as a property of the function pointer, we use a single "caller location"
+    /// (the definition of the function itself).
     ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
@@ -194,7 +199,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
                 write!(f, " - intrinsic")
             }
             InstanceDef::Virtual(_, num) => {
-                write!(f, " - shim(#{})", num)
+                write!(f, " - virtual#{}", num)
             }
             InstanceDef::FnPtrShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
@@ -309,20 +314,23 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        Instance::resolve(tcx, param_env, def_id, substs).map(|resolved| {
+        Instance::resolve(tcx, param_env, def_id, substs).map(|mut resolved| {
             let has_track_caller = |def| tcx.codegen_fn_attrs(def).flags
                 .contains(CodegenFnAttrFlags::TRACK_CALLER);
 
             match resolved.def {
                 InstanceDef::Item(def_id) if has_track_caller(def_id) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    Instance {
-                        def: InstanceDef::ReifyShim(def_id),
-                        substs,
-                    }
-                },
-                _ => resolved,
+                    resolved.def = InstanceDef::ReifyShim(def_id);
+                }
+                InstanceDef::Virtual(def_id, _) => {
+                    debug!(" => fn pointer created for virtual call");
+                    resolved.def = InstanceDef::ReifyShim(def_id);
+                }
+                _ => {}
             }
+
+            resolved
         })
     }
 
