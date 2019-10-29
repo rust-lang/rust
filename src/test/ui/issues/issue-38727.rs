@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 #![allow(dead_code)]
 #[repr(u64)]
 enum A {
