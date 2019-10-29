@@ -1,9 +1,8 @@
 error: this file contains an un-closed delimiter
-  --> $DIR/issue-2354.rs:18:66
+  --> $DIR/issue-2354.rs:15:53
    |
 LL | fn foo() {
    |          - un-closed delimiter
-...
 LL |   match Some(10) {
    |                  - this delimiter might not be properly closed...
 ...
@@ -11,28 +10,7 @@ LL | }
    | - ...as it matches this but it has different indentation
 ...
 LL |
-   |                                                                  ^
+   |                                                     ^
 
-error[E0601]: `main` function not found in crate `issue_2354`
-  --> $DIR/issue-2354.rs:1:1
-   |
-LL | / fn foo() {
-LL | |
-LL | |
-LL | |
-...  |
-LL | | fn main() {}
-LL | |
-   | |_________________________________________________________________^ the main function must be defined at the crate level (in `$DIR/issue-2354.rs`)
-   |
-note: here is a function named `main`
-  --> $DIR/issue-2354.rs:17:1
-   |
-LL | fn main() {}
-   | ^^^^^^^^^^^^
-   = note: you have one or more functions named `main` not defined at the crate level
-   = help: either move the `main` function definitions or attach the `#[main]` attribute to one of them
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

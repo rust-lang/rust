@@ -1141,6 +1141,11 @@ impl<'a> Parser<'a> {
                  // Don't attempt to recover from this unclosed delimiter more than once.
                 let unmatched = self.unclosed_delims.remove(pos);
                 let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
+                if unmatched.found_delim.is_none() {
+                    // We encountered `Eof`, set this fact here to avoid complaining about missing
+                    // `fn main()` when we found place to suggest the closing brace.
+                    *self.sess.reached_eof.borrow_mut() = true;
+                }
 
                 // We want to suggest the inclusion of the closing delimiter where it makes
                 // the most sense, which is immediately after the last token:

@@ -148,8 +148,7 @@ pub struct Parser<'a> {
 
 impl<'a> Drop for Parser<'a> {
     fn drop(&mut self) {
-        let diag = self.diagnostic();
-        emit_unclosed_delims(&mut self.unclosed_delims, diag);
+        emit_unclosed_delims(&mut self.unclosed_delims, &self.sess);
     }
 }
 
@@ -1372,12 +1371,12 @@ impl<'a> Parser<'a> {
 
 crate fn make_unclosed_delims_error(
     unmatched: UnmatchedBrace,
-    handler: &errors::Handler,
+    sess: &ParseSess,
 ) -> Option<DiagnosticBuilder<'_>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_braces` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
-    let mut err = handler.struct_span_err(unmatched.found_span, &format!(
+    let mut err = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
         "incorrect close delimiter: `{}`",
         pprust::token_kind_to_string(&token::CloseDelim(found_delim)),
     ));
@@ -1391,8 +1390,10 @@ crate fn make_unclosed_delims_error(
     Some(err)
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: &errors::Handler) {
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &ParseSess) {
+    *sess.reached_eof.borrow_mut() |= unclosed_delims.iter()
+        .any(|unmatched_delim| unmatched_delim.found_delim.is_none());
     for unmatched in unclosed_delims.drain(..) {
-        make_unclosed_delims_error(unmatched, handler).map(|mut e| e.emit());
+        make_unclosed_delims_error(unmatched, sess).map(|mut e| e.emit());
     }
 }

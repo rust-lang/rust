@@ -108,7 +108,7 @@ pub fn parse_stream_from_source_str(
         sess.source_map().new_source_file(name, source),
         override_span,
     );
-    emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
+    emit_unclosed_delims(&mut errors, &sess);
     stream
 }
 
@@ -242,7 +242,7 @@ pub fn maybe_file_to_stream(
             err.buffer(&mut buffer);
             // Not using `emit_unclosed_delims` to use `db.buffer`
             for unmatched in unmatched_braces {
-                if let Some(err) = make_unclosed_delims_error(unmatched, &sess.span_diagnostic) {
+                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
                     err.buffer(&mut buffer);
                 }
             }

@@ -24,18 +24,5 @@ error: expected `:`, found `T`
 LL | trait T {
    |       ^ expected `:`
 
-error[E0601]: `main` function not found in crate `missing_close_brace_in_struct`
-  --> $DIR/missing-close-brace-in-struct.rs:1:1
-   |
-LL | / pub(crate) struct Bar<T> {
-LL | |   foo: T,
-LL | |
-LL | | trait T {
-...  |
-LL | |
-LL | | fn main() {}
-   | |_________________________________________________________________^ consider adding a `main` function to `$DIR/missing-close-brace-in-struct.rs`
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

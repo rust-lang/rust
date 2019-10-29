@@ -1,5 +1,4 @@
-impl T for () { //~ ERROR `main` function not found
-//~^ ERROR cannot find trait `T` in this scope
+impl T for () { //~ ERROR cannot find trait `T` in this scope
 
 fn foo(&self) {}
 

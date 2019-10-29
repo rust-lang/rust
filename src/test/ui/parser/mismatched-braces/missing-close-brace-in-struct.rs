@@ -1,4 +1,4 @@
-pub(crate) struct Bar<T> { //~ ERROR `main` function not found
+pub(crate) struct Bar<T> {
   foo: T,
 
 trait T { //~ ERROR expected identifier, found keyword `trait`
