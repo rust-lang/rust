@@ -98,14 +98,7 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
         let llfn = declare_raw_fn(self, name, fn_abi.llvm_cconv(), fn_abi.llvm_type(self));
-
-        // FIXME(eddyb) move into `FnAbi::apply_attrs_llfn`.
-        if fn_abi.ret.layout.abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
-        }
-
         fn_abi.apply_attrs_llfn(self, llfn);
-
         llfn
     }
 
