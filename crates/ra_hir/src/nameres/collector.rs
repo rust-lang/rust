@@ -448,7 +448,7 @@ where
             );
 
             if let Some(def) = resolved_res.resolved_def.get_macros() {
-                let call_id = MacroCallLoc { def: def.id, ast_id: *ast_id }.id(self.db);
+                let call_id = self.db.intern_macro(MacroCallLoc { def: def.id, ast_id: *ast_id });
                 resolved.push((*module_id, call_id, def.id));
                 res = ReachedFixedPoint::No;
                 return false;
@@ -676,7 +676,8 @@ where
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                let macro_id = MacroDefId { ast_id, krate: self.def_collector.def_map.krate };
+                let macro_id =
+                    MacroDefId { ast_id, krate: self.def_collector.def_map.krate.crate_id };
                 let macro_ = MacroDef { id: macro_id };
                 self.def_collector.define_macro(self.module_id, name.clone(), macro_, mac.export);
             }
@@ -689,7 +690,7 @@ where
             self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
             let def = macro_def.id;
-            let macro_call_id = MacroCallLoc { def, ast_id }.id(self.def_collector.db);
+            let macro_call_id = self.def_collector.db.intern_macro(MacroCallLoc { def, ast_id });
 
             self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, def);
             return;

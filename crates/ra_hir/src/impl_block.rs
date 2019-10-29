@@ -263,7 +263,7 @@ impl ModuleImplBlocks {
                     {
                         if let Some(def) = self.module.resolver(db).resolve_path_as_macro(db, &path)
                         {
-                            let call_id = MacroCallLoc { def: def.id, ast_id }.id(db);
+                            let call_id = db.intern_macro(MacroCallLoc { def: def.id, ast_id });
                             let file_id = call_id.as_file(MacroFileKind::Items);
                             if let Some(item_list) =
                                 db.parse_or_expand(file_id).and_then(ast::MacroItems::cast)

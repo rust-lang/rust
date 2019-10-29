@@ -66,7 +66,12 @@ impl Path {
         mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
     ) {
         if let Some(tree) = item_src.ast.use_tree() {
-            expand_use_tree(None, tree, &|| item_src.file_id.macro_crate(db), &mut cb);
+            expand_use_tree(
+                None,
+                tree,
+                &|| item_src.file_id.macro_crate(db).map(|crate_id| Crate { crate_id }),
+                &mut cb,
+            );
         }
     }
 
@@ -90,7 +95,7 @@ impl Path {
     /// It correctly handles `$crate` based path from macro call.
     pub fn from_src(source: Source<ast::Path>, db: &impl AstDatabase) -> Option<Path> {
         let file_id = source.file_id;
-        Path::parse(source.ast, &|| file_id.macro_crate(db))
+        Path::parse(source.ast, &|| file_id.macro_crate(db).map(|crate_id| Crate { crate_id }))
     }
 
     fn parse(mut path: ast::Path, macro_crate: &impl Fn() -> Option<Crate>) -> Option<Path> {

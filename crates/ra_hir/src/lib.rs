@@ -35,7 +35,6 @@ pub mod mock;
 mod path;
 pub mod source_binder;
 
-mod source_id;
 mod ids;
 mod name;
 mod nameres;
@@ -60,14 +59,14 @@ pub mod from_source;
 #[cfg(test)]
 mod marks;
 
-use crate::{
-    ids::MacroFileKind,
-    name::AsName,
-    resolve::Resolver,
-    source_id::{AstId, FileAstId},
+use hir_expand::{
+    ast_id_map::{AstIdMap, FileAstId},
+    AstId,
 };
 
-pub use self::{
+use crate::{ids::MacroFileKind, name::AsName, resolve::Resolver};
+
+pub use crate::{
     adt::VariantDef,
     either::Either,
     expr::ExprScopes,
@@ -80,7 +79,6 @@ pub use self::{
     path::{Path, PathKind},
     resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
-    source_id::{AstIdMap, ErasedFileAstId},
     ty::{
         display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },

@@ -8,11 +8,10 @@
 use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,
-    ops,
 };
 
 use ra_arena::{impl_arena_id, Arena, RawId};
-use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
 #[derive(Debug)]
@@ -40,14 +39,8 @@ impl<N: AstNode> Hash for FileAstId<N> {
     }
 }
 
-impl<N: AstNode> From<FileAstId<N>> for ErasedFileAstId {
-    fn from(id: FileAstId<N>) -> Self {
-        id.raw
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ErasedFileAstId(RawId);
+struct ErasedFileAstId(RawId);
 impl_arena_id!(ErasedFileAstId);
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
@@ -57,7 +50,7 @@ pub struct AstIdMap {
 }
 
 impl AstIdMap {
-    pub fn from_source(node: &SyntaxNode) -> AstIdMap {
+    pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap { arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
@@ -75,28 +68,27 @@ impl AstIdMap {
     }
 
     pub fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
-        let ptr = SyntaxNodePtr::new(item.syntax());
-        let raw = match self.arena.iter().find(|(_id, i)| **i == ptr) {
+        let raw = self.erased_ast_id(item.syntax());
+        FileAstId { raw, _ty: PhantomData }
+    }
+    fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
+        let ptr = SyntaxNodePtr::new(item);
+        match self.arena.iter().find(|(_id, i)| **i == ptr) {
             Some((it, _)) => it,
             None => panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
-                item.syntax(),
+                item,
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
             ),
-        };
+        }
+    }
 
-        FileAstId { raw, _ty: PhantomData }
+    pub(crate) fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
+        self.arena[id.raw].cast::<N>().unwrap()
     }
 
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {
         self.arena.alloc(SyntaxNodePtr::new(item))
-    }
-}
-
-impl ops::Index<ErasedFileAstId> for AstIdMap {
-    type Output = SyntaxNodePtr;
-    fn index(&self, index: ErasedFileAstId) -> &SyntaxNodePtr {
-        &self.arena[index]
     }
 }
 
