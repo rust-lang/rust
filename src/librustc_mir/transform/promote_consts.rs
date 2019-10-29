@@ -25,6 +25,7 @@ use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_index::vec::{IndexVec, Idx};
+use rustc_index::bit_set::BitSet;
 use rustc_target::spec::abi::Abi;
 
 use std::{iter, mem, usize};
@@ -269,11 +270,56 @@ pub fn collect_temps_and_valid_candidates(
         },
     };
 
-    // FIXME: We need to visit blocks in RPO above to record all uses, but we probably don't need
-    // to do the same here? What happens if a BB is not visited during RPO traversal? I've observed
-    // this occur for generators.
-    for (bb, data) in &mut rpo {
-        promotion.visit_basic_block_data(bb, data);
+    if item.const_kind.is_none() {
+        rpo.reset();
+        for (bb, data) in &mut rpo {
+            promotion.visit_basic_block_data(bb, data);
+        }
+    } else {
+        // FIXME: This strange MIR traversal is a temporary measure to ensure that we try to
+        // promote the same things as the old promotion logic in `qualify_consts`.
+        let mut seen_blocks = BitSet::new_empty(item.body.basic_blocks().len());
+        let mut bb = START_BLOCK;
+        loop {
+            seen_blocks.insert(bb.index());
+
+            promotion.visit_basic_block_data(bb, &item.body[bb]);
+
+            let target = match item.body[bb].terminator().kind {
+                TerminatorKind::Goto { target } |
+                TerminatorKind::FalseUnwind { real_target: target, .. } |
+                TerminatorKind::Drop { target, .. } |
+                TerminatorKind::DropAndReplace { target, .. } |
+                TerminatorKind::Assert { target, .. } |
+                TerminatorKind::Call { destination: Some((_, target)), .. } => {
+                    Some(target)
+                }
+
+                // Non-terminating calls cannot produce any value.
+                TerminatorKind::Call { destination: None, .. } => {
+                    break;
+                }
+
+                TerminatorKind::SwitchInt {..} |
+                TerminatorKind::Resume |
+                TerminatorKind::Abort |
+                TerminatorKind::GeneratorDrop |
+                TerminatorKind::Yield { .. } |
+                TerminatorKind::Unreachable |
+                TerminatorKind::FalseEdges { .. } => None,
+
+                TerminatorKind::Return => {
+                    break;
+                }
+            };
+
+            match target {
+                Some(target) if !seen_blocks.contains(target.index()) => {
+                    bb = target;
+                }
+                _ => break,
+            }
+        }
     }
 
     let candidates = promotion.candidates;

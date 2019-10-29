@@ -981,7 +981,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let mut seen_blocks = BitSet::new_empty(body.basic_blocks().len());
         let mut bb = START_BLOCK;
-        let mut has_controlflow_error = false;
         loop {
             seen_blocks.insert(bb.index());
 
@@ -1022,7 +1021,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
-                    has_controlflow_error = true;
                     self.not_const(ops::Loop);
                     validator.check_op(ops::Loop);
                     break;
@@ -1052,25 +1050,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Collect all the temps we need to promote.
         let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
 
-        // HACK(eddyb) don't try to validate promotion candidates if any
-        // parts of the control-flow graph were skipped due to an error.
-        let promotion_candidates = if has_controlflow_error {
-            let unleash_miri = self
-                .tcx
-                .sess
-                .opts
-                .debugging_opts
-                .unleash_the_miri_inside_of_you;
-            if !unleash_miri {
-                self.tcx.sess.delay_span_bug(
-                    body.span,
-                    "check_const: expected control-flow error(s)",
-                );
-            }
-            self.promotion_candidates.clone()
-        } else {
-            self.valid_promotion_candidates()
-        };
+        let promotion_candidates = self.valid_promotion_candidates();
         debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
         for candidate in promotion_candidates {
             match candidate {
