@@ -1,6 +1,7 @@
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
+use rustc::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc::ty::{self, Ty};
 use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
@@ -275,12 +276,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
             }
         }
     }
-}
-
-declare_lint! {
-    pub UNUSED_ATTRIBUTES,
-    Warn,
-    "detects attributes that were not used by the compiler"
 }
 
 #[derive(Copy, Clone)]

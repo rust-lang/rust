@@ -2512,7 +2512,7 @@ pub enum ItemKind {
     Fn(P<FnDecl>, FnHeader, Generics, BodyId),
     /// A module.
     Mod(Mod),
-    /// An external module.
+    /// An external module, e.g. `extern { .. }`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(P<GlobalAsm>),
@@ -2756,10 +2756,10 @@ bitflags! {
         /// `#[used]`: indicates that LLVM can't eliminate this function (but the
         /// linker can!).
         const USED                      = 1 << 9;
-        /// #[ffi_returns_twice], indicates that an extern function can return
+        /// `#[ffi_returns_twice]`, indicates that an extern function can return
         /// multiple times
         const FFI_RETURNS_TWICE         = 1 << 10;
-        /// #[track_caller]: allow access to the caller location
+        /// `#[track_caller]`: allow access to the caller location
         const TRACK_CALLER              = 1 << 11;
     }
 }

@@ -6,7 +6,7 @@ LL | #![feature(track_caller)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0737]: rust ABI is required to use `#[track_caller]`
+error[E0737]: Rust ABI is required to use `#[track_caller]`
   --> $DIR/error-with-invalid-abi.rs:3:1
    |
 LL | #[track_caller]

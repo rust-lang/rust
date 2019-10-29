@@ -2641,7 +2641,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     tcx.sess,
                     attr.span,
                     E0737,
-                    "rust ABI is required to use `#[track_caller]`"
+                    "Rust ABI is required to use `#[track_caller]`"
                 ).emit();
             }
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
