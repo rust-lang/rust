@@ -129,13 +129,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mir = cx.tcx().instance_mir(instance.def);
 
-    let sig = instance.fn_sig(cx.tcx());
-    let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-    let fn_abi = FnAbi::new(cx, sig, &[]);
+    let fn_abi = FnAbi::of_instance(cx, instance);
     debug!("fn_abi: {:?}", fn_abi);
 
-    let debug_context =
-        cx.create_function_debug_context(instance, sig, llfn, &mir);
+    let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);
 
     let mut bx = Bx::new_block(cx, llfn, "start");
 
