@@ -171,11 +171,17 @@ crate.
 
 [builtin]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/index.html
 
-Each lint is defined as a `struct` that implements the `LintPass` `trait`. The
-trait implementation allows you to check certain syntactic constructs the
-linter walks the source code. You can then choose to emit lints in a very
-similar way to compile errors. Finally, you register the lint to actually get
-it to be run by the compiler by using the `declare_lint!` macro.
+Every lint is implemented via a `struct` that implements the `LintPass` `trait`
+(you also implement one of the more specific lint pass traits, either
+`EarlyLintPass` or `LateLintPass`).  The trait implementation allows you to
+check certain syntactic constructs as the linter walks the source code. You can
+then choose to emit lints in a very similar way to compile errors.
+
+You also declare the metadata of a particular lint via the `declare_lint!`
+macro. This includes the name, the default level, a short description, and some
+more details.
+
+Note that the lint and the lint pass must be registered with the compiler.
 
 For example, the following lint checks for uses
 of `while true { ... }` and suggests using `loop { ... }` instead.
@@ -196,11 +202,15 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct WhileTrue;
 
-impl LintPass for WhileTrue {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(WHILE_TRUE)
-    }
-}
+// This declares a lint pass, providing a list of associated lints.  The
+// compiler currently doesn't use the associated lints directly (e.g., to not
+// run the pass or otherwise check that the pass emits the appropriate set of
+// lints). However, it's good to be accurate here as it's possible that we're
+// going to register the lints via the get_lints method on our lint pass (that
+// this macro generates).
+impl_lint_pass!(
+    WhileTrue => [WHILE_TRUE],
+);
 
 // LateLintPass has lots of methods. We only override the definition of
 // `check_expr` for this lint because that's all we need, but you could
@@ -242,9 +252,24 @@ declare_lint! {
 This makes the `ANONYMOUS_PARAMETERS` lint allow-by-default in the 2015 edition
 but warn-by-default in the 2018 edition.
 
-Lints that represent an incompatibility (i.e. error) in the upcoming edition
-should also be registered as `FutureIncompatibilityLint`s in
-[`register_builtins`][rbuiltins] function in [`rustc_lint::lib`][builtin].
+A future-incompatible lint should be declared with the `@future_incompatible`
+additional "field":
+
+```rust,ignore
+declare_lint! {
+    pub ANONYMOUS_PARAMETERS,
+    Allow,
+    "detects anonymous parameters",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
+        edition: Some(Edition::Edition2018),
+    };
+}
+```
+
+If you need a combination of options that's not supported by the
+`declare_lint!` macro, you can always define your own static with a type of
+`&Lint` but this is currently linted against in the compiler tree.
 
 ### Lint Groups
 
