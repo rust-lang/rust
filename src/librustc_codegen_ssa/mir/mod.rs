@@ -121,13 +121,16 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
-    llfn: Bx::Function,
-    mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
     instance: Instance<'tcx>,
-    sig: ty::FnSig<'tcx>,
 ) {
     assert!(!instance.substs.needs_infer());
 
+    let llfn = cx.get_fn(instance);
+
+    let mir = cx.tcx().instance_mir(instance.def);
+
+    let sig = instance.fn_sig(cx.tcx());
+    let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     let fn_abi = FnAbi::new(cx, sig, &[]);
     debug!("fn_abi: {:?}", fn_abi);
 
