@@ -28,6 +28,7 @@ cargo clippy \
     -W clippy::nursery \
     > clippy_output 2>&1 || true
 
+cargo uninstall clippy
 cat clippy_output
 
 if grep -q "internal compiler error\|query stack during panic\|E0463" clippy_output; then
