@@ -9,10 +9,10 @@ LL | impl<Foo> Deref for Foo { }
              where T: ?Sized;
 
 error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g., `MyStruct<Foo>`)
-  --> $DIR/issue-28981.rs:5:1
+  --> $DIR/issue-28981.rs:5:6
    |
 LL | impl<Foo> Deref for Foo { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^ type parameter `Foo` must be used as the type parameter for some local type
+   |      ^^^ type parameter `Foo` must be used as the type parameter for some local type
    |
    = note: only traits defined in the current crate can be implemented for a type parameter
 
