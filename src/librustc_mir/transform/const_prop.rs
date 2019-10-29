@@ -30,7 +30,7 @@ use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
     StackPopCleanup, LocalValue, LocalState, AllocId, Frame,
     Allocation, MemoryKind, ImmTy, Pointer, Memory, PlaceTy,
-    StackPopInfo, Operand as InterpOperand,
+    Operand as InterpOperand,
 };
 use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
@@ -251,15 +251,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     #[inline(always)]
     fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
-    }
-
-    /// Called immediately before a stack frame gets popped.
-    #[inline(always)]
-    fn stack_pop(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _extra: ()
-    ) -> InterpResult<'tcx, StackPopInfo> {
-        Ok(StackPopInfo::Normal)
     }
 }
 

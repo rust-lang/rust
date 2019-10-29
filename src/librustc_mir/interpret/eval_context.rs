@@ -584,7 +584,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        let stack_pop_info = M::stack_pop(self, frame.extra)?;
+        let stack_pop_info = M::stack_pop(self, frame.extra, unwinding)?;
         match (unwinding, stack_pop_info) {
             (true, StackPopInfo::StartUnwinding) =>
                 bug!("Attempted to start unwinding while already unwinding!"),
@@ -616,7 +616,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Now where do we jump next?
 
         // Determine if we leave this function normally or via unwinding.
-        let cur_unwinding = unwinding && stack_pop_info != StackPopInfo::StopUnwinding;
+        let cur_unwinding = match stack_pop_info {
+            StackPopInfo::StartUnwinding => true,
+            StackPopInfo::StopUnwinding => false,
+            _ => unwinding
+        };
+
         trace!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
                frame.return_to_block, stack_pop_info, cur_unwinding);
         if cur_unwinding {

@@ -270,6 +270,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _extra: Self::FrameExtra,
+        _unwinding: bool
     ) -> InterpResult<'tcx, StackPopInfo> {
         // By default, we do not support unwinding from panics
         Ok(StackPopInfo::Normal)
