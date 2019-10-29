@@ -11,7 +11,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 upload_dir="$(mktemp -d)"
 
 # Release tarballs produced by a dist builder.
-if [[ "${DEPLOY-0}" = "1" ]] || [[ "${DEPLOY_ALT-0}" = "1" ]]; then
+if [[ "${DEPLOY-0}" -eq "1" ]] || [[ "${DEPLOY_ALT-0}" -eq "1" ]]; then
     dist_dir=build/dist
     if isLinux; then
         dist_dir=obj/build/dist
@@ -24,7 +24,7 @@ fi
 cp cpu-usage.csv "${upload_dir}/cpu-${CI_JOB_NAME}.csv"
 
 # Toolstate data.
-if [[ ! -z "${DEPLOY_TOOLSTATES_JSON+x}" ]]; then
+if [[ -n "${DEPLOY_TOOLSTATES_JSON+x}" ]]; then
     cp /tmp/toolstates.json "${upload_dir}/${DEPLOY_TOOLSTATES_JSON}"
 fi
 
@@ -33,7 +33,7 @@ ls -lah "${upload_dir}"
 echo
 
 deploy_dir="rustc-builds"
-if [[ "${DEPLOY_ALT-0}" = "1" ]]; then
+if [[ "${DEPLOY_ALT-0}" -eq "1" ]]; then
     deploy_dir="rustc-builds-alt"
 fi
 deploy_url="s3://${DEPLOY_BUCKET}/${deploy_dir}/$(ciCommit)"
