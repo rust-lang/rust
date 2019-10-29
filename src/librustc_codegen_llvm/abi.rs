@@ -8,6 +8,7 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_target::abi::call::ArgType;
+use rustc::bug;
 
 use rustc_codegen_ssa::traits::*;
 

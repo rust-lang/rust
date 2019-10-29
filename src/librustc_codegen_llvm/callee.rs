@@ -9,6 +9,7 @@ use crate::llvm;
 use crate::context::CodegenCx;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
+use log::debug;
 
 use rustc::ty::{TypeFoldable, Instance};
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
