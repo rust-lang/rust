@@ -36,11 +36,11 @@ impl Module {
     }
 }
 
-impl HirFileId {
-    pub fn debug(self, db: &impl HirDebugDatabase) -> impl fmt::Debug + '_ {
-        debug_fn(move |fmt| db.debug_hir_file_id(self, fmt))
-    }
-}
+// impl HirFileId {
+//     pub fn debug(self, db: &impl HirDebugDatabase) -> impl fmt::Debug + '_ {
+//         debug_fn(move |fmt| db.debug_hir_file_id(self, fmt))
+//     }
+// }
 
 pub trait HirDebugHelper: HirDatabase {
     fn crate_name(&self, _krate: CrateId) -> Option<String> {
