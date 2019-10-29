@@ -379,7 +379,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
 #[derive(Debug)]
-pub struct ArgType<'a, Ty> {
+pub struct ArgAbi<'a, Ty> {
     pub layout: TyLayout<'a, Ty>,
 
     /// Dummy argument, which is emitted before the real argument.
@@ -388,9 +388,9 @@ pub struct ArgType<'a, Ty> {
     pub mode: PassMode,
 }
 
-impl<'a, Ty> ArgType<'a, Ty> {
+impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn new(layout: TyLayout<'a, Ty>) -> Self {
-        ArgType {
+        ArgAbi {
             layout,
             pad: None,
             mode: PassMode::Direct(ArgAttributes::new()),
@@ -516,19 +516,19 @@ pub enum Conv {
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(Debug)]
-pub struct FnType<'a, Ty> {
+pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
-    pub args: Vec<ArgType<'a, Ty>>,
+    pub args: Vec<ArgAbi<'a, Ty>>,
 
     /// LLVM return type.
-    pub ret: ArgType<'a, Ty>,
+    pub ret: ArgAbi<'a, Ty>,
 
     pub c_variadic: bool,
 
     pub conv: Conv,
 }
 
-impl<'a, Ty> FnType<'a, Ty> {
+impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
         where Ty: TyLayoutMethods<'a, C> + Copy,
               C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec

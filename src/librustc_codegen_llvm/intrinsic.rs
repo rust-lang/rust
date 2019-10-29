@@ -1,7 +1,7 @@
 use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;
-use crate::abi::{Abi, FnType, LlvmType, PassMode};
+use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -84,7 +84,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        fn_ty: &FnType<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
@@ -104,7 +104,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let name = &*tcx.item_name(def_id).as_str();
 
         let llret_ty = self.layout_of(ret_ty).llvm_type(self);
-        let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout);
+        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
         let llval = match name {
@@ -147,7 +147,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None)
             }
             "va_arg" => {
-                match fn_ty.ret.layout.abi {
+                match fn_abi.ret.layout.abi {
                     layout::Abi::Scalar(ref scalar) => {
                         match scalar.value {
                             Primitive::Int(..) => {
@@ -276,7 +276,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "volatile_load" | "unaligned_volatile_load" => {
                 let tp_ty = substs.type_at(0);
                 let mut ptr = args[0].immediate();
-                if let PassMode::Cast(ty) = fn_ty.ret.mode {
+                if let PassMode::Cast(ty) = fn_abi.ret.mode {
                     ptr = self.pointercast(ptr, self.type_ptr_to(ty.llvm_type(self)));
                 }
                 let load = self.volatile_load(ptr);
@@ -715,8 +715,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             _ => bug!("unknown intrinsic '{}'", name),
         };
 
-        if !fn_ty.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_ty.ret.mode {
+        if !fn_abi.ret.is_ignore() {
+            if let PassMode::Cast(ty) = fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.llvm_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);

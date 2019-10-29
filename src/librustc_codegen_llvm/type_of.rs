@@ -1,4 +1,4 @@
-use crate::abi::{FnType};
+use crate::abi::{FnAbi};
 use crate::common::*;
 use crate::type_::Type;
 use rustc::ty::{self, Ty, TypeFoldable};
@@ -239,7 +239,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         ty::ParamEnv::reveal_all(),
                         &sig,
                     );
-                    cx.fn_ptr_backend_type(&FnType::new(cx, sig, &[]))
+                    cx.fn_ptr_backend_type(&FnAbi::new(cx, sig, &[]))
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };
