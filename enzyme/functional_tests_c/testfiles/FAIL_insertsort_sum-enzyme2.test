@@ -1,6 +1,0 @@
-; RUN: cd %desired_wd
-; RUN: make clean-FAIL_insertsort_sum-enzyme2 ENZYME_PLUGIN=%loadEnzyme
-; RUN: make build/FAIL_insertsort_sum-enzyme2 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
-; RUN: build/FAIL_insertsort_sum-enzyme2
-; RUN: make clean-FAIL_insertsort_sum-enzyme2 ENZYME_PLUGIN=%loadEnzyme
-; XFAIL: *
