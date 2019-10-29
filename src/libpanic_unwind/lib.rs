@@ -36,7 +36,10 @@ use core::raw;
 use core::panic::BoxMeUp;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "emscripten")] {
+    if #[cfg(miri)] {
+        #[path = "miri.rs"]
+        mod imp;
+    } else if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;
     } else if #[cfg(target_arch = "wasm32")] {
