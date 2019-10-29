@@ -6,16 +6,14 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxNode};
 
 use crate::{
-    ast_id_map::{AstIdMap, ErasedFileAstId},
-    HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, MacroFileKind,
+    ast_id_map::AstIdMap, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc, MacroDefId,
+    MacroFile, MacroFileKind,
 };
 
 // FIXME: rename to ExpandDatabase
 #[salsa::query_group(AstDatabaseStorage)]
 pub trait AstDatabase: SourceDatabase {
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
-    #[salsa::transparent]
-    fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> SyntaxNode;
 
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
@@ -32,15 +30,6 @@ pub(crate) fn ast_id_map(db: &impl AstDatabase, file_id: HirFileId) -> Arc<AstId
     let map =
         db.parse_or_expand(file_id).map_or_else(AstIdMap::default, |it| AstIdMap::from_source(&it));
     Arc::new(map)
-}
-
-pub(crate) fn ast_id_to_node(
-    db: &impl AstDatabase,
-    file_id: HirFileId,
-    ast_id: ErasedFileAstId,
-) -> SyntaxNode {
-    let node = db.parse_or_expand(file_id).unwrap();
-    db.ast_id_map(file_id)[ast_id].to_node(&node)
 }
 
 pub(crate) fn macro_def(db: &impl AstDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
