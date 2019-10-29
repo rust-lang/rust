@@ -1,16 +1,21 @@
+#![warn(unused_imports)]
+
 mod a {
     fn foo() {}
     mod foo {}
 
     mod a {
         pub use super::foo; //~ ERROR cannot be re-exported
-        pub use super::*; //~ ERROR must import something with the glob's visibility
+        pub use super::*;
+        //~^ WARNING glob import doesn't reexport anything because no candidate is public enough
     }
 }
 
 mod b {
     pub fn foo() {}
-    mod foo { pub struct S; }
+    mod foo {
+        pub struct S;
+    }
 
     pub mod a {
         pub use super::foo; // This is OK since the value `foo` is visible enough.
