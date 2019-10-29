@@ -261,11 +261,11 @@ impl std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
-    fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
+    fn validate_candidate(&mut self, candidate: Candidate) -> Result<(), Unpromotable> {
+        self.explicit = candidate.is_explicit_context();
+
         match candidate {
             Candidate::Ref(loc) => {
-                assert!(!self.explicit);
-
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box(_, Rvalue::Ref(_, kind, place))) => {
@@ -356,8 +356,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
             Candidate::Repeat(loc) => {
-                assert!(!self.explicit);
-
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box(_, Rvalue::Repeat(ref operand, _))) => {
@@ -371,8 +369,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             },
             Candidate::Argument { bb, index } => {
-                assert!(self.explicit);
-
                 let terminator = self.body[bb].terminator();
                 match &terminator.kind {
                     TerminatorKind::Call { args, .. } => {
@@ -738,8 +734,6 @@ pub fn validate_candidates(
     };
 
     candidates.iter().copied().filter(|&candidate| {
-        validator.explicit = candidate.is_explicit_context();
-
         // FIXME(eddyb) also emit the errors for shuffle indices
         // and `#[rustc_args_required_const]` arguments here.
 
