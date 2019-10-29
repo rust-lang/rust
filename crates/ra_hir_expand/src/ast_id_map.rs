@@ -50,7 +50,7 @@ pub struct AstIdMap {
 }
 
 impl AstIdMap {
-    pub fn from_source(node: &SyntaxNode) -> AstIdMap {
+    pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap { arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
@@ -83,7 +83,7 @@ impl AstIdMap {
         }
     }
 
-    pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
+    pub(crate) fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
         self.arena[id.raw].cast::<N>().unwrap()
     }
 
