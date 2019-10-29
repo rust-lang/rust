@@ -385,7 +385,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "miri_start_panic" => {
-                (0, vec![tcx.mk_mut_ptr(tcx.mk_slice(tcx.mk_unit()))], tcx.types.never)
+                // TODO - the relevant types aren't lang items,
+                // so it's not trivial to check this
+                return;
             }
 
             ref other => {
