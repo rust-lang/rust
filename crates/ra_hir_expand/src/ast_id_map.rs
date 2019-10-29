@@ -8,11 +8,10 @@
 use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,
-    ops,
 };
 
 use ra_arena::{impl_arena_id, Arena, RawId};
-use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
 #[derive(Debug)]
@@ -40,14 +39,8 @@ impl<N: AstNode> Hash for FileAstId<N> {
     }
 }
 
-impl<N: AstNode> From<FileAstId<N>> for ErasedFileAstId {
-    fn from(id: FileAstId<N>) -> Self {
-        id.raw
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ErasedFileAstId(RawId);
+struct ErasedFileAstId(RawId);
 impl_arena_id!(ErasedFileAstId);
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
@@ -90,15 +83,12 @@ impl AstIdMap {
         }
     }
 
+    pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
+        self.arena[id.raw].cast::<N>().unwrap()
+    }
+
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {
         self.arena.alloc(SyntaxNodePtr::new(item))
-    }
-}
-
-impl ops::Index<ErasedFileAstId> for AstIdMap {
-    type Output = SyntaxNodePtr;
-    fn index(&self, index: ErasedFileAstId) -> &SyntaxNodePtr {
-        &self.arena[index]
     }
 }
 

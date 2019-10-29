@@ -80,7 +80,7 @@ pub use self::{
     path::{Path, PathKind},
     resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
-    source_id::{AstIdMap, ErasedFileAstId},
+    source_id::AstIdMap,
     ty::{
         display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },

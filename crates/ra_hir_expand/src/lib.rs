@@ -172,7 +172,6 @@ impl<N: AstNode> AstId<N> {
 
     pub fn to_node(&self, db: &impl AstDatabase) -> N {
         let root = db.parse_or_expand(self.file_id).unwrap();
-        let node = db.ast_id_map(self.file_id)[self.file_ast_id.into()].to_node(&root);
-        N::cast(node).unwrap()
+        db.ast_id_map(self.file_id).get(self.file_ast_id).to_node(&root)
     }
 }
