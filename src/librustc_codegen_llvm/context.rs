@@ -421,7 +421,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             Abi::C
         );
 
-        let fn_abi = FnAbi::new(self, sig, &[]);
+        let fn_abi = FnAbi::of_fn_ptr(self, sig, &[]);
         let llfn = self.declare_fn("rust_eh_unwind_resume", &fn_abi);
         attributes::apply_target_cpu_attr(self, llfn);
         unwresume.set(Some(llfn));

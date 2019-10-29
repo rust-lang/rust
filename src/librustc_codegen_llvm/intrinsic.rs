@@ -1012,7 +1012,7 @@ fn gen_fn<'ll, 'tcx>(
         hir::Unsafety::Unsafe,
         Abi::Rust
     );
-    let fn_abi = FnAbi::new(cx, rust_fn_sig, &[]);
+    let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
     let llfn = cx.declare_fn(name, &fn_abi);
     // FIXME(eddyb) find a nicer way to do this.
     unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
