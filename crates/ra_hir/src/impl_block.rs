@@ -129,7 +129,7 @@ impl ImplData {
     ) -> Self {
         let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
-        let ctx = LocationCtx::new(db, module, file_id);
+        let ctx = LocationCtx::new(db, module.id, file_id);
         let negative = node.is_negative();
         let items = if let Some(item_list) = node.item_list() {
             item_list

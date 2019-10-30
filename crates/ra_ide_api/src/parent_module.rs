@@ -27,10 +27,7 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
             Some(it) => it,
             None => return Vec::new(),
         };
-    let krate = match module.krate(db) {
-        Some(it) => it,
-        None => return Vec::new(),
-    };
+    let krate = module.krate();
     vec![krate.crate_id()]
 }
 

@@ -343,7 +343,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -405,7 +405,7 @@ impl Union {
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
@@ -431,7 +431,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -697,7 +697,7 @@ impl FnData {
 
 impl Function {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -775,7 +775,7 @@ pub struct Const {
 
 impl Const {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -872,7 +872,7 @@ pub struct Static {
 
 impl Static {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -901,7 +901,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
@@ -1003,7 +1003,7 @@ pub struct TypeAlias {
 
 impl TypeAlias {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        self.id.module(db)
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {

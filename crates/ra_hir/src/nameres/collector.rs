@@ -641,7 +641,7 @@ where
 
     fn define_def(&mut self, def: &raw::DefData) {
         let module = Module::new(self.def_collector.def_map.krate, self.module_id);
-        let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
+        let ctx = LocationCtx::new(self.def_collector.db, module.id, self.file_id);
 
         macro_rules! def {
             ($kind:ident, $ast_id:ident) => {

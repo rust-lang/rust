@@ -1,9 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{
-    ast::{self, AstNode},
-    SyntaxNode,
-};
+use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
@@ -12,24 +9,11 @@ use crate::{
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Source<T> {
-    pub file_id: HirFileId,
-    pub ast: T,
-}
+pub use hir_def::Source;
 
 pub trait HasSource {
     type Ast;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast>;
-}
-
-impl<T> Source<T> {
-    pub(crate) fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source { file_id: self.file_id, ast: f(self.ast) }
-    }
-    pub(crate) fn file_syntax(&self, db: &impl AstDatabase) -> SyntaxNode {
-        db.parse_or_expand(self.file_id).expect("source created from invalid file")
-    }
 }
 
 /// NB: Module is !HasSource, because it has two source nodes at the same time:
