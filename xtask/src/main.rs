@@ -229,6 +229,7 @@ fn install_server(opts: ServerOpt) -> Result<()> {
     let mut old_rust = false;
     if let Ok(output) = run_with_output("cargo --version", ".") {
         if let Ok(stdout) = String::from_utf8(output.stdout) {
+            println!("{}", stdout);
             if !check_version(&stdout, REQUIRED_RUST_VERSION) {
                 old_rust = true;
             }
