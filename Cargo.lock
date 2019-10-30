@@ -1631,9 +1631,9 @@ dependencies = [
 
 [[package]]
 name = "jsonrpc-core"
-version = "13.1.0"
+version = "13.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd42951eb35079520ee29b7efbac654d85821b397ef88c8151600ef7e2d00217"
+checksum = "91d767c183a7e58618a609499d359ce3820700b3ebb4823a18c343b4a2a41a0d"
 dependencies = [
  "futures",
  "log",
@@ -2974,14 +2974,14 @@ checksum = "cabe4fa914dec5870285fa7f71f602645da47c486e68486d2b4ceb4a343e90ac"
 
 [[package]]
 name = "rls"
-version = "1.39.0"
+version = "1.40.0"
 dependencies = [
  "cargo",
  "cargo_metadata 0.8.0",
  "clippy_lints",
  "crossbeam-channel",
  "difference",
- "env_logger 0.6.2",
+ "env_logger 0.7.0",
  "failure",
  "futures",
  "heck",
@@ -2995,7 +2995,7 @@ dependencies = [
  "num_cpus",
  "ordslice",
  "racer",
- "rand 0.6.1",
+ "rand 0.7.0",
  "rayon",
  "regex",
  "rls-analysis",
@@ -3004,7 +3004,6 @@ dependencies = [
  "rls-rustc",
  "rls-span",
  "rls-vfs",
- "rustc-serialize",
  "rustc-workspace-hack",
  "rustc_tools_util 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustfmt-nightly",
@@ -3065,11 +3064,11 @@ name = "rls-rustc"
 version = "0.6.0"
 dependencies = [
  "clippy_lints",
- "env_logger 0.6.2",
+ "env_logger 0.7.0",
  "failure",
  "futures",
  "log",
- "rand 0.6.1",
+ "rand 0.7.0",
  "rls-data",
  "rls-ipc",
  "serde",
@@ -3364,12 +3363,6 @@ dependencies = [
  "lazy_static 1.3.0",
  "num_cpus",
 ]
-
-[[package]]
-name = "rustc-serialize"
-version = "0.3.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 
 [[package]]
 name = "rustc-std-workspace-alloc"
