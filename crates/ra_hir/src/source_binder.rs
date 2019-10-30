@@ -7,7 +7,8 @@
 //! purely for "IDE needs".
 use std::sync::Arc;
 
-use hir_def::{name::AsName, path::known};
+use hir_def::path::known;
+use hir_expand::name::AsName;
 use ra_db::FileId;
 use ra_syntax::{
     ast::{self, AstNode},

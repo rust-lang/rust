@@ -5,7 +5,7 @@
 
 use std::iter::successors;
 
-use hir_def::name;
+use hir_expand::name;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};

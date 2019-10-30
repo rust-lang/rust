@@ -81,8 +81,7 @@ pub use crate::{
 };
 
 pub use hir_def::{
-    name::Name,
     path::{Path, PathKind},
     type_ref::Mutability,
 };
-pub use hir_expand::either::Either;
+pub use hir_expand::{either::Either, name::Name};

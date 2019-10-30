@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::name::AsName;
+use hir_expand::name::AsName;
 use ra_syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{

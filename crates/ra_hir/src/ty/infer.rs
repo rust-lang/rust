@@ -22,10 +22,10 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
-    name,
     path::known,
     type_ref::{Mutability, TypeRef},
 };
+use hir_expand::name;
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use test_utils::tested_by;

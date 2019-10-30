@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use hir_def::name::AsName;
+use hir_expand::name::AsName;
+
 use ra_syntax::ast::{self, NameOwner};
 use rustc_hash::FxHashMap;
 

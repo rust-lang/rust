@@ -2,7 +2,12 @@
 
 use std::{ops::Index, sync::Arc};
 
-use hir_expand::{ast_id_map::AstIdMap, db::AstDatabase, either::Either};
+use hir_expand::{
+    ast_id_map::AstIdMap,
+    db::AstDatabase,
+    either::Either,
+    name::{AsName, Name},
+};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
@@ -10,12 +15,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    attr::Attr,
-    db::DefDatabase2,
-    hygiene::Hygiene,
-    name::{AsName, Name},
-    path::Path,
-    FileAstId, HirFileId, ModuleSource, Source,
+    attr::Attr, db::DefDatabase2, hygiene::Hygiene, path::Path, FileAstId, HirFileId, ModuleSource,
+    Source,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).

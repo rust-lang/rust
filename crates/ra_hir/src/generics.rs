@@ -6,10 +6,10 @@
 use std::sync::Arc;
 
 use hir_def::{
-    name::{self, AsName},
     path::Path,
     type_ref::{TypeBound, TypeRef},
 };
+use hir_expand::name::{self, AsName};
 use ra_syntax::ast::{self, DefaultTypeParamOwner, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{

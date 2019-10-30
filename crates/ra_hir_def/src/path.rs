@@ -2,19 +2,17 @@
 
 use std::{iter, sync::Arc};
 
-use hir_expand::either::Either;
+use hir_expand::{
+    either::Either,
+    name::{self, AsName, Name},
+};
 use ra_db::CrateId;
 use ra_syntax::{
     ast::{self, NameOwner, TypeAscriptionOwner},
     AstNode,
 };
 
-use crate::{
-    hygiene::Hygiene,
-    name::{self, AsName, Name},
-    type_ref::TypeRef,
-    Source,
-};
+use crate::{hygiene::Hygiene, type_ref::TypeRef, Source};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
@@ -392,8 +390,9 @@ fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Opt
 }
 
 pub mod known {
+    use hir_expand::name;
+
     use super::{Path, PathKind};
-    use crate::name;
 
     pub fn std_iter_into_iterator() -> Path {
         Path::from_simple_segments(

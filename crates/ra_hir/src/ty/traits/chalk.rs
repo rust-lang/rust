@@ -9,7 +9,8 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::name;
+use hir_expand::name;
+
 use ra_db::salsa::{InternId, InternKey};
 
 use super::{Canonical, ChalkContext, Impl, Obligation};

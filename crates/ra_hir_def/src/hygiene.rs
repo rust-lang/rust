@@ -4,12 +4,14 @@
 //! this moment, this is horribly incomplete and handles only `$crate`.
 // Should this be moved to `hir_expand`? Seems like it.
 
-use hir_expand::either::Either;
-use hir_expand::{db::AstDatabase, HirFileId};
+use hir_expand::{
+    db::AstDatabase,
+    either::Either,
+    name::{AsName, Name},
+    HirFileId,
+};
 use ra_db::CrateId;
 use ra_syntax::ast;
-
-use crate::name::{AsName, Name};
 
 #[derive(Debug)]
 pub struct Hygiene {
