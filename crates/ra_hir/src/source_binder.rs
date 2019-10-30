@@ -12,7 +12,7 @@ use hir_expand::name::AsName;
 use ra_db::FileId;
 use ra_syntax::{
     ast::{self, AstNode},
-    AstPtr,
+    match_ast, AstPtr,
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
@@ -37,24 +37,34 @@ fn try_get_resolver_for_node(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<Resolver> {
-    if let Some(module) = ast::Module::cast(node.clone()) {
-        let src = crate::Source { file_id: file_id.into(), ast: module };
-        Some(crate::Module::from_declaration(db, src)?.resolver(db))
-    } else if let Some(file) = ast::SourceFile::cast(node.clone()) {
-        let src =
-            crate::Source { file_id: file_id.into(), ast: crate::ModuleSource::SourceFile(file) };
-        Some(crate::Module::from_definition(db, src)?.resolver(db))
-    } else if let Some(s) = ast::StructDef::cast(node.clone()) {
-        let src = crate::Source { file_id: file_id.into(), ast: s };
-        Some(Struct::from_source(db, src)?.resolver(db))
-    } else if let Some(e) = ast::EnumDef::cast(node.clone()) {
-        let src = crate::Source { file_id: file_id.into(), ast: e };
-        Some(Enum::from_source(db, src)?.resolver(db))
-    } else if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-        Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
-    } else {
-        // FIXME add missing cases
-        None
+    match_ast! {
+        match node {
+            ast::Module(it) => {
+                let src = crate::Source { file_id: file_id.into(), ast: it };
+                Some(crate::Module::from_declaration(db, src)?.resolver(db))
+            },
+             ast::SourceFile(it) => {
+                let src =
+                    crate::Source { file_id: file_id.into(), ast: crate::ModuleSource::SourceFile(it) };
+                Some(crate::Module::from_definition(db, src)?.resolver(db))
+            },
+            ast::StructDef(it) => {
+                let src = crate::Source { file_id: file_id.into(), ast: it };
+                Some(Struct::from_source(db, src)?.resolver(db))
+            },
+            ast::EnumDef(it) => {
+                let src = crate::Source { file_id: file_id.into(), ast: it };
+                Some(Enum::from_source(db, src)?.resolver(db))
+            },
+            _ => {
+                if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
+                    Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
+                } else {
+                    // FIXME add missing cases
+                    None
+                }
+            },
+        }
     }
 }
 
@@ -68,16 +78,14 @@ fn def_with_body_from_child_node(
     let ctx = LocationCtx::new(db, module.id, file_id.into());
 
     node.ancestors().find_map(|node| {
-        if let Some(def) = ast::FnDef::cast(node.clone()) {
-            return Some(Function { id: ctx.to_def(&def) }.into());
+        match_ast! {
+            match node {
+                ast::FnDef(def)  => { Some(Function {id: ctx.to_def(&def) }.into()) },
+                ast::ConstDef(def) => { Some(Const { id: ctx.to_def(&def) }.into()) },
+                ast::StaticDef(def) => { Some(Static { id: ctx.to_def(&def) }.into()) },
+                _ => { None },
+            }
         }
-        if let Some(def) = ast::ConstDef::cast(node.clone()) {
-            return Some(Const { id: ctx.to_def(&def) }.into());
-        }
-        if let Some(def) = ast::StaticDef::cast(node) {
-            return Some(Static { id: ctx.to_def(&def) }.into());
-        }
-        None
     })
 }
 
