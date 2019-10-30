@@ -28,7 +28,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
-    if [[ -z "${MINGW_URL+x}" ]]; then
+    if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
         arch=i686
         if [ "$MSYS_BITS" = "64" ]; then
           arch=x86_64
@@ -37,9 +37,9 @@ if isWindows; then
             mingw-w64-$arch-gcc mingw-w64-$arch-python2
         ciCommandAddPath "${SYSTEM_WORKFOLDER}/msys2/mingw${MSYS_BITS}/bin"
     else
-        curl -o mingw.7z "${MINGW_URL}/${MINGW_ARCHIVE}"
+        curl -o mingw.7z "${MIRRORS_BASE}/${MINGW_ARCHIVE}"
         7z x -y mingw.7z > /dev/null
-        curl -o "${MINGW_DIR}/bin/gdborig.exe" "${MINGW_URL}/2017-04-20-${MSYS_BITS}bit-gdborig.exe"
+        curl -o "${MINGW_DIR}/bin/gdborig.exe" "${MIRRORS_BASE}/2017-04-20-${MSYS_BITS}bit-gdborig.exe"
         ciCommandAddPath "$(pwd)/${MINGW_DIR}/bin"
     fi
 fi

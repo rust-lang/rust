@@ -284,7 +284,7 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
         SCRIPT: make ci-mingw-subset-1
-        MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
+        CUSTOM_MINGW: 1
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
         # FIXME(#59637)
@@ -294,14 +294,14 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
         SCRIPT: make ci-mingw-subset-2
-        MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
+        CUSTOM_MINGW: 1
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
       x86_64-mingw-1:
         MSYS_BITS: 64
         SCRIPT: make ci-mingw-subset-1
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-        MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
+        CUSTOM_MINGW: 1
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64
         # FIXME(#59637)
@@ -311,7 +311,7 @@ jobs:
         MSYS_BITS: 64
         SCRIPT: make ci-mingw-subset-2
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-        MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
+        CUSTOM_MINGW: 1
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64
 
@@ -340,7 +340,7 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
         SCRIPT: python x.py dist
-        MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
+        CUSTOM_MINGW: 1
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
         DIST_REQUIRE_ALL_TOOLS: 1
@@ -349,7 +349,7 @@ jobs:
         MSYS_BITS: 64
         SCRIPT: python x.py dist
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
-        MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
+        CUSTOM_MINGW: 1
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64
         DIST_REQUIRE_ALL_TOOLS: 1
