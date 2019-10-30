@@ -3450,6 +3450,22 @@ fn test() { S.foo()<|>; }
     assert_eq!(t, "u128");
 }
 
+#[ignore]
+#[test]
+fn method_resolution_by_value_before_autoref() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone { fn clone(&self) -> Self; }
+struct S;
+impl Clone for S {}
+impl Clone for &S {}
+fn test() { (S.clone(), (&S).clone(), (&&S).clone())<|>; }
+"#,
+    );
+    assert_eq!(t, "(S, S, &S)");
+}
+
 #[test]
 fn method_resolution_trait_before_autoderef() {
     let t = type_at(
