@@ -5,7 +5,6 @@
 // ignore-cloudabi no environment variables present
 // ignore-emscripten env vars don't work?
 // ignore-sgx env vars cannot be modified
-// ignore-vxworks home_dir return None
 
 use std::env::*;
 use std::path::PathBuf;
