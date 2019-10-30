@@ -98,5 +98,7 @@ pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
     imp::panic(Box::from_raw((*payload).box_me_up()))
 }
 
+// A dummy helper function for Miri.
+// Used to push an empty stack frame when we start unwinding
 #[cfg(miri)]
 pub fn miri_panic_trampoline() {}
