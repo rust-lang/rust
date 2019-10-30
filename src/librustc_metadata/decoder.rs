@@ -1351,9 +1351,7 @@ impl<'a, 'tcx> CrateMetadata {
                     translated_source_file: local_version,
                 }
             }).collect()
-        });
-
-        self.source_map_import_info.borrow()
+        })
     }
 
     /// Get the `DepNodeIndex` corresponding this crate. The result of this
