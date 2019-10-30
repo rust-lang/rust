@@ -147,6 +147,7 @@ mod builder;
 mod cache;
 mod tool;
 mod toolstate;
+mod format;
 
 #[cfg(windows)]
 mod job;
@@ -419,6 +420,10 @@ impl Build {
     pub fn build(&mut self) {
         unsafe {
             job::setup(self);
+        }
+
+        if let Subcommand::Format { check } = self.config.cmd {
+            return format::format(self, check);
         }
 
         if let Subcommand::Clean { all } = self.config.cmd {

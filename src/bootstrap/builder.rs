@@ -314,6 +314,7 @@ pub enum Kind {
     Check,
     Clippy,
     Fix,
+    Format,
     Test,
     Bench,
     Dist,
@@ -353,7 +354,7 @@ impl<'a> Builder<'a> {
                 tool::Miri,
                 native::Lld
             ),
-            Kind::Check | Kind::Clippy | Kind::Fix => describe!(
+            Kind::Check | Kind::Clippy | Kind::Fix | Kind::Format => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc
@@ -514,7 +515,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
-            Subcommand::Clean { .. } => panic!(),
+            Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
         let builder = Builder {
