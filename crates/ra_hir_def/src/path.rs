@@ -292,7 +292,7 @@ fn expand_use_tree(
     prefix: Option<Path>,
     tree: ast::UseTree,
     hygiene: &Hygiene,
-    cb: &mut impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
+    cb: &mut dyn FnMut(Path, &ast::UseTree, bool, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
