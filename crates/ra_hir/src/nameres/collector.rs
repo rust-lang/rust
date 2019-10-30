@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use hir_def::nameres::raw;
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
@@ -12,7 +13,7 @@ use crate::{
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     name::MACRO_RULES,
     nameres::{
-        diagnostics::DefDiagnostic, mod_resolution::ModDir, raw, Crate, CrateDefMap, CrateModuleId,
+        diagnostics::DefDiagnostic, mod_resolution::ModDir, Crate, CrateDefMap, CrateModuleId,
         ModuleData, ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
     },
     Adt, AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,

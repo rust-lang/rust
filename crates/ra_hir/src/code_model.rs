@@ -6,7 +6,7 @@ pub(crate) mod docs;
 use std::sync::Arc;
 
 use hir_def::{CrateModuleId, ModuleId};
-use ra_db::{CrateId, Edition, FileId};
+use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
@@ -33,7 +33,7 @@ use crate::{
     },
     type_ref::Mutability,
     type_ref::TypeRef,
-    AsName, AstId, Either, HasSource, Name, Ty,
+    AsName, Either, HasSource, Name, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -147,31 +147,7 @@ impl_froms!(
     BuiltinType
 );
 
-pub enum ModuleSource {
-    SourceFile(ast::SourceFile),
-    Module(ast::Module),
-}
-
-impl ModuleSource {
-    pub(crate) fn new(
-        db: &(impl DefDatabase + AstDatabase),
-        file_id: Option<FileId>,
-        decl_id: Option<AstId<ast::Module>>,
-    ) -> ModuleSource {
-        match (file_id, decl_id) {
-            (Some(file_id), _) => {
-                let source_file = db.parse(file_id).tree();
-                ModuleSource::SourceFile(source_file)
-            }
-            (None, Some(item_id)) => {
-                let module = item_id.to_node(db);
-                assert!(module.item_list().is_some(), "expected inline module");
-                ModuleSource::Module(module)
-            }
-            (None, None) => panic!(),
-        }
-    }
-}
+pub use hir_def::ModuleSource;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: CrateModuleId) -> Module {

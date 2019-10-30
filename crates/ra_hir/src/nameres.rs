@@ -48,7 +48,6 @@
 //! on the result
 
 mod per_ns;
-mod raw;
 mod collector;
 mod mod_resolution;
 #[cfg(test)]
@@ -74,12 +73,9 @@ use crate::{
     Trait,
 };
 
-pub(crate) use self::raw::{ImportSourceMap, RawItems};
+pub use self::per_ns::{Namespace, PerNs};
 
-pub use self::{
-    per_ns::{Namespace, PerNs},
-    raw::ImportId,
-};
+pub use hir_def::nameres::raw::ImportId;
 
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
@@ -328,7 +324,8 @@ impl CrateDefMap {
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
-            PathKind::DollarCrate(krate) => {
+            PathKind::DollarCrate(crate_id) => {
+                let krate = Crate { crate_id };
                 if krate == self.krate {
                     tested_by!(macro_dollar_crate_self);
                     PerNs::types(Module::new(self.krate, self.root).into())

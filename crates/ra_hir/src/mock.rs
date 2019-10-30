@@ -17,6 +17,7 @@ use crate::{db, debug::HirDebugHelper, diagnostics::DiagnosticSink};
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
 #[salsa::database(
+    hir_def::db::DefDatabase2Storage,
     ra_db::SourceDatabaseExtStorage,
     ra_db::SourceDatabaseStorage,
     db::InternDatabaseStorage,

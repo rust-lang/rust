@@ -59,10 +59,7 @@ pub mod from_source;
 #[cfg(test)]
 mod marks;
 
-use hir_expand::{
-    ast_id_map::{AstIdMap, FileAstId},
-    AstId,
-};
+use hir_expand::AstId;
 
 use crate::{ids::MacroFileKind, name::AsName, resolve::Resolver};
 
