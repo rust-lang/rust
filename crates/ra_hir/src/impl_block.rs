@@ -3,7 +3,8 @@
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
-use hir_def::{attr::Attr, hygiene::Hygiene, type_ref::TypeRef};
+use hir_def::{attr::Attr, type_ref::TypeRef};
+use hir_expand::hygiene::Hygiene;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_cfg::CfgOptions;
 use ra_syntax::{

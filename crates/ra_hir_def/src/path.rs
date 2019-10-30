@@ -4,6 +4,7 @@ use std::{iter, sync::Arc};
 
 use hir_expand::{
     either::Either,
+    hygiene::Hygiene,
     name::{self, AsName, Name},
 };
 use ra_db::CrateId;
@@ -12,7 +13,7 @@ use ra_syntax::{
     AstNode,
 };
 
-use crate::{hygiene::Hygiene, type_ref::TypeRef, Source};
+use crate::{type_ref::TypeRef, Source};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {

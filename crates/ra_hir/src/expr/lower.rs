@@ -1,7 +1,10 @@
 //! FIXME: write short doc here
 
-use hir_def::{hygiene::Hygiene, path::GenericArgs, type_ref::TypeRef};
-use hir_expand::name::{self, AsName, Name};
+use hir_def::{path::GenericArgs, type_ref::TypeRef};
+use hir_expand::{
+    hygiene::Hygiene,
+    name::{self, AsName, Name},
+};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{

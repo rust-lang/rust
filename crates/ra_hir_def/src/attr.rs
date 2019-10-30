@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use hir_expand::hygiene::Hygiene;
 use mbe::ast_to_token_tree;
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -10,7 +11,7 @@ use ra_syntax::{
 };
 use tt::Subtree;
 
-use crate::{hygiene::Hygiene, path::Path};
+use crate::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
