@@ -7,6 +7,7 @@
 //! purely for "IDE needs".
 use std::sync::Arc;
 
+use hir_def::name::AsName;
 use ra_db::FileId;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -27,8 +28,8 @@ use crate::{
     path::known,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::implements_trait,
-    AsName, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, MacroDef,
-    Module, Name, Path, Resolver, Static, Struct, Ty,
+    Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, MacroDef, Module,
+    Name, Path, Resolver, Static, Struct, Ty,
 };
 
 fn try_get_resolver_for_node(

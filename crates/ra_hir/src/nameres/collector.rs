@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::nameres::raw;
+use hir_def::{name, nameres::raw};
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
@@ -11,7 +11,6 @@ use crate::{
     attr::Attr,
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
-    name::MACRO_RULES,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, Crate, CrateDefMap, CrateModuleId,
         ModuleData, ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
@@ -726,7 +725,7 @@ where
 }
 
 fn is_macro_rules(path: &Path) -> bool {
-    path.as_ident() == Some(&MACRO_RULES)
+    path.as_ident() == Some(&name::MACRO_RULES)
 }
 
 #[cfg(test)]

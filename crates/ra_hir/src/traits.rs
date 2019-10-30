@@ -1,14 +1,14 @@
 //! HIR for trait definitions.
 
-use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
+use hir_def::name::AsName;
 use ra_syntax::ast::{self, NameOwner};
+use rustc_hash::FxHashMap;
 
 use crate::{
     db::{AstDatabase, DefDatabase},
     ids::LocationCtx,
-    name::AsName,
     AssocItem, Const, Function, HasSource, Module, Name, Trait, TypeAlias,
 };
 

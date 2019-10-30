@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
+use hir_def::name::AsName;
 use ra_syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    name::AsName,
     AstId, Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
     ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
 };

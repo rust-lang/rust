@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
+use hir_def::name::{AsName, Name};
 use ra_syntax::ast::NameOwner;
 
 use crate::{
     db::{AstDatabase, DefDatabase},
-    name::{AsName, Name},
     type_ref::TypeRef,
     HasSource, TypeAlias,
 };

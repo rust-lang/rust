@@ -9,6 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, ImplDatum, StructDatum, TraitDatum};
 
+use hir_def::name;
 use ra_db::salsa::{InternId, InternKey};
 
 use super::{Canonical, ChalkContext, Impl, Obligation};
@@ -734,7 +735,7 @@ fn closure_fn_trait_impl_datum(
         substs: Substs::build_for_def(db, trait_).push(self_ty).push(arg_ty).build(),
     };
 
-    let output_ty_id = fn_once_trait.associated_type_by_name(db, &crate::name::OUTPUT_TYPE)?;
+    let output_ty_id = fn_once_trait.associated_type_by_name(db, &name::OUTPUT_TYPE)?;
 
     let output_ty_value = chalk_rust_ir::AssociatedTyValue {
         associated_ty_id: output_ty_id.to_chalk(db),

@@ -36,7 +36,6 @@ mod path;
 pub mod source_binder;
 
 mod ids;
-mod name;
 mod nameres;
 mod adt;
 mod traits;
@@ -61,7 +60,7 @@ mod marks;
 
 use hir_expand::AstId;
 
-use crate::{ids::MacroFileKind, name::AsName, resolve::Resolver};
+use crate::{ids::MacroFileKind, resolve::Resolver};
 
 pub use crate::{
     adt::VariantDef,
@@ -71,7 +70,6 @@ pub use crate::{
     generics::{GenericDef, GenericParam, GenericParams, HasGenericParams},
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     impl_block::ImplBlock,
-    name::Name,
     nameres::{ImportId, Namespace, PerNs},
     path::{Path, PathKind},
     resolve::ScopeDef,
@@ -89,3 +87,5 @@ pub use self::code_model::{
     Enum, EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
+
+pub use hir_def::name::Name;

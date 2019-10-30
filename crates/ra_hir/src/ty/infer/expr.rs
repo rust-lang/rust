@@ -3,12 +3,13 @@
 use std::iter::{repeat, repeat_with};
 use std::sync::Arc;
 
+use hir_def::name;
+
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 use crate::{
     db::HirDatabase,
     expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
-    name,
     nameres::Namespace,
     path::{GenericArg, GenericArgs},
     ty::{

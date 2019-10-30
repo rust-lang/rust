@@ -5,7 +5,13 @@ pub(crate) mod docs;
 
 use std::sync::Arc;
 
-use hir_def::{CrateModuleId, ModuleId};
+use hir_def::{
+    name::{
+        self, AsName, BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128,
+        U16, U32, U64, U8, USIZE,
+    },
+    CrateModuleId, ModuleId,
+};
 use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
@@ -20,10 +26,6 @@ use crate::{
         TypeAliasId,
     },
     impl_block::ImplBlock,
-    name::{
-        BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128, U16, U32, U64,
-        U8, USIZE,
-    },
     nameres::{ImportId, ModuleScope, Namespace},
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
@@ -33,7 +35,7 @@ use crate::{
     },
     type_ref::Mutability,
     type_ref::TypeRef,
-    AsName, Either, HasSource, Name, Ty,
+    Either, HasSource, Name, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -898,9 +900,7 @@ impl Trait {
             .where_predicates
             .iter()
             .filter_map(|pred| match &pred.type_ref {
-                TypeRef::Path(p) if p.as_ident() == Some(&crate::name::SELF_TYPE) => {
-                    pred.bound.as_path()
-                }
+                TypeRef::Path(p) if p.as_ident() == Some(&name::SELF_TYPE) => pred.bound.as_path(),
                 _ => None,
             })
             .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
