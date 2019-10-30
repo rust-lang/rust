@@ -995,7 +995,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         span: Span,
     ) -> OperandRef<'tcx, Bx::Value> {
-        let caller = bx.tcx().sess.source_map().lookup_char_pos(span.lo());
+        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+        let caller = bx.tcx().sess.source_map().lookup_char_pos(topmost.lo());
         let const_loc = bx.tcx().const_caller_location((
             Symbol::intern(&caller.file.name.to_string()),
             caller.line as u32,

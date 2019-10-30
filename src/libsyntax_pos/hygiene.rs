@@ -28,7 +28,7 @@
 use crate::GLOBALS;
 use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
-use crate::symbol::{kw, Symbol};
+use crate::symbol::{kw, sym, Symbol};
 
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::FxHashMap;
@@ -118,6 +118,23 @@ impl ExpnId {
     /// `expn_id.is_descendant_of(ctxt.outer_expn())`.
     pub fn outer_expn_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
         HygieneData::with(|data| data.is_descendant_of(self, data.outer_expn(ctxt)))
+    }
+
+    /// Returns span for the macro which originally caused this expansion to happen.
+    ///
+    /// Stops backtracing at include! boundary.
+    pub fn expansion_cause(mut self) -> Option<Span> {
+        let mut last_macro = None;
+        loop {
+            let expn_data = self.expn_data();
+            // Stop going up the backtrace once include! is encountered
+            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
+                break;
+            }
+            self = expn_data.call_site.ctxt().outer_expn();
+            last_macro = Some(expn_data.call_site);
+        }
+        last_macro
     }
 }
 
