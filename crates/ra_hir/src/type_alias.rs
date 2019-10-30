@@ -2,10 +2,9 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    name::{AsName, Name},
-    type_ref::TypeRef,
-};
+use hir_def::type_ref::TypeRef;
+use hir_expand::name::{AsName, Name};
+
 use ra_syntax::ast::NameOwner;
 
 use crate::{

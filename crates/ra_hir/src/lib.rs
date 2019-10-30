@@ -60,6 +60,13 @@ use crate::{ids::MacroFileKind, resolve::Resolver};
 
 pub use crate::{
     adt::VariantDef,
+    code_model::{
+        docs::{DocDef, Docs, Documentation},
+        src::{HasBodySource, HasSource, Source},
+        Adt, AssocItem, BuiltinType, Const, ConstData, Container, Crate, CrateDependency,
+        DefWithBody, Enum, EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module,
+        ModuleDef, ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+    },
     expr::ExprScopes,
     from_source::FromSource,
     generics::{GenericDef, GenericParam, GenericParams, HasGenericParams},
@@ -73,17 +80,8 @@ pub use crate::{
     },
 };
 
-pub use self::code_model::{
-    docs::{DocDef, Docs, Documentation},
-    src::{HasBodySource, HasSource, Source},
-    Adt, AssocItem, BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody,
-    Enum, EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
-    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
-};
-
 pub use hir_def::{
-    either::Either,
-    name::Name,
     path::{Path, PathKind},
     type_ref::Mutability,
 };
+pub use hir_expand::{either::Either, name::Name};

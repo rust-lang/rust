@@ -3,7 +3,8 @@
 
 use std::sync::Arc;
 
-use hir_def::{name::AsName, type_ref::TypeRef};
+use hir_def::type_ref::TypeRef;
+use hir_expand::name::AsName;
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 

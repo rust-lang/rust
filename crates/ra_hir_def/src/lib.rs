@@ -8,9 +8,7 @@
 //! actually true.
 
 pub mod db;
-pub mod either;
 pub mod attr;
-pub mod name;
 pub mod path;
 pub mod type_ref;
 

@@ -6,12 +6,12 @@ pub(crate) mod docs;
 use std::sync::Arc;
 
 use hir_def::{
-    name::{
-        self, AsName, BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128,
-        U16, U32, U64, U8, USIZE,
-    },
     type_ref::{Mutability, TypeRef},
     CrateModuleId, ModuleId,
+};
+use hir_expand::name::{
+    self, AsName, BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128, U16,
+    U32, U64, U8, USIZE,
 };
 use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};

@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
 use hir_def::{attr::Attr, type_ref::TypeRef};
+use hir_expand::hygiene::Hygiene;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -227,10 +228,11 @@ impl ModuleImplBlocks {
         owner: &dyn ast::ModuleItemOwner,
         file_id: HirFileId,
     ) {
+        let hygiene = Hygiene::new(db, file_id);
         for item in owner.items_with_macros() {
             match item {
                 ast::ItemOrMacro::Item(ast::ModuleItem::ImplBlock(impl_block_ast)) => {
-                    let attrs = Attr::from_attrs_owner(file_id, &impl_block_ast, db);
+                    let attrs = Attr::from_attrs_owner(&impl_block_ast, &hygiene);
                     if attrs.map_or(false, |attrs| {
                         attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false))
                     }) {
@@ -247,7 +249,7 @@ impl ModuleImplBlocks {
                 }
                 ast::ItemOrMacro::Item(_) => (),
                 ast::ItemOrMacro::Macro(macro_call) => {
-                    let attrs = Attr::from_attrs_owner(file_id, &macro_call, db);
+                    let attrs = Attr::from_attrs_owner(&macro_call, &hygiene);
                     if attrs.map_or(false, |attrs| {
                         attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false))
                     }) {
@@ -256,9 +258,8 @@ impl ModuleImplBlocks {
 
                     //FIXME: we should really cut down on the boilerplate required to process a macro
                     let ast_id = AstId::new(file_id, db.ast_id_map(file_id).ast_id(&macro_call));
-                    if let Some(path) = macro_call
-                        .path()
-                        .and_then(|path| Path::from_src(Source { ast: path, file_id }, db))
+                    if let Some(path) =
+                        macro_call.path().and_then(|path| Path::from_src(path, &hygiene))
                     {
                         if let Some(def) = self.module.resolver(db).resolve_path_as_macro(db, &path)
                         {

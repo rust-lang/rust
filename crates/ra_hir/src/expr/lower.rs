@@ -1,9 +1,9 @@
 //! FIXME: write short doc here
 
-use hir_def::{
+use hir_def::{path::GenericArgs, type_ref::TypeRef};
+use hir_expand::{
+    hygiene::Hygiene,
     name::{self, AsName, Name},
-    path::GenericArgs,
-    type_ref::TypeRef,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -597,7 +597,8 @@ where
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        Path::from_src(Source { ast: path, file_id: self.current_file_id }, self.db)
+        let hygiene = Hygiene::new(self.db, self.current_file_id);
+        Path::from_src(path, &hygiene)
     }
 }
 

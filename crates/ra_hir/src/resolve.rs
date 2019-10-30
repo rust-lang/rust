@@ -2,10 +2,10 @@
 use std::sync::Arc;
 
 use hir_def::{
-    name::{self, Name},
     path::{Path, PathKind},
     CrateModuleId,
 };
+use hir_expand::name::{self, Name};
 use rustc_hash::FxHashSet;
 
 use crate::{

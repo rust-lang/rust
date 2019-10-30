@@ -3,10 +3,8 @@
 use std::iter::{repeat, repeat_with};
 use std::sync::Arc;
 
-use hir_def::{
-    name,
-    path::{GenericArg, GenericArgs},
-};
+use hir_def::path::{GenericArg, GenericArgs};
+use hir_expand::name;
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 use crate::{

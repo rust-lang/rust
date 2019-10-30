@@ -6,6 +6,9 @@
 
 pub mod db;
 pub mod ast_id_map;
+pub mod either;
+pub mod name;
+pub mod hygiene;
 
 use std::hash::{Hash, Hasher};
 
@@ -56,17 +59,6 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
                 loc.ast_id.file_id().original_file(db)
-            }
-        }
-    }
-
-    /// Get the crate which the macro lives in, if it is a macro file.
-    pub fn macro_crate(self, db: &dyn db::AstDatabase) -> Option<CrateId> {
-        match self.0 {
-            HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
-                Some(loc.def.krate)
             }
         }
     }

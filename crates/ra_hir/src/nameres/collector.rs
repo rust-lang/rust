@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
-use hir_def::{attr::Attr, name, nameres::raw};
+use hir_def::{attr::Attr, nameres::raw};
+use hir_expand::name;
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
