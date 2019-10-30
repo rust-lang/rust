@@ -70,6 +70,7 @@ use std::{cmp, fmt};
 mod note;
 
 mod need_type_info;
+pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
 

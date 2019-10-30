@@ -151,6 +151,25 @@ fn closure_args(fn_sig: &ty::PolyFnSig<'_>) -> String {
         .unwrap_or_default()
 }
 
+pub enum TypeAnnotationNeeded {
+    E0282,
+    E0283,
+    E0284,
+}
+
+impl Into<errors::DiagnosticId> for TypeAnnotationNeeded {
+    fn into(self) -> errors::DiagnosticId {
+        syntax::diagnostic_used!(E0282);
+        syntax::diagnostic_used!(E0283);
+        syntax::diagnostic_used!(E0284);
+        errors::DiagnosticId::Error(match self {
+            Self::E0282 => "E0282".to_string(),
+            Self::E0283 => "E0283".to_string(),
+            Self::E0284 => "E0284".to_string(),
+        })
+    }
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn extract_type_name(
         &self,
@@ -181,7 +200,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         body_id: Option<hir::BodyId>,
         span: Span,
         ty: Ty<'tcx>,
-        is_projection: bool,
+        error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let (name, name_sp) = self.extract_type_name(&ty, None);
@@ -217,7 +236,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // 3 |     let _ = x.sum() as f64;
             //   |               ^^^ cannot infer type for `S`
             span
-        } else if let Some(ExprKind::MethodCall(_, call_span, _)) = local_visitor.found_method_call {
+        } else if let Some(
+            ExprKind::MethodCall(_, call_span, _),
+        ) = local_visitor.found_method_call {
             // Point at the call instead of the whole expression:
             // error[E0284]: type annotations needed
             //  --> file.rs:2:5
@@ -268,11 +289,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         //   |         consider giving `b` the explicit type `std::result::Result<i32, E>`, where
         //   |         the type parameter `E` is specified
         // ```
-        let mut err = if is_projection {
-            struct_span_err!(self.tcx.sess, err_span, E0284, "type annotations needed{}", ty_msg)
-        } else {
-            struct_span_err!(self.tcx.sess, err_span, E0282, "type annotations needed{}", ty_msg)
-        };
+        let error_code = error_code.into();
+        let mut err = self.tcx.sess.struct_span_err_with_code(
+            err_span,
+            &format!("type annotations needed{}", ty_msg),
+            error_code,
+        );
 
         let suffix = match local_visitor.found_ty {
             Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {

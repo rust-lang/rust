@@ -22,6 +22,7 @@ use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;
 use crate::infer::{self, InferCtxt};
+use crate::infer::error_reporting::TypeAnnotationNeeded::*;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::session::DiagnosticMessageId;
 use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
@@ -1951,7 +1952,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return;
         }
 
-        match predicate {
+        let mut err = match predicate {
             ty::Predicate::Trait(ref data) => {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
@@ -1985,45 +1986,35 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and dont add the obligations to
                 // begin with in those cases.
-                if
-                    self.tcx.lang_items().sized_trait()
+                if self.tcx.lang_items().sized_trait()
                     .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                 {
-                    self.need_type_info_err(body_id, span, self_ty, false).emit();
-                } else {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0283,
-                        "type annotations needed: cannot resolve `{}`",
-                        predicate,
-                    );
-                    self.note_obligation_cause(&mut err, obligation);
-                    err.emit();
+                    self.need_type_info_err(body_id, span, self_ty, E0282).emit();
+                    return;
                 }
+                let mut err = self.need_type_info_err(body_id, span, self_ty, E0283);
+                err.note(&format!("cannot resolve `{}`", predicate));
+                err
             }
 
             ty::Predicate::WellFormed(ty) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
-                if !ty.references_error() && !self.tcx.sess.has_errors() {
-                    let mut err = self.need_type_info_err(body_id, span, ty, false);
-                    self.note_obligation_cause(&mut err, obligation);
-                    err.emit();
+                if ty.references_error() || self.tcx.sess.has_errors() {
+                    return;
                 }
+                self.need_type_info_err(body_id, span, ty, E0282)
             }
 
             ty::Predicate::Subtype(ref data) => {
                 if data.references_error() || self.tcx.sess.has_errors() {
                     // no need to overload user in such cases
-                } else {
-                    let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
-                    // both must be type variables, or the other would've been instantiated
-                    assert!(a.is_ty_var() && b.is_ty_var());
-                    let mut err = self.need_type_info_err(body_id, span, a, false);
-                    self.note_obligation_cause(&mut err, obligation);
-                    err.emit();
+                    return
                 }
+                let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
+                // both must be type variables, or the other would've been instantiated
+                assert!(a.is_ty_var() && b.is_ty_var());
+                self.need_type_info_err(body_id, span, a, E0282)
             }
             ty::Predicate::Projection(ref data) => {
                 let trait_ref = data.to_poly_trait_ref(self.tcx);
@@ -2031,27 +2022,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if predicate.references_error() {
                     return;
                 }
-                let mut err = self.need_type_info_err(body_id, span, self_ty, true);
+                let mut err = self.need_type_info_err(body_id, span, self_ty, E0284);
                 err.note(&format!("cannot resolve `{}`", predicate));
-                self.note_obligation_cause(&mut err, obligation);
-                err.emit();
+                err
             }
 
             _ => {
-                if !self.tcx.sess.has_errors() {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0284,
-                        "type annotations needed: cannot resolve `{}`",
-                        predicate,
-                    );
-                    err.span_label(span, &format!("cannot resolve `{}`", predicate));
-                    self.note_obligation_cause(&mut err, obligation);
-                    err.emit();
+                if self.tcx.sess.has_errors() {
+                    return;
                 }
+                let mut err = struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0284,
+                    "type annotations needed: cannot resolve `{}`",
+                    predicate,
+                );
+                err.span_label(span, &format!("cannot resolve `{}`", predicate));
+                err
             }
-        }
+        };
+        self.note_obligation_cause(&mut err, obligation);
+        err.emit();
     }
 
     /// Returns `true` if the trait predicate may apply for *some* assignment
