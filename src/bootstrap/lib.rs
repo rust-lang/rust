@@ -1080,6 +1080,10 @@ impl Build {
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
         if let Some(ref path) = self.config.save_toolstates {
+            if let Some(parent) = path.parent() {
+                // Ensure the parent directory always exists
+                t!(std::fs::create_dir_all(parent));
+            }
             let mut file = t!(fs::OpenOptions::new()
                 .create(true)
                 .read(true)
