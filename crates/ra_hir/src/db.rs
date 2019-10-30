@@ -49,12 +49,6 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_trait(&self, loc: ids::ItemLoc<ast::TraitDef>) -> ids::TraitId;
     #[salsa::interned]
     fn intern_type_alias(&self, loc: ids::ItemLoc<ast::TypeAliasDef>) -> ids::TypeAliasId;
-
-    // Interned IDs for Chalk integration
-    #[salsa::interned]
-    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
-    #[salsa::interned]
-    fn intern_impl(&self, impl_: Impl) -> ids::GlobalImplId;
 }
 
 // This database uses `AstDatabase` internally,
@@ -175,6 +169,12 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     /// cached state is thrown away when input facts change.
     #[salsa::invoke(crate::ty::traits::trait_solver_query)]
     fn trait_solver(&self, krate: Crate) -> crate::ty::traits::TraitSolver;
+
+    // Interned IDs for Chalk integration
+    #[salsa::interned]
+    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
+    #[salsa::interned]
+    fn intern_impl(&self, impl_: Impl) -> ids::GlobalImplId;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;
