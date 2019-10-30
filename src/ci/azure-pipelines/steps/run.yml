@@ -31,11 +31,8 @@ steps:
 - bash: src/ci/scripts/should-skip-this.sh
   displayName: Decide whether to run this job
 
-# Spawn a background process to collect CPU usage statistics which we'll upload
-# at the end of the build. See the comments in the script here for more
-# information.
-- bash: python src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
-  displayName: "Collect CPU-usage statistics in the background"
+- bash: src/ci/scripts/collect-cpu-stats.sh
+  displayName: Collect CPU-usage statistics in the background
 
 - bash: src/ci/scripts/dump-environment.sh
   displayName: Show the current environment
