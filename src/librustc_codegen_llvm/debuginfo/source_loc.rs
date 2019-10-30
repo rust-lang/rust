@@ -56,14 +56,19 @@ impl InternalDebugLocation<'ll> {
     pub fn from_span(cx: &CodegenCx<'ll, '_>, scope: &'ll DIScope, span: Span) -> Self {
         let pos = cx.sess().source_map().lookup_char_pos(span.lo());
 
-        // FIXME: Rust likes to emit zero-width spans just after the end of a function. For now,
-        // zero-width spans to the preceding column to avoid emitting a column that points past the
-        // end of a line. E.g.,
-        //   |xyz = None
-        //   x|yz = 1
-        //   xy|z = 2
+        // Rust likes to emit zero-width spans that point just after a closing brace to denote e.g.
+        // implicit return from a function. Instead of mapping zero-width spans to the column at
+        // `span.lo` like we do normally, map them to the column immediately before the span. This
+        // ensures that we point to a closing brace in the common case, and that debuginfo doesn't
+        // point past the end of a line. A zero-width span at the very start of the line gets
+        // mapped to `0`, which is used to represent "no column information" in DWARF. For example,
         //
-        // See discussion in https://github.com/rust-lang/rust/issues/65437
+        //   Span len = 0           Span len = 1
+        //
+        //   |xyz => 0 (None)        |x|yz => 1
+        //   x|yz => 1               x|y|z => 2
+        //
+        // See discussion in https://github.com/rust-lang/rust/issues/65437 for more info.
         let col0 = pos.col.to_usize();
         let col1 = if span.is_empty() {
             NonZeroUsize::new(col0)
