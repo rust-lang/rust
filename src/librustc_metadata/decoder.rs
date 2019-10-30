@@ -664,7 +664,7 @@ impl<'a, 'tcx> CrateMetadata {
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
         self.root.per_def.predicates.get(self, item_id).unwrap().decode((self, tcx))
-}
+    }
 
     crate fn get_predicates_defined_on(
         &self,
