@@ -66,8 +66,8 @@
 //!
 //! ```c
 //! /* C header */
-//! struct Foo* foo(); /* Returns ownership */
-//! void bar(struct Foo*); /* `bar` takes ownership */
+//! struct Foo* foo_new(void); /* Returns ownership to the caller */
+//! void foo_delete(struct Foo*); /* Takes ownership from the caller */
 //! ```
 //!
 //! ```
@@ -75,12 +75,12 @@
 //! pub struct Foo;
 //!
 //! #[no_mangle]
-//! pub extern "C" fn foo() -> Box<Foo> {
+//! pub extern "C" fn foo_new() -> Box<Foo> {
 //!     Box::new(Foo)
 //! }
 //!
 //! #[no_mangle]
-//! pub extern "C" fn bar(_: Option<Box<Foo>>) {}
+//! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
