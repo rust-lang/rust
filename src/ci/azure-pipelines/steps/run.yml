@@ -150,22 +150,9 @@ steps:
   condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['IMAGE'], 'mingw-check'))
   displayName: Verify the publish_toolstate script works
 
-- bash: |
-    set -e
-    # Remove any preexisting rustup installation since it can interfere
-    # with the cargotest step and its auto-detection of things like Clippy in
-    # the environment
-    rustup self uninstall -y || true
-    if [ "$IMAGE" = "" ]; then
-      src/ci/run.sh
-    else
-      src/ci/docker/run.sh $IMAGE
-    fi
-  #timeoutInMinutes: 180
+- bash: src/ci/scripts/run-build-from-ci.sh
   timeoutInMinutes: 600
   env:
-    CI: true
-    SRC: .
     AWS_ACCESS_KEY_ID: $(SCCACHE_AWS_ACCESS_KEY_ID)
     AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
     TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
