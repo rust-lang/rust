@@ -51,7 +51,7 @@ fn impls_for_def(
         }
     };
 
-    let krate = module.krate(db)?;
+    let krate = module.krate();
     let impls = db.impls_in_crate(krate);
 
     Some(
@@ -72,7 +72,7 @@ fn impls_for_trait(
     let src = hir::Source { file_id: position.file_id.into(), ast: node.clone() };
     let tr = hir::Trait::from_source(db, src)?;
 
-    let krate = module.krate(db)?;
+    let krate = module.krate();
     let impls = db.impls_in_crate(krate);
 
     Some(

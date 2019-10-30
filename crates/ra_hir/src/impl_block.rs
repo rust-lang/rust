@@ -129,7 +129,7 @@ impl ImplData {
     ) -> Self {
         let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
-        let ctx = LocationCtx::new(db, module, file_id);
+        let ctx = LocationCtx::new(db, module.id, file_id);
         let negative = node.is_negative();
         let items = if let Some(item_list) = node.item_list() {
             item_list
@@ -182,7 +182,7 @@ impl ModuleImplBlocks {
     ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
         let mut source_map = ImplSourceMap::default();
         let crate_graph = db.crate_graph();
-        let cfg_options = crate_graph.cfg_options(module.krate.crate_id());
+        let cfg_options = crate_graph.cfg_options(module.id.krate);
 
         let result = ModuleImplBlocks::collect(db, cfg_options, module, &mut source_map);
         (Arc::new(result), Arc::new(source_map))

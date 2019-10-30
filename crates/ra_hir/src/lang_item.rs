@@ -22,14 +22,14 @@ pub enum LangItemTarget {
 
 impl LangItemTarget {
     pub(crate) fn krate(&self, db: &impl HirDatabase) -> Option<Crate> {
-        match self {
-            LangItemTarget::Enum(e) => e.module(db).krate(db),
-            LangItemTarget::Function(f) => f.module(db).krate(db),
-            LangItemTarget::ImplBlock(i) => i.module().krate(db),
-            LangItemTarget::Static(s) => s.module(db).krate(db),
-            LangItemTarget::Struct(s) => s.module(db).krate(db),
-            LangItemTarget::Trait(t) => t.module(db).krate(db),
-        }
+        Some(match self {
+            LangItemTarget::Enum(e) => e.module(db).krate(),
+            LangItemTarget::Function(f) => f.module(db).krate(),
+            LangItemTarget::ImplBlock(i) => i.module().krate(),
+            LangItemTarget::Static(s) => s.module(db).krate(),
+            LangItemTarget::Struct(s) => s.module(db).krate(),
+            LangItemTarget::Trait(t) => t.module(db).krate(),
+        })
     }
 }
 

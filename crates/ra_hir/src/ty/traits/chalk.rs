@@ -162,11 +162,11 @@ impl ToChalk for Trait {
     type Chalk = chalk_ir::TraitId;
 
     fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TraitId {
-        self.id.into()
+        chalk_ir::TraitId(id_to_chalk(self.id))
     }
 
     fn from_chalk(_db: &impl HirDatabase, trait_id: chalk_ir::TraitId) -> Trait {
-        Trait { id: trait_id.into() }
+        Trait { id: id_from_chalk(trait_id.0) }
     }
 }
 
@@ -198,11 +198,11 @@ impl ToChalk for TypeAlias {
     type Chalk = chalk_ir::TypeId;
 
     fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TypeId {
-        self.id.into()
+        chalk_ir::TypeId(id_to_chalk(self.id))
     }
 
-    fn from_chalk(_db: &impl HirDatabase, impl_id: chalk_ir::TypeId) -> TypeAlias {
-        TypeAlias { id: impl_id.into() }
+    fn from_chalk(_db: &impl HirDatabase, type_alias_id: chalk_ir::TypeId) -> TypeAlias {
+        TypeAlias { id: id_from_chalk(type_alias_id.0) }
     }
 }
 
@@ -537,7 +537,7 @@ pub(crate) fn trait_datum_query(
     let trait_ref = trait_.trait_ref(db).subst(&bound_vars).to_chalk(db);
     let flags = chalk_rust_ir::TraitFlags {
         auto: trait_.is_auto(db),
-        upstream: trait_.module(db).krate(db) != Some(krate),
+        upstream: trait_.module(db).krate() != krate,
         non_enumerable: true,
         // FIXME set these flags correctly
         marker: false,
@@ -625,7 +625,7 @@ fn impl_block_datum(
         .target_trait_ref(db)
         .expect("FIXME handle unresolved impl block trait ref")
         .subst(&bound_vars);
-    let impl_type = if impl_block.module().krate(db) == Some(krate) {
+    let impl_type = if impl_block.module().krate() == krate {
         chalk_rust_ir::ImplType::Local
     } else {
         chalk_rust_ir::ImplType::External
@@ -773,30 +773,6 @@ fn id_from_chalk<T: InternKey>(chalk_id: chalk_ir::RawId) -> T {
 }
 fn id_to_chalk<T: InternKey>(salsa_id: T) -> chalk_ir::RawId {
     chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
-}
-
-impl From<chalk_ir::TraitId> for crate::ids::TraitId {
-    fn from(trait_id: chalk_ir::TraitId) -> Self {
-        id_from_chalk(trait_id.0)
-    }
-}
-
-impl From<crate::ids::TraitId> for chalk_ir::TraitId {
-    fn from(trait_id: crate::ids::TraitId) -> Self {
-        chalk_ir::TraitId(id_to_chalk(trait_id))
-    }
-}
-
-impl From<chalk_ir::TypeId> for crate::ids::TypeAliasId {
-    fn from(type_id: chalk_ir::TypeId) -> Self {
-        id_from_chalk(type_id.0)
-    }
-}
-
-impl From<crate::ids::TypeAliasId> for chalk_ir::TypeId {
-    fn from(type_id: crate::ids::TypeAliasId) -> Self {
-        chalk_ir::TypeId(id_to_chalk(type_id))
-    }
 }
 
 impl From<chalk_ir::StructId> for crate::ids::TypeCtorId {

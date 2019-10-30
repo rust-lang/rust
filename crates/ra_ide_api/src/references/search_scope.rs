@@ -120,7 +120,7 @@ impl NameDefinition {
                 return SearchScope::new(res);
             }
             if vis.as_str() == "pub" {
-                let krate = self.container.krate(db).unwrap();
+                let krate = self.container.krate();
                 let crate_graph = db.crate_graph();
                 for crate_id in crate_graph.iter() {
                     let mut crate_deps = crate_graph.dependencies(crate_id);

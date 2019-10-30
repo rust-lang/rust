@@ -27,7 +27,7 @@ impl TraitData {
         let src = tr.source(db);
         let name = src.ast.name().map(|n| n.as_name());
         let module = tr.module(db);
-        let ctx = LocationCtx::new(db, module, src.file_id);
+        let ctx = LocationCtx::new(db, module.id, src.file_id);
         let auto = src.ast.is_auto();
         let items = if let Some(item_list) = src.ast.item_list() {
             item_list

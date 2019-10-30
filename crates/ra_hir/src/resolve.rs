@@ -1,6 +1,7 @@
 //! Name resolution.
 use std::sync::Arc;
 
+use hir_def::CrateModuleId;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
     generics::GenericParams,
     impl_block::ImplBlock,
     name::{Name, SELF_PARAM, SELF_TYPE},
-    nameres::{CrateDefMap, CrateModuleId, PerNs},
+    nameres::{CrateDefMap, PerNs},
     path::{Path, PathKind},
     Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
     Trait, TypeAlias,
@@ -330,8 +331,8 @@ impl Resolver {
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
                 if let Some(prelude) = m.crate_def_map.prelude() {
-                    let prelude_def_map = db.crate_def_map(prelude.krate);
-                    traits.extend(prelude_def_map[prelude.module_id].scope.traits());
+                    let prelude_def_map = db.crate_def_map(prelude.krate());
+                    traits.extend(prelude_def_map[prelude.id.module_id].scope.traits());
                 }
                 traits.extend(m.crate_def_map[m.module_id].scope.traits());
             }
@@ -444,10 +445,12 @@ impl Scope {
                     f(name.clone(), ScopeDef::ModuleDef(*def));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude() {
-                    let prelude_def_map = db.crate_def_map(prelude.krate);
-                    prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
-                        f(name.clone(), res.def.into());
-                    });
+                    let prelude_def_map = db.crate_def_map(prelude.krate());
+                    prelude_def_map[prelude.id.module_id].scope.entries().for_each(
+                        |(name, res)| {
+                            f(name.clone(), res.def.into());
+                        },
+                    );
                 }
             }
             Scope::GenericParams(gp) => {

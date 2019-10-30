@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use ra_db::{salsa, SourceDatabase};
-use ra_syntax::{ast, SmolStr};
+use ra_db::salsa;
+use ra_syntax::SmolStr;
 
 use crate::{
     adt::{EnumData, StructData},
@@ -23,39 +23,11 @@ use crate::{
     Static, Struct, StructField, Trait, TypeAlias,
 };
 
+pub use hir_def::db::{InternDatabase, InternDatabaseStorage};
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
 };
-
-/// We store all interned things in the single QueryGroup.
-///
-/// This is done mainly to allow both "volatile" `AstDatabase` and "stable"
-/// `DefDatabase` to access macros, without adding hard dependencies between the
-/// two.
-#[salsa::query_group(InternDatabaseStorage)]
-pub trait InternDatabase: SourceDatabase {
-    #[salsa::interned]
-    fn intern_function(&self, loc: ids::ItemLoc<ast::FnDef>) -> ids::FunctionId;
-    #[salsa::interned]
-    fn intern_struct(&self, loc: ids::ItemLoc<ast::StructDef>) -> ids::StructId;
-    #[salsa::interned]
-    fn intern_enum(&self, loc: ids::ItemLoc<ast::EnumDef>) -> ids::EnumId;
-    #[salsa::interned]
-    fn intern_const(&self, loc: ids::ItemLoc<ast::ConstDef>) -> ids::ConstId;
-    #[salsa::interned]
-    fn intern_static(&self, loc: ids::ItemLoc<ast::StaticDef>) -> ids::StaticId;
-    #[salsa::interned]
-    fn intern_trait(&self, loc: ids::ItemLoc<ast::TraitDef>) -> ids::TraitId;
-    #[salsa::interned]
-    fn intern_type_alias(&self, loc: ids::ItemLoc<ast::TypeAliasDef>) -> ids::TypeAliasId;
-
-    // Interned IDs for Chalk integration
-    #[salsa::interned]
-    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
-    #[salsa::interned]
-    fn intern_impl(&self, impl_: Impl) -> ids::GlobalImplId;
-}
 
 // This database uses `AstDatabase` internally,
 #[salsa::query_group(DefDatabaseStorage)]
@@ -175,6 +147,12 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     /// cached state is thrown away when input facts change.
     #[salsa::invoke(crate::ty::traits::trait_solver_query)]
     fn trait_solver(&self, krate: Crate) -> crate::ty::traits::TraitSolver;
+
+    // Interned IDs for Chalk integration
+    #[salsa::interned]
+    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
+    #[salsa::interned]
+    fn intern_impl(&self, impl_: Impl) -> ids::GlobalImplId;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;

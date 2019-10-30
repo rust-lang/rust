@@ -64,7 +64,7 @@ fn def_with_body_from_child_node(
 ) -> Option<DefWithBody> {
     let src = crate::ModuleSource::from_child_node(db, file_id, node);
     let module = Module::from_definition(db, crate::Source { file_id: file_id.into(), ast: src })?;
-    let ctx = LocationCtx::new(db, module, file_id.into());
+    let ctx = LocationCtx::new(db, module.id, file_id.into());
 
     node.ancestors().find_map(|node| {
         if let Some(def) = ast::FnDef::cast(node.clone()) {

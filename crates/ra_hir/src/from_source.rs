@@ -195,7 +195,7 @@ impl Module {
             .find_map(|krate| {
                 let def_map = db.crate_def_map(krate);
                 let module_id = def_map.find_module_by_source(src.file_id, decl_id)?;
-                Some(Module { krate, module_id })
+                Some(Module::new(krate, module_id))
             })
     }
 }
@@ -208,6 +208,6 @@ where
     let module_src =
         crate::ModuleSource::from_child_node(db, src.file_id.original_file(db), &src.ast.syntax());
     let module = Module::from_definition(db, Source { file_id: src.file_id, ast: module_src })?;
-    let ctx = LocationCtx::new(db, module, src.file_id);
+    let ctx = LocationCtx::new(db, module.id, src.file_id);
     Some(DEF::from_ast(ctx, &src.ast))
 }
