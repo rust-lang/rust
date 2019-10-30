@@ -33,7 +33,7 @@ lint, and frequently lints are emitted as part of other work (e.g., type checkin
 
 The lint store is created and all lints are registered during plugin registration, in
 [`rustc_interface::register_plugins`]. There are three 'sources' of lint: the internal lints, plugin
-lints, and `rustc_interface::Config` `register_lints`. All are registered here, in
+lints, and `rustc_interface::Config` [`register_lints`]. All are registered here, in
 `register_plugins`.
 
 Once the registration is complete, we "freeze" the lint store by placing it in an `Lrc`. Later in
@@ -96,10 +96,10 @@ New lints being added likely want to join one of the existing declarations like
 auto-propagate into the other.
 
 [`LintStore::register_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/struct.LintStore.html#method.register_lints
-[`rustc_interface::register_plugins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.register_plugins.html)
+[`rustc_interface::register_plugins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.register_plugins.html
 [`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
 [`rustc_lint::register_internals`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_internals.html
 [`rustc_lint::new_lint_store`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.new_lint_store.html
-[`rustc::declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/macro.declare_lint.html
-[`rustc::declare_tool_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/macro.declare_tool_lint.html
+[`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/macro.declare_lint.html
+[`declare_tool_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/macro.declare_tool_lint.html
 [`register_lints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html#structfield.register_lints
