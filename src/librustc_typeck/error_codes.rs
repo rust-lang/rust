@@ -3,9 +3,9 @@
 syntax::register_diagnostics! {
 
 E0023: r##"
-A pattern used to match against an enum variant must provide a sub-pattern for
-each field of the enum variant. This error indicates that a pattern attempted to
-extract an incorrect number of fields from a variant.
+A pattern attempted to extract an incorrect number of fields from a variant.
+
+Erroneous code example:
 
 ```
 enum Fruit {
@@ -13,6 +13,9 @@ enum Fruit {
     Pear(u32),
 }
 ```
+
+A pattern used to match against an enum variant must provide a sub-pattern for
+each field of the enum variant.
 
 Here the `Apple` variant has two fields, and should be matched against like so:
 
@@ -53,8 +56,9 @@ uses the same number.
 "##,
 
 E0025: r##"
-Each field of a struct can only be bound once in a pattern. Erroneous code
-example:
+Each field of a struct can only be bound once in a pattern.
+
+Erroneous code example:
 
 ```compile_fail,E0025
 struct Foo {
@@ -89,65 +93,47 @@ fn main(){
 "##,
 
 E0026: r##"
-This error indicates that a struct pattern attempted to extract a non-existent
-field from a struct. Struct fields are identified by the name used before the
-colon `:` so struct patterns should resemble the declaration of the struct type
-being matched.
+A struct pattern attempted to extract a non-existent field from a struct.
 
-```
-// Correct matching.
-struct Thing {
-    x: u32,
-    y: u32
-}
-
-let thing = Thing { x: 1, y: 2 };
-
-match thing {
-    Thing { x: xfield, y: yfield } => {}
-}
-```
-
-If you are using shorthand field patterns but want to refer to the struct field
-by a different name, you should rename it explicitly.
-
-Change this:
+Erroneous code example:
 
 ```compile_fail,E0026
 struct Thing {
     x: u32,
-    y: u32
+    y: u32,
 }
 
 let thing = Thing { x: 0, y: 0 };
 
 match thing {
-    Thing { x, z } => {}
+    Thing { x, z } => {} // error: `Thing::z` field doesn't exist
 }
 ```
 
-To this:
+If you are using shorthand field patterns but want to refer to the struct field
+by a different name, you should rename it explicitly. Struct fields are
+identified by the name used before the colon `:` so struct patterns should
+resemble the declaration of the struct type being matched.
 
 ```
 struct Thing {
     x: u32,
-    y: u32
+    y: u32,
 }
 
 let thing = Thing { x: 0, y: 0 };
 
 match thing {
-    Thing { x, y: z } => {}
+    Thing { x, y: z } => {} // we renamed `y` to `z`
 }
 ```
 "##,
 
 E0027: r##"
-This error indicates that a pattern for a struct fails to specify a sub-pattern
-for every one of the struct's fields. Ensure that each field from the struct's
-definition is mentioned in the pattern, or use `..` to ignore unwanted fields.
+A pattern for a struct fails to specify a sub-pattern for every one of the
+struct's fields.
 
-For example:
+Erroneous code example:
 
 ```compile_fail,E0027
 struct Dog {
@@ -163,7 +149,8 @@ match d {
 }
 ```
 
-This is correct (explicit):
+To fix this error, ensure that each field from the struct's definition is
+mentioned in the pattern, or use `..` to ignore unwanted fields. Example:
 
 ```
 struct Dog {
@@ -185,11 +172,9 @@ match d {
 "##,
 
 E0029: r##"
-In a match expression, only numbers and characters can be matched against a
-range. This is because the compiler checks that the range is non-empty at
-compile-time, and is unable to evaluate arbitrary comparison functions. If you
-want to capture values of an orderable type between two end-points, you can use
-a guard.
+Something other than numbers and characters has been used for a range.
+
+Erroneous code example:
 
 ```compile_fail,E0029
 let string = "salutations !";
@@ -207,14 +192,18 @@ match string {
     _ => {}
 }
 ```
+
+In a match expression, only numbers and characters can be matched against a
+range. This is because the compiler checks that the range is non-empty at
+compile-time, and is unable to evaluate arbitrary comparison functions. If you
+want to capture values of an orderable type between two end-points, you can use
+a guard.
 "##,
 
 E0033: r##"
-This error indicates that a pointer to a trait type cannot be implicitly
-dereferenced by a pattern. Every trait defines a type, but because the
-size of trait implementers isn't fixed, this type has no compile-time size.
-Therefore, all accesses to trait types must be through pointers. If you
-encounter this error you should try to avoid dereferencing the pointer.
+A trait type has been dereferenced.
+
+Erroneous code example:
 
 ```compile_fail,E0033
 # trait SomeTrait { fn method_one(&self){} fn method_two(&self){} }
@@ -229,6 +218,12 @@ trait_obj.method_one();
 trait_obj.method_two();
 ```
 
+A pointer to a trait type cannot be implicitly dereferenced by a pattern. Every
+trait defines a type, but because the size of trait implementers isn't fixed,
+this type has no compile-time size. Therefore, all accesses to trait types must
+be through pointers. If you encounter this error you should try to avoid
+dereferencing the pointer.
+
 You can read more about trait objects in the [Trait Objects] section of the
 Reference.
 
@@ -237,7 +232,9 @@ Reference.
 
 E0034: r##"
 The compiler doesn't know what method to call because more than one method
-has the same prototype. Erroneous code example:
+has the same prototype.
+
+Erroneous code example:
 
 ```compile_fail,E0034
 struct Test;
@@ -323,11 +320,9 @@ fn main() {
 "##,
 
 E0040: r##"
-It is not allowed to manually call destructors in Rust. It is also not
-necessary to do this since `drop` is called automatically whenever a value goes
-out of scope.
+It is not allowed to manually call destructors in Rust.
 
-Here's an example of this error:
+Erroneous code example:
 
 ```compile_fail,E0040
 struct Foo {
@@ -345,11 +340,33 @@ fn main() {
     x.drop(); // error: explicit use of destructor method
 }
 ```
+
+It is unnecessary to do this since `drop` is called automatically whenever a
+value goes out of scope. However, if you really need to drop a value by hand,
+you can use the `std::mem::drop` function:
+
+```
+struct Foo {
+    x: i32,
+}
+
+impl Drop for Foo {
+    fn drop(&mut self) {
+        println!("kaboom");
+    }
+}
+
+fn main() {
+    let mut x = Foo { x: -7 };
+    drop(x); // ok!
+}
+```
 "##,
 
 E0044: r##"
 You cannot use type or const parameters on foreign items.
-Example of erroneous code:
+
+Erroneous code example:
 
 ```compile_fail,E0044
 extern { fn some_func<T>(x: T); }
@@ -365,21 +382,21 @@ extern { fn some_func_i64(x: i64); }
 "##,
 
 E0045: r##"
-Rust only supports variadic parameters for interoperability with C code in its
-FFI. As such, variadic parameters can only be used with functions which are
-using the C ABI. Examples of erroneous code:
+Variadic parameters have been used on a non-C ABI function.
 
-```compile_fail
+Erroneous code example:
+
+```compile_fail,E0045
 #![feature(unboxed_closures)]
 
-extern "rust-call" { fn foo(x: u8, ...); }
-
-// or
-
-fn foo(x: u8, ...) {}
+extern "rust-call" {
+    fn foo(x: u8, ...); // error!
+}
 ```
 
-To fix such code, put them in an extern "C" block:
+Rust only supports variadic parameters for interoperability with C code in its
+FFI. As such, variadic parameters can only be used with functions which are
+using the C ABI. To fix such code, put them in an extern "C" block:
 
 ```
 extern "C" {
@@ -389,7 +406,9 @@ extern "C" {
 "##,
 
 E0046: r##"
-Items are missing in a trait implementation. Erroneous code example:
+Items are missing in a trait implementation.
+
+Erroneous code example:
 
 ```compile_fail,E0046
 trait Foo {
@@ -421,11 +440,10 @@ impl Foo for Bar {
 "##,
 
 E0049: r##"
-This error indicates that an attempted implementation of a trait method
-has the wrong number of type or const parameters.
+An attempted implementation of a trait method has the wrong number of type or
+const parameters.
 
-For example, the trait below has a method `foo` with a type parameter `T`,
-but the implementation of `foo` for the type `Bar` is missing this parameter:
+Erroneous code example:
 
 ```compile_fail,E0049
 trait Foo {
@@ -440,15 +458,31 @@ impl Foo for Bar {
     fn foo(x: bool) -> Self { Bar }
 }
 ```
+
+For example, the `Foo` trait has a method `foo` with a type parameter `T`,
+but the implementation of `foo` for the type `Bar` is missing this parameter.
+To fix this error, they must have the same type parameters:
+
+```
+trait Foo {
+    fn foo<T: Default>(x: T) -> Self;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn foo<T: Default>(x: T) -> Self { // ok!
+        Bar
+    }
+}
+```
 "##,
 
 E0050: r##"
-This error indicates that an attempted implementation of a trait method
-has the wrong number of function parameters.
+An attempted implementation of a trait method has the wrong number of function
+parameters.
 
-For example, the trait below has a method `foo` with two function parameters
-(`&self` and `u8`), but the implementation of `foo` for the type `Bar` omits
-the `u8` parameter:
+Erroneous code example:
 
 ```compile_fail,E0050
 trait Foo {
@@ -463,13 +497,31 @@ impl Foo for Bar {
     fn foo(&self) -> bool { true }
 }
 ```
+
+For example, the `Foo` trait has a method `foo` with two function parameters
+(`&self` and `u8`), but the implementation of `foo` for the type `Bar` omits
+the `u8` parameter. To fix this error, they must have the same parameters:
+
+```
+trait Foo {
+    fn foo(&self, x: u8) -> bool;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn foo(&self, x: u8) -> bool { // ok!
+        true
+    }
+}
+```
 "##,
 
 E0053: r##"
 The parameters of any trait method must match between a trait implementation
 and the trait definition.
 
-Here are a couple examples of this error:
+Erroneous code example:
 
 ```compile_fail,E0053
 trait Foo {
@@ -490,8 +542,9 @@ impl Foo for Bar {
 "##,
 
 E0054: r##"
-It is not allowed to cast to a bool. If you are trying to cast a numeric type
-to a bool, you can compare it with zero instead:
+It is not allowed to cast to a bool.
+
+Erroneous code example:
 
 ```compile_fail,E0054
 let x = 5;
@@ -499,6 +552,9 @@ let x = 5;
 // Not allowed, won't compile
 let x_is_nonzero = x as bool;
 ```
+
+If you are trying to cast a numeric type to a bool, you can compare it with
+zero instead:
 
 ```
 let x = 5;
