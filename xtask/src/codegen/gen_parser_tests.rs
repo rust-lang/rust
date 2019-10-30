@@ -102,12 +102,10 @@ fn tests_from_dir(dir: &Path) -> Result<Tests> {
         for test in collect_tests(&text) {
             if test.ok {
                 if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
-                    Err(format!("Duplicate test: {}", old_test.name))?
+                    return Err(format!("Duplicate test: {}", old_test.name).into());
                 }
-            } else {
-                if let Some(old_test) = res.err.insert(test.name.clone(), test) {
-                    Err(format!("Duplicate test: {}", old_test.name))?
-                }
+            } else if let Some(old_test) = res.err.insert(test.name.clone(), test) {
+                return Err(format!("Duplicate test: {}", old_test.name).into());
             }
         }
         Ok(())

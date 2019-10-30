@@ -111,8 +111,7 @@ impl NameDefinition {
         if vis.as_str() != "" {
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
-            let mut res =
-                source_root.walk().map(|id| (id.into(), None)).collect::<FxHashMap<_, _>>();
+            let mut res = source_root.walk().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
 
             // FIXME: add "pub(in path)"
 
@@ -128,7 +127,7 @@ impl NameDefinition {
                         let root_file = crate_graph.crate_root(crate_id);
                         let source_root_id = db.file_source_root(root_file);
                         let source_root = db.source_root(source_root_id);
-                        res.extend(source_root.walk().map(|id| (id.into(), None)));
+                        res.extend(source_root.walk().map(|id| (id, None)));
                     }
                 }
                 return SearchScope::new(res);

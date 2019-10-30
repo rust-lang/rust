@@ -136,7 +136,7 @@ impl Completions {
         for (idx, s) in docs.match_indices(&macro_name) {
             let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
             // Ensure to match the full word
-            if after.starts_with("!")
+            if after.starts_with('!')
                 && before
                     .chars()
                     .rev()
@@ -225,7 +225,7 @@ impl Completions {
                 } else {
                     (format!("{}($0)", data.name()), format!("{}(…)", name))
                 };
-            builder = builder.lookup_by(name.clone()).label(label).insert_snippet(snippet);
+            builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }
 
         self.add(builder)

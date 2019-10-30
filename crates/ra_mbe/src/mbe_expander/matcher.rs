@@ -123,7 +123,6 @@ fn match_subtree(
                     }
                     None => bindings.push_optional(name),
                 }
-                ()
             }
             Op::Repeat { subtree, kind, separator } => {
                 match_repeat(bindings, subtree, kind, separator, src)?
@@ -159,7 +158,7 @@ impl<'a> TtIter<'a> {
     pub(crate) fn expect_lifetime(&mut self) -> Result<&tt::Ident, ()> {
         let ident = self.expect_ident()?;
         // check if it start from "`"
-        if ident.text.chars().next() != Some('\'') {
+        if !ident.text.starts_with('\'') {
             return Err(());
         }
         Ok(ident)

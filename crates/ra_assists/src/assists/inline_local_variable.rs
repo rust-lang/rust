@@ -51,10 +51,8 @@ pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<
     let mut wrap_in_parens = vec![true; refs.len()];
 
     for (i, desc) in refs.iter().enumerate() {
-        let usage_node = ctx
-            .covering_node_for_range(desc.range)
-            .ancestors()
-            .find_map(|node| ast::PathExpr::cast(node))?;
+        let usage_node =
+            ctx.covering_node_for_range(desc.range).ancestors().find_map(ast::PathExpr::cast)?;
         let usage_parent_option = usage_node.syntax().parent().and_then(ast::Expr::cast);
         let usage_parent = match usage_parent_option {
             Some(u) => u,

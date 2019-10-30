@@ -95,7 +95,7 @@ impl FnCallNode {
                 Some(FnCallNode::CallExpr(expr))
             } else if let Some(expr) = ast::MethodCallExpr::cast(node.clone()) {
                 Some(FnCallNode::MethodCallExpr(expr))
-            } else if let Some(expr) = ast::MacroCall::cast(node.clone()) {
+            } else if let Some(expr) = ast::MacroCall::cast(node) {
                 Some(FnCallNode::MacroCallExpr(expr))
             } else {
                 None

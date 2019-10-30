@@ -261,7 +261,7 @@ impl S {
 
     fn type_char(char_typed: char, before: &str, after: &str) {
         let (actual, file_change) = do_type_char(char_typed, before)
-            .expect(&format!("typing `{}` did nothing", char_typed));
+            .unwrap_or_else(|| panic!("typing `{}` did nothing", char_typed));
 
         if after.contains("<|>") {
             let (offset, after) = extract_offset(after);
