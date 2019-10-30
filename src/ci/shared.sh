@@ -46,6 +46,10 @@ function getCIBranch {
   echo "$BUILD_SOURCEBRANCHNAME"
 }
 
+function ciCommit {
+  echo "${BUILD_SOURCEVERSION}"
+}
+
 function ciCommandAddPath {
     if [[ $# -ne 1 ]]; then
         echo "usage: $0 <path>"
