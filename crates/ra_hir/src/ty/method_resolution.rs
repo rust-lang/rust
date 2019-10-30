@@ -5,13 +5,13 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
+use hir_def::CrateModuleId;
 use rustc_hash::FxHashMap;
 
 use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 use crate::{
     db::HirDatabase,
     impl_block::{ImplBlock, ImplId},
-    nameres::CrateModuleId,
     resolve::Resolver,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
     ty::{Ty, TypeCtor},
@@ -50,7 +50,7 @@ impl CrateImplBlocks {
         let fingerprint = TyFingerprint::for_impl(ty);
         fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
-                let module = Module { krate: self.krate, module_id: *module_id };
+                let module = Module::new(self.krate, *module_id);
                 ImplBlock::from_id(module, *impl_id)
             },
         )
@@ -62,7 +62,7 @@ impl CrateImplBlocks {
     ) -> impl Iterator<Item = ImplBlock> + 'a {
         self.impls_by_trait.get(&tr).into_iter().flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
-                let module = Module { krate: self.krate, module_id: *module_id };
+                let module = Module::new(self.krate, *module_id);
                 ImplBlock::from_id(module, *impl_id)
             },
         )
@@ -71,7 +71,7 @@ impl CrateImplBlocks {
     pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplBlock> + 'a {
         self.impls.values().chain(self.impls_by_trait.values()).flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
-                let module = Module { krate: self.krate, module_id: *module_id };
+                let module = Module::new(self.krate, *module_id);
                 ImplBlock::from_id(module, *impl_id)
             },
         )
@@ -90,14 +90,14 @@ impl CrateImplBlocks {
                     self.impls_by_trait
                         .entry(tr.trait_)
                         .or_insert_with(Vec::new)
-                        .push((module.module_id, impl_id));
+                        .push((module.id.module_id, impl_id));
                 }
             } else {
                 if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
                     self.impls
                         .entry(target_ty_fp)
                         .or_insert_with(Vec::new)
-                        .push((module.module_id, impl_id));
+                        .push((module.id.module_id, impl_id));
                 }
             }
         }

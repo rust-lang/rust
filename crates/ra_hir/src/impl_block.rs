@@ -182,7 +182,7 @@ impl ModuleImplBlocks {
     ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
         let mut source_map = ImplSourceMap::default();
         let crate_graph = db.crate_graph();
-        let cfg_options = crate_graph.cfg_options(module.krate.crate_id());
+        let cfg_options = crate_graph.cfg_options(module.id.krate);
 
         let result = ModuleImplBlocks::collect(db, cfg_options, module, &mut source_map);
         (Arc::new(result), Arc::new(source_map))

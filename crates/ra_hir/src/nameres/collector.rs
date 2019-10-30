@@ -212,7 +212,7 @@ where
 
         if let Some(ModuleDef::Module(m)) = res.take_types() {
             tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
-            self.import_all_macros_exported(current_module_id, m.krate);
+            self.import_all_macros_exported(current_module_id, m.krate());
         }
     }
 
@@ -289,11 +289,11 @@ where
                     if import.is_prelude {
                         tested_by!(std_prelude);
                         self.def_map.prelude = Some(m);
-                    } else if m.krate != self.def_map.krate {
+                    } else if m.krate() != self.def_map.krate {
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
-                        let item_map = self.db.crate_def_map(m.krate);
-                        let scope = &item_map[m.module_id].scope;
+                        let item_map = self.db.crate_def_map(m.krate());
+                        let scope = &item_map[m.id.module_id].scope;
 
                         // Module scoped macros is included
                         let items = scope
@@ -307,7 +307,7 @@ where
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
                         // additions
-                        let scope = &self.def_map[m.module_id].scope;
+                        let scope = &self.def_map[m.id.module_id].scope;
 
                         // Module scoped macros is included
                         let items = scope
@@ -319,7 +319,7 @@ where
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items
                         self.glob_imports
-                            .entry(m.module_id)
+                            .entry(m.id.module_id)
                             .or_default()
                             .push((module_id, import_id));
                     }
@@ -523,9 +523,10 @@ where
 
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
-            if prelude_module.krate != self.def_collector.def_map.krate {
+            if prelude_module.krate() != self.def_collector.def_map.krate {
                 tested_by!(prelude_is_macro_use);
-                self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
+                self.def_collector
+                    .import_all_macros_exported(self.module_id, prelude_module.krate());
             }
         }
 
@@ -631,9 +632,7 @@ where
         modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
-            def: PerNs::types(
-                Module { krate: self.def_collector.def_map.krate, module_id: res }.into(),
-            ),
+            def: PerNs::types(Module::new(self.def_collector.def_map.krate, res).into()),
             import: None,
         };
         self.def_collector.update(self.module_id, None, &[(name, resolution)]);
@@ -641,7 +640,7 @@ where
     }
 
     fn define_def(&mut self, def: &raw::DefData) {
-        let module = Module { krate: self.def_collector.def_map.krate, module_id: self.module_id };
+        let module = Module::new(self.def_collector.def_map.krate, self.module_id);
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
 
         macro_rules! def {

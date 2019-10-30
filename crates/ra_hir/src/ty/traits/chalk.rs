@@ -537,7 +537,7 @@ pub(crate) fn trait_datum_query(
     let trait_ref = trait_.trait_ref(db).subst(&bound_vars).to_chalk(db);
     let flags = chalk_rust_ir::TraitFlags {
         auto: trait_.is_auto(db),
-        upstream: trait_.module(db).krate(db) != Some(krate),
+        upstream: trait_.module(db).krate() != krate,
         non_enumerable: true,
         // FIXME set these flags correctly
         marker: false,
@@ -625,7 +625,7 @@ fn impl_block_datum(
         .target_trait_ref(db)
         .expect("FIXME handle unresolved impl block trait ref")
         .subst(&bound_vars);
-    let impl_type = if impl_block.module().krate(db) == Some(krate) {
+    let impl_type = if impl_block.module().krate() == krate {
         chalk_rust_ir::ImplType::Local
     } else {
         chalk_rust_ir::ImplType::External

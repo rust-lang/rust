@@ -195,7 +195,7 @@ impl Module {
             .find_map(|krate| {
                 let def_map = db.crate_def_map(krate);
                 let module_id = def_map.find_module_by_source(src.file_id, decl_id)?;
-                Some(Module { krate, module_id })
+                Some(Module::new(krate, module_id))
             })
     }
 }

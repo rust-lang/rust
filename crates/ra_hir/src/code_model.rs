@@ -5,6 +5,7 @@ pub(crate) mod docs;
 
 use std::sync::Arc;
 
+use hir_def::{CrateModuleId, ModuleId};
 use ra_db::{CrateId, Edition, FileId};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
@@ -23,7 +24,7 @@ use crate::{
         BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128, U16, U32, U64,
         U8, USIZE,
     },
-    nameres::{CrateModuleId, ImportId, ModuleScope, Namespace},
+    nameres::{ImportId, ModuleScope, Namespace},
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
     ty::{
@@ -67,8 +68,7 @@ impl Crate {
 
     pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
         let module_id = db.crate_def_map(self).root();
-        let module = Module { krate: self, module_id };
-        Some(module)
+        Some(Module::new(self, module_id))
     }
 
     pub fn edition(self, db: &impl DefDatabase) -> Edition {
@@ -83,8 +83,7 @@ impl Crate {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
-    pub(crate) krate: Crate,
-    pub(crate) module_id: CrateModuleId,
+    pub(crate) id: ModuleId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -175,12 +174,16 @@ impl ModuleSource {
 }
 
 impl Module {
+    pub(crate) fn new(krate: Crate, crate_module_id: CrateModuleId) -> Module {
+        Module { id: ModuleId { krate: krate.crate_id, module_id: crate_module_id } }
+    }
+
     /// Name of this module.
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        let def_map = db.crate_def_map(self.krate);
-        let parent = def_map[self.module_id].parent?;
+        let def_map = db.crate_def_map(self.krate());
+        let parent = def_map[self.id.module_id].parent?;
         def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self.module_id {
+            if *module_id == self.id.module_id {
                 Some(name.clone())
             } else {
                 None
@@ -200,29 +203,29 @@ impl Module {
     }
 
     /// Returns the crate this module is part of.
-    pub fn krate(self, _db: &impl DefDatabase) -> Option<Crate> {
-        Some(self.krate)
+    pub fn krate(self) -> Crate {
+        Crate { crate_id: self.id.krate }
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &impl DefDatabase) -> Module {
-        let def_map = db.crate_def_map(self.krate);
+        let def_map = db.crate_def_map(self.krate());
         self.with_module_id(def_map.root())
     }
 
     /// Finds a child module with the specified name.
     pub fn child(self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
-        let def_map = db.crate_def_map(self.krate);
-        let child_id = def_map[self.module_id].children.get(name)?;
+        let def_map = db.crate_def_map(self.krate());
+        let child_id = def_map[self.id.module_id].children.get(name)?;
         Some(self.with_module_id(*child_id))
     }
 
     /// Iterates over all child modules.
     pub fn children(self, db: &impl DefDatabase) -> impl Iterator<Item = Module> {
-        let def_map = db.crate_def_map(self.krate);
-        let children = def_map[self.module_id]
+        let def_map = db.crate_def_map(self.krate());
+        let children = def_map[self.id.module_id]
             .children
             .iter()
             .map(|(_, module_id)| self.with_module_id(*module_id))
@@ -232,8 +235,8 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &impl DefDatabase) -> Option<Module> {
-        let def_map = db.crate_def_map(self.krate);
-        let parent_id = def_map[self.module_id].parent?;
+        let def_map = db.crate_def_map(self.krate());
+        let parent_id = def_map[self.id.module_id].parent?;
         Some(self.with_module_id(parent_id))
     }
 
@@ -249,11 +252,11 @@ impl Module {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(self, db: &impl HirDatabase) -> ModuleScope {
-        db.crate_def_map(self.krate)[self.module_id].scope.clone()
+        db.crate_def_map(self.krate())[self.id.module_id].scope.clone()
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
-        db.crate_def_map(self.krate).add_diagnostics(db, self.module_id, sink);
+        db.crate_def_map(self.krate()).add_diagnostics(db, self.id.module_id, sink);
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
@@ -277,13 +280,13 @@ impl Module {
     }
 
     pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let def_map = db.crate_def_map(self.krate);
-        Resolver::default().push_module_scope(def_map, self.module_id)
+        let def_map = db.crate_def_map(self.krate());
+        Resolver::default().push_module_scope(def_map, self.id.module_id)
     }
 
     pub fn declarations(self, db: &impl DefDatabase) -> Vec<ModuleDef> {
-        let def_map = db.crate_def_map(self.krate);
-        def_map[self.module_id]
+        let def_map = db.crate_def_map(self.krate());
+        def_map[self.id.module_id]
             .scope
             .entries()
             .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
@@ -303,7 +306,7 @@ impl Module {
     }
 
     fn with_module_id(self, module_id: CrateModuleId) -> Module {
-        Module { module_id, krate: self.krate }
+        Module::new(self.krate(), module_id)
     }
 }
 
@@ -344,7 +347,7 @@ impl Struct {
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
+        Some(self.module(db).krate())
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
@@ -432,7 +435,7 @@ impl Enum {
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
+        Some(self.module(db).krate())
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
@@ -523,12 +526,14 @@ impl Adt {
     }
 
     pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
-        match self {
-            Adt::Struct(s) => s.module(db),
-            Adt::Union(s) => s.module(db),
-            Adt::Enum(e) => e.module(db),
-        }
-        .krate(db)
+        Some(
+            match self {
+                Adt::Struct(s) => s.module(db),
+                Adt::Union(s) => s.module(db),
+                Adt::Enum(e) => e.module(db),
+            }
+            .krate(),
+        )
     }
 
     pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
@@ -696,7 +701,7 @@ impl Function {
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
+        Some(self.module(db).krate())
     }
 
     pub fn name(self, db: &impl HirDatabase) -> Name {
@@ -774,7 +779,7 @@ impl Const {
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
+        Some(self.module(db).krate())
     }
 
     pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
@@ -871,7 +876,7 @@ impl Static {
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
+        Some(self.module(db).krate())
     }
 
     pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
@@ -1002,7 +1007,7 @@ impl TypeAlias {
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
-        self.module(db).krate(db)
+        Some(self.module(db).krate())
     }
 
     /// The containing impl block, if this is a method.

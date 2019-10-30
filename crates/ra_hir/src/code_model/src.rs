@@ -37,9 +37,9 @@ impl<T> Source<T> {
 impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ModuleSource> {
-        let def_map = db.crate_def_map(self.krate);
-        let decl_id = def_map[self.module_id].declaration;
-        let file_id = def_map[self.module_id].definition;
+        let def_map = db.crate_def_map(self.krate());
+        let decl_id = def_map[self.id.module_id].declaration;
+        let file_id = def_map[self.id.module_id].definition;
         let ast = ModuleSource::new(db, file_id, decl_id);
         let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
         Source { file_id, ast }
@@ -51,8 +51,8 @@ impl Module {
         self,
         db: &(impl DefDatabase + AstDatabase),
     ) -> Option<Source<ast::Module>> {
-        let def_map = db.crate_def_map(self.krate);
-        let decl = def_map[self.module_id].declaration?;
+        let def_map = db.crate_def_map(self.krate());
+        let decl = def_map[self.id.module_id].declaration?;
         let ast = decl.to_node(db);
         Some(Source { file_id: decl.file_id(), ast })
     }
