@@ -13,6 +13,7 @@ use crate::{
     attr::Attr,
     db::DefDatabase2,
     either::Either,
+    hygiene::Hygiene,
     name::{AsName, Name},
     path::Path,
     FileAstId, HirFileId, ModuleSource, Source,
@@ -78,7 +79,7 @@ impl RawItems {
             source_ast_id_map: db.ast_id_map(file_id),
             source_map: ImportSourceMap::default(),
             file_id,
-            db,
+            hygiene: Hygiene::new(db, file_id),
         };
         if let Some(node) = db.parse_or_expand(file_id) {
             if let Some(source_file) = ast::SourceFile::cast(node.clone()) {
@@ -204,15 +205,15 @@ pub struct MacroData {
     pub export: bool,
 }
 
-struct RawItemsCollector<DB> {
+struct RawItemsCollector {
     raw_items: RawItems,
     source_ast_id_map: Arc<AstIdMap>,
     source_map: ImportSourceMap,
     file_id: HirFileId,
-    db: DB,
+    hygiene: Hygiene,
 }
 
-impl<DB: AstDatabase> RawItemsCollector<&DB> {
+impl RawItemsCollector {
     fn process_module(&mut self, current_module: Option<Module>, body: impl ast::ModuleItemOwner) {
         for item_or_macro in body.items_with_macros() {
             match item_or_macro {
@@ -309,9 +310,10 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let attrs = self.parse_attrs(&use_item);
 
+        let mut buf = Vec::new();
         Path::expand_use_item(
             Source { ast: use_item, file_id: self.file_id },
-            self.db,
+            &self.hygiene,
             |path, use_tree, is_glob, alias| {
                 let import_data = ImportData {
                     path,
@@ -321,14 +323,12 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
                     is_extern_crate: false,
                     is_macro_use: false,
                 };
-                self.push_import(
-                    current_module,
-                    attrs.clone(),
-                    import_data,
-                    Either::A(AstPtr::new(use_tree)),
-                );
+                buf.push((import_data, Either::A(AstPtr::new(use_tree))));
             },
-        )
+        );
+        for (import_data, ptr) in buf {
+            self.push_import(current_module, attrs.clone(), import_data, ptr);
+        }
     }
 
     fn add_extern_crate_item(
@@ -361,10 +361,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
 
     fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
         let attrs = self.parse_attrs(&m);
-        let path = match m
-            .path()
-            .and_then(|path| Path::from_src(Source { ast: path, file_id: self.file_id }, self.db))
-        {
+        let path = match m.path().and_then(|path| Path::from_src(path, &self.hygiene)) {
             Some(it) => it,
             _ => return,
         };
@@ -402,6 +399,6 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     }
 
     fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
-        Attr::from_attrs_owner(self.file_id, item, self.db)
+        Attr::from_attrs_owner(item, &self.hygiene)
     }
 }

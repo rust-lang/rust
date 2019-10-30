@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use hir_expand::db::AstDatabase;
 use mbe::ast_to_token_tree;
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -11,7 +10,7 @@ use ra_syntax::{
 };
 use tt::Subtree;
 
-use crate::{path::Path, HirFileId, Source};
+use crate::{hygiene::Hygiene, path::Path};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
@@ -26,11 +25,8 @@ pub enum AttrInput {
 }
 
 impl Attr {
-    pub(crate) fn from_src(
-        Source { file_id, ast }: Source<ast::Attr>,
-        db: &impl AstDatabase,
-    ) -> Option<Attr> {
-        let path = Path::from_src(Source { file_id, ast: ast.path()? }, db)?;
+    pub(crate) fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
+        let path = Path::from_src(ast.path()?, hygiene)?;
         let input = match ast.input() {
             None => None,
             Some(ast::AttrInput::Literal(lit)) => {
@@ -46,17 +42,13 @@ impl Attr {
         Some(Attr { path, input })
     }
 
-    pub fn from_attrs_owner(
-        file_id: HirFileId,
-        owner: &dyn AttrsOwner,
-        db: &impl AstDatabase,
-    ) -> Option<Arc<[Attr]>> {
+    pub fn from_attrs_owner(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Option<Arc<[Attr]>> {
         let mut attrs = owner.attrs().peekable();
         if attrs.peek().is_none() {
             // Avoid heap allocation
             return None;
         }
-        Some(attrs.flat_map(|ast| Attr::from_src(Source { file_id, ast }, db)).collect())
+        Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).collect())
     }
 
     pub fn is_simple_atom(&self, name: &str) -> bool {
