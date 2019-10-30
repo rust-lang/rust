@@ -7,7 +7,7 @@
 //! purely for "IDE needs".
 use std::sync::Arc;
 
-use hir_def::name::AsName;
+use hir_def::{name::AsName, path::known};
 use ra_db::FileId;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -25,7 +25,6 @@ use crate::{
         BodySourceMap,
     },
     ids::LocationCtx,
-    path::known,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::implements_trait,
     Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, MacroDef, Module,

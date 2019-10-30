@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use hir_def::path::known;
 use ra_syntax::ast;
 use rustc_hash::FxHashSet;
 
@@ -9,7 +10,6 @@ use crate::{
     db::HirDatabase,
     diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
-    path::known,
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Adt, Function, Name, Path,
 };

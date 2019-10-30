@@ -8,6 +8,8 @@
 use std::iter;
 use std::sync::Arc;
 
+use hir_def::path::{GenericArg, PathSegment};
+
 use super::{
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
     TypeWalk,
@@ -18,7 +20,6 @@ use crate::{
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
     nameres::Namespace,
-    path::{GenericArg, PathSegment},
     resolve::{Resolver, TypeNs},
     ty::Adt,
     type_ref::{TypeBound, TypeRef},

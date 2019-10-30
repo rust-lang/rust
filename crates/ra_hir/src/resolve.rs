@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use hir_def::{
     name::{self, Name},
+    path::{Path, PathKind},
     CrateModuleId,
 };
 use rustc_hash::FxHashSet;
@@ -17,7 +18,6 @@ use crate::{
     generics::GenericParams,
     impl_block::ImplBlock,
     nameres::{CrateDefMap, PerNs},
-    path::{Path, PathKind},
     Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
     Trait, TypeAlias,
 };

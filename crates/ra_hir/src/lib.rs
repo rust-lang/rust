@@ -32,7 +32,6 @@ pub mod debug;
 pub mod db;
 #[macro_use]
 pub mod mock;
-mod path;
 pub mod source_binder;
 
 mod ids;
@@ -71,7 +70,6 @@ pub use crate::{
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     impl_block::ImplBlock,
     nameres::{ImportId, Namespace, PerNs},
-    path::{Path, PathKind},
     resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
@@ -88,4 +86,7 @@ pub use self::code_model::{
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
-pub use hir_def::name::Name;
+pub use hir_def::{
+    name::Name,
+    path::{Path, PathKind},
+};

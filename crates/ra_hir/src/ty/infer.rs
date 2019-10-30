@@ -21,7 +21,7 @@ use std::sync::Arc;
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
-use hir_def::name;
+use hir_def::{name, path::known};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use test_utils::tested_by;
@@ -38,7 +38,6 @@ use crate::{
     db::HirDatabase,
     diagnostics::DiagnosticSink,
     expr::{BindingAnnotation, Body, ExprId, PatId},
-    path::known,
     resolve::{Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},

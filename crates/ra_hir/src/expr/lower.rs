@@ -1,6 +1,9 @@
 //! FIXME: write short doc here
 
-use hir_def::name::{self, AsName, Name};
+use hir_def::{
+    name::{self, AsName, Name},
+    path::GenericArgs,
+};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -13,7 +16,6 @@ use test_utils::tested_by;
 
 use crate::{
     db::HirDatabase,
-    path::GenericArgs,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
     type_ref::TypeRef,
     AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,

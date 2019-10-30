@@ -1,5 +1,7 @@
 //! Path expression resolution.
 
+use hir_def::path::PathSegment;
+
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
@@ -131,7 +133,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_trait_assoc_item(
         &mut self,
         trait_ref: TraitRef,
-        segment: &crate::path::PathSegment,
+        segment: &PathSegment,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let trait_ = trait_ref.trait_;
@@ -170,7 +172,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_ty_assoc_item(
         &mut self,
         ty: Ty,
-        segment: &crate::path::PathSegment,
+        segment: &PathSegment,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         if let Ty::Unknown = ty {
