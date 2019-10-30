@@ -6,6 +6,7 @@
 
 pub mod db;
 pub mod ast_id_map;
+pub mod either;
 
 use std::hash::{Hash, Hasher};
 

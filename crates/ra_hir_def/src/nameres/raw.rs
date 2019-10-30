@@ -2,7 +2,7 @@
 
 use std::{ops::Index, sync::Arc};
 
-use hir_expand::{ast_id_map::AstIdMap, db::AstDatabase};
+use hir_expand::{ast_id_map::AstIdMap, db::AstDatabase, either::Either};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
@@ -12,7 +12,6 @@ use ra_syntax::{
 use crate::{
     attr::Attr,
     db::DefDatabase2,
-    either::Either,
     hygiene::Hygiene,
     name::{AsName, Name},
     path::Path,
@@ -41,10 +40,8 @@ pub struct ImportSourceMap {
 type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
 type ImportSource = Either<ast::UseTree, ast::ExternCrateItem>;
 
-impl ImportSourcePtr {
-    fn to_node(self, file: &SourceFile) -> ImportSource {
-        self.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
-    }
+fn to_node(ptr: ImportSourcePtr, file: &SourceFile) -> ImportSource {
+    ptr.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
 }
 
 impl ImportSourceMap {
@@ -58,7 +55,7 @@ impl ImportSourceMap {
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
-        self.map[import].to_node(&file)
+        to_node(self.map[import], &file)
     }
 }
 

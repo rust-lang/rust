@@ -2,6 +2,7 @@
 
 use std::{iter, sync::Arc};
 
+use hir_expand::either::Either;
 use ra_db::CrateId;
 use ra_syntax::{
     ast::{self, NameOwner, TypeAscriptionOwner},
@@ -9,7 +10,6 @@ use ra_syntax::{
 };
 
 use crate::{
-    either::Either,
     hygiene::Hygiene,
     name::{self, AsName, Name},
     type_ref::TypeRef,
