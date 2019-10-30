@@ -966,12 +966,14 @@ endCheck:
             llvm::errs() << "starting outermost ph at " << allocationPreheaders[i]->getName() << "|ctx=" << ctx->getName() <<"\n";
             sublimits.push_back(std::make_pair(size, lims));
             size = nullptr;
+            lims.clear();
           }
         }
 
         if (size != nullptr) {
           llvm::errs() << "starting final outermost ph at " << allocationPreheaders[contexts.size()-1]->getName()<<"|ctx=" << ctx->getName() << "\n";
           sublimits.push_back(std::make_pair(size, lims));
+          lims.clear();
         }
         return sublimits;
     }
@@ -1118,6 +1120,7 @@ endCheck:
                 indices.push_back(idx.var);
                 available[idx.var] = idx.var;
               }
+              llvm::errs() << "W sl idx=" << i << " " << *idx.var << " header=" << idx.header->getName() << "\n";
 
               Value* lim = unwrapM(riter->second, BuilderM, available, /*lookupIfAble*/true);
               assert(lim);
@@ -1129,9 +1132,11 @@ endCheck:
             }
 
             if (indices.size() > 0) {
+                llvm::errs() << "sl idx=" << i << " " << *indices[0] << "\n";
                 Value* idx = indices[0];
-                for(unsigned i=1; i<indices.size(); i++) {
-                  idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[i], limits[i-1]));
+                for(unsigned ind=1; ind<indices.size(); ind++) {
+                  llvm::errs() << "sl idx=" << i << " " << *indices[ind] << "\n";
+                  idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[ind], limits[ind-1]));
                 }
                 next = BuilderM.CreateGEP(next, {idx});
             }

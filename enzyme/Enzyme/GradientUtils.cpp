@@ -164,6 +164,10 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                 
             // Case 2: The correct exiting block terminator unconditionally branches a different block, change to a conditional branch depending on if we are the first iteration
             } else if (succ.size() == 1) {
+                lc.latchMerge->getTerminator()->eraseFromParent();
+                mergeBuilder.SetInsertPoint(lc.latchMerge);
+                
+                assert(mergeBuilder.GetInsertBlock()->size() == 0 || !isa<BranchInst>(mergeBuilder.GetInsertBlock()->back()));
 
                 // If first iteration, branch to the exiting block, otherwise the backlatch
                 mergeBuilder.CreateCondBr(firstiter, succ[0], reverseBlocks[backlatch]);
@@ -187,6 +191,8 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 
                 lc.latchMerge->getTerminator()->eraseFromParent();
                 mergeBuilder.SetInsertPoint(lc.latchMerge);
+                
+                assert(mergeBuilder.GetInsertBlock()->size() == 0 || !isa<BranchInst>(mergeBuilder.GetInsertBlock()->back()));
                 mergeBuilder.CreateCondBr(firstiter, splitBlock, reverseBlocks[backlatch]);
 
             }
@@ -858,6 +864,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
   if (targetToPreds.size() == 1) {
       if (replacePHIs == nullptr) {
+          assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
           BuilderM.CreateBr( targetToPreds.begin()->first );
       } else {
           for (auto pair : *replacePHIs) {
@@ -962,6 +969,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
 
       if (replacePHIs == nullptr) {
+          assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
           BuilderM.CreateCondBr(phi, *done[std::make_pair(block, branch->getSuccessor(0))].begin(), *done[std::make_pair(block, branch->getSuccessor(1))].begin());
       } else {
           for (auto pair : *replacePHIs) {
@@ -1076,6 +1084,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   
   if (replacePHIs == nullptr) {
       if (targetToPreds.size() == 2) {
+          assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
           BuilderM.CreateCondBr(which, /*true*/targets[1], /*false*/targets[0]);
       } else {
           auto swit = BuilderM.CreateSwitch(which, targets.back(), targets.size()-1);
