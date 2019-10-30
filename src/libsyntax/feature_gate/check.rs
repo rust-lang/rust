@@ -883,7 +883,7 @@ pub fn check_crate(krate: &ast::Crate,
             // FIXME(eddyb) do something more useful than always
             // disabling these uses of early feature-gatings.
             if false {
-                for span in &*parse_sess.gated_spans.$gate.borrow() {
+                for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
                     gate_feature!(&visitor, $gate, *span, $msg);
                 }
             }

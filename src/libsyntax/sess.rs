@@ -19,8 +19,8 @@ use std::str;
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
 #[derive(Default)]
-crate struct GatedSpans {
-    crate spans: Lock<FxHashMap<Symbol, Vec<Span>>>,
+pub struct GatedSpans {
+    pub spans: Lock<FxHashMap<Symbol, Vec<Span>>>,
 }
 
 impl GatedSpans {
@@ -57,6 +57,15 @@ impl GatedSpans {
             .get(&feature)
             .map_or(true, |spans| spans.is_empty())
     }
+
+    /// Prepend the given set of `spans` onto the set in `self`.
+    pub fn merge(&self, mut spans: FxHashMap<Symbol, Vec<Span>>) {
+        let mut inner = self.spans.borrow_mut();
+        for (gate, mut gate_spans) in inner.drain() {
+            spans.entry(gate).or_default().append(&mut gate_spans);
+        }
+        *inner = spans;
+    }
 }
 
 /// Info about a parsing session.
@@ -77,7 +86,7 @@ pub struct ParseSess {
     /// analysis.
     pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
     pub injected_crate_name: Once<Symbol>,
-    crate gated_spans: GatedSpans,
+    pub gated_spans: GatedSpans,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
     pub reached_eof: Lock<bool>,
 }
