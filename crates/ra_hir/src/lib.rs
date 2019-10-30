@@ -39,7 +39,6 @@ mod nameres;
 mod adt;
 mod traits;
 mod type_alias;
-mod type_ref;
 mod ty;
 mod attr;
 mod impl_block;
@@ -75,7 +74,6 @@ pub use crate::{
     ty::{
         display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },
-    type_ref::Mutability,
 };
 
 pub use self::code_model::{
@@ -89,4 +87,5 @@ pub use self::code_model::{
 pub use hir_def::{
     name::Name,
     path::{Path, PathKind},
+    type_ref::Mutability,
 };

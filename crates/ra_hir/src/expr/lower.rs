@@ -3,6 +3,7 @@
 use hir_def::{
     name::{self, AsName, Name},
     path::GenericArgs,
+    type_ref::TypeRef,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -17,7 +18,6 @@ use test_utils::tested_by;
 use crate::{
     db::HirDatabase,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
-    type_ref::TypeRef,
     AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
     Source,
 };

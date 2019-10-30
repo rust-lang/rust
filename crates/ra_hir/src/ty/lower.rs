@@ -8,7 +8,10 @@
 use std::iter;
 use std::sync::Arc;
 
-use hir_def::path::{GenericArg, PathSegment};
+use hir_def::{
+    path::{GenericArg, PathSegment},
+    type_ref::{TypeBound, TypeRef},
+};
 
 use super::{
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
@@ -22,7 +25,6 @@ use crate::{
     nameres::Namespace,
     resolve::{Resolver, TypeNs},
     ty::Adt,
-    type_ref::{TypeBound, TypeRef},
     util::make_mut_slice,
     BuiltinType, Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField,
     Trait, TypeAlias, Union,

@@ -10,6 +10,7 @@ use hir_def::{
         self, AsName, BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128,
         U16, U32, U64, U8, USIZE,
     },
+    type_ref::{Mutability, TypeRef},
     CrateModuleId, ModuleId,
 };
 use ra_db::{CrateId, Edition};
@@ -33,8 +34,6 @@ use crate::{
         primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
         InferenceResult, TraitRef,
     },
-    type_ref::Mutability,
-    type_ref::TypeRef,
     Either, HasSource, Name, Ty,
 };
 

@@ -21,7 +21,11 @@ use std::sync::Arc;
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
-use hir_def::{name, path::known};
+use hir_def::{
+    name,
+    path::known,
+    type_ref::{Mutability, TypeRef},
+};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use test_utils::tested_by;
@@ -40,7 +44,6 @@ use crate::{
     expr::{BindingAnnotation, Body, ExprId, PatId},
     resolve::{Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
-    type_ref::{Mutability, TypeRef},
     Adt, AssocItem, ConstData, DefWithBody, FnData, Function, HasBody, Path, StructField,
 };
 

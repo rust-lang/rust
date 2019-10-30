@@ -3,6 +3,7 @@
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
+use hir_def::type_ref::TypeRef;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -19,7 +20,6 @@ use crate::{
     ids::MacroCallLoc,
     resolve::Resolver,
     ty::Ty,
-    type_ref::TypeRef,
     AssocItem, AstId, Const, Function, HasSource, HirFileId, MacroFileKind, Path, Source, TraitRef,
     TypeAlias,
 };

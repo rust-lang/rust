@@ -8,12 +8,12 @@ use std::sync::Arc;
 use hir_def::{
     name::{self, AsName},
     path::Path,
+    type_ref::{TypeBound, TypeRef},
 };
 use ra_syntax::ast::{self, DefaultTypeParamOwner, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    type_ref::{TypeBound, TypeRef},
     Adt, Const, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct, Trait,
     TypeAlias, Union,
 };
