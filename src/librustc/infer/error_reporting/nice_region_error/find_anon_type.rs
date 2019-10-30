@@ -62,7 +62,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         arg: &'tcx hir::Ty,
         br: &ty::BoundRegion,
-    ) -> Option<(&'tcx hir::Ty)> {
+    ) -> Option<&'tcx hir::Ty> {
         let mut nested_visitor = FindNestedTypeVisitor {
             tcx: self.tcx(),
             bound_region: *br,

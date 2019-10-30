@@ -13,6 +13,18 @@ fn bar(y: bool) -> X {
     return (X { y }); //~ ERROR unnecessary parentheses around `return` value
 }
 
+fn unused_parens_around_return_type() -> (u32) { //~ ERROR unnecessary parentheses around type
+    panic!()
+}
+
+trait Trait {
+    fn test(&self);
+}
+
+fn passes_unused_parens_lint() -> &'static (dyn Trait) {
+    panic!()
+}
+
 fn main() {
     foo();
     bar((true)); //~ ERROR unnecessary parentheses around function argument
