@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{name, nameres::raw};
+use hir_def::{attr::Attr, name, nameres::raw};
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
@@ -8,7 +8,6 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attr,
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     nameres::{
