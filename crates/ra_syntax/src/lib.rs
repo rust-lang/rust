@@ -160,6 +160,20 @@ impl SourceFile {
     }
 }
 
+/// Matches a `SyntaxNode` against an `ast` type.
+///
+/// # Example:
+///
+/// ```ignore
+/// match_ast! {
+///     match node {
+///         ast::CallExpr(it) => { ... },
+///         ast::MethodCallExpr(it) => { ... },
+///         ast::MacroCall(it) => { ... },
+///         _ => None,
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! match_ast {
     (match $node:ident {
