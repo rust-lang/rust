@@ -4,7 +4,7 @@ use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::ancestors_at_offset,
     ast::{self, ArgListOwner},
-    AstNode, SyntaxNode, TextUnit,
+    match_ast, AstNode, SyntaxNode, TextUnit,
 };
 use test_utils::tested_by;
 
@@ -91,14 +91,13 @@ enum FnCallNode {
 impl FnCallNode {
     fn with_node(syntax: &SyntaxNode, offset: TextUnit) -> Option<FnCallNode> {
         ancestors_at_offset(syntax, offset).find_map(|node| {
-            if let Some(expr) = ast::CallExpr::cast(node.clone()) {
-                Some(FnCallNode::CallExpr(expr))
-            } else if let Some(expr) = ast::MethodCallExpr::cast(node.clone()) {
-                Some(FnCallNode::MethodCallExpr(expr))
-            } else if let Some(expr) = ast::MacroCall::cast(node) {
-                Some(FnCallNode::MacroCallExpr(expr))
-            } else {
-                None
+            match_ast! {
+                match node {
+                    ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
+                    ast::MethodCallExpr(it) => { Some(FnCallNode::MethodCallExpr(it)) },
+                    ast::MacroCall(it) => { Some(FnCallNode::MacroCallExpr(it)) },
+                    _ => { None },
+                }
             }
         })
     }
