@@ -4,7 +4,7 @@ use itertools::Itertools;
 use ra_db::SourceDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
-    SyntaxNode, TextRange,
+    match_ast, SyntaxNode, TextRange,
 };
 
 use crate::{db::RootDatabase, FileId};
@@ -29,12 +29,12 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 }
 
 fn runnable(db: &RootDatabase, file_id: FileId, item: SyntaxNode) -> Option<Runnable> {
-    if let Some(fn_def) = ast::FnDef::cast(item.clone()) {
-        runnable_fn(fn_def)
-    } else if let Some(m) = ast::Module::cast(item) {
-        runnable_mod(db, file_id, m)
-    } else {
-        None
+    match_ast! {
+        match item {
+            ast::FnDef(it) => { runnable_fn(it) },
+            ast::Module(it) => { runnable_mod(db, file_id, it) },
+            _ => { None },
+        }
     }
 }
 
