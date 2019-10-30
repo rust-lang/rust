@@ -385,7 +385,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "miri_start_panic" => {
-                // TODO - the relevant types aren't lang items,
+                // FIXME - the relevant types aren't lang items,
                 // so it's not trivial to check this
                 return;
             }
