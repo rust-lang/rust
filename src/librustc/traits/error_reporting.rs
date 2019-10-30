@@ -226,13 +226,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     0,
                     &mut obligations
                 );
+
+                debug!("report_projection_error obligation.cause={:?} obligation.param_env={:?}",
+                       obligation.cause, obligation.param_env);
+
+                debug!("report_projection_error normalized_ty={:?} data.ty={:?}",
+                       normalized_ty, data.ty);
+
+                let is_normalized_ty_expected = match &obligation.cause.code {
+                    ObligationCauseCode::ItemObligation(_) |
+                    ObligationCauseCode::BindingObligation(_, _) |
+                    ObligationCauseCode::ObjectCastObligation(_) => false,
+                    _ => true,
+                };
+
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env)
-                    .eq(normalized_ty, data.ty)
+                    .eq_exp(is_normalized_ty_expected, normalized_ty, data.ty)
                 {
-                    values = Some(infer::ValuePairs::Types(ExpectedFound {
-                        expected: normalized_ty,
-                        found: data.ty,
-                    }));
+                    values = Some(infer::ValuePairs::Types(
+                        ExpectedFound::new(is_normalized_ty_expected, normalized_ty, data.ty)));
+
                     err_buf = error;
                     err = &err_buf;
                 }
