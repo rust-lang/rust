@@ -20,14 +20,14 @@ class Stage0DataTestCase(unittest.TestCase):
         os.mkdir(os.path.join(self.rust_root, "src"))
         with open(os.path.join(self.rust_root, "src",
                                "stage0.txt"), "w") as stage0:
-            stage0.write("#ignore\n\ndate: 2017-06-15\nrustc: beta\ncargo: beta")
+            stage0.write("#ignore\n\ndate: 2017-06-15\nrustc: beta\ncargo: beta\nrustfmt: beta")
 
     def tearDown(self):
         rmtree(self.rust_root)
 
     def test_stage0_data(self):
         """Extract data from stage0.txt"""
-        expected = {"date": "2017-06-15", "rustc": "beta", "cargo": "beta"}
+        expected = {"date": "2017-06-15", "rustc": "beta", "cargo": "beta", "rustfmt": "beta"}
         data = bootstrap.stage0_data(self.rust_root)
         self.assertDictEqual(data, expected)
 
