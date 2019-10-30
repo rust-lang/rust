@@ -2545,7 +2545,7 @@ There are some known bugs that trigger this message.
 //  E0471, // constant evaluation error (in pattern)
 //  E0385, // {} in an aliasable location
     E0521, // borrowed data escapes outside of closure
-    E0526, // shuffle indices are not constant
+//  E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}
 //  E0598, // lifetime of {} is too short to guarantee its contents can be...
     E0625, // thread-local statics cannot be accessed at compile-time
