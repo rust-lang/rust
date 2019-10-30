@@ -2,17 +2,20 @@
 
 use std::{ops::Index, sync::Arc};
 
+use hir_expand::{ast_id_map::AstIdMap, db::AstDatabase};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode, AstPtr, SourceFile,
 };
-use test_utils::tested_by;
 
 use crate::{
     attr::Attr,
-    db::{AstDatabase, DefDatabase},
-    AsName, AstIdMap, Either, FileAstId, HirFileId, ModuleSource, Name, Path, Source,
+    db::DefDatabase2,
+    either::Either,
+    name::{AsName, Name},
+    path::Path,
+    FileAstId, HirFileId, ModuleSource, Source,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -48,7 +51,7 @@ impl ImportSourceMap {
         self.map.insert(import, ptr)
     }
 
-    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
+    pub fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
         let file = match source {
             ModuleSource::SourceFile(file) => file.clone(),
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
@@ -60,14 +63,14 @@ impl ImportSourceMap {
 
 impl RawItems {
     pub(crate) fn raw_items_query(
-        db: &(impl DefDatabase + AstDatabase),
+        db: &(impl DefDatabase2 + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
-        db: &(impl DefDatabase + AstDatabase),
+        db: &(impl DefDatabase2 + AstDatabase),
         file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
@@ -87,7 +90,7 @@ impl RawItems {
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 
-    pub(super) fn items(&self) -> &[RawItem] {
+    pub fn items(&self) -> &[RawItem] {
         &self.items
     }
 }
@@ -124,19 +127,19 @@ impl Index<Macro> for RawItems {
 type Attrs = Option<Arc<[Attr]>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub(super) struct RawItem {
+pub struct RawItem {
     attrs: Attrs,
-    pub(super) kind: RawItemKind,
+    pub kind: RawItemKind,
 }
 
 impl RawItem {
-    pub(super) fn attrs(&self) -> &[Attr] {
+    pub fn attrs(&self) -> &[Attr] {
         self.attrs.as_ref().map_or(&[], |it| &*it)
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(super) enum RawItemKind {
+pub enum RawItemKind {
     Module(Module),
     Import(ImportId),
     Def(Def),
@@ -144,11 +147,11 @@ pub(super) enum RawItemKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Module(RawId);
+pub struct Module(RawId);
 impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum ModuleData {
+pub enum ModuleData {
     Declaration { name: Name, ast_id: FileAstId<ast::Module> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
@@ -159,26 +162,26 @@ impl_arena_id!(ImportId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub(super) path: Path,
-    pub(super) alias: Option<Name>,
-    pub(super) is_glob: bool,
-    pub(super) is_prelude: bool,
-    pub(super) is_extern_crate: bool,
-    pub(super) is_macro_use: bool,
+    pub path: Path,
+    pub alias: Option<Name>,
+    pub is_glob: bool,
+    pub is_prelude: bool,
+    pub is_extern_crate: bool,
+    pub is_macro_use: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Def(RawId);
+pub struct Def(RawId);
 impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct DefData {
-    pub(super) name: Name,
-    pub(super) kind: DefKind,
+pub struct DefData {
+    pub name: Name,
+    pub kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(super) enum DefKind {
+pub enum DefKind {
     Function(FileAstId<ast::FnDef>),
     Struct(FileAstId<ast::StructDef>),
     Union(FileAstId<ast::StructDef>),
@@ -190,15 +193,15 @@ pub(super) enum DefKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Macro(RawId);
+pub struct Macro(RawId);
 impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct MacroData {
-    pub(super) ast_id: FileAstId<ast::MacroCall>,
-    pub(super) path: Path,
-    pub(super) name: Option<Name>,
-    pub(super) export: bool,
+pub struct MacroData {
+    pub ast_id: FileAstId<ast::MacroCall>,
+    pub path: Path,
+    pub name: Option<Name>,
+    pub export: bool,
 }
 
 struct RawItemsCollector<DB> {
@@ -297,7 +300,8 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
-        tested_by!(name_res_works_for_broken_modules);
+        // FIXME: restore this mark once we complete hir splitting
+        // tested_by!(name_res_works_for_broken_modules);
     }
 
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: ast::UseItem) {

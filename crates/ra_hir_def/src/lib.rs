@@ -8,12 +8,20 @@
 //! actually true.
 
 pub mod db;
+pub mod either;
+pub mod attr;
+pub mod name;
+pub mod path;
+pub mod type_ref;
+
+// FIXME: this should be private
+pub mod nameres;
 
 use std::hash::{Hash, Hasher};
 
 use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId};
 use ra_arena::{impl_arena_id, RawId};
-use ra_db::{salsa, CrateId};
+use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
 use crate::db::InternDatabase;
@@ -22,6 +30,68 @@ use crate::db::InternDatabase;
 pub struct Source<T> {
     pub file_id: HirFileId,
     pub ast: T,
+}
+
+pub enum ModuleSource {
+    SourceFile(ast::SourceFile),
+    Module(ast::Module),
+}
+
+impl ModuleSource {
+    pub fn new(
+        db: &impl db::DefDatabase2,
+        file_id: Option<FileId>,
+        decl_id: Option<AstId<ast::Module>>,
+    ) -> ModuleSource {
+        match (file_id, decl_id) {
+            (Some(file_id), _) => {
+                let source_file = db.parse(file_id).tree();
+                ModuleSource::SourceFile(source_file)
+            }
+            (None, Some(item_id)) => {
+                let module = item_id.to_node(db);
+                assert!(module.item_list().is_some(), "expected inline module");
+                ModuleSource::Module(module)
+            }
+            (None, None) => panic!(),
+        }
+    }
+
+    // FIXME: this methods do not belong here
+    pub fn from_position(
+        db: &impl db::DefDatabase2,
+        position: ra_db::FilePosition,
+    ) -> ModuleSource {
+        let parse = db.parse(position.file_id);
+        match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
+            parse.tree().syntax(),
+            position.offset,
+        ) {
+            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
+            _ => {
+                let source_file = parse.tree();
+                ModuleSource::SourceFile(source_file)
+            }
+        }
+    }
+
+    pub fn from_child_node(
+        db: &impl db::DefDatabase2,
+        file_id: FileId,
+        child: &SyntaxNode,
+    ) -> ModuleSource {
+        if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
+            ModuleSource::Module(m)
+        } else {
+            let source_file = db.parse(file_id).tree();
+            ModuleSource::SourceFile(source_file)
+        }
+    }
+
+    pub fn from_file_id(db: &impl db::DefDatabase2, file_id: FileId) -> ModuleSource {
+        let source_file = db.parse(file_id).tree();
+        ModuleSource::SourceFile(source_file)
+    }
 }
 
 impl<T> Source<T> {
@@ -156,6 +226,18 @@ impl AstItemDef<ast::StructDef> for StructId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct UnionId(salsa::InternId);
+impl_intern_key!(UnionId);
+impl AstItemDef<ast::StructDef> for UnionId {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
+        db.intern_union(loc)
+    }
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StructDef> {
+        db.lookup_intern_union(self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(salsa::InternId);
 impl_intern_key!(EnumId);
 impl AstItemDef<ast::EnumDef> for EnumId {
@@ -166,6 +248,17 @@ impl AstItemDef<ast::EnumDef> for EnumId {
         db.lookup_intern_enum(self)
     }
 }
+
+// FIXME: rename to `VariantId`, only enums can ave variants
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumVariantId {
+    parent: EnumId,
+    local_id: LocalEnumVariantId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct LocalEnumVariantId(RawId);
+impl_arena_id!(LocalEnumVariantId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);

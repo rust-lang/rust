@@ -17,8 +17,8 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, type_ref::Mutability, util::make_mut_slice, Adt, Crate,
-    DefWithBody, GenericParams, HasGenericParams, Name, Trait, TypeAlias,
+    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, GenericParams,
+    HasGenericParams, Mutability, Name, Trait, TypeAlias,
 };
 use display::{HirDisplay, HirFormatter};
 

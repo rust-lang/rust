@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use hir_expand::db::AstDatabase;
 use mbe::ast_to_token_tree;
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -10,10 +11,10 @@ use ra_syntax::{
 };
 use tt::Subtree;
 
-use crate::{db::AstDatabase, path::Path, HirFileId, Source};
+use crate::{path::Path, HirFileId, Source};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Attr {
+pub struct Attr {
     pub(crate) path: Path,
     pub(crate) input: Option<AttrInput>,
 }
@@ -45,7 +46,7 @@ impl Attr {
         Some(Attr { path, input })
     }
 
-    pub(crate) fn from_attrs_owner(
+    pub fn from_attrs_owner(
         file_id: HirFileId,
         owner: &dyn AttrsOwner,
         db: &impl AstDatabase,
@@ -58,13 +59,13 @@ impl Attr {
         Some(attrs.flat_map(|ast| Attr::from_src(Source { file_id, ast }, db)).collect())
     }
 
-    pub(crate) fn is_simple_atom(&self, name: &str) -> bool {
+    pub fn is_simple_atom(&self, name: &str) -> bool {
         // FIXME: Avoid cloning
         self.path.as_ident().map_or(false, |s| s.to_string() == name)
     }
 
     // FIXME: handle cfg_attr :-)
-    pub(crate) fn as_cfg(&self) -> Option<&Subtree> {
+    pub fn as_cfg(&self) -> Option<&Subtree> {
         if !self.is_simple_atom("cfg") {
             return None;
         }
@@ -74,7 +75,7 @@ impl Attr {
         }
     }
 
-    pub(crate) fn as_path(&self) -> Option<&SmolStr> {
+    pub fn as_path(&self) -> Option<&SmolStr> {
         if !self.is_simple_atom("path") {
             return None;
         }
@@ -84,7 +85,7 @@ impl Attr {
         }
     }
 
-    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Option<bool> {
+    pub fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Option<bool> {
         cfg_options.is_cfg_enabled(self.as_cfg()?)
     }
 }

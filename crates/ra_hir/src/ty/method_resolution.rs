@@ -15,8 +15,7 @@ use crate::{
     resolve::Resolver,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
     ty::{Ty, TypeCtor},
-    type_ref::Mutability,
-    AssocItem, Crate, Function, Module, Name, Trait,
+    AssocItem, Crate, Function, Module, Mutability, Name, Trait,
 };
 
 /// This is used as a key for indexing impls.

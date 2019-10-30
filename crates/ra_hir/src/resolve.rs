@@ -1,7 +1,11 @@
 //! Name resolution.
 use std::sync::Arc;
 
-use hir_def::CrateModuleId;
+use hir_def::{
+    name::{self, Name},
+    path::{Path, PathKind},
+    CrateModuleId,
+};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -13,9 +17,7 @@ use crate::{
     },
     generics::GenericParams,
     impl_block::ImplBlock,
-    name::{Name, SELF_PARAM, SELF_TYPE},
     nameres::{CrateDefMap, PerNs},
-    path::{Path, PathKind},
     Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
     Trait, TypeAlias,
 };
@@ -150,13 +152,13 @@ impl Resolver {
                     }
                 }
                 Scope::ImplBlockScope(impl_) => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::SelfType(*impl_), idx));
                     }
                 }
                 Scope::AdtScope(adt) => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::AdtSelfType(*adt), idx));
                     }
@@ -205,7 +207,7 @@ impl Resolver {
             return None;
         }
         let n_segments = path.segments.len();
-        let tmp = SELF_PARAM;
+        let tmp = name::SELF_PARAM;
         let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
@@ -241,13 +243,13 @@ impl Resolver {
                 Scope::GenericParams(_) => continue,
 
                 Scope::ImplBlockScope(impl_) if n_segments > 1 => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let ty = TypeNs::SelfType(*impl_);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::AdtScope(adt) if n_segments > 1 => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let ty = TypeNs::AdtSelfType(*adt);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
@@ -459,10 +461,10 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(SELF_TYPE, ScopeDef::ImplSelfType(*i));
+                f(name::SELF_TYPE, ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
-                f(SELF_TYPE, ScopeDef::AdtSelfType(*i));
+                f(name::SELF_TYPE, ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(e) => {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {

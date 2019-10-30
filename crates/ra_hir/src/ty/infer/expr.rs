@@ -3,14 +3,17 @@
 use std::iter::{repeat, repeat_with};
 use std::sync::Arc;
 
+use hir_def::{
+    name,
+    path::{GenericArg, GenericArgs},
+};
+
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 use crate::{
     db::HirDatabase,
     expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
-    name,
     nameres::Namespace,
-    path::{GenericArg, GenericArgs},
     ty::{
         autoderef, method_resolution, op, primitive, CallableDef, InferTy, Mutability, Obligation,
         ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,

@@ -1,5 +1,10 @@
 //! FIXME: write short doc here
 
+use hir_def::{
+    name::{self, AsName, Name},
+    path::GenericArgs,
+    type_ref::TypeRef,
+};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -12,10 +17,7 @@ use test_utils::tested_by;
 
 use crate::{
     db::HirDatabase,
-    name::{AsName, Name, SELF_PARAM},
-    path::GenericArgs,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
-    type_ref::TypeRef,
     AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
     Source,
 };
@@ -78,7 +80,7 @@ where
                 let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
-                        name: SELF_PARAM,
+                        name: name::SELF_PARAM,
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },

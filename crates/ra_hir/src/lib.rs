@@ -26,24 +26,19 @@ macro_rules! impl_froms {
     }
 }
 
-mod either;
 pub mod debug;
 
 pub mod db;
 #[macro_use]
 pub mod mock;
-mod path;
 pub mod source_binder;
 
 mod ids;
-mod name;
 mod nameres;
 mod adt;
 mod traits;
 mod type_alias;
-mod type_ref;
 mod ty;
-mod attr;
 mod impl_block;
 mod expr;
 mod lang_item;
@@ -59,30 +54,23 @@ pub mod from_source;
 #[cfg(test)]
 mod marks;
 
-use hir_expand::{
-    ast_id_map::{AstIdMap, FileAstId},
-    AstId,
-};
+use hir_expand::AstId;
 
-use crate::{ids::MacroFileKind, name::AsName, resolve::Resolver};
+use crate::{ids::MacroFileKind, resolve::Resolver};
 
 pub use crate::{
     adt::VariantDef,
-    either::Either,
     expr::ExprScopes,
     from_source::FromSource,
     generics::{GenericDef, GenericParam, GenericParams, HasGenericParams},
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     impl_block::ImplBlock,
-    name::Name,
     nameres::{ImportId, Namespace, PerNs},
-    path::{Path, PathKind},
     resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
         display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },
-    type_ref::Mutability,
 };
 
 pub use self::code_model::{
@@ -91,4 +79,11 @@ pub use self::code_model::{
     Adt, AssocItem, BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody,
     Enum, EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+};
+
+pub use hir_def::{
+    either::Either,
+    name::Name,
+    path::{Path, PathKind},
+    type_ref::Mutability,
 };

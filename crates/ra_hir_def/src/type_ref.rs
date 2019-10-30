@@ -3,7 +3,7 @@
 
 use ra_syntax::ast::{self, TypeAscriptionOwner, TypeBoundsOwner};
 
-use crate::Path;
+use crate::path::Path;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mutability {
@@ -64,7 +64,7 @@ pub enum TypeBound {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub(crate) fn from_ast(node: ast::TypeRef) -> Self {
+    pub fn from_ast(node: ast::TypeRef) -> Self {
         match node {
             ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
             ast::TypeRef::TupleType(inner) => {
@@ -113,7 +113,7 @@ impl TypeRef {
         }
     }
 
-    pub(crate) fn from_ast_opt(node: Option<ast::TypeRef>) -> Self {
+    pub fn from_ast_opt(node: Option<ast::TypeRef>) -> Self {
         if let Some(node) = node {
             TypeRef::from_ast(node)
         } else {
@@ -135,7 +135,7 @@ pub(crate) fn type_bounds_from_ast(type_bounds_opt: Option<ast::TypeBoundList>) 
 }
 
 impl TypeBound {
-    pub(crate) fn from_ast(node: ast::TypeBound) -> Self {
+    pub fn from_ast(node: ast::TypeBound) -> Self {
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {
                 let path = match path_type.path() {

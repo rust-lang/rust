@@ -2,12 +2,18 @@
 
 use std::{iter, sync::Arc};
 
+use hir_expand::db::AstDatabase;
+use ra_db::CrateId;
 use ra_syntax::{
     ast::{self, NameOwner, TypeAscriptionOwner},
     AstNode,
 };
 
-use crate::{db::AstDatabase, name, type_ref::TypeRef, AsName, Crate, Name, Source};
+use crate::{
+    name::{self, AsName, Name},
+    type_ref::TypeRef,
+    Source,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
@@ -55,7 +61,7 @@ pub enum PathKind {
     // Type based path like `<T>::foo`
     Type(Box<TypeRef>),
     // `$crate` from macro expansion
-    DollarCrate(Crate),
+    DollarCrate(CrateId),
 }
 
 impl Path {
@@ -66,12 +72,7 @@ impl Path {
         mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
     ) {
         if let Some(tree) = item_src.ast.use_tree() {
-            expand_use_tree(
-                None,
-                tree,
-                &|| item_src.file_id.macro_crate(db).map(|crate_id| Crate { crate_id }),
-                &mut cb,
-            );
+            expand_use_tree(None, tree, &|| item_src.file_id.macro_crate(db), &mut cb);
         }
     }
 
@@ -95,10 +96,10 @@ impl Path {
     /// It correctly handles `$crate` based path from macro call.
     pub fn from_src(source: Source<ast::Path>, db: &impl AstDatabase) -> Option<Path> {
         let file_id = source.file_id;
-        Path::parse(source.ast, &|| file_id.macro_crate(db).map(|crate_id| Crate { crate_id }))
+        Path::parse(source.ast, &|| file_id.macro_crate(db))
     }
 
-    fn parse(mut path: ast::Path, macro_crate: &impl Fn() -> Option<Crate>) -> Option<Path> {
+    fn parse(mut path: ast::Path, macro_crate: &impl Fn() -> Option<CrateId>) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
@@ -229,7 +230,7 @@ impl Path {
 }
 
 impl GenericArgs {
-    pub(crate) fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
+    pub fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
         let mut args = Vec::new();
         for type_arg in node.type_args() {
             let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
@@ -293,7 +294,7 @@ impl From<Name> for Path {
 fn expand_use_tree(
     prefix: Option<Path>,
     tree: ast::UseTree,
-    macro_crate: &impl Fn() -> Option<Crate>,
+    macro_crate: &impl Fn() -> Option<CrateId>,
     cb: &mut impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
@@ -338,7 +339,7 @@ fn expand_use_tree(
 fn convert_path(
     prefix: Option<Path>,
     path: ast::Path,
-    macro_crate: &impl Fn() -> Option<Crate>,
+    macro_crate: &impl Fn() -> Option<CrateId>,
 ) -> Option<Path> {
     let prefix = if let Some(qual) = path.qualifier() {
         Some(convert_path(prefix, qual, macro_crate)?)

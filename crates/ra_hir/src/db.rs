@@ -12,18 +12,21 @@ use crate::{
     ids,
     impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
     lang_item::{LangItemTarget, LangItems},
-    nameres::{CrateDefMap, ImportSourceMap, Namespace, RawItems},
+    nameres::{CrateDefMap, Namespace},
     traits::TraitData,
     ty::{
         method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
         InferenceResult, Substs, Ty, TypableDef, TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, Enum, ExprScopes, FnData, Function, HirFileId, Module,
-    Static, Struct, StructField, Trait, TypeAlias,
+    Const, ConstData, Crate, DefWithBody, Enum, ExprScopes, FnData, Function, Module, Static,
+    Struct, StructField, Trait, TypeAlias,
 };
 
-pub use hir_def::db::{InternDatabase, InternDatabaseStorage};
+pub use hir_def::db::{
+    DefDatabase2, DefDatabase2Storage, InternDatabase, InternDatabaseStorage, RawItemsQuery,
+    RawItemsWithSourceMapQuery,
+};
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
@@ -32,7 +35,7 @@ pub use hir_expand::db::{
 // This database uses `AstDatabase` internally,
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
-pub trait DefDatabase: InternDatabase + HirDebugDatabase + AstDatabase {
+pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
 
@@ -44,15 +47,6 @@ pub trait DefDatabase: InternDatabase + HirDebugDatabase + AstDatabase {
 
     #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
     fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
-
-    #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
-    fn raw_items_with_source_map(
-        &self,
-        file_id: HirFileId,
-    ) -> (Arc<RawItems>, Arc<ImportSourceMap>);
-
-    #[salsa::invoke(RawItems::raw_items_query)]
-    fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 
     #[salsa::invoke(CrateDefMap::crate_def_map_query)]
     fn crate_def_map(&self, krate: Crate) -> Arc<CrateDefMap>;

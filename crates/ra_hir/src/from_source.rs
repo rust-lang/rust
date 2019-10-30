@@ -1,16 +1,11 @@
 //! FIXME: write short doc here
 
-use ra_db::{FileId, FilePosition};
-use ra_syntax::{
-    algo::find_node_at_offset,
-    ast::{self, AstNode, NameOwner},
-    SyntaxNode,
-};
+use hir_def::name::AsName;
+use ra_syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    name::AsName,
     AstId, Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
     ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
 };
@@ -126,41 +121,6 @@ impl FromSource for StructField {
             .flat_map(|it| it.iter())
             .map(|(id, _)| StructField { parent: variant_def, id })
             .find(|f| f.source(db) == src)
-    }
-}
-
-// FIXME: simplify it
-impl ModuleSource {
-    pub fn from_position(
-        db: &(impl DefDatabase + AstDatabase),
-        position: FilePosition,
-    ) -> ModuleSource {
-        let parse = db.parse(position.file_id);
-        match &find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
-            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
-            _ => {
-                let source_file = parse.tree();
-                ModuleSource::SourceFile(source_file)
-            }
-        }
-    }
-
-    pub fn from_child_node(
-        db: &(impl DefDatabase + AstDatabase),
-        file_id: FileId,
-        child: &SyntaxNode,
-    ) -> ModuleSource {
-        if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
-            ModuleSource::Module(m)
-        } else {
-            let source_file = db.parse(file_id).tree();
-            ModuleSource::SourceFile(source_file)
-        }
-    }
-
-    pub fn from_file_id(db: &(impl DefDatabase + AstDatabase), file_id: FileId) -> ModuleSource {
-        let source_file = db.parse(file_id).tree();
-        ModuleSource::SourceFile(source_file)
     }
 }
 

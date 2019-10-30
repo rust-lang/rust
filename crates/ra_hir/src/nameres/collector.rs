@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use hir_def::{attr::Attr, name, nameres::raw};
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
 use ra_syntax::{ast, SmolStr};
@@ -7,12 +8,10 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attr,
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
-    name::MACRO_RULES,
     nameres::{
-        diagnostics::DefDiagnostic, mod_resolution::ModDir, raw, Crate, CrateDefMap, CrateModuleId,
+        diagnostics::DefDiagnostic, mod_resolution::ModDir, Crate, CrateDefMap, CrateModuleId,
         ModuleData, ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
     },
     Adt, AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
@@ -725,7 +724,7 @@ where
 }
 
 fn is_macro_rules(path: &Path) -> bool {
-    path.as_ident() == Some(&MACRO_RULES)
+    path.as_ident() == Some(&name::MACRO_RULES)
 }
 
 #[cfg(test)]

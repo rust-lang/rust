@@ -3,13 +3,13 @@
 
 use std::sync::Arc;
 
+use hir_def::{name::AsName, type_ref::TypeRef};
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    type_ref::TypeRef,
-    AsName, Enum, EnumVariant, FieldSource, HasSource, Module, Name, Source, Struct, StructField,
+    Enum, EnumVariant, FieldSource, HasSource, Module, Name, Source, Struct, StructField,
 };
 
 impl Struct {
