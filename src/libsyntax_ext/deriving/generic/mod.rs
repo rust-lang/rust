@@ -186,7 +186,6 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
-use syntax::expand::SpecialDerives;
 use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
@@ -427,10 +426,8 @@ impl<'a> TraitDef<'a> {
                     }
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent;
-                let is_always_copy =
-                    cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
-                    has_no_type_params;
-                let use_temporaries = is_packed && is_always_copy;
+                let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
+                let use_temporaries = is_packed && always_copy;
 
                 let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
