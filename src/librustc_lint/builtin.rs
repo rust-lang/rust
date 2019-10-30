@@ -1125,8 +1125,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
                 .map(|pred| pred.span()).collect();
             let mut err = cx.struct_span_lint(TYPE_ALIAS_BOUNDS, spans,
                 "where clauses are not enforced in type aliases");
-            err.help("the clause will not be checked when the type alias is used, \
-                      and should be removed");
+            err.span_suggestion(
+                type_alias_generics.where_clause.span_for_predicates_or_empty_place(),
+                "the clause will not be checked when the type alias is used, and should be removed",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
             if !suggested_changing_assoc_types {
                 TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
                 suggested_changing_assoc_types = true;
@@ -1136,14 +1140,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
             let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+            let suggestion = spans.iter().map(|sp| {
+                let start = param.span.between(*sp); // Include the `:` in `T: Bound`.
+                (start.to(*sp), String::new())
+            }).collect();
             if !spans.is_empty() {
                 let mut err = cx.struct_span_lint(
                     TYPE_ALIAS_BOUNDS,
                     spans,
                     "bounds on generic parameters are not enforced in type aliases",
                 );
-                err.help("the bound will not be checked when the type alias is used, \
-                          and should be removed");
+                let msg = "the bound will not be checked when the type alias is used, \
+                           and should be removed";
+                err.multipart_suggestion(&msg, suggestion, Applicability::MachineApplicable);
                 if !suggested_changing_assoc_types {
                     TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
                     suggested_changing_assoc_types = true;
