@@ -186,6 +186,13 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
+        if builder.config.sanitizers {
+            enabled_llvm_projects.push("compiler-rt");
+            cfg.define("COMPILER_RT_BUILD_SANITIZERS", "ON");
+            // Avoids building instrumented version of libcxx.
+            cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
+        }
+
         if builder.config.lldb_enabled {
             enabled_llvm_projects.push("clang");
             enabled_llvm_projects.push("lldb");
