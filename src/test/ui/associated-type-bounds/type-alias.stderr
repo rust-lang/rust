@@ -5,7 +5,10 @@ LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(type_alias_bounds)]` on by default
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaWhere1<T>  = T;
+   |                  --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias.rs:6:25
@@ -13,7 +16,10 @@ warning: where clauses are not enforced in type aliases
 LL | type _TaWhere2<T> where T: Iterator<Item: 'static> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaWhere2<T>  = T;
+   |                  --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias.rs:7:25
@@ -21,7 +27,10 @@ warning: where clauses are not enforced in type aliases
 LL | type _TaWhere3<T> where T: Iterator<Item: 'static> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaWhere3<T>  = T;
+   |                  --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias.rs:8:25
@@ -29,7 +38,10 @@ warning: where clauses are not enforced in type aliases
 LL | type _TaWhere4<T> where T: Iterator<Item: 'static + Copy + Send> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaWhere4<T>  = T;
+   |                  --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias.rs:9:25
@@ -37,7 +49,10 @@ warning: where clauses are not enforced in type aliases
 LL | type _TaWhere5<T> where T: Iterator<Item: for<'a> Into<&'a u8>> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaWhere5<T>  = T;
+   |                  --
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/type-alias.rs:10:25
@@ -45,7 +60,10 @@ warning: where clauses are not enforced in type aliases
 LL | type _TaWhere6<T> where T: Iterator<Item: Iterator<Item: Copy>> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaWhere6<T>  = T;
+   |                  --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias.rs:12:20
@@ -53,7 +71,10 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL | type _TaInline1<T: Iterator<Item: Copy>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the bound will not be checked when the type alias is used, and should be removed
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaInline1<T> = T;
+   |                 --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias.rs:13:20
@@ -61,7 +82,10 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL | type _TaInline2<T: Iterator<Item: 'static>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the bound will not be checked when the type alias is used, and should be removed
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaInline2<T> = T;
+   |                 --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias.rs:14:20
@@ -69,7 +93,10 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL | type _TaInline3<T: Iterator<Item: 'static>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the bound will not be checked when the type alias is used, and should be removed
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaInline3<T> = T;
+   |                 --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias.rs:15:20
@@ -77,7 +104,10 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL | type _TaInline4<T: Iterator<Item: 'static + Copy + Send>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the bound will not be checked when the type alias is used, and should be removed
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaInline4<T> = T;
+   |                 --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias.rs:16:20
@@ -85,7 +115,10 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL | type _TaInline5<T: Iterator<Item: for<'a> Into<&'a u8>>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the bound will not be checked when the type alias is used, and should be removed
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaInline5<T> = T;
+   |                 --
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias.rs:17:20
@@ -93,5 +126,8 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL | type _TaInline6<T: Iterator<Item: Iterator<Item: Copy>>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: the bound will not be checked when the type alias is used, and should be removed
+help: the bound will not be checked when the type alias is used, and should be removed
+   |
+LL | type _TaInline6<T> = T;
+   |                 --
 
