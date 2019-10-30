@@ -5,6 +5,7 @@ use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty::layout::{self, LayoutOf, Size, Align};
 use rustc::ty;
+use syntax::source_map::Span;
 
 use crate::{
     PlaceTy, OpTy, Immediate, Scalar, Tag,
@@ -15,12 +16,13 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tc
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn call_intrinsic(
         &mut self,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.emulate_intrinsic(instance, args, dest)? {
+        if this.emulate_intrinsic(span, instance, args, dest)? {
             return Ok(());
         }
         let tcx = &{this.tcx.tcx};

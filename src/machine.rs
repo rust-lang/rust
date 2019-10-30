@@ -14,8 +14,7 @@ use rustc::ty::{
     layout::{LayoutOf, Size},
     Ty, TyCtxt,
 };
-use syntax::attr;
-use syntax::symbol::sym;
+use syntax::{attr, source_map::Span, symbol::sym};
 
 use crate::*;
 
@@ -192,11 +191,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn call_intrinsic(
         ecx: &mut rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        ecx.call_intrinsic(instance, args, dest)
+        ecx.call_intrinsic(span, instance, args, dest)
     }
 
     #[inline(always)]
