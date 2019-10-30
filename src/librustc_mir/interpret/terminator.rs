@@ -264,10 +264,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
+                let old_stack = self.cur_frame();
                 M::call_intrinsic(self, span, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
-                self.goto_block(ret)?;
+                if ret.is_some() {
+                    self.goto_block(ret)?;
+                } else {
+                    // If this intrinsic call doesn't have a ret block,
+                    // then the intrinsic implementation should have
+                    // changed the stack frame (otherwise, we'll end
+                    // up trying to execute this intrinsic call again)
+                    assert!(self.cur_frame() != old_stack);
+                }
                 if let Some(dest) = dest {
                     self.dump_place(*dest)
                 }
