@@ -571,6 +571,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
+        intrinsics::panic_if_uninhabited::<T>();
         &*self.value
     }
 
@@ -690,6 +691,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
+        intrinsics::panic_if_uninhabited::<T>();
         &mut *self.value
     }
 
