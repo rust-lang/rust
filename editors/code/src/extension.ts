@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
         } catch (_) {
             vscode.window.showWarningMessage(
-                'Enhanced typing feature is disabled because of incompatibility with VIM extension'
+                'Enhanced typing feature is disabled because of incompatibility with VIM extension, consider turning off rust-analyzer.enableEnhancedTyping: https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/README.md#settings'
             );
         }
     }
