@@ -68,7 +68,7 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
     max: u128,
     expr: &'tcx hir::Expr,
     parent_expr: &'tcx hir::Expr,
-    ty: impl std::fmt::Debug,
+    ty: &str,
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
@@ -83,15 +83,15 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
             let mut err = cx.struct_span_lint(
                 OVERFLOWING_LITERALS,
                 parent_expr.span,
-                &format!("range endpoint is out of range for `{:?}`", ty),
+                &format!("range endpoint is out of range for `{}`", ty),
             );
             if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
                 use ast::{LitKind, LitIntType};
                 // We need to preserve the literal's suffix,
                 // as it may determine typing information.
                 let suffix = match lit.node {
-                    LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s),
-                    LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s),
+                    LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s.name_str()),
+                    LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s.name_str()),
                     LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
                     _ => bug!(),
                 };
@@ -161,11 +161,11 @@ fn report_bin_hex_error(
     let (t, actually) = match ty {
         attr::IntType::SignedInt(t) => {
             let actually = sign_extend(val, size) as i128;
-            (format!("{:?}", t), actually.to_string())
+            (t.name_str(), actually.to_string())
         }
         attr::IntType::UnsignedInt(t) => {
             let actually = truncate(val, size);
-            (format!("{:?}", t), actually.to_string())
+            (t.name_str(), actually.to_string())
         }
     };
     let mut err = cx.struct_span_lint(
@@ -204,7 +204,7 @@ fn report_bin_hex_error(
 //  - `uX` => `uY`
 //
 // No suggestion for: `isize`, `usize`.
-fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<String> {
+fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static str> {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     macro_rules! find_fit {
@@ -215,10 +215,10 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<String> {
                 match $ty {
                     $($type => {
                         $(if !negative && val <= uint_ty_range($utypes).1 {
-                            return Some(format!("{:?}", $utypes))
+                            return Some($utypes.name_str())
                         })*
                         $(if val <= int_ty_range($itypes).1 as u128 + _neg {
-                            return Some(format!("{:?}", $itypes))
+                            return Some($itypes.name_str())
                         })*
                         None
                     },)+
@@ -281,7 +281,7 @@ fn lint_int_literal<'a, 'tcx>(
         if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
             if let hir::ExprKind::Struct(..) = par_e.kind {
                 if is_range_literal(cx.sess(), par_e)
-                    && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
+                    && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t.name_str())
                 {
                     // The overflowing literal lint was overridden.
                     return;
@@ -292,7 +292,7 @@ fn lint_int_literal<'a, 'tcx>(
         cx.span_lint(
             OVERFLOWING_LITERALS,
             e.span,
-            &format!("literal out of range for `{:?}`", t),
+            &format!("literal out of range for `{}`", t.name_str()),
         );
     }
 }
@@ -338,6 +338,7 @@ fn lint_uint_literal<'a, 'tcx>(
                 }
                 hir::ExprKind::Struct(..)
                     if is_range_literal(cx.sess(), par_e) => {
+                        let t = t.name_str();
                         if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t) {
                             // The overflowing literal lint was overridden.
                             return;
@@ -353,7 +354,7 @@ fn lint_uint_literal<'a, 'tcx>(
         cx.span_lint(
             OVERFLOWING_LITERALS,
             e.span,
-            &format!("literal out of range for `{:?}`", t),
+            &format!("literal out of range for `{}`", t.name_str()),
         );
     }
 }
@@ -379,8 +380,7 @@ fn lint_literal<'a, 'tcx>(
         }
         ty::Float(t) => {
             let is_infinite = match lit.node {
-                ast::LitKind::Float(v, _) |
-                ast::LitKind::FloatUnsuffixed(v) => {
+                ast::LitKind::Float(v, _) => {
                     match t {
                         ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
                         ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
@@ -389,9 +389,11 @@ fn lint_literal<'a, 'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.span_lint(OVERFLOWING_LITERALS,
-                             e.span,
-                             &format!("literal out of range for `{:?}`", t));
+                cx.span_lint(
+                    OVERFLOWING_LITERALS,
+                    e.span,
+                    &format!("literal out of range for `{}`", t.name_str()),
+                );
             }
         }
         _ => {}

@@ -1116,7 +1116,11 @@ impl<'a> Parser<'a> {
                 Err(self.span_fatal(token.span, &msg))
             }
             Err(err) => {
-                let (lit, span) = (token.expect_lit(), token.span);
+                let span = token.span;
+                let lit = match token.kind {
+                    token::Literal(lit) => lit,
+                    _ => unreachable!(),
+                };
                 self.bump();
                 self.error_literal_from_token(err, lit, span);
                 // Pack possible quotes and prefixes from the original literal into

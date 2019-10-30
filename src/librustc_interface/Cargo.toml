@@ -27,7 +27,6 @@ rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_passes = { path = "../librustc_passes" }
-rustc_target = { path = "../librustc_target" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_errors = { path = "../librustc_errors" }
@@ -36,3 +35,6 @@ rustc_privacy = { path = "../librustc_privacy" }
 rustc_resolve = { path = "../librustc_resolve" }
 tempfile = "3.0.5"
 once_cell = "1"
+
+[dev-dependencies]
+rustc_target = { path = "../librustc_target" }
