@@ -26,7 +26,6 @@ macro_rules! impl_froms {
     }
 }
 
-mod either;
 pub mod debug;
 
 pub mod db;
@@ -62,7 +61,6 @@ use crate::{ids::MacroFileKind, resolve::Resolver};
 
 pub use crate::{
     adt::VariantDef,
-    either::Either,
     expr::ExprScopes,
     from_source::FromSource,
     generics::{GenericDef, GenericParam, GenericParams, HasGenericParams},
@@ -85,6 +83,7 @@ pub use self::code_model::{
 };
 
 pub use hir_def::{
+    either::Either,
     name::Name,
     path::{Path, PathKind},
     type_ref::Mutability,

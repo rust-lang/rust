@@ -23,7 +23,10 @@ use crate::{
     Struct, StructField, Trait, TypeAlias,
 };
 
-pub use hir_def::db::{InternDatabase, InternDatabaseStorage};
+pub use hir_def::db::{
+    DefDatabase2, DefDatabase2Storage, InternDatabase, InternDatabaseStorage, RawItemsQuery,
+    RawItemsWithSourceMapQuery,
+};
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
@@ -32,7 +35,7 @@ pub use hir_expand::db::{
 // This database uses `AstDatabase` internally,
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
-pub trait DefDatabase: HirDebugDatabase + hir_def::db::DefDatabase2 {
+pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
 

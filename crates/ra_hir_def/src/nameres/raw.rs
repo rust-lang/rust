@@ -8,7 +8,6 @@ use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode, AstPtr, SourceFile,
 };
-use test_utils::tested_by;
 
 use crate::{
     attr::Attr,
@@ -301,7 +300,8 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
-        tested_by!(name_res_works_for_broken_modules);
+        // FIXME: restore this mark once we complete hir splitting
+        // tested_by!(name_res_works_for_broken_modules);
     }
 
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: ast::UseItem) {
