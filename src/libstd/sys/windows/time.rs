@@ -41,7 +41,7 @@ impl Instant {
         perf_counter::PerformanceCounterInstant::now().into()
     }
 
-    pub fn actually_monotonic() -> bool {
+    pub const fn actually_monotonic() -> bool {
         false
     }
 

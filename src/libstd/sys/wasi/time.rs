@@ -29,7 +29,7 @@ impl Instant {
         Instant(Duration::from_secs(0))
     }
 
-    pub fn actually_monotonic() -> bool {
+    pub const fn actually_monotonic() -> bool {
         true
     }
 

@@ -158,7 +158,7 @@ mod inner {
             Instant { t: 0 }
         }
 
-        pub fn actually_monotonic() -> bool {
+        pub const fn actually_monotonic() -> bool {
             true
         }
 
@@ -308,11 +308,21 @@ mod inner {
             }
         }
 
-        pub fn actually_monotonic() -> bool {
-            (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64")) ||
-            (cfg!(target_os = "linux") && cfg!(target_arch = "x86")) ||
-            cfg!(target_os = "fuchsia") ||
-            false // last clause, used so `||` is always trailing above
+        pub const fn actually_monotonic() -> bool {
+            // note: duplicate attributes may be optimized when
+            // conditional expressions in constant functions hits stable.
+            #[cfg(any(
+                all(target_os = "linux", target_arch = "x86_64"),
+                all(target_os = "linux", target_arch = "x86"),
+                all(target_os = "fuchsia"),
+            ))]
+            { true }
+            #[cfg(not(any(
+                all(target_os = "linux", target_arch = "x86_64"),
+                all(target_os = "linux", target_arch = "x86"),
+                all(target_os = "fuchsia"),
+            )))]
+            { false }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

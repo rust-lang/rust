@@ -26,7 +26,7 @@ impl Instant {
         Some(Instant(self.0.checked_sub(*other)?))
     }
 
-    pub fn actually_monotonic() -> bool {
+    pub const fn actually_monotonic() -> bool {
         false
     }
 

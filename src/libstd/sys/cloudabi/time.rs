@@ -25,7 +25,7 @@ impl Instant {
         }
     }
 
-    pub fn actually_monotonic() -> bool {
+    pub const fn actually_monotonic() -> bool {
         true
     }
 
