@@ -526,6 +526,7 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
+    /// #![feature(maybe_uninit_ref)]
     /// use ::std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
@@ -547,6 +548,7 @@ impl<T> MaybeUninit<T> {
     /// ### *Incorrect* usages of this method:
     ///
     /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
@@ -555,6 +557,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
     /// use std::{cell::Cell, mem::MaybeUninit};
     ///
     /// let b = MaybeUninit::<Cell<bool>>::uninit();
@@ -589,6 +592,7 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
+    /// #![feature(maybe_uninit_ref)]
     /// use ::std::mem::MaybeUninit;
     ///
     /// # unsafe extern "C" fn initialize_buffer (buf: *mut [u8; 2048]) { *buf = [0; 2048] }
@@ -599,6 +603,7 @@ impl<T> MaybeUninit<T> {
     /// }
     ///
     /// let mut buf = MaybeUninit::<[u8; 2048]>::uninit();
+    ///
     /// // Initialize `buf`:
     /// unsafe { initialize_buffer(buf.as_mut_ptr()); }
     /// // Now we know that `buf` has been initialized; so we could `.assume_init()` it.
@@ -611,16 +616,21 @@ impl<T> MaybeUninit<T> {
     ///     //   - `buf` has been initialized.
     ///     buf.get_mut()
     /// };
+    ///
     /// // Now we can use `buf` as a normal slice:
     /// buf.sort_unstable();
-    /// assert!(buf.is_sorted());
+    /// assert!(
+    ///     buf.chunks(2).all(|chunk| chunk[0] <= chunk[1]),
+    ///     "buffer is sorted",
+    /// );
     /// ```
     ///
     /// ### *Incorrect* usages of this method:
     ///
-    /// Do not use `.get_mut()` to initialize a value
+    /// You cannot use `.get_mut()` to initialize a value:
     ///
     /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut b = MaybeUninit::<bool>::uninit();
@@ -631,11 +641,12 @@ impl<T> MaybeUninit<T> {
     /// }
     /// ```
     ///
-    /// For instance, you cannot [`Read`] into an uninitialized buffer.
+    /// For instance, you cannot [`Read`] into an uninitialized buffer:
     ///
     /// [`Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
     ///
     /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
     /// use std::{io, mem::MaybeUninit};
     ///
     /// fn read_chunk (reader: &'_ mut dyn io::Read) -> io::Result<[u8; 64]>
@@ -645,14 +656,15 @@ impl<T> MaybeUninit<T> {
     ///                             // ^^^^^^^^^^^^^^^^
     ///                             // (mutable) reference to uninitialized memory!
     ///                             // This is undefined behavior.
-    ///     Ok(buffer.assume_init())
+    ///     Ok(unsafe { buffer.assume_init() })
     /// }
     /// ```
     ///
-    /// Nor can you use direct field access to do field-by-field gradual initialization.
+    /// Nor can you use direct field access to do field-by-field gradual initialization:
     ///
     /// ```rust,no_run
-    /// use std::mem::MaybeUninit;
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::{mem::MaybeUninit, ptr};
     ///
     /// struct Foo {
     ///     a: u32,
@@ -660,7 +672,7 @@ impl<T> MaybeUninit<T> {
     /// }
     ///
     /// let foo: Foo = unsafe {
-    ///     let foo = MaybeUninit::<Foo>::uninit();
+    ///     let mut foo = MaybeUninit::<Foo>::uninit();
     ///     ptr::write(&mut foo.get_mut().a as *mut u32, 1337);
     ///                  // ^^^^^^^^^^^^^
     ///                  // (mutable) reference to uninitialized memory!
