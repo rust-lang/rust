@@ -3,7 +3,7 @@
 use crate::cstore::{self, CStore, MetadataBlob};
 use crate::locator::{self, CratePaths};
 use crate::schema::{CrateRoot, CrateDep};
-use rustc_data_structures::sync::{RwLock, Lock, AtomicCell};
+use rustc_data_structures::sync::{Lock, Once, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
@@ -249,7 +249,7 @@ impl<'a> CrateLoader<'a> {
             cnum_map,
             cnum,
             dependencies: Lock::new(dependencies),
-            source_map_import_info: RwLock::new(vec![]),
+            source_map_import_info: Once::new(),
             alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
             dep_kind: Lock::new(dep_kind),
             source,
