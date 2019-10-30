@@ -196,7 +196,7 @@ pub fn main_loop(
     task_receiver.into_iter().for_each(|task| {
         on_task(task, &connection.sender, &mut loop_state.pending_requests, &mut world_state)
     });
-    libdata_receiver.into_iter().for_each(|lib| drop(lib));
+    libdata_receiver.into_iter().for_each(drop);
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
     drop(pool);

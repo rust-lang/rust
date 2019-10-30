@@ -60,7 +60,7 @@ fn main() -> Result<()> {
             matches.finish().or_else(handle_extra_flags)?;
             let opts = InstallOpt {
                 client: if server { None } else { Some(ClientOpt::VsCode) },
-                server: if client_code { None } else { Some(ServerOpt { jemalloc: jemalloc }) },
+                server: if client_code { None } else { Some(ServerOpt { jemalloc }) },
             };
             install(opts)?
         }

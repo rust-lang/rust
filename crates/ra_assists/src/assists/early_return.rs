@@ -50,7 +50,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
     }
 
     // check for early return and continue
-    let first_in_then_block = then_block.syntax().first_child()?.clone();
+    let first_in_then_block = then_block.syntax().first_child()?;
     if ast::ReturnExpr::can_cast(first_in_then_block.kind())
         || ast::ContinueExpr::can_cast(first_in_then_block.kind())
         || first_in_then_block

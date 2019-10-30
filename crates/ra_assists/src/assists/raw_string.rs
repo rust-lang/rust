@@ -131,7 +131,7 @@ pub(crate) fn remove_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     ctx.add_assist(AssistId("remove_hash"), "remove hash from raw string", |edit| {
         edit.target(token.text_range());
         let result = &text[2..text.len() - 1];
-        let result = if result.starts_with("\"") {
+        let result = if result.starts_with('\"') {
             // no more hash, escape
             let internal_str = &result[1..result.len() - 1];
             format!("\"{}\"", internal_str.escape_default().to_string())

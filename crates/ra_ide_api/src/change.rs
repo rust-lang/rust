@@ -43,7 +43,7 @@ impl fmt::Debug for AnalysisChange {
         if !self.libraries_added.is_empty() {
             d.field("libraries_added", &self.libraries_added.len());
         }
-        if !self.crate_graph.is_some() {
+        if !self.crate_graph.is_none() {
             d.field("crate_graph", &self.crate_graph);
         }
         d.finish()

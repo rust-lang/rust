@@ -67,7 +67,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 });
             }
         }
-        _ => return,
+        _ => {}
     };
 }
 
