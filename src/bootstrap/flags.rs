@@ -53,6 +53,9 @@ pub enum Subcommand {
     Fix {
         paths: Vec<PathBuf>,
     },
+    Format {
+        check: bool,
+    },
     Doc {
         paths: Vec<PathBuf>,
     },
@@ -102,6 +105,7 @@ Subcommands:
     check       Compile either the compiler or libraries, using cargo check
     clippy      Run clippy
     fix         Run cargo fix
+    fmt         Run rustfmt
     test        Build and run some test suites
     bench       Build and run some benchmarks
     doc         Build documentation
@@ -160,6 +164,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                 || (s == "check")
                 || (s == "clippy")
                 || (s == "fix")
+                || (s == "fmt")
                 || (s == "test")
                 || (s == "bench")
                 || (s == "doc")
@@ -221,6 +226,9 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
             }
             "clean" => {
                 opts.optflag("", "all", "clean all build artifacts");
+            }
+            "fmt" => {
+                opts.optflag("", "check", "check formatting instead of applying.");
             }
             _ => {}
         };
@@ -323,6 +331,17 @@ Arguments:
         ./x.py fix src/libcore src/libproc_macro",
                 );
             }
+            "fmt" => {
+                subcommand_help.push_str(
+                    "\n
+Arguments:
+    This subcommand optionally accepts a `--check` flag which succeeds if formatting is correct and
+    fails if it is not. For example:
+
+        ./x.py fmt
+        ./x.py fmt --check",
+                );
+            }
             "test" => {
                 subcommand_help.push_str(
                     "\n
@@ -388,7 +407,7 @@ Arguments:
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
             extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
-        } else if subcommand.as_str() != "clean" {
+        } else if !(subcommand.as_str() == "clean" || subcommand.as_str() == "fmt") {
             extra_help.push_str(
                 format!(
                     "Run `./x.py {} -h -v` to see a list of available paths.",
@@ -437,6 +456,11 @@ Arguments:
 
                 Subcommand::Clean {
                     all: matches.opt_present("all"),
+                }
+            }
+            "fmt" => {
+                Subcommand::Format {
+                    check: matches.opt_present("check"),
                 }
             }
             "dist" => Subcommand::Dist { paths },
