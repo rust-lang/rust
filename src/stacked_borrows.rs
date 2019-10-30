@@ -241,7 +241,7 @@ impl<'tcx> Stack {
 
     /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
-    fn find_first_write_incompaible(&self, granting: usize) -> usize {
+    fn find_first_write_incompatible(&self, granting: usize) -> usize {
         let perm = self.borrows[granting].perm;
         match perm {
             Permission::SharedReadOnly =>
@@ -309,7 +309,7 @@ impl<'tcx> Stack {
         if access == AccessKind::Write {
             // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
             // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
-            let first_incompatible_idx = self.find_first_write_incompaible(granting_idx);
+            let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
                 Stack::check_protector(&item, Some(tag), global)?;
@@ -391,7 +391,7 @@ impl<'tcx> Stack {
             // access.  Instead of popping the stack, we insert the item at the place the stack would
             // be popped to (i.e., we insert it above all the write-compatible items).
             // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
-            self.find_first_write_incompaible(granting_idx)
+            self.find_first_write_incompatible(granting_idx)
         } else {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access.
