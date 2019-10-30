@@ -6,6 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     ast::{self, child_opt, children, AstChildren, AstNode, AstToken},
+    match_ast,
     syntax_node::{SyntaxElementChildren, SyntaxNodeChildren},
 };
 
@@ -68,11 +69,12 @@ impl Iterator for ItemOrMacroIter {
     fn next(&mut self) -> Option<ItemOrMacro> {
         loop {
             let n = self.0.next()?;
-            if let Some(item) = ast::ModuleItem::cast(n.clone()) {
-                return Some(ItemOrMacro::Item(item));
-            }
-            if let Some(call) = ast::MacroCall::cast(n) {
-                return Some(ItemOrMacro::Macro(call));
+            match_ast! {
+                match n {
+                    ast::ModuleItem(it) => { return Some(ItemOrMacro::Item(it)) },
+                    ast::MacroCall(it) => { return Some(ItemOrMacro::Macro(it)) },
+                    _ => {},
+                }
             }
         }
     }
