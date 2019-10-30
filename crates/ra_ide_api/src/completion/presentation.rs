@@ -164,27 +164,32 @@ impl Completions {
         name: Option<String>,
         macro_: hir::MacroDef,
     ) {
-        let ast_node = macro_.source(ctx.db).ast;
-        if let Some(name) = name {
-            let detail = macro_label(&ast_node);
+        let name = match name {
+            Some(it) => it,
+            None => return,
+        };
 
-            let docs = macro_.docs(ctx.db);
+        let ast_node = macro_.source(ctx.db).ast;
+        let detail = macro_label(&ast_node);
+
+        let docs = macro_.docs(ctx.db);
+        let macro_declaration = format!("{}!", name);
+
+        let mut builder =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), &macro_declaration)
+                .kind(CompletionItemKind::Macro)
+                .set_documentation(docs.clone())
+                .detail(detail);
+
+        builder = if ctx.use_item_syntax.is_some() {
+            builder.insert_text(name)
+        } else {
             let macro_braces_to_insert =
                 self.guess_macro_braces(&name, docs.as_ref().map_or("", |s| s.as_str()));
-            let macro_declaration = name + "!";
+            builder.insert_snippet(macro_declaration + macro_braces_to_insert)
+        };
 
-            let builder = CompletionItem::new(
-                CompletionKind::Reference,
-                ctx.source_range(),
-                &macro_declaration,
-            )
-            .kind(CompletionItemKind::Macro)
-            .set_documentation(docs)
-            .detail(detail)
-            .insert_snippet(macro_declaration + macro_braces_to_insert);
-
-            self.add(builder);
-        }
+        self.add(builder);
     }
 
     fn add_function_with_name(
@@ -281,9 +286,10 @@ fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> b
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
     use test_utils::covers;
+
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
@@ -575,5 +581,35 @@ mod tests {
         ]
         "###
         );
+    }
+
+    #[test]
+    fn dont_insert_macro_call_braces_in_use() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                //- /main.rs
+                use foo::<|>;
+
+                //- /foo/lib.rs
+                #[macro_export]
+                macro_rules frobnicate {
+                    () => ()
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "frobnicate!",
+                source_range: [9; 9),
+                delete: [9; 9),
+                insert: "frobnicate",
+                kind: Macro,
+                detail: "#[macro_export]\nmacro_rules! frobnicate",
+            },
+        ]
+        "###
+        )
     }
 }
