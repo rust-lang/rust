@@ -124,6 +124,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     return None;
                 }
 
+                let ty = self.insert_type_vars(ty);
+                let ty = self.normalize_associated_types_in(ty);
+
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
 

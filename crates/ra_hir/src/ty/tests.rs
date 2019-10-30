@@ -2879,9 +2879,9 @@ fn test() {
 "#),
         @r###"
     [101; 127) '{     ...e(); }': ()
-    [111; 112) 'a': {unknown}
-    [115; 122) 'S::make': {unknown}
-    [115; 124) 'S::make()': {unknown}
+    [111; 112) 'a': (S<i32>, i64)
+    [115; 122) 'S::make': fn make<S<i32>, i64>() -> (Self, T)
+    [115; 124) 'S::make()': (S<i32>, i64)
     "###
     );
 }
@@ -2897,18 +2897,18 @@ struct S<T>;
 impl Trait<i64> for S<u64> {}
 impl Trait<i32> for S<u32> {}
 fn test() {
-    let a: (Self<i64>, _) = S::make();
-    let b: (_, u32) = S::make();
+    let a: (S<u64>, _) = S::make();
+    let b: (_, i32) = S::make();
 }
 "#),
         @r###"
-    [131; 206) '{     ...e(); }': ()
-    [141; 142) 'a': ({unknown}, {unknown})
-    [161; 168) 'S::make': {unknown}
-    [161; 170) 'S::make()': ({unknown}, {unknown})
-    [180; 181) 'b': ({unknown}, u32)
-    [194; 201) 'S::make': {unknown}
-    [194; 203) 'S::make()': ({unknown}, u32)
+    [131; 203) '{     ...e(); }': ()
+    [141; 142) 'a': (S<u64>, i64)
+    [158; 165) 'S::make': fn make<S<u64>, i64>() -> (Self, T)
+    [158; 167) 'S::make()': (S<u64>, i64)
+    [177; 178) 'b': (S<u32>, i32)
+    [191; 198) 'S::make': fn make<S<u32>, i32>() -> (Self, T)
+    [191; 200) 'S::make()': (S<u32>, i32)
     "###
     );
 }
