@@ -444,7 +444,7 @@ pub trait TryInto<T>: Sized {
 ///     type Error = &'static str;
 ///
 ///     fn try_from(value: i32) -> Result<Self, Self::Error> {
-///         if value < 0 {
+///         if value <= 0 {
 ///             Err("SuperiorThanZero only accepts value superior than zero!")
 ///         } else {
 ///             Ok(SuperiorThanZero(value))
