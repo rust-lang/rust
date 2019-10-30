@@ -8,6 +8,13 @@
 
 steps:
 
+# Configure our CI_JOB_NAME variable which log analyzers can use for the main
+# step to see what's going on.
+- bash: |
+    builder=$(echo $AGENT_JOBNAME | cut -d ' ' -f 2)
+    echo "##vso[task.setvariable variable=CI_JOB_NAME]$builder"
+  displayName: Configure Job Name
+
 # Disable automatic line ending conversion, which is enabled by default on
 # Azure's Windows image. Having the conversion enabled caused regressions both
 # in our test suite (it broke miri tests) and in the ecosystem, since we
@@ -134,13 +141,6 @@ steps:
     AGENT_OS: $(Agent.OS)
   condition: and(succeeded(), not(variables.SKIP_JOB))
   displayName: Install awscli
-
-# Configure our CI_JOB_NAME variable which log analyzers can use for the main
-# step to see what's going on.
-- bash: |
-    builder=$(echo $AGENT_JOBNAME | cut -d ' ' -f 2)
-    echo "##vso[task.setvariable variable=CI_JOB_NAME]$builder"
-  displayName: Configure Job Name
 
 # As a quick smoke check on the otherwise very fast mingw-check linux builder
 # check our own internal scripts.
