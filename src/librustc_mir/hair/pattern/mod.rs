@@ -293,10 +293,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 match self.ty.kind {
                     ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
                     ty::Ref(_, _, mutbl) => {
-                        write!(f, "&")?;
-                        if mutbl == hir::MutMutable {
-                            write!(f, "mut ")?;
-                        }
+                        write!(f, "&{}", mutbl.prefix_str())?;
                     }
                     _ => bug!("{} is a bad Deref pattern type", self.ty)
                 }

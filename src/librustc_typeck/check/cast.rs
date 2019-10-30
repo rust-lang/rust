@@ -341,10 +341,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                          tstr);
         match self.expr_ty.kind {
             ty::Ref(_, _, mt) => {
-                let mtstr = match mt {
-                    hir::MutMutable => "mut ",
-                    hir::MutImmutable => "",
-                };
+                let mtstr = mt.prefix_str();
                 if self.cast_ty.is_trait() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                         Ok(s) => {

@@ -1666,8 +1666,7 @@ define_print_and_forward_display! {
     }
 
     ty::TypeAndMut<'tcx> {
-        p!(write("{}", if self.mutbl == hir::MutMutable { "mut " } else { "" }),
-            print(self.ty))
+        p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
 
     ty::ExistentialTraitRef<'tcx> {
@@ -1693,9 +1692,7 @@ define_print_and_forward_display! {
     }
 
     ty::FnSig<'tcx> {
-        if self.unsafety == hir::Unsafety::Unsafe {
-            p!(write("unsafe "));
-        }
+        p!(write("{}", self.unsafety.prefix_str()));
 
         if self.abi != Abi::Rust {
             p!(write("extern {} ", self.abi));

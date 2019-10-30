@@ -1734,9 +1734,7 @@ impl<'a> State<'a> {
                     _ => false,
                 };
                 self.s.word("&");
-                if mutbl == hir::MutMutable {
-                    self.s.word("mut ");
-                }
+                self.s.word(mutbl.prefix_str());
                 if is_range_inner {
                     self.popen();
                 }

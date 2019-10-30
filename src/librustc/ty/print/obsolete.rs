@@ -80,9 +80,7 @@ impl DefPathBasedNames<'tcx> {
             }
             ty::Ref(_, inner_type, mutbl) => {
                 output.push('&');
-                if mutbl == hir::MutMutable {
-                    output.push_str("mut ");
-                }
+                output.push_str(mutbl.prefix_str());
 
                 self.push_type_name(inner_type, output, debug);
             }
@@ -114,9 +112,7 @@ impl DefPathBasedNames<'tcx> {
             ty::Foreign(did) => self.push_def_path(did, output),
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let sig = t.fn_sig(self.tcx);
-                if sig.unsafety() == hir::Unsafety::Unsafe {
-                    output.push_str("unsafe ");
-                }
+                output.push_str(sig.unsafety().prefix_str());
 
                 let abi = sig.abi();
                 if abi != ::rustc_target::spec::abi::Abi::Rust {

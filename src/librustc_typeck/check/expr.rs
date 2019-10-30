@@ -1723,7 +1723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-crate fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
+pub(super) fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
     Some(match ty.kind {
         ty::Bool => "true",
         ty::Char => "'a'",

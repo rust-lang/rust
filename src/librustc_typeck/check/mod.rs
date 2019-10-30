@@ -127,7 +127,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::source_map::{DUMMY_SP, original_sp};
-use syntax::symbol::{kw, sym};
+use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
@@ -1925,34 +1925,7 @@ fn check_impl_items_against_trait<'tcx>(
     }
 
     if !missing_items.is_empty() {
-        let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
-            "not all trait items implemented, missing: `{}`",
-            missing_items.iter()
-                .map(|trait_item| trait_item.ident.to_string())
-                .collect::<Vec<_>>().join("`, `"));
-        err.span_label(impl_span, format!("missing `{}` in implementation",
-                missing_items.iter()
-                    .map(|trait_item| trait_item.ident.to_string())
-                    .collect::<Vec<_>>().join("`, `")));
-
-        // `Span` before impl block closing brace.
-        let hi = full_impl_span.hi() - BytePos(1);
-        let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
-        let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
-        let padding: String = (0..indentation).map(|_| " ").collect();
-        for trait_item in missing_items {
-            let snippet = suggestion_signature(&trait_item, tcx);
-            let code = format!("{}{}\n{}", padding, snippet, padding);
-            let msg = format!("implement the missing item: `{}`", snippet);
-            let appl = Applicability::HasPlaceholders;
-            if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
-                err.span_label(span, format!("`{}` from trait", trait_item.ident));
-                err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
-            } else {
-                err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
-            }
-        }
-        err.emit();
+        missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
     }
 
     if !invalidated_items.is_empty() {
@@ -1965,11 +1938,100 @@ fn check_impl_items_against_trait<'tcx>(
             invalidator.ident,
             invalidated_items.iter()
                 .map(|name| name.to_string())
-                .collect::<Vec<_>>().join("`, `"))
+                .collect::<Vec<_>>().join("`, `")
+        )
     }
 }
 
-/// Given a `ty::AssocItem` and a `TyCtxt`, return placeholder code for that associated item.
+fn missing_items_err(
+    tcx: TyCtxt<'_>,
+    impl_span: Span,
+    missing_items: &[ty::AssocItem],
+    full_impl_span: Span,
+) {
+    let missing_items_msg = missing_items.iter()
+        .map(|trait_item| trait_item.ident.to_string())
+        .collect::<Vec<_>>().join("`, `");
+
+    let mut err = struct_span_err!(
+        tcx.sess,
+        impl_span,
+        E0046,
+        "not all trait items implemented, missing: `{}`",
+        missing_items_msg
+    );
+    err.span_label(impl_span, format!("missing `{}` in implementation", missing_items_msg));
+
+    // `Span` before impl block closing brace.
+    let hi = full_impl_span.hi() - BytePos(1);
+    // Point at the place right before the closing brace of the relevant `impl` to suggest
+    // adding the associated item at the end of its body.
+    let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
+    // Obtain the level of indentation ending in `sugg_sp`.
+    let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
+    // Make the whitespace that will make the suggestion have the right indentation.
+    let padding: String = (0..indentation).map(|_| " ").collect();
+
+    for trait_item in missing_items {
+        let snippet = suggestion_signature(&trait_item, tcx);
+        let code = format!("{}{}\n{}", padding, snippet, padding);
+        let msg = format!("implement the missing item: `{}`", snippet);
+        let appl = Applicability::HasPlaceholders;
+        if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
+            err.span_label(span, format!("`{}` from trait", trait_item.ident));
+            err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
+        } else {
+            err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
+        }
+    }
+    err.emit();
+}
+
+/// Return placeholder code for the given function.
+fn fn_sig_suggestion(sig: &ty::FnSig<'_>, ident: Ident) -> String {
+    let args = sig.inputs()
+        .iter()
+        .map(|ty| Some(match ty.kind {
+            ty::Param(param) if param.name == kw::SelfUpper => "self".to_string(),
+            ty::Ref(reg, ref_ty, mutability) => {
+                let reg = match &format!("{}", reg)[..] {
+                    "'_" | "" => String::new(),
+                    reg => format!("{} ", reg),
+                };
+                match ref_ty.kind {
+                    ty::Param(param) if param.name == kw::SelfUpper => {
+                        format!("&{}{}self", reg, mutability.prefix_str())
+                    }
+                    _ => format!("_: {:?}", ty),
+                }
+            }
+            _ => format!("_: {:?}", ty),
+        }))
+        .chain(std::iter::once(if sig.c_variadic {
+            Some("...".to_string())
+        } else {
+            None
+        }))
+        .filter_map(|arg| arg)
+        .collect::<Vec<String>>()
+        .join(", ");
+    let output = sig.output();
+    let output = if !output.is_unit() {
+        format!(" -> {:?}", output)
+    } else {
+        String::new()
+    };
+
+    let unsafety = sig.unsafety.prefix_str();
+    // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
+    // not be present in the `fn` definition, not will we account for renamed
+    // lifetimes between the `impl` and the `trait`, but this should be good enough to
+    // fill in a significant portion of the missing code, and other subsequent
+    // suggestions can help the user fix the code.
+    format!("{}fn {}({}){} {{ unimplemented!() }}", unsafety, ident, args, output)
+}
+
+/// Return placeholder code for the given associated item.
 /// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
 /// structured suggestion.
 fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
@@ -1979,61 +2041,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             // late-bound regions, and we don't want method signatures to show up
             // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
             // regions just fine, showing `fn(&MyType)`.
-            let sig = tcx.fn_sig(assoc.def_id);
-            let unsafety = match sig.unsafety() {
-                hir::Unsafety::Unsafe => "unsafe ",
-                _ => "",
-            };
-            let args = sig.inputs()
-                .skip_binder()
-                .iter()
-                .map(|ty| Some(match ty.kind {
-                    ty::Param(param) if param.name == kw::SelfUpper => {
-                        "self".to_string()
-                    }
-                    ty::Ref(reg, ref_ty, mutability) => {
-                        let mutability = match mutability {
-                            hir::Mutability::MutMutable => "mut ",
-                            _ => "",
-                        };
-                        let mut reg = format!("{}", reg);
-                        if &reg[..] == "'_" {
-                            reg = "".to_string();
-                        }
-                        if &reg[..] != "" {
-                            reg = format!("{} ", reg);
-                        }
-                        match ref_ty.kind {
-                            ty::Param(param)
-                            if param.name == kw::SelfUpper => {
-                                format!("&{}{}self", reg, mutability)
-                            }
-                            _ => format!("_: {:?}", ty),
-                        }
-
-                    }
-                    _ => format!("_: {:?}", ty),
-                }))
-                .chain(std::iter::once(if sig.c_variadic() {
-                    Some("...".to_string())
-                } else {
-                    None
-                }))
-                .filter_map(|arg| arg)
-                .collect::<Vec<String>>()
-                .join(", ");
-            let output = sig.output();
-            let output = if !output.skip_binder().is_unit() {
-                format!(" -> {:?}", output.skip_binder())
-            } else {
-                String::new()
-            };
-            // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
-            // not be present in the `fn` definition, not will we account for renamed
-            // lifetimes between the `impl` and the `trait`, but this should be good enough to
-            // fill in a significant portion of the missing code, and other subsequent
-            // suggestions can help the user fix the code.
-            format!("{}fn {}({}){} {{ unimplemented!() }}", unsafety, assoc.ident, args, output)
+            fn_sig_suggestion(tcx.fn_sig(assoc.def_id).skip_binder(), assoc.ident)
         }
         ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
         // FIXME(type_alias_impl_trait): we should print bounds here too.
