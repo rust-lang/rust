@@ -520,9 +520,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// a pointer.
     ///
     /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result
-    /// in a new check that `Trait` is object safe, creating a cycle. So instead, we fudge a little
-    /// by introducing a new type parameter `U` such that `Self: Unsize<U>` and `U: Trait + ?Sized`,
-    /// and use `U` in place of `dyn Trait`. Written as a chalk-style query:
+    /// in a new check that `Trait` is object safe, creating a cycle (until object_safe_for_dispatch
+    /// is stabilized, see tracking issue https://github.com/rust-lang/rust/issues/43561).
+    /// Instead, we fudge a little by introducing a new type parameter `U` such that
+    /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
+    /// Written as a chalk-style query:
     ///
     ///     forall (U: Trait + ?Sized) {
     ///         if (Self: Unsize<U>) {
@@ -556,8 +558,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // the type `U` in the query
         // use a bogus type parameter to mimick a forall(U) query using u32::MAX for now.
-        // FIXME(mikeyhew) this is a total hack, and we should replace it when real forall queries
-        // are implemented
+        // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
+        // replace this with `dyn Trait`
         let unsized_self_ty: Ty<'tcx> = self.mk_ty_param(
             ::std::u32::MAX,
             Symbol::intern("RustaceansAreAwesome"),
