@@ -903,12 +903,9 @@ endCheck:
             if (!getContext(blk, idx)) {
                 break;
             }
+            llvm::errs() << " adding to contexts: " << idx.header->getName() << " starting ctx=" << ctx->getName() << "\n";
             contexts.emplace_back(idx);
-            if (idx.parent) {
-                blk = idx.parent->getHeader();
-            } else {
-                blk = nullptr;
-            }
+            blk = idx.preheader;
         }
 
         std::vector<BasicBlock*> allocationPreheaders(contexts.size(), nullptr);
@@ -964,14 +961,16 @@ endCheck:
               size = allocationBuilder.CreateNUWMul(size, limits[i]);
           }
 
+          llvm::errs() << "considering ctx " << ctx->getName() << " alph=" << allocationPreheaders[i]->getName() << " ctxheader=" << contexts[i].header->getName() << "\n";
           if (contexts[i].dynamic) {
+            llvm::errs() << "starting outermost ph at " << allocationPreheaders[i]->getName() << "|ctx=" << ctx->getName() <<"\n";
             sublimits.push_back(std::make_pair(size, lims));
             size = nullptr;
-            break;
           }
         }
 
         if (size != nullptr) {
+          llvm::errs() << "starting final outermost ph at " << allocationPreheaders[contexts.size()-1]->getName()<<"|ctx=" << ctx->getName() << "\n";
           sublimits.push_back(std::make_pair(size, lims));
         }
         return sublimits;
@@ -994,13 +993,21 @@ endCheck:
         IRBuilder<> entryBuilder(inversionAllocs);
         entryBuilder.setFastMathFlags(getFast());
         AllocaInst* alloc = entryBuilder.CreateAlloca(types.back(), nullptr, name+"_cache");
+        llvm::errs() << "alloc: "<< *alloc << "\n";
                 
         Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
         auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));
 
         Value* storeInto = alloc;
+        ValueToValueMapTy antimap;
+
         for(int i=sublimits.size()-1; i>=0; i--) {
             const auto& containedloops = sublimits[i].second;
+            for(auto riter = containedloops.rbegin(), rend = containedloops.rend(); riter != rend; riter++) {
+                const auto& idx = riter->first;
+                antimap[idx.var] = idx.antivar;
+            }
+
             Value* size = sublimits[i].first;
             Type* myType = types[i];
 
@@ -1027,7 +1034,9 @@ endCheck:
                 //allocationBuilder.GetInsertBlock()->getInstList().push_back(cast<Instruction>(allocation));
                 //cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
                 //mallocs.push_back(firstallocation);
-            } else { 
+            } else {
+                llvm::errs() << "storeInto: " << *storeInto << "\n";
+                llvm::errs() << "myType: " << *myType << "\n";
                 allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
 
                 IRBuilder <> build(containedloops.back().first.header->getFirstNonPHI());
@@ -1060,7 +1069,7 @@ endCheck:
                       tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getFirstNonPHI());
                 }
 
-                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(tbuild.CreateLoad(storeInto), Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
+                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(tbuild.CreateLoad(unwrapM(storeInto, tbuild, antimap, /*lookup*/false)), Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
                 ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
                 if (ci->getParent()==nullptr) {
                     tbuild.Insert(ci);
@@ -1072,9 +1081,9 @@ endCheck:
                 IRBuilder <>v(&sublimits[i-1].second.back().first.preheader->back());
                 //TODO
                 if (!sublimits[i].second.back().first.dynamic) {
-                    storeInto = v.CreateLoad(v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var));
+                    storeInto = v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var);
                 } else {
-                    storeInto = v.CreateLoad(v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var));
+                    storeInto = v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var);
                 }
             }
         }
