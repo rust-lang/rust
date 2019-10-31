@@ -44,7 +44,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -147,7 +147,7 @@ rustc_query_append! { [define_queries!][<'tcx>] }
 ///
 /// When you implement a new query, it will likely have a corresponding new
 /// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
-/// a rule of thumb, if your query takes a `DefId` or `DefIndex` as sole parameter,
+/// a rule of thumb, if your query takes a `DefId` or `LocalDefId` as sole parameter,
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.

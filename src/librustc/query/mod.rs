@@ -11,7 +11,7 @@ use crate::ty::query::queries;
 use crate::ty::query::QueryDescription;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 
 use rustc_span::symbol::Symbol;
 use std::borrow::Cow;
@@ -791,7 +791,7 @@ rustc_queries! {
         query specializes(_: (DefId, DefId)) -> bool {
             desc { "computing whether impls specialize one another" }
         }
-        query in_scope_traits_map(_: DefIndex)
+        query in_scope_traits_map(_: LocalDefId)
             -> Option<&'tcx FxHashMap<ItemLocalId, StableVec<TraitCandidate>>> {
             eval_always
             desc { "traits in scope at a block" }
@@ -948,15 +948,15 @@ rustc_queries! {
         query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
-        query named_region_map(_: DefIndex) ->
+        query named_region_map(_: LocalDefId) ->
             Option<&'tcx FxHashMap<ItemLocalId, Region>> {
             desc { "looking up a named region" }
         }
-        query is_late_bound_map(_: DefIndex) ->
+        query is_late_bound_map(_: LocalDefId) ->
             Option<&'tcx FxHashSet<ItemLocalId>> {
             desc { "testing if a region is late bound" }
         }
-        query object_lifetime_defaults_map(_: DefIndex)
+        query object_lifetime_defaults_map(_: LocalDefId)
             -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
             desc { "looking up lifetime defaults for a region" }
         }

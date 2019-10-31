@@ -17,7 +17,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
@@ -280,25 +280,14 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     *providers = ty::query::Providers {
         resolve_lifetimes,
 
-        named_region_map: |tcx, id| {
-            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).defs.get(&id)
-        },
-
-        is_late_bound_map: |tcx, id| {
-            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
-            tcx.resolve_lifetimes(LOCAL_CRATE).late_bound.get(&id)
-        },
-
+        named_region_map: |tcx, id| tcx.resolve_lifetimes(LOCAL_CRATE).defs.get(&id),
+        is_late_bound_map: |tcx, id| tcx.resolve_lifetimes(LOCAL_CRATE).late_bound.get(&id),
         object_lifetime_defaults_map: |tcx, id| {
-            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
             tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults.get(&id)
         },
 
         ..*providers
     };
-
-    // (*) FIXME the query should be defined to take a LocalDefId
 }
 
 /// Computes the `ResolveLifetimes` map that contains data for the
