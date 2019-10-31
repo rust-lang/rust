@@ -4,7 +4,7 @@
 
 use crate::check::FnCtxt;
 use rustc::hir;
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
@@ -669,13 +669,6 @@ trait Locatable {
 impl Locatable for Span {
     fn to_span(&self, _: TyCtxt<'_>) -> Span {
         *self
-    }
-}
-
-impl Locatable for DefIndex {
-    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        let hir_id = tcx.hir().def_index_to_hir_id(*self);
-        tcx.hir().span(hir_id)
     }
 }
 
