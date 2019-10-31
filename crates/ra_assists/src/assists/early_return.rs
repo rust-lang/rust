@@ -37,7 +37,9 @@ use crate::{
 // ```
 pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
-    let expr = if_expr.condition()?.expr()?;
+    let cond = if_expr.condition()?;
+    let pat = &cond.pat();
+    let expr = cond.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
     if if_expr.else_branch().is_some() {
         return None;
@@ -63,8 +65,8 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
     let parent_container = parent_block.syntax().parent()?.parent()?;
 
     let early_expression = match parent_container.kind() {
-        WHILE_EXPR | LOOP_EXPR => Some("continue;"),
-        FN_DEF => Some("return;"),
+        WHILE_EXPR | LOOP_EXPR => Some("continue"),
+        FN_DEF => Some("return"),
         _ => None,
     }?;
 
@@ -77,31 +79,67 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
-        let new_if_expr =
-            if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
-        let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
-        let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
-        let end_of_then =
-            if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
-                end_of_then.prev_sibling_or_token().unwrap()
-            } else {
-                end_of_then
-            };
-        let mut new_if_and_then_statements = new_if_expr.syntax().children_with_tokens().chain(
-            then_block_items
-                .syntax()
-                .children_with_tokens()
-                .skip(1)
-                .take_while(|i| *i != end_of_then),
-        );
-        let new_block = replace_children(
-            &parent_block.syntax(),
-            RangeInclusive::new(
-                if_expr.clone().syntax().clone().into(),
-                if_expr.syntax().clone().into(),
-            ),
-            &mut new_if_and_then_statements,
-        );
+        let new_block = match pat {
+            None => {
+                // If.
+                let early_expression = &(early_expression.to_owned() + ";");
+                let new_if_expr =
+                    if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
+                let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
+                let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
+                let end_of_then =
+                    if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
+                        end_of_then.prev_sibling_or_token().unwrap()
+                    } else {
+                        end_of_then
+                    };
+                let mut new_if_and_then_statements =
+                    new_if_expr.syntax().children_with_tokens().chain(
+                        then_block_items
+                            .syntax()
+                            .children_with_tokens()
+                            .skip(1)
+                            .take_while(|i| *i != end_of_then),
+                    );
+                replace_children(
+                    &parent_block.syntax(),
+                    RangeInclusive::new(
+                        if_expr.clone().syntax().clone().into(),
+                        if_expr.syntax().clone().into(),
+                    ),
+                    &mut new_if_and_then_statements,
+                )
+            }
+            _ => {
+                // If-let.
+                let new_match_expr =
+                    if_indent_level.increase_indent(make::let_match_early(expr, early_expression));
+                let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
+                let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
+                let end_of_then =
+                    if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
+                        end_of_then.prev_sibling_or_token().unwrap()
+                    } else {
+                        end_of_then
+                    };
+                let mut then_statements = new_match_expr.syntax().children_with_tokens().chain(
+                    then_block_items
+                        .syntax()
+                        .children_with_tokens()
+                        .skip(1)
+                        .take_while(|i| *i != end_of_then),
+                );
+                let new_block = replace_children(
+                    &parent_block.syntax(),
+                    RangeInclusive::new(
+                        if_expr.clone().syntax().clone().into(),
+                        if_expr.syntax().clone().into(),
+                    ),
+                    &mut then_statements,
+                );
+                new_block
+            }
+        };
         edit.target(if_expr.syntax().text_range());
         edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
         edit.set_cursor(cursor_position);
@@ -144,6 +182,37 @@ mod tests {
     }
 
     #[test]
+    fn convert_let_inside_fn() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main(n: Option<String>) {
+                bar();
+                if<|> let Some(n) = n {
+                    foo(n);
+
+                    //comment
+                    bar();
+                }
+            }
+            "#,
+            r#"
+            fn main(n: Option<String>) {
+                bar();
+                le<|>t n = match n {
+                    Some(it) => it,
+                    None => return,
+                };
+                foo(n);
+
+                //comment
+                bar();
+            }
+            "#,
+        );
+    }
+
+    #[test]
     fn convert_inside_while() {
         check_assist(
             convert_to_guarded_return,
@@ -172,6 +241,35 @@ mod tests {
     }
 
     #[test]
+    fn convert_let_inside_while() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main() {
+                while true {
+                    if<|> let Some(n) = n {
+                        foo(n);
+                        bar();
+                    }
+                }
+            }
+            "#,
+            r#"
+            fn main() {
+                while true {
+                    le<|>t n = match n {
+                        Some(it) => it,
+                        None => continue,
+                    };
+                    foo(n);
+                    bar();
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
     fn convert_inside_loop() {
         check_assist(
             convert_to_guarded_return,
@@ -192,6 +290,35 @@ mod tests {
                         continue;
                     }
                     foo();
+                    bar();
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn convert_let_inside_loop() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main() {
+                loop {
+                    if<|> let Some(n) = n {
+                        foo(n);
+                        bar();
+                    }
+                }
+            }
+            "#,
+            r#"
+            fn main() {
+                loop {
+                    le<|>t n = match n {
+                        Some(it) => it,
+                        None => continue,
+                    };
+                    foo(n);
                     bar();
                 }
             }
