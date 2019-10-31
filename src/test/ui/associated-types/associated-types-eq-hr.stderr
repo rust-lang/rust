@@ -7,10 +7,10 @@ LL |     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
    |                                           ------------- required by this bound in `foo`
 ...
 LL |     foo::<UintStruct>();
-   |     ^^^^^^^^^^^^^^^^^ expected usize, found isize
+   |     ^^^^^^^^^^^^^^^^^ expected isize, found usize
    |
-   = note: expected type `&usize`
-              found type `&isize`
+   = note: expected type `&isize`
+              found type `&usize`
 
 error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
   --> $DIR/associated-types-eq-hr.rs:86:5
@@ -21,10 +21,10 @@ LL |     where T : for<'x> TheTrait<&'x isize, A = &'x usize>
    |                                           ------------- required by this bound in `bar`
 ...
 LL |     bar::<IntStruct>();
-   |     ^^^^^^^^^^^^^^^^ expected isize, found usize
+   |     ^^^^^^^^^^^^^^^^ expected usize, found isize
    |
-   = note: expected type `&isize`
-              found type `&usize`
+   = note: expected type `&usize`
+              found type `&isize`
 
 error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
   --> $DIR/associated-types-eq-hr.rs:91:17
