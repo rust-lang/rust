@@ -28,21 +28,24 @@ const defaultMapping = new Map<string, string[]>([
     ['module', ['entity.name.section', 'entity.other']]
 ]
 )
-function find(scope: string): string[] {
+
+// Temporary exported for debugging for now. 
+export function find(scope: string): string[] {
     return mappings.get(scope) || []
 }
 
 export function toRule(scope: string, intoRule: (scope: string) => TextMateRuleSettings | undefined): TextMateRuleSettings | undefined {
-    return find(scope).map(intoRule).filter(rule => rule !== undefined)[0];
+    return find(scope).map(intoRule).filter(rule => rule !== undefined)[0]
 }
 
 
 export function load() {
     const configuration = vscode.workspace
         .getConfiguration('rust-analyzer')
-        .get('scopeMappings') as Map<string, string[]> | undefined || new Map()
+        .get('scopeMappings') as Map<string, string[]> | undefined
+        || new Map()
 
-    mappings = new Map([...Array.from(defaultMapping.entries()), ...Array.from(configuration.entries())]);
+    mappings = new Map([...Array.from(defaultMapping.entries()), ...Array.from(configuration.entries())])
 
 
 }
