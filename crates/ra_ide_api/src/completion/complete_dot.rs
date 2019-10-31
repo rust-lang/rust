@@ -58,10 +58,12 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     let mut seen_methods = FxHashSet::default();
-    ctx.analyzer.iterate_method_candidates(ctx.db, receiver, None, |_ty, func| {
-        let data = func.data(ctx.db);
-        if data.has_self_param() && seen_methods.insert(data.name().clone()) {
-            acc.add_function(ctx, func);
+    ctx.analyzer.iterate_method_candidates(ctx.db, receiver, None, |_ty, item| {
+        if let hir::AssocItem::Function(func) = item {
+            let data = func.data(ctx.db);
+            if data.has_self_param() && seen_methods.insert(data.name().clone()) {
+                acc.add_function(ctx, func);
+            }
         }
         None::<()>
     });

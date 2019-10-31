@@ -1841,8 +1841,8 @@ fn test() {
     [243; 254) 'Struct::FOO': u32
     [264; 265) 'y': u32
     [268; 277) 'Enum::BAR': u32
-    [287; 288) 'z': {unknown}
-    [291; 304) 'TraitTest::ID': {unknown}
+    [287; 288) 'z': u32
+    [291; 304) 'TraitTest::ID': u32
     "###
     );
 }

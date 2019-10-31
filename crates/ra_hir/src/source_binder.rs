@@ -28,8 +28,8 @@ use crate::{
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::implements_trait,
-    Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, MacroDef, Module,
-    Name, Path, Resolver, Static, Struct, Ty,
+    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId,
+    MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
 
 fn try_get_resolver_for_node(
@@ -327,7 +327,7 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         ty: Ty,
         name: Option<&Name>,
-        callback: impl FnMut(&Ty, Function) -> Option<T>,
+        callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
         // FIXME check that?
@@ -337,6 +337,7 @@ impl SourceAnalyzer {
             db,
             &self.resolver,
             name,
+            crate::ty::method_resolution::LookupMode::MethodCall,
             callback,
         )
     }
