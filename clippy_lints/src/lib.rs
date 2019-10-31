@@ -176,7 +176,7 @@ mod copies;
 mod copy_iterator;
 mod create_dir;
 mod dbg_macro;
-mod default_trait_access;
+mod default;
 mod dereference;
 mod derive;
 mod disallowed_method;
@@ -537,7 +537,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &copy_iterator::COPY_ITERATOR,
         &create_dir::CREATE_DIR,
         &dbg_macro::DBG_MACRO,
-        &default_trait_access::DEFAULT_TRAIT_ACCESS,
+        &default::DEFAULT_TRAIT_ACCESS,
+        &default::FIELD_REASSIGN_WITH_DEFAULT,
         &dereference::EXPLICIT_DEREF_METHODS,
         &derive::DERIVE_HASH_XOR_EQ,
         &derive::DERIVE_ORD_XOR_PARTIAL_ORD,
@@ -1049,7 +1050,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
     store.register_late_pass(|| box unwrap::Unwrap);
     store.register_late_pass(|| box duration_subsec::DurationSubsec);
-    store.register_late_pass(|| box default_trait_access::DefaultTraitAccess);
     store.register_late_pass(|| box indexing_slicing::IndexingSlicing);
     store.register_late_pass(|| box non_copy_const::NonCopyConst);
     store.register_late_pass(|| box ptr_offset_with_cast::PtrOffsetWithCast);
@@ -1100,6 +1100,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
     store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
+    store.register_late_pass(|| box default::Default::default());
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
     store.register_late_pass(|| box exit::Exit);
@@ -1212,7 +1213,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
         LintId::of(&copy_iterator::COPY_ITERATOR),
-        LintId::of(&default_trait_access::DEFAULT_TRAIT_ACCESS),
+        LintId::of(&default::DEFAULT_TRAIT_ACCESS),
         LintId::of(&dereference::EXPLICIT_DEREF_METHODS),
         LintId::of(&derive::EXPL_IMPL_CLONE_ON_COPY),
         LintId::of(&derive::UNSAFE_DERIVE_DESERIALIZE),
@@ -1321,6 +1322,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
+        LintId::of(&default::FIELD_REASSIGN_WITH_DEFAULT),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
         LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&doc::MISSING_SAFETY_DOC),
@@ -1581,6 +1583,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
+        LintId::of(&default::FIELD_REASSIGN_WITH_DEFAULT),
         LintId::of(&doc::MISSING_SAFETY_DOC),
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
         LintId::of(&enum_variants::ENUM_VARIANT_NAMES),

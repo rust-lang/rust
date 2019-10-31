@@ -359,7 +359,7 @@ vec![
         group: "pedantic",
         desc: "checks for literal calls to `Default::default()`",
         deprecation: None,
-        module: "default_trait_access",
+        module: "default",
     },
     Lint {
         name: "deprecated_cfg_attr",
@@ -626,6 +626,13 @@ vec![
         desc: "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`",
         deprecation: None,
         module: "fallible_impl_from",
+    },
+    Lint {
+        name: "field_reassign_with_default",
+        group: "style",
+        desc: "binding initialized with Default should have its fields set in the initializer",
+        deprecation: None,
+        module: "default",
     },
     Lint {
         name: "filetype_is_file",
