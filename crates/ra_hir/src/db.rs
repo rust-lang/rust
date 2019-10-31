@@ -6,7 +6,6 @@ use ra_db::salsa;
 use ra_syntax::SmolStr;
 
 use crate::{
-    adt::{EnumData, StructData},
     debug::HirDebugDatabase,
     generics::{GenericDef, GenericParams},
     ids,
@@ -19,13 +18,13 @@ use crate::{
         InferenceResult, Substs, Ty, TypableDef, TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, Enum, ExprScopes, FnData, Function, Module, Static,
-    Struct, StructField, Trait, TypeAlias,
+    Const, ConstData, Crate, DefWithBody, ExprScopes, FnData, Function, Module, Static,
+    StructField, Trait, TypeAlias,
 };
 
 pub use hir_def::db::{
-    DefDatabase2, DefDatabase2Storage, InternDatabase, InternDatabaseStorage, RawItemsQuery,
-    RawItemsWithSourceMapQuery,
+    DefDatabase2, DefDatabase2Storage, EnumDataQuery, InternDatabase, InternDatabaseStorage,
+    RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -36,12 +35,6 @@ pub use hir_expand::db::{
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
 pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(crate::adt::StructData::struct_data_query)]
-    fn struct_data(&self, s: Struct) -> Arc<StructData>;
-
-    #[salsa::invoke(crate::adt::EnumData::enum_data_query)]
-    fn enum_data(&self, e: Enum) -> Arc<EnumData>;
-
     #[salsa::invoke(crate::traits::TraitData::trait_data_query)]
     fn trait_data(&self, t: Trait) -> Arc<TraitData>;
 

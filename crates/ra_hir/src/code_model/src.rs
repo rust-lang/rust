@@ -3,6 +3,7 @@
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
+    adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::AstItemDef,
     Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef, Module,
@@ -45,7 +46,33 @@ impl Module {
 impl HasSource for StructField {
     type Ast = FieldSource;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
-        self.source_impl(db)
+        let var_data = self.parent.variant_data(db);
+        let fields = var_data.fields().unwrap();
+        let ss;
+        let es;
+        let (file_id, struct_kind) = match self.parent {
+            VariantDef::Struct(s) => {
+                ss = s.source(db);
+                (ss.file_id, ss.ast.kind())
+            }
+            VariantDef::EnumVariant(e) => {
+                es = e.source(db);
+                (es.file_id, es.ast.kind())
+            }
+        };
+
+        let field_sources = match struct_kind {
+            ast::StructKind::Tuple(fl) => fl.fields().map(|it| FieldSource::Pos(it)).collect(),
+            ast::StructKind::Named(fl) => fl.fields().map(|it| FieldSource::Named(it)).collect(),
+            ast::StructKind::Unit => Vec::new(),
+        };
+        let ast = field_sources
+            .into_iter()
+            .zip(fields.iter())
+            .find(|(_syntax, (id, _))| *id == self.id)
+            .unwrap()
+            .0;
+        Source { file_id, ast }
     }
 }
 impl HasSource for Struct {
@@ -69,7 +96,18 @@ impl HasSource for Enum {
 impl HasSource for EnumVariant {
     type Ast = ast::EnumVariant;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::EnumVariant> {
-        self.source_impl(db)
+        let enum_data = db.enum_data(self.parent.id);
+        let src = self.parent.id.source(db);
+        let ast = src
+            .ast
+            .variant_list()
+            .into_iter()
+            .flat_map(|it| it.variants())
+            .zip(enum_data.variants.iter())
+            .find(|(_syntax, (id, _))| *id == self.id)
+            .unwrap()
+            .0;
+        Source { file_id: src.file_id, ast }
     }
 }
 impl HasSource for Function {

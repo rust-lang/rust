@@ -5,7 +5,11 @@ use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, SourceDatabase};
 use ra_syntax::ast;
 
-use crate::nameres::raw::{ImportSourceMap, RawItems};
+use crate::{
+    adt::{EnumData, StructData},
+    nameres::raw::{ImportSourceMap, RawItems},
+    EnumId, StructId,
+};
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
@@ -37,4 +41,10 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
+
+    #[salsa::invoke(StructData::struct_data_query)]
+    fn struct_data(&self, s: StructId) -> Arc<StructData>;
+
+    #[salsa::invoke(EnumData::enum_data_query)]
+    fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
 }

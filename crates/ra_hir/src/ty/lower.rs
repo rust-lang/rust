@@ -655,8 +655,8 @@ fn type_for_builtin(def: BuiltinType) -> Ty {
 }
 
 fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
-    let var_data = def.variant_data(db);
-    let fields = match var_data.fields() {
+    let struct_data = db.struct_data(def.id);
+    let fields = match struct_data.variant_data.fields() {
         Some(fields) => fields,
         None => panic!("fn_sig_for_struct_constructor called on unit struct"),
     };
@@ -671,8 +671,8 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
 
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
-    let var_data = def.variant_data(db);
-    if var_data.fields().is_none() {
+    let struct_data = db.struct_data(def.id);
+    if struct_data.variant_data.fields().is_none() {
         return type_for_adt(db, def); // Unit struct
     }
     let generics = def.generic_params(db);
