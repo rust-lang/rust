@@ -63,9 +63,9 @@ pub use crate::{
     code_model::{
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource, Source},
-        Adt, AssocItem, BuiltinType, Const, ConstData, Container, Crate, CrateDependency,
-        DefWithBody, Enum, EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module,
-        ModuleDef, ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+        Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
+        EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
+        ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
     },
     expr::ExprScopes,
     from_source::FromSource,
@@ -81,6 +81,7 @@ pub use crate::{
 };
 
 pub use hir_def::{
+    builtin_type::BuiltinType,
     path::{Path, PathKind},
     type_ref::Mutability,
 };

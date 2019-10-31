@@ -2,6 +2,7 @@
 use std::sync::Arc;
 
 use hir_def::{
+    builtin_type::BuiltinType,
     path::{Path, PathKind},
     CrateModuleId,
 };
@@ -18,8 +19,7 @@ use crate::{
     generics::GenericParams,
     impl_block::ImplBlock,
     nameres::{CrateDefMap, PerNs},
-    Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
-    Trait, TypeAlias,
+    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]

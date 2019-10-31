@@ -11,6 +11,7 @@ pub mod db;
 pub mod attr;
 pub mod path;
 pub mod type_ref;
+pub mod builtin_type;
 
 // FIXME: this should be private
 pub mod nameres;
