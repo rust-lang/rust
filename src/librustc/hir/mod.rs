@@ -85,7 +85,9 @@ impl HirId {
     }
 
     pub fn owner_local_def_id(self) -> LocalDefId {
-        LocalDefId::from_def_id(DefId::local(self.owner))
+        LocalDefId {
+            index: self.owner,
+        }
     }
 }
 

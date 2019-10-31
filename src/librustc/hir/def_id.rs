@@ -162,20 +162,24 @@ impl rustc_serialize::UseSpecializedDecodable for DefId {}
 /// and a DefId from a different crate would signify a bug somewhere. This
 /// is when LocalDefId comes in handy.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalDefId(DefIndex);
+pub struct LocalDefId {
+    pub index: DefIndex,
+}
 
 impl LocalDefId {
     #[inline]
     pub fn from_def_id(def_id: DefId) -> LocalDefId {
         assert!(def_id.is_local());
-        LocalDefId(def_id.index)
+        LocalDefId {
+            index: def_id.index,
+        }
     }
 
     #[inline]
     pub fn to_def_id(self) -> DefId {
         DefId {
             krate: LOCAL_CRATE,
-            index: self.0
+            index: self.index
         }
     }
 }
