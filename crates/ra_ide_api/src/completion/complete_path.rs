@@ -82,6 +82,20 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 });
             }
         }
+        hir::ModuleDef::Trait(t) => {
+            for item in t.items(ctx.db) {
+                match item {
+                    hir::AssocItem::Function(func) => {
+                        let data = func.data(ctx.db);
+                        if !data.has_self_param() {
+                            acc.add_function(ctx, func);
+                        }
+                    }
+                    hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+                    hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                }
+            }
+        }
         _ => {}
     };
 }
@@ -587,7 +601,22 @@ mod tests {
                 fn foo() { let _ = Trait::<|> }
                 "
             ),
-            @"[]"
+            @r###"
+        [
+            CompletionItem {
+                label: "m()",
+                source_range: [73; 73),
+                delete: [73; 73),
+                insert: "m()$0",
+                kind: Function,
+                lookup: "m",
+                detail: "fn m()",
+                documentation: Documentation(
+                    "A trait method",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -644,7 +673,22 @@ mod tests {
                 fn foo() { let _ = <S as Trait>::<|> }
                 "
             ),
-            @"[]"
+            @r###"
+        [
+            CompletionItem {
+                label: "m()",
+                source_range: [110; 110),
+                delete: [110; 110),
+                insert: "m()$0",
+                kind: Function,
+                lookup: "m",
+                detail: "fn m()",
+                documentation: Documentation(
+                    "A trait method",
+                ),
+            },
+        ]
+        "###
         );
     }
 
