@@ -735,7 +735,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
                 let var_owner_def_id =
                     DefId { krate: local_id_root.krate, index: var_path.hir_id.owner };
                 let closure_def_id =
-                    DefId { krate: local_id_root.krate, index: closure_expr_id.to_def_id().index };
+                    DefId { krate: local_id_root.krate, index: closure_expr_id.local_def_index };
                 (
                     hcx.def_path_hash(var_owner_def_id),
                     var_path.hir_id.local_id,

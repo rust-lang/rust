@@ -263,7 +263,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.tcx.definitions.def_index_to_hir_id(def_id.to_def_id().index)
+        self.tcx.definitions.def_index_to_hir_id(def_id.local_def_index)
     }
 
     pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
