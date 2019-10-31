@@ -12,6 +12,7 @@ pub mod attr;
 pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
+pub mod adt;
 
 // FIXME: this should be private
 pub mod nameres;
@@ -258,6 +259,22 @@ pub struct EnumVariantId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LocalEnumVariantId(RawId);
 impl_arena_id!(LocalEnumVariantId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VariantId {
+    EnumVariantId(EnumVariantId),
+    StructId(StructId),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StructFieldId {
+    parent: VariantId,
+    local_id: LocalStructFieldId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LocalStructFieldId(RawId);
+impl_arena_id!(LocalStructFieldId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);

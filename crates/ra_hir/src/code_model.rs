@@ -6,16 +6,17 @@ pub(crate) mod docs;
 use std::sync::Arc;
 
 use hir_def::{
+    adt::VariantData,
     builtin_type::BuiltinType,
     type_ref::{Mutability, TypeRef},
-    CrateModuleId, LocalEnumVariantId, ModuleId,
+    CrateModuleId, LocalEnumVariantId, LocalStructFieldId, ModuleId,
 };
 use hir_expand::name::{self, AsName};
 use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    adt::{StructFieldId, VariantDef},
+    adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     diagnostics::DiagnosticSink,
     expr::{validation::ExprValidator, Body, BodySourceMap},
@@ -250,7 +251,7 @@ impl Module {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructField {
     pub(crate) parent: VariantDef,
-    pub(crate) id: StructFieldId,
+    pub(crate) id: LocalStructFieldId,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -288,11 +289,11 @@ impl Struct {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.struct_data(self).name.clone()
+        db.struct_data(self.id).name.clone()
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
-        db.struct_data(self)
+        db.struct_data(self.id)
             .variant_data
             .fields()
             .into_iter()
@@ -302,7 +303,7 @@ impl Struct {
     }
 
     pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        db.struct_data(self)
+        db.struct_data(self.id)
             .variant_data
             .fields()
             .into_iter()
@@ -338,7 +339,7 @@ pub struct Union {
 
 impl Union {
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.struct_data(Struct { id: self.id }).name.clone()
+        db.struct_data(self.id).name.clone()
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {
@@ -376,15 +377,19 @@ impl Enum {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.enum_data(self).name.clone()
+        db.enum_data(self.id).name.clone()
     }
 
     pub fn variants(self, db: &impl DefDatabase) -> Vec<EnumVariant> {
-        db.enum_data(self).variants.iter().map(|(id, _)| EnumVariant { parent: self, id }).collect()
+        db.enum_data(self.id)
+            .variants
+            .iter()
+            .map(|(id, _)| EnumVariant { parent: self, id })
+            .collect()
     }
 
     pub fn variant(self, db: &impl DefDatabase, name: &Name) -> Option<EnumVariant> {
-        db.enum_data(self)
+        db.enum_data(self.id)
             .variants
             .iter()
             .find(|(_id, data)| data.name.as_ref() == Some(name))
@@ -422,7 +427,7 @@ impl EnumVariant {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.enum_data(self.parent).variants[self.id].name.clone()
+        db.enum_data(self.parent.id).variants[self.id].name.clone()
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -441,6 +446,10 @@ impl EnumVariant {
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
             .map(|(id, _)| StructField { parent: self.into(), id })
+    }
+
+    pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
     }
 }
 
