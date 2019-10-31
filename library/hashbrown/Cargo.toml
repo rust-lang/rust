@@ -1,6 +1,6 @@
 [package]
 name = "hashbrown"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
 license = "Apache-2.0/MIT"

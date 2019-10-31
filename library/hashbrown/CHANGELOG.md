@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.6.3] - 2019-10-31
+
+### Added
+- Added an `ahash-compile-time-rng` feature (enabled by default) which allows disabling the
+  `compile-time-rng` feature in `ahash` to work around a Cargo bug. (#125)
+
 ## [v0.6.2] - 2019-10-23
 
 ### Added
@@ -158,7 +164,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.3...HEAD
+[v0.6.3]: https://github.com/rust-lang/hashbrown/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/rust-lang/hashbrown/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/rust-lang/hashbrown/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/rust-lang/hashbrown/compare/v0.5.1...v0.6.0
