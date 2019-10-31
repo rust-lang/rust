@@ -70,7 +70,3 @@ fn main() {
     // FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
     // let _: &dyn Tr1<As1: Copy> = &S1;
 }
-
-macro_rules! accept_path { ($p:path) => {} }
-accept_path!(Iterator<Item: Ord>);
-//~^ ERROR associated type bounds are unstable

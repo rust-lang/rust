@@ -3,7 +3,10 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{self, NodeId, GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use crate::ast::{
+    self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
+    PatKind, RangeEnd, VariantData,
+};
 use crate::attr::{self, check_builtin_attribute};
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
@@ -602,6 +605,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_generic_param(self, param)
+    }
+
+    fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
+        match constraint.kind {
+            AssocTyConstraintKind::Bound { .. } =>
+                gate_feature_post!(&self, associated_type_bounds, constraint.span,
+                    "associated type bounds are unstable"),
+            _ => {}
+        }
+        visit::walk_assoc_ty_constraint(self, constraint)
     }
 
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
