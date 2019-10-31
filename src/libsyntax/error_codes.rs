@@ -487,7 +487,6 @@ Erroneous code example:
                                // `test_2018_feature` is
                                // included in the Rust 2018 edition
 ```
-
 "##,
 
 E0725: r##"
@@ -503,6 +502,20 @@ Erroneous code example:
 
 Delete the offending feature attribute, or add it to the list of allowed
 features in the `-Z allow_features` flag.
+"##,
+
+E0743: r##"
+C-variadic has been used on a non-foreign function.
+
+Erroneous code example:
+
+```compile_fail,E0743
+fn foo2(x: u8, ...) {} // error!
+```
+
+Only foreign functions can use C-variadic (`...`). It is used to give an
+undefined number of parameters to a given function (like `printf` in C). The
+equivalent in Rust would be to use macros directly.
 "##,
 
 ;
