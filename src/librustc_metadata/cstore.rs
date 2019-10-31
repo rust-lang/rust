@@ -9,7 +9,7 @@ use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate};
 use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::sync::{Lrc, RwLock, Lock, MetadataRef, AtomicCell};
+use rustc_data_structures::sync::{Lrc, Lock, MetadataRef, Once, AtomicCell};
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax_expand::base::SyntaxExtension;
@@ -62,7 +62,7 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     crate raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    crate source_map_import_info: RwLock<Vec<ImportedSourceFile>>,
+    crate source_map_import_info: Once<Vec<ImportedSourceFile>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     crate alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
