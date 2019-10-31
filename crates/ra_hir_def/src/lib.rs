@@ -13,6 +13,7 @@ pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
 pub mod adt;
+pub mod diagnostics;
 
 // FIXME: this should be private
 pub mod nameres;
@@ -237,8 +238,8 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 // FIXME: rename to `VariantId`, only enums can ave variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantId {
-    parent: EnumId,
-    local_id: LocalEnumVariantId,
+    pub parent: EnumId,
+    pub local_id: LocalEnumVariantId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

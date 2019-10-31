@@ -47,6 +47,7 @@ mod resolve;
 pub mod diagnostics;
 mod util;
 
+mod from_id;
 mod code_model;
 
 pub mod from_source;

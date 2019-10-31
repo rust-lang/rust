@@ -75,7 +75,7 @@ fn glob_2() {
 
 #[test]
 fn glob_across_crates() {
-    covers!(glob_across_crates);
+    // covers!(glob_across_crates);
     let map = def_map_with_crate_graph(
         "
         //- /main.rs
@@ -98,7 +98,7 @@ fn glob_across_crates() {
 
 #[test]
 fn glob_enum() {
-    covers!(glob_enum);
+    // covers!(glob_enum);
     let map = def_map(
         "
         //- /lib.rs

@@ -1,6 +1,8 @@
 //! FIXME: write short doc here
 
-use crate::{MacroDef, ModuleDef};
+use hir_expand::MacroDefId;
+
+use crate::ModuleDefId;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Namespace {
@@ -12,11 +14,11 @@ pub enum Namespace {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PerNs {
-    pub types: Option<ModuleDef>,
-    pub values: Option<ModuleDef>,
+    pub types: Option<ModuleDefId>,
+    pub values: Option<ModuleDefId>,
     /// Since macros has different type, many methods simply ignore it.
     /// We can only use special method like `get_macros` to access it.
-    pub macros: Option<MacroDef>,
+    pub macros: Option<MacroDefId>,
 }
 
 impl Default for PerNs {
@@ -30,19 +32,19 @@ impl PerNs {
         PerNs { types: None, values: None, macros: None }
     }
 
-    pub fn values(t: ModuleDef) -> PerNs {
+    pub fn values(t: ModuleDefId) -> PerNs {
         PerNs { types: None, values: Some(t), macros: None }
     }
 
-    pub fn types(t: ModuleDef) -> PerNs {
+    pub fn types(t: ModuleDefId) -> PerNs {
         PerNs { types: Some(t), values: None, macros: None }
     }
 
-    pub fn both(types: ModuleDef, values: ModuleDef) -> PerNs {
+    pub fn both(types: ModuleDefId, values: ModuleDefId) -> PerNs {
         PerNs { types: Some(types), values: Some(values), macros: None }
     }
 
-    pub fn macros(macro_: MacroDef) -> PerNs {
+    pub fn macros(macro_: MacroDefId) -> PerNs {
         PerNs { types: None, values: None, macros: Some(macro_) }
     }
 
@@ -54,15 +56,15 @@ impl PerNs {
         self.types.is_some() && self.values.is_some() && self.macros.is_some()
     }
 
-    pub fn take_types(self) -> Option<ModuleDef> {
+    pub fn take_types(self) -> Option<ModuleDefId> {
         self.types
     }
 
-    pub fn take_values(self) -> Option<ModuleDef> {
+    pub fn take_values(self) -> Option<ModuleDefId> {
         self.values
     }
 
-    pub fn get_macros(&self) -> Option<MacroDef> {
+    pub fn get_macros(&self) -> Option<MacroDefId> {
         self.macros
     }
 

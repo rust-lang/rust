@@ -3,10 +3,10 @@
 use std::any::Any;
 
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
-use relative_path::RelativePathBuf;
 
 use crate::{db::AstDatabase, HirFileId, Name, Source};
 
+pub use hir_def::diagnostics::UnresolvedModule;
 pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 
 #[derive(Debug)]
@@ -24,25 +24,6 @@ impl Diagnostic for NoSuchField {
         Source { file_id: self.file, ast: self.field.into() }
     }
 
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-#[derive(Debug)]
-pub struct UnresolvedModule {
-    pub file: HirFileId,
-    pub decl: AstPtr<ast::Module>,
-    pub candidate: RelativePathBuf,
-}
-
-impl Diagnostic for UnresolvedModule {
-    fn message(&self) -> String {
-        "unresolved module".to_string()
-    }
-    fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, ast: self.decl.into() }
-    }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }

@@ -1,13 +1,12 @@
-use super::*;
-
 use std::sync::Arc;
 
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 
+use super::*;
+
 fn check_def_map_is_not_recomputed(initial: &str, file_change: &str) {
     let (mut db, pos) = MockDatabase::with_position(initial);
-    let crate_id = db.crate_graph().iter().next().unwrap();
-    let krate = Crate { crate_id };
+    let krate = db.crate_graph().iter().next().unwrap();
     {
         let events = db.log_executed(|| {
             db.crate_def_map(krate);

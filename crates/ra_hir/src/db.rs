@@ -11,7 +11,7 @@ use crate::{
     ids,
     impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
     lang_item::{LangItemTarget, LangItems},
-    nameres::{CrateDefMap, Namespace},
+    nameres::Namespace,
     traits::TraitData,
     ty::{
         method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
@@ -23,8 +23,8 @@ use crate::{
 };
 
 pub use hir_def::db::{
-    DefDatabase2, DefDatabase2Storage, EnumDataQuery, InternDatabase, InternDatabaseStorage,
-    RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
+    CrateDefMapQuery, DefDatabase2, DefDatabase2Storage, EnumDataQuery, InternDatabase,
+    InternDatabaseStorage, RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -40,9 +40,6 @@ pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
 
     #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
     fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
-
-    #[salsa::invoke(CrateDefMap::crate_def_map_query)]
-    fn crate_def_map(&self, krate: Crate) -> Arc<CrateDefMap>;
 
     #[salsa::invoke(ModuleImplBlocks::impls_in_module_with_source_map_query)]
     fn impls_in_module_with_source_map(

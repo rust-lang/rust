@@ -22,7 +22,7 @@ pub trait HasSource {
 impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ModuleSource> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         let decl_id = def_map[self.id.module_id].declaration;
         let file_id = def_map[self.id.module_id].definition;
         let ast = ModuleSource::new(db, file_id, decl_id);
@@ -36,7 +36,7 @@ impl Module {
         self,
         db: &(impl DefDatabase + AstDatabase),
     ) -> Option<Source<ast::Module>> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         let decl = def_map[self.id.module_id].declaration?;
         let ast = decl.to_node(db);
         Some(Source { file_id: decl.file_id(), ast })

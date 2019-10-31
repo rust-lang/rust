@@ -6,30 +6,25 @@ mod mod_resolution;
 
 use std::sync::Arc;
 
+use hir_def::{db::DefDatabase2, nameres::*, CrateModuleId};
 use insta::assert_snapshot;
 use ra_db::SourceDatabase;
-use test_utils::covers;
+// use test_utils::covers;
 
-use crate::{
-    mock::{CrateGraphFixture, MockDatabase},
-    Crate,
-};
-
-use super::*;
+use crate::mock::{CrateGraphFixture, MockDatabase};
 
 fn compute_crate_def_map(fixture: &str, graph: Option<CrateGraphFixture>) -> Arc<CrateDefMap> {
     let mut db = MockDatabase::with_files(fixture);
     if let Some(graph) = graph {
         db.set_crate_graph_from_fixture(graph);
     }
-    let crate_id = db.crate_graph().iter().next().unwrap();
-    let krate = Crate { crate_id };
+    let krate = db.crate_graph().iter().next().unwrap();
     db.crate_def_map(krate)
 }
 
 fn render_crate_def_map(map: &CrateDefMap) -> String {
     let mut buf = String::new();
-    go(&mut buf, map, "\ncrate", map.root);
+    go(&mut buf, map, "\ncrate", map.root());
     return buf.trim().to_string();
 
     fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: CrateModuleId) {
@@ -118,7 +113,7 @@ fn crate_def_map_smoke_test() {
 
 #[test]
 fn bogus_paths() {
-    covers!(bogus_paths);
+    // covers!(bogus_paths);
     let map = def_map(
         "
         //- /lib.rs
@@ -233,7 +228,7 @@ fn re_exports() {
 
 #[test]
 fn std_prelude() {
-    covers!(std_prelude);
+    // covers!(std_prelude);
     let map = def_map_with_crate_graph(
         "
         //- /main.rs
@@ -261,7 +256,7 @@ fn std_prelude() {
 
 #[test]
 fn can_import_enum_variant() {
-    covers!(can_import_enum_variant);
+    // covers!(can_import_enum_variant);
     let map = def_map(
         "
         //- /lib.rs
