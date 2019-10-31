@@ -191,27 +191,48 @@ pub(crate) fn iterate_method_candidates<T>(
     mode: LookupMode,
     mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
-    // For method calls, rust first does any number of autoderef, and then one
-    // autoref (i.e. when the method takes &self or &mut self). We just ignore
-    // the autoref currently -- when we find a method matching the given name,
-    // we assume it fits.
-
-    // Also note that when we've got a receiver like &S, even if the method we
-    // find in the end takes &self, we still do the autoderef step (just as
-    // rustc does an autoderef and then autoref again).
-
     let krate = resolver.krate()?;
-    // TODO no autoderef in LookupMode::Path
-    for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
-        if let Some(result) =
-            iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
-        {
-            return Some(result);
+    match mode {
+        LookupMode::MethodCall => {
+            // For method calls, rust first does any number of autoderef, and then one
+            // autoref (i.e. when the method takes &self or &mut self). We just ignore
+            // the autoref currently -- when we find a method matching the given name,
+            // we assume it fits.
+
+            // Also note that when we've got a receiver like &S, even if the method we
+            // find in the end takes &self, we still do the autoderef step (just as
+            // rustc does an autoderef and then autoref again).
+
+            for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
+                if let Some(result) =
+                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
+                {
+                    return Some(result);
+                }
+                if let Some(result) = iterate_trait_method_candidates(
+                    &derefed_ty,
+                    db,
+                    resolver,
+                    name,
+                    mode,
+                    &mut callback,
+                ) {
+                    return Some(result);
+                }
+            }
         }
-        if let Some(result) =
-            iterate_trait_method_candidates(&derefed_ty, db, resolver, name, mode, &mut callback)
-        {
-            return Some(result);
+        LookupMode::Path => {
+            // No autoderef for path lookups
+            if let Some(result) =
+                iterate_inherent_methods(&ty, db, name, mode, krate, &mut callback)
+            {
+                return Some(result);
+            }
+            if let Some(result) =
+                iterate_trait_method_candidates(&ty, db, resolver, name, mode, &mut callback)
+            {
+                return Some(result);
+            }
         }
     }
     None
