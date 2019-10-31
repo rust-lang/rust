@@ -140,6 +140,7 @@ jobs:
         IMAGE: x86_64-gnu-aux
       x86_64-gnu-tools:
         IMAGE: x86_64-gnu-tools
+        DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
       x86_64-gnu-debug:
         IMAGE: x86_64-gnu-debug
       x86_64-gnu-nopt:
@@ -262,8 +263,9 @@ jobs:
       # MSVC tools tests
       x86_64-msvc-tools:
         MSYS_BITS: 64
-        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json
+        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
+        DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
 
       # 32/64-bit MinGW builds.
       #

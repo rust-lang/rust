@@ -19,7 +19,7 @@ use super::{
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 
-/// A `Value` represents a single immediate self-contained Rust value.
+/// An `Immediate` represents a single immediate self-contained Rust value.
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary

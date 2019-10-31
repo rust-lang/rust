@@ -5,7 +5,7 @@ use crate::schema::*;
 use crate::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::{Lrc, ReadGuard};
+use rustc_data_structures::sync::Lrc;
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary, ForeignModule};
@@ -664,7 +664,7 @@ impl<'a, 'tcx> CrateMetadata {
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
         self.root.per_def.predicates.get(self, item_id).unwrap().decode((self, tcx))
-}
+    }
 
     crate fn get_predicates_defined_on(
         &self,
@@ -1290,87 +1290,68 @@ impl<'a, 'tcx> CrateMetadata {
     fn imported_source_files(
         &'a self,
         local_source_map: &source_map::SourceMap,
-    ) -> ReadGuard<'a, Vec<cstore::ImportedSourceFile>> {
-        {
-            let source_files = self.source_map_import_info.borrow();
-            if !source_files.is_empty() {
-                return source_files;
-            }
-        }
+    ) -> &[cstore::ImportedSourceFile] {
+        self.source_map_import_info.init_locking(|| {
+            let external_source_map = self.root.source_map.decode(self);
 
-        // Lock the source_map_import_info to ensure this only happens once
-        let mut source_map_import_info = self.source_map_import_info.borrow_mut();
+            external_source_map.map(|source_file_to_import| {
+                // We can't reuse an existing SourceFile, so allocate a new one
+                // containing the information we need.
+                let syntax_pos::SourceFile { name,
+                                          name_was_remapped,
+                                          src_hash,
+                                          start_pos,
+                                          end_pos,
+                                          mut lines,
+                                          mut multibyte_chars,
+                                          mut non_narrow_chars,
+                                          mut normalized_pos,
+                                          name_hash,
+                                          .. } = source_file_to_import;
 
-        if !source_map_import_info.is_empty() {
-            drop(source_map_import_info);
-            return self.source_map_import_info.borrow();
-        }
+                let source_length = (end_pos - start_pos).to_usize();
 
-        let external_source_map = self.root.source_map.decode(self);
+                // Translate line-start positions and multibyte character
+                // position into frame of reference local to file.
+                // `SourceMap::new_imported_source_file()` will then translate those
+                // coordinates to their new global frame of reference when the
+                // offset of the SourceFile is known.
+                for pos in &mut lines {
+                    *pos = *pos - start_pos;
+                }
+                for mbc in &mut multibyte_chars {
+                    mbc.pos = mbc.pos - start_pos;
+                }
+                for swc in &mut non_narrow_chars {
+                    *swc = *swc - start_pos;
+                }
+                for np in &mut normalized_pos {
+                    np.pos = np.pos - start_pos;
+                }
 
-        let imported_source_files = external_source_map.map(|source_file_to_import| {
-            // We can't reuse an existing SourceFile, so allocate a new one
-            // containing the information we need.
-            let syntax_pos::SourceFile { name,
-                                      name_was_remapped,
-                                      src_hash,
-                                      start_pos,
-                                      end_pos,
-                                      mut lines,
-                                      mut multibyte_chars,
-                                      mut non_narrow_chars,
-                                      mut normalized_pos,
-                                      name_hash,
-                                      .. } = source_file_to_import;
+                let local_version = local_source_map.new_imported_source_file(name,
+                                                                       name_was_remapped,
+                                                                       self.cnum.as_u32(),
+                                                                       src_hash,
+                                                                       name_hash,
+                                                                       source_length,
+                                                                       lines,
+                                                                       multibyte_chars,
+                                                                       non_narrow_chars,
+                                                                       normalized_pos);
+                debug!("CrateMetaData::imported_source_files alloc \
+                        source_file {:?} original (start_pos {:?} end_pos {:?}) \
+                        translated (start_pos {:?} end_pos {:?})",
+                       local_version.name, start_pos, end_pos,
+                       local_version.start_pos, local_version.end_pos);
 
-            let source_length = (end_pos - start_pos).to_usize();
-
-            // Translate line-start positions and multibyte character
-            // position into frame of reference local to file.
-            // `SourceMap::new_imported_source_file()` will then translate those
-            // coordinates to their new global frame of reference when the
-            // offset of the SourceFile is known.
-            for pos in &mut lines {
-                *pos = *pos - start_pos;
-            }
-            for mbc in &mut multibyte_chars {
-                mbc.pos = mbc.pos - start_pos;
-            }
-            for swc in &mut non_narrow_chars {
-                *swc = *swc - start_pos;
-            }
-            for np in &mut normalized_pos {
-                np.pos = np.pos - start_pos;
-            }
-
-            let local_version = local_source_map.new_imported_source_file(name,
-                                                                   name_was_remapped,
-                                                                   self.cnum.as_u32(),
-                                                                   src_hash,
-                                                                   name_hash,
-                                                                   source_length,
-                                                                   lines,
-                                                                   multibyte_chars,
-                                                                   non_narrow_chars,
-                                                                   normalized_pos);
-            debug!("CrateMetaData::imported_source_files alloc \
-                    source_file {:?} original (start_pos {:?} end_pos {:?}) \
-                    translated (start_pos {:?} end_pos {:?})",
-                   local_version.name, start_pos, end_pos,
-                   local_version.start_pos, local_version.end_pos);
-
-            cstore::ImportedSourceFile {
-                original_start_pos: start_pos,
-                original_end_pos: end_pos,
-                translated_source_file: local_version,
-            }
-        }).collect();
-
-        *source_map_import_info = imported_source_files;
-        drop(source_map_import_info);
-
-        // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
-        self.source_map_import_info.borrow()
+                cstore::ImportedSourceFile {
+                    original_start_pos: start_pos,
+                    original_end_pos: end_pos,
+                    translated_source_file: local_version,
+                }
+            }).collect()
+        })
     }
 
     /// Get the `DepNodeIndex` corresponding this crate. The result of this

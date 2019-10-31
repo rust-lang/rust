@@ -106,6 +106,7 @@ fi
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp
 mkdir -p $objdir/cores
+mkdir -p /tmp/toolstate
 
 args=
 if [ "$SCCACHE_BUCKET" != "" ]; then
@@ -156,6 +157,7 @@ else
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
+  args="$args --volume /tmp/toolstate:/tmp/toolstate"
   args="$args --env LOCAL_USER_ID=`id -u`"
 fi
 
