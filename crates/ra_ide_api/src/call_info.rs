@@ -2,9 +2,9 @@
 
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo::find_node_at_offset,
+    algo::ancestors_at_offset,
     ast::{self, ArgListOwner},
-    AstNode, SyntaxNode, TextUnit,
+    match_ast, AstNode, SyntaxNode, TextUnit,
 };
 use test_utils::tested_by;
 
@@ -20,24 +20,30 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let name_ref = calling_node.name_ref()?;
 
     let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
-    let function = match &calling_node {
+    let (mut call_info, has_self) = match &calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: apply subst
             let (callable_def, _subst) = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
-                hir::CallableDef::Function(it) => it,
-                //FIXME: handle other callables
-                _ => return None,
+                hir::CallableDef::Function(it) => {
+                    (CallInfo::with_fn(db, it), it.data(db).has_self_param())
+                }
+                hir::CallableDef::Struct(it) => (CallInfo::with_struct(db, it)?, false),
+                hir::CallableDef::EnumVariant(it) => (CallInfo::with_enum_variant(db, it)?, false),
             }
         }
-        FnCallNode::MethodCallExpr(expr) => analyzer.resolve_method_call(&expr)?,
+        FnCallNode::MethodCallExpr(expr) => {
+            let function = analyzer.resolve_method_call(&expr)?;
+            (CallInfo::with_fn(db, function), function.data(db).has_self_param())
+        }
+        FnCallNode::MacroCallExpr(expr) => {
+            let macro_def = analyzer.resolve_macro_call(db, &expr)?;
+            (CallInfo::with_macro(db, macro_def)?, false)
+        }
     };
-
-    let mut call_info = CallInfo::new(db, function);
 
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
-    let has_self = function.data(db).has_self_param();
 
     if num_params == 1 {
         if !has_self {
@@ -75,20 +81,25 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     Some(call_info)
 }
 
+#[derive(Debug)]
 enum FnCallNode {
     CallExpr(ast::CallExpr),
     MethodCallExpr(ast::MethodCallExpr),
+    MacroCallExpr(ast::MacroCall),
 }
 
 impl FnCallNode {
     fn with_node(syntax: &SyntaxNode, offset: TextUnit) -> Option<FnCallNode> {
-        if let Some(expr) = find_node_at_offset::<ast::CallExpr>(syntax, offset) {
-            return Some(FnCallNode::CallExpr(expr));
-        }
-        if let Some(expr) = find_node_at_offset::<ast::MethodCallExpr>(syntax, offset) {
-            return Some(FnCallNode::MethodCallExpr(expr));
-        }
-        None
+        ancestors_at_offset(syntax, offset).find_map(|node| {
+            match_ast! {
+                match node {
+                    ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
+                    ast::MethodCallExpr(it) => { Some(FnCallNode::MethodCallExpr(it)) },
+                    ast::MacroCall(it) => { Some(FnCallNode::MacroCallExpr(it)) },
+                    _ => { None },
+                }
+            }
+        })
     }
 
     fn name_ref(&self) -> Option<ast::NameRef> {
@@ -101,6 +112,8 @@ impl FnCallNode {
             FnCallNode::MethodCallExpr(call_expr) => {
                 call_expr.syntax().children().filter_map(ast::NameRef::cast).nth(0)
             }
+
+            FnCallNode::MacroCallExpr(call_expr) => call_expr.path()?.segment()?.name_ref(),
         }
     }
 
@@ -108,15 +121,34 @@ impl FnCallNode {
         match self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
+            FnCallNode::MacroCallExpr(_) => None,
         }
     }
 }
 
 impl CallInfo {
-    fn new(db: &RootDatabase, function: hir::Function) -> Self {
+    fn with_fn(db: &RootDatabase, function: hir::Function) -> Self {
         let signature = FunctionSignature::from_hir(db, function);
 
         CallInfo { signature, active_parameter: None }
+    }
+
+    fn with_struct(db: &RootDatabase, st: hir::Struct) -> Option<Self> {
+        let signature = FunctionSignature::from_struct(db, st)?;
+
+        Some(CallInfo { signature, active_parameter: None })
+    }
+
+    fn with_enum_variant(db: &RootDatabase, variant: hir::EnumVariant) -> Option<Self> {
+        let signature = FunctionSignature::from_enum_variant(db, variant)?;
+
+        Some(CallInfo { signature, active_parameter: None })
+    }
+
+    fn with_macro(db: &RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
+        let signature = FunctionSignature::from_macro(db, macro_def)?;
+
+        Some(CallInfo { signature, active_parameter: None })
     }
 
     fn parameters(&self) -> &[String] {
@@ -415,6 +447,7 @@ pub fn foo(mut r: WriteHandler<()>) {
 "#,
         );
 
+        assert_eq!(info.label(), "fn finished(&mut self, ctx: &mut Self::Context)".to_string());
         assert_eq!(info.parameters(), ["&mut self", "ctx: &mut Self::Context"]);
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(
@@ -437,5 +470,119 @@ By default this method stops actor's `Context`."#
         );
         let call_info = analysis.call_info(position).unwrap();
         assert!(call_info.is_none());
+    }
+
+    #[test]
+    fn test_nested_method_in_lamba() {
+        let info = call_info(
+            r#"struct Foo;
+
+impl Foo {
+    fn bar(&self, _: u32) { }
+}
+
+fn bar(_: u32) { }
+
+fn main() {
+    let foo = Foo;
+    std::thread::spawn(move || foo.bar(<|>));
+}"#,
+        );
+
+        assert_eq!(info.parameters(), ["&self", "_: u32"]);
+        assert_eq!(info.active_parameter, Some(1));
+        assert_eq!(info.label(), "fn bar(&self, _: u32)");
+    }
+
+    #[test]
+    fn works_for_tuple_structs() {
+        let info = call_info(
+            r#"
+/// A cool tuple struct
+struct TS(u32, i32);
+fn main() {
+    let s = TS(0, <|>);
+}"#,
+        );
+
+        assert_eq!(info.label(), "struct TS(u32, i32) -> TS");
+        assert_eq!(info.doc().map(|it| it.into()), Some("A cool tuple struct".to_string()));
+        assert_eq!(info.active_parameter, Some(1));
+    }
+
+    #[test]
+    #[should_panic]
+    fn cant_call_named_structs() {
+        let _ = call_info(
+            r#"
+struct TS { x: u32, y: i32 }
+fn main() {
+    let s = TS(<|>);
+}"#,
+        );
+    }
+
+    #[test]
+    fn works_for_enum_variants() {
+        let info = call_info(
+            r#"
+enum E {
+    /// A Variant
+    A(i32),
+    /// Another
+    B,
+    /// And C
+    C { a: i32, b: i32 }
+}
+
+fn main() {
+    let a = E::A(<|>);
+}
+            "#,
+        );
+
+        assert_eq!(info.label(), "E::A(0: i32)");
+        assert_eq!(info.doc().map(|it| it.into()), Some("A Variant".to_string()));
+        assert_eq!(info.active_parameter, Some(0));
+    }
+
+    #[test]
+    #[should_panic]
+    fn cant_call_enum_records() {
+        let _ = call_info(
+            r#"
+enum E {
+    /// A Variant
+    A(i32),
+    /// Another
+    B,
+    /// And C
+    C { a: i32, b: i32 }
+}
+
+fn main() {
+    let a = E::C(<|>);
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fn_signature_for_macro() {
+        let info = call_info(
+            r#"
+/// empty macro
+macro_rules! foo {
+    () => {}
+}
+
+fn f() {
+    foo!(<|>);
+}
+        "#,
+        );
+
+        assert_eq!(info.label(), "foo!()");
+        assert_eq!(info.doc().map(|it| it.into()), Some("empty macro".to_string()));
     }
 }

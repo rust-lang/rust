@@ -1,17 +1,29 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
-use ra_syntax::{ast::AstNode, ast::Literal, TextRange, TextUnit};
+use ra_syntax::{
+    SyntaxKind::{RAW_STRING, STRING},
+    TextRange, TextUnit,
+};
 use rustc_lexer;
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() != ra_syntax::SyntaxKind::STRING {
-        return None;
-    }
-    let token = literal.token();
+// Assist: make_raw_string
+//
+// Adds `r#` to a plain string literal.
+//
+// ```
+// fn main() {
+//     "Hello,<|> World!";
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     r#"Hello, World!"#;
+// }
+// ```
+pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let token = ctx.find_token_at_offset(STRING)?;
     let text = token.text().as_str();
     let usual_string_range = find_usual_string_range(text)?;
     let start_of_inside = usual_string_range.start().to_usize() + 1;
@@ -29,19 +41,105 @@ pub(crate) fn make_raw_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     if error.is_err() {
         return None;
     }
-    ctx.add_action(AssistId("make_raw_string"), "make raw string", |edit| {
-        edit.target(literal.syntax().text_range());
+    ctx.add_assist(AssistId("make_raw_string"), "make raw string", |edit| {
+        edit.target(token.text_range());
         let max_hash_streak = count_hashes(&unescaped);
         let mut hashes = String::with_capacity(max_hash_streak + 1);
         for _ in 0..hashes.capacity() {
             hashes.push('#');
         }
-        edit.replace(
-            literal.syntax().text_range(),
-            format!("r{}\"{}\"{}", hashes, unescaped, hashes),
-        );
-    });
-    ctx.build()
+        edit.replace(token.text_range(), format!("r{}\"{}\"{}", hashes, unescaped, hashes));
+    })
+}
+
+// Assist: make_usual_string
+//
+// Turns a raw string into a plain string.
+//
+// ```
+// fn main() {
+//     r#"Hello,<|> "World!""#;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     "Hello, \"World!\"";
+// }
+// ```
+pub(crate) fn make_usual_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let token = ctx.find_token_at_offset(RAW_STRING)?;
+    let text = token.text().as_str();
+    let usual_string_range = find_usual_string_range(text)?;
+    ctx.add_assist(AssistId("make_usual_string"), "make usual string", |edit| {
+        edit.target(token.text_range());
+        // parse inside string to escape `"`
+        let start_of_inside = usual_string_range.start().to_usize() + 1;
+        let end_of_inside = usual_string_range.end().to_usize();
+        let inside_str = &text[start_of_inside..end_of_inside];
+        let escaped = inside_str.escape_default().to_string();
+        edit.replace(token.text_range(), format!("\"{}\"", escaped));
+    })
+}
+
+// Assist: add_hash
+//
+// Adds a hash to a raw string literal.
+//
+// ```
+// fn main() {
+//     r#"Hello,<|> World!"#;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     r##"Hello, World!"##;
+// }
+// ```
+pub(crate) fn add_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let token = ctx.find_token_at_offset(RAW_STRING)?;
+    ctx.add_assist(AssistId("add_hash"), "add hash to raw string", |edit| {
+        edit.target(token.text_range());
+        edit.insert(token.text_range().start() + TextUnit::of_char('r'), "#");
+        edit.insert(token.text_range().end(), "#");
+    })
+}
+
+// Assist: remove_hash
+//
+// Removes a hash from a raw string literal.
+//
+// ```
+// fn main() {
+//     r#"Hello,<|> World!"#;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     r"Hello, World!";
+// }
+// ```
+pub(crate) fn remove_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let token = ctx.find_token_at_offset(RAW_STRING)?;
+    let text = token.text().as_str();
+    if text.starts_with("r\"") {
+        // no hash to remove
+        return None;
+    }
+    ctx.add_assist(AssistId("remove_hash"), "remove hash from raw string", |edit| {
+        edit.target(token.text_range());
+        let result = &text[2..text.len() - 1];
+        let result = if result.starts_with('\"') {
+            // no more hash, escape
+            let internal_str = &result[1..result.len() - 1];
+            format!("\"{}\"", internal_str.escape_default().to_string())
+        } else {
+            result.to_owned()
+        };
+        edit.replace(token.text_range(), format!("r{}", result));
+    })
 }
 
 fn count_hashes(s: &str) -> usize {
@@ -57,69 +155,17 @@ fn count_hashes(s: &str) -> usize {
 }
 
 fn find_usual_string_range(s: &str) -> Option<TextRange> {
-    Some(TextRange::from_to(
-        TextUnit::from(s.find('"')? as u32),
-        TextUnit::from(s.rfind('"')? as u32),
-    ))
-}
-
-pub(crate) fn make_usual_string(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() != ra_syntax::SyntaxKind::RAW_STRING {
-        return None;
+    let left_quote = s.find('"')?;
+    let right_quote = s.rfind('"')?;
+    if left_quote == right_quote {
+        // `s` only contains one quote
+        None
+    } else {
+        Some(TextRange::from_to(
+            TextUnit::from(left_quote as u32),
+            TextUnit::from(right_quote as u32),
+        ))
     }
-    let token = literal.token();
-    let text = token.text().as_str();
-    let usual_string_range = find_usual_string_range(text)?;
-    ctx.add_action(AssistId("make_usual_string"), "make usual string", |edit| {
-        edit.target(literal.syntax().text_range());
-        // parse inside string to escape `"`
-        let start_of_inside = usual_string_range.start().to_usize() + 1;
-        let end_of_inside = usual_string_range.end().to_usize();
-        let inside_str = &text[start_of_inside..end_of_inside];
-        let escaped = inside_str.escape_default().to_string();
-        edit.replace(literal.syntax().text_range(), format!("\"{}\"", escaped));
-    });
-    ctx.build()
-}
-
-pub(crate) fn add_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() != ra_syntax::SyntaxKind::RAW_STRING {
-        return None;
-    }
-    ctx.add_action(AssistId("add_hash"), "add hash to raw string", |edit| {
-        edit.target(literal.syntax().text_range());
-        edit.insert(literal.syntax().text_range().start() + TextUnit::of_char('r'), "#");
-        edit.insert(literal.syntax().text_range().end(), "#");
-    });
-    ctx.build()
-}
-
-pub(crate) fn remove_hash(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let literal = ctx.node_at_offset::<Literal>()?;
-    if literal.token().kind() != ra_syntax::SyntaxKind::RAW_STRING {
-        return None;
-    }
-    let token = literal.token();
-    let text = token.text().as_str();
-    if text.starts_with("r\"") {
-        // no hash to remove
-        return None;
-    }
-    ctx.add_action(AssistId("remove_hash"), "remove hash from raw string", |edit| {
-        edit.target(literal.syntax().text_range());
-        let result = &text[2..text.len() - 1];
-        let result = if result.starts_with("\"") {
-            // no more hash, escape
-            let internal_str = &result[1..result.len() - 1];
-            format!("\"{}\"", internal_str.escape_default().to_string())
-        } else {
-            result.to_owned()
-        };
-        edit.replace(literal.syntax().text_range(), format!("r{}", result));
-    });
-    ctx.build()
 }
 
 #[cfg(test)]
@@ -153,6 +199,23 @@ mod test {
             fn f() {
                 let s = <|>r#"random
 string"#;
+            }
+            "##,
+        )
+    }
+
+    #[test]
+    fn make_raw_string_works_inside_macros() {
+        check_assist(
+            make_raw_string,
+            r#"
+            fn f() {
+                format!(<|>"x = {}", 92)
+            }
+            "#,
+            r##"
+            fn f() {
+                format!(<|>r#"x = {}"#, 92)
             }
             "##,
         )
@@ -208,6 +271,30 @@ string"###;
                 let s = <|>r#"random string"#;
             }
             "##,
+        )
+    }
+
+    #[test]
+    fn make_raw_string_not_works_on_partial_string() {
+        check_assist_not_applicable(
+            make_raw_string,
+            r#"
+            fn f() {
+                let s = "foo<|>
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn make_usual_string_not_works_on_partial_string() {
+        check_assist_not_applicable(
+            make_usual_string,
+            r#"
+            fn main() {
+                let s = r#"bar<|>
+            }
+            "#,
         )
     }
 

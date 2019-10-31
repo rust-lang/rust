@@ -77,7 +77,7 @@ pub fn tuple_struct_pat(
 
 pub fn record_pat(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
     let pats_str = pats.map(|p| p.syntax().to_string()).join(", ");
-    return from_text(&format!("{}{{ {} }}", path.syntax(), pats_str));
+    return from_text(&format!("{} {{ {} }}", path.syntax(), pats_str));
 
     fn from_text(text: &str) -> ast::RecordPat {
         ast_from_text(&format!("fn f({}: ())", text))
@@ -129,11 +129,11 @@ pub fn where_clause(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereCl
 }
 
 pub fn if_expression(condition: &ast::Expr, statement: &str) -> ast::IfExpr {
-    return ast_from_text(&format!(
+    ast_from_text(&format!(
         "fn f() {{ if !{} {{\n    {}\n}}\n}}",
         condition.syntax().text(),
         statement
-    ));
+    ))
 }
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {

@@ -50,7 +50,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
-            let krate = ctx.module.and_then(|m| m.krate(ctx.db));
+            let krate = ctx.module.map(|m| m.krate());
             if let Some(krate) = krate {
                 ty.iterate_impl_items(ctx.db, krate, |item| {
                     match item {
@@ -67,7 +67,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 });
             }
         }
-        _ => return,
+        _ => {}
     };
 }
 

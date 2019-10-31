@@ -32,6 +32,24 @@ impl TextEditBuilder {
 }
 
 impl TextEdit {
+    pub fn insert(offset: TextUnit, text: String) -> TextEdit {
+        let mut builder = TextEditBuilder::default();
+        builder.insert(offset, text);
+        builder.finish()
+    }
+
+    pub fn delete(range: TextRange) -> TextEdit {
+        let mut builder = TextEditBuilder::default();
+        builder.delete(range);
+        builder.finish()
+    }
+
+    pub fn replace(range: TextRange, replace_with: String) -> TextEdit {
+        let mut builder = TextEditBuilder::default();
+        builder.replace(range, replace_with);
+        builder.finish()
+    }
+
     pub(crate) fn from_atoms(mut atoms: Vec<AtomTextEdit>) -> TextEdit {
         atoms.sort_by_key(|a| (a.delete.start(), a.delete.end()));
         for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {

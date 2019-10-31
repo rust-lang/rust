@@ -2,27 +2,7 @@
 
 use std::fmt;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum Signedness {
-    Signed,
-    Unsigned,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum IntBitness {
-    Xsize,
-    X8,
-    X16,
-    X32,
-    X64,
-    X128,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum FloatBitness {
-    X32,
-    X64,
-}
+pub use hir_def::builtin_type::{FloatBitness, IntBitness, Signedness};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum UncertainIntTy {

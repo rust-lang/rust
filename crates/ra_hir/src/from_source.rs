@@ -1,17 +1,12 @@
 //! FIXME: write short doc here
 
-use ra_db::{FileId, FilePosition};
-use ra_syntax::{
-    algo::find_node_at_offset,
-    ast::{self, AstNode, NameOwner},
-    SyntaxNode,
-};
+use hir_expand::name::AsName;
+use ra_syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    name::AsName,
-    Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
+    AstId, Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
     ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
@@ -129,41 +124,6 @@ impl FromSource for StructField {
     }
 }
 
-// FIXME: simplify it
-impl ModuleSource {
-    pub fn from_position(
-        db: &(impl DefDatabase + AstDatabase),
-        position: FilePosition,
-    ) -> ModuleSource {
-        let parse = db.parse(position.file_id);
-        match &find_node_at_offset::<ast::Module>(parse.tree().syntax(), position.offset) {
-            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
-            _ => {
-                let source_file = parse.tree();
-                ModuleSource::SourceFile(source_file)
-            }
-        }
-    }
-
-    pub fn from_child_node(
-        db: &(impl DefDatabase + AstDatabase),
-        file_id: FileId,
-        child: &SyntaxNode,
-    ) -> ModuleSource {
-        if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
-            ModuleSource::Module(m)
-        } else {
-            let source_file = db.parse(file_id).tree();
-            ModuleSource::SourceFile(source_file)
-        }
-    }
-
-    pub fn from_file_id(db: &(impl DefDatabase + AstDatabase), file_id: FileId) -> ModuleSource {
-        let source_file = db.parse(file_id).tree();
-        ModuleSource::SourceFile(source_file)
-    }
-}
-
 impl Module {
     pub fn from_declaration(db: &impl HirDatabase, src: Source<ast::Module>) -> Option<Self> {
         let src_parent = Source {
@@ -183,7 +143,7 @@ impl Module {
             ModuleSource::Module(ref module) => {
                 assert!(!module.has_semi());
                 let ast_id_map = db.ast_id_map(src.file_id);
-                let item_id = ast_id_map.ast_id(module).with_file_id(src.file_id);
+                let item_id = AstId::new(src.file_id, ast_id_map.ast_id(module));
                 Some(item_id)
             }
             ModuleSource::SourceFile(_) => None,
@@ -195,7 +155,7 @@ impl Module {
             .find_map(|krate| {
                 let def_map = db.crate_def_map(krate);
                 let module_id = def_map.find_module_by_source(src.file_id, decl_id)?;
-                Some(Module { krate, module_id })
+                Some(Module::new(krate, module_id))
             })
     }
 }
@@ -208,6 +168,6 @@ where
     let module_src =
         crate::ModuleSource::from_child_node(db, src.file_id.original_file(db), &src.ast.syntax());
     let module = Module::from_definition(db, Source { file_id: src.file_id, ast: module_src })?;
-    let ctx = LocationCtx::new(db, module, src.file_id);
+    let ctx = LocationCtx::new(db, module.id, src.file_id);
     Some(DEF::from_ast(ctx, &src.ast))
 }

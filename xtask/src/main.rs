@@ -1,5 +1,12 @@
-//! FIXME: write short doc here
-
+//! See https://github.com/matklad/cargo-xtask/.
+//!
+//! This binary defines various auxiliary build commands, which are not
+//! expressible with just `cargo`. Notably, it provides `cargo xtask codegen`
+//! for code generation and `cargo xtask install` for installation of
+//! rust-analyzer server and client.
+//!
+//! This binary is integrated into the `cargo` command line by using an alias in
+//! `.cargo/config`.
 mod help;
 
 use core::fmt::Write;
@@ -53,7 +60,7 @@ fn main() -> Result<()> {
             matches.finish().or_else(handle_extra_flags)?;
             let opts = InstallOpt {
                 client: if server { None } else { Some(ClientOpt::VsCode) },
-                server: if client_code { None } else { Some(ServerOpt { jemalloc: jemalloc }) },
+                server: if client_code { None } else { Some(ServerOpt { jemalloc }) },
             };
             install(opts)?
         }
@@ -64,6 +71,7 @@ fn main() -> Result<()> {
             }
             codegen::generate_syntax(Mode::Overwrite)?;
             codegen::generate_parser_tests(Mode::Overwrite)?;
+            codegen::generate_assists_docs(Mode::Overwrite)?;
         }
         "format" => {
             if matches.contains(["-h", "--help"]) {
@@ -158,6 +166,17 @@ fn fix_path_for_mac() -> Result<()> {
 }
 
 fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
+    let npm_version = Cmd {
+        unix: r"npm --version",
+        windows: r"cmd.exe /c npm.cmd --version",
+        work_dir: "./editors/code",
+    }
+    .run();
+
+    if npm_version.is_err() {
+        eprintln!("\nERROR: `npm --version` failed, `npm` is required to build the VS Code plugin")
+    }
+
     Cmd { unix: r"npm ci", windows: r"cmd.exe /c npm.cmd ci", work_dir: "./editors/code" }.run()?;
     Cmd {
         unix: r"npm run package",
@@ -210,6 +229,7 @@ fn install_server(opts: ServerOpt) -> Result<()> {
     let mut old_rust = false;
     if let Ok(output) = run_with_output("cargo --version", ".") {
         if let Ok(stdout) = String::from_utf8(output.stdout) {
+            println!("{}", stdout);
             if !check_version(&stdout, REQUIRED_RUST_VERSION) {
                 old_rust = true;
             }

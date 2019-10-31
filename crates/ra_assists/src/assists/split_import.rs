@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use std::iter::successors;
 
 use hir::db::HirDatabase;
@@ -7,8 +5,19 @@ use ra_syntax::{ast, AstNode, TextUnit, T};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == T![::])?;
+// Assist: split_import
+//
+// Wraps the tail of import into braces.
+//
+// ```
+// use std::<|>collections::HashMap;
+// ```
+// ->
+// ```
+// use std::{collections::HashMap};
+// ```
+pub(crate) fn split_import(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let colon_colon = ctx.find_token_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?;
     let top_path = successors(Some(path), |it| it.parent_path()).last()?;
 
@@ -23,14 +32,12 @@ pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         None => top_path.syntax().text_range().end(),
     };
 
-    ctx.add_action(AssistId("split_import"), "split import", |edit| {
+    ctx.add_assist(AssistId("split_import"), "split import", |edit| {
         edit.target(colon_colon.text_range());
         edit.insert(l_curly, "{");
         edit.insert(r_curly, "}");
         edit.set_cursor(l_curly + TextUnit::of_str("{"));
-    });
-
-    ctx.build()
+    })
 }
 
 #[cfg(test)]

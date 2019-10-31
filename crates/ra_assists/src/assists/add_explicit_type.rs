@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{db::HirDatabase, HirDisplay, Ty};
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},
@@ -8,9 +6,23 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
-/// Add explicit type assist.
-pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let stmt = ctx.node_at_offset::<LetStmt>()?;
+// Assist: add_explicit_type
+//
+// Specify type for a let binding.
+//
+// ```
+// fn main() {
+//     let x<|> = 92;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let x: i32 = 92;
+// }
+// ```
+pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let stmt = ctx.find_node_at_offset::<LetStmt>()?;
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;
     // Must be a binding
@@ -35,11 +47,10 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
         return None;
     }
 
-    ctx.add_action(AssistId("add_explicit_type"), "add explicit type", |edit| {
+    ctx.add_assist(AssistId("add_explicit_type"), "add explicit type", |edit| {
         edit.target(pat_range);
         edit.insert(name_range.end(), format!(": {}", ty.display(db)));
-    });
-    ctx.build()
+    })
 }
 
 /// Returns true if any type parameter is unknown

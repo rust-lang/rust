@@ -1,7 +1,7 @@
 //! Trait solving using Chalk.
 use std::sync::{Arc, Mutex};
 
-use chalk_ir::cast::Cast;
+use chalk_ir::{cast::Cast, family::ChalkIr};
 use log::debug;
 use ra_db::salsa;
 use ra_prof::profile;
@@ -33,7 +33,7 @@ impl TraitSolver {
     fn solve(
         &self,
         db: &impl HirDatabase,
-        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal>>,
+        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<ChalkIr>>>,
     ) -> Option<chalk_solve::Solution> {
         let context = ChalkContext { db, krate: self.krate };
         debug!("solve goal: {:?}", goal);
@@ -196,7 +196,7 @@ pub(crate) fn trait_solve_query(
 }
 
 fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -> Solution {
-    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution>| {
+    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<ChalkIr>>| {
         let value = subst
             .value
             .parameters

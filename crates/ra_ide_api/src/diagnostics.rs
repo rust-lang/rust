@@ -85,10 +85,9 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     })
     .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
         let node = d.ast(db);
-        let mut builder = TextEditBuilder::default();
         let replacement = format!("Ok({})", node.syntax());
-        builder.replace(node.syntax().text_range(), replacement);
-        let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, builder.finish());
+        let edit = TextEdit::replace(node.syntax().text_range(), replacement);
+        let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, edit);
         res.borrow_mut().push(Diagnostic {
             range: d.highlight_range(),
             message: d.message(),
@@ -152,9 +151,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
         let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
         let end = use_tree_list_node.text_range().end();
         let range = TextRange::from_to(start, end);
-        let mut edit_builder = TextEditBuilder::default();
-        edit_builder.delete(range);
-        return Some(edit_builder.finish());
+        return Some(TextEdit::delete(range));
     }
     None
 }

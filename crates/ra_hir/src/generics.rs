@@ -5,15 +5,17 @@
 
 use std::sync::Arc;
 
+use hir_def::{
+    path::Path,
+    type_ref::{TypeBound, TypeRef},
+};
+use hir_expand::name::{self, AsName};
 use ra_syntax::ast::{self, DefaultTypeParamOwner, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    name::SELF_TYPE,
-    path::Path,
-    type_ref::{TypeBound, TypeRef},
-    Adt, AsName, Const, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct,
-    Trait, TypeAlias, Union,
+    Adt, Const, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct, Trait,
+    TypeAlias, Union,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -94,11 +96,15 @@ impl GenericParams {
             GenericDef::Adt(Adt::Enum(it)) => generics.fill(&it.source(db).ast, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
-                generics.params.push(GenericParam { idx: start, name: SELF_TYPE, default: None });
+                generics.params.push(GenericParam {
+                    idx: start,
+                    name: name::SELF_TYPE,
+                    default: None,
+                });
                 generics.fill(&it.source(db).ast, start + 1);
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
-                let self_param = TypeRef::Path(SELF_TYPE.into());
+                let self_param = TypeRef::Path(name::SELF_TYPE.into());
                 generics.fill_bounds(&it.source(db).ast, self_param);
             }
             GenericDef::TypeAlias(it) => generics.fill(&it.source(db).ast, start),

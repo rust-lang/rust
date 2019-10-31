@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AstToken},
@@ -9,8 +7,24 @@ use ra_syntax::{
 use crate::assist_ctx::AssistBuilder;
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let let_stmt = ctx.node_at_offset::<ast::LetStmt>()?;
+// Assist: inline_local_variable
+//
+// Inlines local variable.
+//
+// ```
+// fn main() {
+//     let x<|> = 1 + 2;
+//     x * 4;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     (1 + 2) * 4;
+// }
+// ```
+pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
         ast::Pat::BindPat(pat) => pat,
         _ => return None,
@@ -37,10 +51,8 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
     let mut wrap_in_parens = vec![true; refs.len()];
 
     for (i, desc) in refs.iter().enumerate() {
-        let usage_node = ctx
-            .covering_node_for_range(desc.range)
-            .ancestors()
-            .find_map(|node| ast::PathExpr::cast(node))?;
+        let usage_node =
+            ctx.covering_node_for_range(desc.range).ancestors().find_map(ast::PathExpr::cast)?;
         let usage_parent_option = usage_node.syntax().parent().and_then(ast::Expr::cast);
         let usage_parent = match usage_parent_option {
             Some(u) => u,
@@ -79,7 +91,7 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
 
-    ctx.add_action(
+    ctx.add_assist(
         AssistId("inline_local_variable"),
         "inline local variable",
         move |edit: &mut AssistBuilder| {
@@ -93,9 +105,7 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
             }
             edit.set_cursor(delete_range.start())
         },
-    );
-
-    ctx.build()
+    )
 }
 
 #[cfg(test)]

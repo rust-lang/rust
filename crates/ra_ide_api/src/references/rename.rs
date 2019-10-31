@@ -3,6 +3,7 @@
 use hir::ModuleSource;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SyntaxNode};
+use ra_text_edit::TextEdit;
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
@@ -43,14 +44,7 @@ fn source_edit_from_file_id_range(
     range: TextRange,
     new_name: &str,
 ) -> SourceFileEdit {
-    SourceFileEdit {
-        file_id,
-        edit: {
-            let mut builder = ra_text_edit::TextEditBuilder::default();
-            builder.replace(range, new_name.into());
-            builder.finish()
-        },
-    }
+    SourceFileEdit { file_id, edit: TextEdit::replace(range, new_name.into()) }
 }
 
 fn rename_mod(
@@ -94,11 +88,7 @@ fn rename_mod(
 
     let edit = SourceFileEdit {
         file_id: position.file_id,
-        edit: {
-            let mut builder = ra_text_edit::TextEditBuilder::default();
-            builder.replace(ast_name.syntax().text_range(), new_name.into());
-            builder.finish()
-        },
+        edit: TextEdit::replace(ast_name.syntax().text_range(), new_name.into()),
     };
     source_file_edits.push(edit);
 
@@ -126,12 +116,14 @@ fn rename_reference(
 
 #[cfg(test)]
 mod tests {
+    use insta::assert_debug_snapshot;
+    use ra_text_edit::TextEditBuilder;
+    use test_utils::assert_eq_text;
+
     use crate::{
         mock_analysis::analysis_and_position, mock_analysis::single_file_with_position, FileId,
         ReferenceSearchResult,
     };
-    use insta::assert_debug_snapshot;
-    use test_utils::assert_eq_text;
 
     #[test]
     fn test_find_all_refs_for_local() {
@@ -452,7 +444,7 @@ mod tests {
     fn test_rename(text: &str, new_name: &str, expected: &str) {
         let (analysis, position) = single_file_with_position(text);
         let source_change = analysis.rename(position, new_name).unwrap();
-        let mut text_edit_builder = ra_text_edit::TextEditBuilder::default();
+        let mut text_edit_builder = TextEditBuilder::default();
         let mut file_id: Option<FileId> = None;
         if let Some(change) = source_change {
             for edit in change.info.source_file_edits {

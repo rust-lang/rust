@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner, TypeBoundsOwner},
@@ -9,8 +7,23 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let type_param_list = ctx.node_at_offset::<ast::TypeParamList>()?;
+// Assist: move_bounds_to_where_clause
+//
+// Moves inline type bounds to a where clause.
+//
+// ```
+// fn apply<T, U, <|>F: FnOnce(T) -> U>(f: F, x: T) -> U {
+//     f(x)
+// }
+// ```
+// ->
+// ```
+// fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
+//     f(x)
+// }
+// ```
+pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let type_param_list = ctx.find_node_at_offset::<ast::TypeParamList>()?;
 
     let mut type_params = type_param_list.type_params();
     if type_params.all(|p| p.type_bound_list().is_none()) {
@@ -33,38 +46,30 @@ pub(crate) fn move_bounds_to_where_clause(mut ctx: AssistCtx<impl HirDatabase>) 
         _ => return None,
     };
 
-    ctx.add_action(
-        AssistId("move_bounds_to_where_clause"),
-        "move_bounds_to_where_clause",
-        |edit| {
-            let new_params = type_param_list
-                .type_params()
-                .filter(|it| it.type_bound_list().is_some())
-                .map(|type_param| {
-                    let without_bounds = type_param.remove_bounds();
-                    (type_param, without_bounds)
-                });
+    ctx.add_assist(AssistId("move_bounds_to_where_clause"), "move_bounds_to_where_clause", |edit| {
+        let new_params = type_param_list
+            .type_params()
+            .filter(|it| it.type_bound_list().is_some())
+            .map(|type_param| {
+                let without_bounds = type_param.remove_bounds();
+                (type_param, without_bounds)
+            });
 
-            let new_type_param_list = edit::replace_descendants(&type_param_list, new_params);
-            edit.replace_ast(type_param_list.clone(), new_type_param_list);
+        let new_type_param_list = edit::replace_descendants(&type_param_list, new_params);
+        edit.replace_ast(type_param_list.clone(), new_type_param_list);
 
-            let where_clause = {
-                let predicates = type_param_list.type_params().filter_map(build_predicate);
-                make::where_clause(predicates)
-            };
+        let where_clause = {
+            let predicates = type_param_list.type_params().filter_map(build_predicate);
+            make::where_clause(predicates)
+        };
 
-            let to_insert = match anchor.prev_sibling_or_token() {
-                Some(ref elem) if elem.kind() == WHITESPACE => {
-                    format!("{} ", where_clause.syntax())
-                }
-                _ => format!(" {}", where_clause.syntax()),
-            };
-            edit.insert(anchor.text_range().start(), to_insert);
-            edit.target(type_param_list.syntax().text_range());
-        },
-    );
-
-    ctx.build()
+        let to_insert = match anchor.prev_sibling_or_token() {
+            Some(ref elem) if elem.kind() == WHITESPACE => format!("{} ", where_clause.syntax()),
+            _ => format!(" {}", where_clause.syntax()),
+        };
+        edit.insert(anchor.text_range().start(), to_insert);
+        edit.target(type_param_list.syntax().text_range());
+    })
 }
 
 fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {

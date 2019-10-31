@@ -14,8 +14,7 @@ use crate::{
     lang_item::LangItemTarget,
     resolve::Resolver,
     ty::{autoderef, Substs, Ty, TypeCtor, TypeWalk},
-    type_ref::Mutability,
-    Adt,
+    Adt, Mutability,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

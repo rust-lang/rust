@@ -1,12 +1,25 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{algo::non_trivia_sibling, Direction, T};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let comma = ctx.token_at_offset().find(|leaf| leaf.kind() == T![,])?;
+// Assist: flip_comma
+//
+// Flips two comma-separated items.
+//
+// ```
+// fn main() {
+//     ((1, 2),<|> (3, 4));
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     ((3, 4), (1, 2));
+// }
+// ```
+pub(crate) fn flip_comma(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let comma = ctx.find_token_at_offset(T![,])?;
     let prev = non_trivia_sibling(comma.clone().into(), Direction::Prev)?;
     let next = non_trivia_sibling(comma.clone().into(), Direction::Next)?;
 
@@ -16,13 +29,11 @@ pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         return None;
     }
 
-    ctx.add_action(AssistId("flip_comma"), "flip comma", |edit| {
+    ctx.add_assist(AssistId("flip_comma"), "flip comma", |edit| {
         edit.target(comma.text_range());
         edit.replace(prev.text_range(), next.to_string());
         edit.replace(next.text_range(), prev.to_string());
-    });
-
-    ctx.build()
+    })
 }
 
 #[cfg(test)]

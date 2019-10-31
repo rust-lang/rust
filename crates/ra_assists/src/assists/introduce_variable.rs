@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use format_buf::format;
 use hir::db::HirDatabase;
 use ra_syntax::{
@@ -14,7 +12,23 @@ use test_utils::tested_by;
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+// Assist: introduce_variable
+//
+// Extracts subexpression into a variable.
+//
+// ```
+// fn main() {
+//     <|>(1 + 2)<|> * 4;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let var_name = (1 + 2);
+//     var_name * 4;
+// }
+// ```
+pub(crate) fn introduce_variable(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     if ctx.frange.range.is_empty() {
         return None;
     }
@@ -29,7 +43,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
     if indent.kind() != WHITESPACE {
         return None;
     }
-    ctx.add_action(AssistId("introduce_variable"), "introduce variable", move |edit| {
+    ctx.add_assist(AssistId("introduce_variable"), "introduce variable", move |edit| {
         let mut buf = String::new();
 
         let cursor_offset = if wrap_in_block {
@@ -74,9 +88,7 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
             }
         }
         edit.set_cursor(anchor_stmt.text_range().start() + cursor_offset);
-    });
-
-    ctx.build()
+    })
 }
 
 /// Check whether the node is a valid expression which can be extracted to a variable.

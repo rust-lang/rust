@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::{db::HirDatabase, HasSource};
 use ra_syntax::{
     ast::{self, edit, make, AstNode, NameOwner},
@@ -14,6 +12,34 @@ enum AddMissingImplMembersMode {
     NoDefaultMethods,
 }
 
+// Assist: add_impl_missing_members
+//
+// Adds scaffold for required impl members.
+//
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {<|>
+//
+// }
+// ```
+// ->
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {
+//     fn foo(&self) { unimplemented!() }
+//
+// }
+// ```
 pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     add_missing_impl_members_inner(
         ctx,
@@ -23,6 +49,38 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx<impl HirDatabase>) -> Opti
     )
 }
 
+// Assist: add_impl_default_members
+//
+// Adds scaffold for overriding default impl members.
+//
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {
+//     Type X = ();
+//     fn foo(&self) {}<|>
+//
+// }
+// ```
+// ->
+// ```
+// trait T {
+//     Type X;
+//     fn foo(&self);
+//     fn bar(&self) {}
+// }
+//
+// impl T for () {
+//     Type X = ();
+//     fn foo(&self) {}
+//     fn bar(&self) {}
+//
+// }
+// ```
 pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     add_missing_impl_members_inner(
         ctx,
@@ -33,12 +91,12 @@ pub(crate) fn add_missing_default_members(ctx: AssistCtx<impl HirDatabase>) -> O
 }
 
 fn add_missing_impl_members_inner(
-    mut ctx: AssistCtx<impl HirDatabase>,
+    ctx: AssistCtx<impl HirDatabase>,
     mode: AddMissingImplMembersMode,
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<Assist> {
-    let impl_node = ctx.node_at_offset::<ast::ImplBlock>()?;
+    let impl_node = ctx.find_node_at_offset::<ast::ImplBlock>()?;
     let impl_item_list = impl_node.item_list()?;
 
     let trait_def = {
@@ -75,7 +133,7 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
-    ctx.add_action(AssistId(assist_id), label, |edit| {
+    ctx.add_assist(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
         let items = missing_items
             .into_iter()
@@ -92,9 +150,7 @@ fn add_missing_impl_members_inner(
 
         edit.replace_ast(impl_item_list, new_impl_item_list);
         edit.set_cursor(cursor_position);
-    });
-
-    ctx.build()
+    })
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {

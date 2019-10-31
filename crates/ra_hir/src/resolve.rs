@@ -1,6 +1,12 @@
 //! Name resolution.
 use std::sync::Arc;
 
+use hir_def::{
+    builtin_type::BuiltinType,
+    path::{Path, PathKind},
+    CrateModuleId,
+};
+use hir_expand::name::{self, Name};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -12,11 +18,8 @@ use crate::{
     },
     generics::GenericParams,
     impl_block::ImplBlock,
-    name::{Name, SELF_PARAM, SELF_TYPE},
-    nameres::{CrateDefMap, CrateModuleId, PerNs},
-    path::{Path, PathKind},
-    Adt, BuiltinType, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct,
-    Trait, TypeAlias,
+    nameres::{CrateDefMap, PerNs},
+    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -149,13 +152,13 @@ impl Resolver {
                     }
                 }
                 Scope::ImplBlockScope(impl_) => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::SelfType(*impl_), idx));
                     }
                 }
                 Scope::AdtScope(adt) => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::AdtSelfType(*adt), idx));
                     }
@@ -204,7 +207,7 @@ impl Resolver {
             return None;
         }
         let n_segments = path.segments.len();
-        let tmp = SELF_PARAM;
+        let tmp = name::SELF_PARAM;
         let first_name = if path.is_self() { &tmp } else { &path.segments.first()?.name };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         for scope in self.scopes.iter().rev() {
@@ -240,13 +243,13 @@ impl Resolver {
                 Scope::GenericParams(_) => continue,
 
                 Scope::ImplBlockScope(impl_) if n_segments > 1 => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let ty = TypeNs::SelfType(*impl_);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::AdtScope(adt) if n_segments > 1 => {
-                    if first_name == &SELF_TYPE {
+                    if first_name == &name::SELF_TYPE {
                         let ty = TypeNs::AdtSelfType(*adt);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
@@ -330,8 +333,8 @@ impl Resolver {
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
                 if let Some(prelude) = m.crate_def_map.prelude() {
-                    let prelude_def_map = db.crate_def_map(prelude.krate);
-                    traits.extend(prelude_def_map[prelude.module_id].scope.traits());
+                    let prelude_def_map = db.crate_def_map(prelude.krate());
+                    traits.extend(prelude_def_map[prelude.id.module_id].scope.traits());
                 }
                 traits.extend(m.crate_def_map[m.module_id].scope.traits());
             }
@@ -444,10 +447,12 @@ impl Scope {
                     f(name.clone(), ScopeDef::ModuleDef(*def));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude() {
-                    let prelude_def_map = db.crate_def_map(prelude.krate);
-                    prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
-                        f(name.clone(), res.def.into());
-                    });
+                    let prelude_def_map = db.crate_def_map(prelude.krate());
+                    prelude_def_map[prelude.id.module_id].scope.entries().for_each(
+                        |(name, res)| {
+                            f(name.clone(), res.def.into());
+                        },
+                    );
                 }
             }
             Scope::GenericParams(gp) => {
@@ -456,10 +461,10 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(SELF_TYPE, ScopeDef::ImplSelfType(*i));
+                f(name::SELF_TYPE, ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
-                f(SELF_TYPE, ScopeDef::AdtSelfType(*i));
+                f(name::SELF_TYPE, ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(e) => {
                 e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {

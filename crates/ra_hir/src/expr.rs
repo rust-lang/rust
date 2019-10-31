@@ -6,15 +6,17 @@ pub(crate) mod validation;
 
 use std::{ops::Index, sync::Arc};
 
+use hir_def::{
+    path::GenericArgs,
+    type_ref::{Mutability, TypeRef},
+};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
     db::HirDatabase,
-    path::GenericArgs,
     ty::primitive::{UncertainFloatTy, UncertainIntTy},
-    type_ref::{Mutability, TypeRef},
     DefWithBody, Either, HasSource, Name, Path, Resolver, Source,
 };
 

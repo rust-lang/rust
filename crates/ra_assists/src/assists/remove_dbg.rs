@@ -1,14 +1,28 @@
-//! FIXME: write short doc here
-
-use crate::{Assist, AssistCtx, AssistId};
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     TextUnit, T,
 };
 
-pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let macro_call = ctx.node_at_offset::<ast::MacroCall>()?;
+use crate::{Assist, AssistCtx, AssistId};
+
+// Assist: remove_dbg
+//
+// Removes `dbg!()` macro call.
+//
+// ```
+// fn main() {
+//     <|>dbg!(92);
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     92;
+// }
+// ```
+pub(crate) fn remove_dbg(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
 
     if !is_valid_macrocall(&macro_call, "dbg")? {
         return None;
@@ -44,13 +58,11 @@ pub(crate) fn remove_dbg(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         text.slice(without_parens).to_string()
     };
 
-    ctx.add_action(AssistId("remove_dbg"), "remove dbg!()", |edit| {
+    ctx.add_assist(AssistId("remove_dbg"), "remove dbg!()", |edit| {
         edit.target(macro_call.syntax().text_range());
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
-    });
-
-    ctx.build()
+    })
 }
 
 /// Verifies that the given macro_call actually matches the given name

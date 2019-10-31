@@ -1,0 +1,15 @@
+[package]
+edition = "2018"
+name = "ra_hir_expand"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+log = "0.4.5"
+
+ra_arena = { path = "../ra_arena" }
+ra_db = { path = "../ra_db" }
+ra_syntax = { path = "../ra_syntax" }
+ra_prof = { path = "../ra_prof" }
+tt = { path = "../ra_tt", package = "ra_tt" }
+mbe = { path = "../ra_mbe", package = "ra_mbe" }

@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Display};
 
-use hir::{Docs, Documentation, HasSource};
+use hir::{Docs, Documentation, HasSource, HirDisplay};
 use join_to_string::join;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use std::convert::From;
@@ -12,9 +12,18 @@ use crate::{
     display::{generic_parameters, where_predicates},
 };
 
+#[derive(Debug)]
+pub enum CallableKind {
+    Function,
+    StructConstructor,
+    VariantConstructor,
+    Macro,
+}
+
 /// Contains information about a function signature
 #[derive(Debug)]
 pub struct FunctionSignature {
+    pub kind: CallableKind,
     /// Optional visibility
     pub visibility: Option<String>,
     /// Name of the function
@@ -42,6 +51,99 @@ impl FunctionSignature {
         let ast_node = function.source(db).ast;
         FunctionSignature::from(&ast_node).with_doc_opt(doc)
     }
+
+    pub(crate) fn from_struct(db: &db::RootDatabase, st: hir::Struct) -> Option<Self> {
+        let node: ast::StructDef = st.source(db).ast;
+        match node.kind() {
+            ast::StructKind::Named(_) => return None,
+            _ => (),
+        };
+
+        let params = st
+            .fields(db)
+            .into_iter()
+            .map(|field: hir::StructField| {
+                let ty = field.ty(db);
+                format!("{}", ty.display(db))
+            })
+            .collect();
+
+        Some(
+            FunctionSignature {
+                kind: CallableKind::StructConstructor,
+                visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+                name: node.name().map(|n| n.text().to_string()),
+                ret_type: node.name().map(|n| n.text().to_string()),
+                parameters: params,
+                generic_parameters: generic_parameters(&node),
+                where_predicates: where_predicates(&node),
+                doc: None,
+            }
+            .with_doc_opt(st.docs(db)),
+        )
+    }
+
+    pub(crate) fn from_enum_variant(
+        db: &db::RootDatabase,
+        variant: hir::EnumVariant,
+    ) -> Option<Self> {
+        let node: ast::EnumVariant = variant.source(db).ast;
+        match node.kind() {
+            ast::StructKind::Named(_) | ast::StructKind::Unit => return None,
+            _ => (),
+        };
+
+        let parent_name = match variant.parent_enum(db).name(db) {
+            Some(name) => name.to_string(),
+            None => "missing".into(),
+        };
+
+        let name = format!("{}::{}", parent_name, variant.name(db).unwrap());
+
+        let params = variant
+            .fields(db)
+            .into_iter()
+            .map(|field: hir::StructField| {
+                let name = field.name(db);
+                let ty = field.ty(db);
+                format!("{}: {}", name, ty.display(db))
+            })
+            .collect();
+
+        Some(
+            FunctionSignature {
+                kind: CallableKind::VariantConstructor,
+                visibility: None,
+                name: Some(name),
+                ret_type: None,
+                parameters: params,
+                generic_parameters: vec![],
+                where_predicates: vec![],
+                doc: None,
+            }
+            .with_doc_opt(variant.docs(db)),
+        )
+    }
+
+    pub(crate) fn from_macro(db: &db::RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
+        let node: ast::MacroCall = macro_def.source(db).ast;
+
+        let params = vec![];
+
+        Some(
+            FunctionSignature {
+                kind: CallableKind::Macro,
+                visibility: None,
+                name: node.name().map(|n| n.text().to_string()),
+                ret_type: None,
+                parameters: params,
+                generic_parameters: vec![],
+                where_predicates: vec![],
+                doc: None,
+            }
+            .with_doc_opt(macro_def.docs(db)),
+        )
+    }
 }
 
 impl From<&'_ ast::FnDef> for FunctionSignature {
@@ -59,6 +161,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
         }
 
         FunctionSignature {
+            kind: CallableKind::Function,
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
             name: node.name().map(|n| n.text().to_string()),
             ret_type: node
@@ -81,7 +184,12 @@ impl Display for FunctionSignature {
         }
 
         if let Some(name) = &self.name {
-            write!(f, "fn {}", name)?;
+            match self.kind {
+                CallableKind::Function => write!(f, "fn {}", name)?,
+                CallableKind::StructConstructor => write!(f, "struct {}", name)?,
+                CallableKind::VariantConstructor => write!(f, "{}", name)?,
+                CallableKind::Macro => write!(f, "{}!", name)?,
+            }
         }
 
         if !self.generic_parameters.is_empty() {

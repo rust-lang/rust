@@ -1,0 +1,21 @@
+[package]
+edition = "2018"
+name = "ra_hir_def"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[dependencies]
+log = "0.4.5"
+once_cell = "1.0.1"
+relative-path = "1.0.0"
+rustc-hash = "1.0"
+
+ra_arena = { path = "../ra_arena" }
+ra_db = { path = "../ra_db" }
+ra_syntax = { path = "../ra_syntax" }
+ra_prof = { path = "../ra_prof" }
+hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
+test_utils = { path = "../test_utils" }
+mbe = { path = "../ra_mbe", package = "ra_mbe" }
+ra_cfg = { path = "../ra_cfg" }
+tt = { path = "../ra_tt", package = "ra_tt" }

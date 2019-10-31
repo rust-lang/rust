@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast,
@@ -9,8 +7,33 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_arm = ctx.node_at_offset::<MatchArm>()?;
+// Assist: move_guard_to_arm_body
+//
+// Moves match guard into match arm body.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } <|>if distance > 10 => foo(),
+//         _ => (),
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => if distance > 10 { foo() },
+//         _ => (),
+//     }
+// }
+// ```
+pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let match_arm = ctx.find_node_at_offset::<MatchArm>()?;
     let guard = match_arm.guard()?;
     let space_before_guard = guard.syntax().prev_sibling_or_token();
 
@@ -18,7 +41,7 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
     let arm_expr = match_arm.expr()?;
     let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
-    ctx.add_action(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
+    ctx.add_assist(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
         edit.target(guard.syntax().text_range());
         let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
             Some(tok) => {
@@ -38,12 +61,36 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
         edit.set_cursor(
             arm_expr.syntax().text_range().start() + TextUnit::from(3) - offseting_amount,
         );
-    });
-    ctx.build()
+    })
 }
 
-pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_arm: MatchArm = ctx.node_at_offset::<MatchArm>()?;
+// Assist: move_arm_cond_to_match_guard
+//
+// Moves if expression from match arm body into a guard.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => <|>if distance > 10 { foo() },
+//         _ => (),
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } if distance > 10 => foo(),
+//         _ => (),
+//     }
+// }
+// ```
+pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let last_match_pat = match_arm.pats().last()?;
 
     let arm_body = match_arm.expr()?;
@@ -62,7 +109,7 @@ pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>)
 
     let buf = format!(" if {}", cond.syntax().text());
 
-    ctx.add_action(
+    ctx.add_assist(
         AssistId("move_arm_cond_to_match_guard"),
         "move condition to match guard",
         |edit| {
@@ -79,8 +126,7 @@ pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>)
             edit.insert(last_match_pat.syntax().text_range().end(), buf);
             edit.set_cursor(last_match_pat.syntax().text_range().end() + TextUnit::from(1));
         },
-    );
-    ctx.build()
+    )
 }
 
 #[cfg(test)]

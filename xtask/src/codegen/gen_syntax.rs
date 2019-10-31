@@ -3,12 +3,7 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
-use std::{
-    collections::BTreeMap,
-    fs,
-    io::Write,
-    process::{Command, Stdio},
-};
+use std::{collections::BTreeMap, fs};
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
@@ -163,7 +158,7 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
         #(#nodes)*
     };
 
-    let pretty = reformat(ast)?;
+    let pretty = codegen::reformat(ast)?;
     Ok(pretty)
 }
 
@@ -276,21 +271,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
         }
     };
 
-    reformat(ast)
-}
-
-fn reformat(text: impl std::fmt::Display) -> Result<String> {
-    let mut rustfmt = Command::new("rustfmt")
-        .arg("--config-path")
-        .arg(project_root().join("rustfmt.toml"))
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-    write!(rustfmt.stdin.take().unwrap(), "{}", text)?;
-    let output = rustfmt.wait_with_output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-    let preamble = "Generated file, do not edit by hand, see `crate/ra_tools/src/codegen`";
-    Ok(format!("//! {}\n\n{}", preamble, stdout))
+    codegen::reformat(ast)
 }
 
 #[derive(Deserialize, Debug)]

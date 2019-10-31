@@ -3,13 +3,14 @@
 
 use std::sync::Arc;
 
+use hir_def::{type_ref::TypeRef, LocalEnumVariantId};
+use hir_expand::name::AsName;
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    type_ref::TypeRef,
-    AsName, Enum, EnumVariant, FieldSource, HasSource, Module, Name, Source, Struct, StructField,
+    Enum, EnumVariant, FieldSource, HasSource, Module, Name, Source, Struct, StructField,
 };
 
 impl Struct {
@@ -67,7 +68,7 @@ impl EnumVariant {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub(crate) name: Option<Name>,
-    pub(crate) variants: Arena<EnumVariantId, EnumVariantData>,
+    pub(crate) variants: Arena<LocalEnumVariantId, EnumVariantData>,
 }
 
 impl EnumData {
@@ -83,10 +84,6 @@ impl EnumData {
         Arc::new(EnumData { name, variants })
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct EnumVariantId(RawId);
-impl_arena_id!(EnumVariantId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EnumVariantData {

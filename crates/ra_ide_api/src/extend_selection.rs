@@ -5,7 +5,7 @@ use ra_syntax::{
     algo::find_covering_element,
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
-    SyntaxKind::*,
+    SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
 };
 
@@ -29,10 +29,12 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         USE_TREE_LIST,
         TYPE_PARAM_LIST,
         TYPE_ARG_LIST,
+        TYPE_BOUND_LIST,
         PARAM_LIST,
         ARG_LIST,
         ARRAY_EXPR,
         TUPLE_EXPR,
+        WHERE_CLAUSE,
     ];
 
     if range.is_empty() {
@@ -146,13 +148,17 @@ fn pick_best<'a>(l: SyntaxToken, r: SyntaxToken) -> SyntaxToken {
     }
 }
 
-/// Extend list item selection to include nearby comma and whitespace.
+/// Extend list item selection to include nearby delimiter and whitespace.
 fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     fn is_single_line_ws(node: &SyntaxToken) -> bool {
         node.kind() == WHITESPACE && !node.text().contains('\n')
     }
 
-    fn nearby_comma(node: &SyntaxNode, dir: Direction) -> Option<SyntaxToken> {
+    fn nearby_delimiter(
+        delimiter_kind: SyntaxKind,
+        node: &SyntaxNode,
+        dir: Direction,
+    ) -> Option<SyntaxToken> {
         node.siblings_with_tokens(dir)
             .skip(1)
             .skip_while(|node| match node {
@@ -161,19 +167,26 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             })
             .next()
             .and_then(|it| it.into_token())
-            .filter(|node| node.kind() == T![,])
+            .filter(|node| node.kind() == delimiter_kind)
     }
 
-    if let Some(comma_node) = nearby_comma(node, Direction::Prev) {
-        return Some(TextRange::from_to(comma_node.text_range().start(), node.text_range().end()));
+    let delimiter = match node.kind() {
+        TYPE_BOUND => T![+],
+        _ => T![,],
+    };
+    if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Prev) {
+        return Some(TextRange::from_to(
+            delimiter_node.text_range().start(),
+            node.text_range().end(),
+        ));
     }
-    if let Some(comma_node) = nearby_comma(node, Direction::Next) {
-        // Include any following whitespace when comma if after list item.
-        let final_node = comma_node
+    if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Next) {
+        // Include any following whitespace when delimiter is after list item.
+        let final_node = delimiter_node
             .next_sibling_or_token()
             .and_then(|it| it.into_token())
             .filter(|node| is_single_line_ws(node))
-            .unwrap_or(comma_node);
+            .unwrap_or(delimiter_node);
 
         return Some(TextRange::from_to(node.text_range().start(), final_node.text_range().end()));
     }
@@ -385,6 +398,55 @@ fn bar(){}
 " fn f<|>oo() {"
 "#,
             &["foo", "\" fn foo() {\""],
+        );
+    }
+
+    #[test]
+    fn test_extend_trait_bounds_list_in_where_clause() {
+        do_check(
+            r#"
+fn foo<R>() 
+    where 
+        R: req::Request + 'static,
+        R::Params: DeserializeOwned<|> + panic::UnwindSafe + 'static,
+        R::Result: Serialize + 'static,
+"#,
+            &[
+                "DeserializeOwned",
+                "DeserializeOwned + ",
+                "DeserializeOwned + panic::UnwindSafe + 'static",
+                "R::Params: DeserializeOwned + panic::UnwindSafe + 'static",
+                "R::Params: DeserializeOwned + panic::UnwindSafe + 'static,",
+            ],
+        );
+        do_check(r#"fn foo<T>() where T: <|>Copy"#, &["Copy"]);
+        do_check(r#"fn foo<T>() where T: <|>Copy + Display"#, &["Copy", "Copy + "]);
+        do_check(r#"fn foo<T>() where T: <|>Copy +Display"#, &["Copy", "Copy +"]);
+        do_check(r#"fn foo<T>() where T: <|>Copy+Display"#, &["Copy", "Copy+"]);
+        do_check(r#"fn foo<T>() where T: Copy + <|>Display"#, &["Display", "+ Display"]);
+        do_check(r#"fn foo<T>() where T: Copy + <|>Display + Sync"#, &["Display", "+ Display"]);
+        do_check(r#"fn foo<T>() where T: Copy +<|>Display"#, &["Display", "+Display"]);
+    }
+
+    #[test]
+    fn test_extend_trait_bounds_list_inline() {
+        do_check(r#"fn foo<T: <|>Copy>() {}"#, &["Copy"]);
+        do_check(r#"fn foo<T: <|>Copy + Display>() {}"#, &["Copy", "Copy + "]);
+        do_check(r#"fn foo<T: <|>Copy +Display>() {}"#, &["Copy", "Copy +"]);
+        do_check(r#"fn foo<T: <|>Copy+Display>() {}"#, &["Copy", "Copy+"]);
+        do_check(r#"fn foo<T: Copy + <|>Display>() {}"#, &["Display", "+ Display"]);
+        do_check(r#"fn foo<T: Copy + <|>Display + Sync>() {}"#, &["Display", "+ Display"]);
+        do_check(r#"fn foo<T: Copy +<|>Display>() {}"#, &["Display", "+Display"]);
+        do_check(
+            r#"fn foo<T: Copy<|> + Display, U: Copy>() {}"#,
+            &[
+                "Copy",
+                "Copy + ",
+                "Copy + Display",
+                "T: Copy + Display",
+                "T: Copy + Display, ",
+                "<T: Copy + Display, U: Copy>",
+            ],
         );
     }
 }

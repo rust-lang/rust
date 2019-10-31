@@ -1,20 +1,30 @@
-//! This contains the functions associated with the demorgan assist.
-//! This assist transforms boolean expressions of the form `!a || !b` into
-//! `!(a && b)`.
 use hir::db::HirDatabase;
 use ra_syntax::ast::{self, AstNode};
 use ra_syntax::SyntaxNode;
 
 use crate::{Assist, AssistCtx, AssistId};
 
-/// Assist for applying demorgan's law
-///
-/// This transforms expressions of the form `!l || !r` into `!(l && r)`.
-/// This also works with `&&`. This assist can only be applied with the cursor
-/// on either `||` or `&&`, with both operands being a negation of some kind.
-/// This means something of the form `!x` or `x != y`.
-pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let expr = ctx.node_at_offset::<ast::BinExpr>()?;
+// Assist: apply_demorgan
+//
+// Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
+// This transforms expressions of the form `!l || !r` into `!(l && r)`.
+// This also works with `&&`. This assist can only be applied with the cursor
+// on either `||` or `&&`, with both operands being a negation of some kind.
+// This means something of the form `!x` or `x != y`.
+//
+// ```
+// fn main() {
+//     if x != 4 ||<|> !y {}
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     if !(x == 4 && y) {}
+// }
+// ```
+pub(crate) fn apply_demorgan(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
     let opposite_op = opposite_logic_op(op)?;
@@ -29,13 +39,12 @@ pub(crate) fn apply_demorgan(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Ass
     let not_lhs = undo_negation(lhs)?;
     let not_rhs = undo_negation(rhs)?;
 
-    ctx.add_action(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
+    ctx.add_assist(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
         edit.target(op_range);
         edit.replace(op_range, opposite_op);
         edit.replace(lhs_range, format!("!({}", not_lhs));
         edit.replace(rhs_range, format!("{})", not_rhs));
-    });
-    ctx.build()
+    })
 }
 
 // Return the opposite text for a given logical operator, if it makes sense

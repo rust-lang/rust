@@ -19,12 +19,14 @@ ra_cfg = { path = "../ra_cfg" }
 ra_db = { path = "../ra_db" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
 tt = { path = "../ra_tt", package = "ra_tt" }
+hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
+hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 test_utils = { path = "../test_utils" }
 ra_prof = { path = "../ra_prof" }
 
-chalk-solve = { git = "https://github.com/rust-lang/chalk.git" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git" }
-chalk-ir = { git = "https://github.com/rust-lang/chalk.git" }
+chalk-solve = { git = "https://github.com/rust-lang/chalk.git", rev = "8314f2fcec8582a58c24b638f1a259d4145a0809" }
+chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "8314f2fcec8582a58c24b638f1a259d4145a0809" }
+chalk-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "8314f2fcec8582a58c24b638f1a259d4145a0809" }
 lalrpop-intern = "0.15.1"
 
 [dev-dependencies]

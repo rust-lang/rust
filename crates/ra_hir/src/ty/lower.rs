@@ -8,6 +8,12 @@
 use std::iter;
 use std::sync::Arc;
 
+use hir_def::{
+    builtin_type::BuiltinType,
+    path::{GenericArg, PathSegment},
+    type_ref::{TypeBound, TypeRef},
+};
+
 use super::{
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
     TypeWalk,
@@ -18,13 +24,14 @@ use crate::{
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
     nameres::Namespace,
-    path::{GenericArg, PathSegment},
     resolve::{Resolver, TypeNs},
-    ty::Adt,
-    type_ref::{TypeBound, TypeRef},
+    ty::{
+        primitive::{FloatTy, IntTy},
+        Adt,
+    },
     util::make_mut_slice,
-    BuiltinType, Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField,
-    Trait, TypeAlias, Union,
+    Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField, Trait,
+    TypeAlias, Union,
 };
 
 impl Ty {
@@ -640,8 +647,10 @@ fn type_for_builtin(def: BuiltinType) -> Ty {
         BuiltinType::Char => TypeCtor::Char,
         BuiltinType::Bool => TypeCtor::Bool,
         BuiltinType::Str => TypeCtor::Str,
-        BuiltinType::Int(ty) => TypeCtor::Int(ty.into()),
-        BuiltinType::Float(ty) => TypeCtor::Float(ty.into()),
+        BuiltinType::Int { signedness, bitness } => {
+            TypeCtor::Int(IntTy { signedness, bitness }.into())
+        }
+        BuiltinType::Float { bitness } => TypeCtor::Float(FloatTy { bitness }.into()),
     })
 }
 

@@ -7,8 +7,32 @@ use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
+// Assist: fill_match_arms
+//
+// Adds missing clauses to a `match` expression.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         <|>
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => (),
+//         Action::Stop => (),
+//     }
+// }
+// ```
+pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 
     // We already have some match arms, so we don't provide any assists.
@@ -29,7 +53,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     };
     let variant_list = enum_def.variant_list()?;
 
-    ctx.add_action(AssistId("fill_match_arms"), "fill match arms", |edit| {
+    ctx.add_assist(AssistId("fill_match_arms"), "fill match arms", |edit| {
         let indent_level = IndentLevel::from_node(match_arm_list.syntax());
 
         let new_arm_list = {
@@ -43,9 +67,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
         edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
         edit.replace_ast(match_arm_list, new_arm_list);
-    });
-
-    ctx.build()
+    })
 }
 
 fn is_trivial(arm: &ast::MatchArm) -> bool {
@@ -130,7 +152,7 @@ mod tests {
                     A::Bs => (),
                     A::Cs(_) => (),
                     A::Ds(_, _) => (),
-                    A::Es{ x, y } => (),
+                    A::Es { x, y } => (),
                 }
             }
             "#,
@@ -183,7 +205,7 @@ mod tests {
 
             fn foo(a: &mut A) {
                 match <|>a {
-                    A::Es{ x, y } => (),
+                    A::Es { x, y } => (),
                 }
             }
             "#,

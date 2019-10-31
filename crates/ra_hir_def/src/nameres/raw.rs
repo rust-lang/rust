@@ -2,18 +2,20 @@
 
 use std::{ops::Index, sync::Arc};
 
+use hir_expand::{
+    ast_id_map::AstIdMap,
+    db::AstDatabase,
+    either::Either,
+    hygiene::Hygiene,
+    name::{AsName, Name},
+};
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode, AstPtr, SourceFile,
 };
-use test_utils::tested_by;
 
-use crate::{
-    attr::Attr,
-    db::{AstDatabase, DefDatabase},
-    AsName, AstIdMap, Either, FileAstId, HirFileId, ModuleSource, Name, Path, Source,
-};
+use crate::{attr::Attr, db::DefDatabase2, path::Path, FileAstId, HirFileId, ModuleSource, Source};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -37,10 +39,8 @@ pub struct ImportSourceMap {
 type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
 type ImportSource = Either<ast::UseTree, ast::ExternCrateItem>;
 
-impl ImportSourcePtr {
-    fn to_node(self, file: &SourceFile) -> ImportSource {
-        self.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
-    }
+fn to_node(ptr: ImportSourcePtr, file: &SourceFile) -> ImportSource {
+    ptr.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
 }
 
 impl ImportSourceMap {
@@ -48,26 +48,26 @@ impl ImportSourceMap {
         self.map.insert(import, ptr)
     }
 
-    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
+    pub fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
         let file = match source {
             ModuleSource::SourceFile(file) => file.clone(),
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
-        self.map[import].to_node(&file)
+        to_node(self.map[import], &file)
     }
 }
 
 impl RawItems {
     pub(crate) fn raw_items_query(
-        db: &(impl DefDatabase + AstDatabase),
+        db: &(impl DefDatabase2 + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
-        db: &(impl DefDatabase + AstDatabase),
+        db: &(impl DefDatabase2 + AstDatabase),
         file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
@@ -75,7 +75,7 @@ impl RawItems {
             source_ast_id_map: db.ast_id_map(file_id),
             source_map: ImportSourceMap::default(),
             file_id,
-            db,
+            hygiene: Hygiene::new(db, file_id),
         };
         if let Some(node) = db.parse_or_expand(file_id) {
             if let Some(source_file) = ast::SourceFile::cast(node.clone()) {
@@ -87,7 +87,7 @@ impl RawItems {
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 
-    pub(super) fn items(&self) -> &[RawItem] {
+    pub fn items(&self) -> &[RawItem] {
         &self.items
     }
 }
@@ -124,19 +124,19 @@ impl Index<Macro> for RawItems {
 type Attrs = Option<Arc<[Attr]>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub(super) struct RawItem {
+pub struct RawItem {
     attrs: Attrs,
-    pub(super) kind: RawItemKind,
+    pub kind: RawItemKind,
 }
 
 impl RawItem {
-    pub(super) fn attrs(&self) -> &[Attr] {
+    pub fn attrs(&self) -> &[Attr] {
         self.attrs.as_ref().map_or(&[], |it| &*it)
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(super) enum RawItemKind {
+pub enum RawItemKind {
     Module(Module),
     Import(ImportId),
     Def(Def),
@@ -144,11 +144,11 @@ pub(super) enum RawItemKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Module(RawId);
+pub struct Module(RawId);
 impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum ModuleData {
+pub enum ModuleData {
     Declaration { name: Name, ast_id: FileAstId<ast::Module> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
@@ -159,26 +159,26 @@ impl_arena_id!(ImportId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub(super) path: Path,
-    pub(super) alias: Option<Name>,
-    pub(super) is_glob: bool,
-    pub(super) is_prelude: bool,
-    pub(super) is_extern_crate: bool,
-    pub(super) is_macro_use: bool,
+    pub path: Path,
+    pub alias: Option<Name>,
+    pub is_glob: bool,
+    pub is_prelude: bool,
+    pub is_extern_crate: bool,
+    pub is_macro_use: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Def(RawId);
+pub struct Def(RawId);
 impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct DefData {
-    pub(super) name: Name,
-    pub(super) kind: DefKind,
+pub struct DefData {
+    pub name: Name,
+    pub kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(super) enum DefKind {
+pub enum DefKind {
     Function(FileAstId<ast::FnDef>),
     Struct(FileAstId<ast::StructDef>),
     Union(FileAstId<ast::StructDef>),
@@ -190,26 +190,26 @@ pub(super) enum DefKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Macro(RawId);
+pub struct Macro(RawId);
 impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct MacroData {
-    pub(super) ast_id: FileAstId<ast::MacroCall>,
-    pub(super) path: Path,
-    pub(super) name: Option<Name>,
-    pub(super) export: bool,
+pub struct MacroData {
+    pub ast_id: FileAstId<ast::MacroCall>,
+    pub path: Path,
+    pub name: Option<Name>,
+    pub export: bool,
 }
 
-struct RawItemsCollector<DB> {
+struct RawItemsCollector {
     raw_items: RawItems,
     source_ast_id_map: Arc<AstIdMap>,
     source_map: ImportSourceMap,
     file_id: HirFileId,
-    db: DB,
+    hygiene: Hygiene,
 }
 
-impl<DB: AstDatabase> RawItemsCollector<&DB> {
+impl RawItemsCollector {
     fn process_module(&mut self, current_module: Option<Module>, body: impl ast::ModuleItemOwner) {
         for item_or_macro in body.items_with_macros() {
             match item_or_macro {
@@ -297,7 +297,8 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
             self.push_item(current_module, attrs, RawItemKind::Module(item));
             return;
         }
-        tested_by!(name_res_works_for_broken_modules);
+        // FIXME: restore this mark once we complete hir splitting
+        // tested_by!(name_res_works_for_broken_modules);
     }
 
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: ast::UseItem) {
@@ -305,9 +306,10 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let attrs = self.parse_attrs(&use_item);
 
+        let mut buf = Vec::new();
         Path::expand_use_item(
             Source { ast: use_item, file_id: self.file_id },
-            self.db,
+            &self.hygiene,
             |path, use_tree, is_glob, alias| {
                 let import_data = ImportData {
                     path,
@@ -317,14 +319,12 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
                     is_extern_crate: false,
                     is_macro_use: false,
                 };
-                self.push_import(
-                    current_module,
-                    attrs.clone(),
-                    import_data,
-                    Either::A(AstPtr::new(use_tree)),
-                );
+                buf.push((import_data, Either::A(AstPtr::new(use_tree))));
             },
-        )
+        );
+        for (import_data, ptr) in buf {
+            self.push_import(current_module, attrs.clone(), import_data, ptr);
+        }
     }
 
     fn add_extern_crate_item(
@@ -357,10 +357,7 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
 
     fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
         let attrs = self.parse_attrs(&m);
-        let path = match m
-            .path()
-            .and_then(|path| Path::from_src(Source { ast: path, file_id: self.file_id }, self.db))
-        {
+        let path = match m.path().and_then(|path| Path::from_src(path, &self.hygiene)) {
             Some(it) => it,
             _ => return,
         };
@@ -398,6 +395,6 @@ impl<DB: AstDatabase> RawItemsCollector<&DB> {
     }
 
     fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
-        Attr::from_attrs_owner(self.file_id, item, self.db)
+        Attr::from_attrs_owner(item, &self.hygiene)
     }
 }

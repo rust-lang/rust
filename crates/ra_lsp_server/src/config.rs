@@ -1,4 +1,11 @@
-//! FIXME: write short doc here
+//! Config used by the language server.
+//!
+//! We currently get this config from `initialize` LSP request, which is not the
+//! best way to do it, but was the simplest thing we could implement.
+//!
+//! Of particular interest is the `feature_flags` hash map: while other fields
+//! configure the server itself, feature flags are passed into analysis, and
+//! tweak things like automatic insertion of `()` in completions.
 
 use rustc_hash::FxHashMap;
 
@@ -72,10 +79,7 @@ mod test {
         assert_eq!(default, serde_json::from_str(r#"{}"#).unwrap());
         assert_eq!(
             default,
-            serde_json::from_str(
-                r#"{"publishDecorations":null, "showWorkspaceLoaded":null, "lruCapacity":null}"#
-            )
-            .unwrap()
+            serde_json::from_str(r#"{"publishDecorations":null, "lruCapacity":null}"#).unwrap()
         );
     }
 }

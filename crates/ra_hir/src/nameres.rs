@@ -48,16 +48,15 @@
 //! on the result
 
 mod per_ns;
-mod raw;
 mod collector;
-mod mod_resolution;
 #[cfg(test)]
 mod tests;
 
 use std::sync::Arc;
 
+use hir_def::{builtin_type::BuiltinType, CrateModuleId};
 use once_cell::sync::Lazy;
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::Arena;
 use ra_db::{Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast;
@@ -69,16 +68,12 @@ use crate::{
     diagnostics::DiagnosticSink,
     ids::MacroDefId,
     nameres::diagnostics::DefDiagnostic,
-    Adt, AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind,
-    Trait,
+    Adt, AstId, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
 
-pub(crate) use self::raw::{ImportSourceMap, RawItems};
+pub use self::per_ns::{Namespace, PerNs};
 
-pub use self::{
-    per_ns::{Namespace, PerNs},
-    raw::ImportId,
-};
+pub use hir_def::nameres::raw::ImportId;
 
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
@@ -115,13 +110,8 @@ impl std::ops::Index<CrateModuleId> for CrateDefMap {
     }
 }
 
-/// An ID of a module, **local** to a specific crate
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct CrateModuleId(RawId);
-impl_arena_id!(CrateModuleId);
-
 #[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct ModuleData {
+pub struct ModuleData {
     pub(crate) parent: Option<CrateModuleId>,
     pub(crate) children: FxHashMap<Name, CrateModuleId>,
     pub(crate) scope: ModuleScope,
@@ -332,10 +322,11 @@ impl CrateDefMap {
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
         let mut curr_per_ns: PerNs = match path.kind {
-            PathKind::DollarCrate(krate) => {
+            PathKind::DollarCrate(crate_id) => {
+                let krate = Crate { crate_id };
                 if krate == self.krate {
                     tested_by!(macro_dollar_crate_self);
-                    PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
+                    PerNs::types(Module::new(self.krate, self.root).into())
                 } else {
                     match krate.root_module(db) {
                         Some(module) => {
@@ -346,12 +337,8 @@ impl CrateDefMap {
                     }
                 }
             }
-            PathKind::Crate => {
-                PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
-            }
-            PathKind::Self_ => {
-                PerNs::types(Module { krate: self.krate, module_id: original_module }.into())
-            }
+            PathKind::Crate => PerNs::types(Module::new(self.krate, self.root).into()),
+            PathKind::Self_ => PerNs::types(Module::new(self.krate, original_module).into()),
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -377,7 +364,7 @@ impl CrateDefMap {
             }
             PathKind::Super => {
                 if let Some(p) = self.modules[original_module].parent {
-                    PerNs::types(Module { krate: self.krate, module_id: p }.into())
+                    PerNs::types(Module::new(self.krate, p).into())
                 } else {
                     log::debug!("super path in root module");
                     return ResolvePathResult::empty(ReachedFixedPoint::Yes);
@@ -419,12 +406,12 @@ impl CrateDefMap {
 
             curr_per_ns = match curr {
                 ModuleDef::Module(module) => {
-                    if module.krate != self.krate {
+                    if module.krate() != self.krate {
                         let path =
                             Path { segments: path.segments[i..].to_vec(), kind: PathKind::Self_ };
                         log::debug!("resolving {:?} in other crate", path);
-                        let defp_map = db.crate_def_map(module.krate);
-                        let (def, s) = defp_map.resolve_path(db, module.module_id, &path);
+                        let defp_map = db.crate_def_map(module.krate());
+                        let (def, s) = defp_map.resolve_path(db, module.id.module_id, &path);
                         return ResolvePathResult::with(
                             def,
                             ReachedFixedPoint::Yes,
@@ -433,7 +420,7 @@ impl CrateDefMap {
                     }
 
                     // Since it is a qualified path here, it should not contains legacy macros
-                    match self[module.module_id].scope.get(&segment.name) {
+                    match self[module.id.module_id].scope.get(&segment.name) {
                         Some(res) => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
@@ -511,14 +498,14 @@ impl CrateDefMap {
     fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
-            let def_map = if prelude.krate == self.krate {
+            let def_map = if prelude.krate() == self.krate {
                 self
             } else {
                 // Extend lifetime
-                keep = db.crate_def_map(prelude.krate);
+                keep = db.crate_def_map(prelude.krate());
                 &keep
             };
-            def_map[prelude.module_id].scope.get(name).map_or_else(PerNs::none, |res| res.def)
+            def_map[prelude.id.module_id].scope.get(name).map_or_else(PerNs::none, |res| res.def)
         } else {
             PerNs::none()
         }

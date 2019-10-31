@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use format_buf::format;
 use hir::db::HirDatabase;
 use ra_fmt::extract_trivial_expression;
@@ -7,8 +5,34 @@ use ra_syntax::{ast, AstNode};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let if_expr: ast::IfExpr = ctx.node_at_offset()?;
+// Assist: replace_if_let_with_match
+//
+// Replaces `if let` with an else branch with a `match` expression.
+//
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     <|>if let Action::Move { distance } = action {
+//         foo(distance)
+//     } else {
+//         bar()
+//     }
+// }
+// ```
+// ->
+// ```
+// enum Action { Move { distance: u32 }, Stop }
+//
+// fn handle(action: Action) {
+//     match action {
+//         Action::Move { distance } => foo(distance),
+//         _ => bar(),
+//     }
+// }
+// ```
+pub(crate) fn replace_if_let_with_match(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
     let pat = cond.pat()?;
     let expr = cond.expr()?;
@@ -18,14 +42,12 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    ctx.add_action(AssistId("replace_if_let_with_match"), "replace with match", |edit| {
+    ctx.add_assist(AssistId("replace_if_let_with_match"), "replace with match", |edit| {
         let match_expr = build_match_expr(expr, pat, then_block, else_block);
         edit.target(if_expr.syntax().text_range());
         edit.replace_node_and_indent(if_expr.syntax(), match_expr);
         edit.set_cursor(if_expr.syntax().text_range().start())
-    });
-
-    ctx.build()
+    })
 }
 
 fn build_match_expr(

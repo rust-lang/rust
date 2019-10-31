@@ -1,5 +1,10 @@
 //! FIXME: write short doc here
 
+use hir_def::{path::GenericArgs, type_ref::TypeRef};
+use hir_expand::{
+    hygiene::Hygiene,
+    name::{self, AsName, Name},
+};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -12,11 +17,8 @@ use test_utils::tested_by;
 
 use crate::{
     db::HirDatabase,
-    name::{AsName, Name, SELF_PARAM},
-    path::GenericArgs,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
-    type_ref::TypeRef,
-    DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
+    AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
     Source,
 };
 
@@ -78,7 +80,7 @@ where
                 let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
-                        name: SELF_PARAM,
+                        name: name::SELF_PARAM,
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },
@@ -458,15 +460,14 @@ where
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::MacroCall(e) => {
-                let ast_id = self
-                    .db
-                    .ast_id_map(self.current_file_id)
-                    .ast_id(&e)
-                    .with_file_id(self.current_file_id);
+                let ast_id = AstId::new(
+                    self.current_file_id,
+                    self.db.ast_id_map(self.current_file_id).ast_id(&e),
+                );
 
                 if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
                     if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
-                        let call_id = MacroCallLoc { def: def.id, ast_id }.id(self.db);
+                        let call_id = self.db.intern_macro(MacroCallLoc { def: def.id, ast_id });
                         let file_id = call_id.as_file(MacroFileKind::Expr);
                         if let Some(node) = self.db.parse_or_expand(file_id) {
                             if let Some(expr) = ast::Expr::cast(node) {
@@ -596,7 +597,8 @@ where
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        Path::from_src(Source { ast: path, file_id: self.current_file_id }, self.db)
+        let hygiene = Hygiene::new(self.db, self.current_file_id);
+        Path::from_src(path, &hygiene)
     }
 }
 

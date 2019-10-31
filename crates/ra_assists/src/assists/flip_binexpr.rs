@@ -1,13 +1,25 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
 use crate::{Assist, AssistCtx, AssistId};
 
-/// Flip binary expression assist.
-pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let expr = ctx.node_at_offset::<BinExpr>()?;
+// Assist: flip_binexpr
+//
+// Flips operands of a binary expression.
+//
+// ```
+// fn main() {
+//     let _ = 90 +<|> 2;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let _ = 2 + 90;
+// }
+// ```
+pub(crate) fn flip_binexpr(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
     let op_range = expr.op_token()?.text_range();
@@ -22,16 +34,14 @@ pub(crate) fn flip_binexpr(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assis
         return None;
     }
 
-    ctx.add_action(AssistId("flip_binexpr"), "flip binary expression", |edit| {
+    ctx.add_assist(AssistId("flip_binexpr"), "flip binary expression", |edit| {
         edit.target(op_range);
         if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }
         edit.replace(lhs.text_range(), rhs.text());
         edit.replace(rhs.text_range(), lhs.text());
-    });
-
-    ctx.build()
+    })
 }
 
 enum FlipAction {

@@ -3,6 +3,8 @@
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
+use hir_def::{attr::Attr, type_ref::TypeRef};
+use hir_expand::hygiene::Hygiene;
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -11,7 +13,6 @@ use ra_syntax::{
 };
 
 use crate::{
-    attr::Attr,
     code_model::{Module, ModuleSource},
     db::{AstDatabase, DefDatabase, HirDatabase},
     generics::HasGenericParams,
@@ -19,8 +20,7 @@ use crate::{
     ids::MacroCallLoc,
     resolve::Resolver,
     ty::Ty,
-    type_ref::TypeRef,
-    AssocItem, Const, Function, HasSource, HirFileId, MacroFileKind, Path, Source, TraitRef,
+    AssocItem, AstId, Const, Function, HasSource, HirFileId, MacroFileKind, Path, Source, TraitRef,
     TypeAlias,
 };
 
@@ -129,7 +129,7 @@ impl ImplData {
     ) -> Self {
         let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
-        let ctx = LocationCtx::new(db, module, file_id);
+        let ctx = LocationCtx::new(db, module.id, file_id);
         let negative = node.is_negative();
         let items = if let Some(item_list) = node.item_list() {
             item_list
@@ -182,7 +182,7 @@ impl ModuleImplBlocks {
     ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
         let mut source_map = ImplSourceMap::default();
         let crate_graph = db.crate_graph();
-        let cfg_options = crate_graph.cfg_options(module.krate.crate_id());
+        let cfg_options = crate_graph.cfg_options(module.id.krate);
 
         let result = ModuleImplBlocks::collect(db, cfg_options, module, &mut source_map);
         (Arc::new(result), Arc::new(source_map))
@@ -228,10 +228,11 @@ impl ModuleImplBlocks {
         owner: &dyn ast::ModuleItemOwner,
         file_id: HirFileId,
     ) {
+        let hygiene = Hygiene::new(db, file_id);
         for item in owner.items_with_macros() {
             match item {
                 ast::ItemOrMacro::Item(ast::ModuleItem::ImplBlock(impl_block_ast)) => {
-                    let attrs = Attr::from_attrs_owner(file_id, &impl_block_ast, db);
+                    let attrs = Attr::from_attrs_owner(&impl_block_ast, &hygiene);
                     if attrs.map_or(false, |attrs| {
                         attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false))
                     }) {
@@ -248,7 +249,7 @@ impl ModuleImplBlocks {
                 }
                 ast::ItemOrMacro::Item(_) => (),
                 ast::ItemOrMacro::Macro(macro_call) => {
-                    let attrs = Attr::from_attrs_owner(file_id, &macro_call, db);
+                    let attrs = Attr::from_attrs_owner(&macro_call, &hygiene);
                     if attrs.map_or(false, |attrs| {
                         attrs.iter().any(|attr| attr.is_cfg_enabled(cfg_options) == Some(false))
                     }) {
@@ -256,14 +257,13 @@ impl ModuleImplBlocks {
                     }
 
                     //FIXME: we should really cut down on the boilerplate required to process a macro
-                    let ast_id = db.ast_id_map(file_id).ast_id(&macro_call).with_file_id(file_id);
-                    if let Some(path) = macro_call
-                        .path()
-                        .and_then(|path| Path::from_src(Source { ast: path, file_id }, db))
+                    let ast_id = AstId::new(file_id, db.ast_id_map(file_id).ast_id(&macro_call));
+                    if let Some(path) =
+                        macro_call.path().and_then(|path| Path::from_src(path, &hygiene))
                     {
                         if let Some(def) = self.module.resolver(db).resolve_path_as_macro(db, &path)
                         {
-                            let call_id = MacroCallLoc { def: def.id, ast_id }.id(db);
+                            let call_id = db.intern_macro(MacroCallLoc { def: def.id, ast_id });
                             let file_id = call_id.as_file(MacroFileKind::Items);
                             if let Some(item_list) =
                                 db.parse_or_expand(file_id).and_then(ast::MacroItems::cast)

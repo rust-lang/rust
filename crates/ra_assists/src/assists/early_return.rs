@@ -1,26 +1,3 @@
-//! Assist: `convert_to_guarded_return`
-//!
-//! Replace a large conditional with a guarded return.
-//!
-//! ```text
-//! fn <|>main() {
-//!     if cond {
-//!         foo();
-//!         bar();
-//!     }
-//! }
-//! ```
-//! ->
-//! ```text
-//! fn main() {
-//!     if !cond {
-//!         return;
-//!     }
-//!     foo();
-//!     bar();
-//! }
-//! ```
-
 use std::ops::RangeInclusive;
 
 use hir::db::HirDatabase;
@@ -36,8 +13,30 @@ use crate::{
     AssistId,
 };
 
-pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let if_expr: ast::IfExpr = ctx.node_at_offset()?;
+// Assist: convert_to_guarded_return
+//
+// Replace a large conditional with a guarded return.
+//
+// ```
+// fn main() {
+//     <|>if cond {
+//         foo();
+//         bar();
+//     }
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     if !cond {
+//         return;
+//     }
+//     foo();
+//     bar();
+// }
+// ```
+pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let expr = if_expr.condition()?.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
     if if_expr.else_branch().is_some() {
@@ -51,7 +50,7 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
     }
 
     // check for early return and continue
-    let first_in_then_block = then_block.syntax().first_child()?.clone();
+    let first_in_then_block = then_block.syntax().first_child()?;
     if ast::ReturnExpr::can_cast(first_in_then_block.kind())
         || ast::ContinueExpr::can_cast(first_in_then_block.kind())
         || first_in_then_block
@@ -76,7 +75,7 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
     let cursor_position = ctx.frange.range.start();
 
-    ctx.add_action(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
+    ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
         let new_if_expr =
             if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
@@ -106,8 +105,7 @@ pub(crate) fn convert_to_guarded_return(mut ctx: AssistCtx<impl HirDatabase>) ->
         edit.target(if_expr.syntax().text_range());
         edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
         edit.set_cursor(cursor_position);
-    });
-    ctx.build()
+    })
 }
 
 #[cfg(test)]

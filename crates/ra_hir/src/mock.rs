@@ -22,6 +22,7 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
     db::InternDatabaseStorage,
     db::AstDatabaseStorage,
     db::DefDatabaseStorage,
+    db::DefDatabase2Storage,
     db::HirDatabaseStorage
 )]
 #[derive(Debug)]

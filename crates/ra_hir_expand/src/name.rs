@@ -33,7 +33,7 @@ impl Name {
         Name(Repr::Text(text))
     }
 
-    pub(crate) fn new_tuple_field(idx: usize) -> Name {
+    pub fn new_tuple_field(idx: usize) -> Name {
         Name(Repr::TupleField(idx))
     }
 
@@ -52,11 +52,11 @@ impl Name {
         }
     }
 
-    pub(crate) fn missing() -> Name {
+    pub fn missing() -> Name {
         Name::new_text("[missing name]".into())
     }
 
-    pub(crate) fn as_tuple_index(&self) -> Option<usize> {
+    pub fn as_tuple_index(&self) -> Option<usize> {
         match self.0 {
             Repr::TupleField(idx) => Some(idx),
             _ => None,
@@ -64,7 +64,7 @@ impl Name {
     }
 }
 
-pub(crate) trait AsName {
+pub trait AsName {
     fn as_name(&self) -> Name;
 }
 
@@ -99,44 +99,44 @@ impl AsName for ra_db::Dependency {
 }
 
 // Primitives
-pub(crate) const ISIZE: Name = Name::new_inline_ascii(5, b"isize");
-pub(crate) const I8: Name = Name::new_inline_ascii(2, b"i8");
-pub(crate) const I16: Name = Name::new_inline_ascii(3, b"i16");
-pub(crate) const I32: Name = Name::new_inline_ascii(3, b"i32");
-pub(crate) const I64: Name = Name::new_inline_ascii(3, b"i64");
-pub(crate) const I128: Name = Name::new_inline_ascii(4, b"i128");
-pub(crate) const USIZE: Name = Name::new_inline_ascii(5, b"usize");
-pub(crate) const U8: Name = Name::new_inline_ascii(2, b"u8");
-pub(crate) const U16: Name = Name::new_inline_ascii(3, b"u16");
-pub(crate) const U32: Name = Name::new_inline_ascii(3, b"u32");
-pub(crate) const U64: Name = Name::new_inline_ascii(3, b"u64");
-pub(crate) const U128: Name = Name::new_inline_ascii(4, b"u128");
-pub(crate) const F32: Name = Name::new_inline_ascii(3, b"f32");
-pub(crate) const F64: Name = Name::new_inline_ascii(3, b"f64");
-pub(crate) const BOOL: Name = Name::new_inline_ascii(4, b"bool");
-pub(crate) const CHAR: Name = Name::new_inline_ascii(4, b"char");
-pub(crate) const STR: Name = Name::new_inline_ascii(3, b"str");
+pub const ISIZE: Name = Name::new_inline_ascii(5, b"isize");
+pub const I8: Name = Name::new_inline_ascii(2, b"i8");
+pub const I16: Name = Name::new_inline_ascii(3, b"i16");
+pub const I32: Name = Name::new_inline_ascii(3, b"i32");
+pub const I64: Name = Name::new_inline_ascii(3, b"i64");
+pub const I128: Name = Name::new_inline_ascii(4, b"i128");
+pub const USIZE: Name = Name::new_inline_ascii(5, b"usize");
+pub const U8: Name = Name::new_inline_ascii(2, b"u8");
+pub const U16: Name = Name::new_inline_ascii(3, b"u16");
+pub const U32: Name = Name::new_inline_ascii(3, b"u32");
+pub const U64: Name = Name::new_inline_ascii(3, b"u64");
+pub const U128: Name = Name::new_inline_ascii(4, b"u128");
+pub const F32: Name = Name::new_inline_ascii(3, b"f32");
+pub const F64: Name = Name::new_inline_ascii(3, b"f64");
+pub const BOOL: Name = Name::new_inline_ascii(4, b"bool");
+pub const CHAR: Name = Name::new_inline_ascii(4, b"char");
+pub const STR: Name = Name::new_inline_ascii(3, b"str");
 
 // Special names
-pub(crate) const SELF_PARAM: Name = Name::new_inline_ascii(4, b"self");
-pub(crate) const SELF_TYPE: Name = Name::new_inline_ascii(4, b"Self");
-pub(crate) const MACRO_RULES: Name = Name::new_inline_ascii(11, b"macro_rules");
+pub const SELF_PARAM: Name = Name::new_inline_ascii(4, b"self");
+pub const SELF_TYPE: Name = Name::new_inline_ascii(4, b"Self");
+pub const MACRO_RULES: Name = Name::new_inline_ascii(11, b"macro_rules");
 
 // Components of known path (value or mod name)
-pub(crate) const STD: Name = Name::new_inline_ascii(3, b"std");
-pub(crate) const ITER: Name = Name::new_inline_ascii(4, b"iter");
-pub(crate) const OPS: Name = Name::new_inline_ascii(3, b"ops");
-pub(crate) const FUTURE: Name = Name::new_inline_ascii(6, b"future");
-pub(crate) const RESULT: Name = Name::new_inline_ascii(6, b"result");
-pub(crate) const BOXED: Name = Name::new_inline_ascii(5, b"boxed");
+pub const STD: Name = Name::new_inline_ascii(3, b"std");
+pub const ITER: Name = Name::new_inline_ascii(4, b"iter");
+pub const OPS: Name = Name::new_inline_ascii(3, b"ops");
+pub const FUTURE: Name = Name::new_inline_ascii(6, b"future");
+pub const RESULT: Name = Name::new_inline_ascii(6, b"result");
+pub const BOXED: Name = Name::new_inline_ascii(5, b"boxed");
 
 // Components of known path (type name)
-pub(crate) const INTO_ITERATOR_TYPE: Name = Name::new_inline_ascii(12, b"IntoIterator");
-pub(crate) const ITEM_TYPE: Name = Name::new_inline_ascii(4, b"Item");
-pub(crate) const TRY_TYPE: Name = Name::new_inline_ascii(3, b"Try");
-pub(crate) const OK_TYPE: Name = Name::new_inline_ascii(2, b"Ok");
-pub(crate) const FUTURE_TYPE: Name = Name::new_inline_ascii(6, b"Future");
-pub(crate) const RESULT_TYPE: Name = Name::new_inline_ascii(6, b"Result");
-pub(crate) const OUTPUT_TYPE: Name = Name::new_inline_ascii(6, b"Output");
-pub(crate) const TARGET_TYPE: Name = Name::new_inline_ascii(6, b"Target");
-pub(crate) const BOX_TYPE: Name = Name::new_inline_ascii(3, b"Box");
+pub const INTO_ITERATOR_TYPE: Name = Name::new_inline_ascii(12, b"IntoIterator");
+pub const ITEM_TYPE: Name = Name::new_inline_ascii(4, b"Item");
+pub const TRY_TYPE: Name = Name::new_inline_ascii(3, b"Try");
+pub const OK_TYPE: Name = Name::new_inline_ascii(2, b"Ok");
+pub const FUTURE_TYPE: Name = Name::new_inline_ascii(6, b"Future");
+pub const RESULT_TYPE: Name = Name::new_inline_ascii(6, b"Result");
+pub const OUTPUT_TYPE: Name = Name::new_inline_ascii(6, b"Output");
+pub const TARGET_TYPE: Name = Name::new_inline_ascii(6, b"Target");
+pub const BOX_TYPE: Name = Name::new_inline_ascii(3, b"Box");

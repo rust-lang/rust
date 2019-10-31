@@ -83,8 +83,6 @@ host.
 ### Settings
 
 * `rust-analyzer.highlightingOn`: enables experimental syntax highlighting
-* `rust-analyzer.showWorkspaceLoadedNotification`: to ease troubleshooting, a
-  notification is shown by default when a workspace is loaded
 * `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts
   `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
@@ -102,6 +100,17 @@ host.
 * `rust-analyzer.trace.server`: enables internal logging
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
 * `RUST_SRC_PATH`: environment variable that overwrites the sysroot
+* `rust-analyzer.featureFlags` -- a JSON object to tweak fine-grained behavior:
+   ```js
+   {
+       // Show diagnostics produced by rust-analyzer itself.
+       "lsp.diagnostics": true,
+       // Automatically insert `()` and `<>` when completing functions and types.
+       "completion.insertion.add-call-parenthesis": true,
+       // Show notification when workspace is fully loaded
+       "notifications.workspace-loaded": true,
+   }
+   ```
 
 
 ## Emacs
@@ -173,7 +182,11 @@ Installation:
     "syntaxes": [
         "Packages/Rust/Rust.sublime-syntax",
         "Packages/Rust Enhanced/RustEnhanced.sublime-syntax"
-    ]
+    ],
+    "initializationOptions": {
+      "featureFlags": {
+      }
+    },
 }
 ```
 

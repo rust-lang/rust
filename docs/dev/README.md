@@ -14,7 +14,7 @@ To learn more about how rust-analyzer works, see
 
 We also publish rustdoc docs to pages:
 
-https://rust-analyzer.github.io/rust-analyzer/api-docs/ra_ide_api/
+https://rust-analyzer.github.io/rust-analyzer/ra_ide_api/
 
 Various organizational and process issues are discussed in this document.
 

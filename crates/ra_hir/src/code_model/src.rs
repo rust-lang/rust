@@ -1,9 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{
-    ast::{self, AstNode},
-    SyntaxNode,
-};
+use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
@@ -12,24 +9,11 @@ use crate::{
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Source<T> {
-    pub file_id: HirFileId,
-    pub ast: T,
-}
+pub use hir_def::Source;
 
 pub trait HasSource {
     type Ast;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast>;
-}
-
-impl<T> Source<T> {
-    pub(crate) fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source { file_id: self.file_id, ast: f(self.ast) }
-    }
-    pub(crate) fn file_syntax(&self, db: &impl AstDatabase) -> SyntaxNode {
-        db.parse_or_expand(self.file_id).expect("source created from invalid file")
-    }
 }
 
 /// NB: Module is !HasSource, because it has two source nodes at the same time:
@@ -37,9 +21,9 @@ impl<T> Source<T> {
 impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ModuleSource> {
-        let def_map = db.crate_def_map(self.krate);
-        let decl_id = def_map[self.module_id].declaration;
-        let file_id = def_map[self.module_id].definition;
+        let def_map = db.crate_def_map(self.krate());
+        let decl_id = def_map[self.id.module_id].declaration;
+        let file_id = def_map[self.id.module_id].definition;
         let ast = ModuleSource::new(db, file_id, decl_id);
         let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
         Source { file_id, ast }
@@ -51,8 +35,8 @@ impl Module {
         self,
         db: &(impl DefDatabase + AstDatabase),
     ) -> Option<Source<ast::Module>> {
-        let def_map = db.crate_def_map(self.krate);
-        let decl = def_map[self.module_id].declaration?;
+        let def_map = db.crate_def_map(self.krate());
+        let decl = def_map[self.id.module_id].declaration?;
         let ast = decl.to_node(db);
         Some(Source { file_id: decl.file_id(), ast })
     }

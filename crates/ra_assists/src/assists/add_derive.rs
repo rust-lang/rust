@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -9,10 +7,28 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
-pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let nominal = ctx.node_at_offset::<ast::NominalDef>()?;
+// Assist: add_derive
+//
+// Adds a new `#[derive()]` clause to a struct or enum.
+//
+// ```
+// struct Point {
+//     x: u32,
+//     y: u32,<|>
+// }
+// ```
+// ->
+// ```
+// #[derive()]
+// struct Point {
+//     x: u32,
+//     y: u32,
+// }
+// ```
+pub(crate) fn add_derive(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
+    let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(&nominal)?;
-    ctx.add_action(AssistId("add_derive"), "add `#[derive]`", |edit| {
+    ctx.add_assist(AssistId("add_derive"), "add `#[derive]`", |edit| {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_simple_call())
@@ -28,9 +44,7 @@ pub(crate) fn add_derive(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
         };
         edit.target(nominal.syntax().text_range());
         edit.set_cursor(offset)
-    });
-
-    ctx.build()
+    })
 }
 
 // Insert `derive` after doc comments.

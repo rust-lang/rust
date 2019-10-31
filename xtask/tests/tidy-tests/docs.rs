@@ -8,7 +8,9 @@ use walkdir::{DirEntry, WalkDir};
 use xtask::project_root;
 
 fn is_exclude_dir(p: &Path) -> bool {
-    let exclude_dirs = ["tests", "test_data"];
+    // Test hopefully don't really need comments, and for assists we already
+    // have special comments which are source of doc tests and user docs.
+    let exclude_dirs = ["tests", "test_data", "assists"];
     let mut cur_path = p;
     while let Some(path) = cur_path.parent() {
         if exclude_dirs.iter().any(|dir| path.ends_with(dir)) {
@@ -27,7 +29,7 @@ fn is_exclude_file(d: &DirEntry) -> bool {
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
-    entry.file_name().to_str().map(|s| s.starts_with(".")).unwrap_or(false)
+    entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
 }
 
 #[test]
