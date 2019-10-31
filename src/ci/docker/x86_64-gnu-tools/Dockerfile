@@ -26,5 +26,5 @@ ENV CHECK_LINKS 1
 
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \
-  --save-toolstates=/tmp/toolstates.json
-ENV SCRIPT /tmp/checktools.sh ../x.py /tmp/toolstates.json linux
+  --save-toolstates=/tmp/toolstate/toolstates.json
+ENV SCRIPT /tmp/checktools.sh ../x.py /tmp/toolstate/toolstates.json linux
