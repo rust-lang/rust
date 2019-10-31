@@ -104,6 +104,10 @@ This crate has the following Cargo features:
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
   of compilation time. (enabled by default)
+- `ahash`: Compiles with ahash as default hasher. (enabled by default)
+- `ahash-compile-time-rng`: Activates the `compile-time-rng` feature of ahash, to increase the
+   DOS-resistance, but can result in issues for `no_std` builds. More details in
+   [issue#124](https://github.com/rust-lang/hashbrown/issues/124). (enabled by default)
 
 ## License
 

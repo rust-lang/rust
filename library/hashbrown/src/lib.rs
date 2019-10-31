@@ -22,8 +22,12 @@
         cfg_doctest,
     )
 )]
+#![allow(
+    clippy::doc_markdown,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate
+)]
 #![warn(missing_docs)]
-#![allow(clippy::module_name_repetitions, clippy::doc_markdown)]
 #![warn(rust_2018_idioms)]
 
 #[cfg(test)]

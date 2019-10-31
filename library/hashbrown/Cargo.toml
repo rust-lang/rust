@@ -14,7 +14,7 @@ build = "build.rs"
 
 [dependencies]
 # For the default hasher
-ahash = { version = "0.2.11", optional = true }
+ahash = { version = "0.2.11", optional = true, default-features = false }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
@@ -37,7 +37,13 @@ serde_test = "1.0"
 doc-comment = "0.3.1"
 
 [features]
-default = ["ahash", "inline-more"]
+default = [
+    "ahash",
+    "ahash-compile-time-rng",
+    "inline-more",
+]
+
+ahash-compile-time-rng = [ "ahash/compile-time-rng" ]
 nightly = []
 rustc-internal-api = []
 rustc-dep-of-std = ["nightly", "core", "compiler_builtins", "alloc", "rustc-internal-api"]
