@@ -5,14 +5,14 @@ LL | pub fn foo() -> impl Future + Send {
    |                 ^^^^^^^^^^^^^^^^^^ future returned by `foo` is not `Send`
    |
    = help: the trait `std::marker::Sync` is not implemented for `(dyn std::any::Any + std::marker::Send + 'static)`
-note: future is not `Send` as this value is used across an yield
+note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-4-async-move.rs:21:26
    |
 LL |         match client.status() {
    |               ------ has type `&Client`
 LL |             200 => {
 LL |                 let _x = get().await;
-   |                          ^^^^^^^^^^^ yield occurs here, with `client` maybe used later
+   |                          ^^^^^^^^^^^ await occurs here, with `client` maybe used later
 ...
 LL |     }
    |     - `client` is later dropped here

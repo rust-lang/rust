@@ -2306,18 +2306,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let source_map = self.tcx.sess.source_map();
 
         let is_async_fn = self.tcx.parent(first_generator)
-            .and_then(|parent_did| self.tcx.hir().get_if_local(parent_did))
-            .and_then(|parent_node| match parent_node {
-                Node::Item(item) => Some(&item.kind),
-                _ => None,
-            })
-            .and_then(|parent_item_kind| match parent_item_kind {
-                hir::ItemKind::Fn(_, hir::FnHeader { asyncness, .. }, _, _) => Some(asyncness),
-                _ => None,
-            })
-            .map(|parent_asyncness| *parent_asyncness == hir::IsAsync::Async)
+            .map(|parent_did| self.tcx.asyncness(parent_did))
+            .map(|parent_asyncness| parent_asyncness == hir::IsAsync::Async)
             .unwrap_or(false);
-        let await_or_yield = if is_async_fn { "await" } else { "yield" };
+        let is_async_move = self.tcx.hir().as_local_hir_id(first_generator)
+            .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
+            .map(|body_id| self.tcx.hir().body(body_id))
+            .and_then(|body| body.generator_kind())
+            .map(|generator_kind| match generator_kind {
+                hir::GeneratorKind::Async(..) => true,
+                _ => false,
+            })
+            .unwrap_or(false);
+        let await_or_yield = if is_async_fn || is_async_move { "await" } else { "yield" };
 
         // Special case the primary error message when send or sync is the trait that was
         // not implemented.
