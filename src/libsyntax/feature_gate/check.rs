@@ -446,6 +446,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "auto traits are experimental and possibly buggy");
             }
 
+            ast::ItemKind::TraitAlias(..) => {
+                gate_feature_post!(
+                    &self,
+                    trait_alias,
+                    i.span,
+                    "trait aliases are experimental"
+                );
+            }
+
             ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
                 let msg = "`macro` is experimental";
                 gate_feature_post!(&self, decl_macro, i.span, msg);
