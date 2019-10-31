@@ -559,6 +559,66 @@ mod tests {
     }
 
     #[test]
+    fn completes_trait_associated_method_1() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                trait Trait {
+                  /// A trait method
+                  fn m();
+                }
+
+                fn foo() { let _ = Trait::<|> }
+                "
+            ),
+            @"[]"
+        );
+    }
+
+    #[test]
+    fn completes_trait_associated_method_2() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                trait Trait {
+                  /// A trait method
+                  fn m();
+                }
+
+                struct S;
+                impl Trait for S {}
+
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @"[]"
+        );
+    }
+
+    #[test]
+    fn completes_trait_associated_method_3() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                trait Trait {
+                  /// A trait method
+                  fn m();
+                }
+
+                struct S;
+                impl Trait for S {}
+
+                fn foo() { let _ = <S as Trait>::<|> }
+                "
+            ),
+            @"[]"
+        );
+    }
+
+    #[test]
     fn completes_type_alias() {
         assert_debug_snapshot!(
             do_reference_completion(
