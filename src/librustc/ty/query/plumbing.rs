@@ -1117,7 +1117,7 @@ macro_rules! define_provider_struct {
 ///
 /// When you implement a new query, it will likely have a corresponding new
 /// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
-/// a rule of thumb, if your query takes a `DefId` or `DefIndex` as sole parameter,
+/// a rule of thumb, if your query takes a `DefId` or `LocalDefId` as sole parameter,
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.

@@ -51,7 +51,7 @@
 
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LocalDefId};
 use crate::hir::map::DefPathHash;
 use crate::hir::HirId;
 
@@ -447,9 +447,9 @@ impl RecoverKey<'tcx> for DefId {
     }
 }
 
-impl RecoverKey<'tcx> for DefIndex {
+impl RecoverKey<'tcx> for LocalDefId {
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        dep_node.extract_def_id(tcx).map(|id| id.index)
+        dep_node.extract_def_id(tcx).map(|id| id.to_local())
     }
 }
 
@@ -501,15 +501,15 @@ impl<'tcx> DepNodeParams<'tcx> for DefId {
     }
 }
 
-impl<'tcx> DepNodeParams<'tcx> for DefIndex {
+impl<'tcx> DepNodeParams<'tcx> for LocalDefId {
     const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
 
     fn to_fingerprint(&self, tcx: TyCtxt<'_>) -> Fingerprint {
-        tcx.hir().definitions().def_path_hash(*self).0
+        self.to_def_id().to_fingerprint(tcx)
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
-        tcx.def_path_str(DefId::local(*self))
+        self.to_def_id().to_debug_str(tcx)
     }
 }
 

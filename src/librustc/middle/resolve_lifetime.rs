@@ -342,19 +342,16 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         resolve_lifetimes,
 
         named_region_map: |tcx, id| {
-            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
             tcx.resolve_lifetimes(LOCAL_CRATE).defs.get(&id)
         },
 
         is_late_bound_map: |tcx, id| {
-            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
             tcx.resolve_lifetimes(LOCAL_CRATE)
                 .late_bound
                 .get(&id)
         },
 
         object_lifetime_defaults_map: |tcx, id| {
-            let id = LocalDefId::from_def_id(DefId::local(id)); // (*)
             tcx.resolve_lifetimes(LOCAL_CRATE)
                 .object_lifetime_defaults
                 .get(&id)

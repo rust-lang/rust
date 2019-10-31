@@ -1,7 +1,7 @@
 //! Defines the set of legal keys that can be used in queries.
 
 use crate::infer::canonical::Canonical;
-use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
+use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use crate::traits;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
@@ -62,12 +62,12 @@ impl Key for CrateNum {
     }
 }
 
-impl Key for DefIndex {
+impl Key for LocalDefId {
     fn query_crate(&self) -> CrateNum {
-        LOCAL_CRATE
+        self.to_def_id().query_crate()
     }
-    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
-        DUMMY_SP
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.to_def_id().default_span(tcx)
     }
 }
 
