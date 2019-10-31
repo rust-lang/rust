@@ -269,25 +269,9 @@ fn iterate_trait_method_candidates<T>(
         // iteration
         let mut known_implemented = inherently_implemented;
         for &item in data.items() {
-            // TODO unify with the impl case
-            match item {
-                AssocItem::Function(m) => {
-                    let data = m.data(db);
-                    if !name.map_or(true, |name| data.name() == name)
-                        || (!data.has_self_param() && mode != LookupMode::Path)
-                    {
-                        continue;
-                    }
-                }
-                AssocItem::Const(c) => {
-                    if !name.map_or(true, |name| Some(name) == c.name(db).as_ref())
-                        || (mode != LookupMode::Path)
-                    {
-                        continue;
-                    }
-                }
-                _ => {}
-            };
+            if !is_valid_candidate(db, name, mode, item) {
+                continue;
+            }
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
                 if db.trait_solve(krate, goal).is_none() {
@@ -316,23 +300,8 @@ fn iterate_inherent_methods<T>(
 
         for impl_block in impls.lookup_impl_blocks(&ty.value) {
             for item in impl_block.items(db) {
-                match item {
-                    AssocItem::Function(f) => {
-                        let data = f.data(db);
-                        if !name.map_or(true, |name| data.name() == name)
-                            || (!data.has_self_param() && mode != LookupMode::Path)
-                        {
-                            continue;
-                        }
-                    }
-                    AssocItem::Const(c) => {
-                        if !name.map_or(true, |name| Some(name) == c.name(db).as_ref())
-                            || (mode != LookupMode::Path)
-                        {
-                            continue;
-                        }
-                    }
-                    _ => {}
+                if !is_valid_candidate(db, name, mode, item) {
+                    continue;
                 }
                 if let Some(result) = callback(&ty.value, item) {
                     return Some(result);
@@ -341,6 +310,26 @@ fn iterate_inherent_methods<T>(
         }
     }
     None
+}
+
+fn is_valid_candidate(
+    db: &impl HirDatabase,
+    name: Option<&Name>,
+    mode: LookupMode,
+    item: AssocItem,
+) -> bool {
+    match item {
+        AssocItem::Function(m) => {
+            let data = m.data(db);
+            name.map_or(true, |name| data.name() == name)
+                && (data.has_self_param() || mode == LookupMode::Path)
+        }
+        AssocItem::Const(c) => {
+            name.map_or(true, |name| Some(name) == c.name(db).as_ref())
+                && (mode == LookupMode::Path)
+        }
+        _ => false,
+    }
 }
 
 pub(crate) fn implements_trait(
