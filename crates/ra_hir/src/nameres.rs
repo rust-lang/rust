@@ -54,7 +54,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_def::CrateModuleId;
+use hir_def::{builtin_type::BuiltinType, CrateModuleId};
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{Edition, FileId};
@@ -68,8 +68,7 @@ use crate::{
     diagnostics::DiagnosticSink,
     ids::MacroDefId,
     nameres::diagnostics::DefDiagnostic,
-    Adt, AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind,
-    Trait,
+    Adt, AstId, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
 
 pub use self::per_ns::{Namespace, PerNs};

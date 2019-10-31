@@ -6,13 +6,11 @@ pub(crate) mod docs;
 use std::sync::Arc;
 
 use hir_def::{
+    builtin_type::BuiltinType,
     type_ref::{Mutability, TypeRef},
     CrateModuleId, ModuleId,
 };
-use hir_expand::name::{
-    self, AsName, BOOL, CHAR, F32, F64, I128, I16, I32, I64, I8, ISIZE, SELF_TYPE, STR, U128, U16,
-    U32, U64, U8, USIZE,
-};
+use hir_expand::name::{self, AsName};
 use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
@@ -30,10 +28,7 @@ use crate::{
     nameres::{ImportId, ModuleScope, Namespace},
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
-    ty::{
-        primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
-        InferenceResult, TraitRef,
-    },
+    ty::{InferenceResult, TraitRef},
     Either, HasSource, Name, Ty,
 };
 
@@ -85,41 +80,6 @@ impl Crate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) id: ModuleId,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BuiltinType {
-    Char,
-    Bool,
-    Str,
-    Int(IntTy),
-    Float(FloatTy),
-}
-
-impl BuiltinType {
-    #[rustfmt::skip]
-    pub(crate) const ALL: &'static [(Name, BuiltinType)] = &[
-        (CHAR, BuiltinType::Char),
-        (BOOL, BuiltinType::Bool),
-        (STR, BuiltinType::Str),
-
-        (ISIZE, BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::Xsize })),
-        (I8,    BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X8 })),
-        (I16,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X16 })),
-        (I32,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X32 })),
-        (I64,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X64 })),
-        (I128,  BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X128 })),
-
-        (USIZE, BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::Xsize })),
-        (U8,    BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X8 })),
-        (U16,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X16 })),
-        (U32,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X32 })),
-        (U64,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X64 })),
-        (U128,  BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 })),
-
-        (F32, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
-        (F64, BuiltinType::Float(FloatTy { bitness: FloatBitness::X64 })),
-    ];
 }
 
 /// The defs which can be visible in the module.
@@ -625,7 +585,7 @@ impl FnData {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
                 } else {
-                    let self_type = TypeRef::Path(SELF_TYPE.into());
+                    let self_type = TypeRef::Path(name::SELF_TYPE.into());
                     match self_param.kind() {
                         ast::SelfParamKind::Owned => self_type,
                         ast::SelfParamKind::Ref => {
