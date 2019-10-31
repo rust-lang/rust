@@ -49,7 +49,6 @@
 
 mod per_ns;
 mod collector;
-mod mod_resolution;
 #[cfg(test)]
 mod tests;
 

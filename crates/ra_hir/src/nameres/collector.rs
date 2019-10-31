@@ -1,6 +1,9 @@
 //! FIXME: write short doc here
 
-use hir_def::{attr::Attr, nameres::raw};
+use hir_def::{
+    attr::Attr,
+    nameres::{mod_resolution::ModDir, raw},
+};
 use hir_expand::name;
 use ra_cfg::CfgOptions;
 use ra_db::FileId;
@@ -12,8 +15,8 @@ use crate::{
     db::DefDatabase,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     nameres::{
-        diagnostics::DefDiagnostic, mod_resolution::ModDir, Crate, CrateDefMap, CrateModuleId,
-        ModuleData, ModuleDef, PerNs, ReachedFixedPoint, Resolution, ResolveMode,
+        diagnostics::DefDiagnostic, Crate, CrateDefMap, CrateModuleId, ModuleData, ModuleDef,
+        PerNs, ReachedFixedPoint, Resolution, ResolveMode,
     },
     Adt, AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
     Struct, Trait, TypeAlias, Union,
