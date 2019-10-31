@@ -230,7 +230,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         &mut self,
         ty: Ty,
         name: &Name,
-        _id: ExprOrPatId,
+        id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let krate = self.resolver.krate()?;
 
@@ -276,6 +276,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             trait_: t,
                             substs: trait_substs,
                         }));
+
+                        self.write_assoc_resolution(id, *item);
                         return Some((ValueNs::Function(f), Some(substs)));
                     }
                 }
