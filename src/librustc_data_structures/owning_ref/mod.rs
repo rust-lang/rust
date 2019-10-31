@@ -1046,14 +1046,14 @@ unsafe impl<O, T: ?Sized> CloneStableAddress for OwningRef<O, T>
     where O: CloneStableAddress {}
 
 unsafe impl<O, T: ?Sized> Send for OwningRef<O, T>
-    where O: Send, for<'a> (&'a T): Send {}
+    where O: Send, for<'a> &'a T: Send {}
 unsafe impl<O, T: ?Sized> Sync for OwningRef<O, T>
-    where O: Sync, for<'a> (&'a T): Sync {}
+    where O: Sync, for<'a> &'a T: Sync {}
 
 unsafe impl<O, T: ?Sized> Send for OwningRefMut<O, T>
-    where O: Send, for<'a> (&'a mut T): Send {}
+    where O: Send, for<'a> &'a mut T: Send {}
 unsafe impl<O, T: ?Sized> Sync for OwningRefMut<O, T>
-    where O: Sync, for<'a> (&'a mut T): Sync {}
+    where O: Sync, for<'a> &'a mut T: Sync {}
 
 impl Debug for dyn Erased {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

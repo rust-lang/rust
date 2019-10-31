@@ -598,6 +598,25 @@ impl EarlyLintPass for UnusedParens {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
         self.check_unused_parens_pat(cx, &arm.pat, false, false);
     }
+
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let &ast::TyKind::Paren(ref r) = &ty.kind {
+            match &r.kind {
+                &ast::TyKind::TraitObject(..) => {}
+                &ast::TyKind::ImplTrait(_, ref bounds) if bounds.len() > 1 => {}
+                _ => {
+                    let pattern_text = if let Ok(snippet) = cx.sess().source_map()
+                        .span_to_snippet(ty.span) {
+                            snippet
+                        } else {
+                            pprust::ty_to_string(ty)
+                        };
+
+                    Self::remove_outer_parens(cx, ty.span, &pattern_text, "type", (false, false));
+                }
+            }
+        }
+    }
 }
 
 declare_lint! {
