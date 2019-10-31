@@ -518,6 +518,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "type ascription is experimental");
                 }
             }
+            ast::ExprKind::Block(_, opt_label) => {
+                if let Some(label) = opt_label {
+                    gate_feature_post!(&self, label_break_value, label.ident.span,
+                                    "labels on blocks are unstable");
+                }
+            }
             _ => {}
         }
         visit::walk_expr(self, e)
