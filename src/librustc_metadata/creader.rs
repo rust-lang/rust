@@ -3,13 +3,10 @@
 use crate::cstore::{self, CStore, MetadataBlob};
 use crate::locator::{self, CratePaths};
 use crate::schema::{CrateRoot, CrateDep};
-use rustc_data_structures::sync::{Lock, Once, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
-use rustc::dep_graph::DepNodeIndex;
 use rustc::middle::cstore::DepKind;
-use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
@@ -241,24 +238,21 @@ impl<'a> CrateLoader<'a> {
             crate_root.def_path_table.decode((&metadata, self.sess))
         });
 
-        self.cstore.set_crate_data(cnum, cstore::CrateMetadata {
-            extern_crate: Lock::new(None),
+        self.cstore.set_crate_data(cnum, cstore::CrateMetadata::new(
             def_path_table,
             trait_impls,
-            root: crate_root,
+            crate_root,
             host_hash,
-            blob: metadata,
+            metadata,
             cnum_map,
             cnum,
-            dependencies: Lock::new(dependencies),
-            source_map_import_info: Once::new(),
-            alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
-            dep_kind: Lock::new(dep_kind),
+            dependencies,
+            interpret_alloc_index,
+            dep_kind,
             source,
             private_dep,
             raw_proc_macros,
-            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
-        });
+        ));
 
         cnum
     }

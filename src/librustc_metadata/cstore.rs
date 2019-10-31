@@ -77,14 +77,14 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     crate raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    crate source_map_import_info: Once<Vec<ImportedSourceFile>>,
+    source_map_import_info: Once<Vec<ImportedSourceFile>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     crate alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
     /// It is initialized on the first access in `get_crate_dep_node_index()`.
     /// Do not access the value directly, as it might not have been initialized yet.
     /// The field must always be initialized to `DepNodeIndex::INVALID`.
-    crate dep_node_index: AtomicCell<DepNodeIndex>,
+    dep_node_index: AtomicCell<DepNodeIndex>,
 
     // --- Other significant crate properties ---
 
@@ -113,6 +113,41 @@ crate struct CrateMetadata {
 }
 
 impl<'a, 'tcx> CrateMetadata {
+    crate fn new(
+        def_path_table: DefPathTable,
+        trait_impls: FxHashMap<(u32, DefIndex), schema::Lazy<[DefIndex]>>,
+        root: schema::CrateRoot<'static>,
+        host_hash: Option<Svh>,
+        blob: MetadataBlob,
+        cnum_map: CrateNumMap,
+        cnum: CrateNum,
+        dependencies: Vec<CrateNum>,
+        interpret_alloc_index: Vec<u32>,
+        dep_kind: DepKind,
+        source: CrateSource,
+        private_dep: bool,
+        raw_proc_macros: Option<&'static [ProcMacro]>,
+    ) -> Self {
+        Self {
+            extern_crate: Lock::new(None),
+            def_path_table,
+            trait_impls,
+            root,
+            host_hash,
+            blob,
+            cnum_map,
+            cnum,
+            dependencies: Lock::new(dependencies),
+            source_map_import_info: Once::new(),
+            alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
+            dep_kind: Lock::new(dep_kind),
+            source,
+            private_dep,
+            raw_proc_macros,
+            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
+        }
+    }
+
     crate fn is_proc_macro_crate(&self) -> bool {
         self.root.proc_macro_decls_static.is_some()
     }
