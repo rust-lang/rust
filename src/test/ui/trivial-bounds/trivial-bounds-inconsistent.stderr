@@ -31,7 +31,10 @@ LL | type Y where i32: Foo = ();
    |              ^^^^^^^^
    |
    = note: `#[warn(type_alias_bounds)]` on by default
-   = help: the clause will not be checked when the type alias is used, and should be removed
+help: the clause will not be checked when the type alias is used, and should be removed
+   |
+LL | type Y  = ();
+   |       --
 
 warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:22:19
