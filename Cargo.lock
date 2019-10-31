@@ -2981,7 +2981,7 @@ dependencies = [
  "clippy_lints",
  "crossbeam-channel",
  "difference",
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "failure",
  "futures",
  "heck",
@@ -3064,7 +3064,7 @@ name = "rls-rustc"
 version = "0.6.0"
 dependencies = [
  "clippy_lints",
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "failure",
  "futures",
  "log",
