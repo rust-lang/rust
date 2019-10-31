@@ -176,7 +176,7 @@ pub(crate) fn lookup_method(
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum LookupMode {
+pub enum LookupMode {
     MethodCall,
     Path,
 }

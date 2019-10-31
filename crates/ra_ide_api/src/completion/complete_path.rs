@@ -50,9 +50,12 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
-            let krate = ctx.module.map(|m| m.krate());
-            if let Some(krate) = krate {
-                ty.iterate_impl_items(ctx.db, krate, |item| {
+            ctx.analyzer.iterate_method_candidates(
+                ctx.db,
+                ty.clone(),
+                None,
+                hir::LookupMode::Path,
+                |_ty, item| {
                     match item {
                         hir::AssocItem::Function(func) => {
                             let data = func.data(ctx.db);
@@ -61,6 +64,18 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                             }
                         }
                         hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+                        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                    }
+                    None::<()>
+                },
+            );
+            // Iterate assoc types separately
+            // FIXME: complete T::AssocType
+            let krate = ctx.module.map(|m| m.krate());
+            if let Some(krate) = krate {
+                ty.iterate_impl_items(ctx.db, krate, |item| {
+                    match item {
+                        hir::AssocItem::Function(_) | hir::AssocItem::Const(_) => {}
                         hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                     }
                     None::<()>
@@ -593,7 +608,22 @@ mod tests {
                 fn foo() { let _ = S::<|> }
                 "
             ),
-            @"[]"
+            @r###"
+        [
+            CompletionItem {
+                label: "m()",
+                source_range: [99; 99),
+                delete: [99; 99),
+                insert: "m()$0",
+                kind: Function,
+                lookup: "m",
+                detail: "fn m()",
+                documentation: Documentation(
+                    "A trait method",
+                ),
+            },
+        ]
+        "###
         );
     }
 

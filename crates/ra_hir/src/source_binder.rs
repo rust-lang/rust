@@ -27,7 +27,7 @@ use crate::{
     },
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
-    ty::method_resolution::implements_trait,
+    ty::method_resolution::{self, implements_trait},
     AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId,
     MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
@@ -327,17 +327,19 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         ty: Ty,
         name: Option<&Name>,
+        mode: method_resolution::LookupMode,
         callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
         // FIXME check that?
+        // FIXME replace Unknown by bound vars here
         let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
-        crate::ty::method_resolution::iterate_method_candidates(
+        method_resolution::iterate_method_candidates(
             &canonical,
             db,
             &self.resolver,
             name,
-            crate::ty::method_resolution::LookupMode::MethodCall,
+            mode,
             callback,
         )
     }
