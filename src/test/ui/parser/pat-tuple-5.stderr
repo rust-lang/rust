@@ -5,10 +5,10 @@ LL |         (PAT ..) => {}
    |          ^^^^^^ help: try using the maximum value for the type: `PAT..MAX`
 
 error[E0658]: exclusive range pattern syntax is experimental
-  --> $DIR/pat-tuple-5.rs:5:14
+  --> $DIR/pat-tuple-5.rs:5:10
    |
 LL |         (PAT ..) => {}
-   |              ^^
+   |          ^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/37854
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable

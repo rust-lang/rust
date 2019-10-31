@@ -3,8 +3,9 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{self, NodeId, PatKind, VariantData};
+use crate::ast::{self, NodeId, PatKind, RangeEnd, VariantData};
 use crate::attr::{self, check_builtin_attribute};
+use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::token;
@@ -550,6 +551,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         );
                     }
                 }
+            }
+            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
+                gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
+                                   "exclusive range pattern syntax is experimental");
             }
             _ => {}
         }
