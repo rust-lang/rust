@@ -1,8 +1,8 @@
 error[E0658]: const generics are unstable
-  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:13
+  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:19
    |
 LL | struct B<T, const N: T>(PhantomData<[T; N]>);
-   |             ^^^^^^^^^^
+   |                   ^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44580
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
