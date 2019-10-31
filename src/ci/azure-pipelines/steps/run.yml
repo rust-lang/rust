@@ -139,14 +139,6 @@ steps:
   condition: and(succeeded(), not(variables.SKIP_JOB))
   displayName: Install awscli
 
-# As a quick smoke check on the otherwise very fast mingw-check linux builder
-# check our own internal scripts.
-- bash: src/ci/scripts/validate-toolstate.sh
-  env:
-    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['IMAGE'], 'mingw-check'))
-  displayName: Verify the publish_toolstate script works
-
 - bash: src/ci/scripts/run-build-from-ci.sh
   timeoutInMinutes: 600
   env:
