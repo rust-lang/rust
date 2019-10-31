@@ -1686,7 +1686,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let trait_ref = Binder::bind(TraitRef::identity(self.tcx, exp_found.found));
         let supertraits = crate::traits::supertraits(self.tcx, trait_ref);
         if supertraits.into_iter().any(|trait_ref| trait_ref.def_id() == exp_found.expected) {
-            diag.note("enable the `trait_upcasting` feature to permit upcasting of trait objects");
+            diag.note("add `#![feature(trait_upcasting)]` to the crate attributes to enable");
         }
     }
 

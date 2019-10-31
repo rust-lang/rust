@@ -751,6 +751,7 @@ symbols! {
         transparent,
         transparent_enums,
         transparent_unions,
+        trait_upcasting,
         trivial_bounds,
         Try,
         try_blocks,

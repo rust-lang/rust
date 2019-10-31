@@ -2956,52 +2956,51 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
                 let source_ty = tcx.mk_dynamic(existential_predicates, region_b);
 
-                /*
-                // Require that the traits involved in this upcast are **equal**;
-                // only the **lifetime bound** is changed.
-                //
-                // FIXME: This condition is arguably too strong -- it would
-                // suffice for the source trait to be a *subtype* of the target
-                // trait. In particular, changing from something like
-                // `for<'a, 'b> Foo<'a, 'b>` to `for<'a> Foo<'a, 'a>` should be
-                // permitted. And, indeed, in the in commit
-                // 904a0bde93f0348f69914ee90b1f8b6e4e0d7cbc, this
-                // condition was loosened. However, when the leak check was
-                // added back, using subtype here actually guides the coercion
-                // code in such a way that it accepts `old-lub-glb-object.rs`.
-                // This is probably a good thing, but I've modified this to `.eq`
-                // because I want to continue rejecting that test (as we have
-                // done for quite some time) before we are firmly comfortable
-                // with what our behavior should be there. -nikomatsakis
-                let InferOk { obligations, .. } = self
-                    .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(target, source_ty) // FIXME -- see above
-                    .map_err(|_| Unimplemented)?;
-                nested.extend(obligations);
-                */
-
-                // Register obligations for `dyn TraitA1 [TraitA2...]: TraitB1 [TraitB2...]`.
-                nested.extend(
-                    data_b.iter()
-                        // HACK(alexreg | nikomatsakis): we handle auto traits specially here
-                        // because of cases like like `dyn Foo + Send + 'a` ->
-                        // `dyn Foo + Send + 'b`, which requires proving the obligation
-                        // `dyn Foo + Send: Send`. This is unfortunately ambiguous under the
-                        // current trait solver model: it holds both because `Send` is a supertrait
-                        // of `Foo + Send` and because there's an automatic impl of `Send` for the
-                        // trait object.
-                        .filter(|predicate| {
-                            match predicate.skip_binder() {
-                                ty::ExistentialPredicate::AutoTrait(did) =>
-                                    !data_a.auto_traits().any(|did_a| did_a == *did),
-                                _ => true,
-                            }
-                        })
-                        .map(|predicate|
-                            predicate_to_obligation(predicate.with_self_ty(tcx, source_ty))
-                        ),
-                );
+                if tcx.features().trait_upcasting {
+                    // Register obligations for `dyn TraitA1 [TraitA2...]: TraitB1 [TraitB2...]`.
+                    nested.extend(
+                        data_b.iter()
+                            // HACK(alexreg | nikomatsakis): we handle auto traits specially here
+                            // because of cases like like `dyn Foo + Send + 'a` ->
+                            // `dyn Foo + Send + 'b`, which requires proving the obligation
+                            // `dyn Foo + Send: Send`. This is unfortunately ambiguous under the
+                            // current trait solver model: it holds both because `Send` is a
+                            // supertrait of `Foo + Send` and because there's an automatic impl of
+                            // `Send` for the trait object.
+                            .filter(|predicate| {
+                                match predicate.skip_binder() {
+                                    ty::ExistentialPredicate::AutoTrait(did) =>
+                                        !data_a.auto_traits().any(|did_a| did_a == *did),
+                                    _ => true,
+                                }
+                            })
+                            .map(|predicate|
+                                predicate_to_obligation(predicate.with_self_ty(tcx, source_ty))
+                            ),
+                    );
+                } else {
+                    // Require that the traits involved in this upcast are **equal**;
+                    // only the **lifetime bound** is changed.
+                    //
+                    // FIXME: This condition is arguably too strong -- it would
+                    // suffice for the source trait to be a *subtype* of the target
+                    // trait. In particular, changing from something like
+                    // `for<'a, 'b> Foo<'a, 'b>` to `for<'a> Foo<'a, 'a>` should be
+                    // permitted. And, indeed, in the in commit
+                    // 904a0bde93f0348f69914ee90b1f8b6e4e0d7cbc, this
+                    // condition was loosened. However, when the leak check was
+                    // added back, using subtype here actually guides the coercion
+                    // code in such a way that it accepts `old-lub-glb-object.rs`.
+                    // This is probably a good thing, but I've modified this to `.eq`
+                    // because I want to continue rejecting that test (as we have
+                    // done for quite some time) before we are firmly comfortable
+                    // with what our behavior should be there. -nikomatsakis
+                    let InferOk { obligations, .. } = self.infcx
+                        .at(&obligation.cause, obligation.param_env)
+                        .eq(target, source_ty) // FIXME: see above.
+                        .map_err(|_| Unimplemented)?;
+                    nested.extend(obligations);
+                }
 
                 // Register an obligation for `'a: 'b`.
                 let outlives = ty::OutlivesPredicate(region_a, region_b);

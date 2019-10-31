@@ -497,7 +497,7 @@ declare_features! (
     /// Allows the use of raw-dylibs (RFC 2627).
     (active, raw_dylib, "1.40.0", Some(58713), None),
 
-    /// Allows `#[track_caller]` to be used which provides
+    /// Allows `#[track_caller]` to be used, which provides
     /// accurate caller location reporting during panic (RFC 2091).
     (active, track_caller, "1.40.0", Some(47809), None),
 
@@ -524,7 +524,7 @@ declare_features! (
     /// Allows the use of `if` and `match` in constants.
     (active, const_if_match, "1.41.0", Some(49146), None),
 
-    /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
+    /// Allows the use of `#[cfg(sanitize = "option")]`; set when `-Zsanitizer` is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
 
     /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
@@ -553,10 +553,10 @@ declare_features! (
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
 
-    // Allows limiting the evaluation steps of const expressions
+    /// Allows limiting the evaluation steps of const expressions.
     (active, const_eval_limit, "1.43.0", Some(67217), None),
 
-    /// Allow negative trait implementations.
+    /// Allows negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
 
     /// Allows the use of `#[target_feature]` on safe functions.
@@ -564,6 +564,10 @@ declare_features! (
 
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
+
+    /// Allows upcasting trait objects via supertraits.
+    /// Trait upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (active, trait_upcasting, "1.45.0", Some(65991), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

@@ -1,0 +1,13 @@
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-trait_upcasting.rs:11:25
+   |
+LL |     let foo: &dyn Foo = bar;
+   |                         ^^^ expected trait `Foo`, found trait `Bar`
+   |
+   = note: add `#![feature(trait_upcasting)]` to the crate attributes to enable
+   = note: expected type `&dyn Foo`
+              found type `&dyn Bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
