@@ -285,7 +285,7 @@ dependencies = [
  "crypto-hash",
  "curl",
  "curl-sys",
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "failure",
  "filetime",
  "flate2",
@@ -552,7 +552,7 @@ name = "compiletest"
 version = "0.0.0"
 dependencies = [
  "diff",
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "getopts",
  "lazy_static 1.3.0",
  "libc",
@@ -974,9 +974,9 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39ecdb7dd54465526f0a56d666e3b2dd5f3a218665a030b6e4ad9e70fa95d8fa"
+checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
  "atty",
  "humantime",
@@ -2147,13 +2147,13 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "cargo_metadata 0.8.0",
+ "cargo_metadata 0.9.0",
  "colored",
  "compiletest_rs",
  "directories",
- "env_logger 0.6.2",
+ "env_logger 0.7.1",
  "getrandom",
- "hex 0.3.2",
+ "hex 0.4.0",
  "log",
  "num-traits",
  "rand 0.7.0",
@@ -2981,7 +2981,7 @@ dependencies = [
  "clippy_lints",
  "crossbeam-channel",
  "difference",
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "failure",
  "futures",
  "heck",
@@ -3064,7 +3064,7 @@ name = "rls-rustc"
 version = "0.6.0"
 dependencies = [
  "clippy_lints",
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "failure",
  "futures",
  "log",
@@ -3490,7 +3490,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "env_logger 0.7.0",
+ "env_logger 0.7.1",
  "graphviz",
  "lazy_static 1.3.0",
  "log",
