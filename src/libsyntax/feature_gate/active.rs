@@ -520,6 +520,9 @@ declare_features! (
     /// Allows using the `efiapi` ABI.
     (active, abi_efiapi, "1.40.0", Some(65815), None),
 
+    /// Allows diverging expressions to fall back to `!` rather than `()`.
+    (active, never_type_fallback, "1.41.0", Some(65992), None),
+
     /// Allows using the `#[register_attr]` attribute.
     (active, register_attr, "1.41.0", Some(66080), None),
 

@@ -1,3 +1,7 @@
+// We need to opt into the `never_type_fallback` feature
+// to trigger the requirement that this is testing.
+#![feature(never_type_fallback)]
+
 #![allow(unused)]
 
 trait Deserialize: Sized {
