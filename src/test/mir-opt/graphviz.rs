@@ -12,12 +12,9 @@ fn main() {}
 //     node [fontname="monospace"];
 //     edge [fontname="monospace"];
 //     label=<fn main() -&gt; ()<br align="left"/>>;
-//     bb0 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">0</td></tr><tr><td align="left" balign="left">_0 = ()<br/></td></tr><tr><td align="left">goto</td></tr></table>
-// >];
-//     bb1 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">1</td></tr><tr><td align="left">resume</td></tr></table>
-// >];
-//     bb2 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">2</td></tr><tr><td align="left">return</td></tr></table>
-// >];
-//     bb0 -> bb2 [label=""];
+//     bb0__0_12 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">0</td></tr><tr><td align="left" balign="left">_0 = ()<br/></td></tr><tr><td align="left">goto</td></tr></table>>];
+//     bb1__0_12 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">1</td></tr><tr><td align="left">resume</td></tr></table>>];
+//     bb2__0_12 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">2</td></tr><tr><td align="left">return</td></tr></table>>];
+//     bb0__0_12 -> bb2__0_12 [label=""];
 // }
 // END rustc.main.mir_map.0.dot
