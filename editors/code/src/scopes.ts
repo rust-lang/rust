@@ -55,10 +55,10 @@ function loadThemeNamed(themeName: string) {
     const themePaths = vscode.extensions.all
         .filter(filterThemeExtensions)
         .reduce((list, extension) => {
-            const paths = extension.packageJSON.contributes.themes
+            return extension.packageJSON.contributes.themes
                 .filter((element: any) => (element.id || element.label) === themeName)
                 .map((element: any) => path.join(extension.extensionPath, element.path))
-            return list.concat(paths)
+                .concat(list)
         }, Array<string>())
 
 
@@ -92,7 +92,8 @@ function loadThemeFile(themePath: string) {
         .forEach(loadThemeFile)
 }
 
-function mergeRuleSettings(defaultSetting: TextMateRuleSettings, override: TextMateRuleSettings): TextMateRuleSettings {
+function mergeRuleSettings(defaultSetting: TextMateRuleSettings | undefined, override: TextMateRuleSettings): TextMateRuleSettings {
+    if (defaultSetting === undefined) { return override }
     const mergedRule = defaultSetting
 
     mergedRule.background = override.background || defaultSetting.background
@@ -102,29 +103,21 @@ function mergeRuleSettings(defaultSetting: TextMateRuleSettings, override: TextM
     return mergedRule
 }
 
-function loadColors(textMateRules: TextMateRule[]): void {
-    for (const rule of textMateRules) {
+function updateRules(scope: string, updatedSettings: TextMateRuleSettings): void {
+    [rules.get(scope)]
+        .map(settings => mergeRuleSettings(settings, updatedSettings))
+        .forEach(settings => rules.set(scope, settings))
+}
 
+function loadColors(textMateRules: TextMateRule[]): void {
+    textMateRules.forEach(rule => {
         if (typeof rule.scope === 'string') {
-            const existingRule = rules.get(rule.scope)
-            if (existingRule) {
-                rules.set(rule.scope, mergeRuleSettings(existingRule, rule.settings))
-            }
-            else {
-                rules.set(rule.scope, rule.settings)
-            }
-        } else if (rule.scope instanceof Array) {
-            for (const scope of rule.scope) {
-                const existingRule = rules.get(scope)
-                if (existingRule) {
-                    rules.set(scope, mergeRuleSettings(existingRule, rule.settings))
-                }
-                else {
-                    rules.set(scope, rule.settings)
-                }
-            }
+            updateRules(rule.scope, rule.settings)
         }
-    }
+        else if (rule.scope instanceof Array) {
+            rule.scope.forEach(scope => updateRules(scope, rule.settings))
+        }
+    })
 }
 
 function isFile(filePath: string): boolean {
