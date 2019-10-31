@@ -9,7 +9,7 @@ use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdSet, DefIndex};
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
@@ -594,13 +594,6 @@ trait Locatable {
 impl Locatable for Span {
     fn to_span(&self, _: TyCtxt<'_>) -> Span {
         *self
-    }
-}
-
-impl Locatable for DefIndex {
-    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        let hir_id = tcx.hir().def_index_to_hir_id(*self);
-        tcx.hir().span(hir_id)
     }
 }
 
