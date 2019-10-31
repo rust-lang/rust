@@ -8,14 +8,14 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     type_ref::{Mutability, TypeRef},
-    CrateModuleId, ModuleId,
+    CrateModuleId, LocalEnumVariantId, ModuleId,
 };
 use hir_expand::name::{self, AsName};
 use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    adt::{EnumVariantId, StructFieldId, VariantDef},
+    adt::{StructFieldId, VariantDef},
     db::{AstDatabase, DefDatabase, HirDatabase},
     diagnostics::DiagnosticSink,
     expr::{validation::ExprValidator, Body, BodySourceMap},
@@ -410,7 +410,7 @@ impl Enum {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
     pub(crate) parent: Enum,
-    pub(crate) id: EnumVariantId,
+    pub(crate) id: LocalEnumVariantId,
 }
 
 impl EnumVariant {

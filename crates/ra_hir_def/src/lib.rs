@@ -23,7 +23,7 @@ use ra_arena::{impl_arena_id, RawId};
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
-use crate::db::InternDatabase;
+use crate::{builtin_type::BuiltinType, db::InternDatabase};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Source<T> {
@@ -256,7 +256,7 @@ pub struct EnumVariantId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct LocalEnumVariantId(RawId);
+pub struct LocalEnumVariantId(RawId);
 impl_arena_id!(LocalEnumVariantId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -306,3 +306,57 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
         db.lookup_intern_type_alias(self)
     }
 }
+
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+            $($(
+                impl From<$sv> for $e {
+                    fn from(it: $sv) -> $e {
+                        $e::$v($v::$sv(it))
+                    }
+                }
+            )*)?
+        )*
+    }
+}
+
+/// A Data Type
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AdtId {
+    StructId(StructId),
+    UnionId(UnionId),
+    EnumId(EnumId),
+}
+impl_froms!(AdtId: StructId, UnionId, EnumId);
+
+/// The defs which can be visible in the module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ModuleDefId {
+    ModuleId(ModuleId),
+    FunctionId(FunctionId),
+    AdtId(AdtId),
+    // Can't be directly declared, but can be imported.
+    EnumVariantId(EnumVariantId),
+    ConstId(ConstId),
+    StaticId(StaticId),
+    TraitId(TraitId),
+    TypeAliasId(TypeAliasId),
+    BuiltinType(BuiltinType),
+}
+impl_froms!(
+    ModuleDefId: ModuleId,
+    FunctionId,
+    AdtId(StructId, EnumId, UnionId),
+    EnumVariantId,
+    ConstId,
+    StaticId,
+    TraitId,
+    TypeAliasId,
+    BuiltinType
+);
