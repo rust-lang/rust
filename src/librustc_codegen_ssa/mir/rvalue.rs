@@ -224,35 +224,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         operand.val
                     }
                     mir::CastKind::Pointer(PointerCast::Unsize) => {
-                        assert!(bx.cx().is_backend_scalar_pair(cast));
-                        match operand.val {
-                            OperandValue::Pair(lldata, llextra) => {
-                                // unsize from a fat pointer -- this is a
-                                // "trait-object-to-supertrait" coercion, for
-                                // example, `&'a fmt::Debug + Send => &'a fmt::Debug`.
-
-                                // HACK(eddyb) have to bitcast pointers
-                                // until LLVM removes pointee types.
-                                let lldata = bx.pointercast(
-                                    lldata,
-                                    bx.cx().scalar_pair_element_backend_type(cast, 0, true),
-                                );
-                                OperandValue::Pair(lldata, llextra)
-                            }
-                            OperandValue::Immediate(lldata) => {
-                                // "standard" unsize
-                                let (lldata, llextra) = base::unsize_thin_ptr(
-                                    &mut bx,
-                                    lldata,
-                                    operand.layout.ty,
-                                    cast.ty,
-                                );
-                                OperandValue::Pair(lldata, llextra)
-                            }
-                            OperandValue::Ref(..) => {
-                                bug!("by-ref operand {:?} in `codegen_rvalue_operand`", operand);
-                            }
-                        }
+                        base::coerce_ptr_unsized(&mut bx, operand, cast)
                     }
                     mir::CastKind::Pointer(PointerCast::MutToConstPointer)
                     | mir::CastKind::Misc

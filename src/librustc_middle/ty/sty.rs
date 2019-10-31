@@ -1881,6 +1881,14 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    /// Panics if called on any type other than `PhantomData<T>`.
+    pub fn phantom_ty(&self) -> Ty<'tcx> {
+        match self.kind {
+            Adt(def, substs) if def.is_phantom_data() => substs.type_at(0),
+            _ => bug!("`phantom_ty` is called on non-phantom-data type {:?}", self),
+        }
+    }
+
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
     /// (A RawPtr is scalar because it represents a non-managed pointer, so its
     /// contents are abstract to rustc.)
