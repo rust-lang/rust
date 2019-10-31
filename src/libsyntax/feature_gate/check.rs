@@ -876,6 +876,21 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
+
+    // All uses of `gate_all!` below this point were added in #65742,
+    // and subsequently disabled (with the non-early gating readded).
+    macro_rules! gate_all {
+        ($gate:ident, $msg:literal) => {
+            // FIXME(eddyb) do something more useful than always
+            // disabling these uses of early feature-gatings.
+            if false {
+                for span in &*parse_sess.gated_spans.$gate.borrow() {
+                    gate_feature!(&visitor, $gate, *span, $msg);
+                }
+            }
+        }
+    }
+
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
     gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
