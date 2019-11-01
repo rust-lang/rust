@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:14:9
+  --> $DIR/ref-struct-async.rs:13:9
    |
 LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                               -------              ----
@@ -9,7 +9,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:18:9
+  --> $DIR/ref-struct-async.rs:17:9
    |
 LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    |                                       -------               ----
@@ -19,7 +19,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:22:9
+  --> $DIR/ref-struct-async.rs:21:9
    |
 LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    |                                       -------               ----
@@ -29,7 +29,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:26:9
+  --> $DIR/ref-struct-async.rs:25:9
    |
 LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    |                                               -------                ----
@@ -39,7 +39,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-struct-async.rs:30:9
+  --> $DIR/ref-struct-async.rs:29:9
    |
 LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
    |                                           -------                ----
