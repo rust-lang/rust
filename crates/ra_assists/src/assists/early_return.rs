@@ -38,7 +38,6 @@ use crate::{
 pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
-    let pat = &cond.pat();
     let expr = cond.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
     if if_expr.else_branch().is_some() {
@@ -79,7 +78,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
-        let new_block = match pat {
+        let new_block = match cond.pat() {
             None => {
                 // If.
                 let early_expression = &(early_expression.to_owned() + ";");
