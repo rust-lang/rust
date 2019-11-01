@@ -1684,6 +1684,7 @@ extern "C" {
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
+                                       Abi: *const c_char,
                                        Model: CodeModel,
                                        Reloc: RelocMode,
                                        Level: CodeGenOptLevel,
