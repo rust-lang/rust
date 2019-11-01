@@ -316,6 +316,25 @@ mod tests {
     }
 
     #[test]
+    fn goto_definition_works_for_macros_in_use_tree() {
+        check_goto(
+            "
+            //- /lib.rs
+            use foo::foo<|>;
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo {
+                () => {
+                    {}
+                };
+            }
+            ",
+            "foo MACRO_CALL FileId(2) [0; 66) [29; 32)",
+        );
+    }
+
+    #[test]
     fn goto_definition_works_for_methods() {
         covers!(goto_definition_works_for_methods);
         check_goto(
