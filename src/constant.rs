@@ -413,6 +413,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn call_intrinsic(
         _: &mut InterpCx<'mir, 'tcx, Self>,
+        _: Span,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: PlaceTy<'tcx>,
