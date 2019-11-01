@@ -236,7 +236,7 @@ fn make_win_dist(
     }
 
     let target_tools = ["gcc.exe", "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
-    let mut rustc_dlls = vec!["libstdc++-6.dll", "libwinpthread-1.dll"];
+    let mut rustc_dlls = vec!["libwinpthread-1.dll"];
     if target_triple.starts_with("i686-") {
         rustc_dlls.push("libgcc_s_dw2-1.dll");
     } else {

@@ -279,7 +279,11 @@ fn main() {
             let path = PathBuf::from(s);
             println!("cargo:rustc-link-search=native={}",
                      path.parent().unwrap().display());
-            println!("cargo:rustc-link-lib=static={}", stdcppname);
+            if target.contains("windows") {
+                println!("cargo:rustc-link-lib=static-nobundle={}", stdcppname);
+            } else {
+                println!("cargo:rustc-link-lib=static={}", stdcppname);
+            }
         } else if cxxflags.contains("stdlib=libc++") {
             println!("cargo:rustc-link-lib=c++");
         } else {
