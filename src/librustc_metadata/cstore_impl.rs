@@ -505,6 +505,10 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).root.hash
     }
 
+    fn crate_host_hash_untracked(&self, cnum: CrateNum) -> Option<Svh> {
+        self.get_crate_data(cnum).host_hash
+    }
+
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.

@@ -3393,6 +3393,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "syn 0.15.35",
  "url 2.1.0",
  "winapi 0.3.6",
 ]

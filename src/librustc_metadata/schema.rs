@@ -217,6 +217,7 @@ crate struct CrateRoot<'tcx> {
 crate struct CrateDep {
     pub name: ast::Name,
     pub hash: Svh,
+    pub host_hash: Option<Svh>,
     pub kind: DepKind,
     pub extra_filename: String,
 }
