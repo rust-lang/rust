@@ -793,7 +793,10 @@ pub struct TargetOptions {
     pub merge_functions: MergeFunctions,
 
     /// Use platform dependent mcount function
-    pub target_mcount: String
+    pub target_mcount: String,
+
+    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
+    pub llvm_abiname: String,
 }
 
 impl Default for TargetOptions {
@@ -880,6 +883,7 @@ impl Default for TargetOptions {
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
             target_mcount: "mcount".to_string(),
+            llvm_abiname: "".to_string(),
         }
     }
 }
@@ -1196,6 +1200,7 @@ impl Target {
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
         key!(target_mcount);
+        key!(llvm_abiname);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1414,6 +1419,7 @@ impl ToJson for Target {
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
         target_option_val!(target_mcount);
+        target_option_val!(llvm_abiname);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
