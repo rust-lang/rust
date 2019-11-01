@@ -1,5 +1,4 @@
-impl dyn X { //~ ERROR cannot be made into an object
-//~^ ERROR missing
+impl dyn A { //~ ERROR missing
     Y
 }
 
@@ -7,10 +6,25 @@ struct S;
 
 trait X { //~ ERROR missing
     X() {}
-    fn xxx() { ### } //~ ERROR missing
-    //~^ ERROR expected
-    L = M; //~ ERROR missing
-    Z = { 2 + 3 }; //~ ERROR expected one of
+    fn xxx() { ### }
+    L = M;
+    Z = { 2 + 3 };
+    ::Y ();
+}
+
+trait A { //~ ERROR missing
+    X() {}
+}
+trait B {
+    fn xxx() { ### } //~ ERROR expected
+}
+trait C { //~ ERROR missing `fn`, `type`, or `const` for trait-item declaration
+    L = M;
+}
+trait D { //~ ERROR missing `fn`, `type`, or `const` for trait-item declaration
+    Z = { 2 + 3 };
+}
+trait E {
     ::Y (); //~ ERROR expected one of
 }
 
@@ -21,5 +35,5 @@ impl S {
 }
 
 fn main() {
-    S.hello_method();
+    S.hello_method(); //~ no method named `hello_method` found for type `S` in the current scope
 }

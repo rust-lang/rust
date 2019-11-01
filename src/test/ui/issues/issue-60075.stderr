@@ -19,17 +19,5 @@ error: expected identifier, found `;`
 LL |         });
    |           ^ expected identifier
 
-error: missing `fn`, `type`, or `const` for trait-item declaration
-  --> $DIR/issue-60075.rs:6:12
-   |
-LL |           });
-   |  ____________^
-LL | |
-LL | |
-LL | |
-LL | |
-LL | |         Some(4)
-   | |________^ missing `fn`, `type`, or `const`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

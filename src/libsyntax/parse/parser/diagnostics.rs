@@ -171,6 +171,12 @@ impl RecoverQPath for Expr {
     }
 }
 
+/// Control whether the closing delimiter should be consumed when calling `Parser::consume_block`.
+crate enum ConsumeClosingDelim {
+    Yes,
+    No,
+}
+
 impl<'a> Parser<'a> {
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.span_fatal(self.token.span, m)
@@ -1105,8 +1111,8 @@ impl<'a> Parser<'a> {
             Ok(x) => x,
             Err(mut err) => {
                 err.emit();
-                // Recover from parse error.
-                self.consume_block(delim);
+                // Recover from parse error, callers expect the closing delim to be consumed.
+                self.consume_block(delim, ConsumeClosingDelim::Yes);
                 self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
             }
         }
@@ -1135,6 +1141,11 @@ impl<'a> Parser<'a> {
                  // Don't attempt to recover from this unclosed delimiter more than once.
                 let unmatched = self.unclosed_delims.remove(pos);
                 let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
+                if unmatched.found_delim.is_none() {
+                    // We encountered `Eof`, set this fact here to avoid complaining about missing
+                    // `fn main()` when we found place to suggest the closing brace.
+                    *self.sess.reached_eof.borrow_mut() = true;
+                }
 
                 // We want to suggest the inclusion of the closing delimiter where it makes
                 // the most sense, which is immediately after the last token:
@@ -1154,9 +1165,16 @@ impl<'a> Parser<'a> {
                     delim.to_string(),
                     Applicability::MaybeIncorrect,
                 );
-                err.emit();
-                self.expected_tokens.clear();  // reduce errors
-                Ok(true)
+                if unmatched.found_delim.is_none() {
+                    // Encountered `Eof` when lexing blocks. Do not recover here to avoid knockdown
+                    // errors which would be emitted elsewhere in the parser and let other error
+                    // recovery consume the rest of the file.
+                    Err(err)
+                } else {
+                    err.emit();
+                    self.expected_tokens.clear();  // Reduce the number of errors.
+                    Ok(true)
+                }
             }
             _ => Err(err),
         }
@@ -1164,7 +1182,12 @@ impl<'a> Parser<'a> {
 
     /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
     pub(super) fn eat_bad_pub(&mut self) {
-        if self.token.is_keyword(kw::Pub) {
+        // When `unclosed_delims` is populated, it means that the code being parsed is already
+        // quite malformed, which might mean that, for example, a pub struct definition could be
+        // parsed as being a trait item, which is invalid and this error would trigger
+        // unconditionally, resulting in misleading diagnostics. Because of this, we only attempt
+        // this nice to have recovery for code that is otherwise well formed.
+        if self.token.is_keyword(kw::Pub) && self.unclosed_delims.is_empty() {
             match self.parse_visibility(false) {
                 Ok(vis) => {
                     self.diagnostic()
@@ -1422,15 +1445,26 @@ impl<'a> Parser<'a> {
         Ok(param)
     }
 
-    pub(super) fn consume_block(&mut self, delim: token::DelimToken) {
+    pub(super) fn consume_block(
+        &mut self,
+        delim: token::DelimToken,
+        consume_close: ConsumeClosingDelim,
+    ) {
         let mut brace_depth = 0;
         loop {
             if self.eat(&token::OpenDelim(delim)) {
                 brace_depth += 1;
-            } else if self.eat(&token::CloseDelim(delim)) {
+            } else if self.check(&token::CloseDelim(delim)) {
                 if brace_depth == 0 {
+                    if let ConsumeClosingDelim::Yes = consume_close {
+                        // Some of the callers of this method expect to be able to parse the
+                        // closing delimiter themselves, so we leave it alone. Otherwise we advance
+                        // the parser.
+                        self.bump();
+                    }
                     return;
                 } else {
+                    self.bump();
                     brace_depth -= 1;
                     continue;
                 }

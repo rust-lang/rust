@@ -1,0 +1,33 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/missing-close-brace-in-impl-trait.rs:12:53
+   |
+LL | impl T for () {
+   |               - un-closed delimiter
+...
+LL |
+   |                                                     ^
+
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found keyword `trait`
+  --> $DIR/missing-close-brace-in-impl-trait.rs:5:1
+   |
+LL | impl T for () {
+   |               - unclosed delimiter
+LL | 
+LL | fn foo(&self) {}
+   |                 -
+   |                 |
+   |                 expected one of 10 possible tokens here
+   |                 help: `}` may belong here
+LL | 
+LL | trait T {
+   | ^^^^^ unexpected token
+
+error[E0405]: cannot find trait `T` in this scope
+  --> $DIR/missing-close-brace-in-impl-trait.rs:1:6
+   |
+LL | impl T for () {
+   |      ^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

@@ -154,6 +154,14 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
+    let sp = tcx.hir().krate().span;
+    if *tcx.sess.parse_sess.reached_eof.borrow() {
+        // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
+        // the missing `fn main()` then as it might have been hidden inside an unclosed block.
+        tcx.sess.delay_span_bug(sp, "`main` not found, but expected unclosed brace error");
+        return;
+    }
+
     // There is no main function.
     let mut err = struct_err!(tcx.sess, E0601,
         "`main` function not found in crate `{}`", tcx.crate_name(LOCAL_CRATE));
@@ -173,7 +181,6 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     } else {
         String::from("consider adding a `main` function at the crate level")
     };
-    let sp = tcx.hir().krate().span;
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.

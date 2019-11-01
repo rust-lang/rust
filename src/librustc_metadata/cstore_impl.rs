@@ -424,7 +424,7 @@ impl cstore::CStore {
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
         let local_span = Span::with_root_ctxt(source_file.start_pos, source_file.end_pos);
         let (body, mut errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
-        emit_unclosed_delims(&mut errors, &sess.diagnostic());
+        emit_unclosed_delims(&mut errors, &sess.parse_sess);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);

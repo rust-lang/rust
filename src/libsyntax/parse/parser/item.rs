@@ -1,5 +1,5 @@
-use super::{Parser, PResult, PathStyle, SemiColonMode, BlockMode};
-use super::diagnostics::{Error, dummy_arg};
+use super::{Parser, PResult, PathStyle};
+use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 use crate::ptr::P;
@@ -339,7 +339,7 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
                 let kw_name = self.recover_first_param();
-                self.consume_block(token::Paren);
+                self.consume_block(token::Paren, ConsumeClosingDelim::Yes);
                 let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
                     self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
                     self.bump();  // `{`
@@ -357,7 +357,7 @@ impl<'a> Parser<'a> {
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);
                 if !ambiguous {
-                    self.consume_block(token::Brace);
+                    self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
                     let suggestion = format!("add `{}` here to parse `{}` as a public {}",
                                              kw,
                                              ident,
@@ -672,7 +672,8 @@ impl<'a> Parser<'a> {
                 Err(mut err) => {
                     err.emit();
                     if !at_end {
-                        self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                        self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                        break;
                     }
                 }
             }
@@ -861,7 +862,8 @@ impl<'a> Parser<'a> {
                     Err(mut e) => {
                         e.emit();
                         if !at_end {
-                            self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                            self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                            break;
                         }
                     }
                 }
@@ -1520,7 +1522,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
                 let field = self.parse_struct_decl_field().map_err(|e| {
-                    self.recover_stmt();
+                    self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
                     e
                 });
@@ -1528,6 +1530,7 @@ impl<'a> Parser<'a> {
                     Ok(field) => fields.push(field),
                     Err(mut err) => {
                         err.emit();
+                        break;
                     }
                 }
             }
