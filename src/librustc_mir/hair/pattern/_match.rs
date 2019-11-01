@@ -342,16 +342,69 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-/// A 2D matrix. Nx1 matrices are very common, which is why `SmallVec[_; 2]`
-/// works well for each row.
-pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pat<'tcx>; 2]>>);
+/// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
+/// works well.
+#[derive(Debug, Clone)]
+pub struct PatStack<'p, 'tcx>(SmallVec<[&'p Pat<'tcx>; 2]>);
+
+impl<'p, 'tcx> PatStack<'p, 'tcx> {
+    pub fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
+        PatStack(smallvec![pat])
+    }
+
+    fn from_vec(vec: SmallVec<[&'p Pat<'tcx>; 2]>) -> Self {
+        PatStack(vec)
+    }
+
+    fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
+        PatStack(SmallVec::from_slice(s))
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn head(&self) -> &'p Pat<'tcx> {
+        self.0[0]
+    }
+
+    fn to_tail(&self) -> Self {
+        PatStack::from_slice(&self.0[1..])
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
+        self.0.iter().map(|p| *p)
+    }
+}
+
+impl<'p, 'tcx> Default for PatStack<'p, 'tcx> {
+    fn default() -> Self {
+        PatStack(smallvec![])
+    }
+}
+
+impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = &'p Pat<'tcx>>,
+    {
+        PatStack(iter.into_iter().collect())
+    }
+}
+
+/// A 2D matrix.
+pub struct Matrix<'p, 'tcx>(Vec<PatStack<'p, 'tcx>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub fn empty() -> Self {
         Matrix(vec![])
     }
 
-    pub fn push(&mut self, row: SmallVec<[&'p Pat<'tcx>; 2]>) {
+    pub fn push(&mut self, row: PatStack<'p, 'tcx>) {
         self.0.push(row)
     }
 }
@@ -399,10 +452,10 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pat<'tcx>; 2]>> for Matrix<'p, 'tcx> {
+impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = SmallVec<[&'p Pat<'tcx>; 2]>>,
+        T: IntoIterator<Item = PatStack<'p, 'tcx>>,
     {
         Matrix(iter.into_iter().collect())
     }
@@ -1226,7 +1279,7 @@ fn compute_missing_ctors<'tcx>(
 pub fn is_useful<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &[&Pat<'tcx>],
+    v: &PatStack<'_, 'tcx>,
     witness: WitnessPreference,
     hir_id: HirId,
 ) -> Usefulness<'tcx> {
@@ -1253,9 +1306,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     let (ty, span) = rows
         .iter()
-        .map(|r| (r[0].ty, r[0].span))
+        .map(|r| (r.head().ty, r.head().span))
         .find(|(ty, _)| !ty.references_error())
-        .unwrap_or((v[0].ty, v[0].span));
+        .unwrap_or((v.head().ty, v.head().span));
     let pcx = PatCtxt {
         // TyErr is used to represent the type of wildcard patterns matching
         // against inaccessible (private) fields of structs, so that we won't
@@ -1277,13 +1330,13 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // introducing uninhabited patterns for inaccessible fields. We
         // need to figure out how to model that.
         ty,
-        max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0]))),
+        max_slice_length: max_slice_length(cx, rows.iter().map(|r| r.head()).chain(Some(v.head()))),
         span,
     };
 
-    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v[0]);
+    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
+    if let Some(constructors) = pat_constructors(cx, v.head(), pcx) {
         debug!("is_useful - expanding constructors: {:#?}", constructors);
         split_grouped_constructors(
             cx.tcx,
@@ -1303,7 +1356,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         let used_ctors: Vec<Constructor<'_>> = rows
             .iter()
-            .flat_map(|row| pat_constructors(cx, row[0], pcx).unwrap_or(vec![]))
+            .flat_map(|row| pat_constructors(cx, row.head(), pcx).unwrap_or(vec![]))
             .collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
@@ -1372,11 +1425,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
         } else {
             let matrix = rows
                 .iter()
-                .filter_map(|r| {
-                    if r[0].is_wildcard() { Some(SmallVec::from_slice(&r[1..])) } else { None }
-                })
+                .filter_map(|r| if r.head().is_wildcard() { Some(r.to_tail()) } else { None })
                 .collect();
-            match is_useful(cx, &matrix, &v[1..], witness, hir_id) {
+            match is_useful(cx, &matrix, &v.to_tail(), witness, hir_id) {
                 UsefulWithWitness(pats) => {
                     let cx = &*cx;
                     // In this case, there's at least one "free"
@@ -1473,7 +1524,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
-    v: &[&Pat<'tcx>],
+    v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness: WitnessPreference,
@@ -1787,7 +1838,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let row_borders = m
                     .iter()
                     .flat_map(|row| {
-                        IntRange::from_pat(tcx, param_env, row[0]).map(|r| (r, row.len()))
+                        IntRange::from_pat(tcx, param_env, row.head()).map(|r| (r, row.len()))
                     })
                     .flat_map(|(range, row_len)| {
                         let intersection = ctor_range.intersection(&range);
@@ -1933,7 +1984,7 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
     subpatterns: &'p [FieldPat<'tcx>],
     wild_patterns: &[&'p Pat<'tcx>],
     is_non_exhaustive: bool,
-) -> SmallVec<[&'p Pat<'tcx>; 2]> {
+) -> PatStack<'p, 'tcx> {
     let mut result = SmallVec::from_slice(wild_patterns);
 
     for subpat in subpatterns {
@@ -1943,7 +1994,7 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
     }
 
     debug!("patterns_for_variant({:#?}, {:#?}) = {:#?}", subpatterns, wild_patterns, result);
-    result
+    PatStack::from_vec(result)
 }
 
 /// This is the main specialization step. It expands the first pattern in the given row
@@ -1954,20 +2005,20 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'p, 'a: 'p, 'tcx>(
+fn specialize<'p, 'a: 'p, 'q: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    r: &[&'p Pat<'tcx>],
+    r: &PatStack<'q, 'tcx>,
     constructor: &Constructor<'tcx>,
     wild_patterns: &[&'p Pat<'tcx>],
-) -> Option<SmallVec<[&'p Pat<'tcx>; 2]>> {
-    let pat = &r[0];
+) -> Option<PatStack<'p, 'tcx>> {
+    let pat = r.head();
 
     let head = match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
-            specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns)
+            specialize(cx, &PatStack::from_pattern(subpattern), constructor, wild_patterns)
         }
 
-        PatKind::Binding { .. } | PatKind::Wild => Some(SmallVec::from_slice(wild_patterns)),
+        PatKind::Binding { .. } | PatKind::Wild => Some(PatStack::from_slice(wild_patterns)),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
@@ -1981,7 +2032,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             Some(patterns_for_variant(cx, subpatterns, wild_patterns, false))
         }
 
-        PatKind::Deref { ref subpattern } => Some(smallvec![subpattern]),
+        PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
 
         PatKind::Constant { value } if constructor.is_slice() => {
             // We extract an `Option` for the pointer because slices of zero
@@ -2051,7 +2102,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                         let (pat_lo, pat_hi) = pat.range.into_inner();
                         let (ctor_lo, ctor_hi) = ctor.range.into_inner();
                         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                        smallvec![]
+                        PatStack::default()
                     }),
                     _ => None,
                 }
@@ -2062,7 +2113,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                 // range so intersection actually devolves into being covered
                 // by the pattern.
                 match constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat) {
-                    Ok(true) => Some(smallvec![]),
+                    Ok(true) => Some(PatStack::default()),
                     Ok(false) | Err(ErrorReported) => None,
                 }
             }
@@ -2104,7 +2155,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                     suffix,
                     cx.param_env,
                 ) {
-                    Ok(true) => Some(smallvec![]),
+                    Ok(true) => Some(PatStack::default()),
                     Ok(false) => None,
                     Err(ErrorReported) => None,
                 }
@@ -2116,10 +2167,11 @@ fn specialize<'p, 'a: 'p, 'tcx>(
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", r[0], wild_patterns, head);
+    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), wild_patterns, head);
 
-    head.map(|mut head| {
-        head.extend_from_slice(&r[1..]);
-        head
+    head.map(|head| {
+        let mut head = head.0;
+        head.extend_from_slice(&r.0[1..]);
+        PatStack::from_vec(head)
     })
 }
