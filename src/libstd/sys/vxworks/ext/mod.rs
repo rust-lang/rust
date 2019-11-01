@@ -1,4 +1,3 @@
-// Uhhh
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
@@ -7,7 +6,6 @@ pub mod ffi;
 pub mod fs;
 pub mod raw;
 pub mod process;
-pub mod net;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod prelude {
