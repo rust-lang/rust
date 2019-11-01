@@ -18,7 +18,7 @@ use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
 
 use std::path::Path;
-use std::{cmp, fs};
+use std::fs;
 
 use syntax::ast;
 use syntax::attr;
@@ -409,47 +409,6 @@ impl<'a> CrateLoader<'a> {
             Some(result)
         } else {
             Some(LoadResult::Loaded(library))
-        }
-    }
-
-    fn update_extern_crate(&self,
-                           cnum: CrateNum,
-                           mut extern_crate: ExternCrate,
-                           visited: &mut FxHashSet<(CrateNum, bool)>)
-    {
-        if !visited.insert((cnum, extern_crate.is_direct())) { return }
-
-        let cmeta = self.cstore.get_crate_data(cnum);
-        let mut old_extern_crate = cmeta.extern_crate.borrow_mut();
-
-        // Prefer:
-        // - something over nothing (tuple.0);
-        // - direct extern crate to indirect (tuple.1);
-        // - shorter paths to longer (tuple.2).
-        let new_rank = (
-            true,
-            extern_crate.is_direct(),
-            cmp::Reverse(extern_crate.path_len),
-        );
-        let old_rank = match *old_extern_crate {
-            None => (false, false, cmp::Reverse(usize::max_value())),
-            Some(ref c) => (
-                true,
-                c.is_direct(),
-                cmp::Reverse(c.path_len),
-            ),
-        };
-        if old_rank >= new_rank {
-            return; // no change needed
-        }
-
-        *old_extern_crate = Some(extern_crate);
-        drop(old_extern_crate);
-
-        // Propagate the extern crate info to dependencies.
-        extern_crate.dependency_of = cnum;
-        for &dep_cnum in cmeta.dependencies.borrow().iter() {
-            self.update_extern_crate(dep_cnum, extern_crate, visited);
         }
     }
 
@@ -889,7 +848,9 @@ impl<'a> CrateLoader<'a> {
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
                 let path_len = definitions.def_path(def_id.index).data.len();
-                self.update_extern_crate(
+
+                let cmeta = self.cstore.get_crate_data(cnum);
+                cmeta.update_extern_crate(
                     cnum,
                     ExternCrate {
                         src: ExternCrateSource::Extern(def_id),
@@ -908,7 +869,8 @@ impl<'a> CrateLoader<'a> {
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
         let cnum = self.resolve_crate(name, span, DepKind::Explicit, None);
 
-        self.update_extern_crate(
+        let cmeta = self.cstore.get_crate_data(cnum);
+        cmeta.update_extern_crate(
             cnum,
             ExternCrate {
                 src: ExternCrateSource::Path,
@@ -926,7 +888,8 @@ impl<'a> CrateLoader<'a> {
     pub fn maybe_process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
         let cnum = self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()?;
 
-        self.update_extern_crate(
+        let cmeta = self.cstore.get_crate_data(cnum);
+        cmeta.update_extern_crate(
             cnum,
             ExternCrate {
                 src: ExternCrateSource::Path,

@@ -16,7 +16,7 @@ use rustc::middle::cstore::{
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::mir::{Body, Promoted};
 use rustc::mir::interpret::AllocDecodingState;
-use rustc::util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::{Lrc, Lock, MetadataRef, Once, AtomicCell};
@@ -110,7 +110,7 @@ crate struct CrateMetadata {
 
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
     /// If this is `None`, then the crate was injected (e.g., by the allocator).
-    crate extern_crate: Lock<Option<ExternCrate>>,
+    extern_crate: Lock<Option<ExternCrate>>,
 }
 
 impl<'a, 'tcx> CrateMetadata {
@@ -463,6 +463,61 @@ impl<'a, 'tcx> CrateMetadata {
             *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
         });
     }
+
+    crate fn get_extern_crate_arenas(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ExternCrate> {
+        let r = *self.extern_crate.lock();
+        r.map(|c| &*tcx.arena.alloc(c))
+    }
+
+    crate fn is_extern_crate_direct(&self) -> bool {
+        match *self.extern_crate.borrow() {
+            Some(extern_crate) if !extern_crate.is_direct() => true,
+            _ => false,
+        }
+    }
+
+    // let cmeta = self.cstore.get_crate_data(cnum);
+    crate fn update_extern_crate(
+        &self,
+        cnum: CrateNum,
+        mut extern_crate: ExternCrate,
+        visited: &mut FxHashSet<(CrateNum, bool)>,
+    ) {
+        if !visited.insert((cnum, extern_crate.is_direct())) { return }
+
+        let mut old_extern_crate = self.extern_crate.borrow_mut();
+
+        // Prefer:
+        // - something over nothing (tuple.0);
+        // - direct extern crate to indirect (tuple.1);
+        // - shorter paths to longer (tuple.2).
+        let new_rank = (
+            true,
+            extern_crate.is_direct(),
+            cmp::Reverse(extern_crate.path_len),
+        );
+        let old_rank = match *old_extern_crate {
+            None => (false, false, cmp::Reverse(usize::max_value())),
+            Some(ref c) => (
+                true,
+                c.is_direct(),
+                cmp::Reverse(c.path_len),
+            ),
+        };
+        if old_rank >= new_rank {
+            return; // no change needed
+        }
+
+        *old_extern_crate = Some(extern_crate);
+        drop(old_extern_crate);
+
+        // Propagate the extern crate info to dependencies.
+        extern_crate.dependency_of = cnum;
+        for &dep_cnum in self.dependencies.borrow().iter() {
+            self.update_extern_crate(dep_cnum, extern_crate, visited);
+        }
+    }
+
 
     /// Iterates over the diagnostic items in the given crate.
     crate fn get_diagnostic_items(

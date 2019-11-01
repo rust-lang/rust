@@ -160,10 +160,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_sanitizer_runtime => { cdata.root.sanitizer_runtime }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
-    extern_crate => {
-        let r = *cdata.extern_crate.lock();
-        r.map(|c| &*tcx.arena.alloc(c))
-    }
+    extern_crate => { cdata.get_extern_crate_arenas(tcx) }
     is_no_builtins => { cdata.root.no_builtins }
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
@@ -223,13 +220,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
-    missing_extern_crate_item => {
-        let r = match *cdata.extern_crate.borrow() {
-            Some(extern_crate) if !extern_crate.is_direct() => true,
-            _ => false,
-        };
-        r
-    }
+    missing_extern_crate_item => { cdata.is_extern_crate_direct() }
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
