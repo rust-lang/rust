@@ -68,7 +68,7 @@ impl<'a> StringReader<'a> {
         let end = sess.source_map().lookup_byte_offset(span.hi());
 
         // Make the range zero-length if the span is invalid.
-        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
+        if begin.sf.start_pos != end.sf.start_pos {
             span = span.shrink_to_lo();
         }
 
