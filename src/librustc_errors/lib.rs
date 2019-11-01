@@ -704,6 +704,9 @@ impl Handler {
     pub fn has_errors(&self) -> bool {
         self.inner.borrow().has_errors()
     }
+    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.inner.borrow().has_errors_or_delayed_span_bugs()
+    }
 
     pub fn print_error_count(&self, registry: &Registry) {
         self.inner.borrow_mut().print_error_count(registry)
@@ -861,6 +864,9 @@ impl HandlerInner {
 
     fn has_errors(&self) -> bool {
         self.err_count() > 0
+    }
+    fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.has_errors() || !self.delayed_span_bugs.is_empty()
     }
 
     fn abort_if_errors_and_should_abort(&mut self) {

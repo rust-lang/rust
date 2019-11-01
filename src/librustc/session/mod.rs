@@ -312,6 +312,9 @@ impl Session {
     pub fn has_errors(&self) -> bool {
         self.diagnostic().has_errors()
     }
+    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.diagnostic().has_errors_or_delayed_span_bugs()
+    }
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
