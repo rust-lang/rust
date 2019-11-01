@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use hir::db::HirDatabase;
 use ra_syntax::{
     algo::replace_children,
-    ast::{self, edit::IndentLevel, make},
+    ast::{self, edit::IndentLevel, make, Pat::TupleStructPat},
     AstNode,
     SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
 };
@@ -38,6 +38,21 @@ use crate::{
 pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let cond = if_expr.condition()?;
+    let mut if_let_ident: Option<String> = None;
+
+    // Check if there is an IfLet that we can handle.
+    match cond.pat() {
+        None => {} // No IfLet, supported.
+        Some(TupleStructPat(ref pat)) if pat.args().count() == 1usize => match &pat.path() {
+            Some(p) => match p.qualifier() {
+                None => if_let_ident = Some(p.syntax().text().to_string()),
+                _ => return None,
+            },
+            _ => return None,
+        },
+        _ => return None, // Unsupported IfLet.
+    };
+
     let expr = cond.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
     if if_expr.else_branch().is_some() {
@@ -78,7 +93,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
-        let new_block = match cond.pat() {
+        let new_block = match if_let_ident {
             None => {
                 // If.
                 let early_expression = &(early_expression.to_owned() + ";");
@@ -109,10 +124,13 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                     &mut new_if_and_then_statements,
                 )
             }
-            _ => {
+            Some(if_let_ident) => {
                 // If-let.
-                let new_match_expr =
-                    if_indent_level.increase_indent(make::let_match_early(expr, early_expression));
+                let new_match_expr = if_indent_level.increase_indent(make::let_match_early(
+                    expr,
+                    &if_let_ident,
+                    early_expression,
+                ));
                 let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
                 let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
                 let end_of_then =
@@ -128,15 +146,14 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                         .skip(1)
                         .take_while(|i| *i != end_of_then),
                 );
-                let new_block = replace_children(
+                replace_children(
                     &parent_block.syntax(),
                     RangeInclusive::new(
                         if_expr.clone().syntax().clone().into(),
                         if_expr.syntax().clone().into(),
                     ),
                     &mut then_statements,
-                );
-                new_block
+                )
             }
         };
         edit.target(if_expr.syntax().text_range());
@@ -200,6 +217,37 @@ mod tests {
                 bar();
                 le<|>t n = match n {
                     Some(it) => it,
+                    None => return,
+                };
+                foo(n);
+
+                //comment
+                bar();
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn convert_let_ok_inside_fn() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main(n: Option<String>) {
+                bar();
+                if<|> let Ok(n) = n {
+                    foo(n);
+
+                    //comment
+                    bar();
+                }
+            }
+            "#,
+            r#"
+            fn main(n: Option<String>) {
+                bar();
+                le<|>t n = match n {
+                    Ok(it) => it,
                     None => return,
                 };
                 foo(n);

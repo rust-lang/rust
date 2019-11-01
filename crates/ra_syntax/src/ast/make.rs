@@ -110,14 +110,15 @@ pub fn match_arm_list(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchAr
     }
 }
 
-pub fn let_match_early(expr: ast::Expr, early_expression: &str) -> ast::LetStmt {
+pub fn let_match_early(expr: ast::Expr, path: &str, early_expression: &str) -> ast::LetStmt {
     return from_text(&format!(
         r#"let {} = match {} {{
-    Some(it) => it,
+    {}(it) => it,
     None => {},
 }};"#,
         expr.syntax().text(),
         expr.syntax().text(),
+        path,
         early_expression
     ));
 
