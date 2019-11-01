@@ -77,9 +77,10 @@ impl GenericParams {
         let parent = match def {
             GenericDef::Function(it) => it.container(db).map(GenericDef::from),
             GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
+            GenericDef::Const(it) => it.container(db).map(GenericDef::from),
             GenericDef::EnumVariant(it) => Some(it.parent_enum(db).into()),
             GenericDef::Adt(_) | GenericDef::Trait(_) => None,
-            GenericDef::ImplBlock(_) | GenericDef::Const(_) => None,
+            GenericDef::ImplBlock(_) => None,
         };
         let mut generics = GenericParams {
             def,
