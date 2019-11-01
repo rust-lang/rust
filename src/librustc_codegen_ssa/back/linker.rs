@@ -14,7 +14,6 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
                              LinkerPluginLto, Lto};
-use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use rustc_serialize::{json, Encoder};
@@ -1112,20 +1111,10 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
                     continue;
                 }
 
-                // Do not export generic symbols from upstream crates in linked
-                // artifact (notably the `dylib` crate type). The main reason
-                // for this is that `symbol_name` is actually wrong for generic
-                // symbols because it guesses the name we'd give them locally
-                // rather than the name it has upstream (depending on
-                // `share_generics` settings and such).
-                //
-                // To fix that issue we just say that linked artifacts, aka
-                // `dylib`s, never export generic symbols and they aren't
-                // available to downstream crates. (the not available part is
-                // handled elsewhere).
-                if let ExportedSymbol::Generic(..) = symbol {
-                    continue;
-                }
+                // FIXME rust-lang/rust#64319, rust-lang/rust#64872:
+                // We want to block export of generics from dylibs,
+                // but we must fix rust-lang/rust#65890 before we can
+                // do that robustly.
 
                 symbols.push(symbol.symbol_name(tcx).to_string());
             }
