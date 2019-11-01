@@ -6,127 +6,66 @@
 //!
 //! # Examples
 //!
-1
 //! A pointer type for heap allocation.
-2
 //!
-3
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
-4
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
-5
 //! drop their contents when they go out of scope.
-6
 //!
-7
 //! # Examples
-8
 //!
-9
 //! Move a value from the stack to the heap by creating a [`Box`]:
-10
 //!
-11
 //! ```
-12
 //! let val: u8 = 5;
-13
 //! let boxed: Box<u8> = Box::new(val);
-14
 //! ```
-15
 //!
-16
 //! Move a value from a [`Box`] back to the stack by [dereferencing]:
-17
 //!
-18
 //! ```
-19
 //! let boxed: Box<u8> = Box::new(5);
-20
 //! let val: u8 = *boxed;
-21
 //! ```
-22
 //!
-23
 //! Creating a recursive data structure:
-24
 //!
-25
 //! ```
-26
 //! #[derive(Debug)]
-27
 //! enum List<T> {
-28
 //!     Cons(T, Box<List<T>>),
-29
 //!     Nil,
-30
 //! }
-31
 //!
-32
 //! let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
-33
 //! println!("{:?}", list);
-34
 //! ```
-35
 //!
-36
 //! This will print `Cons(1, Cons(2, Nil))`.
-37
 //!
-38
 //! Recursive structures must be boxed, because if the definition of `Cons`
-39
 //! looked like this:
-40
 //!
-41
 //! ```compile_fail,E0072
-42
 //! # enum List<T> {
-43
 //! Cons(T, List<T>),
-44
 //! # }
-45
 //! ```
-46
 //!
-47
 //! It wouldn't work. This is because the size of a `List` depends on how many
-48
 //! elements are in the list, and so we don't know how much memory to allocate
-49
 //! for a `Cons`. By introducing a [`Box<T>`], which has a defined size, we know how
-50
 //! big `Cons` needs to be.
-51
 //!
-52
 //! # Memory layout
-53
 //!
-54
 //! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for
-55
 //! its allocation. It is valid to convert both ways between a [`Box`] and a
-56
 //! raw pointer allocated with the [`Global`] allocator, given that the
-57
 //! [`Layout`] used with the allocator is correct for the type. More precisely,
-58
 //! a `value: *mut T` that has been allocated with the [`Global`] allocator
-59
 //! with `Layout::for_value(&*value)` may be converted into a box using
-60
 //! [`Box::<T>::from_raw(value)`]. Conversely, the memory backing a `value: *mut
-61
 //! T` obtained from [`Box::<T>::into_raw`] may be deallocated using the
 
 //! Move a value from the stack to the heap by creating a [`Box`]:
