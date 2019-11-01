@@ -3,9 +3,10 @@ use std::ops::RangeInclusive;
 use hir::db::HirDatabase;
 use ra_syntax::{
     algo::replace_children,
-    ast::{self, edit::IndentLevel, make, Pat::TupleStructPat},
+    ast::{self, edit::IndentLevel, make, Block, Pat::TupleStructPat},
     AstNode,
     SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
+    SyntaxNode,
 };
 
 use crate::{
@@ -97,68 +98,54 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
             None => {
                 // If.
                 let early_expression = &(early_expression.to_owned() + ";");
-                let new_if_expr =
+                let new_expr =
                     if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
-                let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
-                let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
-                let end_of_then =
-                    if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
-                        end_of_then.prev_sibling_or_token().unwrap()
-                    } else {
-                        end_of_then
-                    };
-                let mut new_if_and_then_statements =
-                    new_if_expr.syntax().children_with_tokens().chain(
-                        then_block_items
-                            .syntax()
-                            .children_with_tokens()
-                            .skip(1)
-                            .take_while(|i| *i != end_of_then),
-                    );
-                replace_children(
-                    &parent_block.syntax(),
-                    RangeInclusive::new(
-                        if_expr.clone().syntax().clone().into(),
-                        if_expr.syntax().clone().into(),
-                    ),
-                    &mut new_if_and_then_statements,
-                )
+                replace(new_expr, &then_block, &parent_block, &if_expr)
             }
             Some(if_let_ident) => {
                 // If-let.
-                let new_match_expr = if_indent_level.increase_indent(make::let_match_early(
+                let new_expr = if_indent_level.increase_indent(make::let_match_early(
                     expr,
                     &if_let_ident,
                     early_expression,
                 ));
-                let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
-                let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
-                let end_of_then =
-                    if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
-                        end_of_then.prev_sibling_or_token().unwrap()
-                    } else {
-                        end_of_then
-                    };
-                let mut then_statements = new_match_expr.syntax().children_with_tokens().chain(
-                    then_block_items
-                        .syntax()
-                        .children_with_tokens()
-                        .skip(1)
-                        .take_while(|i| *i != end_of_then),
-                );
-                replace_children(
-                    &parent_block.syntax(),
-                    RangeInclusive::new(
-                        if_expr.clone().syntax().clone().into(),
-                        if_expr.syntax().clone().into(),
-                    ),
-                    &mut then_statements,
-                )
+                replace(new_expr, &then_block, &parent_block, &if_expr)
             }
         };
         edit.target(if_expr.syntax().text_range());
         edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
         edit.set_cursor(cursor_position);
+
+        fn replace(
+            new_expr: impl AstNode,
+            then_block: &Block,
+            parent_block: &Block,
+            if_expr: &ast::IfExpr,
+        ) -> SyntaxNode {
+            let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());
+            let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
+            let end_of_then =
+                if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
+                    end_of_then.prev_sibling_or_token().unwrap()
+                } else {
+                    end_of_then
+                };
+            let mut then_statements = new_expr.syntax().children_with_tokens().chain(
+                then_block_items
+                    .syntax()
+                    .children_with_tokens()
+                    .skip(1)
+                    .take_while(|i| *i != end_of_then),
+            );
+            replace_children(
+                &parent_block.syntax(),
+                RangeInclusive::new(
+                    if_expr.clone().syntax().clone().into(),
+                    if_expr.syntax().clone().into(),
+                ),
+                &mut then_statements,
+            )
+        }
     })
 }
 
