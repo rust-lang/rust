@@ -379,6 +379,25 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
         self.0.iter().map(|p| *p)
     }
+
+    /// This computes `D(self)`. See top of the file for explanations.
+    fn specialize_wildcard(&self) -> Option<Self> {
+        if self.head().is_wildcard() { Some(self.to_tail()) } else { None }
+    }
+
+    /// This computes `S(constructor, self)`. See top of the file for explanations.
+    fn specialize_constructor<'a, 'q>(
+        &self,
+        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        wild_patterns: &[&'q Pat<'tcx>],
+    ) -> Option<PatStack<'q, 'tcx>>
+    where
+        'a: 'q,
+        'p: 'q,
+    {
+        specialize(cx, self, constructor, wild_patterns)
+    }
 }
 
 impl<'p, 'tcx> Default for PatStack<'p, 'tcx> {
@@ -406,6 +425,30 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     pub fn push(&mut self, row: PatStack<'p, 'tcx>) {
         self.0.push(row)
+    }
+
+    /// This computes `D(self)`. See top of the file for explanations.
+    fn specialize_wildcard(&self) -> Self {
+        self.0.iter().filter_map(|r| r.specialize_wildcard()).collect()
+    }
+
+    /// This computes `S(constructor, self)`. See top of the file for explanations.
+    fn specialize_constructor<'a, 'q>(
+        &self,
+        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        wild_patterns: &[&'q Pat<'tcx>],
+    ) -> Matrix<'q, 'tcx>
+    where
+        'a: 'q,
+        'p: 'q,
+    {
+        Matrix(
+            self.0
+                .iter()
+                .filter_map(|r| r.specialize_constructor(cx, constructor, wild_patterns))
+                .collect(),
+        )
     }
 }
 
@@ -1423,11 +1466,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
             .find(|result| result.is_useful())
             .unwrap_or(NotUseful)
         } else {
-            let matrix = rows
-                .iter()
-                .filter_map(|r| if r.head().is_wildcard() { Some(r.to_tail()) } else { None })
-                .collect();
-            match is_useful(cx, &matrix, &v.to_tail(), witness, hir_id) {
+            let matrix = matrix.specialize_wildcard();
+            let v = v.to_tail();
+            match is_useful(cx, &matrix, &v, witness, hir_id) {
                 UsefulWithWitness(pats) => {
                     let cx = &*cx;
                     // In this case, there's at least one "free"
@@ -1523,7 +1564,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    &Matrix(ref m): &Matrix<'p, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'_, 'tcx>,
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
@@ -1535,9 +1576,8 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
     let wild_patterns_owned: Vec<_> =
         sub_pat_tys.iter().map(|ty| Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild }).collect();
     let wild_patterns: Vec<_> = wild_patterns_owned.iter().collect();
-    let matrix =
-        Matrix(m.iter().filter_map(|r| specialize(cx, &r, &ctor, &wild_patterns)).collect());
-    match specialize(cx, v, &ctor, &wild_patterns) {
+    let matrix = matrix.specialize_constructor(cx, &ctor, &wild_patterns);
+    match v.specialize_constructor(cx, &ctor, &wild_patterns) {
         Some(v) => match is_useful(cx, &matrix, &v, witness, hir_id) {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
@@ -2013,7 +2053,7 @@ fn specialize<'p, 'a: 'p, 'q: 'p, 'tcx>(
 ) -> Option<PatStack<'p, 'tcx>> {
     let pat = r.head();
 
-    let head = match *pat.kind {
+    let new_head = match *pat.kind {
         PatKind::AscribeUserType { ref subpattern, .. } => {
             specialize(cx, &PatStack::from_pattern(subpattern), constructor, wild_patterns)
         }
@@ -2167,9 +2207,9 @@ fn specialize<'p, 'a: 'p, 'q: 'p, 'tcx>(
             bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), wild_patterns, head);
+    debug!("specialize({:#?}, {:#?}) = {:#?}", r.head(), wild_patterns, new_head);
 
-    head.map(|head| {
+    new_head.map(|head| {
         let mut head = head.0;
         head.extend_from_slice(&r.0[1..]);
         PatStack::from_vec(head)
