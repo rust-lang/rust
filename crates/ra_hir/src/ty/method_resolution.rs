@@ -175,9 +175,15 @@ pub(crate) fn lookup_method(
     })
 }
 
+/// Whether we're looking up a dotted method call (like `v.len()`) or a path
+/// (like `Vec::new`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LookupMode {
+    /// Looking up a method call like `v.len()`: We only consider candidates
+    /// that have a `self` parameter, and do autoderef.
     MethodCall,
+    /// Looking up a path like `Vec::new` or `Vec::default`: We consider all
+    /// candidates including associated constants, but don't do autoderef.
     Path,
 }
 
