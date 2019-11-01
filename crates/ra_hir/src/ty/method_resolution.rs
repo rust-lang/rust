@@ -166,12 +166,10 @@ pub(crate) fn lookup_method(
     name: &Name,
     resolver: &Resolver,
 ) -> Option<(Ty, Function)> {
-    iterate_method_candidates(ty, db, resolver, Some(name), LookupMode::MethodCall, |ty, f| {
-        if let AssocItem::Function(f) = f {
-            Some((ty.clone(), f))
-        } else {
-            None
-        }
+    iterate_method_candidates(ty, db, resolver, Some(name), LookupMode::MethodCall, |ty, f| match f
+    {
+        AssocItem::Function(f) => Some((ty.clone(), f)),
+        _ => None,
     })
 }
 
@@ -189,6 +187,7 @@ pub enum LookupMode {
 
 // This would be nicer if it just returned an iterator, but that runs into
 // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+// FIXME add a context type here?
 pub(crate) fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,

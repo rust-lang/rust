@@ -196,13 +196,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     AssocItem::Const(c) => ValueNs::Const(c),
                     AssocItem::TypeAlias(_) => unreachable!(),
                 };
-                match item.container(self.db) {
-                    Container::ImplBlock(_) => {
-                        let substs = self.find_self_types(&def, ty.clone());
-
-                        self.write_assoc_resolution(id, item);
-                        Some((def, substs))
-                    }
+                let substs = match item.container(self.db) {
+                    Container::ImplBlock(_) => self.find_self_types(&def, ty.clone()),
                     Container::Trait(t) => {
                         // we're picking this method
                         let trait_substs = Substs::build_for_def(self.db, t)
@@ -217,11 +212,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             trait_: t,
                             substs: trait_substs,
                         }));
-
-                        self.write_assoc_resolution(id, item);
-                        Some((def, Some(substs)))
+                        Some(substs)
                     }
-                }
+                };
+
+                self.write_assoc_resolution(id, item);
+                Some((def, substs))
             },
         )
     }

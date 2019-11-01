@@ -400,6 +400,7 @@ impl SubstsBuilder {
 
     pub fn fill(mut self, filler: impl Iterator<Item = Ty>) -> Self {
         self.vec.extend(filler.take(self.remaining()));
+        assert_eq!(self.remaining(), 0);
         self
     }
 
