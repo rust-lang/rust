@@ -56,11 +56,17 @@ mod llvm_libunwind {
     pub fn compile() {
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
+        let target_endian_little = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap() != "big";
         let cfg = &mut cc::Build::new();
 
         cfg.cpp(true);
         cfg.cpp_set_stdlib(None);
         cfg.warnings(false);
+
+        // libunwind expects a __LITTLE_ENDIAN__ macro to be set for LE archs, cf. #65765
+        if target_endian_little {
+            cfg.define("__LITTLE_ENDIAN__", Some("1"));
+        }
 
         if target_env == "msvc" {
             // Don't pull in extra libraries on MSVC
