@@ -3,7 +3,7 @@ use crate::usize;
 
 use super::super::{Iterator, DoubleEndedIterator, FusedIterator, TrustedLen};
 
-/// An iterator that strings two iterators together.
+/// An iterator that links two iterators together, in a chain.
 ///
 /// This `struct` is created by the [`chain`] method on [`Iterator`]. See its
 /// documentation for more.
