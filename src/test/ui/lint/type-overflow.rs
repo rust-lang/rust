@@ -2,7 +2,7 @@
 #![warn(overflowing_literals)]
 
 fn main() {
-    let error = 255i8; //~WARNING literal out of range for i8
+    let error = 255i8; //~WARNING literal out of range for `i8`
 
     let ok = 0b1000_0001; // should be ok -> i32
     let ok = 0b0111_1111i8; // should be ok -> 127i8
