@@ -16,19 +16,19 @@ LL | fn foo1<I: Foo<A=Bar>>(x: I) {
    |    ----        ----- required by this bound in `foo1`
 ...
 LL |     foo1(a);
-   |     ^^^^ expected usize, found struct `Bar`
+   |     ^^^^ expected struct `Bar`, found usize
    |
-   = note: expected type `usize`
-              found type `Bar`
+   = note: expected type `Bar`
+              found type `usize`
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:41:9
    |
 LL |     baz(&a);
-   |         ^^ expected usize, found struct `Bar`
+   |         ^^ expected struct `Bar`, found usize
    |
-   = note: expected type `usize`
-              found type `Bar`
+   = note: expected type `Bar`
+              found type `usize`
    = note: required for the cast to the object type `dyn Foo<A = Bar>`
 
 error: aborting due to 3 previous errors

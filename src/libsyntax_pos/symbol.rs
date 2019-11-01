@@ -370,6 +370,7 @@ symbols! {
         issue_5723_bootstrap,
         issue_tracker_base_url,
         item,
+        item_context: "ItemContext",
         item_like_imports,
         iter,
         Iterator,

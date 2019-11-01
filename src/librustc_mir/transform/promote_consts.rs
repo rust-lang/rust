@@ -80,6 +80,17 @@ pub enum Candidate {
     Argument { bb: BasicBlock, index: usize },
 }
 
+impl Candidate {
+    /// Returns `true` if we should use the "explicit" rules for promotability for this `Candidate`.
+    fn forces_explicit_promotion(&self) -> bool {
+        match self {
+            Candidate::Ref(_) |
+            Candidate::Repeat(_) => false,
+            Candidate::Argument { .. } => true,
+        }
+    }
+}
+
 fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
     let attrs = tcx.get_attrs(def_id);
     let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
@@ -727,16 +738,22 @@ pub fn validate_candidates(
     };
 
     candidates.iter().copied().filter(|&candidate| {
-        validator.explicit = match candidate {
-            Candidate::Ref(_) |
-            Candidate::Repeat(_) => false,
-            Candidate::Argument { .. } => true,
-        };
+        validator.explicit = candidate.forces_explicit_promotion();
 
         // FIXME(eddyb) also emit the errors for shuffle indices
         // and `#[rustc_args_required_const]` arguments here.
 
-        validator.validate_candidate(candidate).is_ok()
+        let is_promotable = validator.validate_candidate(candidate).is_ok();
+        match candidate {
+            Candidate::Argument { bb, index } if !is_promotable => {
+                let span = body[bb].terminator().source_info.span;
+                let msg = format!("argument {} is required to be a constant", index + 1);
+                tcx.sess.span_err(span, &msg);
+            }
+            _ => ()
+        }
+
+        is_promotable
     }).collect()
 }
 

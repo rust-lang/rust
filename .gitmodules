@@ -3,13 +3,13 @@
 	url = https://github.com/rust-lang/rust-installer.git
 [submodule "src/doc/nomicon"]
 	path = src/doc/nomicon
-	url = https://github.com/rust-lang-nursery/nomicon.git
+	url = https://github.com/rust-lang/nomicon.git
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
 	url = https://github.com/rust-lang/cargo.git
 [submodule "src/doc/reference"]
 	path = src/doc/reference
-	url = https://github.com/rust-lang-nursery/reference.git
+	url = https://github.com/rust-lang/reference.git
 [submodule "src/doc/book"]
 	path = src/doc/book
 	url = https://github.com/rust-lang/book.git
@@ -36,7 +36,7 @@
 	url = https://github.com/rust-lang/rustc-guide.git
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
-	url = https://github.com/rust-lang-nursery/edition-guide.git
+	url = https://github.com/rust-lang/edition-guide.git
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git

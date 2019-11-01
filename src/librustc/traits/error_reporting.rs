@@ -226,13 +226,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     0,
                     &mut obligations
                 );
+
+                debug!("report_projection_error obligation.cause={:?} obligation.param_env={:?}",
+                       obligation.cause, obligation.param_env);
+
+                debug!("report_projection_error normalized_ty={:?} data.ty={:?}",
+                       normalized_ty, data.ty);
+
+                let is_normalized_ty_expected = match &obligation.cause.code {
+                    ObligationCauseCode::ItemObligation(_) |
+                    ObligationCauseCode::BindingObligation(_, _) |
+                    ObligationCauseCode::ObjectCastObligation(_) => false,
+                    _ => true,
+                };
+
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env)
-                    .eq(normalized_ty, data.ty)
+                    .eq_exp(is_normalized_ty_expected, normalized_ty, data.ty)
                 {
-                    values = Some(infer::ValuePairs::Types(ExpectedFound {
-                        expected: normalized_ty,
-                        found: data.ty,
-                    }));
+                    values = Some(infer::ValuePairs::Types(
+                        ExpectedFound::new(is_normalized_ty_expected, normalized_ty, data.ty)));
+
                     err_buf = error;
                     err = &err_buf;
                 }
@@ -353,6 +366,52 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str> {
+        self.tcx.hir().body(body_id).generator_kind.map(|gen_kind| {
+            match gen_kind {
+                hir::GeneratorKind::Gen => "a generator",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "an async block",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "an async function",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "an async closure",
+            }
+        })
+    }
+
+    /// Used to set on_unimplemented's `ItemContext`
+    /// to be the enclosing (async) block/function/closure
+    fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str> {
+        let hir = &self.tcx.hir();
+        let node = hir.find(hir_id)?;
+        if let hir::Node::Item(
+            hir::Item{kind: hir::ItemKind::Fn(_ ,fn_header ,_ , body_id), .. }) = &node {
+            self.describe_generator(*body_id).or_else(||
+                Some(if let hir::FnHeader{ asyncness: hir::IsAsync::Async, .. } = fn_header {
+                    "an async function"
+                } else {
+                    "a function"
+                })
+            )
+        } else if let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(_is_move, _, body_id, _, gen_movability), .. }) = &node {
+            self.describe_generator(*body_id).or_else(||
+                Some(if gen_movability.is_some() {
+                    "an async closure"
+                } else {
+                    "a closure"
+                })
+            )
+        } else if let hir::Node::Expr(hir::Expr { .. }) = &node {
+            let parent_hid = hir.get_parent_node(hir_id);
+            if parent_hid != hir_id {
+                return self.describe_enclosure(parent_hid);
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     fn on_unimplemented_note(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -363,6 +422,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let trait_ref = *trait_ref.skip_binder();
 
         let mut flags = vec![];
+        flags.push((sym::item_context,
+            self.describe_enclosure(obligation.cause.body_id).map(|s|s.to_owned())));
+
         match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..) |
             ObligationCauseCode::ImplDerivedObligation(..) => {}

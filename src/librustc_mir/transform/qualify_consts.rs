@@ -1606,20 +1606,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     // This is not a problem, because the argument explicitly
                     // requests constness, in contrast to regular promotion
                     // which happens even without the user requesting it.
-                    // We can error out with a hard error if the argument is not
-                    // constant here.
+                    //
+                    // `promote_consts` is responsible for emitting the error if
+                    // the argument is not promotable.
                     if !IsNotPromotable::in_operand(self, arg) {
                         debug!("visit_terminator_kind: candidate={:?}", candidate);
                         self.promotion_candidates.push(candidate);
-                    } else {
-                        if is_shuffle {
-                            span_err!(self.tcx.sess, self.span, E0526,
-                                      "shuffle indices are not constant");
-                        } else {
-                            self.tcx.sess.span_err(self.span,
-                                &format!("argument {} is required to be a constant",
-                                         i + 1));
-                        }
                     }
                 }
             }

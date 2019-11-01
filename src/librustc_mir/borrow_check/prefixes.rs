@@ -29,7 +29,7 @@ pub(super) struct Prefixes<'cx, 'tcx> {
     body: &'cx Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
-    next: Option<(PlaceRef<'cx, 'tcx>)>,
+    next: Option<PlaceRef<'cx, 'tcx>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

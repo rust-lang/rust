@@ -9,7 +9,6 @@ use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
-use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def;
 use rustc::hir;
 use rustc::session::{CrateDisambiguator, Session};
@@ -235,26 +234,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
     exported_symbols => {
-        let mut syms = cdata.exported_symbols(tcx);
+        let syms = cdata.exported_symbols(tcx);
 
-        // When linked into a dylib crates don't export their generic symbols,
-        // so if that's happening then we can't load upstream monomorphizations
-        // from this crate.
-        let formats = tcx.dependency_formats(LOCAL_CRATE);
-        let remove_generics = formats.iter().any(|(_ty, list)| {
-            match list.get(def_id.krate.as_usize() - 1) {
-                Some(Linkage::IncludedFromDylib) | Some(Linkage::Dynamic) => true,
-                _ => false,
-            }
-        });
-        if remove_generics {
-            syms.retain(|(sym, _threshold)| {
-                match sym {
-                    ExportedSymbol::Generic(..) => false,
-                    _ => return true,
-                }
-            });
-        }
+        // FIXME rust-lang/rust#64319, rust-lang/rust#64872: We want
+        // to block export of generics from dylibs, but we must fix
+        // rust-lang/rust#65890 before we can do that robustly.
 
         Arc::new(syms)
     }

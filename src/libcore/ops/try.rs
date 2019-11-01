@@ -5,7 +5,7 @@
 /// extracting those success or failure values from an existing instance and
 /// creating a new instance from a success or failure value.
 #[unstable(feature = "try_trait", issue = "42327")]
-#[rustc_on_unimplemented(
+#[cfg_attr(bootstrap, rustc_on_unimplemented(
    on(all(
        any(from_method="from_error", from_method="from_ok"),
        from_desugaring="QuestionMark"),
@@ -17,7 +17,20 @@
       message="the `?` operator can only be applied to values \
                that implement `{Try}`",
       label="the `?` operator cannot be applied to type `{Self}`")
-)]
+))]
+#[cfg_attr(not(bootstrap), rustc_on_unimplemented(
+on(all(
+any(from_method="from_error", from_method="from_ok"),
+from_desugaring="QuestionMark"),
+message="the `?` operator can only be used in {ItemContext} \
+               that returns `Result` or `Option` \
+               (or another type that implements `{Try}`)",
+label="cannot use the `?` operator in {ItemContext} that returns `{Self}`"),
+on(all(from_method="into_result", from_desugaring="QuestionMark"),
+message="the `?` operator can only be applied to values \
+               that implement `{Try}`",
+label="the `?` operator cannot be applied to type `{Self}`")
+))]
 #[doc(alias = "?")]
 pub trait Try {
     /// The type of this value when viewed as successful.

@@ -197,8 +197,11 @@ impl<'a> Parser<'a> {
                 self.eat(&token::DotDotDot);
                 TyKind::CVarArgs
             } else {
-                return Err(self.fatal(
-                    "only foreign functions are allowed to be C-variadic"
+                return Err(struct_span_fatal!(
+                    self.sess.span_diagnostic,
+                    self.token.span,
+                    E0743,
+                    "only foreign functions are allowed to be C-variadic",
                 ));
             }
         } else {
