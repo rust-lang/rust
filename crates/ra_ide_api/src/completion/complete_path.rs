@@ -50,25 +50,19 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
-            ctx.analyzer.iterate_method_candidates(
-                ctx.db,
-                ty.clone(),
-                None,
-                hir::LookupMode::Path,
-                |_ty, item| {
-                    match item {
-                        hir::AssocItem::Function(func) => {
-                            let data = func.data(ctx.db);
-                            if !data.has_self_param() {
-                                acc.add_function(ctx, func);
-                            }
+            ctx.analyzer.iterate_path_candidates(ctx.db, ty.clone(), None, |_ty, item| {
+                match item {
+                    hir::AssocItem::Function(func) => {
+                        let data = func.data(ctx.db);
+                        if !data.has_self_param() {
+                            acc.add_function(ctx, func);
                         }
-                        hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
-                        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                     }
-                    None::<()>
-                },
-            );
+                    hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+                    hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                }
+                None::<()>
+            });
             // Iterate assoc types separately
             // FIXME: complete T::AssocType
             let krate = ctx.module.map(|m| m.krate());

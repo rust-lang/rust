@@ -76,8 +76,7 @@ pub use crate::{
     resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
-        display::HirDisplay, method_resolution::LookupMode, ApplicationTy, CallableDef, Substs,
-        TraitRef, Ty, TypeCtor, TypeWalk,
+        display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },
 };
 

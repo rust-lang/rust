@@ -327,7 +327,30 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         ty: Ty,
         name: Option<&Name>,
-        mode: method_resolution::LookupMode,
+        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    ) -> Option<T> {
+        // There should be no inference vars in types passed here
+        // FIXME check that?
+        // FIXME replace Unknown by bound vars here
+        let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+        method_resolution::iterate_method_candidates(
+            &canonical,
+            db,
+            &self.resolver,
+            name,
+            method_resolution::LookupMode::MethodCall,
+            |ty, it| match it {
+                AssocItem::Function(f) => callback(ty, f),
+                _ => None,
+            },
+        )
+    }
+
+    pub fn iterate_path_candidates<T>(
+        &self,
+        db: &impl HirDatabase,
+        ty: Ty,
+        name: Option<&Name>,
         callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
@@ -339,7 +362,7 @@ impl SourceAnalyzer {
             db,
             &self.resolver,
             name,
-            mode,
+            method_resolution::LookupMode::Path,
             callback,
         )
     }
