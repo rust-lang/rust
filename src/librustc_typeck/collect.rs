@@ -182,6 +182,10 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx
     }
 
+    fn item_def_id(&self) -> Option<DefId> {
+        Some(self.item_def_id)
+    }
+
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         self.tcx
             .at(span)

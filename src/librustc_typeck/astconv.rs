@@ -43,6 +43,8 @@ pub struct PathSeg(pub DefId, pub usize);
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
+    fn item_def_id(&self) -> Option<DefId>;
+
     /// Returns predicates in scope of the form `X: Foo`, where `X` is
     /// a type parameter `X` with the given id `def_id`. This is a
     /// subset of the full set of predicates.
@@ -1759,7 +1761,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                    -> Ty<'tcx>
     {
         let tcx = self.tcx();
+
         let trait_def_id = tcx.parent(item_def_id).unwrap();
+
+        debug!("qpath_to_ty: trait_def_id={:?}", trait_def_id);
 
         self.prohibit_generics(slice::from_ref(item_segment));
 
@@ -1767,9 +1772,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty
         } else {
             let path_str = tcx.def_path_str(trait_def_id);
+
+            // If the trait in segment is the same as the trait defining the item,
+            // use the `<Self as ..>` syntax in the error.
+            debug!("qpath_to_ty: self.item_def_id()={:?}",  self.item_def_id());
+
+            let type_name = if self.item_def_id() == Some(trait_def_id) {
+                "Self"
+            } else {
+                "Type"
+            };
+
             self.report_ambiguous_associated_type(
                 span,
-                "Type",
+                type_name,
                 &path_str,
                 item_segment.ident.name,
             );

@@ -12,6 +12,13 @@ trait Grab {
     //~^ ERROR ambiguous associated type
 }
 
+trait Bar {}
+
+trait Foo where Foo::Assoc: Bar {
+//~^ ERROR ambiguous associated type
+    type Assoc;
+}
+
 type X = std::ops::Deref::Target;
 //~^ ERROR ambiguous associated type
 
