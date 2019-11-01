@@ -806,7 +806,7 @@ impl<'a> CrateLoader<'a> {
             }
 
             info!("injecting a dep from {} to {}", cnum, krate);
-            data.dependencies.borrow_mut().push(krate);
+            data.push_dependency(krate);
         });
     }
 

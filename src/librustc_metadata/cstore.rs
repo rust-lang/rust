@@ -95,7 +95,7 @@ crate struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     crate cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    crate dependencies: Lock<Vec<CrateNum>>,
+    dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
     dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
@@ -1133,6 +1133,10 @@ impl<'a, 'tcx> CrateMetadata {
         }
 
         dep_node_index
+    }
+
+    crate fn push_dependency(&self, krate: CrateNum) {
+        self.dependencies.borrow_mut().push(krate);
     }
 }
 
