@@ -1,70 +1,70 @@
 error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:1:13
    |
-LL |   impl dyn X {
+LL |   impl dyn A {
    |  _____________^
-LL | |
 LL | |     Y
    | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
-  --> $DIR/issue-40006.rs:8:10
+  --> $DIR/issue-40006.rs:7:10
    |
 LL |   trait X {
    |  __________^
 LL | |     X() {}
    | |____^ missing `fn`, `type`, or `const`
 
+error: missing `fn`, `type`, or `const` for trait-item declaration
+  --> $DIR/issue-40006.rs:15:10
+   |
+LL |   trait A {
+   |  __________^
+LL | |     X() {}
+   | |____^ missing `fn`, `type`, or `const`
+
 error: expected `[`, found `#`
-  --> $DIR/issue-40006.rs:10:17
+  --> $DIR/issue-40006.rs:19:17
    |
 LL |     fn xxx() { ### }
    |                 ^ expected `[`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
-  --> $DIR/issue-40006.rs:10:21
+  --> $DIR/issue-40006.rs:21:10
    |
-LL |       fn xxx() { ### }
-   |  _____________________^
-LL | |
+LL |   trait C {
+   |  __________^
 LL | |     L = M;
    | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
-  --> $DIR/issue-40006.rs:12:11
+  --> $DIR/issue-40006.rs:24:10
    |
-LL |       L = M;
-   |  ___________^
+LL |   trait D {
+   |  __________^
 LL | |     Z = { 2 + 3 };
    | |____^ missing `fn`, `type`, or `const`
 
-error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
-  --> $DIR/issue-40006.rs:13:18
-   |
-LL |     Z = { 2 + 3 };
-   |                  ^ expected one of 7 possible tokens here
-
 error: expected one of `!` or `::`, found `(`
-  --> $DIR/issue-40006.rs:14:9
+  --> $DIR/issue-40006.rs:28:9
    |
 LL |     ::Y ();
    |         ^ expected one of `!` or `::` here
 
 error: missing `fn`, `type`, or `const` for impl-item declaration
-  --> $DIR/issue-40006.rs:18:8
+  --> $DIR/issue-40006.rs:32:8
    |
 LL |     pub hello_method(&self) {
    |        ^ missing `fn`, `type`, or `const`
 
-error[E0038]: the trait `X` cannot be made into an object
-  --> $DIR/issue-40006.rs:1:6
+error[E0599]: no method named `hello_method` found for type `S` in the current scope
+  --> $DIR/issue-40006.rs:38:7
    |
-LL | impl dyn X {
-   |      ^^^^^ the trait `X` cannot be made into an object
+LL | struct S;
+   | --------- method `hello_method` not found for this
 ...
-LL |     fn xxx() { ### }
-   |        --- associated function `xxx` has no `self` parameter
+LL |     S.hello_method();
+   |       ^^^^^^^^^^^^ method not found in `S`
 
 error: aborting due to 9 previous errors
 
-For more information about this error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0599`.

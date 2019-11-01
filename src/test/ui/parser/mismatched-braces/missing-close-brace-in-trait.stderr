@@ -1,0 +1,25 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/missing-close-brace-in-trait.rs:10:66
+   |
+LL | trait T {
+   |         - un-closed delimiter
+...
+LL | fn main() {}
+   |                                                                  ^
+
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found keyword `pub`
+  --> $DIR/missing-close-brace-in-trait.rs:4:1
+   |
+LL | trait T {
+   |         - unclosed delimiter
+LL |     fn foo(&self);
+   |                   -
+   |                   |
+   |                   expected one of 7 possible tokens here
+   |                   help: `}` may belong here
+LL | 
+LL | pub(crate) struct Bar<T>();
+   | ^^^ unexpected token
+
+error: aborting due to 2 previous errors
+
