@@ -466,11 +466,10 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let bytes = 12.5f32.to_be_bytes();
     /// assert_eq!(bytes, [0x41, 0x48, 0x00, 0x00]);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn to_be_bytes(self) -> [u8; 4] {
         self.to_bits().to_be_bytes()
@@ -482,11 +481,10 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let bytes = 12.5f32.to_le_bytes();
     /// assert_eq!(bytes, [0x00, 0x00, 0x48, 0x41]);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn to_le_bytes(self) -> [u8; 4] {
         self.to_bits().to_le_bytes()
@@ -504,7 +502,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let bytes = 12.5f32.to_ne_bytes();
     /// assert_eq!(
     ///     bytes,
@@ -515,7 +512,7 @@ impl f32 {
     ///     }
     /// );
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn to_ne_bytes(self) -> [u8; 4] {
         self.to_bits().to_ne_bytes()
@@ -526,11 +523,10 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let value = f32::from_be_bytes([0x41, 0x48, 0x00, 0x00]);
     /// assert_eq!(value, 12.5);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_be_bytes(bytes))
@@ -541,11 +537,10 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let value = f32::from_le_bytes([0x00, 0x00, 0x48, 0x41]);
     /// assert_eq!(value, 12.5);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_le_bytes(bytes))
@@ -563,7 +558,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let value = f32::from_ne_bytes(if cfg!(target_endian = "big") {
     ///     [0x41, 0x48, 0x00, 0x00]
     /// } else {
@@ -571,7 +565,7 @@ impl f32 {
     /// });
     /// assert_eq!(value, 12.5);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn from_ne_bytes(bytes: [u8; 4]) -> Self {
         Self::from_bits(u32::from_ne_bytes(bytes))
