@@ -93,7 +93,7 @@ use core::slice;
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, Global, Alloc};
-use crate::vec::Vec;
+use crate::vec::{self, Vec};
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 
@@ -933,6 +933,39 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
+
+#[stable(feature = "iterable-box", since = "1.40.0")]
+impl<T> IntoIterator for Box<[T]> {
+    type Item = T;
+    type IntoIter = vec::IntoIter<T>;
+    fn into_iter(self) -> Self::IntoIter {
+        Vec::from(self).into_iter()
+    }
+}
+
+#[stable(feature = "iterable-box", since = "1.40.0")]
+impl<'a, I> IntoIterator for &'a Box<I>
+where
+    &'a I: IntoIterator,
+{
+    type Item = <&'a I as IntoIterator>::Item;
+    type IntoIter = <&'a I as IntoIterator>::IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        (&**self).into_iter()
+    }
+}
+
+#[stable(feature = "iterable-box", since = "1.40.0")]
+impl<'a, I> IntoIterator for &'a mut Box<I>
+where
+    &'a mut I: IntoIterator
+{
+    type Item = <&'a mut I as IntoIterator>::Item;
+    type IntoIter = <&'a mut I as IntoIterator>::IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        (&mut **self).into_iter()
+    }
+}
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<A, F: FnOnce<A> + ?Sized> FnOnce<A> for Box<F> {
