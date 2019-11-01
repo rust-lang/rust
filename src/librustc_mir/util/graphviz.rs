@@ -16,10 +16,22 @@ pub fn write_mir_graphviz<W>(
 where
     W: Write,
 {
-    for def_id in dump_mir_def_ids(tcx, single) {
-        let body = &tcx.optimized_mir(def_id);
-        write_mir_fn_graphviz(tcx, def_id, body, w)?;
+    let def_ids = dump_mir_def_ids(tcx, single);
+
+    let use_subgraphs = def_ids.len() > 1;
+    if use_subgraphs {
+        writeln!(w, "digraph __crate__ {{")?;
     }
+
+    for def_id in def_ids {
+        let body = &tcx.optimized_mir(def_id);
+        write_mir_fn_graphviz(tcx, def_id, body, use_subgraphs, w)?;
+    }
+
+    if use_subgraphs {
+        writeln!(w, "}}")?;
+    }
+
     Ok(())
 }
 
@@ -38,12 +50,16 @@ pub fn write_mir_fn_graphviz<'tcx, W>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     body: &Body<'_>,
+    subgraph: bool,
     w: &mut W,
 ) -> io::Result<()>
 where
     W: Write,
 {
-    writeln!(w, "digraph Mir_{} {{", graphviz_safe_def_name(def_id))?;
+    let kind = if subgraph { "subgraph" } else { "digraph" };
+    let cluster = if subgraph { "cluster_" } else { "" }; // Prints a border around MIR
+    let def_name = graphviz_safe_def_name(def_id);
+    writeln!(w, "{} {}Mir_{} {{", kind, cluster, def_name)?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;
@@ -55,12 +71,12 @@ where
 
     // Nodes
     for (block, _) in body.basic_blocks().iter_enumerated() {
-        write_node(block, body, w)?;
+        write_node(def_id, block, body, w)?;
     }
 
     // Edges
     for (source, _) in body.basic_blocks().iter_enumerated() {
-        write_edges(source, body, w)?;
+        write_edges(def_id, source, body, w)?;
     }
     writeln!(w, "}}")
 }
@@ -111,25 +127,37 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
     fini(w)?;
 
     // Close the table
-    writeln!(w, "</table>")
+    write!(w, "</table>")
 }
 
 /// Write a graphviz DOT node for the given basic block.
-fn write_node<W: Write>(block: BasicBlock, body: &Body<'_>, w: &mut W) -> io::Result<()> {
+fn write_node<W: Write>(
+    def_id: DefId,
+    block: BasicBlock,
+    body: &Body<'_>,
+    w: &mut W,
+) -> io::Result<()> {
     // Start a new node with the label to follow, in one of DOT's pseudo-HTML tables.
-    write!(w, r#"    {} [shape="none", label=<"#, node(block))?;
+    write!(w, r#"    {} [shape="none", label=<"#, node(def_id, block))?;
     write_node_label(block, body, w, 1, |_| Ok(()), |_| Ok(()))?;
     // Close the node label and the node itself.
     writeln!(w, ">];")
 }
 
 /// Write graphviz DOT edges with labels between the given basic block and all of its successors.
-fn write_edges<W: Write>(source: BasicBlock, body: &Body<'_>, w: &mut W) -> io::Result<()> {
+fn write_edges<W: Write>(
+    def_id: DefId,
+    source: BasicBlock,
+    body: &Body<'_>,
+    w: &mut W,
+) -> io::Result<()> {
     let terminator = body[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
     for (&target, label) in terminator.successors().zip(labels) {
-        writeln!(w, r#"    {} -> {} [label="{}"];"#, node(source), node(target), label)?;
+        let src = node(def_id, source);
+        let trg = node(def_id, target);
+        writeln!(w, r#"    {} -> {} [label="{}"];"#, src, trg, label)?;
     }
 
     Ok(())
@@ -181,8 +209,8 @@ fn write_graph_label<'tcx, W: Write>(
     writeln!(w, ">;")
 }
 
-fn node(block: BasicBlock) -> String {
-    format!("bb{}", block.index())
+fn node(def_id: DefId, block: BasicBlock) -> String {
+    format!("bb{}__{}", block.index(), graphviz_safe_def_name(def_id))
 }
 
 fn escape<T: Debug>(t: &T) -> String {
