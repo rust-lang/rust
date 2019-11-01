@@ -14,7 +14,7 @@ backend_object = ["object/write", "cranelift-object"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift = { git = "https://github.com/CraneStation/cranelift.git" }
+cranelift = { git = "https://github.com/CraneStation/cranelift.git", default-features = false, features = ["std"] }
 cranelift-module = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-object = { git = "https://github.com/CraneStation/cranelift.git", optional = true }
@@ -30,13 +30,13 @@ indexmap = "1.0.2"
 libloading = "0.5.1"
 
 [dependencies.object]
-version = "0.14.0"
+version = "0.15.0"
 default-features = false
 features = ["compression", "read", "std"] # We don't need WASM support
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
-#cranelift = { path = "../cranelift/cranelift-umbrella" }
+#cranelift = { path = "../cranelift/cranelift-umbrella", default-features = false, features = ["std"] }
 #cranelift-module = { path = "../cranelift/cranelift-module" }
 #cranelift-simplejit = { path = "../cranelift/cranelift-simplejit" }
 #cranelift-faerie = { path = "../cranelift/cranelift-faerie" }
@@ -44,10 +44,6 @@ features = ["compression", "read", "std"] # We don't need WASM support
 
 #[patch.crates-io]
 #gimli = { path = "../" }
-
-[patch.crates-io]
-# FIXME switch back to crates.io once gimli-rs/object#133 is published
-object = { git = "https://github.com/gimli-rs/object.git" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
