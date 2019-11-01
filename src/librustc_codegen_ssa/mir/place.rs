@@ -68,6 +68,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
+    // FIXME(eddyb) pass something else for the name so no work is done
+    // unless LLVM IR names are turned on (e.g. for `--emit=llvm-ir`).
     pub fn alloca<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
@@ -78,6 +80,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     /// Returns a place for an indirect reference to an unsized place.
+    // FIXME(eddyb) pass something else for the name so no work is done
+    // unless LLVM IR names are turned on (e.g. for `--emit=llvm-ir`).
     pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,

@@ -7,6 +7,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::traversal;
+use rustc::session::config::DebugInfo;
 use rustc::ty;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use syntax_pos::DUMMY_SP;
@@ -21,13 +22,20 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     analyzer.visit_body(mir);
 
-    for (index, (ty, span)) in mir.local_decls.iter()
-        .map(|l| (l.ty, l.source_info.span))
-        .enumerate()
+    for (local, decl) in mir.local_decls.iter_enumerated()
     {
-        let ty = fx.monomorphize(&ty);
-        debug!("local {} has type {:?}", index, ty);
-        let layout = fx.cx.spanned_layout_of(ty, span);
+        // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
+        // of putting everything in allocas just so we can use llvm.dbg.declare.
+        if fx.cx.sess().opts.debuginfo == DebugInfo::Full {
+            if mir.local_kind(local) == mir::LocalKind::Arg || decl.name.is_some() {
+                analyzer.not_ssa(local);
+                continue;
+            }
+        }
+
+        let ty = fx.monomorphize(&decl.ty);
+        debug!("local {:?} has type `{}`", local, ty);
+        let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
         if fx.cx.is_backend_immediate(layout) {
             // These sorts of types are immediates that we can store
             // in an Value without an alloca.
@@ -40,7 +48,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // (e.g., structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
             // (gep vs extractvalue etc).
-            analyzer.not_ssa(mir::Local::new(index));
+            analyzer.not_ssa(local);
         }
     }
 

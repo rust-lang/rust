@@ -1,8 +1,7 @@
 // See doc.rs for documentation.
 mod doc;
 
-use rustc_codegen_ssa::debuginfo::VariableAccess::*;
-use rustc_codegen_ssa::debuginfo::VariableKind::*;
+use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_instance;
@@ -11,7 +10,7 @@ use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use crate::llvm;
-use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags,
+use crate::llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DIArray, DIFlags,
     DISPFlags, DILexicalBlock};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
@@ -27,17 +26,19 @@ use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
-use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
-    VariableKind, FunctionDebugContextData, type_names};
+use rustc_codegen_ssa::debuginfo::type_names;
+use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope,
+    VariableKind};
 
 use libc::c_uint;
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 
-use syntax_pos::{self, Span, Pos};
+use smallvec::SmallVec;
+use syntax_pos::{self, BytePos, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Size};
 use rustc_codegen_ssa::traits::*;
 
 pub mod gdb;
@@ -47,7 +48,7 @@ pub mod metadata;
 mod create_scope_map;
 mod source_loc;
 
-pub use self::create_scope_map::{create_mir_scopes};
+pub use self::create_scope_map::compute_mir_scopes;
 pub use self::metadata::create_global_var_metadata;
 pub use self::metadata::extend_scope_to_file;
 pub use self::source_loc::set_source_location;
@@ -148,21 +149,23 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn declare_local(
         &mut self,
-        dbg_context: &FunctionDebugContext<&'ll DISubprogram>,
+        dbg_context: &FunctionDebugContext<&'ll DIScope>,
         variable_name: ast::Name,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,
-        variable_access: VariableAccess<'_, &'ll Value>,
+        variable_alloca: Self::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
         variable_kind: VariableKind,
         span: Span,
     ) {
-        assert!(!dbg_context.get_ref(span).source_locations_enabled);
+        assert!(!dbg_context.source_locations_enabled);
         let cx = self.cx();
 
         let file = span_start(cx, span).file;
         let file_metadata = file_metadata(cx,
                                           &file.name,
-                                          dbg_context.get_ref(span).defining_crate);
+                                          dbg_context.defining_crate);
 
         let loc = span_start(cx, span);
         let type_metadata = type_metadata(cx, variable_type, span);
@@ -173,49 +176,61 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         };
         let align = cx.align_of(variable_type);
 
-        let name = SmallCStr::new(&variable_name.as_str());
-        match (variable_access, &[][..]) {
-            (DirectVariable { alloca }, address_operations) |
-            (IndirectVariable {alloca, address_operations}, _) => {
-                let metadata = unsafe {
-                    llvm::LLVMRustDIBuilderCreateVariable(
-                        DIB(cx),
-                        dwarf_tag,
-                        scope_metadata,
-                        name.as_ptr(),
-                        file_metadata,
-                        loc.line as c_uint,
-                        type_metadata,
-                        cx.sess().opts.optimize != config::OptLevel::No,
-                        DIFlags::FlagZero,
-                        argument_index,
-                        align.bytes() as u32,
-                    )
-                };
-                source_loc::set_debug_location(self,
-                    InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
-                unsafe {
-                    let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
-                    let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
-                        DIB(cx),
-                        alloca,
-                        metadata,
-                        address_operations.as_ptr(),
-                        address_operations.len() as c_uint,
-                        debug_loc,
-                        self.llbb());
+        // Convert the direct and indirect offsets to address ops.
+        let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
+        let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
+        let mut addr_ops = SmallVec::<[_; 8]>::new();
 
-                    llvm::LLVMSetInstDebugLocation(self.llbuilder, instr);
-                }
-                source_loc::set_debug_location(self, UnknownLocation);
+        if direct_offset.bytes() > 0 {
+            addr_ops.push(op_plus_uconst());
+            addr_ops.push(direct_offset.bytes() as i64);
+        }
+        for &offset in indirect_offsets {
+            addr_ops.push(op_deref());
+            if offset.bytes() > 0 {
+                addr_ops.push(op_plus_uconst());
+                addr_ops.push(offset.bytes() as i64);
             }
         }
+
+        let name = SmallCStr::new(&variable_name.as_str());
+        let metadata = unsafe {
+            llvm::LLVMRustDIBuilderCreateVariable(
+                DIB(cx),
+                dwarf_tag,
+                scope_metadata,
+                name.as_ptr(),
+                file_metadata,
+                loc.line as c_uint,
+                type_metadata,
+                cx.sess().opts.optimize != config::OptLevel::No,
+                DIFlags::FlagZero,
+                argument_index,
+                align.bytes() as u32,
+            )
+        };
+        source_loc::set_debug_location(self,
+            InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
+        unsafe {
+            let debug_loc = llvm::LLVMGetCurrentDebugLocation(self.llbuilder);
+            let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
+                DIB(cx),
+                variable_alloca,
+                metadata,
+                addr_ops.as_ptr(),
+                addr_ops.len() as c_uint,
+                debug_loc,
+                self.llbb());
+
+            llvm::LLVMSetInstDebugLocation(self.llbuilder, instr);
+        }
+        source_loc::set_debug_location(self, UnknownLocation);
     }
 
     fn set_source_location(
         &mut self,
-        debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
-        scope: Option<&'ll DIScope>,
+        debug_context: &mut FunctionDebugContext<&'ll DIScope>,
+        scope: &'ll DIScope,
         span: Span,
     ) {
         set_source_location(debug_context, &self, scope, span)
@@ -224,7 +239,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
-    fn set_var_name(&mut self, value: &'ll Value, name: impl ToString) {
+    fn set_var_name(&mut self, value: &'ll Value, name: &str) {
         // Avoid wasting time if LLVM value names aren't even enabled.
         if self.sess().fewer_names() {
             return;
@@ -254,7 +269,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             Err(_) => return,
         }
 
-        let cname = CString::new(name.to_string()).unwrap();
+        let cname = SmallCStr::new(name);
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }
@@ -268,14 +283,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         sig: ty::FnSig<'tcx>,
         llfn: &'ll Value,
         mir: &mir::Body<'_>,
-    ) -> FunctionDebugContext<&'ll DISubprogram> {
+    ) -> Option<FunctionDebugContext<&'ll DIScope>> {
         if self.sess().opts.debuginfo == DebugInfo::None {
-            return FunctionDebugContext::DebugInfoDisabled;
+            return None;
         }
 
         if let InstanceDef::Item(def_id) = instance.def {
             if self.tcx().codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_DEBUG) {
-                return FunctionDebugContext::FunctionWithoutDebugInfo;
+                return None;
             }
         }
 
@@ -284,7 +299,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // This can be the case for functions inlined from another crate
         if span.is_dummy() {
             // FIXME(simulacrum): Probably can't happen; remove.
-            return FunctionDebugContext::FunctionWithoutDebugInfo;
+            return None;
         }
 
         let def_id = instance.def_id();
@@ -357,14 +372,23 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 None)
         };
 
-        // Initialize fn debug context (including scope map and namespace map)
-        let fn_debug_context = FunctionDebugContextData {
-            fn_metadata,
+        // Initialize fn debug context (including scopes).
+        // FIXME(eddyb) figure out a way to not need `Option` for `scope_metadata`.
+        let null_scope = DebugScope {
+            scope_metadata: None,
+            file_start_pos: BytePos(0),
+            file_end_pos: BytePos(0)
+        };
+        let mut fn_debug_context = FunctionDebugContext {
+            scopes: IndexVec::from_elem(null_scope, &mir.source_scopes),
             source_locations_enabled: false,
             defining_crate: def_id.krate,
         };
 
-        return FunctionDebugContext::RegularContext(fn_debug_context);
+        // Fill in all the scopes, with the information from the MIR body.
+        compute_mir_scopes(self, mir, fn_metadata, &mut fn_debug_context);
+
+        return Some(fn_debug_context);
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
@@ -549,14 +573,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         metadata::create_vtable_metadata(self, ty, vtable)
     }
 
-    fn create_mir_scopes(
-        &self,
-        mir: &mir::Body<'_>,
-        debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
-    ) -> IndexVec<mir::SourceScope, MirDebugScope<&'ll DIScope>> {
-        create_scope_map::create_mir_scopes(self, mir, debug_context)
-    }
-
     fn extend_scope_to_file(
          &self,
          scope_metadata: &'ll DIScope,
@@ -568,14 +584,5 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn debuginfo_finalize(&self) {
         finalize(self)
-    }
-
-    fn debuginfo_upvar_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4] {
-        unsafe {
-            [llvm::LLVMRustDIBuilderCreateOpDeref(),
-             llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
-             byte_offset_of_var_in_env as i64,
-             llvm::LLVMRustDIBuilderCreateOpDeref()]
-        }
     }
 }

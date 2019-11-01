@@ -27,21 +27,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                         LocalRef::Operand(None) => {
                             let (mut bx, operand) = self.codegen_rvalue_operand(bx, rvalue);
-                            if let Some(name) = self.mir.local_decls[index].name {
-                                match operand.val {
-                                    OperandValue::Ref(x, ..) |
-                                    OperandValue::Immediate(x) => {
-                                        bx.set_var_name(x, name);
-                                    }
-                                    OperandValue::Pair(a, b) => {
-                                        // FIXME(eddyb) these are scalar components,
-                                        // maybe extract the high-level fields?
-                                        bx.set_var_name(a, format_args!("{}.0", name));
-                                        bx.set_var_name(b, format_args!("{}.1", name));
-                                    }
-                                }
-                            }
                             self.locals[index] = LocalRef::Operand(Some(operand));
+                            self.debug_introduce_local(&mut bx, index);
                             bx
                         }
                         LocalRef::Operand(Some(op)) => {
