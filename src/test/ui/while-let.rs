@@ -5,6 +5,8 @@ fn macros() {
     macro_rules! foo{
         ($p:pat, $e:expr, $b:block) => {{
             while let $p = $e $b
+            //~^ WARN irrefutable while-let
+            //~| WARN irrefutable while-let
         }}
     }
     macro_rules! bar{
@@ -13,10 +15,10 @@ fn macros() {
         }}
     }
 
-    foo!(_a, 1, { //~ WARN irrefutable while-let
+    foo!(_a, 1, {
         println!("irrefutable pattern");
     });
-    bar!(_a, 1, { //~ WARN irrefutable while-let
+    bar!(_a, 1, {
         println!("irrefutable pattern");
     });
 }

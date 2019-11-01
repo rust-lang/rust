@@ -3137,6 +3137,10 @@ impl<'test> TestCx<'test> {
                     self.fatal_proc_rec("test run succeeded!", &proc_res);
                 }
             }
+            if !self.props.error_patterns.is_empty() {
+                // "// error-pattern" comments
+                self.check_error_patterns(&proc_res.stderr, &proc_res);
+            }
         }
 
         debug!("run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
@@ -3144,14 +3148,13 @@ impl<'test> TestCx<'test> {
                explicit, self.config.compare_mode, expected_errors, proc_res.status,
                self.props.error_patterns);
         if !explicit && self.config.compare_mode.is_none() {
-            if !proc_res.status.success() {
-                if !self.props.error_patterns.is_empty() {
-                    // "// error-pattern" comments
-                    self.check_error_patterns(&proc_res.stderr, &proc_res);
-                } else {
-                    // "//~ERROR comments"
-                    self.check_expected_errors(expected_errors, &proc_res);
-                }
+            if !self.should_run() && !self.props.error_patterns.is_empty() {
+                // "// error-pattern" comments
+                self.check_error_patterns(&proc_res.stderr, &proc_res);
+            }
+            if !expected_errors.is_empty() {
+                // "//~ERROR comments"
+                self.check_expected_errors(expected_errors, &proc_res);
             }
         }
 
