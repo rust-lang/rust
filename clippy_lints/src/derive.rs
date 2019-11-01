@@ -90,6 +90,7 @@ fn check_hash_peq<'a, 'tcx>(
     if_chain! {
         if match_path(&trait_ref.path, &paths::HASH);
         if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
+        if !&trait_ref.trait_def_id().is_local();
         then {
             // Look for the PartialEq implementations for `ty`
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
