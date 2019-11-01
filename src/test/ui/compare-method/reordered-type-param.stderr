@@ -5,7 +5,10 @@ LL |   fn b<C:Clone,D>(&self, x: C) -> C;
    |                             - type in trait
 ...
 LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
-   |                              ^ expected type parameter, found a different type parameter
+   |        -       -             ^ expected type parameter `F`, found type parameter `G`
+   |        |       |
+   |        |       found type parameter
+   |        expected type parameter
    |
    = note: expected type `fn(&E, F) -> F`
               found type `fn(&E, G) -> G`

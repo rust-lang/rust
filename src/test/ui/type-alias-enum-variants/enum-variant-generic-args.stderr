@@ -1,8 +1,11 @@
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:13:25
    |
+LL | impl<T> Enum<T> {
+   |      - this type parameter
+LL |     fn ts_variant() {
 LL |         Self::TSVariant(());
-   |                         ^^ expected type parameter, found ()
+   |                         ^^ expected type parameter `T`, found ()
    |
    = note: expected type `T`
               found type `()`
@@ -24,8 +27,11 @@ LL |         Self::<()>::TSVariant(());
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:17:31
    |
+LL | impl<T> Enum<T> {
+   |      - this type parameter
+...
 LL |         Self::<()>::TSVariant(());
-   |                               ^^ expected type parameter, found ()
+   |                               ^^ expected type parameter `T`, found ()
    |
    = note: expected type `T`
               found type `()`
@@ -47,8 +53,11 @@ LL |         Self::<()>::TSVariant::<()>(());
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:26:29
    |
+LL | impl<T> Enum<T> {
+   |      - this type parameter
+...
 LL |         Self::SVariant { v: () };
-   |                             ^^ expected type parameter, found ()
+   |                             ^^ expected type parameter `T`, found ()
    |
    = note: expected type `T`
               found type `()`
@@ -64,8 +73,11 @@ LL |         Self::SVariant::<()> { v: () };
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:28:35
    |
+LL | impl<T> Enum<T> {
+   |      - this type parameter
+...
 LL |         Self::SVariant::<()> { v: () };
-   |                                   ^^ expected type parameter, found ()
+   |                                   ^^ expected type parameter `T`, found ()
    |
    = note: expected type `T`
               found type `()`
@@ -81,8 +93,11 @@ LL |         Self::<()>::SVariant { v: () };
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:31:35
    |
+LL | impl<T> Enum<T> {
+   |      - this type parameter
+...
 LL |         Self::<()>::SVariant { v: () };
-   |                                   ^^ expected type parameter, found ()
+   |                                   ^^ expected type parameter `T`, found ()
    |
    = note: expected type `T`
               found type `()`
@@ -104,8 +119,11 @@ LL |         Self::<()>::SVariant::<()> { v: () };
 error[E0308]: mismatched types
   --> $DIR/enum-variant-generic-args.rs:34:41
    |
+LL | impl<T> Enum<T> {
+   |      - this type parameter
+...
 LL |         Self::<()>::SVariant::<()> { v: () };
-   |                                         ^^ expected type parameter, found ()
+   |                                         ^^ expected type parameter `T`, found ()
    |
    = note: expected type `T`
               found type `()`
