@@ -49,7 +49,7 @@ fn dump_crates(cstore: &CStore) {
         info!("  name: {}", data.root.name);
         info!("  cnum: {}", data.cnum);
         info!("  hash: {}", data.root.hash);
-        info!("  reqd: {:?}", *data.dep_kind.lock());
+        info!("  reqd: {:?}", data.get_dep_kind());
         let CrateSource { dylib, rlib, rmeta } = data.source.clone();
         dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
@@ -375,9 +375,7 @@ impl<'a> CrateLoader<'a> {
                 if data.root.proc_macro_data.is_some() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
-                data.dep_kind.with_lock(|data_dep_kind| {
-                    *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
-                });
+                data.set_max_dep_kind(dep_kind);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
@@ -549,7 +547,7 @@ impl<'a> CrateLoader<'a> {
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
                                           &|data| data.root.needs_panic_runtime);
-                runtime_found = runtime_found || *data.dep_kind.lock() == DepKind::Explicit;
+                runtime_found = runtime_found || data.get_dep_kind() == DepKind::Explicit;
             }
         });
 

@@ -30,6 +30,7 @@ use syntax_expand::base::{SyntaxExtensionKind, SyntaxExtension};
 use syntax_expand::proc_macro::{AttrProcMacro, ProcMacroDerive, BangProcMacro};
 use syntax_pos::{self, Span, Pos, DUMMY_SP, hygiene::MacroKind};
 use syntax_pos::symbol::{Symbol, sym};
+use std::cmp;
 
 pub use crate::cstore_impl::{provide, provide_extern};
 
@@ -96,7 +97,7 @@ crate struct CrateMetadata {
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
     crate dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    crate dep_kind: Lock<DepKind>,
+    dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
     crate source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
@@ -444,6 +445,23 @@ impl<'a, 'tcx> CrateMetadata {
                 .decode(self)
                 .map(|(def_index, index)| (self.local_def_id(def_index), index)))
         }
+    }
+
+    crate fn get_dep_kind(&self) -> DepKind {
+        *self.dep_kind.lock()
+    }
+
+    crate fn export_macros_untracked(&self) {
+        let mut dep_kind = self.dep_kind.lock();
+        if *dep_kind == DepKind::UnexportedMacrosOnly {
+            *dep_kind = DepKind::MacrosOnly;
+        }
+    }
+
+    crate fn set_max_dep_kind(&self, dep_kind: DepKind) {
+        self.dep_kind.with_lock(|data_dep_kind| {
+            *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
+        });
     }
 
     /// Iterates over the diagnostic items in the given crate.

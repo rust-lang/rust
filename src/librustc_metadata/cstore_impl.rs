@@ -6,7 +6,7 @@ use crate::foreign_modules;
 use crate::schema;
 
 use rustc::ty::query::QueryConfig;
-use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
+use rustc::middle::cstore::{CrateSource, CrateStore, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::middle::dependency_format::Linkage;
@@ -210,8 +210,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     visibility => { cdata.get_visibility(def_id.index) }
     dep_kind => {
-        let r = *cdata.dep_kind.lock();
-        r
+        cdata.get_dep_kind()
     }
     crate_name => { cdata.root.name }
     item_children => {
@@ -404,10 +403,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 impl cstore::CStore {
     pub fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
-        let mut dep_kind = data.dep_kind.lock();
-        if *dep_kind == DepKind::UnexportedMacrosOnly {
-            *dep_kind = DepKind::MacrosOnly;
-        }
+        data.export_macros_untracked();
     }
 
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
