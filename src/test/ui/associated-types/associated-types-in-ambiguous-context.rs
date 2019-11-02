@@ -10,6 +10,9 @@ trait Grab {
     type Value;
     fn grab(&self) -> Grab::Value;
     //~^ ERROR ambiguous associated type
+
+    fn get(&self) -> Get::Value;
+    //~^ ERROR ambiguous associated type
 }
 
 trait Bar {}

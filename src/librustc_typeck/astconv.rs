@@ -1773,11 +1773,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         } else {
             let path_str = tcx.def_path_str(trait_def_id);
 
+            let def_id = self.item_def_id();
+
+            debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
+
+            let parent_def_id = def_id.and_then(|def_id| tcx.hir().as_local_hir_id(def_id))
+                .map(|hir_id| tcx.hir().get_parent_did(hir_id));
+
+            debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
+
             // If the trait in segment is the same as the trait defining the item,
             // use the `<Self as ..>` syntax in the error.
-            debug!("qpath_to_ty: self.item_def_id()={:?}",  self.item_def_id());
+            let is_part_of_self_trait_constraints = def_id == Some(trait_def_id);
+            let is_part_of_fn_in_self_trait = parent_def_id == Some(trait_def_id);
 
-            let type_name = if self.item_def_id() == Some(trait_def_id) {
+            let type_name = if is_part_of_self_trait_constraints || is_part_of_fn_in_self_trait {
                 "Self"
             } else {
                 "Type"
