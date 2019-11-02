@@ -6,8 +6,8 @@ use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
-    ty::{Substs, Ty, TypableDef, TypeWalk},
-    AssocItem, HasGenericParams, Namespace, Path,
+    ty::{method_resolution, Substs, Ty, TypableDef, TypeWalk},
+    AssocItem, Container, HasGenericParams, Name, Namespace, Path,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
@@ -39,7 +39,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let ty = Ty::from_type_relative_path(self.db, resolver, ty, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
-                path.segments.last().expect("path had at least one segment"),
+                &path.segments.last().expect("path had at least one segment").name,
                 id,
             )?
         } else {
@@ -122,10 +122,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     return None;
                 }
 
+                let ty = self.insert_type_vars(ty);
+                let ty = self.normalize_associated_types_in(ty);
+
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
 
-                self.resolve_ty_assoc_item(ty, segment, id)
+                self.resolve_ty_assoc_item(ty, &segment.name, id)
             }
         }
     }
@@ -162,7 +165,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         let substs = Substs::build_for_def(self.db, item)
             .use_parent_substs(&trait_ref.substs)
-            .fill_with_unknown()
+            .fill_with_params()
             .build();
 
         self.write_assoc_resolution(id, item);
@@ -172,44 +175,51 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_ty_assoc_item(
         &mut self,
         ty: Ty,
-        segment: &PathSegment,
+        name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         if let Ty::Unknown = ty {
             return None;
         }
 
-        let krate = self.resolver.krate()?;
+        let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
 
-        // Find impl
-        // FIXME: consider trait candidates
-        let item = ty.clone().iterate_impl_items(self.db, krate, |item| match item {
-            AssocItem::Function(func) => {
-                if segment.name == func.name(self.db) {
-                    Some(AssocItem::Function(func))
-                } else {
-                    None
-                }
-            }
+        method_resolution::iterate_method_candidates(
+            &canonical_ty.value,
+            self.db,
+            &self.resolver.clone(),
+            Some(name),
+            method_resolution::LookupMode::Path,
+            move |_ty, item| {
+                let def = match item {
+                    AssocItem::Function(f) => ValueNs::Function(f),
+                    AssocItem::Const(c) => ValueNs::Const(c),
+                    AssocItem::TypeAlias(_) => unreachable!(),
+                };
+                let substs = match item.container(self.db) {
+                    Container::ImplBlock(_) => self.find_self_types(&def, ty.clone()),
+                    Container::Trait(t) => {
+                        // we're picking this method
+                        let trait_substs = Substs::build_for_def(self.db, t)
+                            .push(ty.clone())
+                            .fill(std::iter::repeat_with(|| self.new_type_var()))
+                            .build();
+                        let substs = Substs::build_for_def(self.db, item)
+                            .use_parent_substs(&trait_substs)
+                            .fill_with_params()
+                            .build();
+                        self.obligations.push(super::Obligation::Trait(TraitRef {
+                            trait_: t,
+                            substs: trait_substs,
+                        }));
+                        Some(substs)
+                    }
+                };
 
-            AssocItem::Const(konst) => {
-                if konst.name(self.db).map_or(false, |n| n == segment.name) {
-                    Some(AssocItem::Const(konst))
-                } else {
-                    None
-                }
-            }
-            AssocItem::TypeAlias(_) => None,
-        })?;
-        let def = match item {
-            AssocItem::Function(f) => ValueNs::Function(f),
-            AssocItem::Const(c) => ValueNs::Const(c),
-            AssocItem::TypeAlias(_) => unreachable!(),
-        };
-        let substs = self.find_self_types(&def, ty);
-
-        self.write_assoc_resolution(id, item);
-        Some((def, substs))
+                self.write_assoc_resolution(id, item);
+                Some((def, substs))
+            },
+        )
     }
 
     fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {

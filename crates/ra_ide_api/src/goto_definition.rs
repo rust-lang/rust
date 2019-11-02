@@ -316,6 +316,25 @@ mod tests {
     }
 
     #[test]
+    fn goto_definition_works_for_macros_in_use_tree() {
+        check_goto(
+            "
+            //- /lib.rs
+            use foo::foo<|>;
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo {
+                () => {
+                    {}
+                };
+            }
+            ",
+            "foo MACRO_CALL FileId(2) [0; 66) [29; 32)",
+        );
+    }
+
+    #[test]
     fn goto_definition_works_for_methods() {
         covers!(goto_definition_works_for_methods);
         check_goto(
@@ -371,6 +390,61 @@ mod tests {
             "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
         );
     }
+
+    #[test]
+    fn goto_definition_works_for_ufcs_inherent_methods() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            impl Foo {
+                fn frobnicate() {  }
+            }
+
+            fn bar(foo: &Foo) {
+                Foo::frobnicate<|>();
+            }
+            ",
+            "frobnicate FN_DEF FileId(1) [27; 47) [30; 40)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_ufcs_trait_methods_through_traits() {
+        check_goto(
+            "
+            //- /lib.rs
+            trait Foo {
+                fn frobnicate();
+            }
+
+            fn bar() {
+                Foo::frobnicate<|>();
+            }
+            ",
+            "frobnicate FN_DEF FileId(1) [16; 32) [19; 29)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_ufcs_trait_methods_through_self() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            trait Trait {
+                fn frobnicate();
+            }
+            impl Trait for Foo {}
+
+            fn bar() {
+                Foo::frobnicate<|>();
+            }
+            ",
+            "frobnicate FN_DEF FileId(1) [30; 46) [33; 43)",
+        );
+    }
+
     #[test]
     fn goto_definition_on_self() {
         check_goto(

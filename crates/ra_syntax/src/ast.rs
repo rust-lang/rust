@@ -113,6 +113,20 @@ fn test_doc_comment_of_items() {
 }
 
 #[test]
+fn test_doc_comment_of_statics() {
+    let file = SourceFile::parse(
+        r#"
+        /// Number of levels
+        static LEVELS: i32 = 0;
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let st = file.syntax().descendants().find_map(StaticDef::cast).unwrap();
+    assert_eq!("Number of levels", st.doc_comment_text().unwrap());
+}
+
+#[test]
 fn test_doc_comment_preserves_indents() {
     let file = SourceFile::parse(
         r#"

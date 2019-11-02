@@ -385,13 +385,22 @@ impl SubstsBuilder {
         self.param_count - self.vec.len()
     }
 
-    pub fn fill_with_bound_vars(mut self, starting_from: u32) -> Self {
-        self.vec.extend((starting_from..starting_from + self.remaining() as u32).map(Ty::Bound));
-        self
+    pub fn fill_with_bound_vars(self, starting_from: u32) -> Self {
+        self.fill((starting_from..).map(Ty::Bound))
     }
 
-    pub fn fill_with_unknown(mut self) -> Self {
-        self.vec.extend(iter::repeat(Ty::Unknown).take(self.remaining()));
+    pub fn fill_with_params(self) -> Self {
+        let start = self.vec.len() as u32;
+        self.fill((start..).map(|idx| Ty::Param { idx, name: Name::missing() }))
+    }
+
+    pub fn fill_with_unknown(self) -> Self {
+        self.fill(iter::repeat(Ty::Unknown))
+    }
+
+    pub fn fill(mut self, filler: impl Iterator<Item = Ty>) -> Self {
+        self.vec.extend(filler.take(self.remaining()));
+        assert_eq!(self.remaining(), 0);
         self
     }
 

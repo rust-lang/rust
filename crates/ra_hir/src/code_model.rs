@@ -1053,4 +1053,13 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.module(db),
         }
     }
+
+    pub fn container(self, db: &impl DefDatabase) -> Container {
+        match self {
+            AssocItem::Function(f) => f.container(db),
+            AssocItem::Const(c) => c.container(db),
+            AssocItem::TypeAlias(t) => t.container(db),
+        }
+        .expect("AssocItem without container")
+    }
 }

@@ -147,7 +147,7 @@ fn n_attached_trivias<'a>(
 ) -> usize {
     match kind {
         MACRO_CALL | CONST_DEF | TYPE_ALIAS_DEF | STRUCT_DEF | ENUM_DEF | ENUM_VARIANT | FN_DEF
-        | TRAIT_DEF | MODULE | RECORD_FIELD_DEF => {
+        | TRAIT_DEF | MODULE | RECORD_FIELD_DEF | STATIC_DEF => {
             let mut res = 0;
             for (i, (kind, text)) in trivias.enumerate() {
                 match kind {

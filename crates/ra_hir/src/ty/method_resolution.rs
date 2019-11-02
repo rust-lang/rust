@@ -166,37 +166,78 @@ pub(crate) fn lookup_method(
     name: &Name,
     resolver: &Resolver,
 ) -> Option<(Ty, Function)> {
-    iterate_method_candidates(ty, db, resolver, Some(name), |ty, f| Some((ty.clone(), f)))
+    iterate_method_candidates(ty, db, resolver, Some(name), LookupMode::MethodCall, |ty, f| match f
+    {
+        AssocItem::Function(f) => Some((ty.clone(), f)),
+        _ => None,
+    })
+}
+
+/// Whether we're looking up a dotted method call (like `v.len()`) or a path
+/// (like `Vec::new`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LookupMode {
+    /// Looking up a method call like `v.len()`: We only consider candidates
+    /// that have a `self` parameter, and do autoderef.
+    MethodCall,
+    /// Looking up a path like `Vec::new` or `Vec::default`: We consider all
+    /// candidates including associated constants, but don't do autoderef.
+    Path,
 }
 
 // This would be nicer if it just returned an iterator, but that runs into
 // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+// FIXME add a context type here?
 pub(crate) fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,
     name: Option<&Name>,
-    mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    mode: LookupMode,
+    mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
-    // For method calls, rust first does any number of autoderef, and then one
-    // autoref (i.e. when the method takes &self or &mut self). We just ignore
-    // the autoref currently -- when we find a method matching the given name,
-    // we assume it fits.
-
-    // Also note that when we've got a receiver like &S, even if the method we
-    // find in the end takes &self, we still do the autoderef step (just as
-    // rustc does an autoderef and then autoref again).
-
     let krate = resolver.krate()?;
-    for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
-        if let Some(result) = iterate_inherent_methods(&derefed_ty, db, name, krate, &mut callback)
-        {
-            return Some(result);
+    match mode {
+        LookupMode::MethodCall => {
+            // For method calls, rust first does any number of autoderef, and then one
+            // autoref (i.e. when the method takes &self or &mut self). We just ignore
+            // the autoref currently -- when we find a method matching the given name,
+            // we assume it fits.
+
+            // Also note that when we've got a receiver like &S, even if the method we
+            // find in the end takes &self, we still do the autoderef step (just as
+            // rustc does an autoderef and then autoref again).
+
+            for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
+                if let Some(result) =
+                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
+                {
+                    return Some(result);
+                }
+                if let Some(result) = iterate_trait_method_candidates(
+                    &derefed_ty,
+                    db,
+                    resolver,
+                    name,
+                    mode,
+                    &mut callback,
+                ) {
+                    return Some(result);
+                }
+            }
         }
-        if let Some(result) =
-            iterate_trait_method_candidates(&derefed_ty, db, resolver, name, &mut callback)
-        {
-            return Some(result);
+        LookupMode::Path => {
+            // No autoderef for path lookups
+            if let Some(result) =
+                iterate_inherent_methods(&ty, db, name, mode, krate, &mut callback)
+            {
+                return Some(result);
+            }
+            if let Some(result) =
+                iterate_trait_method_candidates(&ty, db, resolver, name, mode, &mut callback)
+            {
+                return Some(result);
+            }
         }
     }
     None
@@ -207,7 +248,8 @@ fn iterate_trait_method_candidates<T>(
     db: &impl HirDatabase,
     resolver: &Resolver,
     name: Option<&Name>,
-    mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    mode: LookupMode,
+    mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
     // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
@@ -231,21 +273,19 @@ fn iterate_trait_method_candidates<T>(
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
         let mut known_implemented = inherently_implemented;
-        for item in data.items() {
-            if let AssocItem::Function(m) = *item {
-                let data = m.data(db);
-                if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
-                    if !known_implemented {
-                        let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
-                        if db.trait_solve(krate, goal).is_none() {
-                            continue 'traits;
-                        }
-                    }
-                    known_implemented = true;
-                    if let Some(result) = callback(&ty.value, m) {
-                        return Some(result);
-                    }
+        for &item in data.items() {
+            if !is_valid_candidate(db, name, mode, item) {
+                continue;
+            }
+            if !known_implemented {
+                let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
+                if db.trait_solve(krate, goal).is_none() {
+                    continue 'traits;
                 }
+            }
+            known_implemented = true;
+            if let Some(result) = callback(&ty.value, item) {
+                return Some(result);
             }
         }
     }
@@ -256,26 +296,45 @@ fn iterate_inherent_methods<T>(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     name: Option<&Name>,
+    mode: LookupMode,
     krate: Crate,
-    mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
     for krate in def_crates(db, krate, &ty.value)? {
         let impls = db.impls_in_crate(krate);
 
         for impl_block in impls.lookup_impl_blocks(&ty.value) {
             for item in impl_block.items(db) {
-                if let AssocItem::Function(f) = item {
-                    let data = f.data(db);
-                    if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
-                        if let Some(result) = callback(&ty.value, f) {
-                            return Some(result);
-                        }
-                    }
+                if !is_valid_candidate(db, name, mode, item) {
+                    continue;
+                }
+                if let Some(result) = callback(&ty.value, item) {
+                    return Some(result);
                 }
             }
         }
     }
     None
+}
+
+fn is_valid_candidate(
+    db: &impl HirDatabase,
+    name: Option<&Name>,
+    mode: LookupMode,
+    item: AssocItem,
+) -> bool {
+    match item {
+        AssocItem::Function(m) => {
+            let data = m.data(db);
+            name.map_or(true, |name| data.name() == name)
+                && (data.has_self_param() || mode == LookupMode::Path)
+        }
+        AssocItem::Const(c) => {
+            name.map_or(true, |name| Some(name) == c.name(db).as_ref())
+                && (mode == LookupMode::Path)
+        }
+        _ => false,
+    }
 }
 
 pub(crate) fn implements_trait(

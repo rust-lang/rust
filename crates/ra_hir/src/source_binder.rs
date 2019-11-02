@@ -27,9 +27,9 @@ use crate::{
     },
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
-    ty::method_resolution::implements_trait,
-    Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, MacroDef, Module,
-    Name, Path, Resolver, Static, Struct, Ty,
+    ty::method_resolution::{self, implements_trait},
+    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId,
+    MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
 
 fn try_get_resolver_for_node(
@@ -255,7 +255,9 @@ impl SourceAnalyzer {
 
         let items =
             self.resolver.resolve_module_path(db, &path).take_types().map(PathResolution::Def);
-        types.or(values).or(items)
+        types.or(values).or(items).or_else(|| {
+            self.resolver.resolve_path_as_macro(db, &path).map(|def| PathResolution::Macro(def))
+        })
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
@@ -325,16 +327,42 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         ty: Ty,
         name: Option<&Name>,
-        callback: impl FnMut(&Ty, Function) -> Option<T>,
+        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
         // FIXME check that?
+        // FIXME replace Unknown by bound vars here
         let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
-        crate::ty::method_resolution::iterate_method_candidates(
+        method_resolution::iterate_method_candidates(
             &canonical,
             db,
             &self.resolver,
             name,
+            method_resolution::LookupMode::MethodCall,
+            |ty, it| match it {
+                AssocItem::Function(f) => callback(ty, f),
+                _ => None,
+            },
+        )
+    }
+
+    pub fn iterate_path_candidates<T>(
+        &self,
+        db: &impl HirDatabase,
+        ty: Ty,
+        name: Option<&Name>,
+        callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+    ) -> Option<T> {
+        // There should be no inference vars in types passed here
+        // FIXME check that?
+        // FIXME replace Unknown by bound vars here
+        let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+        method_resolution::iterate_method_candidates(
+            &canonical,
+            db,
+            &self.resolver,
+            name,
+            method_resolution::LookupMode::Path,
             callback,
         )
     }

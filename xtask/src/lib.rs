@@ -3,6 +3,7 @@
 pub mod codegen;
 
 use std::{
+    env,
     error::Error,
     fs,
     io::{Error as IoError, ErrorKind},
@@ -17,7 +18,13 @@ pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 const TOOLCHAIN: &str = "stable";
 
 pub fn project_root() -> PathBuf {
-    Path::new(&env!("CARGO_MANIFEST_DIR")).ancestors().nth(1).unwrap().to_path_buf()
+    Path::new(
+        &env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").to_owned()),
+    )
+    .ancestors()
+    .nth(1)
+    .unwrap()
+    .to_path_buf()
 }
 
 pub struct Cmd<'a> {
