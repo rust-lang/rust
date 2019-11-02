@@ -124,8 +124,6 @@ jobs:
         IMAGE: dist-x86_64-netbsd
         DEPLOY: 1
 
-      asmjs:
-        IMAGE: asmjs
       i686-gnu:
         IMAGE: i686-gnu
       i686-gnu-nopt:
