@@ -127,6 +127,7 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
             text_edit: Some(text_edit),
             additional_text_edits: Some(additional_text_edits),
             documentation: self.documentation().map(|it| it.conv()),
+            deprecated: self.deprecated(),
             ..Default::default()
         };
         res.insert_text_format = Some(match self.insert_text_format() {

@@ -96,6 +96,7 @@ mod tests {
        ⋮        insert: "the_field",
        ⋮        kind: Field,
        ⋮        detail: "u32",
+       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###
@@ -128,6 +129,7 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(self)",
+                deprecated: false,
             },
             CompletionItem {
                 label: "the_field",
@@ -139,6 +141,7 @@ mod tests {
                 documentation: Documentation(
                     "This is the_field",
                 ),
+                deprecated: false,
             },
         ]
         "###
@@ -168,6 +171,7 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self)",
+                deprecated: false,
             },
             CompletionItem {
                 label: "the_field",
@@ -176,6 +180,7 @@ mod tests {
                 insert: "the_field",
                 kind: Field,
                 detail: "(u32, i32)",
+                deprecated: false,
             },
         ]
         "###
@@ -221,6 +226,7 @@ mod tests {
                 kind: Method,
                 lookup: "the_method",
                 detail: "fn the_method(&self)",
+                deprecated: false,
             },
         ]
         "###
@@ -250,6 +256,7 @@ mod tests {
                 kind: Method,
                 lookup: "the_method",
                 detail: "fn the_method(&self)",
+                deprecated: false,
             },
         ]
         "###
@@ -279,6 +286,7 @@ mod tests {
                 kind: Method,
                 lookup: "the_method",
                 detail: "fn the_method(&self)",
+                deprecated: false,
             },
         ]
         "###
@@ -331,6 +339,7 @@ mod tests {
                 kind: Method,
                 lookup: "the_method",
                 detail: "fn the_method(&self)",
+                deprecated: false,
             },
         ]
         "###
@@ -401,6 +410,7 @@ mod tests {
                 kind: Method,
                 lookup: "blah",
                 detail: "pub fn blah(&self)",
+                deprecated: false,
             },
         ]
         "###
@@ -427,6 +437,7 @@ mod tests {
        ⋮        insert: "the_field",
        ⋮        kind: Field,
        ⋮        detail: "u32",
+       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###

@@ -2,7 +2,7 @@
 
 use hir::{db::HirDatabase, Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
-use ra_syntax::ast::NameOwner;
+use ra_syntax::ast::{AttrsOwner, NameOwner};
 use test_utils::tested_by;
 
 use crate::completion::{
@@ -18,6 +18,11 @@ impl Completions {
         field: hir::StructField,
         substs: &hir::Substs,
     ) {
+        let ast_node = field.source(ctx.db).ast;
+        let is_deprecated = match ast_node {
+            hir::FieldSource::Named(m) => is_deprecated(m),
+            hir::FieldSource::Pos(m) => is_deprecated(m),
+        };
         CompletionItem::new(
             CompletionKind::Reference,
             ctx.source_range(),
@@ -26,6 +31,7 @@ impl Completions {
         .kind(CompletionItemKind::Field)
         .detail(field.ty(ctx.db).subst(substs).display(ctx.db).to_string())
         .set_documentation(field.docs(ctx.db))
+        .set_deprecated(is_deprecated)
         .add_to(self);
     }
 
@@ -179,6 +185,7 @@ impl Completions {
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), &macro_declaration)
                 .kind(CompletionItemKind::Macro)
                 .set_documentation(docs.clone())
+                .set_deprecated(is_deprecated(ast_node))
                 .detail(detail);
 
         builder = if ctx.use_item_syntax.is_some() {
@@ -211,6 +218,7 @@ impl Completions {
                     CompletionItemKind::Function
                 })
                 .set_documentation(func.docs(ctx.db))
+                .set_deprecated(is_deprecated(ast_node))
                 .detail(detail);
 
         // Add `<>` for generic types
@@ -242,6 +250,7 @@ impl Completions {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
             .kind(CompletionItemKind::Const)
             .set_documentation(constant.docs(ctx.db))
+            .set_deprecated(is_deprecated(ast_node))
             .detail(detail)
             .add_to(self);
     }
@@ -257,11 +266,13 @@ impl Completions {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
             .kind(CompletionItemKind::TypeAlias)
             .set_documentation(type_alias.docs(ctx.db))
+            .set_deprecated(is_deprecated(type_def))
             .detail(detail)
             .add_to(self);
     }
 
     pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {
+        let is_deprecated = is_deprecated(variant.source(ctx.db).ast);
         let name = match variant.name(ctx.db) {
             Some(it) => it,
             None => return,
@@ -274,9 +285,14 @@ impl Completions {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
             .kind(CompletionItemKind::EnumVariant)
             .set_documentation(variant.docs(ctx.db))
+            .set_deprecated(is_deprecated)
             .detail(detail)
             .add_to(self);
     }
+}
+
+fn is_deprecated(node: impl AttrsOwner) -> bool {
+    node.attrs().filter_map(|x| x.simple_name()).any(|x| x == "deprecated")
 }
 
 fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {
@@ -293,6 +309,57 @@ mod tests {
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
+    }
+
+    #[test]
+    fn sets_deprecated_flag_in_completion_items() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r#"
+                #[deprecated]
+                fn something_deprecated() {}
+
+                #[deprecated(since = "1.0.0")]
+                fn something_else_deprecated() {}
+
+                fn main() { som<|> }
+                "#,
+            ),
+            @r###"
+            [
+                CompletionItem {
+                    label: "main()",
+                    source_range: [203; 206),
+                    delete: [203; 206),
+                    insert: "main()$0",
+                    kind: Function,
+                    lookup: "main",
+                    detail: "fn main()",
+                    deprecated: false,
+                },
+                CompletionItem {
+                    label: "something_deprecated()",
+                    source_range: [203; 206),
+                    delete: [203; 206),
+                    insert: "something_deprecated()$0",
+                    kind: Function,
+                    lookup: "something_deprecated",
+                    detail: "fn something_deprecated()",
+                    deprecated: true,
+                },
+                CompletionItem {
+                    label: "something_else_deprecated()",
+                    source_range: [203; 206),
+                    delete: [203; 206),
+                    insert: "something_else_deprecated()$0",
+                    kind: Function,
+                    lookup: "something_else_deprecated",
+                    detail: "fn something_else_deprecated()",
+                    deprecated: true,
+                },
+            ]
+            "###
+        );
     }
 
     #[test]
@@ -315,6 +382,7 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
+                deprecated: false,
             },
             CompletionItem {
                 label: "no_args()",
@@ -324,6 +392,7 @@ mod tests {
                 kind: Function,
                 lookup: "no_args",
                 detail: "fn no_args()",
+                deprecated: false,
             },
         ]
         "###
@@ -345,6 +414,7 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
+                deprecated: false,
             },
             CompletionItem {
                 label: "with_args(…)",
@@ -354,6 +424,7 @@ mod tests {
                 kind: Function,
                 lookup: "with_args",
                 detail: "fn with_args(x: i32, y: String)",
+                deprecated: false,
             },
         ]
         "###
@@ -380,6 +451,7 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self)",
+                deprecated: false,
             },
         ]
         "###
@@ -404,6 +476,7 @@ mod tests {
         insert: "foo",
         kind: Function,
         detail: "pub fn foo()",
+        deprecated: false,
     },
 ]"#
         );
@@ -429,6 +502,7 @@ mod tests {
         insert: "frobnicate",
         kind: Function,
         detail: "fn frobnicate()",
+        deprecated: false,
     },
     CompletionItem {
         label: "main",
@@ -437,6 +511,7 @@ mod tests {
         insert: "main",
         kind: Function,
         detail: "fn main()",
+        deprecated: false,
     },
 ]"#
         );
@@ -459,6 +534,7 @@ mod tests {
         insert: "new",
         kind: Function,
         detail: "fn new() -> Foo",
+        deprecated: false,
     },
 ]"#
         );
@@ -492,6 +568,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
+                deprecated: false,
             },
         ]
         "###
@@ -521,6 +598,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
+                deprecated: false,
             },
         ]
         "###
@@ -549,6 +627,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
+                deprecated: false,
             },
         ]
         "###
@@ -577,6 +656,7 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve<i128>)",
+                deprecated: false,
             },
         ]
         "###
@@ -607,6 +687,7 @@ mod tests {
                 insert: "frobnicate",
                 kind: Macro,
                 detail: "#[macro_export]\nmacro_rules! frobnicate",
+                deprecated: false,
             },
         ]
         "###

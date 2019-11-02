@@ -44,6 +44,9 @@ pub struct CompletionItem {
     /// Additional info to show in the UI pop up.
     detail: Option<String>,
     documentation: Option<Documentation>,
+
+    /// Whether this item is marked as deprecated
+    deprecated: Option<bool>,
 }
 
 // We use custom debug for CompletionItem to make `insta`'s diffs more readable.
@@ -69,6 +72,9 @@ impl fmt::Debug for CompletionItem {
         }
         if let Some(documentation) = self.documentation() {
             s.field("documentation", &documentation);
+        }
+        if let Some(deprecated) = self.deprecated {
+            s.field("deprecated", &deprecated);
         }
         s.finish()
     }
@@ -132,6 +138,7 @@ impl CompletionItem {
             lookup: None,
             kind: None,
             text_edit: None,
+            deprecated: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -166,6 +173,10 @@ impl CompletionItem {
     pub fn kind(&self) -> Option<CompletionItemKind> {
         self.kind
     }
+
+    pub fn deprecated(&self) -> Option<bool> {
+        self.deprecated
+    }
 }
 
 /// A helper to make `CompletionItem`s.
@@ -181,6 +192,7 @@ pub(crate) struct Builder {
     lookup: Option<String>,
     kind: Option<CompletionItemKind>,
     text_edit: Option<TextEdit>,
+    deprecated: Option<bool>,
 }
 
 impl Builder {
@@ -208,6 +220,7 @@ impl Builder {
             lookup: self.lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
+            deprecated: self.deprecated,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -252,6 +265,10 @@ impl Builder {
     }
     pub(crate) fn set_documentation(mut self, docs: Option<Documentation>) -> Builder {
         self.documentation = docs.map(Into::into);
+        self
+    }
+    pub(crate) fn set_deprecated(mut self, deprecated: bool) -> Builder {
+        self.deprecated = Some(deprecated);
         self
     }
 }
