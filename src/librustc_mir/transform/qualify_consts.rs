@@ -564,6 +564,7 @@ impl Qualif for IsNotPromotable {
                             | "transmute"
                             | "simd_insert"
                             | "simd_extract"
+                            | "ptr_offset_from"
                             => return true,
 
                             _ => {}

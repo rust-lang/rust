@@ -13,7 +13,7 @@ use rustc::mir::BinOp;
 use rustc::mir::interpret::{InterpResult, Scalar, GlobalId, ConstValue};
 
 use super::{
-    Machine, PlaceTy, OpTy, InterpCx,
+    Machine, PlaceTy, OpTy, InterpCx, ImmTy,
 };
 
 mod caller_location;
@@ -249,6 +249,29 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = Scalar::from_uint(truncated_bits, layout.size);
                 self.write_scalar(result, dest)?;
             }
+
+            "ptr_offset_from" => {
+                let a = self.read_immediate(args[0])?.to_scalar()?.to_ptr()?;
+                let b = self.read_immediate(args[1])?.to_scalar()?.to_ptr()?;
+                if a.alloc_id != b.alloc_id {
+                    throw_ub_format!(
+                        "ptr_offset_from cannot compute offset of pointers into different \
+                        allocations.",
+                    );
+                }
+                let usize_layout = self.layout_of(self.tcx.types.usize)?;
+                let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
+                let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
+                let (val, _overflowed, _ty) = self.overflowing_binary_op(
+                    BinOp::Sub, a_offset, b_offset,
+                )?;
+                let pointee_layout = self.layout_of(substs.type_at(0))?;
+                let isize_layout = self.layout_of(self.tcx.types.isize)?;
+                let val = ImmTy::from_scalar(val, isize_layout);
+                let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
+                self.exact_div(val, size, dest)?;
+            }
+
             "transmute" => {
                 self.copy_op_transmute(args[0], dest)?;
             }
@@ -353,5 +376,31 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             return Ok(false);
         }
+    }
+
+    pub fn exact_div(
+        &mut self,
+        a: ImmTy<'tcx, M::PointerTag>,
+        b: ImmTy<'tcx, M::PointerTag>,
+        dest: PlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        // Performs an exact division, resulting in undefined behavior where
+        // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`.
+        // First, check x % y != 0.
+        if self.binary_op(BinOp::Rem, a, b)?.to_bits()? != 0 {
+            // Then, check if `b` is -1, which is the "min_value / -1" case.
+            let minus1 = Scalar::from_int(-1, dest.layout.size);
+            let b = b.to_scalar().unwrap();
+            if b == minus1 {
+                throw_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")
+            } else {
+                throw_ub_format!(
+                    "exact_div: {} cannot be divided by {} without remainder",
+                    a.to_scalar().unwrap(),
+                    b,
+                )
+            }
+        }
+        self.binop_ignore_overflow(BinOp::Div, a, b, dest)
     }
 }

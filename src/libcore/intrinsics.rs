@@ -1344,6 +1344,10 @@ extern "rust-intrinsic" {
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+
+    /// See documentation of `<*const T>::offset_from` for details.
+    #[cfg(not(bootstrap))]
+    pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 }
 
 // Some functions are defined here because they accidentally got made

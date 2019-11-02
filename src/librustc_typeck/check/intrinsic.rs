@@ -317,6 +317,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                 (1, vec![param(0), param(0)],
                 tcx.intern_tup(&[param(0), tcx.types.bool])),
 
+            "ptr_offset_from" =>
+                (1, vec![ tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0)) ], tcx.types.isize),
             "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
             "unchecked_shl" | "unchecked_shr" |
