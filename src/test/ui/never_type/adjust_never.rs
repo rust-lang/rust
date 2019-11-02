@@ -1,7 +1,6 @@
 // Test that a variable of type ! can coerce to another type.
 
-// run-fail
-// error-pattern:explicit
+// check-pass
 
 #![feature(never_type)]
 
