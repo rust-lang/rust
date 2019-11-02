@@ -1,5 +1,4 @@
-// ingoring on musl because it's ui output hides libcore backtraces
-// ignore-musl
+// ignore-x86 FIXME: missing sysroot spans (#53081)
 
 #![feature(const_raw_ptr_deref)]
 #![feature(const_ptr_offset_from)]
