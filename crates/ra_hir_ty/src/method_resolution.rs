@@ -176,7 +176,6 @@ pub fn iterate_method_candidates<T>(
     mode: LookupMode,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    let krate = resolver.krate()?;
     match mode {
         LookupMode::MethodCall => {
             // For method calls, rust first does any number of autoderef, and then one
@@ -189,57 +188,125 @@ pub fn iterate_method_candidates<T>(
             // rustc does an autoderef and then autoref again).
             let environment = TraitEnvironment::lower(db, resolver);
             let ty = InEnvironment { value: ty.clone(), environment };
-            for derefed_ty in autoderef::autoderef(db, resolver.krate(), ty) {
-                if let Some(result) =
-                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
-                {
-                    return Some(result);
-                }
-                if let Some(result) = iterate_trait_method_candidates(
-                    &derefed_ty,
+            let krate = resolver.krate()?;
+
+            // We have to be careful about the order of operations here.
+            // Consider the case where we're resolving `x.clone()` where `x:
+            // &Vec<_>`. This resolves to the clone method with self type
+            // `Vec<_>`, *not* `&_`. I.e. we need to consider methods where the
+            // receiver type exactly matches before cases where we have to do
+            // autoref. But in the autoderef steps, the `&_` self type comes up
+            // *before* the `Vec<_>` self type.
+            //
+            // On the other hand, we don't want to just pick any by-value method
+            // before any by-autoref method; it's just that we need to consider
+            // the methods by autoderef order of *receiver types*, not *self
+            // types*.
+
+            let deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty.clone()).collect();
+            for i in 0..deref_chain.len() {
+                if let Some(result) = iterate_method_candidates_autoref(
+                    &deref_chain[i..],
                     db,
                     resolver,
                     name,
-                    mode,
                     &mut callback,
                 ) {
                     return Some(result);
                 }
             }
+            None
         }
         LookupMode::Path => {
             // No autoderef for path lookups
-            if let Some(result) =
-                iterate_inherent_methods(&ty, db, name, mode, krate.into(), &mut callback)
-            {
-                return Some(result);
-            }
-            if let Some(result) =
-                iterate_trait_method_candidates(&ty, db, resolver, name, mode, &mut callback)
-            {
-                return Some(result);
-            }
+            iterate_method_candidates_inner(&ty, db, resolver, name, None, &mut callback)
+        }
+    }
+}
+
+fn iterate_method_candidates_autoref<T>(
+    deref_chain: &[Canonical<Ty>],
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    name: Option<&Name>,
+    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
+) -> Option<T> {
+    if let Some(result) = iterate_method_candidates_by_receiver(&deref_chain[0], &deref_chain[1..], db, resolver, name, &mut callback) {
+        return Some(result);
+    }
+    let refed = Canonical {
+        num_vars: deref_chain[0].num_vars,
+        value: Ty::apply_one(TypeCtor::Ref(Mutability::Shared), deref_chain[0].value.clone()),
+    };
+    if let Some(result) = iterate_method_candidates_by_receiver(&refed, deref_chain, db, resolver, name, &mut callback) {
+        return Some(result);
+    }
+    let ref_muted = Canonical {
+        num_vars: deref_chain[0].num_vars,
+        value: Ty::apply_one(TypeCtor::Ref(Mutability::Mut), deref_chain[0].value.clone()),
+    };
+    if let Some(result) = iterate_method_candidates_by_receiver(&ref_muted, deref_chain, db, resolver, name, &mut callback) {
+        return Some(result);
+    }
+    None
+}
+
+fn iterate_method_candidates_by_receiver<T>(
+    receiver_ty: &Canonical<Ty>,
+    deref_chain: &[Canonical<Ty>],
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    name: Option<&Name>,
+    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
+) -> Option<T> {
+    // TODO: do we need to do the whole loop for inherents before traits?
+    // We're looking for methods with *receiver* type receiver_ty. These could
+    // be found in any of the derefs of receiver_ty, so we have to go through
+    // that.
+    for self_ty in std::iter::once(receiver_ty).chain(deref_chain) {
+        if let Some(result) = iterate_method_candidates_inner(self_ty, db, resolver, name, Some(receiver_ty), &mut callback) {
+            return Some(result);
         }
     }
     None
 }
 
-fn iterate_trait_method_candidates<T>(
-    ty: &Canonical<Ty>,
+fn iterate_method_candidates_inner<T>(
+    self_ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,
     name: Option<&Name>,
-    mode: LookupMode,
+    receiver_ty: Option<&Canonical<Ty>>,
+    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
+) -> Option<T> {
+    let krate = resolver.krate()?;
+    if let Some(result) = iterate_inherent_methods(self_ty, db, name, receiver_ty, krate, &mut callback) {
+        return Some(result);
+    }
+    if let Some(result) =
+        iterate_trait_method_candidates(self_ty, db, resolver, name, receiver_ty, &mut callback)
+    {
+        return Some(result);
+    }
+    None
+}
+
+fn iterate_trait_method_candidates<T>(
+    self_ty: &Canonical<Ty>,
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    name: Option<&Name>,
+    receiver_ty: Option<&Canonical<Ty>>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
     // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
     let env = TraitEnvironment::lower(db, resolver);
     // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
-    let inherent_trait = ty.value.inherent_trait().into_iter();
+    let inherent_trait = self_ty.value.inherent_trait().into_iter();
     // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
     let traits_from_env = env
-        .trait_predicates_for_self_ty(&ty.value)
+        .trait_predicates_for_self_ty(&self_ty.value)
         .map(|tr| tr.trait_)
         .flat_map(|t| all_super_traits(db, t));
     let traits =
@@ -252,17 +319,17 @@ fn iterate_trait_method_candidates<T>(
         // iteration
         let mut known_implemented = false;
         for (_name, item) in data.items.iter() {
-            if !is_valid_candidate(db, name, mode, (*item).into()) {
+            if !is_valid_candidate(db, name, receiver_ty, (*item).into(), self_ty) {
                 continue;
             }
             if !known_implemented {
-                let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
+                let goal = generic_implements_goal(db, env.clone(), t, self_ty.clone());
                 if db.trait_solve(krate.into(), goal).is_none() {
                     continue 'traits;
                 }
             }
             known_implemented = true;
-            if let Some(result) = callback(&ty.value, (*item).into()) {
+            if let Some(result) = callback(&self_ty.value, (*item).into()) {
                 return Some(result);
             }
         }
@@ -271,22 +338,22 @@ fn iterate_trait_method_candidates<T>(
 }
 
 fn iterate_inherent_methods<T>(
-    ty: &Canonical<Ty>,
+    self_ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     name: Option<&Name>,
-    mode: LookupMode,
+    receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    for krate in ty.value.def_crates(db, krate)? {
+    for krate in self_ty.value.def_crates(db, krate)? {
         let impls = db.impls_in_crate(krate);
 
-        for impl_block in impls.lookup_impl_blocks(&ty.value) {
+        for impl_block in impls.lookup_impl_blocks(&self_ty.value) {
             for &item in db.impl_data(impl_block).items.iter() {
-                if !is_valid_candidate(db, name, mode, item) {
+                if !is_valid_candidate(db, name, receiver_ty, item, self_ty) {
                     continue;
                 }
-                if let Some(result) = callback(&ty.value, item.into()) {
+                if let Some(result) = callback(&self_ty.value, item) {
                     return Some(result);
                 }
             }
@@ -298,18 +365,29 @@ fn iterate_inherent_methods<T>(
 fn is_valid_candidate(
     db: &impl HirDatabase,
     name: Option<&Name>,
-    mode: LookupMode,
+    receiver_ty: Option<&Canonical<Ty>>,
     item: AssocItemId,
+    self_ty: &Canonical<Ty>,
 ) -> bool {
     match item {
         AssocItemId::FunctionId(m) => {
             let data = db.function_data(m);
-            name.map_or(true, |name| &data.name == name)
-                && (data.has_self_param || mode == LookupMode::Path)
+            if let Some(name) = name {
+                if &data.name != name {
+                    return false;
+                }
+            }
+            if let Some(receiver_ty) = receiver_ty {
+                if !data.has_self_param {
+                    return false;
+                }
+                // TODO compare receiver ty
+            }
+            true
         }
         AssocItemId::ConstId(c) => {
             let data = db.const_data(c);
-            name.map_or(true, |name| data.name.as_ref() == Some(name)) && (mode == LookupMode::Path)
+            name.map_or(true, |name| data.name.as_ref() == Some(name)) && receiver_ty.is_none()
         }
         _ => false,
     }

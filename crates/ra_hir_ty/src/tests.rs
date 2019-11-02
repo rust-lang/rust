@@ -3433,7 +3433,6 @@ pub fn baz() -> usize { 31usize }
     assert_eq!("(i32, usize)", type_at_pos(&db, pos));
 }
 
-#[ignore]
 #[test]
 fn method_resolution_trait_before_autoref() {
     let t = type_at(
@@ -3449,7 +3448,6 @@ fn test() { S.foo()<|>; }
     assert_eq!(t, "u128");
 }
 
-#[ignore]
 #[test]
 fn method_resolution_by_value_before_autoref() {
     let t = type_at(
