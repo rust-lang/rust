@@ -62,7 +62,7 @@ pub use crate::{
     adt::VariantDef,
     code_model::{
         docs::{DocDef, Docs, Documentation},
-        src::{HasBodySource, HasSource, Source},
+        src::{HasBodySource, HasSource},
         Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
         EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
         ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
@@ -85,4 +85,4 @@ pub use hir_def::{
     path::{Path, PathKind},
     type_ref::Mutability,
 };
-pub use hir_expand::{either::Either, name::Name};
+pub use hir_expand::{either::Either, name::Name, Source};

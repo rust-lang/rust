@@ -13,7 +13,10 @@ pub mod hygiene;
 use std::hash::{Hash, Hasher};
 
 use ra_db::{salsa, CrateId, FileId};
-use ra_syntax::ast::{self, AstNode};
+use ra_syntax::{
+    ast::{self, AstNode},
+    SyntaxNode,
+};
 
 use crate::ast_id_map::FileAstId;
 
@@ -149,5 +152,20 @@ impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn db::AstDatabase) -> N {
         let root = db.parse_or_expand(self.file_id).unwrap();
         db.ast_id_map(self.file_id).get(self.file_ast_id).to_node(&root)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Source<T> {
+    pub file_id: HirFileId,
+    pub ast: T,
+}
+
+impl<T> Source<T> {
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
+        Source { file_id: self.file_id, ast: f(self.ast) }
+    }
+    pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
+        db.parse_or_expand(self.file_id).expect("source created from invalid file")
     }
 }

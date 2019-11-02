@@ -10,7 +10,7 @@ use crate::{
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
-pub use hir_def::Source;
+pub use hir_expand::Source;
 
 pub trait HasSource {
     type Ast;
