@@ -1949,6 +1949,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
                 FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
                 Never => Some((format!("The never type (`!`) has no valid value"), None)),
+                RawPtr(tm) if matches!(tm.ty.kind, Dynamic(..)) => // raw ptr to dyn Trait
+                    Some((format!("The vtable of a wide raw pointer must be non-null"), None)),
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit =>
                     Some((format!("Booleans must be `true` or `false`"), None)),

@@ -67,6 +67,9 @@ fn main() {
         let _val: NonNull<i32> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: NonNull<i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: *const dyn Send = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: *const dyn Send = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         // Things that can be zero, but not uninit.
         let _val: bool = mem::zeroed();
         let _val: bool = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
