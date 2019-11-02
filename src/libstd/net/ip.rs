@@ -536,7 +536,7 @@ impl Ipv4Addr {
     /// // the broadcast address is not global
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_global(), false);
     ///
-    /// // the broadcast address is not global
+    /// // the address space designated for documentation is not global
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
     /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
