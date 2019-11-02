@@ -12,7 +12,9 @@ use super::elaborate_predicates;
 
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use crate::ty::WithConstness;
+use crate::ty::{self, ParamTy, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -20,7 +22,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use syntax::ast;
 
-use std::borrow::Cow;
 use std::iter::{self};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -37,55 +38,91 @@ pub enum ObjectSafetyViolation {
 
     /// Associated const.
     AssocConst(ast::Name, Span),
+
+    /// Dyn-overlapping impl: a trait is not dyn-safe if it contains
+    /// associated types and an impl with an unsized `Self` type
+    /// (which may potentially overlap `dyn`). See #57893.
+    DynOverlappingImpl(DefId),
 }
 
 impl ObjectSafetyViolation {
-    pub fn error_msg(&self) -> Cow<'static, str> {
-        match *self {
+    pub fn annotate_diagnostic(&self, tcx: TyCtxt<'_>, diag: &mut DiagnosticBuilder<'_>) {
+        let span_label = |diag: &mut DiagnosticBuilder<'_>, span: Span, msg: &String| {
+            if span != DUMMY_SP {
+                diag.span_label(span, msg);
+            } else {
+                diag.note(msg);
+            }
+        };
+
+        match self {
             ObjectSafetyViolation::SizedSelf => {
-                "the trait cannot require that `Self : Sized`".into()
+                diag.note("the trait cannot require that `Self : Sized`");
             }
             ObjectSafetyViolation::SupertraitSelf => {
-                "the trait cannot use `Self` as a type parameter \
-                 in the supertraits or where-clauses"
-                    .into()
+                diag.note(
+                    "the trait cannot use `Self` as a type parameter \
+                     in the supertraits or where-clauses",
+                );
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) => {
-                format!("associated function `{}` has no `self` parameter", name).into()
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, span) => {
+                span_label(
+                    diag,
+                    *span,
+                    &format!("associated function `{}` has no `self` parameter", name),
+                );
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf, _) => format!(
-                "method `{}` references the `Self` type in its parameters or return type",
-                name,
-            )
-            .into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf, span) => {
+                span_label(
+                    diag,
+                    *span,
+                    &format!(
+                        "method `{}` references the `Self` type in its parameters or return type",
+                        name,
+                    ),
+                );
+            }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
-                _,
-            ) => format!("method `{}` references the `Self` type in where clauses", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
-                format!("method `{}` has generic type parameters", name).into()
+                span,
+            ) => {
+                span_label(
+                    diag,
+                    *span,
+                    &format!("method `{}` references the `Self` type in where clauses", name),
+                );
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
-                format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
+            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, span) => {
+                span_label(diag, *span, &format!("method `{}` has generic type parameters", name));
             }
-            ObjectSafetyViolation::AssocConst(name, _) => {
-                format!("the trait cannot contain associated consts like `{}`", name).into()
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::UndispatchableReceiver,
+                span,
+            ) => {
+                span_label(
+                    diag,
+                    *span,
+                    &format!("method `{}`'s `self` parameter cannot be dispatched on", name),
+                );
             }
-        }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
-        // diagnostics use a `note` instead of a `span_label`.
-        match *self {
-            ObjectSafetyViolation::AssocConst(_, span)
-            | ObjectSafetyViolation::Method(_, _, span)
-                if span != DUMMY_SP =>
-            {
-                Some(span)
+            ObjectSafetyViolation::AssocConst(name, span) => {
+                span_label(
+                    diag,
+                    *span,
+                    &format!("the trait cannot contain associated consts like `{}`", name),
+                );
             }
-            _ => None,
+            ObjectSafetyViolation::DynOverlappingImpl(impl_def_id) => {
+                span_label(
+                    diag,
+                    tcx.def_span(*impl_def_id),
+                    &format!(
+                        "traits with non-method items cannot have an impl with an unsized `Self` type"
+                    ),
+                );
+            }
         }
     }
 }
@@ -179,7 +216,7 @@ fn object_safety_violations_for_trait(
             {
                 // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                 // It's also hard to get a use site span, so we use the method definition span.
-                tcx.struct_span_lint_hir(
+                let mut lint = tcx.struct_span_lint_hir(
                     WHERE_CLAUSES_OBJECT_SAFETY,
                     hir::CRATE_HIR_ID,
                     *span,
@@ -187,9 +224,9 @@ fn object_safety_violations_for_trait(
                         "the trait `{}` cannot be made into an object",
                         tcx.def_path_str(trait_def_id)
                     ),
-                )
-                .note(&violation.error_msg())
-                .emit();
+                );
+                violation.annotate_diagnostic(tcx, &mut lint);
+                lint.emit();
                 false
             } else {
                 true
@@ -210,6 +247,26 @@ fn object_safety_violations_for_trait(
             .filter(|item| item.kind == ty::AssocKind::Const)
             .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span)),
     );
+
+    // Issue #57893. A trait cannot be considered dyn-safe if:
+    //
+    // (a) it has associated items that are not functions and
+    // (b) it has a potentially dyn-overlapping impl.
+    //
+    // Why don't functions matter? Because we never resolve
+    // them to their normalizd type until code generation
+    // time, in short.
+    let has_associated_non_fn =
+        tcx.associated_items(trait_def_id).any(|assoc_item| match assoc_item.kind {
+            ty::AssocKind::Method => false,
+            ty::AssocKind::Type | ty::AssocKind::OpaqueTy | ty::AssocKind::Const => true,
+        });
+
+    if has_associated_non_fn {
+        if let Some(impl_def_id) = impl_potentially_overlapping_dyn_trait(tcx, trait_def_id) {
+            violations.push(ObjectSafetyViolation::DynOverlappingImpl(impl_def_id));
+        }
+    }
 
     debug!(
         "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
@@ -267,6 +324,59 @@ fn predicates_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId, supertraits_o
                 | ty::Predicate::ConstEvaluatable(..) => false,
             }
         })
+}
+
+fn generics_require_sized_param(tcx: TyCtxt<'_>, def_id: DefId, param_ty: ParamTy) -> bool {
+    debug!("generics_require_sized_param(def_id={:?}, param_ty={:?})", def_id, param_ty);
+
+    let sized_def_id = match tcx.lang_items().sized_trait() {
+        Some(def_id) => def_id,
+        None => {
+            return false; /* No Sized trait, can't require it! */
+        }
+    };
+
+    // Search for a predicate like `Self : Sized` amongst the trait bounds.
+    let predicates = tcx.predicates_of(def_id);
+    let predicates = predicates.instantiate_identity(tcx).predicates;
+    predicates.iter().any(|predicate| match predicate {
+        ty::Predicate::Trait(ref trait_pred, _) => {
+            debug!("generics_require_sized_param: trait_pred = {:?}", trait_pred);
+
+            trait_pred.def_id() == sized_def_id
+                && trait_pred.skip_binder().self_ty().is_param(param_ty.index)
+        }
+        ty::Predicate::Projection(..)
+        | ty::Predicate::Subtype(..)
+        | ty::Predicate::RegionOutlives(..)
+        | ty::Predicate::WellFormed(..)
+        | ty::Predicate::ObjectSafe(..)
+        | ty::Predicate::ClosureKind(..)
+        | ty::Predicate::TypeOutlives(..)
+        | ty::Predicate::ConstEvaluatable(..) => false,
+    })
+}
+
+/// Searches for an impl where the `Self` type potentially overlaps
+/// `dyn Trait` (where `Trait` is the trait with def-id
+/// `trait_def_id`).
+fn impl_potentially_overlapping_dyn_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Option<DefId> {
+    debug!("impl_potentially_overlapping_dyn_trait({:?})", trait_def_id);
+    let mut found_match = None;
+    tcx.for_each_impl(trait_def_id, |impl_def_id| {
+        let impl_self_ty = tcx.type_of(impl_def_id);
+        match impl_self_ty.kind {
+            ty::Param(param_ty) => {
+                if !generics_require_sized_param(tcx, impl_def_id, param_ty) {
+                    found_match = Some(impl_def_id);
+                    debug!("Match found = {:?}; for param_ty {}", found_match, param_ty.name);
+                }
+            }
+            _ => (),
+        }
+    });
+
+    found_match
 }
 
 fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
@@ -417,7 +527,7 @@ fn virtual_call_violation_for_method<'tcx>(
                         tcx.def_span(method.def_id),
                         &format!(
                             "receiver when `Self = {}` should have a ScalarPair ABI; \
-                                 found {:?}",
+                             found {:?}",
                             trait_object_ty, abi
                         ),
                     );
@@ -718,7 +828,7 @@ fn contains_illegal_self_type_reference<'tcx>(
                 }
             }
 
-            _ => true, // walk contained types, if any
+            _ => true,
         }
     });
 

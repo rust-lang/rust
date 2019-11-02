@@ -1,0 +1,15 @@
+error[E0038]: the trait `Object` cannot be made into an object
+  --> $DIR/issue-59387.rs:15:11
+   |
+LL | / impl<T: ?Sized, U> Object<U> for T {
+LL | |     // ^-- Here is the blanket impl; relies on `?Sized`.
+LL | |     type Output = U;
+LL | | }
+   | |_- traits with non-method items cannot have an impl with an unsized `Self` type
+...
+LL |       foo::<dyn Object<U, Output = T>, U>(x)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Object` cannot be made into an object
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -143,7 +143,7 @@ macro_rules! rustc_attr {
                 "the `#[",
                 stringify!($attr),
                 "]` attribute is just used for rustc unit tests \
-                and will never be stable",
+                 and will never be stable",
             ),
         )
     };

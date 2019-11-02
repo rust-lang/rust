@@ -29,6 +29,7 @@ pub use std::sync::atomic::Ordering::SeqCst;
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
         pub auto trait Send {}
+
         pub auto trait Sync {}
 
         impl<T: ?Sized> Send for T {}

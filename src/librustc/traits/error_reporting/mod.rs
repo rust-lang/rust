@@ -704,11 +704,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             if self.predicate_may_hold(&unit_obligation) {
                                 err.note(
                                     "the trait is implemented for `()`. \
-                                         Possibly this error has been caused by changes to \
-                                         Rust's type-inference algorithm \
-                                         (see: https://github.com/rust-lang/rust/issues/48950 \
-                                         for more info). Consider whether you meant to use the \
-                                         type `()` here instead.",
+                                     Possibly this error has been caused by changes to \
+                                     Rust's type-inference algorithm \
+                                     (see: https://github.com/rust-lang/rust/issues/48950 \
+                                     for more info). Consider whether you meant to use the \
+                                     type `()` here instead.",
                                 );
                             }
                         }
@@ -792,7 +792,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         *span,
                                         format!(
                                             "closure is `FnOnce` because it moves the \
-                                         variable `{}` out of its environment",
+                                             variable `{}` out of its environment",
                                             name
                                         ),
                                     );
@@ -802,7 +802,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         *span,
                                         format!(
                                             "closure is `FnMut` because it mutates the \
-                                         variable `{}` here",
+                                             variable `{}` here",
                                             name
                                         ),
                                     );
@@ -1012,7 +1012,7 @@ pub fn recursive_type_with_infinite_size_error(
     err.span_label(span, "recursive type has infinite size");
     err.help(&format!(
         "insert indirection (e.g., a `Box`, `Rc`, or `&`) \
-                           at some point to make `{}` representable",
+         at some point to make `{}` representable",
         tcx.def_path_str(type_def_id)
     ));
     err
@@ -1038,10 +1038,7 @@ pub fn report_object_safety_error(
     let mut reported_violations = FxHashSet::default();
     for violation in violations {
         if reported_violations.insert(violation.clone()) {
-            match violation.span() {
-                Some(span) => err.span_label(span, violation.error_msg()),
-                None => err.note(&violation.error_msg()),
-            };
+            violation.annotate_diagnostic(tcx, &mut err);
         }
     }
 

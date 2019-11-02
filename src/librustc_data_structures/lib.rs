@@ -23,6 +23,7 @@
 #![feature(integer_atomics)]
 #![feature(test)]
 #![feature(associated_type_bounds)]
+#![feature(rustc_attrs)]
 #![cfg_attr(unix, feature(libc))]
 #![allow(rustc::default_hash_types)]
 
