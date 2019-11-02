@@ -4,7 +4,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc::ty::layout::{LayoutOf, Size};
 use rustc::ty::{self, TyCtxt};
 use syntax::source_map::DUMMY_SP;
 
@@ -48,7 +48,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     EnvVars::init(&mut ecx, config.excluded_env_vars);
 
     // Setup first stack-frame
-    let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
+    let main_instance = ty::Instance::mono(tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def, None)?;
 
     if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
@@ -59,11 +59,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let main_ret_ty = tcx.fn_sig(main_id).output();
     let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
     let start_instance = ty::Instance::resolve(
-        ecx.tcx.tcx,
+        tcx,
         ty::ParamEnv::reveal_all(),
         start_id,
-        ecx.tcx
-            .mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
+        tcx.mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
     )
     .unwrap();
     let start_mir = ecx.load_mir(start_instance.def, None)?;
@@ -106,7 +105,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     {
         let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argc, argc_place.into())?;
-        ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
+        ecx.machine.argc = Some(argc_place.ptr);
     }
 
     // Third argument (`argv`): created from `config.args`.
@@ -134,8 +133,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     }
     // Make an array with all these pointers, in the Miri memory.
     let argvs_layout = ecx.layout_of(
-        ecx.tcx
-            .mk_array(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8), argvs.len() as u64),
+        tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), argvs.len() as u64),
     )?;
     let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
     for (idx, arg) in argvs.into_iter().enumerate() {
@@ -151,36 +149,26 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     {
         let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argv, argv_place.into())?;
-        ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
+        ecx.machine.argv = Some(argv_place.ptr);
     }
     // Store command line as UTF-16 for Windows `GetCommandLineW`.
     {
         let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
-        let cmd_ptr = ecx.memory.allocate(
-            Size::from_bytes(cmd_utf16.len() as u64 * 2),
-            Align::from_bytes(2).unwrap(),
-            MiriMemoryKind::Env.into(),
-        );
-        ecx.machine.cmd_line = Some(cmd_ptr);
+        let cmd_type = tcx.mk_array(tcx.types.u16, cmd_utf16.len() as u64);
+        let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Env.into());
+        ecx.machine.cmd_line = Some(cmd_place.ptr);
         // Store the UTF-16 string. We just allocated so we know the bounds are fine.
         let char_size = Size::from_bytes(2);
-        let cmd_alloc = ecx.memory.get_mut(cmd_ptr.alloc_id)?;
-        let mut cur_ptr = cmd_ptr;
-        for &c in cmd_utf16.iter() {
-            cmd_alloc.write_scalar(
-                &*ecx.tcx,
-                cur_ptr,
-                Scalar::from_uint(c, char_size).into(),
-                char_size,
-            )?;
-            cur_ptr = cur_ptr.offset(char_size, &*ecx.tcx)?;
+        for (idx, &c) in cmd_utf16.iter().enumerate() {
+            let place = ecx.mplace_field(cmd_place, idx as u64)?;
+            ecx.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
         }
     }
 
     args.next().expect_none("start lang item has more arguments than expected");
 
     // Set the last_error to 0
-    let errno_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let errno_layout = ecx.layout_of(tcx.types.u32)?;
     let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Static.into());
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
     ecx.machine.last_error = Some(errno_place);

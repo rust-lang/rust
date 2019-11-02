@@ -86,9 +86,9 @@ pub struct Evaluator<'tcx> {
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
     /// We also need the full command line as one string because of Windows.
-    pub(crate) argc: Option<Pointer<Tag>>,
-    pub(crate) argv: Option<Pointer<Tag>>,
-    pub(crate) cmd_line: Option<Pointer<Tag>>,
+    pub(crate) argc: Option<Scalar<Tag>>,
+    pub(crate) argv: Option<Scalar<Tag>>,
+    pub(crate) cmd_line: Option<Scalar<Tag>>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
     pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,

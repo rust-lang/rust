@@ -765,10 +765,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: register the destructor.
             }
             "_NSGetArgc" => {
-                this.write_scalar(Scalar::Ptr(this.machine.argc.unwrap()), dest)?;
+                this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
             }
             "_NSGetArgv" => {
-                this.write_scalar(Scalar::Ptr(this.machine.argv.unwrap()), dest)?;
+                this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
             }
             "SecRandomCopyBytes" => {
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
@@ -927,7 +927,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "GetCommandLineW" => {
-                this.write_scalar(Scalar::Ptr(this.machine.cmd_line.unwrap()), dest)?;
+                this.write_scalar(this.machine.cmd_line.expect("machine must be initialized"), dest)?;
             }
             // The actual name of 'RtlGenRandom'
             "SystemFunction036" => {
