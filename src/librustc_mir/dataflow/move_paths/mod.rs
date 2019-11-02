@@ -2,7 +2,7 @@ use core::slice::Iter;
 use rustc::mir::*;
 use rustc::ty::{Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Enumerated, Idx, IndexVec};
+use rustc_index::vec::{Enumerated, Idx, IndexVec};
 use smallvec::SmallVec;
 use syntax_pos::Span;
 
@@ -13,19 +13,19 @@ use self::abs_domain::{AbstractElem, Lift};
 
 mod abs_domain;
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct MovePathIndex {
         DEBUG_FORMAT = "mp{}"
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct MoveOutIndex {
         DEBUG_FORMAT = "mo{}"
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct InitIndex {
         DEBUG_FORMAT = "in{}"
     }
@@ -327,7 +327,7 @@ impl<'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place { base: PlaceBase::Local(l), projection: box [] } = path.place {
+            if let Some(l) = path.place.as_local() {
                 return Some(l);
             }
             if let Some(parent) = path.parent {

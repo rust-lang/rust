@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         mut def_bm: BindingMode,
     ) -> (Ty<'tcx>, BindingMode) {
-        let mut expected = self.resolve_type_vars_with_obligations(&expected);
+        let mut expected = self.resolve_vars_with_obligations(&expected);
 
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
@@ -613,9 +613,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
-            let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              res.descr(),
-                              hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
+            let msg = format!(
+                "expected tuple struct or tuple variant, found {} `{}`",
+                res.descr(),
+                hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)),
+            );
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
             match (res, &pat.kind) {
                 (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {

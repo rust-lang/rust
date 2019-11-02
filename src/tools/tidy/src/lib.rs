@@ -31,6 +31,7 @@ macro_rules! tidy_error {
 
 pub mod bins;
 pub mod style;
+pub mod debug_artifacts;
 pub mod errors;
 pub mod features;
 pub mod cargo;
@@ -41,10 +42,10 @@ pub mod extdeps;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
+pub mod error_codes_check;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
-        "src/llvm-emscripten",
         "src/llvm-project",
         "src/stdarch",
         "src/tools/cargo",
@@ -53,6 +54,9 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rls",
         "src/tools/rust-installer",
         "src/tools/rustfmt",
+
+        // Filter RLS output directories
+        "target/rls",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

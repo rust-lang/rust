@@ -1,4 +1,4 @@
-error[E0463]: can't find crate for `extra`
+error[E0463]: can't find crate for `fake_crate`
   --> $DIR/use-meta-mismatch.rs:3:1
    |
 LL | extern crate fake_crate as extra;

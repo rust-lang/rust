@@ -126,7 +126,6 @@ fn check(cache: &mut Cache,
     // FIXME(#32129)
     if file.ends_with("std/string/struct.String.html") ||
        file.ends_with("interpret/struct.ImmTy.html") ||
-       file.ends_with("symbol/struct.InternedString.html") ||
        file.ends_with("ast/struct.ThinVec.html") ||
        file.ends_with("util/struct.ThinVec.html") ||
        file.ends_with("layout/struct.TyLayout.html") ||

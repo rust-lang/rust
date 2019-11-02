@@ -89,7 +89,7 @@ fn get_symbol_hash<'tcx>(
         def_id, substs
     );
 
-    let mut hasher = StableHasher::<u64>::new();
+    let mut hasher = StableHasher::new();
     let mut hcx = tcx.create_stable_hashing_context();
 
     record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
@@ -132,7 +132,7 @@ fn get_symbol_hash<'tcx>(
     });
 
     // 64 bits should be enough to avoid collisions.
-    hasher.finish()
+    hasher.finish::<u64>()
 }
 
 // Follow C++ namespace-mangling style, see
@@ -224,8 +224,8 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::Opaque(def_id, substs) |
             ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::Closure(def_id, ty::ClosureSubsts { substs }) |
-            ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+            ty::Closure(def_id, substs) |
+            ty::Generator(def_id, substs, _) => {
                 self.print_def_path(def_id, substs)
             }
             _ => self.pretty_print_type(ty),
@@ -335,7 +335,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             self.path.finalize_pending_component();
         }
 
-        self.write_str(&disambiguated_data.data.as_interned_str().as_str())?;
+        self.write_str(&disambiguated_data.data.as_symbol().as_str())?;
         Ok(self)
     }
     fn path_generic_args(

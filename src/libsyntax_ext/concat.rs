@@ -1,5 +1,5 @@
 use syntax::ast;
-use syntax::ext::base::{self, DummyResult};
+use syntax_expand::base::{self, DummyResult};
 use syntax::symbol::Symbol;
 use syntax::tokenstream::TokenStream;
 

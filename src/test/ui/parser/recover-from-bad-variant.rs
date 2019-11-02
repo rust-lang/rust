@@ -8,7 +8,7 @@ fn main() {
     //~^ ERROR expected type, found `3`
     match x {
         Enum::Foo(a, b) => {}
-        //~^ ERROR expected tuple struct/variant, found struct variant `Enum::Foo`
+        //~^ ERROR expected tuple struct or tuple variant, found struct variant `Enum::Foo`
         Enum::Bar(a, b) => {}
     }
 }

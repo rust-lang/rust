@@ -6,3 +6,4 @@ LL | const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0493`.

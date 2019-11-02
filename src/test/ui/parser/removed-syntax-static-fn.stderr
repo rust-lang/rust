@@ -1,4 +1,4 @@
-error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `static`
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found keyword `static`
   --> $DIR/removed-syntax-static-fn.rs:4:5
    |
 LL | impl S {

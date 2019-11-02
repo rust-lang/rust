@@ -14,9 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
-#![feature(inner_deref)]
 #![feature(never_type)]
-#![feature(mem_take)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
@@ -25,6 +23,7 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
+extern crate rustc_index;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
@@ -35,6 +34,7 @@ extern crate rustc_typeck;
 extern crate rustc_lexer;
 extern crate serialize;
 extern crate syntax;
+extern crate syntax_expand;
 extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
@@ -486,8 +486,8 @@ where R: 'static + Send,
         krate.version = crate_version;
 
         f(Output {
-            krate: krate,
-            renderinfo: renderinfo,
+            krate,
+            renderinfo,
             renderopts,
         })
     });

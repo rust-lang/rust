@@ -14,19 +14,21 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
-use syntax::ext::base::{self, InvocationRes, Indeterminate, SpecialDerives};
-use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
-use syntax::ext::compile_declarative_macro;
+use syntax::expand::SpecialDerives;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
+use syntax::print::pprust;
 use syntax::symbol::{Symbol, kw, sym};
+use syntax_expand::base::{self, InvocationRes, Indeterminate};
+use syntax_expand::base::SyntaxExtension;
+use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
+use syntax_expand::compile_declarative_macro;
+use syntax_pos::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::hygiene::AstPass;
+use syntax_pos::hygiene::{MacroKind, AstPass};
 
 type Res = def::Res<NodeId>;
 
@@ -107,15 +109,11 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
-    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
-    fn visit_ast_fragment_with_placeholders(
-        &mut self, expansion: ExpnId, fragment: &AstFragment, extra_placeholders: &[NodeId]
-    ) {
+    fn visit_ast_fragment_with_placeholders(&mut self, expansion: ExpnId, fragment: &AstFragment) {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let output_legacy_scope =
-            self.build_reduced_graph(fragment, extra_placeholders, parent_scope);
+        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
 
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
@@ -324,7 +322,8 @@ impl<'a> Resolver<'a> {
 
         Ok(if ext.macro_kind() != kind {
             let expected = kind.descr_expected();
-            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path);
+            let path_str = pprust::path_to_string(path);
+            let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
             self.session.struct_span_err(path.span, &msg)
                         .span_label(path.span, format!("not {} {}", kind.article(), expected))
                         .emit();
@@ -773,7 +772,6 @@ impl<'a> Resolver<'a> {
                     check_consistency(self, &[seg], ident.span, kind, initial_res, res);
                 }
                 Err(..) => {
-                    assert!(initial_binding.is_none());
                     let expected = kind.descr_expected();
                     let msg = format!("cannot find {} `{}` in this scope", expected, ident);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
@@ -797,18 +795,25 @@ impl<'a> Resolver<'a> {
             if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
-                    stability::report_unstable(self.session, feature, reason, issue, is_soft, span);
+                    let node_id = ast::CRATE_NODE_ID;
+                    let soft_handler =
+                        |lint, span, msg: &_| self.session.buffer_lint(lint, node_id, span, msg);
+                    stability::report_unstable(
+                        self.session, feature, reason, issue, is_soft, span, soft_handler
+                    );
                 }
             }
             if let Some(depr) = &stability.rustc_depr {
-                let (message, lint) = stability::rustc_deprecation_message(depr, &path.to_string());
+                let path = pprust::path_to_string(path);
+                let (message, lint) = stability::rustc_deprecation_message(depr, &path);
                 stability::early_report_deprecation(
                     self.session, &message, depr.suggestion, lint, span
                 );
             }
         }
         if let Some(depr) = &ext.deprecation {
-            let (message, lint) = stability::deprecation_message(depr, &path.to_string());
+            let path = pprust::path_to_string(&path);
+            let (message, lint) = stability::deprecation_message(depr, &path);
             stability::early_report_deprecation(self.session, &message, None, lint, span);
         }
     }

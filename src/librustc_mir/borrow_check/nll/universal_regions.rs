@@ -16,11 +16,12 @@ use either::Either;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
+use rustc::ty::subst::{InternalSubsts, SubstsRef, Subst};
+use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_errors::DiagnosticBuilder;
 use std::iter;
 
@@ -84,12 +85,12 @@ pub struct UniversalRegions<'tcx> {
 pub enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
     /// `ClosureSubsts::closure_sig_ty`.
-    Closure(DefId, ty::ClosureSubsts<'tcx>),
+    Closure(DefId, SubstsRef<'tcx>),
 
     /// The MIR is a generator. The signature is that generators take
     /// no parameters and return the result of
     /// `ClosureSubsts::generator_return_ty`.
-    Generator(DefId, ty::GeneratorSubsts<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
 
     /// The MIR is a fn item with the given `DefId` and substs. The signature
     /// of the function can be bound then with the `fn_sig` query.
@@ -108,9 +109,11 @@ impl<'tcx> DefiningTy<'tcx> {
     /// match up with the upvar order in the HIR, typesystem, and MIR.
     pub fn upvar_tys(self, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self {
-            DefiningTy::Closure(def_id, substs) => Either::Left(substs.upvar_tys(def_id, tcx)),
+            DefiningTy::Closure(def_id, substs) => Either::Left(
+                substs.as_closure().upvar_tys(def_id, tcx)
+            ),
             DefiningTy::Generator(def_id, substs, _) => {
-                Either::Right(Either::Left(substs.upvar_tys(def_id, tcx)))
+                Either::Right(Either::Left(substs.as_generator().upvar_tys(def_id, tcx)))
             }
             DefiningTy::FnDef(..) | DefiningTy::Const(..) => {
                 Either::Right(Either::Right(iter::empty()))
@@ -143,7 +146,7 @@ struct UniversalRegionIndices<'tcx> {
     indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq)]
 pub enum RegionClassification {
     /// A **global** region is one that can be named from
     /// anywhere. There is only one, `'static`.
@@ -311,7 +314,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 err.note(&format!(
                     "defining type: {:?} with closure substs {:#?}",
                     def_id,
-                    &substs.substs[..]
+                    &substs[..]
                 ));
 
                 // FIXME: It'd be nice to print the late-bound regions
@@ -331,7 +334,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 err.note(&format!(
                     "defining type: {:?} with generator substs {:#?}",
                     def_id,
-                    &substs.substs[..]
+                    &substs[..]
                 ));
 
                 // FIXME: As above, we'd like to print out the region
@@ -425,11 +428,32 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def_id, &mut indices);
         }
 
+        let (unnormalized_output_ty, mut unnormalized_input_tys) =
+            inputs_and_output.split_last().unwrap();
+
+        // C-variadic fns also have a `VaList` input that's not listed in the signature
+        // (as it's created inside the body itself, not passed in from outside).
+        if let DefiningTy::FnDef(def_id, _) = defining_ty {
+            if self.infcx.tcx.fn_sig(def_id).c_variadic() {
+                let va_list_did = self.infcx.tcx.require_lang_item(
+                    lang_items::VaListTypeLangItem,
+                    Some(self.infcx.tcx.def_span(self.mir_def_id),),
+                );
+                let region = self.infcx.tcx.mk_region(ty::ReVar(
+                    self.infcx.next_nll_region_var(FR).to_region_vid(),
+                ));
+                let va_list_ty = self.infcx.tcx.type_of(va_list_did)
+                    .subst(self.infcx.tcx, &[region.into()]);
+
+                unnormalized_input_tys = self.infcx.tcx.mk_type_list(
+                    unnormalized_input_tys.iter().copied()
+                        .chain(iter::once(va_list_ty)),
+                );
+            }
+        }
+
         let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
-
-        let (unnormalized_output_ty, unnormalized_input_tys) =
-            inputs_and_output.split_last().unwrap();
 
         debug!(
             "build: global regions = {}..{}",
@@ -446,7 +470,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let yield_ty = match defining_ty {
             DefiningTy::Generator(def_id, substs, _) => {
-                Some(substs.yield_ty(def_id, self.infcx.tcx))
+                Some(substs.as_generator().yield_ty(def_id, self.infcx.tcx))
             }
             _ => None,
         };
@@ -524,8 +548,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
         let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
-            DefiningTy::Closure(_, ClosureSubsts { ref substs })
-            | DefiningTy::Generator(_, GeneratorSubsts { ref substs }, _) => {
+            DefiningTy::Closure(_, ref substs)
+            | DefiningTy::Generator(_, ref substs, _) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
                 // inherited from the `closure_base_def_id`.
@@ -560,7 +584,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 assert_eq!(self.mir_def_id, def_id);
-                let closure_sig = substs.closure_sig_ty(def_id, tcx).fn_sig(tcx);
+                let closure_sig = substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx);
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
                 ty::Binder::fuse(
@@ -588,7 +612,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             DefiningTy::Generator(def_id, substs, movability) => {
                 assert_eq!(self.mir_def_id, def_id);
-                let output = substs.return_ty(def_id, tcx);
+                let output = substs.as_generator().return_ty(def_id, tcx);
                 let generator_ty = tcx.mk_generator(def_id, substs, movability);
                 let inputs_and_output = self.infcx.tcx.intern_type_list(&[generator_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
@@ -766,7 +790,7 @@ fn for_each_late_bound_region_defined_on<'tcx>(
                 owner: fn_def_id.index,
                 local_id: *late_bound,
             };
-            let name = tcx.hir().name(hir_id).as_interned_str();
+            let name = tcx.hir().name(hir_id);
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: fn_def_id,

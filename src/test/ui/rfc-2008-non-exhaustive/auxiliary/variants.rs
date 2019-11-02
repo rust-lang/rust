@@ -1,5 +1,4 @@
 #![crate_type = "rlib"]
-#![feature(non_exhaustive)]
 
 pub enum NonExhaustiveVariants {
     #[non_exhaustive] Unit,

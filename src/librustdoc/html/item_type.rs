@@ -1,7 +1,7 @@
 //! Item types.
 
 use std::fmt;
-use syntax::ext::base::MacroKind;
+use syntax_pos::hygiene::MacroKind;
 use crate::clean;
 
 /// Item type. Corresponds to `clean::ItemEnum` variants.

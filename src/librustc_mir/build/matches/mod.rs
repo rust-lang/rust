@@ -15,7 +15,7 @@ use rustc::mir::*;
 use rustc::middle::region;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::ast::Name;
 use syntax_pos::Span;
@@ -535,21 +535,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 kind: StatementKind::StorageLive(local_id),
             },
         );
-        let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, local_id, var_ty, DropKind::Storage);
+        self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
         Place::from(local_id)
     }
 
     pub fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
         let local_id = self.var_local_id(var, for_guard);
-        let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(
             span,
             region_scope,
             local_id,
-            var_ty,
             DropKind::Value,
         );
     }
@@ -951,7 +948,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     fake_borrows.insert(Place {
                         base: source.base.clone(),
-                        projection: proj_base.to_vec().into_boxed_slice(),
+                        projection: self.hir.tcx().intern_place_elems(proj_base),
                     });
                 }
             }
@@ -1296,7 +1293,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows
         {
-            let mut cursor = &*place.projection;
+            let mut cursor = place.projection.as_ref();
             while let [proj_base @ .., elem] = cursor {
                 cursor = proj_base;
 
@@ -1491,7 +1488,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shallow,
                     Place {
                         base: place.base.clone(),
-                        projection: place.projection.to_vec().into_boxed_slice(),
+                        projection: tcx.intern_place_elems(place.projection),
                     },
                 );
                 self.cfg.push_assign(

@@ -1,4 +1,5 @@
 // ignore-msvc
+// ignore-wasm32-bare compiled with panic=abort by default
 
 // compile-flags: -O -C no-prepopulate-passes
 

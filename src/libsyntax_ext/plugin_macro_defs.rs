@@ -4,7 +4,7 @@
 use syntax::ast::*;
 use syntax::attr;
 use syntax::edition::Edition;
-use syntax::ext::base::{Resolver, NamedSyntaxExtension};
+use syntax_expand::base::{Resolver, NamedSyntaxExtension};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::source_map::respan;
@@ -20,7 +20,7 @@ fn plugin_macro_def(name: Name, span: Span) -> P<Item> {
         attr::mk_word_item(Ident::new(sym::rustc_builtin_macro, span)));
 
     let parens: TreeAndJoint = TokenTree::Delimited(
-        DelimSpan::from_single(span), token::Paren, TokenStream::empty()
+        DelimSpan::from_single(span), token::Paren, TokenStream::default()
     ).into();
     let trees = vec![parens.clone(), TokenTree::token(token::FatArrow, span).into(), parens];
 

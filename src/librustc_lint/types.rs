@@ -7,7 +7,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx, SizeSkeleton};
 use rustc::{lint, util};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -631,6 +631,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
+                        let is_non_exhaustive =
+                            def.non_enum_variant().is_field_list_non_exhaustive();
+                        if is_non_exhaustive && !def.did.is_local() {
+                            return FfiUnsafe {
+                                ty,
+                                reason: "this struct is non-exhaustive",
+                                help: None,
+                            };
+                        }
+
                         if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe {
                                 ty,
@@ -730,8 +740,25 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             }
                         }
 
+                        if def.is_variant_list_non_exhaustive() && !def.did.is_local() {
+                            return FfiUnsafe {
+                                ty,
+                                reason: "this enum is non-exhaustive",
+                                help: None,
+                            };
+                        }
+
                         // Check the contained variants.
                         for variant in &def.variants {
+                            let is_non_exhaustive = variant.is_field_list_non_exhaustive();
+                            if is_non_exhaustive && !variant.def_id.is_local() {
+                                return FfiUnsafe {
+                                    ty,
+                                    reason: "this enum has non-exhaustive variants",
+                                    help: None,
+                                };
+                            }
+
                             for field in &variant.fields {
                                 let field_ty = cx.normalize_erasing_regions(
                                     ParamEnv::reveal_all(),
@@ -944,15 +971,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
-        let inputs = if sig.c_variadic {
-            // Don't include the spoofed `VaListImpl` in the functions list
-            // of inputs.
-            &sig.inputs()[..sig.inputs().len() - 1]
-        } else {
-            &sig.inputs()[..]
-        };
 
-        for (input_ty, input_hir) in inputs.iter().zip(&decl.inputs) {
+        for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
         }
 

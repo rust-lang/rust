@@ -61,6 +61,8 @@ enabling or disabling a feature.
 To see the valid options and an example of use, run `rustc --print
 target-features`.
 
+Using this flag is unsafe and might result in [undefined runtime behavior](../targets/known-issues.md).
+
 ## passes
 
 This flag can be used to add extra LLVM passes to the compilation.
@@ -105,7 +107,7 @@ flag will turn that behavior off.
 
 ## no-vectorize-slp
 
-By default, `rustc` will attempt to vectorize loops using [superword-level
+By default, `rustc` will attempt to vectorize code using [superword-level
 parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer). This
 flag will turn that behavior off.
 

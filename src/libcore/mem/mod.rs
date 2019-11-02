@@ -236,7 +236,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// ```
 ///
 /// [alignment]: ./fn.align_of.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 pub const fn size_of<T>() -> usize {
@@ -328,7 +328,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, mem::align_of::<i32>());
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 pub const fn align_of<T>() -> usize {
@@ -368,15 +368,17 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// make a difference in release builds (where a loop that has no side-effects
 /// is easily detected and eliminated), but is often a big win for debug builds.
 ///
-/// Note that `ptr::drop_in_place` already performs this check, so if your workload
-/// can be reduced to some small number of drop_in_place calls, using this is
-/// unnecessary. In particular note that you can drop_in_place a slice, and that
+/// Note that [`drop_in_place`] already performs this check, so if your workload
+/// can be reduced to some small number of [`drop_in_place`] calls, using this is
+/// unnecessary. In particular note that you can [`drop_in_place`] a slice, and that
 /// will do a single needs_drop check for all the values.
 ///
 /// Types like Vec therefore just `drop_in_place(&mut self[..])` without using
-/// needs_drop explicitly. Types like `HashMap`, on the other hand, have to drop
+/// `needs_drop` explicitly. Types like [`HashMap`], on the other hand, have to drop
 /// values one at a time and should use this API.
 ///
+/// [`drop_in_place`]: ../ptr/fn.drop_in_place.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
 ///
 /// # Examples
 ///
@@ -518,8 +520,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
-/// #![feature(mem_take)]
-///
 /// use std::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
@@ -550,8 +550,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// #![feature(mem_take)]
-///
 /// use std::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
@@ -570,7 +568,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 ///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 #[inline]
-#[unstable(feature = "mem_take", issue = "61129")]
+#[stable(feature = "mem_take", since = "1.40.0")]
 pub fn take<T: Default>(dest: &mut T) -> T {
     replace(dest, T::default())
 }

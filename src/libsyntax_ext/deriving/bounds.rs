@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::MetaItem;
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
 
 pub fn expand_deriving_copy(cx: &mut ExtCtxt<'_>,

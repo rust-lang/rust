@@ -54,7 +54,8 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
         core::intrinsics::abort();
     }
 
-    #[cfg(all(target_vendor="fortanix", target_env="sgx"))]
+    #[cfg(any(target_os = "hermit",
+              all(target_vendor="fortanix", target_env="sgx")))]
     unsafe fn abort() -> ! {
         // call std::sys::abort_internal
         extern "C" { pub fn __rust_abort() -> !; }

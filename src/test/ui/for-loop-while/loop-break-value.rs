@@ -1,4 +1,5 @@
 // run-pass
+
 #![allow(unreachable_code)]
 #![feature(never_type)]
 

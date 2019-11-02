@@ -16,5 +16,5 @@ pub fn main() {
         return break as ();
     }
 
-    return enum; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `enum`
+    return enum; //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found keyword `enum`
 }

@@ -19,6 +19,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: 'a + Debug + 'b {
    |                                                             ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
@@ -29,6 +30,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: 'a + Debug + 'b> {
    |                                                     ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
@@ -39,6 +41,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T: 'a, U: 'b + Debug> {
    |                                                ^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T, U: Debug> {
@@ -49,6 +52,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T: 'a, U: Debug + 'b> {
    |                                                ^^^^          ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T, U: Debug> {
@@ -59,6 +63,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U> where U: 'b {
    |                                              ^^^^    ^^^^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooWhereBee<'a, 'b, T, U> {
@@ -69,6 +74,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b {
    |                                                                   ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -79,6 +85,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T: 'a, U> where U: 'b + Debug {
    |                                                     ^^^^              ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
@@ -89,6 +96,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T: 'a, U> where U: Debug + 'b {
    |                                                     ^^^^                   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -99,6 +107,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where T: 'a, U: 'b + Debug {
    |                                                                     ^^^^^^^   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
@@ -109,6 +118,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where T: 'a, U: Debug + 'b {
    |                                                                     ^^^^^^^        ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -119,6 +129,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeBee<'a, 'b: 'a, T: 'b> {
    |                                      ^^^^   ^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeBee<'a, 'b, T> {
@@ -129,6 +140,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeAyBee<'a, 'b: 'a, T: 'a + 'b> {
    |                                        ^^^^   ^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeAyBee<'a, 'b, T> {
@@ -139,6 +151,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b: 'a, T: 'a + Debug + 'b> {
    |                                                       ^^^^     ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
@@ -149,6 +162,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeWhereAyTeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where 'b: 'a, T: 'a + Debug + 'b {
    |                                                                    ^^^^^^^^   ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeWhereAyTeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
@@ -159,6 +173,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b: 'a, T, U: 'a + Debug + 'b> {
    |                                                          ^^^^        ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
@@ -169,6 +184,7 @@ error: outlives requirements can be inferred
    |
 LL |         where U: 'a + Debug + 'b, 'b: 'a
    |                  ^^^^^     ^^^^^  ^^^^^^
+   |
 help: remove these bounds
    |
 LL |         where U: Debug, 
@@ -179,6 +195,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b>(&'a &'b T);
    |                                               ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyIsDebugBee<'a, 'b, T: Debug>(&'a &'b T);
@@ -189,6 +206,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T>(&'a &'b T) where T: 'a + Debug + 'b;
    |                                                                        ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeWhereOutlivesAyIsDebugBee<'a, 'b, T>(&'a &'b T) where T: Debug;
@@ -199,6 +217,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: 'a + Debug + 'b>(T, &'a &'b U);
    |                                                     ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug>(T, &'a &'b U);
@@ -209,6 +228,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T: 'a, U: 'b + Debug>(&'a T, &'b U);
    |                                                ^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooBeeIsDebug<'a, 'b, T, U: Debug>(&'a T, &'b U);
@@ -219,6 +239,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T: 'a, U: Debug + 'b>(&'a T, &'b U);
    |                                                ^^^^          ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooIsDebugBee<'a, 'b, T, U: Debug>(&'a T, &'b U);
@@ -229,6 +250,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U>(&'a T, &'b U) where U: 'b;
    |                                              ^^^^                   ^^^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooWhereBee<'a, 'b, T, U>(&'a T, &'b U) ;
@@ -239,6 +261,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U>(T, &'a &'b U) where U: 'a + Debug + 'b;
    |                                                                                 ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U>(T, &'a &'b U) where U: Debug;
@@ -249,6 +272,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T: 'a, U>(&'a T, &'b U) where U: 'b + Debug;
    |                                                     ^^^^                            ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U>(&'a T, &'b U) where U: Debug;
@@ -259,6 +283,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T: 'a, U>(&'a T, &'b U) where U: Debug + 'b;
    |                                                     ^^^^                                 ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U>(&'a T, &'b U) where U: Debug;
@@ -269,6 +294,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeWhereAyYooWhereBeeIsDebug<'a, 'b, T, U>(&'a T, &'b U) where T: 'a, U: 'b + Debug;
    |                                                                           ^^^^^^^   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeWhereAyYooWhereBeeIsDebug<'a, 'b, T, U>(&'a T, &'b U) where U: Debug;
@@ -279,6 +305,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct TeeWhereAyYooWhereIsDebugBee<'a, 'b, T, U>(&'a T, &'b U) where T: 'a, U: Debug + 'b;
    |                                                                           ^^^^^^^        ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct TeeWhereAyYooWhereIsDebugBee<'a, 'b, T, U>(&'a T, &'b U) where U: Debug;
@@ -289,6 +316,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeBee<'a, 'b: 'a, T: 'b>(&'a &'b T);
    |                                      ^^^^   ^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeBee<'a, 'b, T>(&'a &'b T);
@@ -299,6 +327,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeAyBee<'a, 'b: 'a, T: 'a + 'b>(&'a &'b T);
    |                                        ^^^^   ^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeAyBee<'a, 'b, T>(&'a &'b T);
@@ -309,6 +338,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b: 'a, T: 'a + Debug + 'b>(&'a &'b T);
    |                                                       ^^^^     ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b, T: Debug>(&'a &'b T);
@@ -319,6 +349,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeWhereAyTeeWhereAyIsDebugBee<'a, 'b, T>(&'a &'b T) where 'b: 'a, T: 'a + Debug + 'b;
    |                                                                       ^^^^^^^^   ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeWhereAyTeeWhereAyIsDebugBee<'a, 'b, T>(&'a &'b T) where T: Debug;
@@ -329,6 +360,7 @@ error: outlives requirements can be inferred
    |
 LL |     struct BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b: 'a, T, U: 'a + Debug + 'b>(T, &'a &'b U);
    |                                                          ^^^^        ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     struct BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug>(T, &'a &'b U);
@@ -339,6 +371,7 @@ error: outlives requirements can be inferred
    |
 LL |         where U: 'a + Debug + 'b, 'b: 'a;
    |                  ^^^^^     ^^^^^  ^^^^^^
+   |
 help: remove these bounds
    |
 LL |         where U: Debug, ;
@@ -349,6 +382,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
    |                                             ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
@@ -359,6 +393,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: 'a + Debug + 'b {
    |                                                           ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
@@ -369,6 +404,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: 'a + Debug + 'b> {
    |                                                   ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
@@ -379,6 +415,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeOutlivesAyYooBeeIsDebug<'a, 'b, T: 'a, U: 'b + Debug> {
    |                                              ^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeOutlivesAyYooBeeIsDebug<'a, 'b, T, U: Debug> {
@@ -389,6 +426,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeOutlivesAyYooIsDebugBee<'a, 'b, T: 'a, U: Debug + 'b> {
    |                                              ^^^^          ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeOutlivesAyYooIsDebugBee<'a, 'b, T, U: Debug> {
@@ -399,6 +437,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U> where U: 'b {
    |                                            ^^^^    ^^^^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeOutlivesAyYooWhereBee<'a, 'b, T, U> {
@@ -409,6 +448,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b {
    |                                                                 ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -419,6 +459,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T: 'a, U> where U: 'b + Debug {
    |                                                   ^^^^              ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
@@ -429,6 +470,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T: 'a, U> where U: Debug + 'b {
    |                                                   ^^^^                   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -439,6 +481,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where T: 'a, U: 'b + Debug {
    |                                                                   ^^^^^^^   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
@@ -449,6 +492,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where T: 'a, U: Debug + 'b {
    |                                                                   ^^^^^^^        ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -459,6 +503,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum BeeOutlivesAyTeeBee<'a, 'b: 'a, T: 'b> {
    |                                    ^^^^   ^^^^
+   |
 help: remove these bounds
    |
 LL |     enum BeeOutlivesAyTeeBee<'a, 'b, T> {
@@ -469,6 +514,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum BeeOutlivesAyTeeAyBee<'a, 'b: 'a, T: 'a + 'b> {
    |                                      ^^^^   ^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum BeeOutlivesAyTeeAyBee<'a, 'b, T> {
@@ -479,6 +525,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b: 'a, T: 'a + Debug + 'b> {
    |                                                     ^^^^     ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
@@ -489,6 +536,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum BeeWhereAyTeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where 'b: 'a, T: 'a + Debug + 'b {
    |                                                                  ^^^^^^^^   ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum BeeWhereAyTeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
@@ -499,6 +547,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b: 'a, T, U: 'a + Debug + 'b> {
    |                                                        ^^^^        ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
@@ -509,6 +558,7 @@ error: outlives requirements can be inferred
    |
 LL |     enum BeeWhereAyTeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b, 'b: 'a {
    |                                                                           ^^^^^     ^^^^^  ^^^^^^
+   |
 help: remove these bounds
    |
 LL |     enum BeeWhereAyTeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug,  {
@@ -519,6 +569,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
    |                                              ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
@@ -529,6 +580,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: 'a + Debug + 'b {
    |                                                            ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
@@ -539,6 +591,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: 'a + Debug + 'b> {
    |                                                    ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
@@ -549,6 +602,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeOutlivesAyYooBeeIsDebug<'a, 'b, T: 'a, U: 'b + Debug> {
    |                                               ^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeOutlivesAyYooBeeIsDebug<'a, 'b, T, U: Debug> {
@@ -559,6 +613,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeOutlivesAyYooIsDebugBee<'a, 'b, T: 'a, U: Debug + 'b> {
    |                                               ^^^^          ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeOutlivesAyYooIsDebugBee<'a, 'b, T, U: Debug> {
@@ -569,6 +624,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U> where U: 'b {
    |                                             ^^^^    ^^^^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeOutlivesAyYooWhereBee<'a, 'b, T, U> {
@@ -579,6 +635,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b {
    |                                                                  ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -589,6 +646,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T: 'a, U> where U: 'b + Debug {
    |                                                    ^^^^              ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
@@ -599,6 +657,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T: 'a, U> where U: Debug + 'b {
    |                                                    ^^^^                   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -609,6 +668,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where T: 'a, U: 'b + Debug {
    |                                                                    ^^^^^^^   ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeWhereOutlivesAyYooWhereBeeIsDebug<'a, 'b, T, U> where U: Debug {
@@ -619,6 +679,7 @@ error: outlives requirements can be inferred
    |
 LL |     union TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where T: 'a, U: Debug + 'b {
    |                                                                    ^^^^^^^        ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union TeeWhereOutlivesAyYooWhereIsDebugBee<'a, 'b, T, U> where U: Debug {
@@ -629,6 +690,7 @@ error: outlives requirements can be inferred
    |
 LL |     union BeeOutlivesAyTeeBee<'a, 'b: 'a, T: 'b> {
    |                                     ^^^^   ^^^^
+   |
 help: remove these bounds
    |
 LL |     union BeeOutlivesAyTeeBee<'a, 'b, T> {
@@ -639,6 +701,7 @@ error: outlives requirements can be inferred
    |
 LL |     union BeeOutlivesAyTeeAyBee<'a, 'b: 'a, T: 'a + 'b> {
    |                                       ^^^^   ^^^^^^^^^
+   |
 help: remove these bounds
    |
 LL |     union BeeOutlivesAyTeeAyBee<'a, 'b, T> {
@@ -649,6 +712,7 @@ error: outlives requirements can be inferred
    |
 LL |     union BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b: 'a, T: 'a + Debug + 'b> {
    |                                                      ^^^^     ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union BeeOutlivesAyTeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
@@ -659,6 +723,7 @@ error: outlives requirements can be inferred
    |
 LL |     union BeeWhereAyTeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where 'b: 'a, T: 'a + Debug + 'b {
    |                                                                   ^^^^^^^^   ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union BeeWhereAyTeeWhereOutlivesAyIsDebugBee<'a, 'b, T> where T: Debug {
@@ -669,6 +734,7 @@ error: outlives requirements can be inferred
    |
 LL |     union BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b: 'a, T, U: 'a + Debug + 'b> {
    |                                                         ^^^^        ^^^^^     ^^^^^
+   |
 help: remove these bounds
    |
 LL |     union BeeOutlivesAyTeeYooOutlivesAyIsDebugBee<'a, 'b, T, U: Debug> {
@@ -679,6 +745,7 @@ error: outlives requirements can be inferred
    |
 LL |     union BeeWhereAyTeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: 'a + Debug + 'b, 'b: 'a {
    |                                                                            ^^^^^     ^^^^^  ^^^^^^
+   |
 help: remove these bounds
    |
 LL |     union BeeWhereAyTeeYooWhereOutlivesAyIsDebugBee<'a, 'b, T, U> where U: Debug,  {

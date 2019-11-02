@@ -40,7 +40,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use crate::hir;
-use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
@@ -2051,7 +2051,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     "assemble_unboxed_candidates: kind={:?} obligation={:?}",
                     kind, obligation
                 );
-                match self.infcx.closure_kind(closure_def_id, closure_substs) {
+                match self.infcx.closure_kind(
+                    closure_def_id,
+                    closure_substs
+                ) {
                     Some(closure_kind) => {
                         debug!(
                             "assemble_unboxed_candidates: closure_kind = {:?}",
@@ -2243,7 +2246,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     if let Some(principal) = data.principal() {
-                        principal.with_self_ty(self.tcx(), self_ty)
+                        if !self.infcx.tcx.features().object_safe_for_dispatch {
+                            principal.with_self_ty(self.tcx(), self_ty)
+                        } else if self.tcx().is_object_safe(principal.def_id()) {
+                            principal.with_self_ty(self.tcx(), self_ty)
+                        } else {
+                            return;
+                        }
                     } else {
                         // Only auto-trait bounds exist.
                         return;
@@ -2669,7 +2678,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Closure(def_id, substs) => {
                 // (*) binder moved here
                 Where(ty::Binder::bind(
-                    substs.upvar_tys(def_id, self.tcx()).collect(),
+                    substs.as_closure().upvar_tys(def_id, self.tcx()).collect(),
                 ))
             }
 
@@ -2753,11 +2762,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.iter().map(|k| k.expect_ty()).collect()
             }
 
-            ty::Closure(def_id, ref substs) => substs.upvar_tys(def_id, self.tcx()).collect(),
+            ty::Closure(def_id, ref substs) => substs.as_closure()
+                .upvar_tys(def_id, self.tcx())
+                .collect(),
 
             ty::Generator(def_id, ref substs, _) => {
-                let witness = substs.witness(def_id, self.tcx());
+                let witness = substs.as_generator().witness(def_id, self.tcx());
                 substs
+                    .as_generator()
                     .upvar_tys(def_id, self.tcx())
                     .chain(iter::once(witness))
                     .collect()
@@ -2813,7 +2825,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
-                self.infcx.in_snapshot(|_| {
+                self.infcx.commit_unconditionally(|_| {
                     let (skol_ty, _) = self.infcx
                         .replace_bound_vars_with_placeholders(&ty);
                     let Normalized {
@@ -2926,7 +2938,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_projection_candidate(&mut self, obligation: &TraitObligation<'tcx>) {
-        self.infcx.in_snapshot(|snapshot| {
+        self.infcx.commit_unconditionally(|snapshot| {
             let result =
                 self.match_projection_obligation_against_definition_bounds(
                     obligation,
@@ -3048,19 +3060,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             nested,
         );
 
-        let trait_obligations: Vec<PredicateObligation<'_>> = self.infcx.in_snapshot(|_| {
-            let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let (trait_ref, _) = self.infcx
-                .replace_bound_vars_with_placeholders(&poly_trait_ref);
-            let cause = obligation.derived_cause(ImplDerivedObligation);
-            self.impl_or_trait_obligations(
-                cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                trait_def_id,
-                &trait_ref.substs,
-            )
-        });
+        let trait_obligations: Vec<PredicateObligation<'_>> =
+            self.infcx.commit_unconditionally(|_| {
+                let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
+                let (trait_ref, _) = self.infcx
+                    .replace_bound_vars_with_placeholders(&poly_trait_ref);
+                let cause = obligation.derived_cause(ImplDerivedObligation);
+                self.impl_or_trait_obligations(
+                    cause,
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                    trait_def_id,
+                    &trait_ref.substs,
+                )
+            });
 
         // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
         // predicate as usual.  It won't have any effect since auto traits are coinductive.
@@ -3083,7 +3096,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.in_snapshot(|snapshot| {
+        self.infcx.commit_unconditionally(|snapshot| {
             let substs = self.rematch_impl(impl_def_id, obligation, snapshot);
             debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
@@ -3247,7 +3260,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation, alias_def_id
         );
 
-        self.infcx.in_snapshot(|_| {
+        self.infcx.commit_unconditionally(|_| {
             let (predicate, _) = self.infcx()
                 .replace_bound_vars_with_placeholders(&obligation.predicate);
             let trait_ref = predicate.trait_ref;
@@ -3319,8 +3332,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )?);
 
         Ok(VtableGeneratorData {
-            generator_def_id: generator_def_id,
-            substs: substs.clone(),
+            generator_def_id,
+            substs,
             nested: obligations,
         })
     }
@@ -3370,17 +3383,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )?);
 
         // FIXME: chalk
+
         if !self.tcx().sess.opts.debugging_opts.chalk {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::Predicate::ClosureKind(closure_def_id, substs, kind),
+                ty::Predicate::ClosureKind(
+                    closure_def_id,
+                    substs,
+                    kind
+                ),
             ));
         }
 
         Ok(VtableClosureData {
             closure_def_id,
-            substs: substs.clone(),
+            substs: substs,
             nested: obligations,
         })
     }
@@ -3869,7 +3887,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         closure_def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
         debug!(
             "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
@@ -3901,9 +3919,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         closure_def_id: DefId,
-        substs: ty::GeneratorSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        let gen_sig = substs.poly_sig(closure_def_id, self.tcx());
+        let gen_sig = substs.as_generator().poly_sig(closure_def_id, self.tcx());
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an generator type and hence is

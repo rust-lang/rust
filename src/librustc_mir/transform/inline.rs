@@ -3,8 +3,8 @@
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
 
 use rustc::mir::*;
 use rustc::mir::visit::*;
@@ -461,7 +461,7 @@ impl Inliner<'tcx> {
                     };
                     caller_body[callsite.bb]
                         .statements.push(stmt);
-                    tmp.deref()
+                    self.tcx.mk_place_deref(tmp)
                 } else {
                     destination.0
                 };
@@ -481,6 +481,7 @@ impl Inliner<'tcx> {
                     return_block,
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
+                    tcx: self.tcx,
                 };
 
 
@@ -559,7 +560,8 @@ impl Inliner<'tcx> {
             let tuple_tmp_args =
                 tuple_tys.iter().enumerate().map(|(i, ty)| {
                     // This is e.g., `tuple_tmp.0` in our example above.
-                    let tuple_field = Operand::Move(tuple.clone().field(
+                    let tuple_field = Operand::Move(tcx.mk_place_field(
+                        tuple.clone(),
                         Field::new(i),
                         ty.expect_ty(),
                     ));
@@ -587,13 +589,12 @@ impl Inliner<'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place {
-            base: PlaceBase::Local(local),
-            projection: box [],
-        }) = arg {
-            if caller_body.local_kind(local) == LocalKind::Temp {
-                // Reuse the operand if it's a temporary already
-                return local;
+        if let Operand::Move(place) = &arg {
+            if let Some(local) = place.as_local() {
+                if caller_body.local_kind(local) == LocalKind::Temp {
+                    // Reuse the operand if it's a temporary already
+                    return local;
+                }
             }
         }
 
@@ -639,6 +640,7 @@ struct Integrator<'a, 'tcx> {
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -647,48 +649,65 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         debug!("updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
+
+    fn make_integrate_local(&self, local: &Local) -> Local {
+        if *local == RETURN_PLACE {
+            match self.destination.as_local() {
+                Some(l) => return l,
+                ref place => bug!("Return place is {:?}, not local", place),
+            }
+        }
+
+        let idx = local.index() - 1;
+        if idx < self.args.len() {
+            return self.args[idx];
+        }
+
+        self.local_map[Local::new(idx - self.args.len())]
+    }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
-    fn visit_local(&mut self,
-                   local: &mut Local,
-                   _ctxt: PlaceContext,
-                   _location: Location) {
-        if *local == RETURN_PLACE {
-            match self.destination {
-                Place {
-                    base: PlaceBase::Local(l),
-                    projection: box [],
-                } => {
-                    *local = l;
-                    return;
-                },
-                ref place => bug!("Return place is {:?}, not local", place)
-            }
-        }
-        let idx = local.index() - 1;
-        if idx < self.args.len() {
-            *local = self.args[idx];
-            return;
-        }
-        *local = self.local_map[Local::new(idx - self.args.len())];
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 
-    fn visit_place(&mut self,
-                    place: &mut Place<'tcx>,
-                    _ctxt: PlaceContext,
-                    _location: Location) {
+    fn visit_local(
+        &mut self,
+        local: &mut Local,
+        _ctxt: PlaceContext,
+        _location: Location,
+    ) {
+        *local = self.make_integrate_local(local);
+    }
 
-        match place {
-            Place {
-                base: PlaceBase::Local(RETURN_PLACE),
-                projection: box [],
-            } => {
-                // Return pointer; update the place itself
-                *place = self.destination.clone();
-            },
-            _ => self.super_place(place, _ctxt, _location)
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        if let Some(RETURN_PLACE) = place.as_local() {
+            // Return pointer; update the place itself
+            *place = self.destination.clone();
+        } else {
+            self.super_place(place, context, location);
         }
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        if let PlaceElem::Index(local) = elem {
+            let new_local = self.make_integrate_local(local);
+
+            if new_local != *local {
+                return Some(PlaceElem::Index(new_local))
+            }
+        }
+
+        None
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {

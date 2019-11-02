@@ -12,7 +12,7 @@
 use crate::source_map::{SourceMap, FilePathMapping};
 
 use errors::registry::Registry;
-use errors::{SubDiagnostic, CodeSuggestion, SourceMapper};
+use errors::{SubDiagnostic, CodeSuggestion, SourceMapper, SourceMapperDyn};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, HumanReadableErrorType};
 
@@ -24,6 +24,9 @@ use std::vec;
 use std::sync::{Arc, Mutex};
 
 use rustc_serialize::json::{as_json, as_pretty_json};
+
+#[cfg(test)]
+mod tests;
 
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
@@ -89,8 +92,8 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, db: &errors::Diagnostic) {
-        let data = Diagnostic::from_errors_diagnostic(db, self);
+    fn emit_diagnostic(&mut self, diag: &errors::Diagnostic) {
+        let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
@@ -111,6 +114,10 @@ impl Emitter for JsonEmitter {
         if let Err(e) = result {
             panic!("failed to print notification: {:?}", e);
         }
+    }
+
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+        Some(&self.sm)
     }
 
     fn should_show_explain(&self) -> bool {
@@ -205,10 +212,10 @@ struct ArtifactNotification<'a> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(db: &errors::Diagnostic,
+    fn from_errors_diagnostic(diag: &errors::Diagnostic,
                                je: &JsonEmitter)
                                -> Diagnostic {
-        let sugg = db.suggestions.iter().map(|sugg| {
+        let sugg = diag.suggestions.iter().map(|sugg| {
             Diagnostic {
                 message: sugg.msg.clone(),
                 code: None,
@@ -237,30 +244,30 @@ impl Diagnostic {
         let output = buf.clone();
         je.json_rendered.new_emitter(
             Box::new(buf), Some(je.sm.clone()), false, None, je.external_macro_backtrace
-        ).ui_testing(je.ui_testing).emit_diagnostic(db);
+        ).ui_testing(je.ui_testing).emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
         Diagnostic {
-            message: db.message(),
-            code: DiagnosticCode::map_opt_string(db.code.clone(), je),
-            level: db.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&db.span, je),
-            children: db.children.iter().map(|c| {
+            message: diag.message(),
+            code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
+            level: diag.level.to_str(),
+            spans: DiagnosticSpan::from_multispan(&diag.span, je),
+            children: diag.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).chain(sugg).collect(),
             rendered: Some(output),
         }
     }
 
-    fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_sub_diagnostic(diag: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
         Diagnostic {
-            message: db.message(),
+            message: diag.message(),
             code: None,
-            level: db.level.to_str(),
-            spans: db.render_span.as_ref()
+            level: diag.level.to_str(),
+            spans: diag.render_span.as_ref()
                      .map(|sp| DiagnosticSpan::from_multispan(sp, je))
-                     .unwrap_or_else(|| DiagnosticSpan::from_multispan(&db.span, je)),
+                     .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, je)),
             children: vec![],
             rendered: None,
         }
@@ -332,8 +339,8 @@ impl DiagnosticSpan {
 
         DiagnosticSpan {
             file_name: start.file.name.to_string(),
-            byte_start: span.lo().0 - start.file.start_pos.0,
-            byte_end: span.hi().0 - start.file.start_pos.0,
+            byte_start: start.file.original_relative_byte_pos(span.lo()).0,
+            byte_end: start.file.original_relative_byte_pos(span.hi()).0,
             line_start: start.line,
             line_end: end.line,
             column_start: start.col.0 + 1,

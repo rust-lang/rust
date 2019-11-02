@@ -363,6 +363,8 @@ pub enum UndefinedBehaviorInfo {
     UbExperimental(String),
     /// Unreachable code was executed.
     Unreachable,
+    /// An enum discriminant was set to a value which was outside the range of valid values.
+    InvalidDiscriminant(ScalarMaybeUndef),
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -373,6 +375,8 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 write!(f, "{}", msg),
             Unreachable =>
                 write!(f, "entered unreachable code"),
+            InvalidDiscriminant(val) =>
+                write!(f, "encountered invalid enum discriminant {}", val),
         }
     }
 }
@@ -400,7 +404,6 @@ pub enum UnsupportedOpInfo<'tcx> {
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
-    InvalidDiscriminant(ScalarMaybeUndef),
     PointerOutOfBounds {
         ptr: Pointer,
         msg: CheckInAllocMsg,
@@ -485,8 +488,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
                     size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
-            InvalidDiscriminant(val) =>
-                write!(f, "encountered invalid enum discriminant {}", val),
             InvalidMemoryAccess =>
                 write!(f, "tried to access memory through an invalid pointer"),
             DanglingPointerDeref =>

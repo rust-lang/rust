@@ -15,7 +15,7 @@ fn october<'a, 'b, T>(s: &'b T) -> &'b T {
     s
 }
 
-fn november<'a, 'b>(s: &'a str) -> (&'a str) {
+fn november<'a, 'b>(s: &'a str) -> &'a str {
     //~^ ERROR lifetime parameter `'b` never used
     //~| HELP elide the unused lifetime
     s

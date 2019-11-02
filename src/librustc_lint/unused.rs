@@ -1,6 +1,7 @@
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
+use rustc::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc::ty::{self, Ty};
 use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
@@ -25,7 +26,7 @@ declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
     "unused result of a type flagged as `#[must_use]`",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -156,7 +157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 }
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
-                    for (predicate, _) in &cx.tcx.predicates_of(def).predicates {
+                    for (predicate, _) in cx.tcx.predicates_of(def).predicates {
                         if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             let def_id = trait_ref.def_id;
@@ -275,12 +276,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
             }
         }
     }
-}
-
-declare_lint! {
-    pub UNUSED_ATTRIBUTES,
-    Warn,
-    "detects attributes that were not used by the compiler"
 }
 
 #[derive(Copy, Clone)]
@@ -602,6 +597,25 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
         self.check_unused_parens_pat(cx, &arm.pat, false, false);
+    }
+
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let &ast::TyKind::Paren(ref r) = &ty.kind {
+            match &r.kind {
+                &ast::TyKind::TraitObject(..) => {}
+                &ast::TyKind::ImplTrait(_, ref bounds) if bounds.len() > 1 => {}
+                _ => {
+                    let pattern_text = if let Ok(snippet) = cx.sess().source_map()
+                        .span_to_snippet(ty.span) {
+                            snippet
+                        } else {
+                            pprust::ty_to_string(ty)
+                        };
+
+                    Self::remove_outer_parens(cx, ty.span, &pattern_text, "type", (false, false));
+                }
+            }
+        }
     }
 }
 

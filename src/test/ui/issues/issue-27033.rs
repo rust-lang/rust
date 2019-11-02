@@ -1,3 +1,5 @@
+// ignore-x86
+// ^ due to stderr output differences
 fn main() {
     match Some(1) {
         None @ _ => {} //~ ERROR match bindings cannot shadow unit variants

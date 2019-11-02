@@ -101,7 +101,7 @@ pub use self::error::{
     InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
 };
 
-pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
+pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue, get_slice_bytes};
 
 pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
@@ -467,6 +467,14 @@ impl<'tcx> AllocMap<'tcx> {
         match self.get(id) {
             Some(GlobalAlloc::Memory(mem)) => mem,
             _ => bug!("expected allocation ID {} to point to memory", id),
+        }
+    }
+
+    /// Panics if the `AllocId` does not refer to a function
+    pub fn unwrap_fn(&self, id: AllocId) -> Instance<'tcx> {
+        match self.get(id) {
+            Some(GlobalAlloc::Function(instance)) => instance,
+            _ => bug!("expected allocation ID {} to point to a function", id),
         }
     }
 

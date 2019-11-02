@@ -203,7 +203,7 @@ pub trait Visitor<'v>: Sized {
 
     /// Invoked to visit the body of a function, method or closure. Like
     /// visit_nested_item, does nothing by default unless you override
-    /// `nested_visit_map` to return other htan `None`, in which case it will walk
+    /// `nested_visit_map` to return other than `None`, in which case it will walk
     /// the body.
     fn visit_nested_body(&mut self, id: BodyId) {
         let opt_body = self.nested_visit_map().intra().map(|map| map.body(id));
@@ -632,9 +632,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         }
         TyKind::Typeof(ref expression) => {
             visitor.visit_anon_const(expression)
-        }
-        TyKind::CVarArgs(ref lt) => {
-            visitor.visit_lifetime(lt)
         }
         TyKind::Infer | TyKind::Err => {}
     }

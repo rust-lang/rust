@@ -5,6 +5,7 @@ LL |     let x = f == g;
    |             - ^^ - fn() {main::g}
    |             |
    |             fn() {main::f}
+   |
 help: you might have forgotten to call this function
    |
 LL |     let x = f() == g;

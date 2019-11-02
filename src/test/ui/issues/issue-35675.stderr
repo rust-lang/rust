@@ -3,16 +3,18 @@ error[E0412]: cannot find type `Apple` in this scope
    |
 LL | fn should_return_fruit() -> Apple {
    |                             ^^^^^ not found in this scope
+   |
 help: there is an enum variant `Fruit::Apple`; try using the variant's enum
    |
 LL | fn should_return_fruit() -> Fruit {
    |                             ^^^^^
 
-error[E0425]: cannot find function `Apple` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
   --> $DIR/issue-35675.rs:9:5
    |
 LL |     Apple(5)
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use Fruit::Apple;
@@ -27,11 +29,12 @@ LL | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 not a type
    |                                 help: try using the variant's enum: `Fruit`
 
-error[E0425]: cannot find function `Apple` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
   --> $DIR/issue-35675.rs:15:5
    |
 LL |     Apple(5)
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use Fruit::Apple;
@@ -51,6 +54,7 @@ error[E0412]: cannot find type `Variant3` in this scope
    |
 LL | fn bar() -> Variant3 {
    |             ^^^^^^^^ not found in this scope
+   |
 help: there is an enum variant `x::Enum::Variant3`; try using the variant's enum
    |
 LL | fn bar() -> x::Enum {
@@ -63,9 +67,9 @@ LL | fn qux() -> Some {
    |             ^^^^
    |             |
    |             not a type
-   |             help: try using the variant's enum: `Option`
+   |             help: try using the variant's enum: `std::option::Option`
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0412, E0425.
+Some errors have detailed explanations: E0412, E0425, E0573.
 For more information about an error, try `rustc --explain E0412`.

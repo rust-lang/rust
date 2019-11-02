@@ -15,6 +15,7 @@ error: missing `fn` for function definition
    |
 LL | pub    g() -> is
    |    ^^^^
+   |
 help: add `fn` here to parse `g` as a public function
    |
 LL | pub fn g() -> is

@@ -3,13 +3,14 @@ use std::mem;
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::ext::base::ExtCtxt;
-use syntax::ext::expand::{AstFragment, ExpansionConfig};
-use syntax::ext::proc_macro::is_proc_macro_attr;
-use syntax::parse::ParseSess;
+use syntax::expand::is_proc_macro_attr;
+use syntax::print::pprust;
 use syntax::ptr::P;
+use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
+use syntax_expand::base::{ExtCtxt, Resolver};
+use syntax_expand::expand::{AstFragment, ExpansionConfig};
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::AstPass;
 
@@ -45,7 +46,7 @@ struct CollectProcMacros<'a> {
 }
 
 pub fn inject(sess: &ParseSess,
-              resolver: &mut dyn (::syntax::ext::base::Resolver),
+              resolver: &mut dyn Resolver,
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
               has_proc_macro_decls: bool,
@@ -248,13 +249,20 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
+                    let path_str = pprust::path_to_string(&attr.path);
                     let msg = if attr.path.segments[0].ident.name ==
                                  prev_attr.path.segments[0].ident.name {
-                        format!("only one `#[{}]` attribute is allowed on any given function",
-                                attr.path)
+                        format!(
+                            "only one `#[{}]` attribute is allowed on any given function",
+                            path_str,
+                        )
                     } else {
-                        format!("`#[{}]` and `#[{}]` attributes cannot both be applied \
-                                to the same function", attr.path, prev_attr.path)
+                        format!(
+                            "`#[{}]` and `#[{}]` attributes cannot both be applied
+                            to the same function",
+                            path_str,
+                            pprust::path_to_string(&prev_attr.path),
+                        )
                     };
 
                     self.handler.struct_span_err(attr.span, &msg)
@@ -280,8 +288,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         };
 
         if !is_fn {
-            let msg = format!("the `#[{}]` attribute may only be used on bare functions",
-                              attr.path);
+            let msg = format!(
+                "the `#[{}]` attribute may only be used on bare functions",
+                pprust::path_to_string(&attr.path),
+            );
 
             self.handler.span_err(attr.span, &msg);
             return;
@@ -292,8 +302,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         }
 
         if !self.is_proc_macro_crate {
-            let msg = format!("the `#[{}]` attribute is only usable with crates of the \
-                              `proc-macro` crate type", attr.path);
+            let msg = format!(
+                "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
+                pprust::path_to_string(&attr.path),
+            );
 
             self.handler.span_err(attr.span, &msg);
             return;
@@ -325,6 +337,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          use proc_macro::bridge::client::ProcMacro;
 //
 //          #[rustc_proc_macro_decls]
+//          #[allow(deprecated)]
 //          static DECLS: &[ProcMacro] = &[
 //              ProcMacro::custom_derive($name_trait1, &[], ::$name1);
 //              ProcMacro::custom_derive($name_trait2, &["attribute_name"], ::$name2);
@@ -404,6 +417,16 @@ fn mk_decls(
     ).map(|mut i| {
         let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
         i.attrs.push(cx.attribute(attr));
+
+        let deprecated_attr = attr::mk_nested_word_item(
+            Ident::new(sym::deprecated, span)
+        );
+        let allow_deprecated_attr = attr::mk_list_item(
+            Ident::new(sym::allow, span),
+            vec![deprecated_attr]
+        );
+        i.attrs.push(cx.attribute(allow_deprecated_attr));
+
         i
     });
 

@@ -1,0 +1,30 @@
+error[E0277]: the trait bound `&S: Trait` is not satisfied
+  --> $DIR/imm-ref-trait-object-literal.rs:12:7
+   |
+LL | fn foo<X: Trait>(_: X) {}
+   |    ---    ----- required by this bound in `foo`
+...
+LL |   foo(&s);
+   |       -^
+   |       |
+   |       the trait `Trait` is not implemented for `&S`
+   |       help: consider changing this borrow's mutability: `&mut`
+   |
+   = help: the following implementations were found:
+             <&'a mut S as Trait>
+
+error[E0277]: the trait bound `S: Trait` is not satisfied
+  --> $DIR/imm-ref-trait-object-literal.rs:13:7
+   |
+LL | fn foo<X: Trait>(_: X) {}
+   |    ---    ----- required by this bound in `foo`
+...
+LL |   foo(s);
+   |       ^ the trait `Trait` is not implemented for `S`
+   |
+   = help: the following implementations were found:
+             <&'a mut S as Trait>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,6 +1,6 @@
-use crate::bit_set::BitMatrix;
+use rustc_index::bit_set::BitMatrix;
 use crate::fx::FxHashMap;
-use crate::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use crate::stable_hasher::{HashStable, StableHasher};
 use crate::sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::fmt::Debug;
@@ -11,7 +11,7 @@ use std::mem;
 mod tests;
 
 #[derive(Clone, Debug)]
-pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
+pub struct TransitiveRelation<T: Eq + Hash> {
     // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
 
@@ -35,7 +35,7 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
 }
 
 // HACK(eddyb) manual impl avoids `Default` bound on `T`.
-impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
+impl<T: Eq + Hash> Default for TransitiveRelation<T> {
     fn default() -> Self {
         TransitiveRelation {
             elements: Default::default(),
@@ -46,7 +46,7 @@ impl<T: Clone + Debug + Eq + Hash> Default for TransitiveRelation<T> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, RustcEncodable, RustcDecodable, Debug)]
 struct Index(usize);
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
@@ -442,9 +442,7 @@ impl<T> Decodable for TransitiveRelation<T>
 impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
     where T: HashStable<CTX> + Eq + Debug + Clone + Hash
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         // We are assuming here that the relation graph has been built in a
         // deterministic way and we can just hash it the way it is.
         let TransitiveRelation {
@@ -462,9 +460,7 @@ impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
 }
 
 impl<CTX> HashStable<CTX> for Edge {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         let Edge {
             ref source,
             ref target,
@@ -476,9 +472,7 @@ impl<CTX> HashStable<CTX> for Edge {
 }
 
 impl<CTX> HashStable<CTX> for Index {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         let Index(idx) = *self;
         idx.hash_stable(hcx, hasher);
     }

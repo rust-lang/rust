@@ -60,11 +60,12 @@ error: cannot find macro `Self` in this scope
 LL |         Self!() => (),
    |         ^^^^
 
-error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
+error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
   --> $DIR/self_type_keyword.rs:16:13
    |
 LL |         mut Self => (),
    |             ^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use foo::Self;
@@ -76,8 +77,9 @@ error[E0392]: parameter `'Self` is never used
 LL | struct Bar<'Self>;
    |            ^^^^^ unused parameter
    |
-   = help: consider removing `'Self` or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `'Self`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error: aborting due to 12 previous errors
 
-For more information about this error, try `rustc --explain E0392`.
+Some errors have detailed explanations: E0392, E0531.
+For more information about an error, try `rustc --explain E0392`.

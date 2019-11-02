@@ -1,8 +1,9 @@
 //! Def-use analysis.
 
-use rustc::mir::{Local, Location, Body};
+use rustc::mir::{Body, Local, Location, PlaceElem};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc::ty::TyCtxt;
+use rustc_index::vec::IndexVec;
 use std::mem;
 
 pub struct DefUseAnalysis {
@@ -47,23 +48,26 @@ impl DefUseAnalysis {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, body: &mut Body<'_>, mut callback: F)
-                               where F: for<'a> FnMut(&'a mut Local,
-                                                      PlaceContext,
-                                                      Location) {
+    fn mutate_defs_and_uses(
+        &self,
+        local: Local,
+        body: &mut Body<'tcx>,
+        new_local: Local,
+        tcx: TyCtxt<'tcx>,
+    ) {
         for place_use in &self.info[local].defs_and_uses {
-            MutateUseVisitor::new(local,
-                                  &mut callback,
-                                  body).visit_location(body, place_use.location)
+            MutateUseVisitor::new(local, new_local, body, tcx)
+                .visit_location(body, place_use.location)
         }
     }
 
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          body: &mut Body<'_>,
-                                          new_local: Local) {
-        self.mutate_defs_and_uses(local, body, |local, _, _| *local = new_local)
+                                          body: &mut Body<'tcx>,
+                                          new_local: Local,
+                                          tcx: TyCtxt<'tcx>) {
+        self.mutate_defs_and_uses(local, body, new_local, tcx)
     }
 }
 
@@ -117,30 +121,46 @@ impl Info {
     }
 }
 
-struct MutateUseVisitor<F> {
+struct MutateUseVisitor<'tcx> {
     query: Local,
-    callback: F,
+    new_local: Local,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<F> MutateUseVisitor<F> {
-    fn new(query: Local, callback: F, _: &Body<'_>)
-           -> MutateUseVisitor<F>
-           where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
-        MutateUseVisitor {
-            query,
-            callback,
-        }
+impl MutateUseVisitor<'tcx> {
+    fn new(
+        query: Local,
+        new_local: Local,
+        _: &Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> MutateUseVisitor<'tcx> {
+        MutateUseVisitor { query, new_local, tcx }
     }
 }
 
-impl<F> MutVisitor<'_> for MutateUseVisitor<F>
-              where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
+impl MutVisitor<'tcx> for MutateUseVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_local(&mut self,
                     local: &mut Local,
-                    context: PlaceContext,
-                    location: Location) {
+                    _context: PlaceContext,
+                    _location: Location) {
         if *local == self.query {
-            (self.callback)(local, context, location)
+            *local = self.new_local;
+        }
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: &PlaceElem<'tcx>,
+    ) -> Option<PlaceElem<'tcx>> {
+        match elem {
+            PlaceElem::Index(local) if *local == self.query => {
+                Some(PlaceElem::Index(self.new_local))
+            }
+            _ => None,
         }
     }
 }

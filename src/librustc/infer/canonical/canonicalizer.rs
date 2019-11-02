@@ -18,7 +18,7 @@ use crate::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use crate::ty::flags::FlagComputation;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use smallvec::SmallVec;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -468,7 +468,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             ConstValue::Infer(InferConst::Fresh(_)) => {
                 bug!("encountered a fresh const during canonicalization")
             }
-            ConstValue::Infer(InferConst::Canonical(debruijn, _)) => {
+            ConstValue::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
                     bug!("escaping bound type during canonicalization")
                 } else {
@@ -700,8 +700,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             let var = self.canonical_var(info, const_var.into());
             self.tcx().mk_const(
                 ty::Const {
-                    val: ConstValue::Infer(InferConst::Canonical(self.binder_index, var.into())),
-                    ty: const_var.ty,
+                    val: ConstValue::Bound(self.binder_index, var.into()),
+                    ty: self.fold_ty(const_var.ty),
                 }
             )
         }

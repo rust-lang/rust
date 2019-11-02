@@ -3,6 +3,7 @@ error: malformed `deprecated` attribute input
    |
 LL | #[deprecated = b"test"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: the following are the possible correct uses
    |
 LL | #[deprecated]

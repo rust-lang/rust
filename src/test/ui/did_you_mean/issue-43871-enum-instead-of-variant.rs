@@ -16,21 +16,21 @@ enum ManyVariants {
 }
 
 fn result_test() {
-    let x = Option(1); //~ ERROR expected function, found enum
+    let x = Option(1); //~ ERROR expected function, tuple struct or tuple variant, found enum
 
-    if let Option(_) = x { //~ ERROR expected tuple struct/variant, found enum
+    if let Option(_) = x { //~ ERROR expected tuple struct or tuple variant, found enum
         println!("It is OK.");
     }
 
     let y = Example::Ex(String::from("test"));
 
-    if let Example(_) = y { //~ ERROR expected tuple struct/variant, found enum
+    if let Example(_) = y { //~ ERROR expected tuple struct or tuple variant, found enum
         println!("It is OK.");
     }
 
-    let y = Void(); //~ ERROR expected function, found enum
+    let y = Void(); //~ ERROR expected function, tuple struct or tuple variant, found enum
 
-    let z = ManyVariants(); //~ ERROR expected function, found enum
+    let z = ManyVariants(); //~ ERROR expected function, tuple struct or tuple variant, found enum
 }
 
 fn main() {}

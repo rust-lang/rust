@@ -384,6 +384,9 @@ pub trait Iterator {
     ///
     /// In other words, it links two iterators together, in a chain. 🔗
     ///
+    /// [`once`] is commonly used to adapt a single value into a chain of
+    /// other kinds of iteration.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -408,9 +411,6 @@ pub trait Iterator {
     /// [`Iterator`] itself. For example, slices (`&[T]`) implement
     /// [`IntoIterator`], and so can be passed to `chain()` directly:
     ///
-    /// [`IntoIterator`]: trait.IntoIterator.html
-    /// [`Iterator`]: trait.Iterator.html
-    ///
     /// ```
     /// let s1 = &[1, 2, 3];
     /// let s2 = &[4, 5, 6];
@@ -425,6 +425,21 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(&6));
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// If you work with Windows API, you may wish to convert [`OsStr`] to `Vec<u16>`:
+    ///
+    /// ```
+    /// #[cfg(windows)]
+    /// fn os_str_to_utf16(s: &std::ffi::OsStr) -> Vec<u16> {
+    ///     use std::os::windows::ffi::OsStrExt;
+    ///     s.encode_wide().chain(std::iter::once(0)).collect()
+    /// }
+    /// ```
+    ///
+    /// [`once`]: fn.once.html
+    /// [`Iterator`]: trait.Iterator.html
+    /// [`IntoIterator`]: trait.IntoIterator.html
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
@@ -1859,14 +1874,13 @@ pub trait Iterator {
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
-            move |x| {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+            move |(), x| {
                 if f(x) { LoopState::Continue(()) }
                 else { LoopState::Break(()) }
             }
         }
-
-        self.try_for_each(check(f)) == LoopState::Continue(())
+        self.try_fold((), check(f)) == LoopState::Continue(())
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -1913,14 +1927,14 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
-            move |x| {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+            move |(), x| {
                 if f(x) { LoopState::Break(()) }
                 else { LoopState::Continue(()) }
             }
         }
 
-        self.try_for_each(check(f)) == LoopState::Break(())
+        self.try_fold((), check(f)) == LoopState::Break(())
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -1972,14 +1986,16 @@ pub trait Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut(T) -> LoopState<(), T> {
-            move |x| {
+        fn check<T>(
+            mut predicate: impl FnMut(&T) -> bool
+        ) -> impl FnMut((), T) -> LoopState<(), T> {
+            move |(), x| {
                 if predicate(&x) { LoopState::Break(x) }
                 else { LoopState::Continue(()) }
             }
         }
 
-        self.try_for_each(check(predicate)).break_value()
+        self.try_fold((), check(predicate)).break_value()
     }
 
     /// Applies function to the elements of iterator and returns
@@ -2004,14 +2020,14 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> Option<B>,
     {
         #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut(T) -> LoopState<(), B> {
-            move |x| match f(x) {
+        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> LoopState<(), B> {
+            move |(), x| match f(x) {
                 Some(x) => LoopState::Break(x),
                 None => LoopState::Continue(()),
             }
         }
 
-        self.try_for_each(check(f)).break_value()
+        self.try_fold((), check(f)).break_value()
     }
 
     /// Searches for an element in an iterator, returning its index.

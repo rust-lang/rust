@@ -3,6 +3,7 @@ error: character literal may only contain one codepoint
    |
 LL | static c: char = '\x10\x10';
    |                  ^^^^^^^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL | static c: char = "\x10\x10";
@@ -13,6 +14,7 @@ error: character literal may only contain one codepoint
    |
 LL |     let ch: &str = '\x10\x10';
    |                    ^^^^^^^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let ch: &str = "\x10\x10";

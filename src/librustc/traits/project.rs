@@ -1259,7 +1259,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = vtable.substs.poly_sig(vtable.generator_def_id, selcx.tcx());
+    let gen_sig = vtable.substs.as_generator().poly_sig(vtable.generator_def_id, selcx.tcx());
     let Normalized {
         value: gen_sig,
         obligations
@@ -1334,7 +1334,8 @@ fn confirm_closure_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
     let infcx = selcx.infcx();
-    let closure_sig_ty = vtable.substs.closure_sig_ty(vtable.closure_def_id, tcx);
+    let closure_sig_ty = vtable.substs
+        .as_closure().sig_ty(vtable.closure_def_id, tcx);
     let closure_sig = infcx.shallow_resolve(closure_sig_ty).fn_sig(tcx);
     let Normalized {
         value: closure_sig,
@@ -1504,8 +1505,8 @@ fn assoc_ty_def(
 
     if let Some(assoc_item) = trait_def
         .ancestors(tcx, impl_def_id)
-        .defs(tcx, assoc_ty_name, ty::AssocKind::Type, trait_def_id)
-        .next() {
+        .leaf_def(tcx, assoc_ty_name, ty::AssocKind::Type) {
+
         assoc_item
     } else {
         // This is saying that neither the trait nor

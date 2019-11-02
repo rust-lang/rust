@@ -6,7 +6,6 @@
 use rustc::ty::{Ty, self};
 use rustc::mir::interpret::{InterpResult, ErrorHandled};
 use rustc::hir;
-use rustc::hir::def_id::DefId;
 use super::validity::RefTracking;
 use rustc_data_structures::fx::FxHashSet;
 
@@ -73,8 +72,7 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
     );
     // remove allocation
     let tcx = ecx.tcx;
-    let memory = ecx.memory_mut();
-    let (kind, mut alloc) = match memory.alloc_map.remove(&alloc_id) {
+    let (kind, mut alloc) = match ecx.memory.alloc_map.remove(&alloc_id) {
         Some(entry) => entry,
         None => {
             // Pointer not found in local memory map. It is either a pointer to the global
@@ -271,12 +269,12 @@ for
 
 pub fn intern_const_alloc_recursive(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    def_id: DefId,
+    // The `mutability` of the place, ignoring the type.
+    place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
-    // this `mutability` is the mutability of the place, ignoring the type
-    let (base_mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
+    let (base_mutability, base_intern_mode) = match place_mut {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
         Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),
@@ -332,7 +330,7 @@ pub fn intern_const_alloc_recursive(
 
     let mut todo: Vec<_> = leftover_allocations.iter().cloned().collect();
     while let Some(alloc_id) = todo.pop() {
-        if let Some((_, mut alloc)) = ecx.memory_mut().alloc_map.remove(&alloc_id) {
+        if let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) {
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
@@ -350,7 +348,7 @@ pub fn intern_const_alloc_recursive(
                     todo.push(reloc);
                 }
             }
-        } else if ecx.memory().dead_alloc_map.contains_key(&alloc_id) {
+        } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // dangling pointer
             throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
         }

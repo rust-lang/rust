@@ -2,9 +2,7 @@ error[E0401]: can't use generic parameters from outer function
   --> $DIR/inner-static-type-parameter.rs:6:19
    |
 LL | fn foo<T>() {
-   |    --- - type parameter from outer function
-   |    |
-   |    try adding a local generic parameter in this method instead
+   |        - type parameter from outer function
 LL |     static a: Bar<T> = Bar::What;
    |                   ^ use of generic parameter from outer function
 
@@ -14,7 +12,7 @@ error[E0392]: parameter `T` is never used
 LL | enum Bar<T> { What }
    |          ^ unused parameter
    |
-   = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
 error: aborting due to 2 previous errors
 

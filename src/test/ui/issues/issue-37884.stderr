@@ -21,7 +21,7 @@ LL | |     {
 LL | |         Some(&mut self.0)
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 3:6
+note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 3:6
   --> $DIR/issue-37884.rs:3:6
    |
 LL | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {

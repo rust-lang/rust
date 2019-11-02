@@ -17,8 +17,8 @@ use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxtBuilder;
 use crate::infer::{InferCtxt, InferOk, InferResult};
 use crate::mir::interpret::ConstValue;
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::Idx;
+use rustc_index::vec::IndexVec;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 use crate::traits::query::{Fallible, NoSolution};
@@ -26,7 +26,7 @@ use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, BoundVar, InferConst, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
@@ -493,10 +493,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::Const {
-                        val: ConstValue::Infer(InferConst::Canonical(debrujin, b)),
-                        ..
-                    } = result_value {
+                    if let ty::Const { val: ConstValue::Bound(debrujin, b), .. } = result_value {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.

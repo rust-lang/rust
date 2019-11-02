@@ -85,7 +85,6 @@ should go to.
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::hair::{Expr, ExprRef, LintLevel};
 use rustc::middle::region;
-use rustc::ty::Ty;
 use rustc::hir;
 use rustc::mir::*;
 use syntax_pos::{DUMMY_SP, Span};
@@ -173,11 +172,11 @@ struct BreakableScope<'tcx> {
     region_scope: region::Scope,
     /// Where the body of the loop begins. `None` if block
     continue_block: Option<BasicBlock>,
-    /// Block to branch into when the loop or block terminates (either by being `break`-en out
-    /// from, or by having its condition to become false)
+    /// Block to branch into when the loop or block terminates (either by being
+    /// `break`-en out from, or by having its condition to become false)
     break_block: BasicBlock,
-    /// The destination of the loop/block expression itself (i.e., where to put the result of a
-    /// `break` expression)
+    /// The destination of the loop/block expression itself (i.e., where to put
+    /// the result of a `break` expression)
     break_destination: Place<'tcx>,
 }
 
@@ -728,10 +727,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
     ) {
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Storage);
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Value);
+        self.schedule_drop(span, region_scope, local, DropKind::Storage);
+        self.schedule_drop(span, region_scope, local, DropKind::Value);
     }
 
     /// Indicates that `place` should be dropped on exit from
@@ -744,12 +742,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
         drop_kind: DropKind,
     ) {
-        let needs_drop = self.hir.needs_drop(place_ty);
-        match drop_kind {
-            DropKind::Value => if !needs_drop { return },
+        let needs_drop = match drop_kind {
+            DropKind::Value => {
+                if !self.hir.needs_drop(self.local_decls[local].ty) { return }
+                true
+            },
             DropKind::Storage => {
                 if local.index() <= self.arg_count {
                     span_bug!(
@@ -758,8 +757,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.arg_count,
                     )
                 }
+                false
             }
-        }
+        };
 
         for scope in self.scopes.iter_mut() {
             let this_scope = scope.region_scope == region_scope;
@@ -926,46 +926,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If constants and statics, we don't generate StorageLive for this
             // temporary, so don't try to generate StorageDead for it either.
             _ if self.local_scope().is_none() => (),
-            Operand::Copy(Place {
-                base: PlaceBase::Local(cond_temp),
-                projection: box [],
-            })
-            | Operand::Move(Place {
-                base: PlaceBase::Local(cond_temp),
-                projection: box [],
-            }) => {
-                // Manually drop the condition on both branches.
-                let top_scope = self.scopes.scopes.last_mut().unwrap();
-                let top_drop_data = top_scope.drops.pop().unwrap();
+            Operand::Copy(place)
+            | Operand::Move(place) => {
+                if let Some(cond_temp) = place.as_local() {
+                    // Manually drop the condition on both branches.
+                    let top_scope = self.scopes.scopes.last_mut().unwrap();
+                    let top_drop_data = top_scope.drops.pop().unwrap();
 
-                match top_drop_data.kind {
-                    DropKind::Value { .. } => {
-                        bug!("Drop scheduled on top of condition variable")
+                    match top_drop_data.kind {
+                        DropKind::Value { .. } => {
+                            bug!("Drop scheduled on top of condition variable")
+                        }
+                        DropKind::Storage => {
+                            let source_info = top_scope.source_info(top_drop_data.span);
+                            let local = top_drop_data.local;
+                            assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
+                            self.cfg.push(
+                                true_block,
+                                Statement {
+                                    source_info,
+                                    kind: StatementKind::StorageDead(local)
+                                },
+                            );
+                            self.cfg.push(
+                                false_block,
+                                Statement {
+                                    source_info,
+                                    kind: StatementKind::StorageDead(local)
+                                },
+                            );
+                        }
                     }
-                    DropKind::Storage => {
-                        let source_info = top_scope.source_info(top_drop_data.span);
-                        let local = top_drop_data.local;
-                        assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
-                        self.cfg.push(
-                            true_block,
-                            Statement {
-                                source_info,
-                                kind: StatementKind::StorageDead(local)
-                            },
-                        );
-                        self.cfg.push(
-                            false_block,
-                            Statement {
-                                source_info,
-                                kind: StatementKind::StorageDead(local)
-                            },
-                        );
-                    }
+
+                    top_scope.invalidate_cache(true, self.is_generator, true);
+                } else {
+                    bug!("Expected as_local_operand to produce a temporary");
                 }
-
-                top_scope.invalidate_cache(true, self.is_generator, true);
             }
-            _ => bug!("Expected as_local_operand to produce a temporary"),
         }
 
         (true_block, false_block)

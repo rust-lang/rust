@@ -23,7 +23,7 @@ use crate::ty::relate::RelateResult;
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, InferConst};
 use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
-use crate::util::nodemap::FxHashMap;
+use crate::util::nodemap::{FxHashMap, FxHashSet};
 
 use errors::DiagnosticBuilder;
 use rustc_data_structures::sync::Lrc;
@@ -32,7 +32,7 @@ use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 use syntax_pos::Span;
 
 use self::combine::CombineFields;
@@ -154,6 +154,8 @@ pub struct InferCtxt<'a, 'tcx> {
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+
+    pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
     /// errors that are due to this original failure. Normally, we
@@ -390,7 +392,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     /// Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, InternedString),
+    EarlyBoundRegion(Span, Symbol),
 
     /// Region variables created for bound regions
     /// in a function or method that is called
@@ -405,7 +407,7 @@ pub enum RegionVariableOrigin {
     NLL(NLLRegionVariableOrigin),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug)]
 pub enum NLLRegionVariableOrigin {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
@@ -416,7 +418,19 @@ pub enum NLLRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
-    Existential,
+    Existential {
+        /// If this is true, then this variable was created to represent a lifetime
+        /// bound in a `for` binder. For example, it might have been created to
+        /// represent the lifetime `'a` in a type like `for<'a> fn(&'a u32)`.
+        /// Such variables are created when we are trying to figure out if there
+        /// is any valid instantiation of `'a` that could fit into some scenario.
+        ///
+        /// This is used to inform error reporting: in the case that we are trying to
+        /// determine whether there is any valid instantiation of a `'a` variable that meets
+        /// some constraint C, we want to blame the "source" of that `for` type,
+        /// rather than blaming the source of the constraint C.
+        from_forall: bool
+    },
 }
 
 impl NLLRegionVariableOrigin {
@@ -424,7 +438,7 @@ impl NLLRegionVariableOrigin {
         match self {
             NLLRegionVariableOrigin::FreeRegion => true,
             NLLRegionVariableOrigin::Placeholder(..) => true,
-            NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::Existential{ .. } => false,
         }
     }
 
@@ -538,6 +552,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 selection_cache: Default::default(),
                 evaluation_cache: Default::default(),
                 reported_trait_errors: Default::default(),
+                reported_closure_mismatch: Default::default(),
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),
@@ -799,16 +814,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Executes `f` and commit the bindings.
     pub fn commit_unconditionally<R, F>(&self, f: F) -> R
     where
-        F: FnOnce() -> R,
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
-        debug!("commit()");
+        debug!("commit_unconditionally()");
         let snapshot = self.start_snapshot();
-        let r = f();
+        let r = f(&snapshot);
         self.commit_from(snapshot);
         r
     }
 
-    /// Executes `f` and commit the bindings if closure `f` returns `Ok(_)`.
+    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
@@ -828,19 +843,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
-    /// Execute `f` in a snapshot, and commit the bindings it creates.
-    pub fn in_snapshot<T, F>(&self, f: F) -> T
-    where
-        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T,
-    {
-        debug!("in_snapshot()");
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.commit_from(snapshot);
-        r
-    }
-
-    /// Executes `f` then unroll any bindings it creates.
+    /// Execute `f` then unroll any bindings it creates.
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
@@ -1304,6 +1307,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Resolve any type variables found in `value` -- but only one
+    /// level.  So, if the variable `?X` is bound to some type
+    /// `Foo<?Y>`, then this would return `Foo<?Y>` (but `?Y` may
+    /// itself be bound to a type).
+    ///
+    /// Useful when you only need to inspect the outermost level of
+    /// the type and don't care about nested types (or perhaps you
+    /// will be resolving them as well, e.g. in a loop).
     pub fn shallow_resolve<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -1481,9 +1492,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn closure_kind(
         &self,
         closure_def_id: DefId,
-        closure_substs: ty::ClosureSubsts<'tcx>,
+        closure_substs: SubstsRef<'tcx>,
     ) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
+        let closure_kind_ty = closure_substs.as_closure().kind_ty(closure_def_id, self.tcx);
         let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
@@ -1495,9 +1506,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn closure_sig(
         &self,
         def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> ty::PolyFnSig<'tcx> {
-        let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+        let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
         let closure_sig_ty = self.shallow_resolve(closure_sig_ty);
         closure_sig_ty.fn_sig(self.tcx)
     }
@@ -1564,6 +1575,9 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
         ShallowResolver { infcx }
     }
 
+    /// If `typ` is a type variable of some kind, resolve it one level
+    /// (but do not resolve types found in the result). If `typ` is
+    /// not a type variable, just return it unmodified.
     pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.kind {
             ty::Infer(ty::TyVar(v)) => {

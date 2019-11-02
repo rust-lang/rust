@@ -79,12 +79,12 @@ all:
 	# Check that a Rust dylib exports its monomorphic functions, including generics this time
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_c_function_from_rust_dylib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_rust_function_from_rust_dylib)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rust_dylib)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rust_dylib)" -eq "1" ]
 
 	# Check that a Rust dylib exports the monomorphic functions from its dependencies
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_rust_function_from_rlib)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rlib)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rlib)" -eq "1" ]
 
 	# Check that an executable does not export any dynamic symbols
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_c_function_from_rlib)" -eq "0" ]

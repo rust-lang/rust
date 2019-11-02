@@ -1,0 +1,38 @@
+error[E0308]: match arms have incompatible types
+  --> $DIR/wf-unsafe-trait-obj-match.rs:23:17
+   |
+LL | /     match opt() {
+LL | |         Some(()) => &S,
+   | |                     -- this is found to be of type `&S`
+LL | |         None => &R,
+   | |                 ^^ expected struct `S`, found struct `R`
+LL | |     }
+   | |_____- `match` arms have incompatible types
+   |
+   = note: expected type `&S`
+              found type `&R`
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-unsafe-trait-obj-match.rs:26:21
+   |
+LL |         Some(()) => &S,
+   |                     ^^ the trait `Trait` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
+   = note: required by cast to type `&dyn Trait`
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-unsafe-trait-obj-match.rs:25:25
+   |
+LL |     let t: &dyn Trait = match opt() {
+   |                         ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&R`
+   = note: required by cast to type `&dyn Trait`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0308.
+For more information about an error, try `rustc --explain E0038`.

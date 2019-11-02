@@ -1,8 +1,9 @@
-error[E0423]: expected function, found trait `Bar`
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
   --> $DIR/privacy-ns2.rs:20:5
    |
 LL |     Bar();
-   |     ^^^ not a function
+   |     ^^^ not a function, tuple struct or tuple variant
+   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use foo1::Bar;
@@ -12,11 +13,15 @@ LL | use foo2::Bar;
 LL | use foo3::Bar;
    |
 
-error[E0423]: expected function, found trait `Bar`
+error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
   --> $DIR/privacy-ns2.rs:26:5
    |
+LL |     pub struct Baz;
+   |     --------------- similarly named unit struct `Baz` defined here
+...
 LL |     Bar();
    |     ^^^
+   |
 help: a unit struct with a similar name exists
    |
 LL |     Baz();
@@ -35,6 +40,7 @@ error[E0573]: expected type, found function `Bar`
    |
 LL |     let _x : Box<Bar>;
    |                  ^^^ not a type
+   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use foo1::Bar;
@@ -45,10 +51,33 @@ LL | use foo3::Bar;
    |
 
 error[E0573]: expected type, found function `Bar`
-  --> $DIR/privacy-ns2.rs:47:17
+  --> $DIR/privacy-ns2.rs:42:14
    |
+LL |     let _x : Bar();
+   |              ^^^^^ not a type
+   |
+help: use `=` if you meant to assign
+   |
+LL |     let _x = Bar();
+   |            ^
+help: possible better candidates are found in other modules, you can import them into scope
+   |
+LL | use foo1::Bar;
+   |
+LL | use foo2::Bar;
+   |
+LL | use foo3::Bar;
+   |
+
+error[E0573]: expected type, found function `Bar`
+  --> $DIR/privacy-ns2.rs:48:17
+   |
+LL |     pub struct Baz;
+   |     --------------- similarly named struct `Baz` defined here
+...
 LL |     let _x: Box<Bar>;
    |                 ^^^
+   |
 help: a struct with a similar name exists
    |
 LL |     let _x: Box<Baz>;
@@ -63,24 +92,24 @@ LL | use foo3::Bar;
    |
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:60:15
+  --> $DIR/privacy-ns2.rs:61:15
    |
 LL |     use foo3::Bar;
    |               ^^^
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:64:15
+  --> $DIR/privacy-ns2.rs:65:15
    |
 LL |     use foo3::Bar;
    |               ^^^
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:71:16
+  --> $DIR/privacy-ns2.rs:72:16
    |
 LL |     use foo3::{Bar,Baz};
    |                ^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0423, E0603.
+Some errors have detailed explanations: E0423, E0573, E0603.
 For more information about an error, try `rustc --explain E0423`.

@@ -1,23 +1,26 @@
 use crate::queries::Queries;
 use crate::util;
-use crate::profile;
 pub use crate::passes::BoxedResolver;
 
 use rustc::lint;
-use rustc::session::config::{self, Input};
+use rustc::session::early_error;
+use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::session::{DiagnosticOutput, Session};
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc_metadata::cstore::CStore;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
-use syntax;
-use syntax::source_map::{FileLoader, SourceMap};
+use syntax::{self, parse};
+use syntax::ast::{self, MetaItemKind};
+use syntax::parse::token;
+use syntax::source_map::{FileName, FilePathMapping, FileLoader, SourceMap};
+use syntax::sess::ParseSess;
 use syntax_pos::edition;
+use rustc_errors::{Diagnostic, emitter::Emitter, Handler, SourceMapperDyn};
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
@@ -33,8 +36,8 @@ pub struct Compiler {
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
     pub(crate) queries: Queries,
-    pub(crate) cstore: Lrc<CStore>,
     pub(crate) crate_name: Option<String>,
+    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
 }
 
 impl Compiler {
@@ -43,9 +46,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
-    }
-    pub fn cstore(&self) -> &Lrc<CStore> {
-        &self.cstore
     }
     pub fn source_map(&self) -> &Lrc<SourceMap> {
         &self.source_map
@@ -59,6 +59,58 @@ impl Compiler {
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.output_file
     }
+}
+
+/// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
+pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
+    struct NullEmitter;
+    impl Emitter for NullEmitter {
+        fn emit_diagnostic(&mut self, _: &Diagnostic) {}
+        fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
+    }
+
+    syntax::with_default_globals(move || {
+        let cfg = cfgspecs.into_iter().map(|s| {
+
+            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let handler = Handler::with_emitter(false, None, Box::new(NullEmitter));
+            let sess = ParseSess::with_span_handler(handler, cm);
+            let filename = FileName::cfg_spec_source_code(&s);
+            let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
+
+            macro_rules! error {($reason: expr) => {
+                early_error(ErrorOutputType::default(),
+                            &format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s));
+            }}
+
+            match &mut parser.parse_meta_item() {
+                Ok(meta_item) if parser.token == token::Eof => {
+                    if meta_item.path.segments.len() != 1 {
+                        error!("argument key must be an identifier");
+                    }
+                    match &meta_item.kind {
+                        MetaItemKind::List(..) => {
+                            error!(r#"expected `key` or `key="value"`"#);
+                        }
+                        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
+                            error!("argument value must be a string");
+                        }
+                        MetaItemKind::NameValue(..) | MetaItemKind::Word => {
+                            let ident = meta_item.ident().expect("multi-segment cfg key");
+                            return (ident.name, meta_item.value_str());
+                        }
+                    }
+                }
+                Ok(..) => {}
+                Err(err) => err.cancel(),
+            }
+
+            error!(r#"expected `key` or `key="value"`"#);
+        }).collect::<ast::CrateConfig>();
+        cfg.into_iter().map(|(a, b)| {
+            (a.to_string(), b.map(|b| b.to_string()))
+        }).collect()
+    })
 }
 
 /// The compiler configuration
@@ -81,6 +133,13 @@ pub struct Config {
 
     pub crate_name: Option<String>,
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
+
+    /// This is a callback from the driver that is called when we're registering lints;
+    /// it is called during plugin registration when we have the LintStore in a non-shared state.
+    ///
+    /// Note that if you find a Some here you probably want to call that function in the new
+    /// function being registered.
+    pub register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
 }
 
 pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
@@ -96,36 +155,24 @@ where
         config.lint_caps,
     );
 
-    let cstore = Lrc::new(CStore::new(codegen_backend.metadata_loader()));
-
     let compiler = Compiler {
         sess,
         codegen_backend,
         source_map,
-        cstore,
         input: config.input,
         input_path: config.input_path,
         output_dir: config.output_dir,
         output_file: config.output_file,
         queries: Default::default(),
         crate_name: config.crate_name,
+        register_lints: config.register_lints,
     };
 
     let _sess_abort_error = OnDrop(|| {
         compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
     });
 
-    if compiler.sess.profile_queries() {
-        profile::begin(&compiler.sess);
-    }
-
-    let r = f(&compiler);
-
-    if compiler.sess.profile_queries() {
-        profile::dump(&compiler.sess, "profile_queries".to_string())
-    }
-
-    r
+    f(&compiler)
 }
 
 pub fn run_compiler<F, R>(mut config: Config, f: F) -> R
@@ -147,5 +194,8 @@ where
     F: FnOnce() -> R + Send,
     R: Send,
 {
-    util::spawn_thread_pool(edition, None, &None, f)
+    // the 1 here is duplicating code in config.opts.debugging_opts.threads
+    // which also defaults to 1; it ultimately doesn't matter as the default
+    // isn't threaded, and just ignores this parameter
+    util::spawn_thread_pool(edition, 1, &None, f)
 }

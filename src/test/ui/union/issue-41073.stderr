@@ -1,0 +1,15 @@
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/issue-41073.rs:4:5
+   |
+LL |     a: A,
+   |     ^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/issue-41073.rs:4:5
+   |
+LL |     a: A,
+   |     ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0740`.

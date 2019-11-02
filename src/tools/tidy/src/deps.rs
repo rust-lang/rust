@@ -89,6 +89,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("crc32fast"),
     Crate("crossbeam-deque"),
     Crate("crossbeam-epoch"),
+    Crate("crossbeam-queue"),
     Crate("crossbeam-utils"),
     Crate("datafrog"),
     Crate("dlmalloc"),
@@ -180,6 +181,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("winapi-util"),
     Crate("winapi-x86_64-pc-windows-gnu"),
     Crate("wincolor"),
+    Crate("hermit-abi"),
 ];
 
 // Some types for Serde to deserialize the output of `cargo metadata` to.

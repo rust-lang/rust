@@ -3,6 +3,7 @@ error[E0621]: explicit lifetime required in the type of `x`
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
    |                         ^^^^^^^^^^^^ lifetime `ReEarlyBound(0, 'a)` required
+   |
 help: add explicit lifetime `ReEarlyBound(0, 'a)` to the type of `x`
    |
 LL | fn foo<'a, T>(x: &ReEarlyBound(0, 'a) T) -> impl Foo<'a> {

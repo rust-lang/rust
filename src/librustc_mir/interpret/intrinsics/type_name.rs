@@ -67,9 +67,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
-            | ty::Closure(def_id, ty::ClosureSubsts { substs })
-            | ty::Generator(def_id, ty::GeneratorSubsts { substs }, _)
-            => self.print_def_path(def_id, substs),
+            | ty::Closure(def_id, substs)
+            | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
             ty::GeneratorWitness(_) => {
@@ -149,7 +148,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
         self.path.push_str("::");
 
-        self.path.push_str(&disambiguated_data.data.as_interned_str().as_str());
+        self.path.push_str(&disambiguated_data.data.as_symbol().as_str());
         Ok(self)
     }
 

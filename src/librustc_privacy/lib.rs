@@ -64,7 +64,7 @@ trait DefIdVisitor<'tcx> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_predicates(&mut self, predicates: &ty::GenericPredicates<'tcx>) -> bool {
+    fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> bool {
         self.skeleton().visit_predicates(predicates)
     }
 }
@@ -88,7 +88,7 @@ where
         (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 
-    fn visit_predicates(&mut self, predicates: &ty::GenericPredicates<'tcx>) -> bool {
+    fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> bool {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
             match predicate {
@@ -880,11 +880,11 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             self.tcx,
             self.tcx.hir().local_def_id(md.hir_id)
         ).unwrap();
-        let mut module_id = self.tcx.hir().as_local_hir_id(macro_module_def_id).unwrap();
-        if !self.tcx.hir().is_hir_id_module(module_id) {
-            // `module_id` doesn't correspond to a `mod`, return early (#63164).
-            return;
-        }
+        let mut module_id = match self.tcx.hir().as_local_hir_id(macro_module_def_id) {
+            Some(module_id) if self.tcx.hir().is_hir_id_module(module_id) => module_id,
+            // `module_id` doesn't correspond to a `mod`, return early (#63164, #65252).
+            _ => return,
+        };
         let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
         let new_level = self.update(md.hir_id, level);
         if new_level.is_none() {

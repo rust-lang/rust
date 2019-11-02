@@ -3,7 +3,7 @@ use rustc::mir::*;
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use std::fmt::Display;
 use std::fmt::Write as _;
 use std::fs;
@@ -145,7 +145,7 @@ fn dump_matched_mir_node<'tcx, F>(
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
-            write_mir_fn_graphviz(tcx, source.def_id(), body, &mut file)?;
+            write_mir_fn_graphviz(tcx, source.def_id(), body, false, &mut file)?;
         };
     }
 }

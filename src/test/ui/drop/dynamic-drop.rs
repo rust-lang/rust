@@ -8,6 +8,7 @@
 #![feature(slice_patterns)]
 
 use std::cell::{Cell, RefCell};
+use std::mem::ManuallyDrop;
 use std::ops::Generator;
 use std::panic;
 use std::pin::Pin;
@@ -152,17 +153,16 @@ fn assignment1(a: &Allocator, c0: bool) {
     _v = _w;
 }
 
-#[allow(unions_with_drop_fields)]
 union Boxy<T> {
-    a: T,
-    b: T,
+    a: ManuallyDrop<T>,
+    b: ManuallyDrop<T>,
 }
 
 fn union1(a: &Allocator) {
     unsafe {
-        let mut u = Boxy { a: a.alloc() };
-        u.b = a.alloc();
-        drop(u.a);
+        let mut u = Boxy { a: ManuallyDrop::new(a.alloc()) };
+        *u.b = a.alloc(); // drops first alloc
+        drop(ManuallyDrop::into_inner(u.a));
     }
 }
 

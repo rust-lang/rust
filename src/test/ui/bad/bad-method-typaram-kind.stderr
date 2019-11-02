@@ -1,11 +1,12 @@
 error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/bad-method-typaram-kind.rs:2:7
    |
+LL | fn foo<T:'static>() {
+   |        -- help: consider further restricting this bound: `T: std::marker::Send +`
 LL |     1.bar::<T>();
    |       ^^^ `T` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `T`
-   = help: consider adding a `where T: std::marker::Send` bound
 
 error: aborting due to previous error
 

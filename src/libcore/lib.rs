@@ -121,19 +121,19 @@
 #![feature(hexagon_target_feature)]
 #![feature(const_int_conversion)]
 #![feature(const_transmute)]
-#![feature(non_exhaustive)]
+#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice)]
 #![feature(external_doc)]
-#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 
 #[prelude_import]
 #[allow(unused)]
 use prelude::v1::*;
 
+#[cfg(not(test))] // See #65860
 #[macro_use]
 mod macros;
 
@@ -181,10 +181,14 @@ pub mod hint;
 
 /* Core language traits */
 
+#[cfg(not(test))] // See #65860
 pub mod marker;
 pub mod ops;
+#[cfg(not(test))] // See #65860
 pub mod cmp;
+#[cfg(not(test))] // See #65860
 pub mod clone;
+#[cfg(not(test))] // See #65860
 pub mod default;
 pub mod convert;
 pub mod borrow;
@@ -192,6 +196,7 @@ pub mod borrow;
 /* Core types and methods on primitives */
 
 pub mod any;
+#[cfg(not(test))] // See #65860
 pub mod array;
 pub mod ascii;
 pub mod sync;
@@ -199,7 +204,9 @@ pub mod cell;
 pub mod char;
 pub mod panic;
 pub mod panicking;
+#[cfg(not(test))] // See #65860
 pub mod pin;
+#[cfg(not(test))] // See #65860
 pub mod iter;
 pub mod option;
 pub mod raw;
@@ -207,14 +214,18 @@ pub mod result;
 pub mod ffi;
 
 pub mod slice;
+#[cfg(not(test))] // See #65860
 pub mod str;
+#[cfg(not(test))] // See #65860
 pub mod hash;
+#[cfg(not(test))] // See #65860
 pub mod fmt;
 pub mod time;
 
 pub mod unicode;
 
 /* Async */
+#[cfg(not(test))] // See #65860
 pub mod future;
 pub mod task;
 

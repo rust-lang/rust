@@ -14,13 +14,6 @@ fn interner_tests() {
     assert_eq!(i.intern("cat"), Symbol::new(1));
     // dog is still at zero
     assert_eq!(i.intern("dog"), Symbol::new(0));
-    let z = i.intern("zebra");
-    assert_eq!(i.gensymed(z), Symbol::new(SymbolIndex::MAX_AS_U32));
-    // gensym of same string gets new number:
-    assert_eq!(i.gensymed(z), Symbol::new(SymbolIndex::MAX_AS_U32 - 1));
-    // gensym of *existing* string gets new number:
-    let d = i.intern("dog");
-    assert_eq!(i.gensymed(d), Symbol::new(SymbolIndex::MAX_AS_U32 - 2));
 }
 
 #[test]

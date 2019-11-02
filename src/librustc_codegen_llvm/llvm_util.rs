@@ -3,7 +3,7 @@ use crate::llvm;
 use syntax_pos::symbol::Symbol;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
-use rustc_target::spec::MergeFunctions;
+use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use libc::c_int;
 use std::ffi::CString;
 use syntax::feature_gate::UnstableFeatures;
@@ -71,6 +71,11 @@ unsafe fn configure_llvm(sess: &Session) {
                     add("-mergefunc-use-aliases");
                 }
             }
+        }
+
+        if sess.target.target.target_os == "emscripten" &&
+            sess.panic_strategy() == PanicStrategy::Unwind {
+            add("-enable-emscripten-cxx-exceptions");
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
@@ -257,8 +262,7 @@ pub fn target_feature_whitelist(sess: &Session)
         "hexagon" => HEXAGON_WHITELIST,
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
-        // wasm32 on emscripten does not support these target features
-        "wasm32" if !sess.target.target.options.is_like_emscripten => WASM_WHITELIST,
+        "wasm32" => WASM_WHITELIST,
         _ => &[],
     }
 }

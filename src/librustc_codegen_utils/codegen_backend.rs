@@ -14,7 +14,7 @@ use rustc::util::common::ErrorReported;
 use rustc::session::config::{OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc::dep_graph::DepGraph;
 
 pub use rustc_data_structures::sync::MetadataRef;
@@ -25,9 +25,8 @@ pub trait CodegenBackend {
     fn target_features(&self, _sess: &Session) -> Vec<Symbol> { vec![] }
     fn print_passes(&self) {}
     fn print_version(&self) {}
-    fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
+    fn metadata_loader(&self) -> Box<MetadataLoaderDyn>;
     fn provide(&self, _providers: &mut Providers<'_>);
     fn provide_extern(&self, _providers: &mut Providers<'_>);
     fn codegen_crate<'tcx>(

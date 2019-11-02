@@ -1,4 +1,3 @@
-// ignore-emscripten
 // min-llvm-version 7.0
 
 // compile-flags: -C no-prepopulate-passes

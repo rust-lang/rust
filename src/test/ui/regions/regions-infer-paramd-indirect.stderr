@@ -17,7 +17,7 @@ LL | |
 LL | |
 LL | |     }
    | |_____^
-note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 16:6
+note: ...does not necessarily outlive the lifetime `'a` as defined on the impl at 16:6
   --> $DIR/regions-infer-paramd-indirect.rs:16:6
    |
 LL | impl<'a> SetF<'a> for C<'a> {

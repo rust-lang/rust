@@ -18,32 +18,37 @@ fn main() {
     let xe4 = XE::XEmpty4;
 
     match e2 {
-        Empty2() => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+        Empty2() => () //~ ERROR expected tuple struct or tuple variant, found unit struct `Empty2`
     }
     match xe2 {
-        XEmpty2() => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+        XEmpty2() => ()
+        //~^ ERROR expected tuple struct or tuple variant, found unit struct `XEmpty2`
     }
     match e2 {
-        Empty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `Empty2`
+        Empty2(..) => ()
+        //~^ ERROR expected tuple struct or tuple variant, found unit struct `Empty2`
     }
     match xe2 {
-        XEmpty2(..) => () //~ ERROR expected tuple struct/variant, found unit struct `XEmpty2`
+        XEmpty2(..) => ()
+        //~^ ERROR expected tuple struct or tuple variant, found unit struct `XEmpty2`
     }
 
     match e4 {
-        E::Empty4() => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
+        E::Empty4() => ()
+        //~^ ERROR expected tuple struct or tuple variant, found unit variant `E::Empty4`
     }
     match xe4 {
         XE::XEmpty4() => (),
-        //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
+        //~^ ERROR expected tuple struct or tuple variant, found unit variant `XE::XEmpty4`
         _ => {},
     }
     match e4 {
-        E::Empty4(..) => () //~ ERROR expected tuple struct/variant, found unit variant `E::Empty4`
+        E::Empty4(..) => ()
+        //~^ ERROR expected tuple struct or tuple variant, found unit variant `E::Empty4`
     }
     match xe4 {
         XE::XEmpty4(..) => (),
-        //~^ ERROR expected tuple struct/variant, found unit variant `XE::XEmpty4`
+        //~^ ERROR expected tuple struct or tuple variant, found unit variant `XE::XEmpty4`
         _ => {},
     }
 }

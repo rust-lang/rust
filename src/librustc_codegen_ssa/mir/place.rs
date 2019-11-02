@@ -68,6 +68,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         }
     }
 
+    // FIXME(eddyb) pass something else for the name so no work is done
+    // unless LLVM IR names are turned on (e.g. for `--emit=llvm-ir`).
     pub fn alloca<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
@@ -78,6 +80,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     /// Returns a place for an indirect reference to an unsized place.
+    // FIXME(eddyb) pass something else for the name so no work is done
+    // unless LLVM IR names are turned on (e.g. for `--emit=llvm-ir`).
     pub fn alloca_unsized_indirect<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
@@ -394,8 +398,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Statically compute the offset if we can, otherwise just use the element size,
         // as this will yield the lowest alignment.
         let layout = self.layout.field(bx, 0);
-        let offset = if bx.is_const_integral(llindex) {
-            layout.size.checked_mul(bx.const_to_uint(llindex), bx).unwrap_or(layout.size)
+        let offset = if let Some(llindex) = bx.const_to_opt_uint(llindex) {
+            layout.size.checked_mul(llindex, bx).unwrap_or(layout.size)
         } else {
             layout.size
         };

@@ -8,9 +8,9 @@ Type parameter defaults can only use parameters that occur before them.
 Erroneous code example:
 
 ```compile_fail,E0128
-struct Foo<T=U, U=()> {
+struct Foo<T = U, U = ()> {
     field1: T,
-    filed2: U,
+    field2: U,
 }
 // error: type parameters with a default cannot use forward declared
 // identifiers
@@ -20,9 +20,9 @@ Since type parameters are evaluated in-order, you may be able to fix this issue
 by doing:
 
 ```
-struct Foo<U=(), T=U> {
+struct Foo<U = (), T = U> {
     field1: T,
-    filed2: U,
+    field2: U,
 }
 ```
 
@@ -974,7 +974,7 @@ function:
 struct Foo { a: bool };
 
 let f = Foo();
-// error: expected function, found `Foo`
+// error: expected function, tuple struct or tuple variant, found `Foo`
 // `Foo` is a struct name, but this expression uses it like a function name
 ```
 
@@ -992,7 +992,8 @@ yield this error:
 
 ```compile_fail,E0423
 println("");
-// error: expected function, found macro `println`
+// error: expected function, tuple struct or tuple variant,
+// found macro `println`
 // did you mean `println!(...)`? (notice the trailing `!`)
 ```
 
@@ -1013,7 +1014,8 @@ fn h1() -> i32 {
 "##,
 
 E0424: r##"
-The `self` keyword was used in a static method.
+The `self` keyword was used inside of an associated function without a "`self`
+receiver" parameter.
 
 Erroneous code example:
 
@@ -1021,25 +1023,33 @@ Erroneous code example:
 struct Foo;
 
 impl Foo {
-    fn bar(self) {}
+    // `bar` is a method, because it has a receiver parameter.
+    fn bar(&self) {}
 
+    // `foo` is not a method, because it has no receiver parameter.
     fn foo() {
-        self.bar(); // error: `self` is not available in a static method.
+        self.bar(); // error: `self` value is a keyword only available in
+                    //        methods with a `self` parameter
     }
 }
 ```
 
-Please check if the method's argument list should have contained `self`,
-`&self`, or `&mut self` (in case you didn't want to create a static
-method), and add it if so. Example:
+The `self` keyword can only be used inside methods, which are associated
+functions (functions defined inside of a `trait` or `impl` block) that have a
+`self` receiver as its first parameter, like `self`, `&self`, `&mut self` or
+`self: &mut Pin<Self>` (this last one is an example of an ["abitrary `self`
+type"](https://github.com/rust-lang/rust/issues/44874)).
+
+Check if the associated function's parameter list should have contained a `self`
+receiver for it to be a method, and add it if so. Example:
 
 ```
 struct Foo;
 
 impl Foo {
-    fn bar(self) {}
+    fn bar(&self) {}
 
-    fn foo(self) {
+    fn foo(self) { // `foo` is now a method.
         self.bar(); // ok!
     }
 }
@@ -1525,6 +1535,51 @@ match r {
 ```
 "##,
 
+E0531: r##"
+An unknown tuple struct/variant has been used.
+
+Erroneous code example:
+
+```compile_fail,E0531
+let Type(x) = Type(12); // error!
+match Bar(12) {
+    Bar(x) => {} // error!
+    _ => {}
+}
+```
+
+In most cases, it's either a forgotten import or a typo. However, let's look at
+how you can have such a type:
+
+```edition2018
+struct Type(u32); // this is a tuple struct
+
+enum Foo {
+    Bar(u32), // this is a tuple variant
+}
+
+use Foo::*; // To use Foo's variant directly, we need to import them in
+            // the scope.
+```
+
+Either way, it should work fine with our previous code:
+
+```edition2018
+struct Type(u32);
+
+enum Foo {
+    Bar(u32),
+}
+use Foo::*;
+
+let Type(x) = Type(12); // ok!
+match Type(12) {
+    Type(x) => {} // ok!
+    _ => {}
+}
+```
+"##,
+
 E0532: r##"
 Pattern arm did not match expected kind.
 
@@ -1538,7 +1593,7 @@ enum State {
 
 fn print_on_failure(state: &State) {
     match *state {
-        // error: expected unit struct/variant or constant, found tuple
+        // error: expected unit struct, unit variant or constant, found tuple
         //        variant `State::Failed`
         State::Failed => println!("Failed"),
         _ => ()
@@ -1563,6 +1618,263 @@ fn print_on_failure(state: &State) {
         _ => ()
     }
 }
+```
+"##,
+
+E0573: r##"
+Something other than a type has been used when one was expected.
+
+Erroneous code examples:
+
+```compile_fail,E0573
+enum Dragon {
+    Born,
+}
+
+fn oblivion() -> Dragon::Born { // error!
+    Dragon::Born
+}
+
+const HOBBIT: u32 = 2;
+impl HOBBIT {} // error!
+
+enum Wizard {
+    Gandalf,
+    Saruman,
+}
+
+trait Isengard {
+    fn wizard(_: Wizard::Saruman); // error!
+}
+```
+
+In all these errors, a type was expected. For example, in the first error, if
+we want to return the `Born` variant from the `Dragon` enum, we must set the
+function to return the enum and not its variant:
+
+```
+enum Dragon {
+    Born,
+}
+
+fn oblivion() -> Dragon { // ok!
+    Dragon::Born
+}
+```
+
+In the second error, you can't implement something on an item, only on types.
+We would need to create a new type if we wanted to do something similar:
+
+```
+struct Hobbit(u32); // we create a new type
+
+const HOBBIT: Hobbit = Hobbit(2);
+impl Hobbit {} // ok!
+```
+
+In the third case, we tried to only expect one variant of the `Wizard` enum,
+which is not possible. To make this work, we need to using pattern matching
+over the `Wizard` enum:
+
+```
+enum Wizard {
+    Gandalf,
+    Saruman,
+}
+
+trait Isengard {
+    fn wizard(w: Wizard) { // ok!
+        match w {
+            Wizard::Saruman => {
+                // do something
+            }
+            _ => {} // ignore everything else
+        }
+    }
+}
+```
+"##,
+
+E0574: r##"
+Something other than a struct, variant or union has been used when one was
+expected.
+
+Erroneous code example:
+
+```compile_fail,E0574
+mod Mordor {}
+
+let sauron = Mordor { x: () }; // error!
+
+enum Jak {
+    Daxter { i: isize },
+}
+
+let eco = Jak::Daxter { i: 1 };
+match eco {
+    Jak { i } => {} // error!
+}
+```
+
+In all these errors, a type was expected. For example, in the first error,
+we tried to instantiate the `Mordor` module, which is impossible. If you want
+to instantiate a type inside a module, you can do it as follow:
+
+```
+mod Mordor {
+    pub struct TheRing {
+        pub x: usize,
+    }
+}
+
+let sauron = Mordor::TheRing { x: 1 }; // ok!
+```
+
+In the second error, we tried to bind the `Jak` enum directly, which is not
+possible: you can only bind one of its variants. To do so:
+
+```
+enum Jak {
+    Daxter { i: isize },
+}
+
+let eco = Jak::Daxter { i: 1 };
+match eco {
+    Jak::Daxter { i } => {} // ok!
+}
+```
+"##,
+
+E0575: r##"
+Something other than a type or an associated type was given.
+
+Erroneous code example:
+
+```compile_fail,E0575
+enum Rick { Morty }
+
+let _: <u8 as Rick>::Morty; // error!
+
+trait Age {
+    type Empire;
+    fn Mythology() {}
+}
+
+impl Age for u8 {
+    type Empire = u16;
+}
+
+let _: <u8 as Age>::Mythology; // error!
+```
+
+In both cases, we're declaring a variable (called `_`) and we're giving it a
+type. However, `<u8 as Rick>::Morty` and `<u8 as Age>::Mythology` aren't types,
+therefore the compiler throws an error.
+
+`<u8 as Rick>::Morty` is an enum variant, you cannot use a variant as a type,
+you have to use the enum directly:
+
+```
+enum Rick { Morty }
+
+let _: Rick; // ok!
+```
+
+`<u8 as Age>::Mythology` is a trait method, which is definitely not a type.
+However, the `Age` trait provides an associated type `Empire` which can be
+used as a type:
+
+```
+trait Age {
+    type Empire;
+    fn Mythology() {}
+}
+
+impl Age for u8 {
+    type Empire = u16;
+}
+
+let _: <u8 as Age>::Empire; // ok!
+```
+"##,
+
+E0576: r##"
+An associated item wasn't found in the given type.
+
+Erroneous code example:
+
+```compile_fail,E0576
+trait Hello {
+    type Who;
+
+    fn hello() -> <Self as Hello>::You; // error!
+}
+```
+
+In this example, we tried to use the non-existent associated type `You` of the
+`Hello` trait. To fix this error, use an existing associated type:
+
+```
+trait Hello {
+    type Who;
+
+    fn hello() -> <Self as Hello>::Who; // ok!
+}
+```
+"##,
+
+E0577: r##"
+Something other than a module was found in visibility scope.
+
+Erroneous code example:
+
+```compile_fail,E0577,edition2018
+pub struct Sea;
+
+pub (in crate::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+`Sea` is not a module, therefore it is invalid to use it in a visibility path.
+To fix this error we need to ensure `Sea` is a module.
+
+Please note that the visibility scope can only be applied on ancestors!
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark; // ok!
+}
+
+fn main() {}
+```
+"##,
+
+E0578: r##"
+A module cannot be found and therefore, the visibility cannot be determined.
+
+Erroneous code example:
+
+```compile_fail,E0578,edition2018
+foo!();
+
+pub (in ::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+Because of the call to the `foo` macro, the compiler guesses that the missing
+module could be inside it and fails because the macro definition cannot be
+found.
+
+To fix this error, please be sure that the module is in scope:
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark;
+}
+
+fn main() {}
 ```
 "##,
 
@@ -1600,7 +1912,7 @@ An item usage is ambiguous.
 
 Erroneous code example:
 
-```compile_fail,E0659
+```compile_fail,edition2018,E0659
 pub mod moon {
     pub fn foo() {}
 }
@@ -1610,12 +1922,12 @@ pub mod earth {
 }
 
 mod collider {
-    pub use moon::*;
-    pub use earth::*;
+    pub use crate::moon::*;
+    pub use crate::earth::*;
 }
 
 fn main() {
-    collider::foo(); // ERROR: `foo` is ambiguous
+    crate::collider::foo(); // ERROR: `foo` is ambiguous
 }
 ```
 
@@ -1627,7 +1939,7 @@ functions collide.
 To solve this error, the best solution is generally to keep the path before the
 item when using it. Example:
 
-```
+```edition2018
 pub mod moon {
     pub fn foo() {}
 }
@@ -1637,29 +1949,84 @@ pub mod earth {
 }
 
 mod collider {
-    pub use moon;
-    pub use earth;
+    pub use crate::moon;
+    pub use crate::earth;
 }
 
 fn main() {
-    collider::moon::foo(); // ok!
-    collider::earth::foo(); // ok!
+    crate::collider::moon::foo(); // ok!
+    crate::collider::earth::foo(); // ok!
 }
 ```
 "##,
 
 E0671: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Const parameters cannot depend on type parameters.
 The following is therefore invalid:
-```compile_fail,E0671
+
+```compile_fail,E0741
 #![feature(const_generics)]
 
-fn const_id<T, const N: T>() -> T { // error: const parameter
-                                    // depends on type parameter
+fn const_id<T, const N: T>() -> T { // error
     N
 }
 ```
 "##,
+
+E0735: r##"
+Type parameter defaults cannot use `Self` on structs, enums, or unions.
+
+Erroneous code example:
+
+```compile_fail,E0735
+struct Foo<X = Box<Self>> {
+    field1: Option<X>,
+    field2: Option<X>,
+}
+// error: type parameters cannot use `Self` in their defaults.
+```
+"##,
+
+E0742: r##"
+Visibility is restricted to a module which isn't an ancestor of the current
+item.
+
+Erroneous code example:
+
+```compile_fail,E0742,edition2018
+pub mod Sea {}
+
+pub (in crate::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+To fix this error, we need to move the `Shark` struct inside the `Sea` module:
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark; // ok!
+}
+
+fn main() {}
+```
+
+Of course, you can do it as long as the module you're referring to is an
+ancestor:
+
+```edition2018
+pub mod Earth {
+    pub mod Sea {
+        pub (in crate::Earth) struct Shark; // ok!
+    }
+}
+
+fn main() {}
+```
+"##,
+
 ;
 //  E0153, unused error code
 //  E0157, unused error code
@@ -1675,14 +2042,7 @@ fn const_id<T, const N: T>() -> T { // error: const parameter
 //  E0419, merged into 531
 //  E0420, merged into 532
 //  E0421, merged into 531
-    E0531, // unresolved pattern path kind `name`
 //  E0427, merged into 530
 //  E0467, removed
 //  E0470, removed
-    E0573,
-    E0574,
-    E0575,
-    E0576,
-    E0577,
-    E0578,
 }

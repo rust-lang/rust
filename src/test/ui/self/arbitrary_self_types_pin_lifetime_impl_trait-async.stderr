@@ -6,12 +6,12 @@ LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
    |                |
    |                ...but this borrow...
    |
-note: ...can't outlive the lifetime '_ as defined on the method body at 8:26
+note: ...can't outlive the lifetime `'_` as defined on the method body at 8:26
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:26
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
    |                          ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 8:26
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime `'_` as defined on the method body at 8:26
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                     ^^^^^^^^^^^^^^^

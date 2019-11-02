@@ -90,7 +90,7 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
-use syntax::ext::base::{Annotatable, ExtCtxt};
+use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;

@@ -65,7 +65,7 @@ impl TypeRelatingDelegate<'tcx> for &mut ChalkTypeRelatingDelegate<'_, 'tcx> {
         self.infcx.create_next_universe()
     }
 
-    fn next_existential_region_var(&mut self) -> ty::Region<'tcx> {
+    fn next_existential_region_var(&mut self, _was_placeholder: bool) -> ty::Region<'tcx> {
         self.infcx.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
 

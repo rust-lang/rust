@@ -3,7 +3,7 @@ use crate::hair::cx::Cx;
 use crate::hair::cx::block;
 use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
@@ -506,7 +506,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Closure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, movability) = match closure_ty.kind {
-                ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
+                ty::Closure(def_id, substs) => (def_id,
+                    UpvarSubsts::Closure(substs), None),
                 ty::Generator(def_id, substs, movability) => {
                     (def_id, UpvarSubsts::Generator(substs), Some(movability))
                 }
@@ -907,7 +908,7 @@ fn convert_path_expr<'a, 'tcx>(
             let generics = cx.tcx.generics_of(item_def_id);
             let local_def_id = cx.tcx.hir().local_def_id(hir_id);
             let index = generics.param_def_id_to_index[&local_def_id];
-            let name = cx.tcx.hir().name(hir_id).as_interned_str();
+            let name = cx.tcx.hir().name(hir_id);
             let val = ConstValue::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(
@@ -1011,7 +1012,7 @@ fn convert_var(
                                                            });
                         Expr {
                             ty: closure_ty,
-                            temp_lifetime: temp_lifetime,
+                            temp_lifetime,
                             span: expr.span,
                             kind: ExprKind::Deref {
                                 arg: Expr {

@@ -10,6 +10,7 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::lint;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 
+use rustc::hir::HirId;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -62,12 +63,13 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     fn visit_local(&mut self, loc: &'tcx hir::Local) {
         intravisit::walk_local(self, loc);
 
-        self.check_irrefutable(&loc.pat, match loc.source {
-            hir::LocalSource::Normal => "local binding",
-            hir::LocalSource::ForLoopDesugar => "`for` loop binding",
-            hir::LocalSource::AsyncFn => "async fn binding",
-            hir::LocalSource::AwaitDesugar => "`await` future binding",
-        });
+        let (msg, sp) = match loc.source {
+            hir::LocalSource::Normal => ("local binding", Some(loc.span)),
+            hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
+            hir::LocalSource::AsyncFn => ("async fn binding", None),
+            hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
+        };
+        self.check_irrefutable(&loc.pat, msg, sp);
 
         // Check legality of move bindings and `@` patterns.
         self.check_patterns(false, &loc.pat);
@@ -77,7 +79,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
         intravisit::walk_body(self, body);
 
         for param in &body.params {
-            self.check_irrefutable(&param.pat, "function argument");
+            self.check_irrefutable(&param.pat, "function argument", None);
             self.check_patterns(false, &param.pat);
         }
     }
@@ -152,7 +154,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         self.tables
                     );
                     patcx.include_lint_checks();
-                    let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
+                    let pattern =
+                        cx.pattern_arena.alloc(expand_pattern(cx, patcx.lower_pattern(&pat))) as &_;
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
                         have_errors = true;
@@ -238,11 +241,11 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 .map(|pat| smallvec![pat.0])
                 .collect();
             let scrut_ty = self.tables.node_type(scrut.hir_id);
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
+            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id);
         })
     }
 
-    fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
+    fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str, sp: Option<Span>) {
         let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatCtxt::new(self.tcx,
@@ -251,11 +254,12 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             patcx.include_lint_checks();
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
+            let pattern = expand_pattern(cx, pattern);
             let pats: Matrix<'_, '_> = vec![smallvec![
-                expand_pattern(cx, pattern)
+                &pattern
             ]].into_iter().collect();
 
-            let witnesses = match check_not_useful(cx, pattern_ty, &pats) {
+            let witnesses = match check_not_useful(cx, pattern_ty, &pats, pat.hir_id) {
                 Ok(_) => return,
                 Err(err) => err,
             };
@@ -266,18 +270,35 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 "refutable pattern in {}: {} not covered",
                 origin, joined_patterns
             );
-            match &pat.kind {
+            let suggest_if_let = match &pat.kind {
                 hir::PatKind::Path(hir::QPath::Resolved(None, path))
                     if path.segments.len() == 1 && path.segments[0].args.is_none() =>
                 {
                     const_not_var(&mut err, cx.tcx, pat, path);
+                    false
                 }
                 _ => {
                     err.span_label(
                         pat.span,
                         pattern_not_covered_label(&witnesses, &joined_patterns),
                     );
+                    true
                 }
+            };
+
+            if let (Some(span), true) = (sp, suggest_if_let) {
+                err.note("`let` bindings require an \"irrefutable pattern\", like a `struct` or \
+                          an `enum` with only one variant");
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    err.span_suggestion(
+                        span,
+                        "you might want to use `if let` to ignore the variant that isn't matched",
+                        format!("if {} {{ /* */ }}", &snippet[..snippet.len() - 1]),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                err.note("for more information, visit \
+                          https://doc.rust-lang.org/book/ch18-02-refutability.html");
             }
 
             adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
@@ -371,7 +392,7 @@ fn check_arms<'tcx>(
         for &(pat, hir_pat) in pats {
             let v = smallvec![pat];
 
-            match is_useful(cx, &seen, &v, LeaveOutWitness) {
+            match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id) {
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfDesugar { .. } |
@@ -447,9 +468,10 @@ fn check_not_useful(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     matrix: &Matrix<'_, 'tcx>,
+    hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
     let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
-    match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
+    match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness, hir_id) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             vec![wild_pattern]
@@ -465,8 +487,9 @@ fn check_exhaustive<'tcx>(
     scrut_ty: Ty<'tcx>,
     sp: Span,
     matrix: &Matrix<'_, 'tcx>,
+    hir_id: HirId,
 ) {
-    let witnesses = match check_not_useful(cx, scrut_ty, matrix) {
+    let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
         Ok(_) => return,
         Err(err) => err,
     };

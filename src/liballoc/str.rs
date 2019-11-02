@@ -456,7 +456,7 @@ impl str {
                 }
             }
         }
-        return s;
+        s
     }
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
@@ -500,10 +500,8 @@ impl str {
     /// A panic upon overflow:
     ///
     /// ```should_panic
-    /// fn main() {
-    ///     // this will panic at runtime
-    ///     "0123456789abcdef".repeat(usize::max_value());
-    /// }
+    /// // this will panic at runtime
+    /// "0123456789abcdef".repeat(usize::max_value());
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {

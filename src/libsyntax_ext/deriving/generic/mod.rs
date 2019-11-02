@@ -186,13 +186,14 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
+use syntax::expand::SpecialDerives;
 use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
+use syntax::sess::ParseSess;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax::parse::ParseSess;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_expand::base::{Annotatable, ExtCtxt};
+use syntax_pos::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -1022,7 +1023,7 @@ impl<'a> MethodDef<'a> {
                                  // [fields of next Self arg], [etc]>
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
-            let struct_path = cx.path(DUMMY_SP, vec![type_ident]);
+            let struct_path = cx.path(trait_.span, vec![type_ident]);
             let (pat, ident_expr) = trait_.create_struct_pattern(cx,
                                                                  struct_path,
                                                                  struct_def,
@@ -1055,9 +1056,7 @@ impl<'a> MethodDef<'a> {
                 })
                 .collect()
         } else {
-            cx.span_bug(trait_.span,
-                        "no self arguments to non-static method in generic \
-                         `derive`")
+            cx.span_bug(trait_.span, "no `self` parameter for method in generic `derive`")
         };
 
         // body of the inner most destructuring match

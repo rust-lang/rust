@@ -211,36 +211,6 @@ pub struct BigX;
 Then, when looking for it through the `rustdoc` search, if you enter "x" or
 "big", search will show the `BigX` struct first.
 
-### Include items only when collecting doctests
-
-Rustdoc's [documentation tests] can do some things that regular unit tests can't, so it can
-sometimes be useful to extend your doctests with samples that wouldn't otherwise need to be in
-documentation. To this end, Rustdoc allows you to have certain items only appear when it's
-collecting doctests, so you can utilize doctest functionality without forcing the test to appear in
-docs, or to find an arbitrary private item to include it on.
-
-If you add `#![feature(cfg_doctest)]` to your crate, Rustdoc will set `cfg(doctest)` when collecting
-doctests. Note that they will still link against only the public items of your crate; if you need to
-test private items, unit tests are still the way to go.
-
-In this example, we're adding doctests that we know won't compile, to verify that our struct can
-only take in valid data:
-
-```rust
-#![feature(cfg_doctest)]
-
-/// We have a struct here. Remember it doesn't accept negative numbers!
-pub struct MyStruct(usize);
-
-/// ```compile_fail
-/// let x = my_crate::MyStruct(-5);
-/// ```
-#[cfg(doctest)]
-pub struct MyStructOnlyTakesUsize;
-```
-
-[documentation tests]: documentation-tests.html
-
 ## Unstable command-line arguments
 
 These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are

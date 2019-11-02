@@ -20,7 +20,7 @@ fn return_targets_async_block_not_fn() -> u8 {
 }
 
 async fn return_targets_async_block_not_async_fn() -> u8 {
-    //~^ ERROR type mismatch resolving
+    //~^ ERROR mismatched types
     let block = async {
         return 0u8;
     };

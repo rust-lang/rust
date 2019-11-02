@@ -6,11 +6,8 @@ use std::cell::Cell;
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
-use std::sync::mpsc::{Sender};
-use syntax_pos::{SpanData};
 use syntax::symbol::{Symbol, sym};
 use rustc_macros::HashStable;
-use crate::dep_graph::{DepNode};
 use crate::session::Session;
 
 #[cfg(test)]
@@ -26,69 +23,11 @@ pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
-/// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
-#[derive(Clone,Debug)]
-pub struct ProfQDumpParams {
-    /// A base path for the files we will dump.
-    pub path:String,
-    /// To ensure that the compiler waits for us to finish our dumps.
-    pub ack:Sender<()>,
-    /// Toggle dumping a log file with every `ProfileQueriesMsg`.
-    pub dump_profq_msg_log:bool,
-}
-
 #[allow(nonstandard_style)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryMsg {
     pub query: &'static str,
     pub msg: Option<String>,
-}
-
-/// A sequence of these messages induce a trace of query-based incremental compilation.
-// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
-#[derive(Clone,Debug)]
-pub enum ProfileQueriesMsg {
-    /// Begin a timed pass.
-    TimeBegin(String),
-    /// End a timed pass.
-    TimeEnd,
-    /// Begin a task (see `dep_graph::graph::with_task`).
-    TaskBegin(DepNode),
-    /// End a task.
-    TaskEnd,
-    /// Begin a new query.
-    /// Cannot use `Span` because queries are sent to other thread.
-    QueryBegin(SpanData, QueryMsg),
-    /// Query is satisfied by using an already-known value for the given key.
-    CacheHit,
-    /// Query requires running a provider; providers may nest, permitting queries to nest.
-    ProviderBegin,
-    /// Query is satisfied by a provider terminating with a value.
-    ProviderEnd,
-    /// Dump a record of the queries to the given path.
-    Dump(ProfQDumpParams),
-    /// Halt the profiling/monitoring background thread.
-    Halt
-}
-
-/// If enabled, send a message to the profile-queries thread.
-pub fn profq_msg(sess: &Session, msg: ProfileQueriesMsg) {
-    if let Some(s) = sess.profile_channel.borrow().as_ref() {
-        s.send(msg).unwrap()
-    } else {
-        // Do nothing.
-    }
-}
-
-/// Set channel for profile queries channel.
-pub fn profq_set_chan(sess: &Session, s: Sender<ProfileQueriesMsg>) -> bool {
-    let mut channel = sess.profile_channel.borrow_mut();
-    if channel.is_none() {
-        *channel = Some(s);
-        true
-    } else {
-        false
-    }
 }
 
 /// Read the current depth of `time()` calls. This is used to
@@ -107,10 +46,10 @@ pub fn set_time_depth(depth: usize) {
 pub fn time<T, F>(sess: &Session, what: &str, f: F) -> T where
     F: FnOnce() -> T,
 {
-    time_ext(sess.time_passes(), Some(sess), what, f)
+    time_ext(sess.time_passes(), what, f)
 }
 
-pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> T where
+pub fn time_ext<T, F>(do_it: bool, what: &str, f: F) -> T where
     F: FnOnce() -> T,
 {
     if !do_it { return f(); }
@@ -121,19 +60,9 @@ pub fn time_ext<T, F>(do_it: bool, sess: Option<&Session>, what: &str, f: F) -> 
         r
     });
 
-    if let Some(sess) = sess {
-        if cfg!(debug_assertions) {
-            profq_msg(sess, ProfileQueriesMsg::TimeBegin(what.to_string()))
-        }
-    }
     let start = Instant::now();
     let rv = f();
     let dur = start.elapsed();
-    if let Some(sess) = sess {
-        if cfg!(debug_assertions) {
-            profq_msg(sess, ProfileQueriesMsg::TimeEnd)
-        }
-    }
 
     print_time_passes_entry(true, what, dur);
 

@@ -1,6 +1,6 @@
 //! This module defines types which are thread safe if cfg!(parallel_compiler) is true.
 //!
-//! `Lrc` is an alias of either Rc or Arc.
+//! `Lrc` is an alias of `Arc` if cfg!(parallel_compiler) is true, `Rc` otherwise.
 //!
 //! `Lock` is a mutex.
 //! It internally uses `parking_lot::Mutex` if cfg!(parallel_compiler) is true,
@@ -12,7 +12,7 @@
 //!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_compiler) is false.
 //!
-//! `MTRef` is a immutable reference if cfg!(parallel_compiler), and an mutable reference otherwise.
+//! `MTRef` is an immutable reference if cfg!(parallel_compiler), and a mutable reference otherwise.
 //!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_compiler).
@@ -22,29 +22,6 @@ use std::hash::{Hash, BuildHasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use crate::owning_ref::{Erased, OwningRef};
-
-pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
-    where A: FnOnce() -> RA,
-          B: FnOnce() -> RB
-{
-    (oper_a(), oper_b())
-}
-
-pub struct SerialScope;
-
-impl SerialScope {
-    pub fn spawn<F>(&self, f: F)
-        where F: FnOnce(&SerialScope)
-    {
-        f(self)
-    }
-}
-
-pub fn serial_scope<F, R>(f: F) -> R
-    where F: FnOnce(&SerialScope) -> R
-{
-    f(&SerialScope)
-}
 
 pub use std::sync::atomic::Ordering::SeqCst;
 pub use std::sync::atomic::Ordering;
@@ -176,8 +153,28 @@ cfg_if! {
         pub type AtomicU32 = Atomic<u32>;
         pub type AtomicU64 = Atomic<u64>;
 
-        pub use self::serial_join as join;
-        pub use self::serial_scope as scope;
+        pub fn join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
+            where A: FnOnce() -> RA,
+                  B: FnOnce() -> RB
+        {
+            (oper_a(), oper_b())
+        }
+
+        pub struct SerialScope;
+
+        impl SerialScope {
+            pub fn spawn<F>(&self, f: F)
+                where F: FnOnce(&SerialScope)
+            {
+                f(self)
+            }
+        }
+
+        pub fn scope<F, R>(f: F) -> R
+            where F: FnOnce(&SerialScope) -> R
+        {
+            f(&SerialScope)
+        }
 
         #[macro_export]
         macro_rules! parallel {
@@ -495,18 +492,20 @@ impl<T> Once<T> {
         assert!(self.try_set(value).is_none());
     }
 
-    /// Tries to initialize the inner value by calling the closure while ensuring that no-one else
-    /// can access the value in the mean time by holding a lock for the duration of the closure.
-    /// If the value was already initialized the closure is not called and `false` is returned,
-    /// otherwise if the value from the closure initializes the inner value, `true` is returned
+    /// Initializes the inner value if it wasn't already done by calling the provided closure. It
+    /// ensures that no-one else can access the value in the mean time by holding a lock for the
+    /// duration of the closure.
+    /// A reference to the inner value is returned.
     #[inline]
-    pub fn init_locking<F: FnOnce() -> T>(&self, f: F) -> bool {
-        let mut lock = self.0.lock();
-        if lock.is_some() {
-            return false;
+    pub fn init_locking<F: FnOnce() -> T>(&self, f: F) -> &T {
+        {
+            let mut lock = self.0.lock();
+            if lock.is_none() {
+                *lock = Some(f());
+            }
         }
-        *lock = Some(f());
-        true
+
+        self.borrow()
     }
 
     /// Tries to initialize the inner value by calling the closure without ensuring that no-one
@@ -741,7 +740,7 @@ impl<T: Clone> Clone for RwLock<T> {
 
 /// A type which only allows its inner value to be used in one thread.
 /// It will panic if it is used on multiple threads.
-#[derive(Copy, Clone, Hash, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct OneThread<T> {
     #[cfg(parallel_compiler)]
     thread: thread::ThreadId,

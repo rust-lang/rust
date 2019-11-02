@@ -3,6 +3,7 @@ error: negative trait bounds are not supported
    |
 LL | trait Tr: !SuperA {}
    |         ^^^^^^^^^ negative trait bounds are not supported
+   |
    = help: remove the trait bound
 
 error: negative trait bounds are not supported
@@ -10,6 +11,7 @@ error: negative trait bounds are not supported
    |
 LL | trait Tr2: SuperA + !SuperB {}
    |                   ^^^^^^^^^ negative trait bounds are not supported
+   |
    = help: remove the trait bound
 
 error: negative trait bounds are not supported
@@ -17,6 +19,7 @@ error: negative trait bounds are not supported
    |
 LL | trait Tr3: !SuperA + SuperB {}
    |          ^^^^^^^^^ negative trait bounds are not supported
+   |
    = help: remove the trait bound
 
 error: negative trait bounds are not supported
@@ -26,6 +29,7 @@ LL | trait Tr4: !SuperA + SuperB
    |          ^^^^^^^^^
 LL |     + !SuperC + SuperD {}
    |     ^^^^^^^^^ negative trait bounds are not supported
+   |
    = help: remove the trait bounds
 
 error: negative trait bounds are not supported
@@ -35,6 +39,7 @@ LL | trait Tr5: !SuperA
    |          ^^^^^^^^^
 LL |     + !SuperB {}
    |     ^^^^^^^^^ negative trait bounds are not supported
+   |
    = help: remove the trait bounds
 
 error: aborting due to 5 previous errors

@@ -414,8 +414,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Opaque(def_id, substs) |
             ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
-            ty::Closure(def_id, ty::ClosureSubsts { substs }) |
-            ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+            ty::Closure(def_id, substs) |
+            ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
             }
             ty::Foreign(def_id) => {

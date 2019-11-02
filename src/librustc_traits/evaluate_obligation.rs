@@ -17,10 +17,12 @@ fn evaluate_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonical_goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {
+    debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
     tcx.infer_ctxt().enter_with_canonical(
         DUMMY_SP,
         &canonical_goal,
         |ref infcx, goal, _canonical_inference_vars| {
+            debug!("evaluate_obligation: goal={:#?}", goal);
             let ParamEnvAnd {
                 param_env,
                 value: predicate,

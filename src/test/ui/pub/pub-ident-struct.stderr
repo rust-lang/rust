@@ -3,6 +3,7 @@ error: missing `struct` for struct definition
    |
 LL | pub S {
    |    ^
+   |
 help: add `struct` here to parse `S` as a public struct
    |
 LL | pub struct S {

@@ -1,4 +1,4 @@
-error[E0533]: expected unit struct/variant or constant, found tuple variant `<Self>::A`
+error[E0533]: expected unit struct, unit variant or constant, found tuple variant `Self::A`
   --> $DIR/incorrect-variant-form-through-Self-issue-58006.rs:8:13
    |
 LL |             Self::A => (),
@@ -6,3 +6,4 @@ LL |             Self::A => (),
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0533`.

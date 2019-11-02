@@ -35,15 +35,15 @@
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(inner_deref)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(overlapping_marker_traits)]
 #![feature(extern_types)]
 #![feature(nll)]
-#![feature(non_exhaustive)]
+#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(optin_builtin_traits)]
+#![feature(option_expect_none)]
 #![feature(range_is_empty)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
@@ -57,9 +57,8 @@
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![feature(proc_macro_hygiene)]
+#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(log_syntax)]
-#![feature(mem_take)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 
@@ -102,16 +101,12 @@ pub mod lint;
 pub mod middle {
     pub mod expr_use_visitor;
     pub mod cstore;
-    pub mod dead;
     pub mod dependency_format;
     pub mod diagnostic_items;
-    pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;
-    pub mod intrinsicck;
     pub mod lib_features;
     pub mod lang_items;
-    pub mod liveness;
     pub mod mem_categorization;
     pub mod privacy;
     pub mod reachable;

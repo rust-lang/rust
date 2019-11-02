@@ -27,6 +27,7 @@ use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
 use rustc::{lint, util};
+use rustc::lint::FutureIncompatibleInfo;
 use hir::Node;
 use util::nodemap::HirIdSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -45,7 +46,7 @@ use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
-use syntax::print::pprust::expr_to_string;
+use syntax::print::pprust::{self, expr_to_string};
 use syntax::visit::FnKind;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
@@ -280,7 +281,7 @@ declare_lint! {
     pub MISSING_DOCS,
     Allow,
     "detects missing documentation for public members",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 pub struct MissingDoc {
@@ -601,7 +602,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
 declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Allow,
-    "detects anonymous parameters"
+    "detects anonymous parameters",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
+        edition: Some(Edition::Edition2018),
+    };
 }
 
 declare_lint_pass!(
@@ -701,7 +706,8 @@ impl EarlyLintPass for DeprecatedAttr {
             }
         }
         if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
-            let msg = format!("use of deprecated attribute `{}`: no longer used.", attr.path);
+            let path_str = pprust::path_to_string(&attr.path);
+            let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
             lint_deprecated_attr(cx, attr, &msg, None);
         }
     }
@@ -980,35 +986,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
 }
 
 declare_lint! {
-    UNIONS_WITH_DROP_FIELDS,
-    Warn,
-    "use of unions that contain fields with possibly non-trivial drop code"
-}
-
-declare_lint_pass!(
-    /// Lint for unions that contain fields with possibly non-trivial destructors.
-    UnionsWithDropFields => [UNIONS_WITH_DROP_FIELDS]
-);
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
-    fn check_item(&mut self, ctx: &LateContext<'_, '_>, item: &hir::Item) {
-        if let hir::ItemKind::Union(ref vdata, _) = item.kind {
-            for field in vdata.fields() {
-                let field_ty = ctx.tcx.type_of(
-                    ctx.tcx.hir().local_def_id(field.hir_id));
-                if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
-                    ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
-                                  field.span,
-                                  "union contains a field with possibly non-trivial drop code, \
-                                   drop code of union fields is ignored when dropping the union");
-                    return;
-                }
-            }
-        }
-    }
-}
-
-declare_lint! {
     pub UNREACHABLE_PUB,
     Allow,
     "`pub` items not reachable from crate root"
@@ -1148,8 +1125,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
                 .map(|pred| pred.span()).collect();
             let mut err = cx.struct_span_lint(TYPE_ALIAS_BOUNDS, spans,
                 "where clauses are not enforced in type aliases");
-            err.help("the clause will not be checked when the type alias is used, \
-                      and should be removed");
+            err.span_suggestion(
+                type_alias_generics.where_clause.span_for_predicates_or_empty_place(),
+                "the clause will not be checked when the type alias is used, and should be removed",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
             if !suggested_changing_assoc_types {
                 TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
                 suggested_changing_assoc_types = true;
@@ -1159,14 +1140,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
             let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+            let suggestion = spans.iter().map(|sp| {
+                let start = param.span.between(*sp); // Include the `:` in `T: Bound`.
+                (start.to(*sp), String::new())
+            }).collect();
             if !spans.is_empty() {
                 let mut err = cx.struct_span_lint(
                     TYPE_ALIAS_BOUNDS,
                     spans,
                     "bounds on generic parameters are not enforced in type aliases",
                 );
-                err.help("the bound will not be checked when the type alias is used, \
-                          and should be removed");
+                let msg = "the bound will not be checked when the type alias is used, \
+                           and should be removed";
+                err.multipart_suggestion(&msg, suggestion, Applicability::MachineApplicable);
                 if !suggested_changing_assoc_types {
                     TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
                     suggested_changing_assoc_types = true;
@@ -1240,7 +1226,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
-            for &(predicate, span) in &predicates.predicates {
+            for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
@@ -1287,7 +1273,6 @@ declare_lint_pass!(
         NO_MANGLE_GENERIC_ITEMS,
         MUTABLE_TRANSMUTES,
         UNSTABLE_FEATURES,
-        UNIONS_WITH_DROP_FIELDS,
         UNREACHABLE_PUB,
         TYPE_ALIAS_BOUNDS,
         TRIVIAL_BOUNDS
@@ -1373,7 +1358,7 @@ declare_lint! {
     UNNAMEABLE_TEST_ITEMS,
     Warn,
     "detects an item that cannot be named being marked as `#[test_case]`",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 pub struct UnnameableTestItems {
@@ -1422,7 +1407,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
 declare_lint! {
     pub KEYWORD_IDENTS,
     Allow,
-    "detects edition keywords being used as an identifier"
+    "detects edition keywords being used as an identifier",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
+        edition: Some(Edition::Edition2018),
+    };
 }
 
 declare_lint_pass!(
@@ -1517,10 +1506,10 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
-        inferred_outlives: &'tcx [ty::Predicate<'tcx>],
+        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
-        inferred_outlives.iter().filter_map(|pred| {
+        inferred_outlives.iter().filter_map(|(pred, _)| {
             match pred {
                 ty::Predicate::RegionOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
@@ -1537,10 +1526,10 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [ty::Predicate<'tcx>],
+        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
-        inferred_outlives.iter().filter_map(|pred| {
+        inferred_outlives.iter().filter_map(|(pred, _)| {
             match pred {
                 ty::Predicate::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
@@ -1559,7 +1548,7 @@ impl ExplicitOutlivesRequirements {
         &self,
         param: &'tcx hir::GenericParam,
         tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [ty::Predicate<'tcx>],
+        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         ty_generics: &'tcx ty::Generics,
     ) -> Vec<ty::Region<'tcx>> {
         let index = ty_generics.param_def_id_to_index[

@@ -1,4 +1,4 @@
-error: expected one of `fn` or `unsafe`, found `const`
+error: expected one of `fn` or `unsafe`, found keyword `const`
   --> $DIR/no-async-const.rs:5:11
    |
 LL | pub async const fn x() {}

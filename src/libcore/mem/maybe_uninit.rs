@@ -5,12 +5,12 @@ use crate::mem::ManuallyDrop;
 ///
 /// # Initialization invariant
 ///
-/// The compiler, in general, assumes that variables are properly initialized
-/// at their respective type. For example, a variable of reference type must
-/// be aligned and non-NULL. This is an invariant that must *always* be upheld,
-/// even in unsafe code. As a consequence, zero-initializing a variable of reference
-/// type causes instantaneous [undefined behavior][ub], no matter whether that reference
-/// ever gets used to access memory:
+/// The compiler, in general, assumes that a variable is properly initialized
+/// according to the requirements of the variable's type. For example, a variable of
+/// reference type must be aligned and non-NULL. This is an invariant that must
+/// *always* be upheld, even in unsafe code. As a consequence, zero-initializing a
+/// variable of reference type causes instantaneous [undefined behavior][ub],
+/// no matter whether that reference ever gets used to access memory:
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]

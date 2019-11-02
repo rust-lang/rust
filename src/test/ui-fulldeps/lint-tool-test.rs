@@ -4,6 +4,7 @@
 
 #![feature(plugin)]
 #![plugin(lint_tool_test)]
+//~^ WARN use of deprecated attribute `plugin`
 #![allow(dead_code)]
 #![cfg_attr(foo, warn(test_lint))]
 //~^ WARNING lint name `test_lint` is deprecated and may not have an effect in the future

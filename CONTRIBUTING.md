@@ -15,7 +15,7 @@ links to the major sections:
 * [Helpful Links and Information](#helpful-links-and-information)
 
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
-hop on the [Rust Discord server][rust-discord], [Rust Zulip server][rust-zulip] or [#rust-internals][pound-rust-internals].
+hop on the [Rust Discord server][rust-discord] or [Rust Zulip server][rust-zulip].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
@@ -25,7 +25,6 @@ to contribute to it in more detail than this document.
 If this is your first time contributing, the [walkthrough] chapter of the guide
 can give you a good example of how a typical contribution would go.
 
-[pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
 [rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com
@@ -128,6 +127,14 @@ E.g. always use rebase when bringing the latest changes from
 the master branch to your feature branch.
 Also, please make sure that fixup commits are squashed into other related
 commits with meaningful commit messages.
+
+GitHub allows [closing issues using keywords][closing-keywords]. This feature
+should be used to keep the issue tracker tidy. However, it is generally preferred
+to put the "closes #123" text in the PR description rather than the issue commit;
+particularly during rebasing, citing the issue number in the commit can "spam"
+the issue in question.
+
+[closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
 
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
@@ -404,7 +411,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 There are a number of other ways to contribute to Rust that don't deal with
 this repository.
 
-Answer questions in [#rust][pound-rust], or on [users.rust-lang.org][users],
+Answer questions in the _Get Help!_ channels from the [Rust Discord server][rust-discord], on [users.rust-lang.org][users],
 or on [StackOverflow][so].
 
 Participate in the [RFC process](https://github.com/rust-lang/rfcs).
@@ -413,7 +420,7 @@ Find a [requested community library][community-library], build it, and publish
 it to [Crates.io](http://crates.io). Easier said than done, but very, very
 valuable!
 
-[pound-rust]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
+[rust-discord]: https://discord.gg/rust-lang
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library

@@ -4,10 +4,10 @@ error[E0277]: the trait bound `A: Foo` is not satisfied
 LL |     const Y: usize;
    |     --------------- required by `Foo::Y`
 ...
+LL | pub fn test<A: Foo, B: Foo>() {
+   |             -- help: consider further restricting this bound: `A: Foo +`
 LL |     let _array: [u32; <A as Foo>::Y];
    |                       ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
-   |
-   = help: consider adding a `where A: Foo` bound
 
 error: aborting due to previous error
 

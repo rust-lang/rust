@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc_resolve::ParentScope;
 use syntax;
 use syntax::ast::{self, Ident};
-use syntax::ext::base::SyntaxExtensionKind;
+use syntax_expand::base::SyntaxExtensionKind;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
@@ -322,9 +322,26 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     continue;
                 }
 
+                // In order to correctly resolve intra-doc-links we need to
+                // pick a base AST node to work from.  If the documentation for
+                // this module came from an inner comment (//!) then we anchor
+                // our name resolution *inside* the module.  If, on the other
+                // hand it was an outer comment (///) then we anchor the name
+                // resolution in the parent module on the basis that the names
+                // used are more likely to be intended to be parent names.  For
+                // this, we set base_node to None for inner comments since
+                // we've already pushed this node onto the resolution stack but
+                // for outer comments we explicitly try and resolve against the
+                // parent_node first.
+                let base_node = if item.is_mod() && item.attrs.inner_docs {
+                    None
+                } else {
+                    parent_node
+                };
+
                 match kind {
                     Some(ns @ ValueNS) => {
-                        if let Ok(res) = self.resolve(path_str, ns, &current_item, parent_node) {
+                        if let Ok(res) = self.resolve(path_str, ns, &current_item, base_node) {
                             res
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -335,7 +352,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
                     }
                     Some(ns @ TypeNS) => {
-                        if let Ok(res) = self.resolve(path_str, ns, &current_item, parent_node) {
+                        if let Ok(res) = self.resolve(path_str, ns, &current_item, base_node) {
                             res
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -348,10 +365,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         let candidates = PerNS {
                             macro_ns: macro_resolve(cx, path_str).map(|res| (res, None)),
                             type_ns: self
-                                .resolve(path_str, TypeNS, &current_item, parent_node)
+                                .resolve(path_str, TypeNS, &current_item, base_node)
                                 .ok(),
                             value_ns: self
-                                .resolve(path_str, ValueNS, &current_item, parent_node)
+                                .resolve(path_str, ValueNS, &current_item, base_node)
                                 .ok()
                                 .and_then(|(res, fragment)| {
                                     // Constructors are picked up in the type namespace.
@@ -432,13 +449,13 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
     let path = ast::Path::from_ident(Ident::from_str(path_str));
     cx.enter_resolver(|resolver| {
         if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path, None, &ParentScope::module(resolver.graph_root), false, false
+            &path, None, &ParentScope::module(resolver.graph_root()), false, false
         ) {
             if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
                 return Some(res.map_id(|_| panic!("unexpected id")));
             }
         }
-        if let Some(res) = resolver.all_macros.get(&Symbol::intern(path_str)) {
+        if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
             return Some(res.map_id(|_| panic!("unexpected id")));
         }
         None

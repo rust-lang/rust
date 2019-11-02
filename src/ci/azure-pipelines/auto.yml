@@ -124,14 +124,14 @@ jobs:
         IMAGE: dist-x86_64-netbsd
         DEPLOY: 1
 
-      asmjs:
-        IMAGE: asmjs
       i686-gnu:
         IMAGE: i686-gnu
       i686-gnu-nopt:
         IMAGE: i686-gnu-nopt
       test-various:
         IMAGE: test-various
+      wasm32:
+        IMAGE: wasm32
       x86_64-gnu:
         IMAGE: x86_64-gnu
       x86_64-gnu-full-bootstrap:
@@ -140,6 +140,7 @@ jobs:
         IMAGE: x86_64-gnu-aux
       x86_64-gnu-tools:
         IMAGE: x86_64-gnu-tools
+        DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
       x86_64-gnu-debug:
         IMAGE: x86_64-gnu-debug
       x86_64-gnu-nopt:
@@ -262,8 +263,9 @@ jobs:
       # MSVC tools tests
       x86_64-msvc-tools:
         MSYS_BITS: 64
-        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json
+        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
+        DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
 
       # 32/64-bit MinGW builds.
       #
@@ -315,6 +317,7 @@ jobs:
 
       # 32/64 bit MSVC and GNU deployment
       dist-x86_64-msvc:
+        MSYS_BITS: 64
         RUST_CONFIGURE_ARGS: >
           --build=x86_64-pc-windows-msvc
           --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
@@ -324,6 +327,7 @@ jobs:
         DIST_REQUIRE_ALL_TOOLS: 1
         DEPLOY: 1
       dist-i686-msvc:
+        MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: >
           --build=i686-pc-windows-msvc
           --target=i586-pc-windows-msvc

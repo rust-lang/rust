@@ -550,7 +550,8 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
-    let Attribute { id: _, style: _, path, tokens, is_sugared_doc: _, span } = attr;
+    let Attribute { item: AttrItem { path, tokens }, id: _, style: _, is_sugared_doc: _, span }
+        = attr;
     vis.visit_path(path);
     vis.visit_tts(tokens);
     vis.visit_span(span);
@@ -609,10 +610,8 @@ pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 }
 
 pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
-    visit_opt(tts, |tts| {
-        let tts = Lrc::make_mut(tts);
-        visit_vec(tts, |(tree, _is_joint)| vis.visit_tt(tree));
-    })
+    let tts = Lrc::make_mut(tts);
+    visit_vec(tts, |(tree, _is_joint)| vis.visit_tt(tree));
 }
 
 // Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
@@ -681,7 +680,10 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(meta) => vis.visit_meta_item(meta),
+        token::NtMeta(AttrItem { path, tokens }) => {
+            vis.visit_path(path);
+            vis.visit_tts(tokens);
+        }
         token::NtPath(path) => vis.visit_path(path),
         token::NtTT(tt) => vis.visit_tt(tt),
         token::NtImplItem(item) =>
@@ -717,7 +719,7 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
 }
 
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
-    let FnDecl { inputs, output, c_variadic: _ } = decl.deref_mut();
+    let FnDecl { inputs, output } = decl.deref_mut();
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
     match output {
         FunctionRetTy::Default(span) => vis.visit_span(span),

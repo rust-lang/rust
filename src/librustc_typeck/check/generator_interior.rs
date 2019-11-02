@@ -3,9 +3,10 @@
 //! is calculated in `rustc_mir::transform::generator` and may be a subset of the
 //! types computed here.
 
+use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Pat, PatKind, Expr};
+use rustc::hir::{self, Pat, PatKind, Expr, ExprKind};
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
 use syntax_pos::Span;
@@ -14,7 +15,7 @@ use crate::util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    types: FxHashMap<Ty<'tcx>, usize>,
+    types: FxHashMap<ty::GeneratorInteriorTypeCause<'tcx>, usize>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
     kind: hir::GeneratorKind,
@@ -55,7 +56,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             expr_and_pat_count: 0,
             source: match self.kind { // Guess based on the kind of the current generator.
                 hir::GeneratorKind::Gen => hir::YieldSource::Yield,
-                hir::GeneratorKind::Async => hir::YieldSource::Await,
+                hir::GeneratorKind::Async(_) => hir::YieldSource::Await,
             },
         }));
 
@@ -83,7 +84,12 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             } else {
                 // Map the type to the number of types added before it
                 let entries = self.types.len();
-                self.types.entry(&ty).or_insert(entries);
+                let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
+                self.types.entry(ty::GeneratorInteriorTypeCause {
+                    span: source_span,
+                    ty: &ty,
+                    scope_span
+                }).or_insert(entries);
             }
         } else {
             debug!("no type in expr = {:?}, count = {:?}, span = {:?}",
@@ -118,9 +124,6 @@ pub fn resolve_interior<'a, 'tcx>(
     // Sort types by insertion order
     types.sort_by_key(|t| t.1);
 
-    // Extract type components
-    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| t.0));
-
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
     // lifetimes with existentially-bound lifetimes, which reflect the exact value of the
@@ -130,17 +133,24 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("types in generator {:?}, span = {:?}", type_list, body.value.span);
+    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
     // Replace all regions inside the generator interior with late bound regions
     // Note that each region slot in the types gets a new fresh late bound region,
     // which means that none of the regions inside relate to any other, even if
     // typeck had previously found constraints that would cause them to be related.
     let mut counter = 0;
-    let type_list = fcx.tcx.fold_regions(&type_list, &mut false, |_, current_depth| {
+    let types = fcx.tcx.fold_regions(&types, &mut false, |_, current_depth| {
         counter += 1;
         fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
     });
+
+    // Store the generator types and spans into the tables for this generator.
+    let interior_types = types.iter().map(|t| t.0.clone()).collect::<Vec<_>>();
+    visitor.fcx.inh.tables.borrow_mut().generator_interior_types = interior_types;
+
+    // Extract type components
+    let type_list = fcx.tcx.mk_type_list(types.into_iter().map(|t| (t.0).ty));
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
@@ -175,7 +185,33 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        intravisit::walk_expr(self, expr);
+        match &expr.kind {
+            ExprKind::Call(callee, args) => match &callee.kind {
+                ExprKind::Path(qpath) => {
+                    let res = self.fcx.tables.borrow().qpath_res(qpath, callee.hir_id);
+                    match res {
+                        // Direct calls never need to keep the callee `ty::FnDef`
+                        // ZST in a temporary, so skip its type, just in case it
+                        // can significantly complicate the generator type.
+                        Res::Def(DefKind::Fn, _) |
+                        Res::Def(DefKind::Method, _) |
+                        Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                            // NOTE(eddyb) this assumes a path expression has
+                            // no nested expressions to keep track of.
+                            self.expr_count += 1;
+
+                            // Record the rest of the call expression normally.
+                            for arg in args {
+                                self.visit_expr(arg);
+                            }
+                        }
+                        _ => intravisit::walk_expr(self, expr),
+                    }
+                }
+                _ => intravisit::walk_expr(self, expr),
+            }
+            _ => intravisit::walk_expr(self, expr),
+        }
 
         self.expr_count += 1;
 

@@ -3,7 +3,7 @@ use std::ffi::CString;
 use crate::attributes;
 use libc::c_uint;
 use rustc::ty::TyCtxt;
-use syntax::ext::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use syntax::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 use crate::ModuleLlvm;
 use crate::llvm::{self, False, True};
@@ -68,7 +68,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
 
         let llbb = llvm::LLVMAppendBasicBlockInContext(llcx,
                                                        llfn,
-                                                       "entry\0".as_ptr() as *const _);
+                                                       "entry\0".as_ptr().cast());
 
         let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
         llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);
@@ -80,7 +80,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut ModuleLlvm, kind: Alloc
                                           args.as_ptr(),
                                           args.len() as c_uint,
                                           None,
-                                          "\0".as_ptr() as *const _);
+                                          "\0".as_ptr().cast());
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {
             llvm::LLVMBuildRet(llbuilder, ret);

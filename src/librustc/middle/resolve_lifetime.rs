@@ -708,15 +708,22 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {
                             let (name, reg) = Region::early(&self.tcx.hir(), &mut index, &param);
+                            let def_id = if let Region::EarlyBound(_ ,def_id , _) = reg {
+                                def_id
+                            } else {
+                                bug!();
+                            };
                             if let hir::ParamName::Plain(param_name) = name {
                                 if param_name.name == kw::UnderscoreLifetime {
                                     // Pick the elided lifetime "definition" if one exists
                                     // and use it to make an elision scope.
+                                    self.lifetime_uses.insert(def_id.clone(), LifetimeUseSet::Many);
                                     elision = Some(reg);
                                 } else {
                                     lifetimes.insert(name, reg);
                                 }
                             } else {
+                                self.lifetime_uses.insert(def_id.clone(), LifetimeUseSet::Many);
                                 lifetimes.insert(name, reg);
                             }
                         }
@@ -762,13 +769,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             this.visit_param_bound(bound);
                         }
                     });
-                }
-            }
-            hir::TyKind::CVarArgs(ref lt) => {
-                // Resolve the generated lifetime for the C-variadic arguments.
-                // The lifetime is generated in AST -> HIR lowering.
-                if lt.name.is_elided() {
-                    self.resolve_elided_lifetimes(vec![lt])
                 }
             }
             _ => intravisit::walk_ty(self, ty),
@@ -1622,7 +1622,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         _ => None,
                     } {
                         debug!("id = {:?} span = {:?} name = {:?}", id, span, name);
-
                         if name.name == kw::UnderscoreLifetime {
                             continue;
                         }
@@ -2378,7 +2377,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             self.visit_lifetime(lifetime);
                         }
                     }
-                    hir::TyKind::CVarArgs(_) => {}
                     _ => {
                         intravisit::walk_ty(self, ty);
                     }

@@ -13,8 +13,8 @@ use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
-use rustc_data_structures::indexed_vec::IndexVec;
-use syntax::ext::allocator::ALLOCATOR_METHODS;
+use rustc_index::vec::IndexVec;
+use syntax::expand::allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -364,8 +364,9 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
 
     if is_extern && !std_internal {
-        // Emscripten cannot export statics, so reduce their export level here
-        if tcx.sess.target.target.options.is_like_emscripten {
+        let target = &tcx.sess.target.target.llvm_target;
+        // WebAssembly cannot export data symbols, so reduce their export level
+        if target.contains("wasm32") || target.contains("emscripten") {
             if let Some(Node::Item(&hir::Item {
                 kind: hir::ItemKind::Static(..),
                 ..

@@ -140,12 +140,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 .read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len")
                                 .to_scalar()?
-                                .to_bits(self.memory().pointer_size())? as u64;
+                                .to_bits(self.memory.pointer_size())? as u64;
                             let index = self
                                 .read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index")
                                 .to_scalar()?
-                                .to_bits(self.memory().pointer_size())? as u64;
+                                .to_bits(self.memory.pointer_size())? as u64;
                             err_panic!(BoundsCheck { len, index })
                         }
                         Overflow(op) => err_panic!(Overflow(*op)),
@@ -255,7 +255,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Some(dest) => dest,
                     None => throw_ub!(Unreachable)
                 };
-                M::call_intrinsic(self, instance, args, dest)?;
+                M::call_intrinsic(self, span, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
                 self.goto_block(ret)?;
@@ -263,6 +263,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(())
             }
             ty::InstanceDef::VtableShim(..) |
+            ty::InstanceDef::ReifyShim(..) |
             ty::InstanceDef::ClosureOnceShim { .. } |
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::DropGlue(..) |

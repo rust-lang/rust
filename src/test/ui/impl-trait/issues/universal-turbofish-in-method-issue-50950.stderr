@@ -1,8 +1,10 @@
-error[E0632]: cannot provide explicit type parameters when `impl Trait` is used in argument position.
-  --> $DIR/universal-turbofish-in-method-issue-50950.rs:14:9
+error[E0632]: cannot provide explicit generic arguments when `impl Trait` is used in argument position
+  --> $DIR/universal-turbofish-in-method-issue-50950.rs:14:24
    |
 LL |     evt.handle_event::<TestEvent, fn(TestEvent)>(|_evt| {
-   |         ^^^^^^^^^^^^
+   |                        ^^^^^^^^^  ^^^^^^^^^^^^^ explicit generic argument not allowed
+   |                        |
+   |                        explicit generic argument not allowed
 
 error: aborting due to previous error
 

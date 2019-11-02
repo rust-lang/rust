@@ -1,15 +1,14 @@
 use super::{Parser, PResult, PathStyle, PrevTokenKind, TokenType};
+use super::item::ParamCfg;
 
 use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
 use crate::ptr::P;
 use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use crate::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
-use crate::ast::{Mutability, AnonConst, FnDecl, Mac};
+use crate::ast::{Mutability, AnonConst, Mac};
 use crate::parse::token::{self, Token};
 use crate::source_map::Span;
 use crate::symbol::{kw};
-
-use rustc_target::spec::abi::Abi;
 
 use errors::{Applicability, pluralise};
 
@@ -198,8 +197,11 @@ impl<'a> Parser<'a> {
                 self.eat(&token::DotDotDot);
                 TyKind::CVarArgs
             } else {
-                return Err(self.fatal(
-                    "only foreign functions are allowed to be C-variadic"
+                return Err(struct_span_fatal!(
+                    self.sess.span_diagnostic,
+                    self.token.span,
+                    E0743,
+                    "only foreign functions are allowed to be C-variadic",
                 ));
             }
         } else {
@@ -211,7 +213,7 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
-        let ty = P(Ty { kind, span, id: ast::DUMMY_NODE_ID });
+        let ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
@@ -231,11 +233,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
-        let mutbl = if self.eat_keyword(kw::Mut) {
-            Mutability::Mutable
-        } else if self.eat_keyword(kw::Const) {
-            Mutability::Immutable
-        } else {
+        let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
             let span = self.prev_span;
             let msg = "expected mut or const in raw pointer type";
             self.struct_span_err(span, msg)
@@ -243,7 +241,7 @@ impl<'a> Parser<'a> {
                 .help("use `*mut T` or `*const T` as appropriate")
                 .emit();
             Mutability::Immutable
-        };
+        });
         let t = self.parse_ty_no_plus()?;
         Ok(MutTy { ty: t, mutbl })
     }
@@ -285,20 +283,14 @@ impl<'a> Parser<'a> {
         */
 
         let unsafety = self.parse_unsafety();
-        let abi = if self.eat_keyword(kw::Extern) {
-            self.parse_opt_abi()?.unwrap_or(Abi::C)
-        } else {
-            Abi::Rust
-        };
-
+        let abi = self.parse_extern_abi()?;
         self.expect_keyword(kw::Fn)?;
-        let (inputs, c_variadic) = self.parse_fn_params(false, true)?;
-        let ret_ty = self.parse_ret_ty(false)?;
-        let decl = P(FnDecl {
-            inputs,
-            output: ret_ty,
-            c_variadic,
-        });
+        let cfg = ParamCfg {
+            is_self_allowed: false,
+            allow_c_variadic: true,
+            is_name_required: |_| false,
+        };
+        let decl = self.parse_fn_decl(cfg, false)?;
         Ok(TyKind::BareFn(P(BareFnTy {
             abi,
             unsafety,
@@ -307,7 +299,7 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    crate fn parse_generic_bounds(&mut self,
+    pub(super) fn parse_generic_bounds(&mut self,
                                   colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
         self.parse_generic_bounds_common(true, colon_span)
     }
@@ -444,13 +436,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn check_lifetime(&mut self) -> bool {
+    pub fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
     }
 
     /// Parses a single lifetime `'a` or panics.
-    crate fn expect_lifetime(&mut self) -> Lifetime {
+    pub fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
             let span = self.token.span;
             self.bump();
@@ -458,5 +450,9 @@ impl<'a> Parser<'a> {
         } else {
             self.span_bug(self.token.span, "not a lifetime")
         }
+    }
+
+    pub(super) fn mk_ty(&self, span: Span, kind: TyKind) -> P<Ty> {
+        P(Ty { kind, span, id: ast::DUMMY_NODE_ID })
     }
 }

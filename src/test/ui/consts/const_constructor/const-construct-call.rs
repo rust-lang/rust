@@ -6,8 +6,6 @@
 
 #![cfg_attr(const_fn, feature(const_fn))]
 
-#![feature(const_constructor)]
-
 // Ctor(..) is transformed to Ctor { 0: ... } in HAIR lowering, so directly
 // calling constructors doesn't require them to be const.
 

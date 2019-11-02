@@ -25,7 +25,7 @@ use crate::util::nodemap::{FxHashSet, FxHashMap};
 use std::mem::replace;
 use std::cmp::Ordering;
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
     Unstable,
     Stable,
@@ -199,8 +199,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 let name = attr.name_or_empty();
                 if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
                     attr::mark_used(attr);
-                    self.tcx.sess.span_err(attr.span, "stability attributes may not be used \
-                                                        outside of the standard library");
+                    struct_span_err!(
+                        self.tcx.sess,
+                        attr.span,
+                        E0734,
+                        "stability attributes may not be used outside of the standard library",
+                    ).emit();
                 }
             }
 
@@ -481,7 +485,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 pub fn report_unstable(
-    sess: &Session, feature: Symbol, reason: Option<Symbol>, issue: u32, is_soft: bool, span: Span
+    sess: &Session,
+    feature: Symbol,
+    reason: Option<Symbol>,
+    issue: u32,
+    is_soft: bool,
+    span: Span,
+    soft_handler: impl FnOnce(&'static lint::Lint, Span, &str),
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
@@ -507,7 +517,7 @@ pub fn report_unstable(
     let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
     if fresh {
         if is_soft {
-            sess.buffer_lint(lint::builtin::SOFT_UNSTABLE, CRATE_NODE_ID, span, &msg);
+            soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
         } else {
             emit_feature_err(
                 &sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg
@@ -775,10 +785,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Additionally, this function will also check if the item is deprecated. If so, and `id` is
     /// not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
+        let soft_handler =
+            |lint, span, msg: &_| self.lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg);
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue, is_soft } =>
-                report_unstable(self.sess, feature, reason, issue, is_soft, span),
+                report_unstable(self.sess, feature, reason, issue, is_soft, span, soft_handler),
             EvalResult::Unmarked => {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
@@ -893,11 +905,10 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, span, feature, since);
         }
-        if lang_features.contains(&feature) {
+        if !lang_features.insert(feature) {
             // Warn if the user enables a lang feature multiple times.
             duplicate_feature_err(tcx.sess, span, feature);
         }
-        lang_features.insert(feature);
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;

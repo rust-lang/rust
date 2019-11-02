@@ -5,5 +5,6 @@
 #![feature(plugin)]
 #![plugin(rlib_crate_test)]
 //~^ ERROR: plugin `rlib_crate_test` only found in rlib format, but must be available in dylib format
+//~| WARN use of deprecated attribute `plugin`: compiler plugins are deprecated
 
 fn main() {}

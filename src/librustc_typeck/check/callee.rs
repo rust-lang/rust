@@ -7,6 +7,7 @@ use hir::def::Res;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::subst::SubstsRef;
 use rustc::{infer, traits};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_target::spec::abi;
@@ -397,27 +398,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .0;
         let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
 
-        let inputs = if fn_sig.c_variadic {
-            if fn_sig.inputs().len() > 1 {
-                &fn_sig.inputs()[..fn_sig.inputs().len() - 1]
-            } else {
-                span_bug!(call_expr.span,
-                          "C-variadic functions are only valid with one or more fixed arguments");
-            }
-        } else {
-            &fn_sig.inputs()[..]
-        };
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(
             call_expr.span,
             expected,
             fn_sig.output(),
-            inputs,
+            fn_sig.inputs(),
         );
         self.check_argument_types(
             call_expr.span,
             call_expr,
-            inputs,
+            fn_sig.inputs(),
             &expected_arg_tys[..],
             arg_exprs,
             fn_sig.c_variadic,
@@ -490,7 +481,7 @@ pub struct DeferredCallResolution<'tcx> {
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
-    closure_substs: ty::ClosureSubsts<'tcx>,
+    closure_substs: SubstsRef<'tcx>,
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {

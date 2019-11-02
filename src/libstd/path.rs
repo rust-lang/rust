@@ -1363,20 +1363,24 @@ impl PathBuf {
     }
 
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
-        if self.file_name().is_none() {
-            return false;
-        }
-
-        let mut stem = match self.file_stem() {
-            Some(stem) => stem.to_os_string(),
-            None => OsString::new(),
+        let file_stem = match self.file_stem() {
+            None => return false,
+            Some(f) => os_str_as_u8_slice(f),
         };
 
-        if !os_str_as_u8_slice(extension).is_empty() {
-            stem.push(".");
-            stem.push(extension);
+        // truncate until right after the file stem
+        let end_file_stem = file_stem[file_stem.len()..].as_ptr() as usize;
+        let start = os_str_as_u8_slice(&self.inner).as_ptr() as usize;
+        let v = self.as_mut_vec();
+        v.truncate(end_file_stem.wrapping_sub(start));
+
+        // add the new extension, if any
+        let new = os_str_as_u8_slice(extension);
+        if !new.is_empty() {
+            v.reserve_exact(new.len() + 1);
+            v.push(b'.');
+            v.extend_from_slice(new);
         }
-        self.set_file_name(&stem);
 
         true
     }
@@ -1627,7 +1631,7 @@ impl<'a> From<Cow<'a, Path>> for PathBuf {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `PathBuf` into an `Arc` by moving the `PathBuf` data into a new `Arc` buffer.
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.into_os_string());
@@ -1637,7 +1641,7 @@ impl From<PathBuf> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&Path> for Arc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `Path` into an `Arc` by copying the `Path` data into a new `Arc` buffer.
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.as_os_str());
@@ -1647,7 +1651,7 @@ impl From<&Path> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Rc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `PathBuf` into an `Rc` by moving the `PathBuf` data into a new `Rc` buffer.
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.into_os_string());
@@ -1657,7 +1661,7 @@ impl From<PathBuf> for Rc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&Path> for Rc<Path> {
-    /// Converts a Path into a Rc by copying the Path data into a new Rc buffer.
+    /// Converts a `Path` into an `Rc` by copying the `Path` data into a new `Rc` buffer.
     #[inline]
     fn from(s: &Path) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.as_os_str());
@@ -2219,6 +2223,7 @@ impl Path {
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         self._join(path.as_ref())
     }

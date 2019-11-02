@@ -13,6 +13,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::check_attr::Target;
 use crate::ty::{self, TyCtxt};
 use crate::middle::weak_lang_items;
+use crate::middle::cstore::ExternCrate;
 use crate::util::nodemap::FxHashMap;
 
 use syntax::ast;
@@ -182,16 +183,39 @@ impl LanguageItemCollector<'tcx> {
                         E0152,
                         "duplicate lang item found: `{}`.",
                         name),
-                    None => self.tcx.sess.struct_err(&format!(
-                            "duplicate lang item in crate `{}`: `{}`.",
-                            self.tcx.crate_name(item_def_id.krate),
-                            name)),
+                    None => {
+                        match self.tcx.extern_crate(item_def_id) {
+                            Some(ExternCrate {dependency_of, ..}) => {
+                                self.tcx.sess.struct_err(&format!(
+                                "duplicate lang item in crate `{}` (which `{}` depends on): `{}`.",
+                                self.tcx.crate_name(item_def_id.krate),
+                                self.tcx.crate_name(*dependency_of),
+                                name))
+                            },
+                            _ => {
+                                self.tcx.sess.struct_err(&format!(
+                                "duplicate lang item in crate `{}`: `{}`.",
+                                self.tcx.crate_name(item_def_id.krate),
+                                name))
+                            }
+                        }
+                    },
                 };
                 if let Some(span) = self.tcx.hir().span_if_local(original_def_id) {
                     span_note!(&mut err, span, "first defined here.");
                 } else {
-                    err.note(&format!("first defined in crate `{}`.",
+                    match self.tcx.extern_crate(original_def_id) {
+                        Some(ExternCrate {dependency_of, ..}) => {
+                            err.note(&format!(
+                            "first defined in crate `{}` (which `{}` depends on).",
+                                      self.tcx.crate_name(original_def_id.krate),
+                                      self.tcx.crate_name(*dependency_of)));
+                        },
+                        _ => {
+                            err.note(&format!("first defined in crate `{}`.",
                                       self.tcx.crate_name(original_def_id.krate)));
+                        }
+                    }
                 }
                 err.emit();
             }
@@ -273,6 +297,10 @@ language_item_table! {
 
     SizedTraitLangItem,          "sized",              sized_trait,             Target::Trait;
     UnsizeTraitLangItem,         "unsize",             unsize_trait,            Target::Trait;
+    // trait injected by #[derive(PartialEq)], (i.e. "Partial EQ").
+    StructuralPeqTraitLangItem,  "structural_peq",     structural_peq_trait,    Target::Trait;
+    // trait injected by #[derive(Eq)], (i.e. "Total EQ"; no, I will not apologize).
+    StructuralTeqTraitLangItem,  "structural_teq",     structural_teq_trait,    Target::Trait;
     CopyTraitLangItem,           "copy",               copy_trait,              Target::Trait;
     CloneTraitLangItem,          "clone",              clone_trait,             Target::Trait;
     SyncTraitLangItem,           "sync",               sync_trait,              Target::Trait;
@@ -342,6 +370,7 @@ language_item_table! {
     PanicFnLangItem,             "panic",              panic_fn,                Target::Fn;
     PanicBoundsCheckFnLangItem,  "panic_bounds_check", panic_bounds_check_fn,   Target::Fn;
     PanicInfoLangItem,           "panic_info",         panic_info,              Target::Struct;
+    PanicLocationLangItem,       "panic_location",     panic_location,          Target::Struct;
     PanicImplLangItem,           "panic_impl",         panic_impl,              Target::Fn;
     // Libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanicFnLangItem,        "begin_panic",        begin_panic_fn,          Target::Fn;

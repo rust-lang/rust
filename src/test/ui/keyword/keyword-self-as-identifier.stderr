@@ -1,4 +1,4 @@
-error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
+error[E0531]: cannot find unit struct, unit variant or constant `Self` in this scope
   --> $DIR/keyword-self-as-identifier.rs:2:9
    |
 LL |     let Self = 22;
@@ -6,3 +6,4 @@ LL |     let Self = 22;
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0531`.

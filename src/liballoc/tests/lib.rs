@@ -2,19 +2,21 @@
 #![feature(box_syntax)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
-#![feature(option_flattening)]
+#![feature(new_uninit)]
 #![feature(pattern)]
-#![feature(repeat_generic_slice)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(associated_type_bounds)]
+#![feature(binary_heap_into_iter_sorted)]
+#![feature(binary_heap_drain_sorted)]
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
 mod arc;
 mod binary_heap;
+mod boxed;
 mod btree;
 mod cow_str;
 mod fmt;

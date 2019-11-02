@@ -5,7 +5,7 @@ use crate::hir::map::HirEntryMap;
 use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
 use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use crate::session::CrateDisambiguator;
@@ -17,7 +17,7 @@ use syntax_pos::Span;
 use std::iter::repeat;
 
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
@@ -149,7 +149,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let mut collector = NodeCollector {
             krate,
             source_map: sess.source_map(),
-            map: vec![None; definitions.def_index_count()],
+            map: IndexVec::from_elem_n(IndexVec::new(), definitions.def_index_count()),
             parent_node: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
@@ -186,13 +186,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum).as_interned_str();
+            let name = cstore.crate_name_untracked(cnum);
             let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
             (name, disambiguator, hash)
         }).collect();
 
-        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name, dis));
+        upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
 
         // We hash the final, remapped names of all local source files so we
         // don't have to include the path prefix remapping commandline args.
@@ -227,12 +227,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let local_map = &mut self.map[id.owner.index()];
+        let local_map = &mut self.map[id.owner];
         let i = id.local_id.as_u32() as usize;
-        if local_map.is_none() {
-            *local_map = Some(IndexVec::with_capacity(i + 1));
-        }
-        let local_map = local_map.as_mut().unwrap();
         let len = local_map.len();
         if i >= len {
             local_map.extend(repeat(None).take(i - len + 1));
@@ -602,9 +598,7 @@ impl<'hir, T> HashStable<StableHashingContext<'hir>> for HirItemLike<T>
 where
     T: HashStable<StableHashingContext<'hir>>,
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'hir>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'hir>, hasher: &mut StableHasher) {
         hcx.while_hashing_hir_bodies(self.hash_bodies, |hcx| {
             self.item_like.hash_stable(hcx, hasher);
         });

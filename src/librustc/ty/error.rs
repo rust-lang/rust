@@ -45,13 +45,12 @@ pub enum TypeError<'tcx> {
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
-
+    ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 
     IntrinsicCast,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum UnconstrainedNumeric {
     UnconstrainedFloat,
     UnconstrainedInt,
@@ -179,6 +178,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             IntrinsicCast => {
                 write!(f, "cannot coerce intrinsics to function pointers")
             }
+            ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
 }

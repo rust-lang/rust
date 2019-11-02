@@ -1,24 +1,24 @@
 use super::{Parser, PResult};
 use super::item::ItemInfo;
+use super::diagnostics::Error;
 
 use crate::attr;
 use crate::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
 use crate::parse::{new_sub_parser_from_file, DirectoryOwnership};
 use crate::parse::token::{self, TokenKind};
-use crate::parse::diagnostics::{Error};
 use crate::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 use crate::symbol::sym;
 
 use std::path::{self, Path, PathBuf};
 
 /// Information about the path to a module.
-pub struct ModulePath {
+pub(super) struct ModulePath {
     name: String,
     path_exists: bool,
     pub result: Result<ModulePathSuccess, Error>,
 }
 
-pub struct ModulePathSuccess {
+pub(super) struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
     warn: bool,
@@ -39,6 +39,8 @@ impl<'a> Parser<'a> {
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let (in_cfg, outer_attrs) = {
+            // FIXME(Centril): This results in a cycle between config and parsing.
+            // Consider using dynamic dispatch via `self.sess` to disentangle the knot.
             let mut strip_unconfigured = crate::config::StripUnconfigured {
                 sess: self.sess,
                 features: None, // Don't perform gated feature checking.
@@ -198,7 +200,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
+    pub(super) fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
         if let Some(s) = attr::first_attr_value_str_by_name(attrs, sym::path) {
             let s = s.as_str();
 
@@ -215,7 +217,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns a path to a module.
-    pub fn default_submod_path(
+    pub(super) fn default_submod_path(
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,

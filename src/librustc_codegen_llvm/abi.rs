@@ -264,7 +264,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             val
         };
         match self.mode {
-            PassMode::Ignore(_) => {}
+            PassMode::Ignore => {}
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
@@ -319,9 +319,7 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         );
 
         let llreturn_ty = match self.ret.mode {
-            PassMode::Ignore(IgnoreMode::Zst) => cx.type_void(),
-            PassMode::Ignore(IgnoreMode::CVarArgs) =>
-                bug!("`va_list` should never be a return type"),
+            PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 self.ret.layout.immediate_llvm_type(cx)
             }
@@ -339,7 +337,7 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             }
 
             let llarg_ty = match arg.mode {
-                PassMode::Ignore(_) => continue,
+                PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
                 PassMode::Pair(..) => {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0, true));
@@ -408,7 +406,7 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 apply(&ArgAttributes::new(), None);
             }
             match arg.mode {
-                PassMode::Ignore(_) => {}
+                PassMode::Ignore => {}
                 PassMode::Direct(ref attrs) |
                 PassMode::Indirect(ref attrs, None) => apply(attrs, Some(arg.layout.llvm_type(cx))),
                 PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
@@ -455,7 +453,7 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 apply(&ArgAttributes::new(), None);
             }
             match arg.mode {
-                PassMode::Ignore(_) => {}
+                PassMode::Ignore => {}
                 PassMode::Direct(ref attrs) |
                 PassMode::Indirect(ref attrs, None) => apply(attrs, Some(arg.layout.llvm_type(bx))),
                 PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {

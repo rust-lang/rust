@@ -1,4 +1,14 @@
-use super::*;
+use std::{
+    io,
+    io::prelude::Write,
+};
+
+use crate::{
+    types::{TestDesc, TestName},
+    time,
+    test_result::TestResult,
+    console::{ConsoleTestState},
+};
 
 mod pretty;
 mod json;
@@ -16,9 +26,18 @@ pub(crate) trait OutputFormatter {
         &mut self,
         desc: &TestDesc,
         result: &TestResult,
-        exec_time: Option<&TestExecTime>,
+        exec_time: Option<&time::TestExecTime>,
         stdout: &[u8],
         state: &ConsoleTestState,
     ) -> io::Result<()>;
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool>;
+}
+
+pub(crate) fn write_stderr_delimiter(test_output: &mut Vec<u8>, test_name: &TestName) {
+    match test_output.last() {
+        Some(b'\n') => (),
+        Some(_) => test_output.push(b'\n'),
+        None => (),
+    }
+    write!(test_output, "---- {} stderr ----\n", test_name).unwrap();
 }

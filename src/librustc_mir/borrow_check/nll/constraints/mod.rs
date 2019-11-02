@@ -2,7 +2,7 @@ use crate::borrow_check::nll::type_check::Locations;
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_index::vec::{Idx, IndexVec};
 use std::fmt;
 use std::ops::Index;
 
@@ -71,7 +71,7 @@ impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OutlivesConstraint {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
@@ -100,13 +100,13 @@ impl fmt::Debug for OutlivesConstraint {
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct OutlivesConstraintIndex {
         DEBUG_FORMAT = "OutlivesConstraintIndex({})"
     }
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct ConstraintSccIndex {
         DEBUG_FORMAT = "ConstraintSccIndex({})"
     }

@@ -1,7 +1,6 @@
 use crate::hir::def_id::DefId;
 use crate::ich::StableHashingContext;
-use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
-                                           HashStable};
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
@@ -20,7 +19,7 @@ pub type SimplifiedType = SimplifiedTypeGen<DefId>;
 /// the non-stable but fast to construct DefId-version is the better choice.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub enum SimplifiedTypeGen<D>
-    where D: Copy + Debug + Ord + Eq + Hash
+    where D: Copy + Debug + Ord + Eq
 {
     BoolSimplifiedType,
     CharSimplifiedType,
@@ -124,10 +123,10 @@ pub fn simplify_type(
     }
 }
 
-impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
+impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
     pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
         where F: Fn(D) -> U,
-              U: Copy + Debug + Ord + Eq + Hash,
+              U: Copy + Debug + Ord + Eq,
     {
         match self {
             BoolSimplifiedType => BoolSimplifiedType,
@@ -156,11 +155,9 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
 
 impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
 where
-    D: Copy + Debug + Ord + Eq + Hash + HashStable<StableHashingContext<'a>>,
+    D: Copy + Debug + Ord + Eq + HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             BoolSimplifiedType |

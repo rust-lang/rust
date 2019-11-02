@@ -4,7 +4,7 @@ pub use self::StructType::*;
 
 use syntax::ast;
 use syntax::ast::Name;
-use syntax::ext::base::MacroKind;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{self, Span};
 
 use rustc::hir;
@@ -59,7 +59,7 @@ impl Module<'hir> {
             fns        :   Vec::new(),
             mods       :   Vec::new(),
             typedefs   :   Vec::new(),
-            opaque_tys :  Vec::new(),
+            opaque_tys :   Vec::new(),
             statics    :   Vec::new(),
             constants  :   Vec::new(),
             traits     :   Vec::new(),

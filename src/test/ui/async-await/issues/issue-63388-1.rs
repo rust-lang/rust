@@ -9,9 +9,9 @@ trait Foo {}
 impl Xyz {
     async fn do_sth<'a>(
         &'a self, foo: &dyn Foo
-    ) -> &dyn Foo //~ ERROR lifetime mismatch
+    ) -> &dyn Foo
     {
-        foo
+        foo  //~ ERROR lifetime mismatch
     }
 }
 

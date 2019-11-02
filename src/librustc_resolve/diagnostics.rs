@@ -10,17 +10,17 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Ident, Path};
-use syntax::ext::base::MacroKind;
 use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{path_names_to_string, KNOWN_TOOLS};
-use crate::{BindingError, CrateLint, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
@@ -58,21 +58,6 @@ fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
     impl_span
 }
 
-crate fn add_typo_suggestion(
-    err: &mut DiagnosticBuilder<'_>, suggestion: Option<TypoSuggestion>, span: Span
-) -> bool {
-    if let Some(suggestion) = suggestion {
-        let msg = format!(
-            "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
-        );
-        err.span_suggestion(
-            span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
-        );
-        return true;
-    }
-    false
-}
-
 impl<'a> Resolver<'a> {
     crate fn add_module_candidates(
         &mut self,
@@ -80,11 +65,11 @@ impl<'a> Resolver<'a> {
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
-        for (&(ident, _), resolution) in self.resolutions(module).borrow().iter() {
+        for (key, resolution) in self.resolutions(module).borrow().iter() {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
                 if filter_fn(res) {
-                    names.push(TypoSuggestion::from_res(ident.name, res));
+                    names.push(TypoSuggestion::from_res(key.ident.name, res));
                 }
             }
         }
@@ -102,7 +87,7 @@ impl<'a> Resolver<'a> {
         &self, span: Span, resolution_error: ResolutionError<'_>
     ) -> DiagnosticBuilder<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterFunction(outer_res) => {
+            ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
                 let mut err = struct_span_err!(self.session,
                     span,
                     E0401,
@@ -148,22 +133,24 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                // Try to retrieve the span of the function signature and generate a new message
-                // with a local type or const parameter.
-                let sugg_msg = &format!("try using a local generic parameter instead");
-                if let Some((sugg_span, new_snippet)) = cm.generate_local_type_param_snippet(span) {
-                    // Suggest the modification to the user
-                    err.span_suggestion(
-                        sugg_span,
-                        sugg_msg,
-                        new_snippet,
-                        Applicability::MachineApplicable,
-                    );
-                } else if let Some(sp) = cm.generate_fn_name_span(span) {
-                    err.span_label(sp,
-                        format!("try adding a local generic parameter in this method instead"));
-                } else {
-                    err.help(&format!("try using a local generic parameter instead"));
+                if has_generic_params == HasGenericParams::Yes {
+                    // Try to retrieve the span of the function signature and generate a new
+                    // message with a local type or const parameter.
+                    let sugg_msg = &format!("try using a local generic parameter instead");
+                    if let Some((sugg_span, snippet)) = cm.generate_local_type_param_snippet(span) {
+                        // Suggest the modification to the user
+                        err.span_suggestion(
+                            sugg_span,
+                            sugg_msg,
+                            snippet,
+                            Applicability::MachineApplicable,
+                        );
+                    } else if let Some(sp) = cm.generate_fn_name_span(span) {
+                        err.span_label(sp,
+                            format!("try adding a local generic parameter in this method instead"));
+                    } else {
+                        err.help(&format!("try using a local generic parameter instead"));
+                    }
                 }
 
                 err
@@ -354,14 +341,15 @@ impl<'a> Resolver<'a> {
                     span, "defaulted type parameters cannot be forward declared".to_string());
                 err
             }
-            ResolutionError::ConstParamDependentOnTypeParam => {
+            ResolutionError::SelfInTyParamDefault => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0671,
-                    "const parameters cannot depend on type parameters"
+                    E0735,
+                    "type parameters cannot use `Self` in their defaults"
                 );
-                err.span_label(span, format!("const parameter depends on type parameter"));
+                err.span_label(
+                    span, "`Self` in type parameter default".to_string());
                 err
             }
         }
@@ -516,7 +504,7 @@ impl<'a> Resolver<'a> {
                         in_module_is_extern)) = worklist.pop() {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
-            in_module.for_each_child_stable(self, |this, ident, ns, name_binding| {
+            in_module.for_each_child(self, |this, ident, ns, name_binding| {
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
                 // avoid non-importable candidates as well
@@ -638,7 +626,7 @@ impl<'a> Resolver<'a> {
         let suggestion = self.early_lookup_typo_candidate(
             ScopeSet::Macro(macro_kind), parent_scope, ident, is_expected
         );
-        add_typo_suggestion(err, suggestion, ident.span);
+        self.add_typo_suggestion(err, suggestion, ident.span);
 
         if macro_kind == MacroKind::Derive &&
            (ident.as_str() == "Send" || ident.as_str() == "Sync") {
@@ -648,6 +636,33 @@ impl<'a> Resolver<'a> {
         if self.macro_names.contains(&ident.modern()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
+    }
+
+    crate fn add_typo_suggestion(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        suggestion: Option<TypoSuggestion>,
+        span: Span,
+    ) -> bool {
+        if let Some(suggestion) = suggestion {
+            let msg = format!(
+                "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
+            );
+            err.span_suggestion(
+                span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
+            );
+            let def_span = suggestion.res.opt_def_id()
+                .and_then(|def_id| self.definitions.opt_span(def_id));
+            if let Some(span) = def_span {
+                err.span_label(span, &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
+                ));
+            }
+            return true;
+        }
+        false
     }
 }
 
@@ -836,7 +851,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         let resolutions = self.r.resolutions(crate_module).borrow();
-        let resolution = resolutions.get(&(ident, MacroNS))?;
+        let resolution = resolutions.get(&self.r.new_key(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();

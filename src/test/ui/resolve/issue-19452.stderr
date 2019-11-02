@@ -1,6 +1,9 @@
 error[E0423]: expected value, found struct variant `Homura::Madoka`
   --> $DIR/issue-19452.rs:10:18
    |
+LL |     Madoka { age: u32 }
+   |     ------------------- `Homura::Madoka` defined here
+...
 LL |     let homura = Homura::Madoka;
    |                  ^^^^^^^^^^^^^^ did you mean `Homura::Madoka { /* fields */ }`?
 

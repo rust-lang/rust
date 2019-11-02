@@ -4,16 +4,13 @@ pub use DelimToken::*;
 pub use LitKind::*;
 pub use TokenKind::*;
 
-use crate::ast::{self};
-use crate::parse::{parse_stream_from_source_str, ParseSess};
-use crate::print::pprust;
+use crate::ast;
 use crate::ptr::P;
 use crate::symbol::kw;
-use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
+use crate::tokenstream::TokenTree;
 
 use syntax_pos::symbol::Symbol;
-use syntax_pos::{self, Span, FileName, DUMMY_SP};
-use log::info;
+use syntax_pos::{self, Span, DUMMY_SP};
 
 use std::fmt;
 use std::mem;
@@ -36,7 +33,7 @@ pub enum BinOpToken {
 }
 
 /// A delimiter token.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum DelimToken {
     /// A round parenthesis (i.e., `(` or `)`).
     Paren,
@@ -146,34 +143,35 @@ impl Lit {
 
 pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
+    token_can_begin_expr(&ident_token)
+}
 
+pub(crate) fn token_can_begin_expr(ident_token: &Token) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
-    [
-        kw::Async,
-
-        // FIXME: remove when `await!(..)` syntax is removed
-        // https://github.com/rust-lang/rust/issues/60610
-        kw::Await,
-
-        kw::Do,
-        kw::Box,
-        kw::Break,
-        kw::Continue,
-        kw::False,
-        kw::For,
-        kw::If,
-        kw::Let,
-        kw::Loop,
-        kw::Match,
-        kw::Move,
-        kw::Return,
-        kw::True,
-        kw::Unsafe,
-        kw::While,
-        kw::Yield,
-        kw::Static,
-    ].contains(&name)
+    match ident_token.kind {
+        TokenKind::Ident(ident, _) => [
+            kw::Async,
+            kw::Do,
+            kw::Box,
+            kw::Break,
+            kw::Continue,
+            kw::False,
+            kw::For,
+            kw::If,
+            kw::Let,
+            kw::Loop,
+            kw::Match,
+            kw::Move,
+            kw::Return,
+            kw::True,
+            kw::Unsafe,
+            kw::While,
+            kw::Yield,
+            kw::Static,
+        ].contains(&ident),
+        _=> false,
+    }
 }
 
 fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
@@ -288,7 +286,7 @@ impl TokenKind {
 }
 
 impl Token {
-    crate fn new(kind: TokenKind, span: Span) -> Self {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
         Token { kind, span }
     }
 
@@ -298,12 +296,12 @@ impl Token {
     }
 
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
-    crate fn from_ast_ident(ident: ast::Ident) -> Self {
+    pub fn from_ast_ident(ident: ast::Ident) -> Self {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
     }
 
     /// Return this token by value and leave a dummy token in its place.
-    crate fn take(&mut self) -> Self {
+    pub fn take(&mut self) -> Self {
         mem::replace(self, Token::dummy())
     }
 
@@ -324,7 +322,7 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
-    crate fn can_begin_expr(&self) -> bool {
+    pub fn can_begin_expr(&self) -> bool {
         match self.kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
@@ -356,7 +354,7 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of a type.
-    crate fn can_begin_type(&self) -> bool {
+    pub fn can_begin_type(&self) -> bool {
         match self.kind {
             Ident(name, is_raw)        =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
@@ -399,7 +397,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is any literal
-    crate fn is_lit(&self) -> bool {
+    pub fn is_lit(&self) -> bool {
         match self.kind {
             Literal(..) => true,
             _           => false,
@@ -415,7 +413,7 @@ impl Token {
 
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
-    crate fn can_begin_literal_or_bool(&self) -> bool {
+    pub fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
@@ -687,7 +685,7 @@ pub enum Nonterminal {
     NtLifetime(ast::Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
-    NtMeta(ast::MetaItem),
+    NtMeta(ast::AttrItem),
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
@@ -736,132 +734,4 @@ impl fmt::Debug for Nonterminal {
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
-}
-
-impl Nonterminal {
-    pub fn to_tokenstream(&self, sess: &ParseSess, span: Span) -> TokenStream {
-        // A `Nonterminal` is often a parsed AST item. At this point we now
-        // need to convert the parsed AST to an actual token stream, e.g.
-        // un-parse it basically.
-        //
-        // Unfortunately there's not really a great way to do that in a
-        // guaranteed lossless fashion right now. The fallback here is to just
-        // stringify the AST node and reparse it, but this loses all span
-        // information.
-        //
-        // As a result, some AST nodes are annotated with the token stream they
-        // came from. Here we attempt to extract these lossless token streams
-        // before we fall back to the stringification.
-        let tokens = match *self {
-            Nonterminal::NtItem(ref item) => {
-                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-            }
-            Nonterminal::NtTraitItem(ref item) => {
-                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-            }
-            Nonterminal::NtImplItem(ref item) => {
-                prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
-            }
-            Nonterminal::NtIdent(ident, is_raw) => {
-                Some(TokenTree::token(Ident(ident.name, is_raw), ident.span).into())
-            }
-            Nonterminal::NtLifetime(ident) => {
-                Some(TokenTree::token(Lifetime(ident.name), ident.span).into())
-            }
-            Nonterminal::NtTT(ref tt) => {
-                Some(tt.clone().into())
-            }
-            _ => None,
-        };
-
-        // FIXME(#43081): Avoid this pretty-print + reparse hack
-        let source = pprust::nonterminal_to_string(self);
-        let filename = FileName::macro_expansion_source_code(&source);
-        let tokens_for_real = parse_stream_from_source_str(filename, source, sess, Some(span));
-
-        // During early phases of the compiler the AST could get modified
-        // directly (e.g., attributes added or removed) and the internal cache
-        // of tokens my not be invalidated or updated. Consequently if the
-        // "lossless" token stream disagrees with our actual stringification
-        // (which has historically been much more battle-tested) then we go
-        // with the lossy stream anyway (losing span information).
-        //
-        // Note that the comparison isn't `==` here to avoid comparing spans,
-        // but it *also* is a "probable" equality which is a pretty weird
-        // definition. We mostly want to catch actual changes to the AST
-        // like a `#[cfg]` being processed or some weird `macro_rules!`
-        // expansion.
-        //
-        // What we *don't* want to catch is the fact that a user-defined
-        // literal like `0xf` is stringified as `15`, causing the cached token
-        // stream to not be literal `==` token-wise (ignoring spans) to the
-        // token stream we got from stringification.
-        //
-        // Instead the "probably equal" check here is "does each token
-        // recursively have the same discriminant?" We basically don't look at
-        // the token values here and assume that such fine grained token stream
-        // modifications, including adding/removing typically non-semantic
-        // tokens such as extra braces and commas, don't happen.
-        if let Some(tokens) = tokens {
-            if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
-                return tokens
-            }
-            info!("cached tokens found, but they're not \"probably equal\", \
-                   going with stringified version");
-        }
-        return tokens_for_real
-    }
-}
-
-fn prepend_attrs(sess: &ParseSess,
-                 attrs: &[ast::Attribute],
-                 tokens: Option<&tokenstream::TokenStream>,
-                 span: syntax_pos::Span)
-    -> Option<tokenstream::TokenStream>
-{
-    let tokens = tokens?;
-    if attrs.len() == 0 {
-        return Some(tokens.clone())
-    }
-    let mut builder = tokenstream::TokenStreamBuilder::new();
-    for attr in attrs {
-        assert_eq!(attr.style, ast::AttrStyle::Outer,
-                   "inner attributes should prevent cached tokens from existing");
-
-        let source = pprust::attribute_to_string(attr);
-        let macro_filename = FileName::macro_expansion_source_code(&source);
-        if attr.is_sugared_doc {
-            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-            builder.push(stream);
-            continue
-        }
-
-        // synthesize # [ $path $tokens ] manually here
-        let mut brackets = tokenstream::TokenStreamBuilder::new();
-
-        // For simple paths, push the identifier directly
-        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
-            let ident = attr.path.segments[0].ident;
-            let token = Ident(ident.name, ident.as_str().starts_with("r#"));
-            brackets.push(tokenstream::TokenTree::token(token, ident.span));
-
-        // ... and for more complicated paths, fall back to a reparse hack that
-        // should eventually be removed.
-        } else {
-            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-            brackets.push(stream);
-        }
-
-        brackets.push(attr.tokens.clone());
-
-        // The span we list here for `#` and for `[ ... ]` are both wrong in
-        // that it encompasses more than each token, but it hopefully is "good
-        // enough" for now at least.
-        builder.push(tokenstream::TokenTree::token(Pound, attr.span));
-        let delim_span = DelimSpan::from_single(attr.span);
-        builder.push(tokenstream::TokenTree::Delimited(
-            delim_span, DelimToken::Bracket, brackets.build().into()));
-    }
-    builder.push(tokens.clone());
-    Some(builder.build())
 }

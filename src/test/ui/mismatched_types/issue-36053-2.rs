@@ -7,5 +7,4 @@ fn main() {
     once::<&str>("str").fuse().filter(|a: &str| true).count();
     //~^ ERROR no method named `count`
     //~| ERROR type mismatch in closure arguments
-    //~| ERROR type mismatch in closure arguments
 }

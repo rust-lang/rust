@@ -3,6 +3,7 @@ error: expected pattern, found `+`
    |
 LL |       } + 5
    |         ^ expected pattern
+   |
 help: parentheses are required to parse this as an expression
    |
 LL |       0 => ({

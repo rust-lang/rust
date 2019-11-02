@@ -18,7 +18,7 @@ use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast::*;
 use syntax::visit::{self, Visitor};
-use syntax::ext::base::SpecialDerives;
+use syntax::expand::SpecialDerives;
 use syntax::source_map::{respan, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
@@ -1222,7 +1222,11 @@ impl LoweringContext<'_> {
             }
 
             let async_expr = this.make_async_expr(
-                CaptureBy::Value, closure_id, None, body.span,
+                CaptureBy::Value,
+                closure_id,
+                None,
+                body.span,
+                hir::AsyncGeneratorKind::Fn,
                 |this| {
                     // Create a block from the user's function body:
                     let user_body = this.lower_block_expr(body);

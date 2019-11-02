@@ -8,8 +8,7 @@ use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 
 /// A trait's definition with type information.
@@ -194,9 +193,7 @@ pub(super) fn trait_impls_of_provider(
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TraitImpls {
             ref blanket_impls,
             ref non_blanket_impls,

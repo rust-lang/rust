@@ -1,5 +1,6 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
     LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceRef, ProjectionElem, Rvalue,
@@ -7,7 +8,7 @@ use rustc::mir::{
 };
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 use syntax::source_map::DesugaringKind;
@@ -77,15 +78,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 .last()
                 .unwrap();
 
-            if self.uninitialized_error_reported.contains(&root_place) {
+            if !self.uninitialized_error_reported.insert(root_place) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
                     root_place
                 );
                 return;
             }
-
-            self.uninitialized_error_reported.insert(root_place);
 
             let item_msg = match self.describe_place_with_options(used_place,
                                                                   IncludingDowncast(true)) {
@@ -240,11 +239,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                     }
                 }
-                let span = if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = place {
-                    let decl = &self.body.local_decls[*local];
+                let span = if let Some(local) = place.as_local() {
+                    let decl = &self.body.local_decls[local];
                     Some(decl.source_info.span)
                 } else {
                     None
@@ -612,7 +608,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     projection,
                 } = first_borrowed_place;
 
-                let mut cursor = &**projection;
+                let mut cursor = projection.as_ref();
                 while let [proj_base @ .., elem] = cursor {
                     cursor = proj_base;
 
@@ -636,7 +632,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     projection,
                 } = second_borrowed_place;
 
-                let mut cursor = &**projection;
+                let mut cursor = projection.as_ref();
                 while let [proj_base @ .., elem] = cursor {
                     cursor = proj_base;
 
@@ -711,10 +707,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             _ => drop_span,
         };
 
+        let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
+
         if self.access_place_error_reported
             .contains(&(Place {
                 base: root_place.base.clone(),
-                projection: root_place.projection.to_vec().into_boxed_slice(),
+                projection: root_place_projection,
             }, borrow_span))
         {
             debug!(
@@ -727,7 +725,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.access_place_error_reported
             .insert((Place {
                 base: root_place.base.clone(),
-                projection: root_place.projection.to_vec().into_boxed_slice(),
+                projection: root_place_projection,
             }, borrow_span));
 
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
@@ -750,6 +748,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
         let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
 
+        debug!(
+            "report_borrowed_value_does_not_live_long_enough(place_desc: {:?}, explanation: {:?})",
+            place_desc,
+            explanation
+        );
         let err = match (place_desc, explanation) {
             (Some(_), _) if self.is_place_thread_local(root_place) => {
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
@@ -783,7 +786,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ..
                 },
             ) if borrow_spans.for_closure() => self.report_escaping_closure_capture(
-                borrow_spans.args_or_use(),
+                borrow_spans,
+                borrow_span,
+                region_name,
+                category,
+                span,
+                &format!("`{}`", name),
+            ),
+            (
+                Some(ref name),
+                BorrowExplanation::MustBeValidFor {
+                    category: category @ ConstraintCategory::OpaqueType,
+                    from_closure: false,
+                    ref region_name,
+                    span,
+                    ..
+                },
+
+            ) if borrow_spans.for_generator() => self.report_escaping_closure_capture(
+                borrow_spans,
                 borrow_span,
                 region_name,
                 category,
@@ -1102,26 +1123,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         let (place_desc, note) = if let Some(place_desc) = opt_place_desc {
-            let local_kind = match borrow.borrowed_place {
-                Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } => {
-                    match self.body.local_kind(local) {
-                        LocalKind::ReturnPointer
-                        | LocalKind::Temp => bug!("temporary or return pointer with a name"),
-                        LocalKind::Var => "local variable ",
-                        LocalKind::Arg
-                        if !self.upvars.is_empty()
-                            && local == Local::new(1) => {
-                            "variable captured by `move` "
-                        }
-                        LocalKind::Arg => {
-                            "function parameter "
-                        }
+            let local_kind = if let Some(local) = borrow.borrowed_place.as_local() {
+                match self.body.local_kind(local) {
+                    LocalKind::ReturnPointer
+                    | LocalKind::Temp => bug!("temporary or return pointer with a name"),
+                    LocalKind::Var => "local variable ",
+                    LocalKind::Arg
+                    if !self.upvars.is_empty()
+                        && local == Local::new(1) => {
+                        "variable captured by `move` "
+                    }
+                    LocalKind::Arg => {
+                        "function parameter "
                     }
                 }
-                _ => "local data ",
+            } else {
+                "local data "
             };
             (
                 format!("{}`{}`", local_kind, place_desc),
@@ -1172,7 +1189,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn report_escaping_closure_capture(
         &mut self,
-        args_span: Span,
+        use_span: UseSpans,
         var_span: Span,
         fr_name: &RegionName,
         category: ConstraintCategory,
@@ -1180,7 +1197,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
-
+        let args_span = use_span.args_or_use();
         let mut err = self.cannot_capture_in_long_lived_closure(
             args_span,
             captured_var,
@@ -1200,12 +1217,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             },
             Err(_) => "move |<args>| <body>".to_string()
         };
-
+        let kind = match use_span.generator_kind() {
+            Some(generator_kind) => match generator_kind {
+                GeneratorKind::Async(async_kind) => match async_kind {
+                    AsyncGeneratorKind::Block => "async block",
+                    AsyncGeneratorKind::Closure => "async closure",
+                    _ => bug!("async block/closure expected, but async funtion found."),
+                },
+                GeneratorKind::Gen => "generator",
+            }
+            None => "closure",
+        };
         err.span_suggestion(
             args_span,
-            &format!("to force the closure to take ownership of {} (and any \
-                      other referenced variables), use the `move` keyword",
-                      captured_var),
+            &format!(
+                "to force the {} to take ownership of {} (and any \
+                 other referenced variables), use the `move` keyword",
+                 kind,
+                 captured_var
+            ),
             suggestion,
             Applicability::MachineApplicable,
         );
@@ -1213,6 +1243,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match category {
             ConstraintCategory::Return => {
                 err.span_note(constraint_span, "closure is returned here");
+            }
+            ConstraintCategory::OpaqueType => {
+                err.span_note(constraint_span, "generator is returned here");
             }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
@@ -1442,10 +1475,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         assigned_span: Span,
         err_place: &Place<'tcx>,
     ) {
-        let (from_arg, local_decl) = if let Place {
-            base: PlaceBase::Local(local),
-            projection: box [],
-        } = *err_place {
+        let (from_arg, local_decl) = if let Some(local) = err_place.as_local() {
             if let LocalKind::Arg = self.body.local_kind(local) {
                 (true, Some(&self.body.local_decls[local]))
             } else {
@@ -1605,11 +1635,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 reservation
             );
             // Check that the initial assignment of the reserve location is into a temporary.
-            let mut target = *match reservation {
-                Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } if self.body.local_kind(*local) == LocalKind::Temp => local,
+            let mut target = match reservation.as_local() {
+                Some(local) if self.body.local_kind(local) == LocalKind::Temp => local,
                 _ => return None,
             };
 
@@ -1621,127 +1648,122 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
                 );
-                if let StatementKind::Assign(
-                    box(
-                        Place {
-                            base: PlaceBase::Local(assigned_to),
-                            projection: box [],
-                        },
-                        rvalue
-                    )
-                ) = &stmt.kind {
-                    debug!(
-                        "annotate_argument_and_return_for_borrow: assigned_to={:?} \
-                         rvalue={:?}",
-                        assigned_to, rvalue
-                    );
-                    // Check if our `target` was captured by a closure.
-                    if let Rvalue::Aggregate(
-                        box AggregateKind::Closure(def_id, substs),
-                        operands,
-                    ) = rvalue
-                    {
-                        for operand in operands {
-                            let assigned_from = match operand {
+                if let StatementKind::Assign(box(place, rvalue)) = &stmt.kind {
+                    if let Some(assigned_to) = place.as_local() {
+                        debug!(
+                            "annotate_argument_and_return_for_borrow: assigned_to={:?} \
+                             rvalue={:?}",
+                            assigned_to, rvalue
+                        );
+                        // Check if our `target` was captured by a closure.
+                        if let Rvalue::Aggregate(
+                            box AggregateKind::Closure(def_id, substs),
+                            operands,
+                        ) = rvalue
+                        {
+                            for operand in operands {
+                                let assigned_from = match operand {
+                                    Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
+                                        assigned_from
+                                    }
+                                    _ => continue,
+                                };
+                                debug!(
+                                    "annotate_argument_and_return_for_borrow: assigned_from={:?}",
+                                    assigned_from
+                                );
+
+                                // Find the local from the operand.
+                                let assigned_from_local = match assigned_from.local_or_deref_local()
+                                {
+                                    Some(local) => local,
+                                    None => continue,
+                                };
+
+                                if assigned_from_local != target {
+                                    continue;
+                                }
+
+                                // If a closure captured our `target` and then assigned
+                                // into a place then we should annotate the closure in
+                                // case it ends up being assigned into the return place.
+                                annotated_closure = self.annotate_fn_sig(
+                                    *def_id,
+                                    self.infcx.closure_sig(*def_id, *substs),
+                                );
+                                debug!(
+                                    "annotate_argument_and_return_for_borrow: \
+                                     annotated_closure={:?} assigned_from_local={:?} \
+                                     assigned_to={:?}",
+                                    annotated_closure, assigned_from_local, assigned_to
+                                );
+
+                                if assigned_to == mir::RETURN_PLACE {
+                                    // If it was assigned directly into the return place, then
+                                    // return now.
+                                    return annotated_closure;
+                                } else {
+                                    // Otherwise, update the target.
+                                    target = assigned_to;
+                                }
+                            }
+
+                            // If none of our closure's operands matched, then skip to the next
+                            // statement.
+                            continue;
+                        }
+
+                        // Otherwise, look at other types of assignment.
+                        let assigned_from = match rvalue {
+                            Rvalue::Ref(_, _, assigned_from) => assigned_from,
+                            Rvalue::Use(operand) => match operand {
                                 Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
                                     assigned_from
                                 }
                                 _ => continue,
-                            };
-                            debug!(
-                                "annotate_argument_and_return_for_borrow: assigned_from={:?}",
-                                assigned_from
-                            );
+                            },
+                            _ => continue,
+                        };
+                        debug!(
+                            "annotate_argument_and_return_for_borrow: \
+                             assigned_from={:?}",
+                            assigned_from,
+                        );
 
-                            // Find the local from the operand.
-                            let assigned_from_local = match assigned_from.local_or_deref_local() {
-                                Some(local) => local,
-                                None => continue,
-                            };
+                        // Find the local from the rvalue.
+                        let assigned_from_local = match assigned_from.local_or_deref_local() {
+                            Some(local) => local,
+                            None => continue,
+                        };
+                        debug!(
+                            "annotate_argument_and_return_for_borrow: \
+                             assigned_from_local={:?}",
+                            assigned_from_local,
+                        );
 
-                            if assigned_from_local != target {
-                                continue;
-                            }
-
-                            // If a closure captured our `target` and then assigned
-                            // into a place then we should annotate the closure in
-                            // case it ends up being assigned into the return place.
-                            annotated_closure = self.annotate_fn_sig(
-                                *def_id,
-                                self.infcx.closure_sig(*def_id, *substs),
-                            );
-                            debug!(
-                                "annotate_argument_and_return_for_borrow: \
-                                 annotated_closure={:?} assigned_from_local={:?} \
-                                 assigned_to={:?}",
-                                annotated_closure, assigned_from_local, assigned_to
-                            );
-
-                            if *assigned_to == mir::RETURN_PLACE {
-                                // If it was assigned directly into the return place, then
-                                // return now.
-                                return annotated_closure;
-                            } else {
-                                // Otherwise, update the target.
-                                target = *assigned_to;
-                            }
+                        // Check if our local matches the target - if so, we've assigned our
+                        // borrow to a new place.
+                        if assigned_from_local != target {
+                            continue;
                         }
 
-                        // If none of our closure's operands matched, then skip to the next
-                        // statement.
-                        continue;
+                        // If we assigned our `target` into a new place, then we should
+                        // check if it was the return place.
+                        debug!(
+                            "annotate_argument_and_return_for_borrow: \
+                             assigned_from_local={:?} assigned_to={:?}",
+                            assigned_from_local, assigned_to
+                        );
+                        if assigned_to == mir::RETURN_PLACE {
+                            // If it was then return the annotated closure if there was one,
+                            // else, annotate this function.
+                            return annotated_closure.or_else(fallback);
+                        }
+
+                        // If we didn't assign into the return place, then we just update
+                        // the target.
+                        target = assigned_to;
                     }
-
-                    // Otherwise, look at other types of assignment.
-                    let assigned_from = match rvalue {
-                        Rvalue::Ref(_, _, assigned_from) => assigned_from,
-                        Rvalue::Use(operand) => match operand {
-                            Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
-                                assigned_from
-                            }
-                            _ => continue,
-                        },
-                        _ => continue,
-                    };
-                    debug!(
-                        "annotate_argument_and_return_for_borrow: \
-                         assigned_from={:?}",
-                        assigned_from,
-                    );
-
-                    // Find the local from the rvalue.
-                    let assigned_from_local = match assigned_from.local_or_deref_local() {
-                        Some(local) => local,
-                        None => continue,
-                    };
-                    debug!(
-                        "annotate_argument_and_return_for_borrow: \
-                         assigned_from_local={:?}",
-                        assigned_from_local,
-                    );
-
-                    // Check if our local matches the target - if so, we've assigned our
-                    // borrow to a new place.
-                    if assigned_from_local != target {
-                        continue;
-                    }
-
-                    // If we assigned our `target` into a new place, then we should
-                    // check if it was the return place.
-                    debug!(
-                        "annotate_argument_and_return_for_borrow: \
-                         assigned_from_local={:?} assigned_to={:?}",
-                        assigned_from_local, assigned_to
-                    );
-                    if *assigned_to == mir::RETURN_PLACE {
-                        // If it was then return the annotated closure if there was one,
-                        // else, annotate this function.
-                        return annotated_closure.or_else(fallback);
-                    }
-
-                    // If we didn't assign into the return place, then we just update
-                    // the target.
-                    target = *assigned_to;
                 }
             }
 
@@ -1752,38 +1774,37 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 target, terminator
             );
             if let TerminatorKind::Call {
-                destination: Some((Place {
-                    base: PlaceBase::Local(assigned_to),
-                    projection: box [],
-                }, _)),
+                destination: Some((place, _)),
                 args,
                 ..
             } = &terminator.kind
             {
-                debug!(
-                    "annotate_argument_and_return_for_borrow: assigned_to={:?} args={:?}",
-                    assigned_to, args
-                );
-                for operand in args {
-                    let assigned_from = match operand {
-                        Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
-                            assigned_from
-                        }
-                        _ => continue,
-                    };
+                if let Some(assigned_to) = place.as_local() {
                     debug!(
-                        "annotate_argument_and_return_for_borrow: assigned_from={:?}",
-                        assigned_from,
+                        "annotate_argument_and_return_for_borrow: assigned_to={:?} args={:?}",
+                        assigned_to, args
                     );
-
-                    if let Some(assigned_from_local) = assigned_from.local_or_deref_local() {
+                    for operand in args {
+                        let assigned_from = match operand {
+                            Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
+                                assigned_from
+                            }
+                            _ => continue,
+                        };
                         debug!(
-                            "annotate_argument_and_return_for_borrow: assigned_from_local={:?}",
-                            assigned_from_local,
+                            "annotate_argument_and_return_for_borrow: assigned_from={:?}",
+                            assigned_from,
                         );
 
-                        if *assigned_to == mir::RETURN_PLACE && assigned_from_local == target {
-                            return annotated_closure.or_else(fallback);
+                        if let Some(assigned_from_local) = assigned_from.local_or_deref_local() {
+                            debug!(
+                                "annotate_argument_and_return_for_borrow: assigned_from_local={:?}",
+                                assigned_from_local,
+                            );
+
+                            if assigned_to == mir::RETURN_PLACE && assigned_from_local == target {
+                                return annotated_closure.or_else(fallback);
+                            }
                         }
                     }
                 }

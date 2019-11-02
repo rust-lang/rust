@@ -1,7 +1,8 @@
-use crate::{ast, panictry};
-use crate::parse::{ParseSess, PResult, source_file_to_stream};
+use crate::ast;
+use crate::parse::{PResult, source_file_to_stream};
 use crate::parse::new_parser_from_source_str;
 use crate::parse::parser::Parser;
+use crate::sess::ParseSess;
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::tokenstream::TokenStream;
 use crate::with_default_globals;
@@ -27,7 +28,7 @@ crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F)
     F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
     let mut p = string_to_parser(&ps, s);
-    let x = panictry!(f(&mut p));
+    let x = f(&mut p).unwrap();
     p.sess.span_diagnostic.abort_if_errors();
     x
 }
@@ -110,8 +111,8 @@ struct SpanLabel {
     label: &'static str,
 }
 
-struct Shared<T: Write> {
-    data: Arc<Mutex<T>>,
+crate struct Shared<T: Write> {
+    pub data: Arc<Mutex<T>>,
 }
 
 impl<T: Write> Write for Shared<T> {

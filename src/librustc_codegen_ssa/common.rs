@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
 use rustc::ty::{Ty, TyCtxt};
+use rustc::session::Session;
 use syntax_pos::Span;
 
 use rustc::hir::def_id::DefId;
@@ -109,14 +110,11 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op HashStable
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
-                                               HashStable};
+    use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
     use crate::ModuleCodegen;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
-        fn hash_stable<W: StableHasherResult>(&self,
-                                              _: &mut HCX,
-                                              _: &mut StableHasher<W>) {
+        fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
             // do nothing
         }
     }
@@ -202,4 +200,8 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
+}
+
+pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
+    span_err!(a, b, E0511, "{}", c);
 }

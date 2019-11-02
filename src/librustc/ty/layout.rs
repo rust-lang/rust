@@ -1,5 +1,5 @@
 use crate::session::{self, DataTypeKind};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions, subst::SubstsRef};
 
 use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
@@ -15,17 +15,15 @@ use std::ops::Bound;
 use crate::hir;
 use crate::ich::StableHashingContext;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
-use crate::ty::GeneratorSubsts;
 use crate::ty::subst::Subst;
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_index::bit_set::BitSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::vec::{IndexVec, Idx};
 
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
 use rustc_target::abi::call::{
-    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
+    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, PassMode, Reg, RegKind
 };
 
 pub trait IntegerExt {
@@ -672,10 +670,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(unit)
             }
 
-            ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, &substs)?,
+            ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, substs)?,
 
             ty::Closure(def_id, ref substs) => {
-                let tys = substs.upvar_tys(def_id, tcx);
+                let tys = substs.as_closure().upvar_tys(def_id, tcx);
                 univariant(&tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
                     StructKind::AlwaysSized)?
@@ -826,10 +824,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     });
                     (present_variants.next(), present_variants.next())
                 };
-                if present_first.is_none() {
+                let present_first = match present_first {
+                    present_first @ Some(_) => present_first,
                     // Uninhabited because it has no variants, or only absent ones.
-                    return tcx.layout_raw(param_env.and(tcx.types.never));
-                }
+                    None if def.is_enum() => return tcx.layout_raw(param_env.and(tcx.types.never)),
+                    // if it's a struct, still compute a layout so that we can still compute the
+                    // field offsets
+                    None => Some(VariantIdx::new(0)),
+                };
 
                 let is_struct = !def.is_enum() ||
                     // Only one variant is present.
@@ -1407,12 +1409,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         &self,
         ty: Ty<'tcx>,
         def_id: hir::def_id::DefId,
-        substs: &GeneratorSubsts<'tcx>,
+        substs: SubstsRef<'tcx>,
     ) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
 
-        let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs.substs) };
+        let subst_field = |ty: Ty<'tcx>| { ty.subst(tcx, substs) };
 
         let info = tcx.generator_layout(def_id);
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
@@ -1420,9 +1422,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.prefix_tys(def_id, tcx).count();
+        let discr_index = substs.as_generator().prefix_tys(def_id, tcx).count();
         // FIXME(eddyb) set the correct vaidity range for the discriminant.
-        let discr_layout = self.layout_of(substs.discr_ty(tcx))?;
+        let discr_layout = self.layout_of(substs.as_generator().discr_ty(tcx))?;
         let discr = match &discr_layout.abi {
             Abi::Scalar(s) => s.clone(),
             _ => bug!(),
@@ -1431,7 +1433,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .map(|local| subst_field(info.field_tys[local]))
             .map(|ty| tcx.mk_maybe_uninit(ty))
             .map(|ty| self.layout_of(ty));
-        let prefix_layouts = substs.prefix_tys(def_id, tcx)
+        let prefix_layouts = substs.as_generator().prefix_tys(def_id, tcx)
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(discr_layout)))
             .chain(promoted_layouts)
@@ -2148,13 +2150,13 @@ where
 
             // Tuples, generators and closures.
             ty::Closure(def_id, ref substs) => {
-                substs.upvar_tys(def_id, tcx).nth(i).unwrap()
+                substs.as_closure().upvar_tys(def_id, tcx).nth(i).unwrap()
             }
 
             ty::Generator(def_id, ref substs, _) => {
                 match this.variants {
                     Variants::Single { index } => {
-                        substs.state_tys(def_id, tcx)
+                        substs.as_generator().state_tys(def_id, tcx)
                             .nth(index.as_usize()).unwrap()
                             .nth(i).unwrap()
                     }
@@ -2162,7 +2164,7 @@ where
                         if i == discr_index {
                             return discr_layout(discr);
                         }
-                        substs.prefix_tys(def_id, tcx).nth(i).unwrap()
+                        substs.as_generator().prefix_tys(def_id, tcx).nth(i).unwrap()
                     }
                 }
             }
@@ -2323,9 +2325,7 @@ where
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Variants {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Variants::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2349,9 +2349,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::DiscriminantKind::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2372,9 +2370,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for DiscriminantKind {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::FieldPlacement::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2395,19 +2391,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for VariantIdx {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'a>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_u32().hash_stable(hcx, hasher)
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Abi {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::Abi::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2432,9 +2422,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Abi {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Scalar { value, ref valid_range } = *self;
         value.hash_stable(hcx, hasher);
         valid_range.start().hash_stable(hcx, hasher);
@@ -2476,29 +2464,19 @@ impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
 });
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Size {
-    fn hash_stable<W: StableHasherResult>(
-        &self,
-        hcx: &mut StableHashingContext<'tcx>,
-        hasher: &mut StableHasher<W>,
-    ) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         use crate::ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -2618,6 +2596,7 @@ where
 
             // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
+            EfiApi => bug!("eficall abi should be selected elsewhere"),
 
             Stdcall => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,
@@ -2722,14 +2701,6 @@ where
             }
         };
 
-        // Store the index of the last argument. This is useful for working with
-        // C-compatible variadic arguments.
-        let last_arg_idx = if sig.inputs().is_empty() {
-            None
-        } else {
-            Some(sig.inputs().len() - 1)
-        };
-
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
             let mut arg = mk_arg_type(ty, arg_idx);
@@ -2739,30 +2710,7 @@ where
                 // The same is true for s390x-unknown-linux-gnu
                 // and sparc64-unknown-linux-gnu.
                 if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
-                    arg.mode = PassMode::Ignore(IgnoreMode::Zst);
-                }
-            }
-
-            // If this is a C-variadic function, this is not the return value,
-            // and there is one or more fixed arguments; ensure that the `VaListImpl`
-            // is ignored as an argument.
-            if sig.c_variadic {
-                match (last_arg_idx, arg_idx) {
-                    (Some(last_idx), Some(cur_idx)) if last_idx == cur_idx => {
-                        let va_list_did = match cx.tcx().lang_items().va_list() {
-                            Some(did) => did,
-                            None => bug!("`va_list` lang item required for C-variadic functions"),
-                        };
-                        match ty.kind {
-                            ty::Adt(def, _) if def.did == va_list_did => {
-                                // This is the "spoofed" `VaListImpl`. Set the arguments mode
-                                // so that it will be ignored.
-                                arg.mode = PassMode::Ignore(IgnoreMode::CVarArgs);
-                            }
-                            _ => (),
-                        }
-                    }
-                    _ => {}
+                    arg.mode = PassMode::Ignore;
                 }
             }
 

@@ -194,12 +194,12 @@ use crate::monomorphize;
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
-use rustc_data_structures::bit_set::GrowableBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
 use std::iter;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
     Eager,
     Lazy
@@ -285,7 +285,11 @@ pub fn collect_crate_mono_items(
     tcx: TyCtxt<'_>,
     mode: MonoItemCollectionMode,
 ) -> (FxHashSet<MonoItem<'_>>, InliningMap<'_>) {
+    let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
+
     let roots = time(tcx.sess, "collecting roots", || {
+        let _prof_timer = tcx.prof
+            .generic_activity("monomorphization_collector_root_collections");
         collect_roots(tcx, mode)
     });
 
@@ -295,6 +299,9 @@ pub fn collect_crate_mono_items(
     let mut inlining_map = MTLock::new(InliningMap::new());
 
     {
+        let _prof_timer = tcx.prof
+            .generic_activity("monomorphization_collector_graph_walk");
+
         let visited: MTRef<'_, _> = &mut visited;
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 
@@ -581,7 +588,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 match source_ty.kind {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
-                            self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
+                            self.tcx, def_id,
+                            substs, ty::ClosureKind::FnOnce);
                         if should_monomorphize_locally(self.tcx, &instance) {
                             self.output.push(create_fn_mono_item(instance));
                         }
@@ -713,10 +721,12 @@ fn visit_fn_use<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     if let ty::FnDef(def_id, substs) = ty.kind {
-        let instance = ty::Instance::resolve(tcx,
-                                             ty::ParamEnv::reveal_all(),
-                                             def_id,
-                                             substs).unwrap();
+        let resolver = if is_direct_call {
+            ty::Instance::resolve
+        } else {
+            ty::Instance::resolve_for_fn_ptr
+        };
+        let instance = resolver(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
@@ -739,6 +749,7 @@ fn visit_instance_use<'tcx>(
             }
         }
         ty::InstanceDef::VtableShim(..) |
+        ty::InstanceDef::ReifyShim(..) |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::DropGlue(_, None) => {
             // don't need to emit shim if we are calling directly.
@@ -765,6 +776,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
         ty::InstanceDef::VtableShim(..) |
+        ty::InstanceDef::ReifyShim(..) |
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::FnPtrShim(..) |
@@ -1264,7 +1276,14 @@ fn collect_const<'tcx>(
 ) {
     debug!("visiting const {:?}", constant);
 
-    match constant.val {
+    let param_env = ty::ParamEnv::reveal_all();
+    let substituted_constant = tcx.subst_and_normalize_erasing_regions(
+        param_substs,
+        param_env,
+        &constant,
+    );
+
+    match substituted_constant.val {
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
@@ -1274,12 +1293,6 @@ fn collect_const<'tcx>(
             }
         }
         ConstValue::Unevaluated(def_id, substs) => {
-            let param_env = ty::ParamEnv::reveal_all();
-            let substs = tcx.subst_and_normalize_erasing_regions(
-                param_substs,
-                param_env,
-                &substs,
-            );
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
                                                 def_id,
@@ -1296,7 +1309,7 @@ fn collect_const<'tcx>(
                     tcx.def_span(def_id), "collection encountered polymorphic constant",
                 ),
             }
-        }
+        },
         _ => {},
     }
 }

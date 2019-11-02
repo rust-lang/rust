@@ -7,6 +7,9 @@ LL | use ImportError;
 error[E0404]: expected trait, found type alias `K`
   --> $DIR/issue-5035.rs:3:6
    |
+LL | trait I {}
+   | ---------- similarly named trait `I` defined here
+LL | type K = dyn I;
 LL | impl K for isize {}
    |      ^
    |      |

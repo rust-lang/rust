@@ -25,6 +25,7 @@ LL |   fn p() { match s { v, E { [) {) }
 LL | |
 LL | |
    | |_^
+   |
 help: surround the struct literal with parentheses
    |
 LL | fn p() { match (s { v, E { [) {) }

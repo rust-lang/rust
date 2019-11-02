@@ -97,9 +97,9 @@ macro_rules! impl_stable_hash_for {
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
             #[inline]
-            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
-                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
+            fn hash_stable(&self,
+                           __ctx: &mut $crate::ich::StableHashingContext<'a>,
+                           __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
                 use $enum_path::*;
                 ::std::mem::discriminant(self).hash_stable(__ctx, __hasher);
 
@@ -128,9 +128,9 @@ macro_rules! impl_stable_hash_for {
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
             #[inline]
-            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
-                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
+            fn hash_stable(&self,
+                           __ctx: &mut $crate::ich::StableHashingContext<'a>,
+                           __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
                 let $struct_name {
                     $(ref $field),*
                 } = *self;
@@ -153,9 +153,9 @@ macro_rules! impl_stable_hash_for {
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
             #[inline]
-            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
-                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
+            fn hash_stable(&self,
+                           __ctx: &mut $crate::ich::StableHashingContext<'a>,
+                           __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
                 let $struct_name (
                     $(ref $field),*
                 ) = *self;
@@ -173,9 +173,9 @@ macro_rules! impl_stable_hash_for_spanned {
         impl HashStable<StableHashingContext<'a>> for ::syntax::source_map::Spanned<$T>
         {
             #[inline]
-            fn hash_stable<W: StableHasherResult>(&self,
-                                                  hcx: &mut StableHashingContext<'a>,
-                                                  hasher: &mut StableHasher<W>) {
+            fn hash_stable(&self,
+                           hcx: &mut StableHashingContext<'a>,
+                           hasher: &mut StableHasher) {
                 self.node.hash_stable(hcx, hasher);
                 self.span.hash_stable(hcx, hasher);
             }

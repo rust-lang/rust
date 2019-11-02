@@ -193,7 +193,7 @@ impl Slice {
 pub trait OsStringExt {
     /// Creates an [`OsString`] from a byte vector.
     ///
-    /// See the module docmentation for an example.
+    /// See the module documentation for an example.
     ///
     /// [`OsString`]: ../../../ffi/struct.OsString.html
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -201,7 +201,7 @@ pub trait OsStringExt {
 
     /// Yields the underlying byte vector of this [`OsString`].
     ///
-    /// See the module docmentation for an example.
+    /// See the module documentation for an example.
     ///
     /// [`OsString`]: ../../../ffi/struct.OsString.html
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -226,14 +226,14 @@ pub trait OsStrExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Creates an [`OsStr`] from a byte slice.
     ///
-    /// See the module docmentation for an example.
+    /// See the module documentation for an example.
     ///
     /// [`OsStr`]: ../../../ffi/struct.OsStr.html
     fn from_bytes(slice: &[u8]) -> &Self;
 
     /// Gets the underlying byte view of the [`OsStr`] slice.
     ///
-    /// See the module docmentation for an example.
+    /// See the module documentation for an example.
     ///
     /// [`OsStr`]: ../../../ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]

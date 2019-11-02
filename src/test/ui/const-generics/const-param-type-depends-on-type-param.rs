@@ -7,7 +7,6 @@
 // details.
 
 pub struct Dependent<T, const X: T>([(); X]);
-//~^ ERROR const parameters cannot depend on type parameters
-//~^^ ERROR parameter `T` is never used
+//~^ ERROR the types of const generic parameters must derive `PartialEq` and `Eq`
 
 fn main() {}

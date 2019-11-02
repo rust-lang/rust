@@ -14,25 +14,25 @@ error: type `foo` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:7:8
    |
 LL | struct foo {
-   |        ^^^ help: convert the identifier to upper camel case: `Foo`
+   |        ^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo`
 
 error: type `foo2` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:11:6
    |
 LL | enum foo2 {
-   |      ^^^^ help: convert the identifier to upper camel case: `Foo2`
+   |      ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo2`
 
 error: type `foo3` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:15:8
    |
 LL | struct foo3 {
-   |        ^^^^ help: convert the identifier to upper camel case: `Foo3`
+   |        ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo3`
 
 error: type `foo4` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:19:6
    |
 LL | type foo4 = isize;
-   |      ^^^^ help: convert the identifier to upper camel case: `Foo4`
+   |      ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo4`
 
 error: variant `bar` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:22:5
@@ -44,7 +44,7 @@ error: trait `foo6` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:25:7
    |
 LL | trait foo6 {
-   |       ^^^^ help: convert the identifier to upper camel case: `Foo6`
+   |       ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo6`
 
 error: type parameter `ty` should have an upper camel case name
   --> $DIR/lint-non-camel-case-types.rs:29:6

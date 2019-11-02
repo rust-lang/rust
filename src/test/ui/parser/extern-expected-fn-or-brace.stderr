@@ -1,4 +1,4 @@
-error: expected one of `fn` or `{`, found `mod`
+error: expected one of `fn` or `{`, found keyword `mod`
   --> $DIR/extern-expected-fn-or-brace.rs:4:12
    |
 LL | extern "C" mod foo;

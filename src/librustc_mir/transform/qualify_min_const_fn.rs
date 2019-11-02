@@ -14,7 +14,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
-        for (predicate, _) in &predicates.predicates {
+        for (predicate, _) in predicates.predicates {
             match predicate {
                 | Predicate::RegionOutlives(_)
                 | Predicate::TypeOutlives(_)
@@ -259,8 +259,8 @@ fn check_place(
     def_id: DefId,
     body: &Body<'tcx>
 ) -> McfResult {
-    let mut cursor = &*place.projection;
-    while let [proj_base @ .., elem] = cursor {
+    let mut cursor = place.projection.as_ref();
+    while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
             ProjectionElem::Downcast(..) => {

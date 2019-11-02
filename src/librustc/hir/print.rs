@@ -1,10 +1,10 @@
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::source_map::{SourceMap, Spanned};
-use syntax::parse::ParseSess;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self, Comments, PrintState};
+use syntax::sess::ParseSess;
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -360,9 +360,6 @@ impl<'a> State<'a> {
                 self.popen();
                 self.s.word("/*ERROR*/");
                 self.pclose();
-            }
-            hir::TyKind::CVarArgs(_) => {
-                self.s.word("...");
             }
         }
         self.end()
@@ -1526,9 +1523,17 @@ impl<'a> State<'a> {
                                         colons_before_params)
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
-                self.s.word("<");
-                self.print_type(qself);
-                self.s.word(">");
+                // If we've got a compound-qualified-path, let's push an additional pair of angle
+                // brackets, so that we pretty-print `<<A::B>::C>` as `<A::B>::C`, instead of just
+                // `A::B::C` (since the latter could be ambiguous to the user)
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, _)) = &qself.kind {
+                    self.print_type(qself);
+                } else {
+                    self.s.word("<");
+                    self.print_type(qself);
+                    self.s.word(">");
+                }
+
                 self.s.word("::");
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(item_segment.generic_args(),

@@ -3,6 +3,7 @@ error[E0689]: can't call method `f` on ambiguous numeric type `{integer}`
    |
 LL |         3.f()
    |           ^
+   |
 help: you must specify a concrete type for this numeric value, like `i32`
    |
 LL |         3_i32.f()

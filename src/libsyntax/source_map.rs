@@ -41,7 +41,7 @@ pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -283,6 +283,7 @@ impl SourceMap {
         mut file_local_lines: Vec<BytePos>,
         mut file_local_multibyte_chars: Vec<MultiByteChar>,
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
+        mut file_local_normalized_pos: Vec<NormalizedPos>,
     ) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
@@ -301,6 +302,10 @@ impl SourceMap {
             *swc = *swc + start_pos;
         }
 
+        for nc in &mut file_local_normalized_pos {
+            nc.pos = nc.pos + start_pos;
+        }
+
         let source_file = Lrc::new(SourceFile {
             name: filename,
             name_was_remapped,
@@ -314,6 +319,7 @@ impl SourceMap {
             lines: file_local_lines,
             multibyte_chars: file_local_multibyte_chars,
             non_narrow_chars: file_local_non_narrow_chars,
+            normalized_pos: file_local_normalized_pos,
             name_hash,
         });
 
@@ -878,25 +884,8 @@ impl SourceMap {
 
     // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
-        let files = self.files.borrow();
-        let files = &files.source_files;
-        let count = files.len();
-
-        // Binary search for the `SourceFile`.
-        let mut a = 0;
-        let mut b = count;
-        while b - a > 1 {
-            let m = (a + b) / 2;
-            if files[m].start_pos > pos {
-                b = m;
-            } else {
-                a = m;
-            }
-        }
-
-        assert!(a < count, "position {} does not resolve to a source location", pos.to_usize());
-
-        return a;
+        self.files.borrow().source_files.binary_search_by_key(&pos, |key| key.start_pos)
+            .unwrap_or_else(|p| p - 1)
     }
 
     pub fn count_lines(&self) -> usize {
@@ -986,6 +975,9 @@ impl SourceMapper for SourceMap {
     }
     fn span_to_string(&self, sp: Span) -> String {
         self.span_to_string(sp)
+    }
+    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        self.span_to_snippet(sp)
     }
     fn span_to_filename(&self, sp: Span) -> FileName {
         self.span_to_filename(sp)

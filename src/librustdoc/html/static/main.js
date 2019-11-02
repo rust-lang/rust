@@ -79,6 +79,7 @@ function getSearchElement() {
                      "derive",
                      "traitalias"];
 
+    var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
 
     // On the search screen, so you remain on the last tab you opened.
@@ -294,7 +295,7 @@ function getSearchElement() {
 
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
-        if (ev.ctrlKey || ev.altKey || ev.metaKey) {
+        if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts === true) {
             return;
         }
 
@@ -378,9 +379,13 @@ function getSearchElement() {
 
                 set_fragment(cur_id);
             }
-        } else if (hasClass(document.getElementById("help"), "hidden") === false) {
-            addClass(document.getElementById("help"), "hidden");
-            removeClass(document.body, "blur");
+        } else if (hasClass(getHelpElement(), "hidden") === false) {
+            var help = getHelpElement();
+            var is_inside_help_popup = ev.target !== help && help.contains(ev.target);
+            if (is_inside_help_popup === false) {
+                addClass(help, "hidden");
+                removeClass(document.body, "blur");
+            }
         } else {
             // Making a collapsed element visible on onhashchange seems
             // too late

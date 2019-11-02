@@ -9,6 +9,7 @@ use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
+use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
@@ -17,11 +18,11 @@ use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 use crate::interpret::eval_nullary_intrinsic;
 
-use syntax::source_map::{Span, DUMMY_SP};
+use syntax::{source_map::{Span, DUMMY_SP}, symbol::Symbol};
 
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
-    RawConst, ConstValue,
+    RawConst, ConstValue, Machine,
     InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
@@ -41,7 +42,7 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(crate) fn mk_eval_cx<'mir, 'tcx>(
+fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
@@ -158,18 +159,14 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    intern_const_alloc_recursive(
-        ecx,
-        cid.instance.def_id(),
-        ret,
-    )?;
+    intern_const_alloc_recursive(ecx, tcx.static_mutability(cid.instance.def_id()), ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
 }
 
 #[derive(Clone, Debug)]
-enum ConstEvalError {
+pub enum ConstEvalError {
     NeedsRfc(String),
 }
 
@@ -374,11 +371,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        if ecx.emulate_intrinsic(instance, args, dest)? {
+        if ecx.emulate_intrinsic(span, instance, args, dest)? {
             return Ok(());
         }
         // An intrinsic that we do not support
@@ -505,6 +503,28 @@ pub fn const_field<'tcx>(
     op_to_const(&ecx, field)
 }
 
+pub fn const_caller_location<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (file, line, col): (Symbol, u32, u32),
+) -> &'tcx ty::Const<'tcx> {
+    trace!("const_caller_location: {}:{}:{}", file, line, col);
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all());
+
+    let loc_ty = tcx.mk_imm_ref(
+        tcx.lifetimes.re_static,
+        tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
+            .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
+    );
+    let loc_place = ecx.alloc_caller_location(file, line, col).unwrap();
+    intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
+    let loc_const = ty::Const {
+        ty: loc_ty,
+        val: ConstValue::Scalar(loc_place.ptr.into()),
+    };
+
+    tcx.mk_const(loc_const)
+}
+
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
 pub fn const_variant_index<'tcx>(
@@ -521,8 +541,8 @@ pub fn const_variant_index<'tcx>(
 /// Turn an interpreter error into something to report to the user.
 /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
 /// Should be called only if the error is actually going to to be reported!
-pub fn error_to_const_error<'mir, 'tcx>(
-    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+pub fn error_to_const_error<'mir, 'tcx, M: Machine<'mir, 'tcx>>(
+    ecx: &InterpCx<'mir, 'tcx, M>,
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();

@@ -4,8 +4,8 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Body, Location};
-use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::Idx;
 
 use super::MoveDataParamEnv;
 
@@ -18,13 +18,13 @@ use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
 
+mod borrowed_locals;
+mod indirect_mutation;
 mod storage_liveness;
 
-pub use self::storage_liveness::*;
-
-mod borrowed_locals;
-
 pub use self::borrowed_locals::*;
+pub use self::indirect_mutation::IndirectlyMutableLocals;
+pub use self::storage_liveness::*;
 
 pub(super) mod borrows;
 

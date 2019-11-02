@@ -1,5 +1,5 @@
 error: implementation of `Foo` is not general enough
-  --> $DIR/due-to-where-clause.rs:5:5
+  --> $DIR/due-to-where-clause.rs:2:5
    |
 LL |     test::<FooS>(&mut 42);
    |     ^^^^^^^^^^^^ implementation of `Foo` is not general enough

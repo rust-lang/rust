@@ -194,7 +194,7 @@ a guard.
 ```compile_fail,E0029
 let string = "salutations !";
 
-// The ordering relation for strings can't be evaluated at compile time,
+// The ordering relation for strings cannot be evaluated at compile time,
 // so this doesn't work:
 match string {
     "hello" ..= "world" => {}
@@ -348,7 +348,7 @@ fn main() {
 "##,
 
 E0044: r##"
-You can't use type or const parameters on foreign items.
+You cannot use type or const parameters on foreign items.
 Example of erroneous code:
 
 ```compile_fail,E0044
@@ -788,7 +788,7 @@ fn some_other_func() {}
 fn some_function() {
     SOME_CONST = 14; // error : a constant value cannot be changed!
     1 = 3; // error : 1 isn't a valid place!
-    some_other_func() = 4; // error : we can't assign value to a function!
+    some_other_func() = 4; // error : we cannot assign value to a function!
     SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
                        // like a variable!
 }
@@ -1873,13 +1873,14 @@ This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
 
-/*
 E0205: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt to implement the `Copy` trait for an enum failed because one of the
 variants does not implement `Copy`. To fix this, you must implement `Copy` for
 the mentioned variant. Note that this may not be possible, as in the example of
 
-```compile_fail,E0205
+```compile_fail,E0204
 enum Foo {
     Bar(Vec<u32>),
     Baz,
@@ -1892,7 +1893,7 @@ This fails because `Vec<T>` does not implement `Copy` for any `T`.
 
 Here's another example that will fail:
 
-```compile_fail,E0205
+```compile_fail,E0204
 #[derive(Copy)]
 enum Foo<'a> {
     Bar(&'a mut bool),
@@ -1903,7 +1904,6 @@ enum Foo<'a> {
 This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
 differs from the behavior for `&T`, which is always `Copy`).
 "##,
-*/
 
 E0206: r##"
 You can only implement `Copy` for a struct or enum. Both of the following
@@ -2126,8 +2126,9 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/blob/master/text/1023-rebalancing-coherence.md
 "##,
 
-/*
 E0211: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You used a function or type which doesn't fit the requirements for where it was
 used. Erroneous code examples:
 
@@ -2174,7 +2175,7 @@ extern "rust-intrinsic" {
 }
 ```
 
-The second case example is a bit particular : the main function must always
+The second case example is a bit particular: the main function must always
 have this definition:
 
 ```compile_fail
@@ -2206,7 +2207,6 @@ impl Foo {
 }
 ```
 "##,
-     */
 
 E0220: r##"
 You used an associated type which isn't defined in the trait.
@@ -2727,14 +2727,9 @@ impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
 [`CoerceUnsized`]: https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html
 "##,
 
-/*
-// Associated consts can now be accessed through generic type parameters, and
-// this error is no longer emitted.
-//
-// FIXME: consider whether to leave it in the error index, or remove it entirely
-//        as associated consts is not stabilized yet.
-
 E0329: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
@@ -2765,12 +2760,15 @@ trait Foo {
 
 struct MyStruct;
 
+impl Foo for MyStruct {
+    const BAR: f64 = 0f64;
+}
+
 fn get_bar_good() -> f64 {
     <MyStruct as Foo>::BAR
 }
 ```
 "##,
-*/
 
 E0366: r##"
 An attempt was made to implement `Drop` on a concrete specialization of a
@@ -3610,6 +3608,43 @@ match r {
 ```
 "##,
 
+E0533: r##"
+An item which isn't a unit struct, a variant, nor a constant has been used as a
+match pattern.
+
+Erroneous code example:
+
+```compile_fail,E0533
+struct Tortoise;
+
+impl Tortoise {
+    fn turtle(&self) -> u32 { 0 }
+}
+
+match 0u32 {
+    Tortoise::turtle => {} // Error!
+    _ => {}
+}
+if let Tortoise::turtle = 0u32 {} // Same error!
+```
+
+If you want to match against a value returned by a method, you need to bind the
+value first:
+
+```
+struct Tortoise;
+
+impl Tortoise {
+    fn turtle(&self) -> u32 { 0 }
+}
+
+match 0u32 {
+    x if x == Tortoise.turtle() => {} // Bound into `x` then we compare it!
+    _ => {}
+}
+```
+"##,
+
 E0534: r##"
 The `inline` attribute was malformed.
 
@@ -3854,6 +3889,52 @@ compiler, but this was since corrected. See [issue #33685] for more
 details.
 
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
+"##,
+
+E0587: r##"
+A type has both `packed` and `align` representation hints.
+
+Erroneous code example:
+
+```compile_fail,E0587
+#[repr(packed, align(8))] // error!
+struct Umbrella(i32);
+```
+
+You cannot use `packed` and `align` hints on a same type. If you want to pack a
+type to a given size, you should provide a size to packed:
+
+```
+#[repr(packed)] // ok!
+struct Umbrella(i32);
+```
+"##,
+
+E0588: r##"
+A type with `packed` representation hint has a field with `align`
+representation hint.
+
+Erroneous code example:
+
+```compile_fail,E0588
+#[repr(align(16))]
+struct Aligned(i32);
+
+#[repr(packed)] // error!
+struct Packed(Aligned);
+```
+
+Just like you cannot have both `align` and `packed` representation hints on a
+same type, a `packed` type cannot contain another type with the `align`
+representation hint. However, you can do the opposite:
+
+```
+#[repr(packed)]
+struct Packed(i32);
+
+#[repr(align(16))] // ok!
+struct Aligned(Packed);
+```
 "##,
 
 E0592: r##"
@@ -4264,7 +4345,7 @@ extern {
 
 unsafe {
     printf(::std::ptr::null(), 0f32);
-    // error: can't pass an `f32` to variadic function, cast to `c_double`
+    // error: cannot pass an `f32` to variadic function, cast to `c_double`
 }
 ```
 
@@ -4284,11 +4365,12 @@ enum X {
     Entry,
 }
 
-X::Entry(); // error: expected function, found `X::Entry`
+X::Entry(); // error: expected function, tuple struct or tuple variant,
+            // found `X::Entry`
 
 // Or even simpler:
 let x = 0i32;
-x(); // error: expected function, found `i32`
+x(); // error: expected function, tuple struct or tuple variant, found `i32`
 ```
 
 Only functions and methods can be called using `()`. Example:
@@ -4828,6 +4910,10 @@ assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
 ```
 "##,
 
+E0740: r##"
+A `union` cannot have fields with destructors.
+"##,
+
 E0733: r##"
 Recursion in an `async fn` requires boxing. For example, this will not compile:
 
@@ -4870,6 +4956,48 @@ fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
 The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
+
+E0737: r##"
+`#[track_caller]` requires functions to have the `"Rust"` ABI for implicitly
+receiving caller location. See [RFC 2091] for details on this and other
+restrictions.
+
+Erroneous code example:
+
+```compile_fail,E0737
+#![feature(track_caller)]
+
+#[track_caller]
+extern "C" fn foo() {}
+```
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+E0741: r##"
+Only `structural_match` types (that is, types that derive `PartialEq` and `Eq`)
+may be used as the types of const generic parameters.
+
+```compile_fail,E0741
+#![feature(const_generics)]
+
+struct A;
+
+struct B<const X: A>; // error!
+```
+
+To fix this example, we derive `PartialEq` and `Eq`.
+
+```
+#![feature(const_generics)]
+
+#[derive(PartialEq, Eq)]
+struct A;
+
+struct B<const X: A>; // ok!
+```
+"##,
+
 ;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
@@ -4892,7 +5020,7 @@ and the pin is required to keep it in the same place in memory.
 //  E0174,
 //  E0182, // merged into E0229
     E0183,
-//  E0187, // can't infer the kind of the closure
+//  E0187, // cannot infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
@@ -4935,22 +5063,19 @@ and the pin is required to keep it in the same place in memory.
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
 //  E0558, // replaced with a generic attribute input check
-    E0533, // `{}` does not name a unit variant, unit struct or a constant
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
-    E0564, // only named lifetimes are allowed in `impl Trait`,
+//  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
-    E0587, // type has conflicting packed and align representation hints
-    E0588, // packed type cannot transitively contain a `[repr(align)]` type
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0627, // yield statement outside of generator literal
-    E0632, // cannot provide explicit type parameters when `impl Trait` is used
-           // in argument position.
+    E0632, // cannot provide explicit generic arguments when `impl Trait` is
+           // used in argument position
     E0634, // type has conflicting packed representaton hints
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
-    E0645, // trait aliases not finished
+//  E0645, // trait aliases not finished
     E0719, // duplicate values for associated type binding
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions

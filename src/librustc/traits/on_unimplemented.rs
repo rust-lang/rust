@@ -248,9 +248,11 @@ impl<'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == sym::from_method => (),
                     // `{from_desugaring}` is allowed
                     Position::ArgumentNamed(s) if s == sym::from_desugaring => (),
+                    // `{ItemContext}` is allowed
+                    Position::ArgumentNamed(s) if s == sym::item_context => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        param.name.as_symbol() == s
+                        param.name == s
                     }) {
                         Some(_) => (),
                         None => {
@@ -289,13 +291,14 @@ impl<'tcx> OnUnimplementedFormatString {
                 },
                 GenericParamDefKind::Lifetime => return None
             };
-            let name = param.name.as_symbol();
+            let name = param.name;
             Some((name, value))
         }).collect::<FxHashMap<Symbol, String>>();
         let empty_string = String::new();
 
         let s = self.0.as_str();
         let parser = Parser::new(&s, None, vec![], false);
+        let item_context = (options.get(&sym::item_context)).unwrap_or(&empty_string);
         parser.map(|p|
             match p {
                 Piece::String(s) => s,
@@ -311,6 +314,8 @@ impl<'tcx> OnUnimplementedFormatString {
                             } else if s == sym::from_desugaring || s == sym::from_method {
                                 // don't break messages using these two arguments incorrectly
                                 &empty_string
+                            } else if s == sym::item_context {
+                                &item_context
                             } else {
                                 bug!("broken on_unimplemented {:?} for {:?}: \
                                       no argument matching {:?}",

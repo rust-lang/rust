@@ -28,7 +28,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
-use crate::ops::{FnMut, Try, self};
+use crate::ops::{FnMut, Range, self};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::result::Result;
@@ -63,6 +63,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
+    #[allow(unused_attributes)]
     #[allow_internal_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
         unsafe {
@@ -404,6 +405,86 @@ impl<T> [T] {
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
+    }
+
+    /// Returns the two raw pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_ptr`] for warnings on using these pointers. The end pointer
+    /// requires extra caution, as it does not point to a valid element in the
+    /// slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// It can also be useful to check if a pointer to an element refers to an
+    /// element of this slice:
+    ///
+    /// ```
+    /// #![feature(slice_ptr_range)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let x = &a[1] as *const _;
+    /// let y = &5 as *const _;
+    ///
+    /// assert!(a.as_ptr_range().contains(&x));
+    /// assert!(!a.as_ptr_range().contains(&y));
+    /// ```
+    ///
+    /// [`as_ptr`]: #method.as_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[inline]
+    pub fn as_ptr_range(&self) -> Range<*const T> {
+        // The `add` here is safe, because:
+        //
+        //   - Both pointers are part of the same object, as pointing directly
+        //     past the object also counts.
+        //
+        //   - The size of the slice is never larger than isize::MAX bytes, as
+        //     noted here:
+        //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
+        //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+        //       - https://doc.rust-lang.org/core/slice/fn.from_raw_parts.html#safety
+        //     (This doesn't seem normative yet, but the very same assumption is
+        //     made in many places, including the Index implementation of slices.)
+        //
+        //   - There is no wrapping around involved, as slices do not wrap past
+        //     the end of the address space.
+        //
+        // See the documentation of pointer::add.
+        let start = self.as_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
+    }
+
+    /// Returns the two unsafe mutable pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_mut_ptr`] for warnings on using these pointers. The end
+    /// pointer requires extra caution, as it does not point to a valid element
+    /// in the slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[inline]
+    pub fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
+        // See as_ptr_range() above for why `add` here is safe.
+        let start = self.as_mut_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
     }
 
     /// Swaps two elements in the slice.
@@ -3181,39 +3262,6 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
-            {
-                // manual unrolling is needed when there are conditional exits from the loop
-                let mut accum = init;
-                unsafe {
-                    while len!(self) >= 4 {
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                        accum = f(accum, next_unchecked!(self))?;
-                    }
-                    while !is_empty!(self) {
-                        accum = f(accum, next_unchecked!(self))?;
-                    }
-                }
-                Try::from_ok(accum)
-            }
-
-            #[inline]
-            fn fold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
-                where Fold: FnMut(Acc, Self::Item) -> Acc,
-            {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
-                let mut accum = init;
-                while let Some(x) = self.next() {
-                    accum = f(accum, x);
-                }
-                accum
-            }
-
-            #[inline]
             #[rustc_inherit_overflow_checks]
             fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
                 Self: Sized,
@@ -3282,40 +3330,6 @@ macro_rules! iterator {
                     self.pre_dec_end(n as isize);
                     Some(next_back_unchecked!(self))
                 }
-            }
-
-            #[inline]
-            fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
-            {
-                // manual unrolling is needed when there are conditional exits from the loop
-                let mut accum = init;
-                unsafe {
-                    while len!(self) >= 4 {
-                        accum = f(accum, next_back_unchecked!(self))?;
-                        accum = f(accum, next_back_unchecked!(self))?;
-                        accum = f(accum, next_back_unchecked!(self))?;
-                        accum = f(accum, next_back_unchecked!(self))?;
-                    }
-                    // inlining is_empty everywhere makes a huge performance difference
-                    while !is_empty!(self) {
-                        accum = f(accum, next_back_unchecked!(self))?;
-                    }
-                }
-                Try::from_ok(accum)
-            }
-
-            #[inline]
-            fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
-                where Fold: FnMut(Acc, Self::Item) -> Acc,
-            {
-                // Let LLVM unroll this, rather than using the default
-                // impl that would force the manual unrolling above
-                let mut accum = init;
-                while let Some(x) = self.next_back() {
-                    accum = f(accum, x);
-                }
-                accum
             }
         }
 

@@ -1,5 +1,5 @@
 fn test_if() {
-    r#if true { } //~ ERROR found `true`
+    r#if true { } //~ ERROR found keyword `true`
 }
 
 fn test_struct() {

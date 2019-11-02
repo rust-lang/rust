@@ -17,10 +17,10 @@ use crate::util::common::time;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_index::vec::IndexVec;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
-use syntax::ext::base::MacroKind;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;
@@ -156,9 +156,9 @@ impl Forest {
 
 /// This type is effectively a `HashMap<HirId, Entry<'hir>>`,
 /// but it is implemented as 2 layers of arrays.
-/// - first we have `A = Vec<Option<B>>` mapping a `DefIndex`'s index to an inner value
+/// - first we have `A = IndexVec<DefIndex, B>` mapping `DefIndex`s to an inner value
 /// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which gives you the `Entry`.
-pub(super) type HirEntryMap<'hir> = Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>;
+pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Option<Entry<'hir>>>>;
 
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
@@ -222,8 +222,8 @@ impl<'map> Iterator for ParentHirIterator<'map> {
 impl<'hir> Map<'hir> {
     #[inline]
     fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map.get(id.owner.index())?;
-        local_map.as_ref()?.get(id.local_id)?.as_ref()
+        let local_map = self.map.get(id.owner)?;
+        local_map.get(id.local_id)?.as_ref()
     }
 
     /// Registers a read in the dependency graph of the AST node with
@@ -818,6 +818,32 @@ impl<'hir> Map<'hir> {
         CRATE_HIR_ID
     }
 
+    /// When on a match arm tail expression or on a match arm, give back the enclosing `match`
+    /// expression.
+    ///
+    /// Used by error reporting when there's a type error in a match arm caused by the `match`
+    /// expression needing to be unit.
+    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&Expr> {
+        for (_, node) in ParentHirIterator::new(hir_id, &self) {
+            match node {
+                Node::Item(_) |
+                Node::ForeignItem(_) |
+                Node::TraitItem(_) |
+                Node::ImplItem(_) => break,
+                Node::Expr(expr) => match expr.kind {
+                    ExprKind::Match(_, _, _) => return Some(expr),
+                    _ => {}
+                },
+                Node::Stmt(stmt) => match stmt.kind {
+                    StmtKind::Local(_) => break,
+                    _ => {}
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
     pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
         for (hir_id, node) in ParentHirIterator::new(hir_id, &self) {
@@ -1005,14 +1031,12 @@ impl<'hir> Map<'hir> {
         // see the comment on `HirEntryMap`.
         // Iterate over all the indices and return a reference to
         // local maps and their index given that they exist.
-        self.map.iter().enumerate().filter_map(|(i, local_map)| {
-            local_map.as_ref().map(|m| (i, m))
-        }).flat_map(move |(array_index, local_map)| {
+        self.map.iter_enumerated().flat_map(move |(owner, local_map)| {
             // Iterate over each valid entry in the local map.
             local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
                 // Reconstruct the `HirId` based on the 3 indices we used to find it.
                 HirId {
-                    owner: DefIndex::from(array_index),
+                    owner,
                     local_id: i,
                 }
             }))
@@ -1196,6 +1220,8 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
                        forest: &'hir Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
+    let _prof_timer = sess.prof.generic_activity("build_hir_map");
+
     // Build the reverse mapping of `node_to_hir_id`.
     let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();

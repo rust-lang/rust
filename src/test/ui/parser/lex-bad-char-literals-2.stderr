@@ -3,6 +3,7 @@ error: character literal may only contain one codepoint
    |
 LL |     'nope'
    |     ^^^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     "nope"

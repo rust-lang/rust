@@ -235,7 +235,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     });
                     let ptr_temp = Place::from(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
-                    this.into(&ptr_temp.deref(), block, val)
+                    this.into(&this.hir.tcx().mk_place_deref(ptr_temp), block, val)
                 } else {
                     let args: Vec<_> = args
                         .into_iter()

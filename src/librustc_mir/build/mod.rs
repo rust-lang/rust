@@ -7,12 +7,14 @@ use crate::util as mir_util;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
+use rustc::middle::lang_items;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Subst;
 use rustc::util::nodemap::HirIdMap;
 use rustc_target::spec::PanicStrategy;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_index::vec::{IndexVec, Idx};
 use std::u32;
 use rustc_target::spec::abi::Abi;
 use syntax::attr::{self, UnwindAttr};
@@ -102,9 +104,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                         let opt_ty_info;
                         let self_arg;
                         if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
-                            let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir().span(ty_hir_id);
-                            opt_ty_info = Some(ty_span);
+                            opt_ty_info = fn_decl.inputs.get(index).map(|ty| ty.span);
                             self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                                 match fn_decl.implicit_self {
                                     hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
@@ -121,7 +121,24 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
                             self_arg = None;
                         }
 
-                        ArgInfo(fn_sig.inputs()[index], opt_ty_info, Some(&arg), self_arg)
+                        // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
+                        // (as it's created inside the body itself, not passed in from outside).
+                        let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
+                            let va_list_did = tcx.require_lang_item(
+                                lang_items::VaListTypeLangItem,
+                                Some(arg.span),
+                            );
+                            let region = tcx.mk_region(ty::ReScope(region::Scope {
+                                id: body.value.hir_id.local_id,
+                                data: region::ScopeData::CallSite
+                            }));
+
+                            tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+                        } else {
+                            fn_sig.inputs()[index]
+                        };
+
+                        ArgInfo(ty, opt_ty_info, Some(&arg), self_arg)
                     });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
@@ -129,7 +146,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
                 let gen_sig = match ty.kind {
                     ty::Generator(gen_def_id, gen_substs, ..) =>
-                        gen_substs.sig(gen_def_id, tcx),
+                        gen_substs.as_generator().sig(gen_def_id, tcx),
                     _ =>
                         span_bug!(tcx.hir().span(id),
                                   "generator w/o generator type: {:?}", ty),
@@ -438,7 +455,7 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-newtype_index! {
+rustc_index::newtype_index! {
     pub struct ScopeId { .. }
 }
 
@@ -485,24 +502,21 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
-    // Not callable from C, so we can safely unwind through these
-    if abi == Abi::Rust || abi == Abi::RustCall { return false; }
-
-    // Validate `#[unwind]` syntax regardless of platform-specific panic strategy
+fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, _abi: Abi) -> bool {
+    // Validate `#[unwind]` syntax regardless of platform-specific panic strategy.
     let attrs = &tcx.get_attrs(fn_def_id);
     let unwind_attr = attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs);
 
-    // We never unwind, so it's not relevant to stop an unwind
+    // We never unwind, so it's not relevant to stop an unwind.
     if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
 
-    // We cannot add landing pads, so don't add one
+    // We cannot add landing pads, so don't add one.
     if tcx.sess.no_landing_pads() { return false; }
 
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
     match unwind_attr {
-        None => false, // FIXME(#58794)
+        None => false, // FIXME(#58794); should be `!(abi == Abi::Rust || abi == Abi::RustCall)`
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,
     }
@@ -812,12 +826,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
             let place = Place::from(local);
-            let &ArgInfo(ty, opt_ty_info, arg_opt, ref self_binding) = arg_info;
+            let &ArgInfo(_, opt_ty_info, arg_opt, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span),
-                argument_scope, local, ty, DropKind::Value,
+                argument_scope, local, DropKind::Value,
             );
 
             if let Some(arg) = arg_opt {

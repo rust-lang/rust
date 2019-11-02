@@ -1,4 +1,4 @@
-error[E0423]: expected function, found struct `TupleStruct`
+error[E0423]: expected function, tuple struct or tuple variant, found struct `TupleStruct`
   --> $DIR/struct.rs:20:14
    |
 LL |     let ts = TupleStruct(640, 480);
@@ -10,13 +10,16 @@ error[E0423]: expected value, found struct `UnitStruct`
 LL |     let us = UnitStruct;
    |              ^^^^^^^^^^ constructor is not visible here due to private fields
 
-error[E0603]: tuple struct `TupleStruct` is private
+error[E0603]: tuple struct constructor `TupleStruct` is private
   --> $DIR/struct.rs:23:32
    |
 LL |     let ts_explicit = structs::TupleStruct(640, 480);
    |                                ^^^^^^^^^^^
+   | 
+  ::: $DIR/auxiliary/structs.rs:11:24
    |
-   = note: a tuple struct constructor is private if any of its fields is private
+LL | pub struct TupleStruct(pub u16, pub u16);
+   |                        ---------------- a constructor is private if any of the fields is private
 
 error[E0603]: unit struct `UnitStruct` is private
   --> $DIR/struct.rs:32:32

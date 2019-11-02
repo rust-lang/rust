@@ -9,6 +9,8 @@ error: a leading `|` is not allowed in a parameter pattern
    |
 LL |     fn fun2( || A: E) {}
    |              ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/remove-leading-vert.rs:14:11
@@ -21,6 +23,8 @@ error: a leading `|` is only allowed in a top-level pattern
    |
 LL |     let ( || A): (E);
    |           ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/remove-leading-vert.rs:16:11
@@ -39,6 +43,8 @@ error: a leading `|` is only allowed in a top-level pattern
    |
 LL |     let [ || A ]: [E; 1];
    |           ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/remove-leading-vert.rs:19:13
@@ -51,6 +57,8 @@ error: a leading `|` is only allowed in a top-level pattern
    |
 LL |     let TS( || A ): TS;
    |             ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: a leading `|` is only allowed in a top-level pattern
   --> $DIR/remove-leading-vert.rs:21:17
@@ -63,6 +71,130 @@ error: a leading `|` is only allowed in a top-level pattern
    |
 LL |     let NS { f: || A }: NS;
    |                 ^^ help: remove the `||`
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
-error: aborting due to 11 previous errors
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:27:13
+   |
+LL |     let ( A | ): E;
+   |           - ^ help: remove the `|`
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:28:12
+   |
+LL |     let (a |,): (E,);
+   |          - ^ help: remove the `|`
+   |          |
+   |          while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:29:17
+   |
+LL |     let ( A | B | ): E;
+   |           -     ^ help: remove the `|`
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:30:17
+   |
+LL |     let [ A | B | ]: [E; 1];
+   |           -     ^ help: remove the `|`
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:31:18
+   |
+LL |     let S { f: B | };
+   |                - ^ help: remove the `|`
+   |                |
+   |                while parsing this or-pattern starting here
+
+error: unexpected token `||` after pattern
+  --> $DIR/remove-leading-vert.rs:32:13
+   |
+LL |     let ( A || B | ): E;
+   |           - ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:32:18
+   |
+LL |     let ( A || B | ): E;
+   |           -      ^ help: remove the `|`
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:35:11
+   |
+LL |         A | => {}
+   |         - ^ help: remove the `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:36:11
+   |
+LL |         A || => {}
+   |         - ^^ help: remove the `||`
+   |         |
+   |         while parsing this or-pattern starting here
+   |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
+
+error: unexpected token `||` after pattern
+  --> $DIR/remove-leading-vert.rs:37:11
+   |
+LL |         A || B | => {}
+   |         - ^^ help: use a single `|` to separate multiple alternative patterns: `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:37:16
+   |
+LL |         A || B | => {}
+   |         -      ^ help: remove the `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:39:17
+   |
+LL |         | A | B | => {}
+   |           -     ^ help: remove the `|`
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:43:11
+   |
+LL |     let a | : u8 = 0;
+   |         - ^ help: remove the `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:44:11
+   |
+LL |     let a | = 0;
+   |         - ^ help: remove the `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/remove-leading-vert.rs:45:11
+   |
+LL |     let a | ;
+   |         - ^ help: remove the `|`
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: aborting due to 26 previous errors
 

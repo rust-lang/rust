@@ -2,7 +2,7 @@ error: expected `fn`, found `::`
   --> $DIR/keyword-extern-as-identifier-type.rs:1:16
    |
 LL | type A = extern::foo::bar;
-   |                ^^ expected `fn` here
+   |                ^^ expected `fn`
 
 error: aborting due to previous error
 

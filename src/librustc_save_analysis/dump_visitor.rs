@@ -115,15 +115,17 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         F: FnOnce(&mut Self),
     {
         let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
-        if self.tcx.has_typeck_tables(item_def_id) {
-            let tables = self.tcx.typeck_tables_of(item_def_id);
-            let old_tables = self.save_ctxt.tables;
-            self.save_ctxt.tables = tables;
-            f(self);
-            self.save_ctxt.tables = old_tables;
+
+        let tables = if self.tcx.has_typeck_tables(item_def_id) {
+            self.tcx.typeck_tables_of(item_def_id)
         } else {
-            f(self);
-        }
+            self.save_ctxt.empty_tables
+        };
+
+        let old_tables = self.save_ctxt.tables;
+        self.save_ctxt.tables = tables;
+        f(self);
+        self.save_ctxt.tables = old_tables;
     }
 
     fn span_from_span(&self, span: Span) -> SpanData {
@@ -298,7 +300,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
 
             if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
-                v.visit_ty(ret_ty);
+                // In async functions, return types are desugared and redefined
+                // as an `impl Trait` existential type. Because of this, to match
+                // the definition paths when resolving nested types we need to
+                // start walking from the newly-created definition.
+                match sig.header.asyncness.node {
+                    ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                        v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
+                    }
+                    _ => v.visit_ty(ret_ty)
+                }
             }
 
             // walk the fn body
@@ -367,6 +378,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         &mut self,
         item: &'l ast::Item,
         decl: &'l ast::FnDecl,
+        header: &'l ast::FnHeader,
         ty_params: &'l ast::Generics,
         body: &'l ast::Block,
     ) {
@@ -389,7 +401,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     // FIXME: Opaque type desugaring prevents us from easily
                     // processing trait bounds. See `visit_ty` for more details.
                 } else {
-                    v.visit_ty(&ret_ty);
+                    // In async functions, return types are desugared and redefined
+                    // as an `impl Trait` existential type. Because of this, to match
+                    // the definition paths when resolving nested types we need to
+                    // start walking from the newly-created definition.
+                    match header.asyncness.node {
+                        ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                            v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
+                        }
+                        _ => v.visit_ty(ret_ty)
+                    }
                 }
             }
 
@@ -530,12 +551,14 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             );
         }
 
-        for field in def.fields() {
-            self.process_struct_field_def(field, item.id);
-            self.visit_ty(&field.ty);
-        }
+        self.nest_tables(item.id, |v| {
+            for field in def.fields() {
+                v.process_struct_field_def(field, item.id);
+                v.visit_ty(&field.ty);
+            }
 
-        self.process_generic_params(ty_params, &qualname, item.id);
+            v.process_generic_params(ty_params, &qualname, item.id);
+        });
     }
 
     fn process_enum(
@@ -665,15 +688,18 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 }
             }
         }
-        self.visit_ty(&typ);
-        if let &Some(ref trait_ref) = trait_ref {
-            self.process_path(trait_ref.ref_id, &trait_ref.path);
-        }
-        self.process_generic_params(generics, "", item.id);
-        for impl_item in impl_items {
-            let map = &self.tcx.hir();
-            self.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
-        }
+
+        let map = &self.tcx.hir();
+        self.nest_tables(item.id, |v| {
+            v.visit_ty(&typ);
+            if let &Some(ref trait_ref) = trait_ref {
+                v.process_path(trait_ref.ref_id, &trait_ref.path);
+            }
+            v.process_generic_params(generics, "", item.id);
+            for impl_item in impl_items {
+                v.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
+            }
+        });
     }
 
     fn process_trait(
@@ -1308,8 +1334,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
             }
-            Fn(ref decl, .., ref ty_params, ref body) => {
-                self.process_fn(item, &decl, ty_params, &body)
+            Fn(ref decl, ref header, ref ty_params, ref body) => {
+                self.process_fn(item, &decl, &header, ty_params, &body)
             }
             Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),

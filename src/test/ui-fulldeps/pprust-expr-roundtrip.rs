@@ -24,13 +24,13 @@ extern crate syntax;
 
 use rustc_data_structures::thin_vec::ThinVec;
 use syntax::ast::*;
+use syntax::sess::ParseSess;
 use syntax::source_map::{Spanned, DUMMY_SP, FileName};
 use syntax::source_map::FilePathMapping;
 use syntax::mut_visit::{self, MutVisitor, visit_clobber};
-use syntax::parse::{self, ParseSess};
+use syntax::parse;
 use syntax::print::pprust;
 use syntax::ptr::P;
-
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
@@ -114,7 +114,6 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 let decl = P(FnDecl {
                     inputs: vec![],
                     output: FunctionRetTy::Default(DUMMY_SP),
-                    c_variadic: false,
                 });
                 iter_exprs(depth - 1, &mut |e| g(
                         ExprKind::Closure(CaptureBy::Value,

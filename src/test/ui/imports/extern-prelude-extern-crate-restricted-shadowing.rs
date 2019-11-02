@@ -1,3 +1,5 @@
+// ignore-x86
+// ^ due to stderr output differences
 // aux-build:two_macros.rs
 
 macro_rules! define_vec {

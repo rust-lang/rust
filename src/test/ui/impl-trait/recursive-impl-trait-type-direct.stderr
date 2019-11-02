@@ -1,0 +1,11 @@
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/recursive-impl-trait-type-direct.rs:3:14
+   |
+LL | fn test() -> impl Sized {
+   |              ^^^^^^^^^^ expands to a recursive type
+   |
+   = note: type resolves to itself
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

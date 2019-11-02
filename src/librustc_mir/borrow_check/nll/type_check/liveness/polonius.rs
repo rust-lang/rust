@@ -16,7 +16,7 @@ struct UseFactsExtractor<'me> {
     var_defined: &'me mut VarPointRelations,
     var_used: &'me mut VarPointRelations,
     location_table: &'me LocationTable,
-    var_drop_used: &'me mut VarPointRelations,
+    var_drop_used: &'me mut Vec<(Local, Location)>,
     move_data: &'me MoveData<'me>,
     path_accessed_at: &'me mut MovePathPointRelations,
 }
@@ -39,7 +39,7 @@ impl UseFactsExtractor<'_> {
 
     fn insert_drop_use(&mut self, local: Local, location: Location) {
         debug!("LivenessFactsExtractor::insert_drop_use()");
-        self.var_drop_used.push((local, self.location_to_index(location)));
+        self.var_drop_used.push((local, location));
     }
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
@@ -100,6 +100,7 @@ pub(super) fn populate_access_facts(
     body: &Body<'tcx>,
     location_table: &LocationTable,
     move_data: &MoveData<'_>,
+    drop_used: &mut Vec<(Local, Location)>,
 ) {
     debug!("populate_var_liveness_facts()");
 
@@ -107,12 +108,16 @@ pub(super) fn populate_access_facts(
         UseFactsExtractor {
             var_defined: &mut facts.var_defined,
             var_used: &mut facts.var_used,
-            var_drop_used: &mut facts.var_drop_used,
+            var_drop_used: drop_used,
             path_accessed_at: &mut facts.path_accessed_at,
             location_table,
             move_data,
         }
         .visit_body(body);
+
+        facts.var_drop_used.extend(drop_used.iter().map(|&(local, location)| {
+            (local, location_table.mid_index(location))
+        }));
     }
 
     for (local, local_decl) in body.local_decls.iter_enumerated() {

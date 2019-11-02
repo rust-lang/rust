@@ -5,14 +5,13 @@ use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{Ty, TyCtxt};
-use rustc::lint::{self, LintPass};
+use rustc::lint;
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_interface::interface;
 use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
-use rustc_metadata::cstore::CStore;
 
 use syntax::source_map;
 use syntax::attr;
@@ -43,7 +42,6 @@ pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<RefCell<interface::BoxedResolver>>,
-    pub cstore: Lrc<CStore>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
@@ -117,9 +115,7 @@ impl<'tcx> DocContext<'tcx> {
                     .def_path_table()
                     .next_id()
             } else {
-                self.cstore
-                    .def_path_table(crate_num)
-                    .next_id()
+                self.enter_resolver(|r| r.cstore().def_path_table(crate_num).next_id())
             };
 
             DefId {
@@ -234,7 +230,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         error_format,
         libs,
         externs,
-        cfgs,
+        mut cfgs,
         codegen_options,
         debugging_options,
         target,
@@ -249,6 +245,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         render_options,
         ..
     } = options;
+
+    // Add the rustdoc cfg into the doc build.
+    cfgs.push("rustdoc".to_string());
 
     let cpath = Some(input.clone());
     let input = Input::File(input);
@@ -270,10 +269,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints
-            .get_lints()
+        lint::builtin::HardwiredLints::get_lints()
             .into_iter()
-            .chain(rustc_lint::SoftLints.get_lints().into_iter())
+            .chain(rustc_lint::SoftLints::get_lints().into_iter())
     };
 
     let lint_opts = lints().filter_map(|lint| {
@@ -326,7 +324,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: config::parse_cfgspecs(cfgs),
+        crate_cfg: interface::parse_cfgspecs(cfgs),
         input,
         input_path: cpath,
         output_file: None,
@@ -336,6 +334,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         stderr: None,
         crate_name,
         lint_caps,
+        register_lints: None,
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
@@ -373,7 +372,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut ctxt = DocContext {
                 tcx,
                 resolver,
-                cstore: compiler.cstore().clone(),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
                 renderinfo: RefCell::new(renderinfo),

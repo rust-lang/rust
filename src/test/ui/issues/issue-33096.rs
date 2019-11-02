@@ -1,5 +1,6 @@
 // run-pass
 // compile-flags: -g
+// ignore-asmjs wasm2js does not support source maps yet
 
 use std::ops::Deref;
 

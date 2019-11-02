@@ -7,23 +7,19 @@
 extern crate rustc_driver;
 extern crate syntax;
 
-use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
+use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass};
 use rustc_driver::plugin::Registry;
 use rustc::hir;
 use syntax::attr;
 use syntax::symbol::Symbol;
 
 macro_rules! fake_lint_pass {
-    ($struct:ident, $lints:expr, $($attr:expr),*) => {
+    ($struct:ident, $($attr:expr),*) => {
         struct $struct;
 
         impl LintPass for $struct {
             fn name(&self) -> &'static str {
                 stringify!($struct)
-            }
-
-            fn get_lints(&self) -> LintArray {
-                $lints
             }
         }
 
@@ -49,25 +45,29 @@ declare_lint!(CRATE_NOT_GREEN, Warn, "crate not marked with #![crate_green]");
 
 fake_lint_pass! {
     PassOkay,
-    lint_array!(CRATE_NOT_OKAY), // Single lint
     Symbol::intern("rustc_crate_okay")
 }
 
 fake_lint_pass! {
     PassRedBlue,
-    lint_array!(CRATE_NOT_RED, CRATE_NOT_BLUE), // Multiple lints
     Symbol::intern("rustc_crate_red"), Symbol::intern("rustc_crate_blue")
 }
 
 fake_lint_pass! {
     PassGreyGreen,
-    lint_array!(CRATE_NOT_GREY, CRATE_NOT_GREEN, ), // Trailing comma
     Symbol::intern("rustc_crate_grey"), Symbol::intern("rustc_crate_green")
 }
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_late_lint_pass(box PassOkay);
-    reg.register_late_lint_pass(box PassRedBlue);
-    reg.register_late_lint_pass(box PassGreyGreen);
+    reg.lint_store.register_lints(&[
+        &CRATE_NOT_OKAY,
+        &CRATE_NOT_RED,
+        &CRATE_NOT_BLUE,
+        &CRATE_NOT_GREY,
+        &CRATE_NOT_GREEN,
+    ]);
+    reg.lint_store.register_late_pass(|| box PassOkay);
+    reg.lint_store.register_late_pass(|| box PassRedBlue);
+    reg.lint_store.register_late_pass(|| box PassGreyGreen);
 }

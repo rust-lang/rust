@@ -13,6 +13,8 @@
 // compile-flags: --test -C debug_assertions=yes
 // revisions: std core
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 #![cfg_attr(core, no_std)]
 
 #[cfg(std)] use std::fmt;

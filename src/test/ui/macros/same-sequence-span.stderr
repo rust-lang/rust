@@ -1,5 +1,5 @@
 error: `$x:expr` may be followed by `$y:tt`, which is not allowed for `expr` fragments
-  --> $DIR/same-sequence-span.rs:15:18
+  --> $DIR/same-sequence-span.rs:14:18
    |
 LL |     (1 $x:expr $($y:tt,)*
    |                  ^^^^^ not allowed after `expr` fragments
@@ -7,7 +7,7 @@ LL |     (1 $x:expr $($y:tt,)*
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$x:expr` may be followed by `=`, which is not allowed for `expr` fragments
-  --> $DIR/same-sequence-span.rs:16:18
+  --> $DIR/same-sequence-span.rs:15:18
    |
 LL |                $(= $z:tt)*
    |                  ^ not allowed after `expr` fragments
@@ -15,7 +15,7 @@ LL |                $(= $z:tt)*
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$x:expr` may be followed by `$y:tt`, which is not allowed for `expr` fragments
-  --> $DIR/same-sequence-span.rs:20:1
+  --> $DIR/same-sequence-span.rs:19:1
    |
 LL |   proc_macro_sequence::make_foo!();
    |   ^--------------------------------
@@ -30,7 +30,7 @@ LL | | fn main() {}
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$x:expr` may be followed by `=`, which is not allowed for `expr` fragments
-  --> $DIR/same-sequence-span.rs:20:1
+  --> $DIR/same-sequence-span.rs:19:1
    |
 LL | proc_macro_sequence::make_foo!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

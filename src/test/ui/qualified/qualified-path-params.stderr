@@ -1,4 +1,4 @@
-error[E0533]: expected unit struct/variant or constant, found method `<<S as Tr>::A>::f<u8>`
+error[E0533]: expected unit struct, unit variant or constant, found method `<<S as Tr>::A>::f<u8>`
   --> $DIR/qualified-path-params.rs:20:9
    |
 LL |         <S as Tr>::A::f::<u8> => {}
@@ -15,4 +15,5 @@ LL |         0 ..= <S as Tr>::A::f::<u8> => {}
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0029`.
+Some errors have detailed explanations: E0029, E0533.
+For more information about an error, try `rustc --explain E0029`.

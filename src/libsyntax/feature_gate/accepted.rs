@@ -245,6 +245,14 @@ declare_features! (
     (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287), None),
     /// Allows attributes in formal function parameters.
     (accepted, param_attrs, "1.39.0", Some(60406), None),
+    /// Allows macro invocations in `extern {}` blocks.
+    (accepted, macros_in_extern, "1.40.0", Some(49476), None),
+    /// Allows future-proofing enums/structs with the `#[non_exhaustive]` attribute (RFC 2008).
+    (accepted, non_exhaustive, "1.40.0", Some(44109), None),
+    /// Allows calling constructor functions in `const fn`.
+    (accepted, const_constructor, "1.40.0", Some(61456), None),
+    /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
+    (accepted, cfg_doctest, "1.40.0", Some(62210), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

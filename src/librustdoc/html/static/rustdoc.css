@@ -183,7 +183,7 @@ nav.sub {
 	position: fixed;
 	left: 0;
 	top: 0;
-	height: 100vh;
+	bottom: 0;
 	overflow: auto;
 }
 
@@ -573,7 +573,7 @@ h4 > code, h3 > code, .invisible > code {
 	margin-top: 0;
 }
 
-nav {
+nav:not(.sidebar) {
 	border-bottom: 1px solid;
 	padding-bottom: 10px;
 	margin-bottom: 10px;

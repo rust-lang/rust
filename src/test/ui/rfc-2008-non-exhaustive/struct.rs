@@ -18,10 +18,10 @@ fn main() {
     //~^ ERROR `..` required with struct marked as non-exhaustive
 
     let ts = TupleStruct(640, 480);
-    //~^ ERROR expected function, found struct `TupleStruct` [E0423]
+    //~^ ERROR expected function, tuple struct or tuple variant, found struct `TupleStruct` [E0423]
 
     let ts_explicit = structs::TupleStruct(640, 480);
-    //~^ ERROR tuple struct `TupleStruct` is private [E0603]
+    //~^ ERROR tuple struct constructor `TupleStruct` is private [E0603]
 
     let TupleStruct { 0: first_field, 1: second_field } = ts;
     //~^ ERROR `..` required with struct marked as non-exhaustive

@@ -5,7 +5,7 @@ use rustc::mir::{
     Mutability, Place, PlaceRef, PlaceBase, ProjectionElem, Static, StaticKind
 };
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_index::vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::kw;
 
@@ -49,10 +49,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [],
             } => {
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if let Place {
-                    base: PlaceBase::Local(_),
-                    projection: box [],
-                } = access_place {
+                if access_place.as_local().is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.body.local_decls[*local]
@@ -153,10 +150,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }),
                 projection: [],
             } => {
-                if let Place {
-                    base: PlaceBase::Static(_),
-                    projection: box [],
-                } = access_place {
+                if let PlaceRef {
+                    base: &PlaceBase::Static(_),
+                    projection: &[],
+                } = access_place.as_ref() {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
                     reason = String::new();
                 } else {

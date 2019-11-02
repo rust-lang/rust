@@ -16,7 +16,7 @@ use rustc::traits::{
     Environment,
     InEnvironment,
 };
-use rustc::ty::{self, Ty, TyCtxt, InferConst};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::GenericArg;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::mir::interpret::ConstValue;
@@ -287,10 +287,7 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        if let ty::Const {
-            val: ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)),
-            ..
-        } = a {
+        if let ty::Const { val: ConstValue::Bound(debruijn, bound_ct), .. } = a {
             if *debruijn == self.binder_index {
                 self.unify_free_answer_var(*bound_ct, b.into())?;
                 return Ok(b);
@@ -299,14 +296,8 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
 
         match (a, b) {
             (
-                ty::Const {
-                    val: ConstValue::Infer(InferConst::Canonical(a_debruijn, a_bound)),
-                    ..
-                },
-                ty::Const {
-                    val: ConstValue::Infer(InferConst::Canonical(b_debruijn, b_bound)),
-                    ..
-                },
+                ty::Const { val: ConstValue::Bound(a_debruijn, a_bound), .. },
+                ty::Const { val: ConstValue::Bound(b_debruijn, b_bound), .. },
             ) => {
                 assert_eq!(a_debruijn, b_debruijn);
                 assert_eq!(a_bound, b_bound);

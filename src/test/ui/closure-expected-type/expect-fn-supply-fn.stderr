@@ -11,7 +11,7 @@ note: the anonymous lifetime #2 defined on the body at 14:48...
    |
 LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
    |                                                ^^^^^^^^^^^^^^^^^^^^^^
-note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 11:36
+note: ...does not necessarily outlive the lifetime `'x` as defined on the function body at 11:36
   --> $DIR/expect-fn-supply-fn.rs:11:36
    |
 LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
@@ -25,7 +25,7 @@ LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
    |
    = note: expected type `fn(&u32)`
               found type `fn(&'x u32)`
-note: the lifetime 'x as defined on the function body at 11:36...
+note: the lifetime `'x` as defined on the function body at 11:36...
   --> $DIR/expect-fn-supply-fn.rs:11:36
    |
 LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {

@@ -410,7 +410,7 @@ impl<'a> Parser<'a> {
         &self.input[start..self.input.len()]
     }
 
-    /// Parses an Argument structure, or what's contained within braces inside the format string
+    /// Parses an `Argument` structure, or what's contained within braces inside the format string.
     fn argument(&mut self) -> Argument<'a> {
         let pos = self.position();
         let format = self.format();
@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a format specifier at the current position, returning all of the
-    /// relevant information in the FormatSpec struct.
+    /// relevant information in the `FormatSpec` struct.
     fn format(&mut self) -> FormatSpec<'a> {
         let mut spec = FormatSpec {
             fill: None,
@@ -571,7 +571,7 @@ impl<'a> Parser<'a> {
         spec
     }
 
-    /// Parses a Count parameter at the current position. This does not check
+    /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
     fn count(&mut self, start: usize) -> (Count, Option<InnerSpan>) {

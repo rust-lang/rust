@@ -52,7 +52,7 @@ pub unsafe fn create(dtor: Option<Dtor>) -> Key {
     if let Some(f) = dtor {
         register_dtor(key, f);
     }
-    return key;
+    key
 }
 
 #[inline]
