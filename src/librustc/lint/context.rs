@@ -699,6 +699,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
 
     /// Check if a `DefId`'s path matches the given absolute type path usage.
     ///
+    /// Anonymous scopes such as `extern` imports are matched with `kw::Invalid`;
+    /// inherent `impl` blocks are matched with the name of the type.
+    ///
     /// # Examples
     ///
     /// ```rust,ignore (no context or def id available)

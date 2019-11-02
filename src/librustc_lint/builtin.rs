@@ -1911,8 +1911,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             // `Invalid` represents the empty string and matches that.
             const TRANSMUTE_PATH: &[Symbol] =
                 &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
+            const MU_ZEROED_PATH: &[Symbol] =
+                &[sym::core, sym::mem, sym::maybe_uninit, sym::MaybeUninit, sym::zeroed];
+            const MU_UNINIT_PATH: &[Symbol] =
+                &[sym::core, sym::mem, sym::maybe_uninit, sym::MaybeUninit, sym::uninit];
 
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
+                // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                     let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
@@ -1927,8 +1932,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                             return Some(InitKind::Zeroed);
                         }
                     }
-                    // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
-                    // `MaybeUninit::uninit().assume_init()`.
+                }
+            } else if let hir::ExprKind::MethodCall(ref path, _, ref args) = expr.kind {
+                // Find problematic calls to `MaybeUninit::assume_init`.
+                if path.ident.name == sym::assume_init {
+                    // This is a call to *some* method named `assume_init`.
+                    // See if the `self` parameter is one of the dangerous constructors.
+                    if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
+                        if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
+                            let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                            if cx.match_def_path(def_id, MU_ZEROED_PATH) {
+                                return Some(InitKind::Zeroed);
+                            } else if cx.match_def_path(def_id, MU_UNINIT_PATH) {
+                                return Some(InitKind::Uninit);
+                            }
+                        }
+                    }
                 }
             }
 

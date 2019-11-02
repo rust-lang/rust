@@ -399,5 +399,38 @@ LL |         let _val: NonZeroU32 = mem::transmute(0);
    |
    = note: std::num::NonZeroU32 must be non-null
 
-error: aborting due to 32 previous errors
+error: the type `std::ptr::NonNull<i32>` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:89:34
+   |
+LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: std::ptr::NonNull<i32> must be non-null
+
+error: the type `std::ptr::NonNull<i32>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:90:34
+   |
+LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: std::ptr::NonNull<i32> must be non-null
+
+error: the type `bool` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:91:26
+   |
+LL |         let _val: bool = MaybeUninit::uninit().assume_init();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          this code causes undefined behavior when executed
+   |                          help: use `MaybeUninit<T>` instead
+   |
+   = note: Booleans must be `true` or `false`
+
+error: aborting due to 35 previous errors
 
