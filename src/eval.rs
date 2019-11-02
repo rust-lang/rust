@@ -105,7 +105,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     {
         let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argc, argc_place.into())?;
-        ecx.machine.argc = Some(argc_place.ptr.to_ptr()?);
+        ecx.machine.argc = Some(argc_place.ptr);
     }
 
     // Third argument (`argv`): created from `config.args`.
@@ -149,14 +149,14 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     {
         let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
         ecx.write_scalar(argv, argv_place.into())?;
-        ecx.machine.argv = Some(argv_place.ptr.to_ptr()?);
+        ecx.machine.argv = Some(argv_place.ptr);
     }
     // Store command line as UTF-16 for Windows `GetCommandLineW`.
     {
         let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
         let cmd_type = tcx.mk_array(tcx.types.u16, cmd_utf16.len() as u64);
         let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Env.into());
-        ecx.machine.cmd_line = Some(cmd_place.ptr.to_ptr()?);
+        ecx.machine.cmd_line = Some(cmd_place.ptr);
         // Store the UTF-16 string. We just allocated so we know the bounds are fine.
         let char_size = Size::from_bytes(2);
         for (idx, &c) in cmd_utf16.iter().enumerate() {
