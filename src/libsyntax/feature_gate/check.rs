@@ -3,8 +3,12 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{self, NodeId, PatKind, VariantData};
+use crate::ast::{
+    self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
+    PatKind, RangeEnd, VariantData,
+};
 use crate::attr::{self, check_builtin_attribute};
+use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::token;
@@ -152,6 +156,9 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
     err
 
 }
+
+const EXPLAIN_BOX_SYNTAX: &str =
+    "box expression syntax is experimental; you can call `Box::new` instead";
 
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
     "attributes on expressions are experimental";
@@ -439,6 +446,20 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "auto traits are experimental and possibly buggy");
             }
 
+            ast::ItemKind::TraitAlias(..) => {
+                gate_feature_post!(
+                    &self,
+                    trait_alias,
+                    i.span,
+                    "trait aliases are experimental"
+                );
+            }
+
+            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
+                let msg = "`macro` is experimental";
+                gate_feature_post!(&self, decl_macro, i.span, msg);
+            }
+
             ast::ItemKind::OpaqueTy(..) => {
                 gate_feature_post!(
                     &self,
@@ -502,6 +523,37 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
+    fn visit_expr(&mut self, e: &'a ast::Expr) {
+        match e.kind {
+            ast::ExprKind::Box(_) => {
+                gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
+            }
+            ast::ExprKind::Type(..) => {
+                // To avoid noise about type ascription in common syntax errors, only emit if it
+                // is the *only* error.
+                if self.parse_sess.span_diagnostic.err_count() == 0 {
+                    gate_feature_post!(&self, type_ascription, e.span,
+                                       "type ascription is experimental");
+                }
+            }
+            ast::ExprKind::TryBlock(_) => {
+                gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
+            }
+            ast::ExprKind::Block(_, opt_label) => {
+                if let Some(label) = opt_label {
+                    gate_feature_post!(&self, label_break_value, label.ident.span,
+                                    "labels on blocks are unstable");
+                }
+            }
+            _ => {}
+        }
+        visit::walk_expr(self, e)
+    }
+
+    fn visit_arm(&mut self, arm: &'a ast::Arm) {
+        visit::walk_arm(self, arm)
+    }
+
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match &pattern.kind {
             PatKind::Slice(pats) => {
@@ -521,12 +573,25 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
             }
+            PatKind::Box(..) => {
+                gate_feature_post!(&self, box_patterns,
+                                  pattern.span,
+                                  "box pattern syntax is experimental");
+            }
+            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
+                gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
+                                   "exclusive range pattern syntax is experimental");
+            }
             _ => {}
         }
         visit::walk_pat(self, pattern)
     }
 
-    fn visit_fn(&mut self, fn_kind: FnKind<'a>, fn_decl: &'a ast::FnDecl, span: Span, _: NodeId) {
+    fn visit_fn(&mut self,
+                fn_kind: FnKind<'a>,
+                fn_decl: &'a ast::FnDecl,
+                span: Span,
+                _node_id: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
@@ -539,6 +604,26 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         visit::walk_fn(self, fn_kind, fn_decl, span)
+    }
+
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        match param.kind {
+            GenericParamKind::Const { .. } =>
+                gate_feature_post!(&self, const_generics, param.ident.span,
+                    "const generics are unstable"),
+            _ => {}
+        }
+        visit::walk_generic_param(self, param)
+    }
+
+    fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
+        match constraint.kind {
+            AssocTyConstraintKind::Bound { .. } =>
+                gate_feature_post!(&self, associated_type_bounds, constraint.span,
+                    "associated type bounds are unstable"),
+            _ => {}
+        }
+        visit::walk_assoc_ty_constraint(self, constraint)
     }
 
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
@@ -597,6 +682,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii)
+    }
+
+    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
+        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.node {
+            gate_feature_post!(&self, crate_visibility_modifier, vis.span,
+                               "`crate` visibility modifier is experimental");
+        }
+        visit::walk_vis(self, vis)
     }
 }
 
@@ -783,6 +876,21 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
+
+    // All uses of `gate_all!` below this point were added in #65742,
+    // and subsequently disabled (with the non-early gating readded).
+    macro_rules! gate_all {
+        ($gate:ident, $msg:literal) => {
+            // FIXME(eddyb) do something more useful than always
+            // disabling these uses of early feature-gatings.
+            if false {
+                for span in &*parse_sess.gated_spans.$gate.borrow() {
+                    gate_feature!(&visitor, $gate, *span, $msg);
+                }
+            }
+        }
+    }
+
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
     gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");

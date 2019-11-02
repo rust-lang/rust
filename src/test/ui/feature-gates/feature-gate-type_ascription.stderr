@@ -1,5 +1,5 @@
 error[E0658]: type ascription is experimental
-  --> $DIR/feature-gate-type_ascription.rs:5:13
+  --> $DIR/feature-gate-type_ascription.rs:4:13
    |
 LL |     let a = 10: u8;
    |             ^^^^^^

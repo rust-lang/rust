@@ -1,21 +1,12 @@
 error[E0658]: exclusive range pattern syntax is experimental
-  --> $DIR/feature-gate-exclusive-range-pattern.rs:4:11
+  --> $DIR/feature-gate-exclusive-range-pattern.rs:3:9
    |
 LL |         0 .. 3 => {}
-   |           ^^
+   |         ^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/37854
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
 
-error[E0658]: exclusive range pattern syntax is experimental
-  --> $DIR/feature-gate-exclusive-range-pattern.rs:5:14
-   |
-LL |         PATH .. 3 => {}
-   |              ^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/37854
-   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0658`.
