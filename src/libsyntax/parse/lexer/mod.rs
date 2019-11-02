@@ -501,8 +501,10 @@ impl<'a> StringReader<'a> {
     }
 
     fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
-        let mut err = self.struct_span_fatal(
-            start, start,
+        let mut err = struct_span_fatal!(
+            self.sess.span_diagnostic,
+            self.mk_sp(start, start),
+            E0744,
             "unterminated raw string",
         );
         err.span_label(

@@ -518,6 +518,24 @@ undefined number of parameters to a given function (like `printf` in C). The
 equivalent in Rust would be to use macros directly.
 "##,
 
+E0744: r##"
+A raw string isn't terminated.
+
+Erroneous code example:
+
+```compile_fail,E0744
+let dolphins = r##"Dolphins!"#; // error!
+```
+
+To terminate a raw string, you have to have the same number of `#` at the end
+than at the beginning. Example:
+
+```
+let dolphins = r#"Dolphins!"#; // one `#` at the beginning, one at the end so
+                               // all good!
+```
+"##,
+
 ;
 
     E0539, // incorrect meta item
