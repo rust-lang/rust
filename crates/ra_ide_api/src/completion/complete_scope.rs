@@ -155,7 +155,6 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux(x: i32)",
-                deprecated: false,
             },
             CompletionItem {
                 label: "x",
@@ -219,7 +218,6 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux()",
-                deprecated: false,
             },
         ]
         "###
@@ -248,7 +246,6 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux()",
-                deprecated: false,
             },
             CompletionItem {
                 label: "x",
@@ -289,7 +286,6 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux<T>()",
-                deprecated: false,
             },
         ]
         "###
@@ -395,7 +391,6 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux()",
-                deprecated: false,
             },
         ]
         "###
@@ -455,7 +450,6 @@ mod tests {
                 kind: Function,
                 lookup: "quux",
                 detail: "fn quux()",
-                deprecated: false,
             },
         ]
         "###
@@ -488,7 +482,6 @@ mod tests {
                 kind: Function,
                 lookup: "x",
                 detail: "fn x()",
-                deprecated: false,
             },
         ]
         "###
@@ -527,7 +520,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo()",
-                deprecated: false,
             },
         ]
         "###
@@ -592,7 +584,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo()",
-                deprecated: false,
             },
             CompletionItem {
                 label: "std",
@@ -648,7 +639,6 @@ mod tests {
                 insert: "bar!($0)",
                 kind: Macro,
                 detail: "macro_rules! bar",
-                deprecated: false,
             },
             CompletionItem {
                 label: "baz!",
@@ -657,7 +647,6 @@ mod tests {
                 insert: "baz!($0)",
                 kind: Macro,
                 detail: "#[macro_export]\nmacro_rules! baz",
-                deprecated: false,
             },
             CompletionItem {
                 label: "foo!",
@@ -666,7 +655,6 @@ mod tests {
                 insert: "foo!($0)",
                 kind: Macro,
                 detail: "macro_rules! foo",
-                deprecated: false,
             },
             CompletionItem {
                 label: "m1",
@@ -690,7 +678,6 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
-                deprecated: false,
             },
         ]
         "###
@@ -721,7 +708,6 @@ mod tests {
                 insert: "foo!($0)",
                 kind: Macro,
                 detail: "macro_rules! foo",
-                deprecated: false,
             },
             CompletionItem {
                 label: "foo()",
@@ -731,7 +717,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo()",
-                deprecated: false,
             },
         ]
         "###
@@ -762,7 +747,6 @@ mod tests {
                 insert: "foo!($0)",
                 kind: Macro,
                 detail: "macro_rules! foo",
-                deprecated: false,
             },
             CompletionItem {
                 label: "main()",
@@ -772,7 +756,6 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
-                deprecated: false,
             },
         ]
         "###
@@ -803,7 +786,6 @@ mod tests {
                 insert: "foo!($0)",
                 kind: Macro,
                 detail: "macro_rules! foo",
-                deprecated: false,
             },
             CompletionItem {
                 label: "main()",
@@ -813,7 +795,6 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
-                deprecated: false,
             },
         ]
         "###

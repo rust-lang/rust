@@ -46,7 +46,7 @@ pub struct CompletionItem {
     documentation: Option<Documentation>,
 
     /// Whether this item is marked as deprecated
-    deprecated: Option<bool>,
+    deprecated: bool,
 }
 
 // We use custom debug for CompletionItem to make `insta`'s diffs more readable.
@@ -73,8 +73,8 @@ impl fmt::Debug for CompletionItem {
         if let Some(documentation) = self.documentation() {
             s.field("documentation", &documentation);
         }
-        if let Some(deprecated) = self.deprecated {
-            s.field("deprecated", &deprecated);
+        if self.deprecated {
+            s.field("deprecated", &true);
         }
         s.finish()
     }
@@ -174,7 +174,7 @@ impl CompletionItem {
         self.kind
     }
 
-    pub fn deprecated(&self) -> Option<bool> {
+    pub fn deprecated(&self) -> bool {
         self.deprecated
     }
 }
@@ -220,7 +220,7 @@ impl Builder {
             lookup: self.lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
-            deprecated: self.deprecated,
+            deprecated: self.deprecated.unwrap_or(false),
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {

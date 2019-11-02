@@ -52,7 +52,6 @@ mod tests {
        ⋮        insert: "foo",
        ⋮        kind: Field,
        ⋮        detail: "u32",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###);
@@ -82,7 +81,6 @@ mod tests {
        ⋮        insert: "bar",
        ⋮        kind: Field,
        ⋮        detail: "()",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮    CompletionItem {
        ⋮        label: "foo",
@@ -91,7 +89,6 @@ mod tests {
        ⋮        insert: "foo",
        ⋮        kind: Field,
        ⋮        detail: "u32",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###);

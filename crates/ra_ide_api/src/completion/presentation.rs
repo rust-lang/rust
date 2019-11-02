@@ -335,7 +335,6 @@ mod tests {
                     kind: Function,
                     lookup: "main",
                     detail: "fn main()",
-                    deprecated: false,
                 },
                 CompletionItem {
                     label: "something_deprecated()",
@@ -382,7 +381,6 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
-                deprecated: false,
             },
             CompletionItem {
                 label: "no_args()",
@@ -392,7 +390,6 @@ mod tests {
                 kind: Function,
                 lookup: "no_args",
                 detail: "fn no_args()",
-                deprecated: false,
             },
         ]
         "###
@@ -414,7 +411,6 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
-                deprecated: false,
             },
             CompletionItem {
                 label: "with_args(…)",
@@ -424,7 +420,6 @@ mod tests {
                 kind: Function,
                 lookup: "with_args",
                 detail: "fn with_args(x: i32, y: String)",
-                deprecated: false,
             },
         ]
         "###
@@ -451,7 +446,6 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self)",
-                deprecated: false,
             },
         ]
         "###
@@ -476,7 +470,6 @@ mod tests {
         insert: "foo",
         kind: Function,
         detail: "pub fn foo()",
-        deprecated: false,
     },
 ]"#
         );
@@ -502,7 +495,6 @@ mod tests {
         insert: "frobnicate",
         kind: Function,
         detail: "fn frobnicate()",
-        deprecated: false,
     },
     CompletionItem {
         label: "main",
@@ -511,7 +503,6 @@ mod tests {
         insert: "main",
         kind: Function,
         detail: "fn main()",
-        deprecated: false,
     },
 ]"#
         );
@@ -534,7 +525,6 @@ mod tests {
         insert: "new",
         kind: Function,
         detail: "fn new() -> Foo",
-        deprecated: false,
     },
 ]"#
         );
@@ -568,7 +558,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
-                deprecated: false,
             },
         ]
         "###
@@ -598,7 +587,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
-                deprecated: false,
             },
         ]
         "###
@@ -627,7 +615,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve)",
-                deprecated: false,
             },
         ]
         "###
@@ -656,7 +643,6 @@ mod tests {
                 kind: Function,
                 lookup: "foo",
                 detail: "fn foo(xs: Ve<i128>)",
-                deprecated: false,
             },
         ]
         "###
@@ -687,7 +673,6 @@ mod tests {
                 insert: "frobnicate",
                 kind: Macro,
                 detail: "#[macro_export]\nmacro_rules! frobnicate",
-                deprecated: false,
             },
         ]
         "###

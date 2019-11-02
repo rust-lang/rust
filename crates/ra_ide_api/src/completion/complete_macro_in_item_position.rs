@@ -45,7 +45,6 @@ mod tests {
         insert: "foo!($0)",
         kind: Macro,
         detail: "macro_rules! foo",
-        deprecated: false,
     },
 ]"##
         );
@@ -87,7 +86,6 @@ mod tests {
         documentation: Documentation(
             "Creates a [`Vec`] containing the arguments.\n\n- Create a [`Vec`] containing a given list of elements:\n\n```\nlet v = vec![1, 2, 3];\nassert_eq!(v[0], 1);\nassert_eq!(v[1], 2);\nassert_eq!(v[2], 3);\n```",
         ),
-        deprecated: false,
     },
 ]"##
         );
@@ -123,7 +121,6 @@ mod tests {
         documentation: Documentation(
             "Foo\n\nNot call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`.\nCall as `let _=foo!  { hello world };`",
         ),
-        deprecated: false,
     },
     CompletionItem {
         label: "main()",
@@ -133,7 +130,6 @@ mod tests {
         kind: Function,
         lookup: "main",
         detail: "fn main()",
-        deprecated: false,
     },
 ]
         "###

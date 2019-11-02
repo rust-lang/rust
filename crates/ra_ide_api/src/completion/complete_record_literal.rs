@@ -78,7 +78,6 @@ mod tests {
        ⋮        insert: "the_field",
        ⋮        kind: Field,
        ⋮        detail: "u32",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###);
@@ -105,7 +104,6 @@ mod tests {
        ⋮        insert: "a",
        ⋮        kind: Field,
        ⋮        detail: "u32",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###);
@@ -132,7 +130,6 @@ mod tests {
        ⋮        insert: "b",
        ⋮        kind: Field,
        ⋮        detail: "u32",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###);
@@ -158,7 +155,6 @@ mod tests {
        ⋮        insert: "a",
        ⋮        kind: Field,
        ⋮        detail: "u32",
-       ⋮        deprecated: false,
        ⋮    },
        ⋮]
         "###);
