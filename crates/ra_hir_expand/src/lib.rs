@@ -9,6 +9,7 @@ pub mod ast_id_map;
 pub mod either;
 pub mod name;
 pub mod hygiene;
+pub mod diagnostics;
 
 use std::hash::{Hash, Hasher};
 

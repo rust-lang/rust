@@ -55,6 +55,7 @@ mod tests;
 use std::sync::Arc;
 
 use hir_def::{builtin_type::BuiltinType, CrateModuleId};
+use hir_expand::diagnostics::DiagnosticSink;
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{Edition, FileId};
@@ -65,7 +66,6 @@ use test_utils::tested_by;
 
 use crate::{
     db::{AstDatabase, DefDatabase},
-    diagnostics::DiagnosticSink,
     ids::MacroDefId,
     nameres::diagnostics::DefDiagnostic,
     Adt, AstId, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
@@ -513,12 +513,13 @@ impl CrateDefMap {
 }
 
 mod diagnostics {
+    use hir_expand::diagnostics::DiagnosticSink;
     use ra_syntax::{ast, AstPtr};
     use relative_path::RelativePathBuf;
 
     use crate::{
         db::{AstDatabase, DefDatabase},
-        diagnostics::{DiagnosticSink, UnresolvedModule},
+        diagnostics::UnresolvedModule,
         nameres::CrateModuleId,
         AstId,
     };

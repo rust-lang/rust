@@ -2,6 +2,7 @@
 
 use std::{panic, sync::Arc};
 
+use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
 use ra_cfg::CfgOptions;
 use ra_db::{
@@ -12,7 +13,7 @@ use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
-use crate::{db, debug::HirDebugHelper, diagnostics::DiagnosticSink};
+use crate::{db, debug::HirDebugHelper};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
