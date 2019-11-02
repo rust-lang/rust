@@ -54,7 +54,6 @@ impl<A, B> Iterator for Chain<A, B> where
 {
     type Item = A::Item;
 
-    #[inline]
     fn next(&mut self) -> Option<A::Item> {
         match self.state {
             ChainState::Both => match self.a.next() {
@@ -117,7 +116,6 @@ impl<A, B> Iterator for Chain<A, B> where
         accum
     }
 
-    #[inline]
     fn nth(&mut self, mut n: usize) -> Option<A::Item> {
         match self.state {
             ChainState::Both | ChainState::Front => {
@@ -157,7 +155,6 @@ impl<A, B> Iterator for Chain<A, B> where
         }
     }
 
-    #[inline]
     fn last(self) -> Option<A::Item> {
         match self.state {
             ChainState::Both => {
@@ -198,7 +195,6 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
     A: DoubleEndedIterator,
     B: DoubleEndedIterator<Item=A::Item>,
 {
-    #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
         match self.state {
             ChainState::Both => match self.b.next_back() {
@@ -213,7 +209,6 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
         }
     }
 
-    #[inline]
     fn nth_back(&mut self, mut n: usize) -> Option<A::Item> {
         match self.state {
             ChainState::Both | ChainState::Back => {
