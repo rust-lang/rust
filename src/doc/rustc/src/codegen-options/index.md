@@ -74,10 +74,18 @@ This flag may take one of the following values:
   This is similar to "fat", but takes substantially less time to run while
   still achieving performance gains similar to "fat".
 
-If `-C lto` is not specified, then the compiler will attempt to perform "thin local LTO"
-which performs "thin" LTO on the local crate only across its [codegen
-units](#codegen-units). In this case, LTO is disabled if codegen units is 1 or
-optimizations are disabled ([`-C opt-level=0`](#opt-level)).
+If `-C lto` is not specified, then the compiler will attempt to perform "thin
+local LTO" which performs "thin" LTO on the local crate only across its
+[codegen units](#codegen-units). When `-C lto` is not specified, LTO is
+disabled if codegen units is 1 or optimizations are disabled ([`-C
+opt-level=0`](#opt-level)). That is:
+
+* When `-C lto` is not specified:
+  * `codegen-units=1`: Disables LTO.
+  * `opt-level=0`: Disables LTO.
+* When `-C lto=true`:
+  * `lto=true`: 16 codegen units, performs fat LTO across crates.
+  * `codegen-units=1` + `lto=true`: 1 codegen unit, fat LTO across crates.
 
 See also [linker-plugin-lto](#linker-plugin-lto) for cross-language LTO.
 
@@ -237,14 +245,17 @@ flag][option-emit] for more information.
 
 ## codegen-units
 
-This flag lets you control how many threads are used when doing code
-generation. It takes an integer greater than 0.
+This flag controls how many code generation units the crate is split into. It
+takes an integer greater than 0.
 
-Increasing parallelism may speed up compile times, but may also produce slower
-code. Setting this to 1 may improve the performance of generated code, but may
-be slower to compile.
+When a crate is split into multiple codegen units, LLVM is able to process
+them in parallel. Increasing parallelism may speed up compile times, but may
+also produce slower code. Setting this to 1 may improve the performance of
+generated code, but may be slower to compile.
 
-The default, if not specified, is 16.
+The default, if not specified, is 16. This flag is ignored if
+[incremental](#incremental) is enabled, in which case an internal heuristic is
+used to split the crate.
 
 ## remark
 
