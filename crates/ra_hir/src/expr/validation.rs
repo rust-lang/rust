@@ -3,12 +3,13 @@
 use std::sync::Arc;
 
 use hir_def::path::known;
+use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::ast;
 use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
+    diagnostics::{MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Adt, Function, Name, Path,

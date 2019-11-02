@@ -11,14 +11,16 @@ use hir_def::{
     type_ref::{Mutability, TypeRef},
     CrateModuleId, LocalEnumVariantId, LocalStructFieldId, ModuleId,
 };
-use hir_expand::name::{self, AsName};
+use hir_expand::{
+    diagnostics::DiagnosticSink,
+    name::{self, AsName},
+};
 use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
-    diagnostics::DiagnosticSink,
     expr::{validation::ExprValidator, Body, BodySourceMap},
     generics::HasGenericParams,
     ids::{

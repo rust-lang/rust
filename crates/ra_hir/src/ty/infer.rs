@@ -25,7 +25,7 @@ use hir_def::{
     path::known,
     type_ref::{Mutability, TypeRef},
 };
-use hir_expand::name;
+use hir_expand::{diagnostics::DiagnosticSink, name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use test_utils::tested_by;
@@ -40,7 +40,6 @@ use crate::{
     adt::VariantDef,
     code_model::TypeAlias,
     db::HirDatabase,
-    diagnostics::DiagnosticSink,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     resolve::{Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
@@ -719,12 +718,9 @@ impl Expectation {
 }
 
 mod diagnostics {
-    use crate::{
-        db::HirDatabase,
-        diagnostics::{DiagnosticSink, NoSuchField},
-        expr::ExprId,
-        Function, HasSource,
-    };
+    use hir_expand::diagnostics::DiagnosticSink;
+
+    use crate::{db::HirDatabase, diagnostics::NoSuchField, expr::ExprId, Function, HasSource};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {
