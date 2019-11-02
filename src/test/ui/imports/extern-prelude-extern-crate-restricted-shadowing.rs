@@ -1,5 +1,4 @@
-// ignore-x86
-// ^ due to stderr output differences
+// ignore-x86 FIXME: missing sysroot spans (#53081)
 // aux-build:two_macros.rs
 
 macro_rules! define_vec {

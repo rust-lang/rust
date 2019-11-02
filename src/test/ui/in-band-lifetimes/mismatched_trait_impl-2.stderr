@@ -1,5 +1,5 @@
 error: `impl` item signature doesn't match `trait` item signature
-  --> $DIR/mismatched_trait_impl-2.rs:10:5
+  --> $DIR/mismatched_trait_impl-2.rs:9:5
    |
 LL |     fn deref(&self) -> &dyn Trait {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found fn(&Struct) -> &dyn Trait
