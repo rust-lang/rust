@@ -291,14 +291,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     },
                     (ty::Param(expected), ty::Param(found)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        db.span_label(
-                            self.def_span(generics.type_param(expected, self).def_id),
-                            "expected type parameter"
-                        );
-                        db.span_label(
-                            self.def_span(generics.type_param(found, self).def_id),
-                            "found type parameter"
-                        );
+                        let e_span = self.def_span(generics.type_param(expected, self).def_id);
+                        if !sp.contains(e_span) {
+                            db.span_label(e_span, "expected type parameter");
+                        }
+                        let f_span = self.def_span(generics.type_param(found, self).def_id);
+                        if !sp.contains(f_span) {
+                            db.span_label(f_span, "found type parameter");
+                        }
                         db.note("a type parameter was expected, but a different one was found; \
                                  you might be missing a type parameter or trait bound");
                         db.note("for more information, visit \
@@ -313,10 +313,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        db.span_label(
-                            self.def_span(generics.type_param(p, self).def_id),
-                            "this type parameter"
-                        );
+                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        if !sp.contains(p_span) {
+                            db.span_label(p_span, "this type parameter");
+                        }
                         db.help("type parameters must be constrained to match other types");
                         if self.sess.teach(&db.get_code().unwrap()) {
                             db.help("given a type parameter `T` and a method `foo`:
