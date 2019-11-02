@@ -82,7 +82,6 @@ declare_deprecated_lint! {
     "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr"
 }
 
-declare_deprecated_lint! {
 /// **What it does:** Nothing. This lint has been deprecated.
 ///
 /// **Deprecation reason:** This lint is too subjective, not having a good reason for being in clippy.
