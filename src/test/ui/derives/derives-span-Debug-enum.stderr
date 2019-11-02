@@ -1,5 +1,5 @@
 error[E0277]: `Error` doesn't implement `std::fmt::Debug`
-  --> $DIR/derives-span-Debug-enum.rs:9:6
+  --> $DIR/derives-span-Debug-enum.rs:10:6
    |
 LL |      Error
    |      ^^^^^ `Error` cannot be formatted using `{:?}`
