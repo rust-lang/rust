@@ -63,7 +63,7 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build")
         }
 
-        let cargo = prepare_tool_cargo(
+        let mut cargo = prepare_tool_cargo(
             builder,
             compiler,
             self.mode,
@@ -73,6 +73,11 @@ impl Step for ToolBuild {
             self.source_type,
             &self.extra_features,
         );
+
+        // Pass the --bin flags to tell Cargo that is should only build the tool binaries.
+        // If not, Cargo will build everything by default, including the deprecated clippy plugin
+        // that causes failure on cross-compiled platforms.
+        cargo.arg("--bin").arg(&tool);
 
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
