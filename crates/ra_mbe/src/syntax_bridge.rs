@@ -12,12 +12,26 @@ use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::subtree_source::SubtreeTokenSource;
 use crate::ExpandError;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Default)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     tokens: Vec<TextRange>,
+    map_id: u32,
+}
+
+static TOKEN_MAP_COUNTER: AtomicU32 = AtomicU32::new(0);
+
+/// Generate an unique token map id for each instance
+fn make_uniq_token_map_id() -> u32 {
+    TOKEN_MAP_COUNTER.fetch_add(1, Ordering::SeqCst)
+}
+
+impl std::default::Default for TokenMap {
+    fn default() -> TokenMap {
+        TokenMap { tokens: Default::default(), map_id: make_uniq_token_map_id() }
+    }
 }
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
@@ -105,14 +119,17 @@ pub fn token_tree_to_items(tt: &tt::Subtree) -> Result<Parse<ast::MacroItems>, E
 
 impl TokenMap {
     pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
-        let idx = tt.0 as usize;
+        if self.map_id != tt.map_id() {
+            return None;
+        }
+        let idx = tt.token_id() as usize;
         self.tokens.get(idx).copied()
     }
 
     fn alloc(&mut self, relative_range: TextRange) -> tt::TokenId {
         let id = self.tokens.len();
         self.tokens.push(relative_range);
-        tt::TokenId(id as u32)
+        tt::TokenId::new(id as u32, self.map_id)
     }
 }
 
