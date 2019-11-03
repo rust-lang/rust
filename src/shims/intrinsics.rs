@@ -313,11 +313,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
-            "exact_div" => this.exact_div(
-                this.read_immediate(args[0])?,
-                this.read_immediate(args[1])?,
-                dest,
-            )?,
+            "exact_div" =>
+                this.exact_div(
+                    this.read_immediate(args[0])?,
+                    this.read_immediate(args[1])?,
+                    dest,
+                )?,
 
             "forget" => {}
 
