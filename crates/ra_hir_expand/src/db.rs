@@ -18,6 +18,12 @@ pub struct ParseMacroWithInfo {
     pub expansion_info: Arc<ExpansionInfo>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct MacroExpandInfo {
+    pub arg_map: Arc<mbe::TokenMap>,
+    pub def_map: Arc<mbe::TokenMap>,
+}
+
 // FIXME: rename to ExpandDatabase
 #[salsa::query_group(AstDatabaseStorage)]
 pub trait AstDatabase: SourceDatabase {
@@ -35,7 +41,7 @@ pub trait AstDatabase: SourceDatabase {
     fn macro_expand(
         &self,
         macro_call: MacroCallId,
-    ) -> Result<(Arc<tt::Subtree>, (Arc<mbe::TokenMap>, Arc<mbe::TokenMap>)), String>;
+    ) -> Result<(Arc<tt::Subtree>, MacroExpandInfo), String>;
 
     fn macro_expansion_info(&self, macro_file: MacroFile) -> Option<Arc<ExpansionInfo>>;
 }
@@ -77,7 +83,7 @@ pub(crate) fn macro_arg(
 pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
-) -> Result<(Arc<tt::Subtree>, (Arc<mbe::TokenMap>, Arc<mbe::TokenMap>)), String> {
+) -> Result<(Arc<tt::Subtree>, MacroExpandInfo), String> {
     let loc = db.lookup_intern_macro(id);
     let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
 
@@ -89,7 +95,10 @@ pub(crate) fn macro_expand(
         return Err(format!("Total tokens count exceed limit : count = {}", count));
     }
 
-    Ok((Arc::new(tt), (macro_arg.1.clone(), macro_rules.1.clone())))
+    Ok((
+        Arc::new(tt),
+        MacroExpandInfo { arg_map: macro_arg.1.clone(), def_map: macro_rules.1.clone() },
+    ))
 }
 
 pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
@@ -133,7 +142,7 @@ pub(crate) fn parse_macro_with_info(
     };
 
     res.map(|(parsed, exp_map)| {
-        let (arg_map, def_map) = tt.1;
+        let expand_info = tt.1;
         let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
 
         let def_start =
@@ -141,11 +150,12 @@ pub(crate) fn parse_macro_with_info(
         let arg_start =
             loc.ast_id.to_node(db).token_tree().map(|t| t.syntax().text_range().start());
 
-        let arg_map =
-            arg_start.map(|start| exp_map.ranges(&arg_map, start)).unwrap_or_else(|| Vec::new());
-
-        let def_map =
-            def_start.map(|start| exp_map.ranges(&def_map, start)).unwrap_or_else(|| Vec::new());
+        let arg_map = arg_start
+            .map(|start| exp_map.ranges(&expand_info.arg_map, start))
+            .unwrap_or_else(|| Vec::new());
+        let def_map = def_start
+            .map(|start| exp_map.ranges(&expand_info.def_map, start))
+            .unwrap_or_else(|| Vec::new());
 
         let info = ExpansionInfo { arg_map, def_map };
 

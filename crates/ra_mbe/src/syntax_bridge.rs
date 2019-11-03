@@ -26,7 +26,11 @@ static TOKEN_MAP_COUNTER: AtomicU32 = AtomicU32::new(0);
 
 /// Generate an unique token map id for each instance
 fn make_uniq_token_map_id() -> u32 {
-    TOKEN_MAP_COUNTER.fetch_add(1, Ordering::SeqCst)
+    let res = TOKEN_MAP_COUNTER.fetch_add(1, Ordering::SeqCst);
+    if res == std::u32::MAX {
+        panic!("TOKEN_MAP_COUNTER is overflowed");
+    }
+    res
 }
 
 impl std::default::Default for TokenMap {
@@ -35,10 +39,9 @@ impl std::default::Default for TokenMap {
     }
 }
 
-/// Maps Relative range of the expanded syntax node to `tt::TokenId`
+/// Maps relative range of the expanded syntax node to `tt::TokenId`
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct ExpandedRangeMap {
-    /// Maps `tt::TokenId` to the *relative* source range.
     ranges: Vec<(TextRange, tt::TokenId)>,
 }
 
@@ -85,14 +88,13 @@ fn fragment_to_syntax_node(
     };
     let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
-    let mut range_map = ExpandedRangeMap::default();
-    let mut tree_sink = TtTreeSink::new(buffer.begin(), &mut range_map);
+    let mut tree_sink = TtTreeSink::new(buffer.begin());
     ra_parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
     //FIXME: would be cool to report errors
-    let parse = tree_sink.inner.finish();
+    let (parse, range_map) = tree_sink.finish();
     Ok((parse, range_map))
 }
 
@@ -320,7 +322,7 @@ struct TtTreeSink<'a> {
     cursor: Cursor<'a>,
     text_pos: TextUnit,
     inner: SyntaxTreeBuilder,
-    range_map: &'a mut ExpandedRangeMap,
+    range_map: ExpandedRangeMap,
 
     // Number of roots
     // Use for detect ill-form tree which is not single root
@@ -328,15 +330,19 @@ struct TtTreeSink<'a> {
 }
 
 impl<'a> TtTreeSink<'a> {
-    fn new(cursor: Cursor<'a>, range_map: &'a mut ExpandedRangeMap) -> Self {
+    fn new(cursor: Cursor<'a>) -> Self {
         TtTreeSink {
             buf: String::new(),
             cursor,
             text_pos: 0.into(),
             inner: SyntaxTreeBuilder::default(),
             roots: smallvec::SmallVec::new(),
-            range_map,
+            range_map: ExpandedRangeMap::default(),
         }
+    }
+
+    fn finish(self) -> (Parse<SyntaxNode>, ExpandedRangeMap) {
+        (self.inner.finish(), self.range_map)
     }
 }
 

@@ -132,7 +132,7 @@ impl MacroCallId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// ExpansionInfo mainly describle how to map text range between src and expaned macro
+/// ExpansionInfo mainly describes how to map text range between src and expanded macro
 pub struct ExpansionInfo {
     pub arg_map: Vec<(TextRange, TextRange)>,
     pub def_map: Vec<(TextRange, TextRange)>,
