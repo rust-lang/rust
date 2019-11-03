@@ -1064,7 +1064,13 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
             self.promotion_candidates.clone()
         } else {
-            self.valid_promotion_candidates()
+            promote_consts::validate_candidates(
+                self.tcx,
+                self.body,
+                self.def_id,
+                &self.temp_promotion_state,
+                &self.unchecked_promotion_candidates,
+            )
         };
         debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
         for candidate in promotion_candidates {
@@ -1104,49 +1110,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
-    }
-
-    /// Get the subset of `unchecked_promotion_candidates` that are eligible
-    /// for promotion.
-    // FIXME(eddyb) replace the old candidate gathering with this.
-    fn valid_promotion_candidates(&self) -> Vec<Candidate> {
-        // Sanity-check the promotion candidates.
-        let candidates = promote_consts::validate_candidates(
-            self.tcx,
-            self.body,
-            self.def_id,
-            &self.temp_promotion_state,
-            &self.unchecked_promotion_candidates,
-        );
-
-        if candidates != self.promotion_candidates {
-            let report = |msg, candidate| {
-                let span = match candidate {
-                    Candidate::Ref(loc) |
-                    Candidate::Repeat(loc) => self.body.source_info(loc).span,
-                    Candidate::Argument { bb, .. } => {
-                        self.body[bb].terminator().source_info.span
-                    }
-                };
-                self.tcx.sess.span_err(span, &format!("{}: {:?}", msg, candidate));
-            };
-
-            for &c in &self.promotion_candidates {
-                if !candidates.contains(&c) {
-                    report("invalidated old candidate", c);
-                }
-            }
-
-            for &c in &candidates {
-                if !self.promotion_candidates.contains(&c) {
-                    report("extra new candidate", c);
-                }
-            }
-
-            bug!("promotion candidate validation mismatches (see above)");
-        }
-
-        candidates
     }
 
     /// Returns `true` if the operand of a repeat expression is promotable.
@@ -1768,39 +1731,42 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
 
         debug!("run_pass: mode={:?}", mode);
         if let Mode::NonConstFn | Mode::ConstFn = mode {
-            // This is ugly because Checker holds onto mir,
-            // which can't be mutated until its scope ends.
-            let (temps, candidates) = {
-                let mut checker = Checker::new(tcx, def_id, body, mode);
-                if let Mode::ConstFn = mode {
-                    let use_min_const_fn_checks =
-                        !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
-                        tcx.is_min_const_fn(def_id);
-                    if use_min_const_fn_checks {
-                        // Enforce `min_const_fn` for stable `const fn`s.
-                        use super::qualify_min_const_fn::is_min_const_fn;
-                        if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
-                            error_min_const_fn_violation(tcx, span, err);
-                            return;
-                        }
-
-                        // `check_const` should not produce any errors, but better safe than sorry
-                        // FIXME(#53819)
-                        // NOTE(eddyb) `check_const` is actually needed for promotion inside
-                        // `min_const_fn` functions.
+            let mut checker = Checker::new(tcx, def_id, body, mode);
+            if let Mode::ConstFn = mode {
+                let use_min_const_fn_checks =
+                    !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
+                    tcx.is_min_const_fn(def_id);
+                if use_min_const_fn_checks {
+                    // Enforce `min_const_fn` for stable `const fn`s.
+                    use super::qualify_min_const_fn::is_min_const_fn;
+                    if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
+                        error_min_const_fn_violation(tcx, span, err);
+                        return;
                     }
 
-                    // Enforce a constant-like CFG for `const fn`.
-                    checker.check_const();
-                } else {
-                    while let Some((bb, data)) = checker.rpo.next() {
-                        checker.visit_basic_block_data(bb, data);
-                    }
+                    // `check_const` should not produce any errors, but better safe than sorry
+                    // FIXME(#53819)
+                    // NOTE(eddyb) `check_const` is actually needed for promotion inside
+                    // `min_const_fn` functions.
                 }
 
-                let promotion_candidates = checker.valid_promotion_candidates();
-                (checker.temp_promotion_state, promotion_candidates)
-            };
+                // Enforce a constant-like CFG for `const fn`.
+                checker.check_const();
+            } else {
+                while let Some((bb, data)) = checker.rpo.next() {
+                    checker.visit_basic_block_data(bb, data);
+                }
+            }
+
+            // Promote only the promotable candidates.
+            let temps = checker.temp_promotion_state;
+            let candidates = promote_consts::validate_candidates(
+                tcx,
+                body,
+                def_id,
+                &temps,
+                &checker.unchecked_promotion_candidates,
+            );
 
             // Do the actual promotion, now that we know what's viable.
             self.promoted.set(
