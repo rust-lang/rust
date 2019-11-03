@@ -91,7 +91,7 @@ use crate::astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
 use rustc::hir::def::{CtorOf, Res, DefKind};
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::ptr::P;
@@ -145,7 +145,7 @@ use crate::TypeAndSubsts;
 use crate::lint;
 use crate::util::captures::Captures;
 use crate::util::common::{ErrorReported, indenter};
-use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashSet, HirIdMap};
+use crate::util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, HirIdMap};
 
 pub use self::Expectation::*;
 use self::autoderef::Autoderef;
@@ -217,7 +217,7 @@ pub struct Inherited<'a, 'tcx> {
     // decision. We keep these deferred resolutions grouped by the
     // def-id of the closure, so that once we decide, we can easily go
     // back and process them.
-    deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolution<'tcx>>>>,
+    deferred_call_resolutions: RefCell<FxHashMap<LocalDefId, Vec<DeferredCallResolution<'tcx>>>>,
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
@@ -2602,7 +2602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn record_deferred_call_resolution(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         r: DeferredCallResolution<'tcx>,
     ) {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
@@ -2611,7 +2611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn remove_deferred_call_resolutions(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.remove(&closure_def_id).unwrap_or(vec![])

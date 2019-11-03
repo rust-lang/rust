@@ -13,7 +13,7 @@
 //! just returns them for other code to use.
 
 use either::Either;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::middle::lang_items;
@@ -224,7 +224,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_substs: SubstsRef<'tcx>,
         expected_num_vars: usize,
-        closure_base_def_id: DefId,
+        closure_base_def_id: LocalDefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.lifetimes.re_static);
@@ -322,7 +322,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // tests, and the resulting print-outs include def-ids
                 // and other things that are not stable across tests!
                 // So we just include the region-vid. Annoying.
-                let closure_base_def_id = tcx.closure_base_def_id(def_id);
+                let closure_base_def_id = tcx.closure_base_def_id(def_id).assert_local();
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
                     err.note(&format!(
                         "late-bound region is {:?}",
@@ -340,7 +340,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // FIXME: As above, we'd like to print out the region
                 // `r` but doing so is not stable across architectures
                 // and so forth.
-                let closure_base_def_id = tcx.closure_base_def_id(def_id);
+                let closure_base_def_id = tcx.closure_base_def_id(def_id).assert_local();
                 for_each_late_bound_region_defined_on(tcx, closure_base_def_id, |r| {
                     err.note(&format!(
                         "late-bound region is {:?}",
@@ -725,7 +725,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             "replace_late_bound_regions_with_nll_infer_vars(mir_def_id={:?})",
             mir_def_id
         );
-        let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id);
+        let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id).assert_local();
         for_each_late_bound_region_defined_on(self.tcx, closure_base_def_id, |r| {
             debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
             if !indices.indices.contains_key(&r) {
@@ -781,19 +781,19 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 /// invokes `f` with the liberated form of each one.
 fn for_each_late_bound_region_defined_on<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_def_id: DefId,
+    fn_def_id: LocalDefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id.assert_local()) {
+    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id) {
         for late_bound in late_bounds.iter() {
             let hir_id = HirId {
-                owner: fn_def_id.assert_local(),
+                owner: fn_def_id,
                 local_id: *late_bound,
             };
             let name = tcx.hir().name(hir_id);
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: fn_def_id,
+                scope: fn_def_id.to_def_id(),
                 bound_region: ty::BoundRegion::BrNamed(region_def_id, name),
             }));
             f(liberated_region);

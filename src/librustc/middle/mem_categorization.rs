@@ -59,7 +59,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use crate::middle::region;
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::Node;
 use crate::infer::InferCtxt;
 use crate::hir::def::{CtorOf, Res, DefKind, CtorKind};
@@ -214,7 +214,7 @@ impl HirNode for hir::Pat {
 pub struct MemCategorizationContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pub body_owner: DefId,
+    pub body_owner: LocalDefId,
     pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
@@ -330,14 +330,14 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> MemCategorizationContext<'a, 'tcx> {
         MemCategorizationContext {
             tcx,
             body_owner,
-            upvars: tcx.upvars(body_owner),
+            upvars: tcx.upvars(body_owner.to_def_id()),
             region_scope_tree,
             tables,
             infcx: None,
@@ -359,7 +359,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub fn with_infer(
         infcx: &'a InferCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> MemCategorizationContext<'a, 'tcx> {
@@ -368,7 +368,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         MemCategorizationContext {
             tcx,
             body_owner,
-            upvars: tcx.upvars(body_owner),
+            upvars: tcx.upvars(body_owner.to_def_id()),
             region_scope_tree,
             tables,
             infcx: Some(infcx),
@@ -722,9 +722,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // FnOnce         | copied               | upvar -> &'up bk
 
         let closure_expr_def_id = self.body_owner;
-        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(
-            closure_expr_def_id.assert_local(),
-        );
+        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_expr_def_id);
         let ty = self.node_ty(fn_hir_id)?;
         let kind = match ty.kind {
             ty::Generator(..) => ty::ClosureKind::FnOnce,
@@ -747,7 +745,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_id },
-            closure_expr_id: closure_expr_def_id.assert_local(),
+            closure_expr_id: closure_expr_def_id,
         };
 
         let var_ty = self.node_ty(var_id)?;

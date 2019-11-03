@@ -15,7 +15,7 @@ use crate::borrow_check::nll::{
 };
 use crate::borrow_check::Upvar;
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::opaque_types;
 use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
@@ -1623,7 +1623,7 @@ pub trait ClosureRegionRequirementsExt<'tcx> {
     fn apply_requirements(
         &self,
         tcx: TyCtxt<'tcx>,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryOutlivesConstraint<'tcx>>;
 
@@ -1653,7 +1653,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
     fn apply_requirements(
         &self,
         tcx: TyCtxt<'tcx>,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryOutlivesConstraint<'tcx>> {
         debug!(
@@ -1668,7 +1668,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
             tcx,
             closure_substs,
             self.num_external_vids,
-            tcx.closure_base_def_id(closure_def_id),
+            tcx.closure_base_def_id(closure_def_id.to_def_id()).assert_local(),
         );
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 

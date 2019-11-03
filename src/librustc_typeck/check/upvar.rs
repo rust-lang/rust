@@ -36,7 +36,6 @@ use crate::middle::expr_use_visitor as euv;
 use crate::middle::mem_categorization as mc;
 use crate::middle::mem_categorization::Categorization;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::hir::def_id::LocalDefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::UpvarRegion;
@@ -95,12 +94,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, substs) = match ty.kind {
-            ty::Closure(def_id, substs) => (
-                def_id,
+        let closure_def_id = self.tcx.hir().local_def_id(closure_hir_id).assert_local();
+        let substs = match ty.kind {
+            ty::Closure(def_id, substs) => {
+                assert_eq!(def_id, closure_def_id.to_def_id());
                 UpvarSubsts::Closure(substs)
-            ),
-            ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
+            }
+            ty::Generator(def_id, substs, _) => {
+                assert_eq!(def_id, closure_def_id.to_def_id());
+                UpvarSubsts::Generator(substs)
+            }
             ty::Error => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
@@ -116,7 +119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs {
-            if self.closure_kind(closure_def_id, closure_substs).is_none() {
+            if self.closure_kind(closure_def_id.to_def_id(), closure_substs).is_none() {
                 Some(closure_substs)
             } else {
                 None
@@ -125,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        if let Some(upvars) = self.tcx.upvars(closure_def_id) {
+        if let Some(upvars) = self.tcx.upvars(closure_def_id.to_def_id()) {
             let mut upvar_list: FxIndexMap<hir::HirId, ty::UpvarId> =
                 FxIndexMap::with_capacity_and_hasher(upvars.len(), Default::default());
             for (&var_hir_id, _) in upvars.iter() {
@@ -133,7 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     var_path: ty::UpvarPath {
                         hir_id: var_hir_id,
                     },
-                    closure_expr_id: closure_def_id.assert_local(),
+                    closure_expr_id: closure_def_id,
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
                 // Adding the upvar Id to the list of Upvars, which will be added
@@ -169,12 +172,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
+        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id()).assert_local();
         assert_eq!(body_owner_def_id, closure_def_id);
-        let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
+        let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id.to_def_id());
         let mut delegate = InferBorrowKind {
             fcx: self,
-            closure_def_id: closure_def_id,
+            closure_def_id,
             current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
             current_origin: None,
             adjust_upvar_captures: ty::UpvarCaptureMap::default(),
@@ -194,7 +197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // substs with the kind we inferred.
             let inferred_kind = delegate.current_closure_kind;
             let closure_kind_ty = closure_substs
-                .as_closure().kind_ty(closure_def_id, self.tcx);
+                .as_closure().kind_ty(closure_def_id.to_def_id(), self.tcx);
             self.demand_eqtype(span, inferred_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
@@ -230,7 +233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             closure_hir_id, substs, final_upvar_tys
         );
         for (upvar_ty, final_upvar_ty) in substs
-            .upvar_tys(closure_def_id, self.tcx)
+            .upvar_tys(closure_def_id.to_def_id(), self.tcx)
             .zip(final_upvar_tys)
         {
             self.demand_suptype(span, upvar_ty, final_upvar_ty);
@@ -252,16 +255,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This may change if abstract return types of some sort are
         // implemented.
         let tcx = self.tcx;
-        let closure_def_id = tcx.hir().local_def_id(closure_id);
+        let closure_def_id = tcx.hir().local_def_id(closure_id).assert_local();
 
-        tcx.upvars(closure_def_id).iter().flat_map(|upvars| {
+        tcx.upvars(closure_def_id.to_def_id()).iter().flat_map(|upvars| {
             upvars
                 .iter()
                 .map(|(&var_hir_id, _)| {
                     let upvar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
-                        closure_expr_id: closure_def_id.assert_local(),
+                        closure_expr_id: closure_def_id,
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 
@@ -290,7 +293,7 @@ struct InferBorrowKind<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
 
     // The def-id of the closure whose kind and upvar accesses are being inferred.
-    closure_def_id: DefId,
+    closure_def_id: LocalDefId,
 
     // The kind that we have inferred that the current closure
     // requires. Note that we *always* infer a minimal kind, even if
@@ -553,7 +556,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         );
 
         // Is this the closure whose kind is currently being inferred?
-        if closure_id.to_def_id() != self.closure_def_id {
+        if closure_id != self.closure_def_id {
             debug!("adjust_closure_kind: not current closure");
             return;
         }

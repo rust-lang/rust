@@ -6,7 +6,7 @@ pub use self::ConsumeMode::*;
 use self::OverloadedCallType::*;
 
 use crate::hir::def::Res;
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::ptr::P;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
@@ -119,7 +119,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         tcx: TyCtxt<'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
@@ -140,7 +140,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn with_infer(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         infcx: &'a InferCtxt<'a, 'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
@@ -617,12 +617,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr, fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
-        if let Some(upvars) = self.tcx().upvars(closure_def_id) {
+        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).assert_local();
+        if let Some(upvars) = self.tcx().upvars(closure_def_id.to_def_id()) {
             for &var_id in upvars.keys() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id.assert_local(),
+                    closure_expr_id: closure_def_id,
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,

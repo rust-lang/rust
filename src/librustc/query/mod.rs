@@ -368,6 +368,7 @@ rustc_queries! {
             desc { "type-checking all item bodies" }
         }
 
+        // FIXME(eddyb) take `LocalDefId` instead of `DefId` as key.
         query typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
@@ -387,6 +388,7 @@ rustc_queries! {
     }
 
     TypeChecking {
+        // FIXME(eddyb) take `LocalDefId` instead of `DefId` as key.
         query has_typeck_tables(_: DefId) -> bool {}
 
         query coherent_trait(def_id: DefId) -> () {
@@ -397,6 +399,7 @@ rustc_queries! {
     BorrowChecking {
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
+        // FIXME(eddyb) take `LocalDefId` instead of `DefId` as key.
         query mir_borrowck(key: DefId) -> mir::BorrowCheckResult<'tcx> {
             cache_on_disk_if(tcx, _) { key.is_local() && tcx.is_closure(key) }
         }
@@ -489,6 +492,7 @@ rustc_queries! {
 
         /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
         /// in the case of closures, this will be redirected to the enclosing function.
+        // FIXME(eddyb) take `LocalDefId` instead of `DefId` as key.
         query region_scope_tree(_: DefId) -> &'tcx region::ScopeTree {}
 
         query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::Body<'tcx> {
@@ -879,6 +883,7 @@ rustc_queries! {
             desc { "generating a postorder list of CrateNums" }
         }
 
+        // FIXME(eddyb) take `LocalDefId` instead of `DefId` as key.
         query upvars(_: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
             eval_always
         }

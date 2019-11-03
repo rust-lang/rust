@@ -192,8 +192,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let mut name = None;
-                if def_id.is_local() {
-                    let tables = self.ecx.tcx.typeck_tables_of(def_id);
+                if let Some(def_id) = def_id.as_local() {
+                    let tables = self.ecx.tcx.typeck_tables_of(def_id.to_def_id());
                     if let Some(upvars) = tables.upvar_list.get(&def_id) {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).

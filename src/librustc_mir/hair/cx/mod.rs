@@ -6,7 +6,7 @@ use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
 use rustc_index::vec::Idx;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::hir::Node;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
@@ -38,8 +38,8 @@ pub struct Cx<'a, 'tcx> {
     /// `const`, or the body of a `const fn`.
     constness: hir::Constness,
 
-    /// The `DefId` of the owner of this body.
-    body_owner: DefId,
+    /// The `LocalDefId` of the owner of this body.
+    body_owner: LocalDefId,
 
     /// What kind of body is being compiled.
     pub body_owner_kind: hir::BodyOwnerKind,
@@ -54,8 +54,8 @@ pub struct Cx<'a, 'tcx> {
 impl<'a, 'tcx> Cx<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, src_id: hir::HirId) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let src_def_id = tcx.hir().local_def_id(src_id);
-        let tables = tcx.typeck_tables_of(src_def_id);
+        let src_def_id = tcx.hir().local_def_id(src_id).assert_local();
+        let tables = tcx.typeck_tables_of(src_def_id.to_def_id());
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
@@ -82,9 +82,9 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             tcx,
             infcx,
             root_lint_level: src_id,
-            param_env: tcx.param_env(src_def_id),
-            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id),
-            region_scope_tree: tcx.region_scope_tree(src_def_id),
+            param_env: tcx.param_env(src_def_id.to_def_id()),
+            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id.to_def_id()),
+            region_scope_tree: tcx.region_scope_tree(src_def_id.to_def_id()),
             tables,
             constness,
             body_owner: src_def_id,

@@ -548,7 +548,7 @@ where
     let span = tcx_hir.span(fn_id);
 
     let hir_tables = hir.tables();
-    let fn_def_id = tcx_hir.local_def_id(fn_id);
+    let fn_def_id = tcx_hir.local_def_id(fn_id).assert_local();
 
     // Gather the upvars of a closure, if any.
     let mut upvar_mutbls = vec![];
@@ -613,7 +613,7 @@ where
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-        if should_abort_on_panic(tcx, fn_def_id, abi) {
+        if should_abort_on_panic(tcx, fn_def_id.to_def_id(), abi) {
             builder.schedule_abort();
         }
 
@@ -653,7 +653,7 @@ where
         spread_arg = Some(Local::new(arguments.len()));
     }
     info!("fn_id {:?} has attrs {:?}", fn_def_id,
-          tcx.get_attrs(fn_def_id));
+          tcx.get_attrs(fn_def_id.to_def_id()));
 
     let mut body = builder.finish(yield_ty);
     body.spread_arg = spread_arg;

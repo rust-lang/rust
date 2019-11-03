@@ -983,7 +983,7 @@ fn convert_var(
             let closure_def_id = cx.body_owner;
             let upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath {hir_id: var_hir_id},
-                closure_expr_id: closure_def_id.assert_local(),
+                closure_expr_id: closure_def_id,
             };
             let var_ty = cx.tables().node_type(var_hir_id);
 
@@ -996,13 +996,13 @@ fn convert_var(
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
             let region = ty::ReFree(ty::FreeRegion {
-                scope: closure_def_id,
+                scope: closure_def_id.to_def_id(),
                 bound_region: ty::BoundRegion::BrAnon(0),
             });
             let region = cx.tcx.mk_region(region);
 
             let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind {
-                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
+                match cx.infcx.closure_kind(closure_def_id.to_def_id(), closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {

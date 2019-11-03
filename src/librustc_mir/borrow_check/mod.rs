@@ -117,9 +117,11 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_tables_of(def_id);
+    // FIXME(eddyb) move this `assert_local` call further back,
+    // replacing the `DefId` type (of `def_id`) with `LocalDefId`.
     let upvars: Vec<_> = tables
         .upvar_list
-        .get(&def_id)
+        .get(&def_id.assert_local())
         .into_iter()
         .flat_map(|v| v.values())
         .map(|upvar_id| {

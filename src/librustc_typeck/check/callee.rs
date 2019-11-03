@@ -4,7 +4,7 @@ use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 
 use errors::{Applicability, DiagnosticBuilder};
 use hir::def::Res;
-use hir::def_id::{DefId, LOCAL_CRATE};
+use hir::def_id::{DefId, LocalDefId};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::SubstsRef;
@@ -99,13 +99,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             ty::Closure(def_id, substs) => {
-                assert_eq!(def_id.krate, LOCAL_CRATE);
+                let def_id = def_id.assert_local();
 
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(def_id, substs).is_none() {
-                    let closure_ty = self.closure_sig(def_id, substs);
+                if self.closure_kind(def_id.to_def_id(), substs).is_none() {
+                    let closure_ty = self.closure_sig(def_id.to_def_id(), substs);
                     let fn_sig = self
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
@@ -480,7 +480,7 @@ pub struct DeferredCallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
-    closure_def_id: DefId,
+    closure_def_id: LocalDefId,
     closure_substs: SubstsRef<'tcx>,
 }
 
@@ -491,7 +491,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
         assert!(fcx
-            .closure_kind(self.closure_def_id, self.closure_substs)
+            .closure_kind(self.closure_def_id.to_def_id(), self.closure_substs)
             .is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.

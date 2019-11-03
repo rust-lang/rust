@@ -22,7 +22,7 @@ use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use either::Either;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
@@ -2543,7 +2543,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, substs, _) => {
-                self.prove_closure_bounds(tcx, *def_id, substs, location)
+                self.prove_closure_bounds(tcx, def_id.assert_local(), substs, location)
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
@@ -2558,11 +2558,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn prove_closure_bounds(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        def_id: DefId,
+        def_id: LocalDefId,
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
+        let borrowck_results = tcx.mir_borrowck(def_id.to_def_id());
+        if let Some(closure_region_requirements) = borrowck_results.closure_requirements {
             let closure_constraints = QueryRegionConstraints {
                 outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
 
@@ -2621,7 +2622,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        tcx.predicates_of(def_id).instantiate(tcx, substs)
+        tcx.predicates_of(def_id.to_def_id()).instantiate(tcx, substs)
     }
 
     fn prove_trait_ref(
