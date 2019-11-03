@@ -18,6 +18,8 @@ mod cursor;
 pub mod unescape;
 
 use crate::cursor::{Cursor, EOF_CHAR};
+use self::TokenKind::*;
+use self::LiteralKind::*;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -116,7 +118,6 @@ pub enum TokenKind {
     /// Unknown token, not expected by the lexer, e.g. "№"
     Unknown,
 }
-use self::TokenKind::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
@@ -137,7 +138,6 @@ pub enum LiteralKind {
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a"
     RawByteStr { n_hashes: usize, started: bool, terminated: bool },
 }
-use self::LiteralKind::*;
 
 /// Base of numeric literal encoding according to its prefix.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -240,7 +240,6 @@ pub fn is_id_continue(c: char) -> bool {
         || c == '_'
         || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_continue(c))
 }
-
 
 impl Cursor<'_> {
     /// Parses a token from the input string.
