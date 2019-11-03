@@ -3,7 +3,7 @@
 // ignore-stage1
 
 #![feature(plugin)]
-#![plugin(lint_group_plugin_test)]
+#![plugin(lint_group_plugin_test)] //~ WARNING use of deprecated attribute
 #![allow(dead_code)]
 
 fn lintme() { } //~ WARNING item is named 'lintme'

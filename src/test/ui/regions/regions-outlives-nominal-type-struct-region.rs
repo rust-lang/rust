@@ -13,7 +13,7 @@ mod variant_struct_region {
         x: &'a i32,
     }
     struct Bar<'a,'b> {
-        f: &'a Foo<'b> //~ ERROR reference has a longer lifetime
+        f: &'a Foo<'b>
     }
 }
 
