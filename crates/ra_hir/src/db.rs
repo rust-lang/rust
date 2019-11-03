@@ -11,14 +11,13 @@ use crate::{
     ids,
     impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
     lang_item::{LangItemTarget, LangItems},
-    nameres::Namespace,
     traits::TraitData,
     ty::{
         method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
         InferenceResult, Substs, Ty, TypableDef, TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, ExprScopes, FnData, Function, Module, Static,
+    Const, ConstData, Crate, DefWithBody, ExprScopes, FnData, Function, Module, Namespace, Static,
     StructField, Trait, TypeAlias,
 };
 

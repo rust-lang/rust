@@ -28,11 +28,10 @@ use crate::{
         TypeAliasId,
     },
     impl_block::ImplBlock,
-    nameres::{ImportId, Namespace},
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
     ty::{InferenceResult, TraitRef},
-    Either, HasSource, Name, ScopeDef, Ty,
+    Either, HasSource, Name, ScopeDef, Ty, {ImportId, Namespace},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which

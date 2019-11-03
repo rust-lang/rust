@@ -19,8 +19,8 @@ use crate::{
     },
     generics::GenericParams,
     impl_block::ImplBlock,
-    nameres::PerNs,
-    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct, Trait, TypeAlias,
+    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, PerNs, Static, Struct, Trait,
+    TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
