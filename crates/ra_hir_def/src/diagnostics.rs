@@ -3,8 +3,8 @@
 use std::any::Any;
 
 use hir_expand::diagnostics::Diagnostic;
+use ra_db::RelativePathBuf;
 use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
-use relative_path::RelativePathBuf;
 
 use hir_expand::{HirFileId, Source};
 

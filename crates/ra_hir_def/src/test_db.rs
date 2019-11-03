@@ -5,8 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate};
-use relative_path::RelativePath;
+use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,

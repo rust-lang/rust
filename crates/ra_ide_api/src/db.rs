@@ -4,10 +4,9 @@ use std::sync::Arc;
 
 use ra_db::{
     salsa::{self, Database, Durability},
-    Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
-    SourceDatabaseExt, SourceRootId,
+    Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath,
+    SourceDatabase, SourceDatabaseExt, SourceRootId,
 };
-use relative_path::RelativePath;
 use rustc_hash::FxHashMap;
 
 use crate::{

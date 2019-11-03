@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
-use relative_path::RelativePathBuf;
+use ra_db::RelativePathBuf;
 use test_utils::{extract_offset, extract_range, parse_fixture, CURSOR_MARKER};
 
 use crate::{

@@ -1019,7 +1019,6 @@ dependencies = [
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
  "ra_tt 0.1.0",
- "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
 ]
@@ -1039,7 +1038,6 @@ dependencies = [
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
  "ra_tt 0.1.0",
- "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
 ]
@@ -1079,7 +1077,6 @@ dependencies = [
  "ra_text_edit 0.1.0",
  "rand 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "superslice 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",

@@ -7,7 +7,6 @@ authors = ["rust-analyzer developers"]
 [dependencies]
 arrayvec = "0.5.1"
 log = "0.4.5"
-relative-path = "1.0.0"
 rustc-hash = "1.0"
 parking_lot = "0.9.0"
 ena = "0.13"
