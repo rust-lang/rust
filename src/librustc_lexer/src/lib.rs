@@ -600,36 +600,45 @@ impl Cursor<'_> {
     /// (amount of the '#' symbols, raw string started, raw string terminated)
     fn raw_double_quoted_string(&mut self) -> (usize, bool, bool) {
         debug_assert!(self.prev() == 'r');
-        // Count opening '#' symbols.
-        let n_hashes = {
-            let mut acc: usize = 0;
-            loop {
-                match self.bump() {
-                    Some('#') => acc += 1,
-                    Some('"') => break acc,
-                    None | Some(_) => return (acc, false, false),
-                }
-            }
-        };
+        let mut started: bool = false;
+        let mut finished: bool = false;
 
-        // Skip the string itself and check that amount of closing '#'
-        // symbols is equal to the amount of opening ones.
-        loop {
-            match self.bump() {
-                Some('"') => {
-                    let mut acc = n_hashes;
-                    while self.nth_char(0) == '#' && acc > 0 {
-                        self.bump();
-                        acc -= 1;
-                    }
-                    if acc == 0 {
-                        return (n_hashes, true, true);
-                    }
-                }
-                Some(_) => (),
-                None => return (n_hashes, true, false),
-            }
+        // Count opening '#' symbols.
+        let n_hashes = self.eat_while(|c| c == '#');
+
+        // Check that string is started.
+        match self.bump() {
+            Some('"') => started = true,
+            _ => return (n_hashes, started, finished),
         }
+
+        // Skip the string contents and on each '#' character met, check if this is
+        // a raw string termination.
+        while !finished {
+            self.eat_while(|c| c != '"');
+
+            if self.is_eof() {
+                return (n_hashes, started, finished);
+            }
+
+            // Eat closing double quote.
+            self.bump();
+
+            // Check that amount of closing '#' symbols
+            // is equal to the amount of opening ones.
+            let mut hashes_left = n_hashes;
+            let is_closing_hash = |c| {
+                if c == '#' && hashes_left != 0 {
+                    hashes_left -= 1;
+                    true
+                } else {
+                    false
+                }
+            };
+            finished = self.eat_while(is_closing_hash) == n_hashes;
+        }
+
+        (n_hashes, started, finished)
     }
 
     fn eat_decimal_digits(&mut self) -> bool {
