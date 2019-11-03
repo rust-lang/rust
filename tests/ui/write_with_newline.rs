@@ -49,4 +49,10 @@ fn main() {
         r"
 "
     );
+
+    // Don't warn on CRLF (#4208)
+    write!(&mut v, "\r\n");
+    write!(&mut v, "foo\r\n");
+    write!(&mut v, "\\r\n"); //~ ERROR
+    write!(&mut v, "foo\rbar\n");
 }

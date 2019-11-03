@@ -1,9 +1,12 @@
+use std::borrow::Cow;
+use std::ops::Range;
+
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_lexer::unescape::{self, EscapeError};
 use rustc_parse::parser;
-use std::borrow::Cow;
 use syntax::ast::*;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
@@ -202,7 +205,7 @@ impl EarlyLintPass for Write {
         } else if mac.path == sym!(print) {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
             if let (Some(fmt_str), _) = check_tts(cx, &mac.tts, false) {
-                if check_newlines(&fmt_str) {
+                if check_newlines(&fmt_str.contents, fmt_str.style) {
                     span_lint_and_then(
                         cx,
                         PRINT_WITH_NEWLINE,
@@ -223,7 +226,7 @@ impl EarlyLintPass for Write {
             }
         } else if mac.path == sym!(write) {
             if let (Some(fmt_str), _) = check_tts(cx, &mac.tts, true) {
-                if check_newlines(&fmt_str) {
+                if check_newlines(&fmt_str.contents, fmt_str.style) {
                     span_lint_and_then(
                         cx,
                         WRITE_WITH_NEWLINE,
@@ -442,38 +445,31 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
     }
 }
 
-/// Checks if the format string constains a single newline that terminates it.
+/// Checks if the format string contains a single newline that terminates it.
 ///
 /// Literal and escaped newlines are both checked (only literal for raw strings).
-fn check_newlines(fmt_str: &FmtStr) -> bool {
-    let s = &fmt_str.contents;
+fn check_newlines(contents: &str, style: StrStyle) -> bool {
+    let mut has_internal_newline = false;
+    let mut last_was_cr = false;
+    let mut should_lint = false;
 
-    if s.ends_with('\n') {
-        return true;
-    } else if let StrStyle::Raw(_) = fmt_str.style {
-        return false;
-    }
+    let mut cb = |r: Range<usize>, c: Result<char, EscapeError>| {
+        let c = c.unwrap();
 
-    if s.len() < 2 {
-        return false;
-    }
-
-    let bytes = s.as_bytes();
-    if bytes[bytes.len() - 2] != b'\\' || bytes[bytes.len() - 1] != b'n' {
-        return false;
-    }
-
-    let mut escaping = false;
-    for (index, &byte) in bytes.iter().enumerate() {
-        if escaping {
-            if byte == b'n' {
-                return index == bytes.len() - 1;
+        if r.end == contents.len() && c == '\n' && !last_was_cr && !has_internal_newline {
+            should_lint = true;
+        } else {
+            last_was_cr = c == '\r';
+            if c == '\n' {
+                has_internal_newline = true;
             }
-            escaping = false;
-        } else if byte == b'\\' {
-            escaping = true;
         }
+    };
+
+    match style {
+        StrStyle::Cooked => unescape::unescape_str(contents, &mut cb),
+        StrStyle::Raw(_) => unescape::unescape_raw_str(contents, &mut cb),
     }
 
-    false
+    should_lint
 }

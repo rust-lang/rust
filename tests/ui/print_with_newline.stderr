@@ -84,5 +84,27 @@ LL |     println!(
 LL |         r""
    |
 
-error: aborting due to 7 previous errors
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:49:5
+   |
+LL |     print!("/r/n"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("/r"); //~ ERROR
+   |     ^^^^^^^     --
+
+error: using `print!()` with a format string that ends in a single newline
+  --> $DIR/print_with_newline.rs:50:5
+   |
+LL |     print!("foo/rbar/n") // ~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `println!` instead
+   |
+LL |     println!("foo/rbar") // ~ ERROR
+   |     ^^^^^^^          --
+
+error: aborting due to 9 previous errors
 
