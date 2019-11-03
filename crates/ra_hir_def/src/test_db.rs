@@ -1,3 +1,5 @@
+//! Database used for testing `hir_def`.
+
 use std::{
     panic,
     sync::{Arc, Mutex},

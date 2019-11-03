@@ -1,3 +1,5 @@
+//! Diagnostics produced by `hir_def`.
+
 use std::any::Any;
 
 use hir_expand::diagnostics::Diagnostic;

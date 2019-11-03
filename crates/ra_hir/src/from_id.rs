@@ -1,3 +1,8 @@
+//! Utility module for converting between hir_def ids and code_model wrappers.
+//!
+//! It's unclear if we need this long-term, but it's definitelly useful while we
+//! are splitting the hir.
+
 use hir_def::{AdtId, EnumVariantId, ModuleDefId};
 
 use crate::{Adt, EnumVariant, ModuleDef};
