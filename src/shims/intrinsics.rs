@@ -313,23 +313,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
-            "exact_div" => {
-                // Performs an exact division, resulting in undefined behavior where
-                // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
-                let a = this.read_immediate(args[0])?;
-                let b = this.read_immediate(args[1])?;
-                // check x % y != 0
-                if this.overflowing_binary_op(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
-                    // Check if `b` is -1, which is the "min_value / -1" case.
-                    let minus1 = Scalar::from_int(-1, dest.layout.size);
-                    return Err(if b.to_scalar().unwrap() == minus1 {
-                        err_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")
-                    } else {
-                        err_ub_format!("exact_div: {:?} cannot be divided by {:?} without remainder", *a, *b)
-                    }.into());
-                }
-                this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
-            },
+            "exact_div" =>
+                this.exact_div(
+                    this.read_immediate(args[0])?,
+                    this.read_immediate(args[1])?,
+                    dest,
+                )?,
 
             "forget" => {}
 
