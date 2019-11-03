@@ -580,20 +580,20 @@ impl Cursor<'_> {
     /// if string is terminated.
     fn double_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '"');
-        loop {
-            match self.nth_char(0) {
+        while let Some(c) = self.bump() {
+            match c {
                 '"' => {
-                    self.bump();
                     return true;
                 }
-                EOF_CHAR if self.is_eof() => return false,
-                '\\' if self.nth_char(1) == '\\' || self.nth_char(1) == '"' => {
+                '\\' if self.first() == '\\' || self.first() == '"' => {
+                    // Bump again to skip escaped character.
                     self.bump();
                 }
                 _ => (),
             }
-            self.bump();
         }
+        // End of file reached.
+        false
     }
 
     /// Eats the double-quoted string and returns a tuple of
