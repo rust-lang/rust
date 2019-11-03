@@ -1,4 +1,4 @@
-use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use crate::hir::def_id::{DefIndex, CRATE_DEF_INDEX, LocalDefId};
 use crate::hir::{self, intravisit, HirId, ItemLocalId};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashSet;
@@ -119,7 +119,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             self.error(|| format!(
                 "ItemLocalIds not assigned densely in {}. \
                 Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
-                self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
+                self.hir_map.def_path(LocalDefId { index: owner_def_index }).to_string_no_crate(),
                 max,
                 missing_items,
                 self.hir_ids_seen
@@ -154,8 +154,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             self.error(|| format!(
                 "HirIdValidator: The recorded owner of {} is {} instead of {}",
                 self.hir_map.node_to_string(hir_id),
-                self.hir_map.def_path(DefId::local(hir_id.owner)).to_string_no_crate(),
-                self.hir_map.def_path(DefId::local(owner)).to_string_no_crate()));
+                self.hir_map.def_path(hir_id.owner_local_def_id()).to_string_no_crate(),
+                self.hir_map.def_path(LocalDefId { index: owner }).to_string_no_crate()));
         }
 
         self.hir_ids_seen.insert(hir_id.local_id);

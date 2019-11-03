@@ -139,11 +139,21 @@ impl DefId {
     }
 
     #[inline]
-    pub fn assert_local(self) -> LocalDefId {
-        assert!(self.is_local());
-        LocalDefId {
-            index: self.index,
+    pub fn as_local(self) -> Option<LocalDefId> {
+        if self.is_local() {
+            Some(LocalDefId {
+                index: self.index,
+            })
+        } else {
+            None
         }
+    }
+
+    #[inline]
+    pub fn assert_local(self) -> LocalDefId {
+        self.as_local().unwrap_or_else(|| {
+            bug!("DefId::assert_local: `{:?}` isn't local", self)
+        })
     }
 
     pub fn describe_as_module(&self, tcx: TyCtxt<'_>) -> String {

@@ -246,19 +246,17 @@ impl<'hir> Map<'hir> {
         self.definitions
     }
 
-    pub fn def_key(&self, def_id: DefId) -> DefKey {
-        assert!(def_id.is_local());
+    pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
         self.definitions.def_key(def_id.index)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
         self.opt_local_def_id(id).map(|def_id| {
-            self.def_path(def_id)
+            self.def_path(def_id.assert_local())
         })
     }
 
-    pub fn def_path(&self, def_id: DefId) -> DefPath {
-        assert!(def_id.is_local());
+    pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
         self.definitions.def_path(def_id.index)
     }
 

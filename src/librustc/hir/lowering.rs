@@ -975,7 +975,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn def_key(&mut self, id: DefId) -> DefKey {
-        if id.is_local() {
+        if let Some(id) = id.as_local() {
             self.resolver.definitions().def_key(id.index)
         } else {
             self.resolver.cstore().def_key(id)
