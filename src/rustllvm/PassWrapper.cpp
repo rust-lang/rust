@@ -754,6 +754,10 @@ LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
   unwrap(Module)->setDataLayout(Target->createDataLayout());
 }
 
+extern "C" void LLVMRustSetModulePICLevel(LLVMModuleRef M) {
+  unwrap(M)->setPICLevel(PICLevel::Level::BigPIC);
+}
+
 extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
   unwrap(M)->setPIELevel(PIELevel::Level::Large);
 }
