@@ -3,16 +3,17 @@
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
-use crate::{ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
-use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
+use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use crate::Namespace::*;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::def_id;
 use rustc::middle::stability;
+use rustc::session::Session;
+use rustc::util::nodemap::FxHashSet;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
-use syntax::attr::StabilityLevel;
+use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
@@ -91,6 +92,45 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
         }
         Symbol::intern(&path_str)
     }
+}
+
+fn registered_idents(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+    attr_name: Symbol,
+    descr: &str,
+) -> FxHashSet<Ident> {
+    let mut registered = FxHashSet::default();
+    for attr in attr::filter_by_name(attrs, attr_name) {
+        for nested_meta in attr.meta_item_list().unwrap_or_default() {
+            match nested_meta.ident() {
+                Some(ident) => if let Some(old_ident) = registered.replace(ident) {
+                    let msg = format!("{} `{}` was already registered", descr, ident);
+                    sess.struct_span_err(ident.span, &msg)
+                        .span_label(old_ident.span, "already registered here").emit();
+                }
+                None => {
+                    let msg = format!("`{}` only accepts identifiers", attr_name);
+                    let span = nested_meta.span();
+                    sess.struct_span_err(span, &msg).span_label(span, "not an identifier").emit();
+                }
+            }
+        }
+    }
+    registered
+}
+
+crate fn registered_attrs_and_tools(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+) -> (FxHashSet<Ident>, FxHashSet<Ident>) {
+    let registered_attrs = registered_idents(sess, attrs, sym::register_attr, "attribute");
+    let mut registered_tools = registered_idents(sess, attrs, sym::register_tool, "tool");
+    // We implicitly add `rustfmt` and `clippy` to known tools,
+    // but it's not an error to register them explicitly.
+    let predefined_tools = [sym::clippy, sym::rustfmt];
+    registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
+    (registered_attrs, registered_tools)
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -531,6 +571,15 @@ impl<'a> Resolver<'a> {
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
+                Scope::RegisteredAttrs => match this.registered_attrs.get(&ident).cloned() {
+                    Some(ident) => {
+                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::Registered),
+                                       ty::Visibility::Public, ident.span, ExpnId::root())
+                                       .to_name_binding(this.arenas);
+                        Ok((binding, Flags::PRELUDE))
+                    }
+                    None => Err(Determinacy::Determined)
+                }
                 Scope::MacroUsePrelude => match this.macro_use_prelude.get(&ident.name).cloned() {
                     Some(binding) => Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
                     None => Err(Determinacy::determined(
@@ -560,12 +609,14 @@ impl<'a> Resolver<'a> {
                         this.graph_root.unexpanded_invocations.borrow().is_empty()
                     )),
                 }
-                Scope::ToolPrelude => if KNOWN_TOOLS.contains(&ident.name) {
-                    let binding = (Res::ToolMod, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
-                                   .to_name_binding(this.arenas);
-                    Ok((binding, Flags::PRELUDE))
-                } else {
-                    Err(Determinacy::Determined)
+                Scope::ToolPrelude => match this.registered_tools.get(&ident).cloned() {
+                    Some(ident) => {
+                        let binding = (Res::ToolMod,
+                                       ty::Visibility::Public, ident.span, ExpnId::root())
+                                       .to_name_binding(this.arenas);
+                        Ok((binding, Flags::PRELUDE))
+                    }
+                    None => Err(Determinacy::Determined)
                 }
                 Scope::StdLibPrelude => {
                     let mut result = Err(Determinacy::Determined);
