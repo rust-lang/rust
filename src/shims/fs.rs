@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `File::sync_all` does the checks that are done when closing a file. We do this to
             // to handle possible errors correctly.
             let result = this.try_unwrap_io_result(handle.file.sync_all().map(|_| 0i32));
-            // Now we actually drop the handle.
+            // Now we actually close the file.
             drop(handle);
             // And return the result.
             result
@@ -180,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             if let Ok(c) = result {
                 // Check that we read less than `i64::MAX` bytes.
-                if c > (i64::max_value() as usize) {
+                if (c as u64) > (i64::max_value() as u64) {
                     throw_unsup_format!("Number of read bytes {} is larger than the maximum value", c);
                 }
                 // If reading to `bytes` did not fail, we write those bytes to the buffer.
@@ -217,7 +217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             if let Ok(c) = result {
                 // Check that we wrote less than `i64::MAX` bytes.
-                if c > (i64::max_value() as usize) {
+                if (c as u64) > (i64::max_value() as u64) {
                     throw_unsup_format!("Number of written bytes {} is larger than the maximum value", c);
                 }
             }
