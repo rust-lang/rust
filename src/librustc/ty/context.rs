@@ -1261,7 +1261,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_key(self, id: DefId) -> hir_map::DefKey {
-        if id.is_local() { self.hir().def_key(id) } else { self.cstore.def_key(id) }
+        if let Some(id) = id.as_local() { self.hir().def_key(id) } else { self.cstore.def_key(id) }
     }
 
     /// Converts a `DefId` into its fully expanded `DefPath` (every
@@ -1270,7 +1270,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that if `id` is not local to this crate, the result will
     ///  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> hir_map::DefPath {
-        if id.is_local() { self.hir().def_path(id) } else { self.cstore.def_path(id) }
+        if let Some(id) = id.as_local() {
+            self.hir().def_path(id)
+        } else {
+            self.cstore.def_path(id)
+        }
     }
 
     /// Returns whether or not the crate with CrateNum 'cnum'
@@ -1281,8 +1285,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
-        if def_id.is_local() {
-            self.definitions.def_path_hash(def_id.index)
+        if let Some(def_id) = def_id.as_local() {
+            self.definitions.def_path_hash(def_id.local_def_index)
         } else {
             self.cstore.def_path_hash(def_id)
         }

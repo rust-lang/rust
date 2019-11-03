@@ -3,7 +3,7 @@ use crate::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};
@@ -113,14 +113,18 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                 missing_items.push(format!(
                     "[local_id: {}, owner: {}]",
                     local_id,
-                    self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate()
+                    self.hir_map
+                        .def_path(LocalDefId { local_def_index: owner_def_index })
+                        .to_string_no_crate()
                 ));
             }
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
                 Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
-                    self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
+                    self.hir_map
+                        .def_path(LocalDefId { local_def_index: owner_def_index })
+                        .to_string_no_crate(),
                     max,
                     missing_items,
                     self.hir_ids_seen
@@ -159,8 +163,10 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
                     self.hir_map.node_to_string(hir_id),
-                    self.hir_map.def_path(DefId::local(hir_id.owner)).to_string_no_crate(),
-                    self.hir_map.def_path(DefId::local(owner)).to_string_no_crate()
+                    self.hir_map.def_path(hir_id.owner_local_def_id()).to_string_no_crate(),
+                    self.hir_map
+                        .def_path(LocalDefId { local_def_index: owner })
+                        .to_string_no_crate()
                 )
             });
         }

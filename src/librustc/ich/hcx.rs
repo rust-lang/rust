@@ -123,8 +123,8 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        if def_id.is_local() {
-            self.definitions.def_path_hash(def_id.index)
+        if let Some(def_id) = def_id.as_local() {
+            self.definitions.def_path_hash(def_id.local_def_index)
         } else {
             self.cstore.def_path_hash(def_id)
         }

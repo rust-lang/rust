@@ -164,9 +164,13 @@ impl DefId {
     }
 
     #[inline]
+    pub fn as_local(self) -> Option<LocalDefId> {
+        if self.is_local() { Some(LocalDefId { local_def_index: self.index }) } else { None }
+    }
+
+    #[inline]
     pub fn expect_local(self) -> LocalDefId {
-        assert!(self.is_local());
-        LocalDefId { local_def_index: self.index }
+        self.as_local().unwrap_or_else(|| panic!("DefId::expect_local: `{:?}` isn't local", self))
     }
 
     pub fn is_top_level_module(self) -> bool {
