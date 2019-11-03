@@ -11,7 +11,7 @@ use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
@@ -269,7 +269,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Const(ty, body_id)
             }
             ItemKind::Fn(_, FnSig { ref decl, header }, ref generics, ref body) => {
-                let fn_def_id = self.resolver.definitions().local_def_id(id);
+                let fn_def_id = self.resolver.definitions().local_def_id(id).expect_local();
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -287,7 +287,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| {
                             let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(&decl, Some((fn_def_id, idty)), true, ret_id)
+                            this.lower_fn_decl(
+                                &decl,
+                                Some((fn_def_id.to_def_id(), idty)),
+                                true,
+                                ret_id,
+                            )
                         },
                     );
                     let sig = hir::FnSig { decl, header: this.lower_fn_header(header) };
@@ -351,7 +356,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self_ty: ref ty,
                 items: ref impl_items,
             } => {
-                let def_id = self.resolver.definitions().local_def_id(id);
+                let def_id = self.resolver.definitions().local_def_id(id).expect_local();
 
                 // Lower the "impl header" first. This ordering is important
                 // for in-band lifetimes! Consider `'a` here:
@@ -648,7 +653,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
-        let def_id = self.resolver.definitions().local_def_id(i.id);
+        let def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
         hir::ForeignItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
@@ -749,7 +754,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {
-        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
+        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
 
         let (generics, kind) = match i.kind {
             AssocItemKind::Const(_, ref ty, ref default) => {
@@ -814,7 +819,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
-        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
+        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
@@ -1211,7 +1216,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         sig: &FnSig,
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
     ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
@@ -1223,7 +1228,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             |this, idty| {
                 this.lower_fn_decl(
                     &sig.decl,
-                    Some((fn_def_id, idty)),
+                    Some((fn_def_id.to_def_id(), idty)),
                     impl_trait_return_allow,
                     is_async,
                 )
