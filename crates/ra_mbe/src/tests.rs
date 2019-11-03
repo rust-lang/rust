@@ -126,7 +126,7 @@ fn test_expr_order() {
 "#,
     );
     let expanded = expand(&rules, "foo! { 1 + 1}");
-    let tree = token_tree_to_items(&expanded).unwrap().tree();
+    let tree = token_tree_to_items(&expanded).unwrap().0.tree();
 
     let dump = format!("{:#?}", tree.syntax());
     assert_eq_text!(
@@ -383,7 +383,7 @@ fn test_expand_to_item_list() {
             ",
     );
     let expansion = expand(&rules, "structs!(Foo, Bar);");
-    let tree = token_tree_to_items(&expansion).unwrap().tree();
+    let tree = token_tree_to_items(&expansion).unwrap().0.tree();
     assert_eq!(
         format!("{:#?}", tree.syntax()).trim(),
         r#"
@@ -501,7 +501,7 @@ fn test_tt_to_stmts() {
     );
 
     let expanded = expand(&rules, "foo!{}");
-    let stmts = token_tree_to_macro_stmts(&expanded).unwrap().tree();
+    let stmts = token_tree_to_macro_stmts(&expanded).unwrap().0.tree();
 
     assert_eq!(
         format!("{:#?}", stmts.syntax()).trim(),
@@ -946,7 +946,7 @@ fn test_vec() {
     );
 
     let expansion = expand(&rules, r#"vec![1u32,2];"#);
-    let tree = token_tree_to_expr(&expansion).unwrap().tree();
+    let tree = token_tree_to_expr(&expansion).unwrap().0.tree();
 
     assert_eq!(
         format!("{:#?}", tree.syntax()).trim(),
@@ -1436,8 +1436,8 @@ pub(crate) fn assert_expansion(
     };
     let (expanded_tree, expected_tree) = match kind {
         MacroKind::Items => {
-            let expanded_tree = token_tree_to_items(&expanded).unwrap().tree();
-            let expected_tree = token_tree_to_items(&expected).unwrap().tree();
+            let expanded_tree = token_tree_to_items(&expanded).unwrap().0.tree();
+            let expected_tree = token_tree_to_items(&expected).unwrap().0.tree();
 
             (
                 debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),
@@ -1446,8 +1446,8 @@ pub(crate) fn assert_expansion(
         }
 
         MacroKind::Stmts => {
-            let expanded_tree = token_tree_to_macro_stmts(&expanded).unwrap().tree();
-            let expected_tree = token_tree_to_macro_stmts(&expected).unwrap().tree();
+            let expanded_tree = token_tree_to_macro_stmts(&expanded).unwrap().0.tree();
+            let expected_tree = token_tree_to_macro_stmts(&expected).unwrap().0.tree();
 
             (
                 debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),

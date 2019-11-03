@@ -15,6 +15,7 @@ use crate::ExpandError;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Maps `tt::TokenId` to the relative range of the original token.
+#[derive(Debug, PartialEq, Eq)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     tokens: Vec<TextRange>,
@@ -32,6 +33,13 @@ impl std::default::Default for TokenMap {
     fn default() -> TokenMap {
         TokenMap { tokens: Default::default(), map_id: make_uniq_token_map_id() }
     }
+}
+
+/// Maps Relative range of the expanded syntax node to `tt::TokenId`
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct ExpandedRangeMap {
+    /// Maps `tt::TokenId` to the *relative* source range.
+    ranges: Vec<(TextRange, tt::TokenId)>,
 }
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
@@ -66,7 +74,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 fn fragment_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
-) -> Result<Parse<SyntaxNode>, ExpandError> {
+) -> Result<(Parse<SyntaxNode>, ExpandedRangeMap), ExpandError> {
     let tmp;
     let tokens = match tt {
         tt::Subtree { delimiter: tt::Delimiter::None, token_trees } => token_trees.as_slice(),
@@ -77,44 +85,55 @@ fn fragment_to_syntax_node(
     };
     let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(buffer.begin());
+    let mut range_map = ExpandedRangeMap::default();
+    let mut tree_sink = TtTreeSink::new(buffer.begin(), &mut range_map);
     ra_parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
     //FIXME: would be cool to report errors
     let parse = tree_sink.inner.finish();
-    Ok(parse)
+    Ok((parse, range_map))
 }
 
 /// Parses the token tree (result of macro expansion) to an expression
-pub fn token_tree_to_expr(tt: &tt::Subtree) -> Result<Parse<ast::Expr>, ExpandError> {
-    let parse = fragment_to_syntax_node(tt, Expr)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
+pub fn token_tree_to_expr(
+    tt: &tt::Subtree,
+) -> Result<(Parse<ast::Expr>, ExpandedRangeMap), ExpandError> {
+    let (parse, map) = fragment_to_syntax_node(tt, Expr)?;
+    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
 }
 
 /// Parses the token tree (result of macro expansion) to a Pattern
-pub fn token_tree_to_pat(tt: &tt::Subtree) -> Result<Parse<ast::Pat>, ExpandError> {
-    let parse = fragment_to_syntax_node(tt, Pattern)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
+pub fn token_tree_to_pat(
+    tt: &tt::Subtree,
+) -> Result<(Parse<ast::Pat>, ExpandedRangeMap), ExpandError> {
+    let (parse, map) = fragment_to_syntax_node(tt, Pattern)?;
+    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
 }
 
 /// Parses the token tree (result of macro expansion) to a Type
-pub fn token_tree_to_ty(tt: &tt::Subtree) -> Result<Parse<ast::TypeRef>, ExpandError> {
-    let parse = fragment_to_syntax_node(tt, Type)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
+pub fn token_tree_to_ty(
+    tt: &tt::Subtree,
+) -> Result<(Parse<ast::TypeRef>, ExpandedRangeMap), ExpandError> {
+    let (parse, map) = fragment_to_syntax_node(tt, Type)?;
+    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of stmts
-pub fn token_tree_to_macro_stmts(tt: &tt::Subtree) -> Result<Parse<ast::MacroStmts>, ExpandError> {
-    let parse = fragment_to_syntax_node(tt, Statements)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
+pub fn token_tree_to_macro_stmts(
+    tt: &tt::Subtree,
+) -> Result<(Parse<ast::MacroStmts>, ExpandedRangeMap), ExpandError> {
+    let (parse, map) = fragment_to_syntax_node(tt, Statements)?;
+    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of items
-pub fn token_tree_to_items(tt: &tt::Subtree) -> Result<Parse<ast::MacroItems>, ExpandError> {
-    let parse = fragment_to_syntax_node(tt, Items)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
+pub fn token_tree_to_items(
+    tt: &tt::Subtree,
+) -> Result<(Parse<ast::MacroItems>, ExpandedRangeMap), ExpandError> {
+    let (parse, map) = fragment_to_syntax_node(tt, Items)?;
+    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
 }
 
 impl TokenMap {
@@ -130,6 +149,28 @@ impl TokenMap {
         let id = self.tokens.len();
         self.tokens.push(relative_range);
         tt::TokenId::new(id as u32, self.map_id)
+    }
+}
+
+impl ExpandedRangeMap {
+    fn set(&mut self, relative_range: TextRange, token_id: &tt::TokenId) {
+        self.ranges.push((relative_range, token_id.clone()))
+    }
+
+    pub fn ranges(&self, to: &TokenMap) -> Vec<(TextRange, TextRange)> {
+        self.ranges
+            .iter()
+            .filter_map(|(r, tid)| {
+                if to.map_id == tid.map_id() {
+                    return None;
+                }
+                if let Some(to_range) = to.relative_range_of(*tid) {
+                    Some((*r, to_range))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -279,6 +320,8 @@ struct TtTreeSink<'a> {
     cursor: Cursor<'a>,
     text_pos: TextUnit,
     inner: SyntaxTreeBuilder,
+    range_marker: Option<(TextRange, tt::TokenId)>,
+    range_map: &'a mut ExpandedRangeMap,
 
     // Number of roots
     // Use for detect ill-form tree which is not single root
@@ -286,13 +329,15 @@ struct TtTreeSink<'a> {
 }
 
 impl<'a> TtTreeSink<'a> {
-    fn new(cursor: Cursor<'a>) -> Self {
+    fn new(cursor: Cursor<'a>, range_map: &'a mut ExpandedRangeMap) -> Self {
         TtTreeSink {
             buf: String::new(),
             cursor,
             text_pos: 0.into(),
             inner: SyntaxTreeBuilder::default(),
             roots: smallvec::SmallVec::new(),
+            range_map,
+            range_marker: None,
         }
     }
 }
@@ -317,6 +362,8 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             return;
         }
 
+        let mut last_ident = None;
+
         for _ in 0..n_tokens {
             if self.cursor.eof() {
                 break;
@@ -326,6 +373,10 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     self.cursor = self.cursor.bump();
                     self.buf += &format!("{}", leaf);
+
+                    if let tt::Leaf::Ident(ident) = leaf {
+                        last_ident = Some(ident);
+                    }
                 }
                 Some(tt::TokenTree::Subtree(subtree)) => {
                     self.cursor = self.cursor.subtree().unwrap();
@@ -345,6 +396,14 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         self.buf.clear();
         self.inner.token(kind, text);
 
+        // Mark the range if needed
+        if let Some((range, token_id)) = self.range_marker.as_mut() {
+            if let Some(ident) = last_ident {
+                *range = TextRange::offset_len(range.start(), TextUnit::of_str(&ident.text));
+                *token_id = ident.id;
+            }
+        }
+
         // Add whitespace between adjoint puncts
         let next = self.cursor.bump();
         if let (
@@ -354,12 +413,22 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         {
             if curr.spacing == tt::Spacing::Alone {
                 self.inner.token(WHITESPACE, " ".into());
+                self.text_pos += TextUnit::of_char(' ');
             }
         }
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
         self.inner.start_node(kind);
+
+        self.range_marker = if kind == IDENT {
+            Some((
+                TextRange::offset_len(self.text_pos, TextUnit::from_usize(0)),
+                tt::TokenId::unspecified(),
+            ))
+        } else {
+            None
+        };
 
         match self.roots.last_mut() {
             None | Some(0) => self.roots.push(1),
@@ -370,6 +439,12 @@ impl<'a> TreeSink for TtTreeSink<'a> {
     fn finish_node(&mut self) {
         self.inner.finish_node();
         *self.roots.last_mut().unwrap() -= 1;
+
+        if let Some(range) = self.range_marker {
+            if range.1 != tt::TokenId::unspecified() {
+                self.range_map.set(range.0, &range.1)
+            }
+        }
     }
 
     fn error(&mut self, error: ParseError) {

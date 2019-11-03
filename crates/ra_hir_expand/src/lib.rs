@@ -16,7 +16,7 @@ use std::hash::{Hash, Hasher};
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxNode,
+    SyntaxNode, TextRange,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -109,6 +109,39 @@ impl MacroCallId {
     pub fn as_file(self, kind: MacroFileKind) -> HirFileId {
         let macro_file = MacroFile { macro_call_id: self, macro_file_kind: kind };
         macro_file.into()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// ExpansionInfo mainly describle how to map text range between src and expaned macro
+pub struct ExpansionInfo {
+    pub arg_map: Vec<(TextRange, TextRange)>,
+    pub def_map: Vec<(TextRange, TextRange)>,
+}
+
+impl ExpansionInfo {
+    pub fn find_range(
+        &self,
+        from: TextRange,
+        (arg_file_id, def_file_id): (HirFileId, HirFileId),
+    ) -> Option<(HirFileId, TextRange)> {
+        for (src, dest) in &self.arg_map {
+            dbg!((src, *dest, "arg_map"));
+            if src.is_subrange(&from) {
+                dbg!((arg_file_id, *dest));
+                return Some((arg_file_id, *dest));
+            }
+        }
+
+        for (src, dest) in &self.def_map {
+            dbg!((src, *dest, "def_map"));
+            if src.is_subrange(&from) {
+                dbg!((arg_file_id, *dest));
+                return Some((def_file_id, *dest));
+            }
+        }
+
+        None
     }
 }
 
