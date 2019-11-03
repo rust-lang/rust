@@ -603,6 +603,93 @@ impl<T> Vec<T> {
         self.buf.try_reserve_exact(self.len, additional)
     }
 
+    /// Allows re-interpreting the type of a Vec to reuse the allocation.
+    /// The vector is emptied and any values contained in it will be dropped.
+    /// The target type must have the same size and alignment as the source type.
+    /// This API doesn't transmute any values of T to U, because it makes sure
+    /// to empty the vector before any unsafe operations.
+    ///
+    /// # Example
+    ///
+    /// This API is useful especially when using `Vec` as a
+    /// temporary storage for data with short lifetimes.
+    /// By recycling the allocation, the `Vec` is able to safely
+    /// outlive the lifetime of the type that was stored in it.
+    /// ```
+    /// # use std::error::Error;
+    /// #
+    /// # struct Stream;
+    /// #
+    /// # impl Stream {
+    /// #     fn new() -> Self {
+    /// #         Stream
+    /// #     }
+    /// #
+    /// #     fn next(&mut self) -> Option<&[u8]> {
+    /// #         Some(&b"foo"[..])
+    /// #     }
+    /// # }
+    /// #
+    /// # struct DbConnection;
+    /// #
+    /// # impl DbConnection {
+    /// #     fn new() -> Self {
+    /// #         DbConnection
+    /// #     }
+    /// #
+    /// #     fn insert(&mut self, _objects: &[Object<'_>]) -> Result<(), Box<dyn Error>> {
+    /// #         Ok(())
+    /// #     }
+    /// # }
+    /// #
+    /// # struct Object<'a> {
+    /// #     reference: &'a [u8],
+    /// # }
+    /// #
+    /// # fn deserialize<'a>(input: &'a [u8], output: &mut Vec<Object<'a>>) -> Result<(), Box<dyn Error>> {
+    /// #     output.push(Object { reference: input });
+    /// #     Ok(())
+    /// # }
+    /// #
+    /// # fn processor() -> Result<(), Box<dyn Error>> {
+    /// #    let mut stream = Stream::new();
+    /// #    let mut db_connection = DbConnection::new();
+    ///     let mut objects: Vec<Object<'static>> = Vec::new();
+    ///
+    ///     while let Some(byte_chunk) = stream.next() { // byte_chunk only lives this scope
+    ///         let mut objects_temp: Vec<Object<'_>> = objects.recycle();
+    ///
+    ///         // Zero-copy parsing; Object has references to chunk
+    ///         deserialize(byte_chunk, &mut objects_temp)?;
+    ///         db_connection.insert(&objects_temp)?;
+    ///
+    ///         objects = objects_temp.recycle();
+    ///     } // byte_chunk lifetime ends
+    /// #
+    /// #    Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if the size or alignment of the source and target types don't match.
+    ///
+    /// # Note about stabilization
+    /// The size and alignment contract is enforceable at compile-time,
+    /// so we will want to wait until compile-time asserts become stable and
+    /// modify this API to cause a compile error instead of panicking
+    /// before stabilizing it.
+    #[unstable(feature = "recycle_vec", reason = "new API", issue = "0")]
+    pub fn recycle<U>(mut self) -> Vec<U> {
+        self.truncate(0);
+        // TODO make these const asserts once it becomes possible
+        assert_eq!(core::mem::size_of::<T>(), core::mem::size_of::<U>());
+        assert_eq!(core::mem::align_of::<T>(), core::mem::align_of::<U>());
+        let capacity = self.capacity();
+        let ptr = self.as_mut_ptr() as *mut U;
+        core::mem::forget(self);
+        unsafe { Vec::from_raw_parts(ptr, 0, capacity) }
+    }
+
     /// Shrinks the capacity of the vector as much as possible.
     ///
     /// It will drop down as close as possible to the length but the allocator
