@@ -595,7 +595,7 @@ impl LoweringContext<'_> {
         };
 
         // `::std::task::Poll::Ready(result) => break result`
-        let loop_node_id = self.sess.next_node_id();
+        let loop_node_id = self.resolver.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);

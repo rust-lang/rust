@@ -18,7 +18,7 @@ use rustc_mir;
 use rustc_passes;
 use rustc_plugin;
 use rustc_privacy;
-use rustc_resolve;
+use rustc_resolve::{self, Resolver};
 use rustc_typeck;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
@@ -715,18 +715,18 @@ pub fn build_output_filenames(
 //    ambitious form of the closed RFC #1637. See also [#34511].
 //
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
-pub struct ReplaceBodyWithLoop<'a> {
+pub struct ReplaceBodyWithLoop<'a, 'b> {
     within_static_or_const: bool,
     nested_blocks: Option<Vec<ast::Block>>,
-    sess: &'a Session,
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a> ReplaceBodyWithLoop<'a> {
-    pub fn new(sess: &'a Session) -> ReplaceBodyWithLoop<'a> {
+impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
+    pub fn new(resolver: &'a mut Resolver<'b>) -> ReplaceBodyWithLoop<'a, 'b> {
         ReplaceBodyWithLoop {
             within_static_or_const: false,
             nested_blocks: None,
-            sess
+            resolver,
         }
     }
 
@@ -788,11 +788,12 @@ impl<'a> ReplaceBodyWithLoop<'a> {
     }
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
-        sig.header.constness.node == ast::Constness::Const || Self::should_ignore_fn(&sig.decl)
+        sig.header.constness.node == ast::Constness::Const ||
+            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl)
     }
 }
 
-impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
+impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
@@ -827,40 +828,40 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn visit_block(&mut self, b: &mut P<ast::Block>) {
         fn stmt_to_block(rules: ast::BlockCheckMode,
                          s: Option<ast::Stmt>,
-                         sess: &Session) -> ast::Block {
+                         resolver: &mut Resolver<'_>) -> ast::Block {
             ast::Block {
                 stmts: s.into_iter().collect(),
                 rules,
-                id: sess.next_node_id(),
+                id: resolver.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
             }
         }
 
-        fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
+        fn block_to_stmt(b: ast::Block, resolver: &mut Resolver<'_>) -> ast::Stmt {
             let expr = P(ast::Expr {
-                id: sess.next_node_id(),
+                id: resolver.next_node_id(),
                 kind: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
             });
 
             ast::Stmt {
-                id: sess.next_node_id(),
+                id: resolver.next_node_id(),
                 kind: ast::StmtKind::Expr(expr),
                 span: syntax_pos::DUMMY_SP,
             }
         }
 
-        let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.sess);
+        let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
         let loop_expr = P(ast::Expr {
             kind: ast::ExprKind::Loop(P(empty_block), None),
-            id: self.sess.next_node_id(),
+            id: self.resolver.next_node_id(),
             span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
         });
 
         let loop_stmt = ast::Stmt {
-            id: self.sess.next_node_id(),
+            id: self.resolver.next_node_id(),
             span: syntax_pos::DUMMY_SP,
             kind: ast::StmtKind::Expr(loop_expr),
         };
@@ -878,7 +879,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
                     // we put a Some in there earlier with that replace(), so this is valid
                     let new_blocks = self.nested_blocks.take().unwrap();
                     self.nested_blocks = old_blocks;
-                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, &self.sess)));
+                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
                 }
 
                 let mut new_block = ast::Block {
@@ -892,7 +893,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
                         old_blocks.push(new_block);
                     }
 
-                    stmt_to_block(b.rules, Some(loop_stmt), self.sess)
+                    stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
                 } else {
                     //push `loop {}` onto the end of our fresh block and yield that
                     new_block.stmts.push(loop_stmt);

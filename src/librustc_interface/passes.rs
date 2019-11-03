@@ -395,7 +395,7 @@ fn configure_and_expand_inner<'a>(
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
     if sess.opts.actually_rustdoc {
-        util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
+        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
 
     let has_proc_macro_decls = time(sess, "AST validation", || {
