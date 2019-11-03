@@ -622,7 +622,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             for &var_id in upvars.keys() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id.to_local(),
+                    closure_expr_id: closure_def_id.assert_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,

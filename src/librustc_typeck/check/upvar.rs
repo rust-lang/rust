@@ -133,7 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     var_path: ty::UpvarPath {
                         hir_id: var_hir_id,
                     },
-                    closure_expr_id: LocalDefId::from_def_id(closure_def_id),
+                    closure_expr_id: closure_def_id.assert_local(),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
                 // Adding the upvar Id to the list of Upvars, which will be added
@@ -261,7 +261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let upvar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
-                        closure_expr_id: LocalDefId::from_def_id(closure_def_id),
+                        closure_expr_id: closure_def_id.assert_local(),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 

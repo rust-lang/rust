@@ -139,8 +139,11 @@ impl DefId {
     }
 
     #[inline]
-    pub fn to_local(self) -> LocalDefId {
-        LocalDefId::from_def_id(self)
+    pub fn assert_local(self) -> LocalDefId {
+        assert!(self.is_local());
+        LocalDefId {
+            index: self.index,
+        }
     }
 
     pub fn describe_as_module(&self, tcx: TyCtxt<'_>) -> String {
@@ -167,14 +170,6 @@ pub struct LocalDefId {
 }
 
 impl LocalDefId {
-    #[inline]
-    pub fn from_def_id(def_id: DefId) -> LocalDefId {
-        assert!(def_id.is_local());
-        LocalDefId {
-            index: def_id.index,
-        }
-    }
-
     #[inline]
     pub fn to_def_id(self) -> DefId {
         DefId {

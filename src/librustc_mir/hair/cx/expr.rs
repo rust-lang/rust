@@ -10,7 +10,6 @@ use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
-use rustc::hir::def_id::LocalDefId;
 use rustc::mir::BorrowKind;
 use syntax_pos::Span;
 
@@ -984,7 +983,7 @@ fn convert_var(
             let closure_def_id = cx.body_owner;
             let upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath {hir_id: var_hir_id},
-                closure_expr_id: LocalDefId::from_def_id(closure_def_id),
+                closure_expr_id: closure_def_id.assert_local(),
             };
             let var_ty = cx.tables().node_type(var_hir_id);
 
@@ -1185,7 +1184,7 @@ fn capture_upvar<'tcx>(
 ) -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id).to_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id).assert_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);

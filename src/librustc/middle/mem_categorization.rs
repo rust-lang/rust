@@ -59,7 +59,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use crate::middle::region;
-use crate::hir::def_id::{DefId, LocalDefId};
+use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::infer::InferCtxt;
 use crate::hir::def::{CtorOf, Res, DefKind, CtorKind};
@@ -723,7 +723,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let closure_expr_def_id = self.body_owner;
         let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(
-            LocalDefId::from_def_id(closure_expr_def_id),
+            closure_expr_def_id.assert_local(),
         );
         let ty = self.node_ty(fn_hir_id)?;
         let kind = match ty.kind {
@@ -747,7 +747,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_id },
-            closure_expr_id: closure_expr_def_id.to_local(),
+            closure_expr_id: closure_expr_def_id.assert_local(),
         };
 
         let var_ty = self.node_ty(var_id)?;

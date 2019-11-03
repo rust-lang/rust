@@ -449,7 +449,7 @@ impl RecoverKey<'tcx> for DefId {
 
 impl RecoverKey<'tcx> for LocalDefId {
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        dep_node.extract_def_id(tcx).map(|id| id.to_local())
+        dep_node.extract_def_id(tcx).map(|id| id.assert_local())
     }
 }
 
