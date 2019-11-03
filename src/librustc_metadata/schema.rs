@@ -1,4 +1,4 @@
-use crate::table::PerDefTable;
+use table::PerDefTable;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -13,7 +13,6 @@ use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
-
 use rustc_serialize::Encodable;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
@@ -22,6 +21,13 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
+
+crate use decoder::Metadata;
+crate use encoder::encode_metadata;
+
+mod decoder;
+mod encoder;
+mod table;
 
 crate fn rustc_version() -> String {
     format!("rustc {}",

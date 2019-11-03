@@ -2,7 +2,7 @@
 
 use crate::cstore::{self, CrateMetadata, MetadataBlob};
 use crate::schema::*;
-use crate::table::{FixedSizeEncoding, PerDefTable};
+use crate::schema::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
@@ -1358,7 +1358,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Get the `DepNodeIndex` corresponding this crate. The result of this
     /// method is cached in the `dep_node_index` field.
-    pub(super) fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
+    crate fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {
         let mut dep_node_index = self.dep_node_index.load();
 
         if unlikely!(dep_node_index == DepNodeIndex::INVALID) {

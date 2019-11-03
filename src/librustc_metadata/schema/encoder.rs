@@ -1,5 +1,5 @@
 use crate::schema::*;
-use crate::table::{FixedSizeEncoding, PerDefTable};
+use crate::schema::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};

@@ -1,5 +1,4 @@
 use crate::cstore::{self, LoadedMacro};
-use crate::encoder;
 use crate::link_args;
 use crate::native_libs;
 use crate::foreign_modules;
@@ -524,7 +523,7 @@ impl CrateStore for cstore::CStore {
     }
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
-        encoder::encode_metadata(tcx)
+        schema::encode_metadata(tcx)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

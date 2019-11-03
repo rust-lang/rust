@@ -1,4 +1,3 @@
-use crate::decoder::Metadata;
 use crate::schema::*;
 
 use rustc::hir::def_id::{DefId, DefIndex};
