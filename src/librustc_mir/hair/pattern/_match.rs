@@ -672,7 +672,15 @@ impl<'tcx> Constructor<'tcx> {
                     vec![self.clone()]
                 }
             }
-            FixedLenSlice(_) | VarLenSlice(_) => {
+            FixedLenSlice(self_len) => {
+                let overlaps = |c: &Constructor<'_>| match c {
+                    FixedLenSlice(other_len) => other_len == self_len,
+                    VarLenSlice(other_len) => other_len <= self_len,
+                    _ => false,
+                };
+                if other_ctors.iter().any(overlaps) { vec![] } else { vec![self.clone()] }
+            }
+            VarLenSlice(_) => {
                 let mut remaining_ctors = if let VarLenSlice(len) = self {
                     (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
                 } else {
