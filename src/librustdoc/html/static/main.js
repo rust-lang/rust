@@ -1222,7 +1222,7 @@ function getSearchElement() {
                 }
                 dst = dst[0];
                 if (window.location.pathname === dst.pathname) {
-                    addClass(document.getElementById("search"), "hidden");
+                    addClass(getSearchElement(), "hidden");
                     removeClass(main, "hidden");
                     document.location.href = dst.href;
                 }
@@ -2458,7 +2458,7 @@ function getSearchElement() {
     function putBackSearch(search_input) {
         if (search_input.value !== "") {
             addClass(main, "hidden");
-            removeClass(document.getElementById("search"), "hidden");
+            removeClass(getSearchElement(), "hidden");
             if (browserSupportsHistoryApi()) {
                 history.replaceState(search_input.value,
                                      "",
@@ -2557,6 +2557,53 @@ function getSearchElement() {
     }
 
     window.addSearchOptions = addSearchOptions;
+
+    function buildHelperPopup() {
+        var popup = document.createElement("aside");
+        addClass(popup, "hidden");
+        popup.id = "help";
+
+        var container = document.createElement("div");
+        var shortcuts = [
+            ["?", "Show this help dialog"],
+            ["S", "Focus the search field"],
+            ["↑", "Move up in search results"],
+            ["↓", "Move down in search results"],
+            ["↹", "Switch tab"],
+            ["&#9166;", "Go to active search result"],
+            ["+", "Expand all sections"],
+            ["-", "Collapse all sections"],
+        ].map(x => "<dt><kbd>" + x[0] + "</kbd></dt><dd>" + x[1] + "</dd>").join("");
+        var div_shortcuts = document.createElement("div");
+        addClass(div_shortcuts, "shortcuts");
+        div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
+
+        var infos = [
+            "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
+             restrict the search to a given type.",
+            "Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
+             <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
+             and <code>const</code>.",
+            "Search functions by type signature (e.g., <code>vec -> usize</code> or \
+             <code>* -> vec</code>)",
+            "Search multiple things at once by splitting your query with comma (e.g., \
+             <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
+            "You can look for items with an exact name by putting double quotes around \
+             your request: <code>\"string\"</code>",
+            "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
+        ].map(x => "<p>" + x + "</p>").join("");
+        var div_infos = document.createElement("div");
+        addClass(div_infos, "infos");
+        div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
+
+        container.appendChild(div_shortcuts);
+        container.appendChild(div_infos);
+
+        popup.appendChild(container);
+        insertAfter(popup, getSearchElement());
+    }
+
+    buildHelperPopup();
 }());
 
 // Sets the focus on the search bar at the top of the page
