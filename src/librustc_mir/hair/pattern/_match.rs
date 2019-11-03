@@ -658,7 +658,6 @@ impl<'tcx> Constructor<'tcx> {
     // anything in `other_ctors`.
     fn subtract_ctors(
         &self,
-        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         other_ctors: &Vec<Constructor<'tcx>>,
@@ -681,11 +680,7 @@ impl<'tcx> Constructor<'tcx> {
                 if other_ctors.iter().any(overlaps) { vec![] } else { vec![self.clone()] }
             }
             VarLenSlice(_) => {
-                let mut remaining_ctors = if let VarLenSlice(len) = self {
-                    (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
-                } else {
-                    vec![self.clone()]
-                };
+                let mut remaining_ctors = vec![self.clone()];
 
                 // For each used ctor, subtract from the current set of constructors.
                 // Naming: we remove the "neg" constructors from the "pos" ones.
@@ -702,6 +697,23 @@ impl<'tcx> Constructor<'tcx> {
                                         smallvec![]
                                     } else {
                                         smallvec![pos_ctor]
+                                    }
+                                }
+                                (VarLenSlice(pos_len), VarLenSlice(neg_len)) => {
+                                    if neg_len <= pos_len {
+                                        smallvec![]
+                                    } else {
+                                        (*pos_len..*neg_len).map(FixedLenSlice).collect()
+                                    }
+                                }
+                                (VarLenSlice(pos_len), FixedLenSlice(neg_len)) => {
+                                    if neg_len < pos_len {
+                                        smallvec![pos_ctor]
+                                    } else {
+                                        (*pos_len..*neg_len)
+                                            .map(FixedLenSlice)
+                                            .chain(Some(VarLenSlice(neg_len + 1)))
+                                            .collect()
                                     }
                                 }
                                 _ if pos_ctor == *neg_ctor => smallvec![],
@@ -1456,7 +1468,6 @@ impl<'tcx> IntRange<'tcx> {
 
 // A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
 struct MissingConstructors<'tcx> {
-    pcx: PatCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
@@ -1465,13 +1476,12 @@ struct MissingConstructors<'tcx> {
 
 impl<'tcx> MissingConstructors<'tcx> {
     fn new(
-        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         all_ctors: Vec<Constructor<'tcx>>,
         used_ctors: Vec<Constructor<'tcx>>,
     ) -> Self {
-        MissingConstructors { pcx, tcx, param_env, all_ctors, used_ctors }
+        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -1490,7 +1500,7 @@ impl<'tcx> MissingConstructors<'tcx> {
     /// Iterate over all_ctors \ used_ctors
     fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
         self.all_ctors.iter().flat_map(move |req_ctor| {
-            req_ctor.subtract_ctors(self.pcx, self.tcx, self.param_env, &self.used_ctors)
+            req_ctor.subtract_ctors(self.tcx, self.param_env, &self.used_ctors)
         })
     }
 }
@@ -1633,8 +1643,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // non-wildcard patterns in the current column. To determine if
         // the set is empty, we can check that `.peek().is_none()`, so
         // we only fully construct them on-demand, because they're rarely used and can be big.
-        let missing_ctors =
-            MissingConstructors::new(pcx, cx.tcx, cx.param_env, all_ctors, used_ctors);
+        let missing_ctors = MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, used_ctors);
 
         debug!(
             "missing_ctors.empty()={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
