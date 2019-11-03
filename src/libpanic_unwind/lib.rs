@@ -5,9 +5,8 @@
 //! essentially gets categorized into three buckets currently:
 //!
 //! 1. MSVC targets use SEH in the `seh.rs` file.
-//! 2. The 64-bit MinGW target half-uses SEH and half-use gcc-like information
-//!    in the `seh64_gnu.rs` module.
-//! 3. All other targets use libunwind/libgcc in the `gcc/mod.rs` module.
+//! 2. Emscripten uses C++ exceptions in the `emcc.rs` file.
+//! 3. All other targets use libunwind/libgcc in the `gcc.rs` file.
 //!
 //! More documentation about each implementation can be found in the respective
 //! module.
@@ -52,9 +51,6 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_env = "msvc")] {
         #[path = "seh.rs"]
         mod imp;
-    } else if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
-        #[path = "seh64_gnu.rs"]
-        mod imp;
     } else {
         // Rust runtime's startup objects depend on these symbols, so make them public.
         #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
@@ -65,7 +61,6 @@ cfg_if::cfg_if! {
 }
 
 mod dwarf;
-mod windows;
 
 // Entry point for catching an exception, implemented using the `try` intrinsic
 // in the compiler.

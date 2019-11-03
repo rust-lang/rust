@@ -1,7 +1,5 @@
 -include ../tools.mk
 
-# ignore-musl
-
 all: foo
 	$(call RUN,foo)
 
