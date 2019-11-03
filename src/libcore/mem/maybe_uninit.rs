@@ -527,19 +527,15 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```rust
     /// #![feature(maybe_uninit_ref)]
-    /// use ::std::mem::MaybeUninit;
+    /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// // Initialize `x`:
     /// unsafe { x.as_mut_ptr().write(vec![1, 2, 3]); }
-    /// /* The above line can also be done without unsafe:
-    /// x = MaybeUninit::new(vec![1, 2, 3]); // */
     /// // Now that our `MaybeUninit<_>` is known to be initialized, it is okay to
     /// // create a shared reference to it:
     /// let x: &Vec<u32> = unsafe {
-    ///     // # Safety
-    ///     //
-    ///     //   - `x` has been initialized.
+    ///     // Safety: `x` has been initialized.
     ///     x.get_ref()
     /// };
     /// assert_eq!(x, &vec![1, 2, 3]);
@@ -594,27 +590,25 @@ impl<T> MaybeUninit<T> {
     ///
     /// ```rust
     /// #![feature(maybe_uninit_ref)]
-    /// use ::std::mem::MaybeUninit;
+    /// use std::mem::MaybeUninit;
     ///
-    /// # unsafe extern "C" fn initialize_buffer (buf: *mut [u8; 2048]) { *buf = [0; 2048] }
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 2048]) { *buf = [0; 2048] }
     /// # #[cfg(FALSE)]
     /// extern "C" {
     ///     /// Initializes *all* the bytes of the input buffer.
-    ///     fn initialize_buffer (buf: *mut [u8; 2048]);
+    ///     fn initialize_buffer(buf: *mut [u8; 2048]);
     /// }
     ///
     /// let mut buf = MaybeUninit::<[u8; 2048]>::uninit();
     ///
     /// // Initialize `buf`:
     /// unsafe { initialize_buffer(buf.as_mut_ptr()); }
-    /// // Now we know that `buf` has been initialized; so we could `.assume_init()` it.
+    /// // Now we know that `buf` has been initialized, so we could `.assume_init()` it.
     /// // However, using `.assume_init()` may trigger a `memcpy` of the 2048 bytes.
     /// // To assert our buffer has been initialized without copying it, we upgrade
     /// // the `&mut MaybeUninit<[u8; 2048]>` to a `&mut [u8; 2048]`:
     /// let buf: &mut [u8; 2048] = unsafe {
-    ///     // # Safety
-    ///     //
-    ///     //   - `buf` has been initialized.
+    ///     // Safety: `buf` has been initialized.
     ///     buf.get_mut()
     /// };
     ///
