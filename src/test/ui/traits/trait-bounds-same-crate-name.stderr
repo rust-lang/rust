@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `main::a::Foo: main::a::Bar` is not satisfied
+  --> $DIR/trait-bounds-same-crate-name.rs:16:20
+   |
+LL |         a::try_foo(foo2);
+   |                    ^^^^ the trait `main::a::Bar` is not implemented for `main::a::Foo`
+   | 
+  ::: $DIR/auxiliary/crate_a1.rs:5:24
+   |
+LL | pub fn try_foo(x: impl Bar){}
+   |                        --- required by this bound in `main::a::try_foo`
+   |
+help: Trait impl with same name found
+  --> $DIR/auxiliary/crate_a2.rs:5:1
+   |
+LL | impl Bar for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: Perhaps two different versions of crate `crate_a2` are being used?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
