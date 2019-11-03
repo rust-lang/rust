@@ -101,6 +101,8 @@ endif
 else
 ifeq ($(UNAME),Darwin)
 	EXTRACFLAGS := -lresolv
+	EXTRACXXFLAGS := -lc++
+	EXTRARSCXXFLAGS := -lc++
 else
 ifeq ($(UNAME),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s
