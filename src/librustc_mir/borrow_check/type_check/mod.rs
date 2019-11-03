@@ -2008,7 +2008,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 &traits::Obligation::new(
                                     ObligationCause::new(
                                         span,
-                                        self.tcx().hir().def_index_to_hir_id(self.mir_def_id.index),
+                                        self.tcx()
+                                            .hir()
+                                            .local_def_id_to_hir_id(self.mir_def_id.expect_local()),
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
                                     self.param_env,

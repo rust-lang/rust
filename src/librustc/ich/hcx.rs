@@ -132,7 +132,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.definitions.def_path_hash(def_id.local_def_index)
+        self.definitions.def_path_hash(def_id)
     }
 
     #[inline]

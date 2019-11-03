@@ -1438,8 +1438,8 @@ impl EncodeContext<'tcx> {
             .into_iter()
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&def_index| {
-                    tcx.hir().definitions().def_path_hash(def_index)
+                impls.sort_by_cached_key(|&index| {
+                    tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
                 });
 
                 TraitImpls {

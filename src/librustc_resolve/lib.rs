@@ -37,7 +37,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -1015,9 +1015,9 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
 
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
-        match id.krate {
-            LOCAL_CRATE => self.definitions.def_key(id.index).parent,
-            _ => self.cstore().def_key(id).parent,
+        match id.as_local() {
+            Some(id) => self.definitions.def_key(id).parent,
+            None => self.cstore().def_key(id).parent,
         }
         .map(|index| DefId { index, ..id })
     }
@@ -1027,7 +1027,11 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// the resolver is no longer needed as all the relevant information is inline.
 impl rustc_ast_lowering::Resolver for Resolver<'_> {
     fn def_key(&mut self, id: DefId) -> DefKey {
-        if id.is_local() { self.definitions().def_key(id.index) } else { self.cstore().def_key(id) }
+        if let Some(id) = id.as_local() {
+            self.definitions().def_key(id)
+        } else {
+            self.cstore().def_key(id)
+        }
     }
 
     fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {

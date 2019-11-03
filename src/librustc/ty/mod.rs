@@ -3096,9 +3096,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     fn expansion_that_defined(self, scope: DefId) -> ExpnId {
-        match scope.krate {
-            LOCAL_CRATE => self.hir().definitions().expansion_that_defined(scope.index),
-            _ => ExpnId::root(),
+        match scope.as_local() {
+            Some(scope) => self.hir().definitions().expansion_that_defined(scope),
+            None => ExpnId::root(),
         }
     }
 

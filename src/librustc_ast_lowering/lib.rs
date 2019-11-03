@@ -412,7 +412,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     UseTreeKind::Simple(_, id1, id2) => {
                         for &id in &[id1, id2] {
                             self.lctx.resolver.definitions().create_def_with_parent(
-                                owner.local_def_index,
+                                owner,
                                 id,
                                 DefPathData::Misc,
                                 ExpnId::root(),
@@ -642,15 +642,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
 
             *local_id_counter += 1;
-            let owner = this
-                .resolver
-                .definitions()
-                .opt_local_def_id(owner)
-                .expect(
-                    "you forgot to call `create_def_with_parent` or are lowering node-IDs \
-                     that do not belong to the current owner",
-                )
-                .expect_local();
+            let owner = this.resolver.definitions().opt_local_def_id(owner).expect(
+                "you forgot to call `create_def_with_parent` or are lowering node-IDs \
+                 that do not belong to the current owner",
+            );
 
             hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
         })
@@ -777,7 +772,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Add a definition for the in-band lifetime def.
         self.resolver.definitions().create_def_with_parent(
-            parent_def_id.local_def_index,
+            parent_def_id,
             node_id,
             DefPathData::LifetimeNs(str_name),
             ExpnId::root(),
@@ -1056,7 +1051,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let impl_trait_node_id = self.resolver.next_node_id();
                     let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
                     self.resolver.definitions().create_def_with_parent(
-                        parent_def_id.local_def_index,
+                        parent_def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
@@ -1122,7 +1117,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             // Add a definition for the in-band const def.
                             self.resolver.definitions().create_def_with_parent(
-                                parent_def_id.local_def_index,
+                                parent_def_id,
                                 node_id,
                                 DefPathData::AnonConst,
                                 ExpnId::root(),
@@ -1560,7 +1555,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let hir_id =
                         self.context.lower_node_id_with_owner(def_node_id, self.opaque_ty_id);
                     self.context.resolver.definitions().create_def_with_parent(
-                        self.parent.local_def_index,
+                        self.parent,
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().name),
                         ExpnId::root(),

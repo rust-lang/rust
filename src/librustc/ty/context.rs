@@ -1288,7 +1288,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if let Some(def_id) = def_id.as_local() {
-            self.definitions.def_path_hash(def_id.local_def_index)
+            self.definitions.def_path_hash(def_id)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -2753,18 +2753,15 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
 
     providers.lookup_stability = |tcx, id| {
-        assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
         tcx.stability().local_stability(id)
     };
     providers.lookup_const_stability = |tcx, id| {
-        assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
         tcx.stability().local_const_stability(id)
     };
     providers.lookup_deprecation_entry = |tcx, id| {
-        assert_eq!(id.krate, LOCAL_CRATE);
-        let id = tcx.hir().definitions().def_index_to_hir_id(id.index);
+        let id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
         tcx.stability().local_deprecation_entry(id)
     };
     providers.extern_mod_stmt_cnum = |tcx, id| {

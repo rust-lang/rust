@@ -4,7 +4,7 @@ use rustc_ast::ast::*;
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, FnKind};
 use rustc_expand::expand::AstFragment;
-use rustc_hir::def_id::DefIndex;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
@@ -21,18 +21,18 @@ crate fn collect_definitions(
 /// Creates `DefId`s for nodes in the AST.
 struct DefCollector<'a> {
     definitions: &'a mut Definitions,
-    parent_def: DefIndex,
+    parent_def: LocalDefId,
     expansion: ExpnId,
 }
 
 impl<'a> DefCollector<'a> {
-    fn create_def(&mut self, node_id: NodeId, data: DefPathData, span: Span) -> DefIndex {
+    fn create_def(&mut self, node_id: NodeId, data: DefPathData, span: Span) -> LocalDefId {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
         self.definitions.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
     }
 
-    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
+    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
         let orig_parent_def = std::mem::replace(&mut self.parent_def, parent_def);
         f(self);
         self.parent_def = orig_parent_def;
