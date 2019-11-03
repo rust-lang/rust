@@ -5,6 +5,8 @@ set -ex
 export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
 
+rustup component add rustc-dev
+
 cargo build
 cargo test --verbose -- --nocapture
 
