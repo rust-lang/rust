@@ -4,6 +4,7 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
+#![feature(try_blocks)]
 #![deny(warnings)]
 
 use toml;
@@ -380,11 +381,14 @@ impl Builder {
     /// If a tool does not pass its tests, don't ship it.
     /// Right now, we do this only for Miri.
     fn check_toolstate(&mut self) {
-        // Get the toolstate for this rust revision.
-        let toolstates = File::open(self.input.join("toolstates-linux.json"))
-            .expect("failed to open toolstates file");
-        let toolstates: HashMap<String, String> = serde_json::from_reader(&toolstates)
-            .expect("toolstates file contains malformed JSON");
+        let toolstates: Option<HashMap<String, String>> = try {
+            let toolstates = File::open(self.input.join("toolstates-linux.json")).ok()?;
+            serde_json::from_reader(&toolstates).ok()?
+        };
+        let toolstates = toolstates.unwrap_or_else(|| {
+            println!("WARNING: `toolstates-linux.json` missing; assuming all tools failed");
+            HashMap::default() // Use empty map if anything went wrong.
+        });
         // Mark some tools as missing based on toolstate.
         if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
             println!("Miri tests are not passing, removing component");
