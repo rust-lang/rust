@@ -19,3 +19,7 @@ test_utils = { path = "../test_utils" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
 ra_cfg = { path = "../ra_cfg" }
 tt = { path = "../ra_tt", package = "ra_tt" }
+
+[dev-dependencies]
+insta = "0.12.0"
+

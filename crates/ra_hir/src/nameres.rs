@@ -47,9 +47,6 @@
 //! path and, upon success, we run macro expansion and "collect module" phase
 //! on the result
 
-#[cfg(test)]
-mod tests;
-
 pub use hir_def::nameres::{
     per_ns::{Namespace, PerNs},
     raw::ImportId,

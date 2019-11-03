@@ -6,6 +6,9 @@ pub mod per_ns;
 pub mod collector;
 pub mod mod_resolution;
 
+#[cfg(test)]
+mod tests;
+
 use std::sync::Arc;
 
 use hir_expand::{diagnostics::DiagnosticSink, name::Name, MacroDefId};

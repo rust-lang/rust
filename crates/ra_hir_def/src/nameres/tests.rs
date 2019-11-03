@@ -1,23 +1,24 @@
-mod macros;
 mod globs;
 mod incremental;
-mod primitives;
+mod macros;
 mod mod_resolution;
+mod primitives;
 
 use std::sync::Arc;
 
-use hir_def::{db::DefDatabase2, nameres::*, CrateModuleId};
 use insta::assert_snapshot;
-use ra_db::SourceDatabase;
+use ra_db::{fixture::WithFixture, SourceDatabase};
 // use test_utils::covers;
 
-use crate::mock::{CrateGraphFixture, MockDatabase};
+use crate::{db::DefDatabase2, nameres::*, test_db::TestDB, CrateModuleId};
 
-fn compute_crate_def_map(fixture: &str, graph: Option<CrateGraphFixture>) -> Arc<CrateDefMap> {
-    let mut db = MockDatabase::with_files(fixture);
-    if let Some(graph) = graph {
-        db.set_crate_graph_from_fixture(graph);
-    }
+fn def_map(fixtute: &str) -> String {
+    let dm = compute_crate_def_map(fixtute);
+    render_crate_def_map(&dm)
+}
+
+fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
+    let db = TestDB::with_files(fixture);
     let krate = db.crate_graph().iter().next().unwrap();
     db.crate_def_map(krate)
 }
@@ -63,16 +64,6 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
             go(buf, map, &path, *child);
         }
     }
-}
-
-fn def_map(fixtute: &str) -> String {
-    let dm = compute_crate_def_map(fixtute, None);
-    render_crate_def_map(&dm)
-}
-
-fn def_map_with_crate_graph(fixture: &str, graph: CrateGraphFixture) -> String {
-    let dm = compute_crate_def_map(fixture, Some(graph));
-    render_crate_def_map(&dm)
 }
 
 #[test]
@@ -229,12 +220,12 @@ fn re_exports() {
 #[test]
 fn std_prelude() {
     // covers!(std_prelude);
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:test_crate
         use Foo::*;
 
-        //- /lib.rs
+        //- /lib.rs crate:test_crate
         mod prelude;
         #[prelude_import]
         use prelude::*;
@@ -242,10 +233,6 @@ fn std_prelude() {
         //- /prelude.rs
         pub enum Foo { Bar, Baz };
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["test_crate"]),
-            "test_crate": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
         ⋮crate
@@ -274,9 +261,9 @@ fn can_import_enum_variant() {
 
 #[test]
 fn edition_2015_imports() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:other_crate edition:2015
         mod foo;
         mod bar;
 
@@ -287,13 +274,9 @@ fn edition_2015_imports() {
         use bar::Bar;
         use other_crate::FromLib;
 
-        //- /lib.rs
+        //- /lib.rs crate:other_crate edition:2018
         struct FromLib;
         ",
-        crate_graph! {
-            "main": ("/main.rs", "2015", ["other_crate"]),
-            "other_crate": ("/lib.rs", "2018", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -338,18 +321,14 @@ fn item_map_using_self() {
 
 #[test]
 fn item_map_across_crates() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:test_crate
         use test_crate::Baz;
 
-        //- /lib.rs
+        //- /lib.rs crate:test_crate
         pub struct Baz;
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["test_crate"]),
-            "test_crate": ("/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -360,9 +339,9 @@ fn item_map_across_crates() {
 
 #[test]
 fn extern_crate_rename() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:alloc
         extern crate alloc as alloc_crate;
 
         mod alloc;
@@ -371,13 +350,9 @@ fn extern_crate_rename() {
         //- /sync.rs
         use alloc_crate::Arc;
 
-        //- /lib.rs
+        //- /lib.rs crate:alloc
         struct Arc;
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["alloc"]),
-            "alloc": ("/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -392,9 +367,9 @@ fn extern_crate_rename() {
 
 #[test]
 fn extern_crate_rename_2015_edition() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:alloc edition:2015
         extern crate alloc as alloc_crate;
 
         mod alloc;
@@ -403,13 +378,9 @@ fn extern_crate_rename_2015_edition() {
         //- /sync.rs
         use alloc_crate::Arc;
 
-        //- /lib.rs
+        //- /lib.rs crate:alloc
         struct Arc;
         ",
-        crate_graph! {
-            "main": ("/main.rs", "2015", ["alloc"]),
-            "alloc": ("/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map,
@@ -426,24 +397,21 @@ fn extern_crate_rename_2015_edition() {
 
 #[test]
 fn import_across_source_roots() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /lib.rs
+        //- /main.rs crate:main deps:test_crate
+        use test_crate::a::b::C;
+
+        //- root /test_crate/
+
+        //- /test_crate/lib.rs crate:test_crate
         pub mod a {
             pub mod b {
                 pub struct C;
             }
         }
 
-        //- root /main/
-
-        //- /main/main.rs
-        use test_crate::a::b::C;
         ",
-        crate_graph! {
-            "main": ("/main/main.rs", ["test_crate"]),
-            "test_crate": ("/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -454,12 +422,12 @@ fn import_across_source_roots() {
 
 #[test]
 fn reexport_across_crates() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:test_crate
         use test_crate::Baz;
 
-        //- /lib.rs
+        //- /lib.rs crate:test_crate
         pub use foo::Baz;
 
         mod foo;
@@ -467,10 +435,6 @@ fn reexport_across_crates() {
         //- /foo.rs
         pub struct Baz;
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["test_crate"]),
-            "test_crate": ("/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -481,19 +445,15 @@ fn reexport_across_crates() {
 
 #[test]
 fn values_dont_shadow_extern_crates() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         fn foo() {}
         use foo::Bar;
 
-        //- /foo/lib.rs
+        //- /foo/lib.rs crate:foo
         pub struct Bar;
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/foo/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -505,11 +465,12 @@ fn values_dont_shadow_extern_crates() {
 
 #[test]
 fn cfg_not_test() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r#"
-        //- /main.rs
+        //- /main.rs crate:main deps:std
         use {Foo, Bar, Baz};
-        //- /lib.rs
+
+        //- /lib.rs crate:std
         #[prelude_import]
         pub use self::prelude::*;
         mod prelude {
@@ -521,10 +482,6 @@ fn cfg_not_test() {
             pub struct Baz;
         }
         "#,
-        crate_graph! {
-            "main": ("/main.rs", ["std"]),
-            "std": ("/lib.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -537,11 +494,12 @@ fn cfg_not_test() {
 
 #[test]
 fn cfg_test() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r#"
-        //- /main.rs
+        //- /main.rs crate:main deps:std
         use {Foo, Bar, Baz};
-        //- /lib.rs
+
+        //- /lib.rs crate:std cfg:test,feature=foo,feature=bar,opt=42
         #[prelude_import]
         pub use self::prelude::*;
         mod prelude {
@@ -553,15 +511,6 @@ fn cfg_test() {
             pub struct Baz;
         }
         "#,
-        crate_graph! {
-            "main": ("/main.rs", ["std"]),
-            "std": ("/lib.rs", [], cfg = {
-                "test",
-                "feature" = "foo",
-                "feature" = "bar",
-                "opt" = "42",
-            }),
-        },
     );
 
     assert_snapshot!(map, @r###"
