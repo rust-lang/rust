@@ -867,6 +867,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
+        debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind, t2, t2.kind);
+
+        // helper functions
         fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             match (&a.kind, &b.kind) {
                 (a, b) if *a == *b => true,
@@ -902,6 +905,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             s.push_normal(ty.to_string());
         }
 
+        // process starts here
         match (&t1.kind, &t2.kind) {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
@@ -1052,12 +1056,47 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         return values;
                     }
 
-                    // We couldn't find anything in common, highlight everything.
-                    //     let x: Bar<Qux> = y::<Foo<Zar>>();
-                    (
-                        DiagnosticStyledString::highlighted(t1.to_string()),
-                        DiagnosticStyledString::highlighted(t2.to_string()),
-                    )
+                    // We can't find anything in common, highlight relevant part of type path.
+                    //     let x: foo::bar::Baz<Qux> = y:<foo::bar::Bar<Zar>>();
+                    //     foo::bar::Baz<Qux>
+                    //     foo::bar::Bar<Zar>
+                    //               -------- this part of the path is different
+
+                    let t1_str = t1.to_string();
+                    let t2_str = t2.to_string();
+                    let min_len = t1_str.len().min(t2_str.len());
+
+                    const SEPARATOR: &str = "::";
+                    let separator_len = SEPARATOR.len();
+                    let split_idx: usize =
+                        t1_str.split(SEPARATOR)
+                            .zip(t2_str.split(SEPARATOR))
+                            .take_while(|(mod1_str, mod2_str)| mod1_str == mod2_str)
+                            .map(|(mod_str, _)| mod_str.len() + separator_len)
+                            .sum();
+
+                    debug!("cmp: separator_len={}, split_idx={}, min_len={}",
+                        separator_len, split_idx, min_len
+                    );
+
+                    if split_idx >= min_len {
+                        // paths are identical, highlight everything
+                        (
+                            DiagnosticStyledString::highlighted(t1_str),
+                            DiagnosticStyledString::highlighted(t2_str)
+                        )
+                    } else {
+                        let (common, uniq1) = t1_str.split_at(split_idx);
+                        let (_, uniq2) = t2_str.split_at(split_idx);
+                        debug!("cmp: common={}, uniq1={}, uniq2={}", common, uniq1, uniq2);
+
+                        values.0.push_normal(common);
+                        values.0.push_highlighted(uniq1);
+                        values.1.push_normal(common);
+                        values.1.push_highlighted(uniq2);
+
+                        values
+                    }
                 }
             }
 
@@ -1120,6 +1159,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        debug!("note_type_err(diag={:?})", diag);
         let (expected_found, exp_found, is_simple_error) = match values {
             None => (None, None, false),
             Some(values) => {
@@ -1180,6 +1220,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     diag.note_unsuccessfull_coercion(found, expected);
                 }
                 (_, false, _) => {
+                    debug!(
+                        "note_type_err: exp_found={:?}, expected={:?} found={:?}",
+                        exp_found, expected, found
+                    );
                     if let Some(exp_found) = exp_found {
                         self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
                     }

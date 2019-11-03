@@ -34,7 +34,7 @@ pub struct SubDiagnostic {
     pub render_span: Option<MultiSpan>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DiagnosticStyledString(pub Vec<StringPart>);
 
 impl DiagnosticStyledString {
@@ -60,7 +60,7 @@ impl DiagnosticStyledString {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum StringPart {
     Normal(String),
     Highlighted(String),
