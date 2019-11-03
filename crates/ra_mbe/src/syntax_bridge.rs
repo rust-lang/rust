@@ -157,15 +157,16 @@ impl ExpandedRangeMap {
         self.ranges.push((relative_range, token_id.clone()))
     }
 
-    pub fn ranges(&self, to: &TokenMap) -> Vec<(TextRange, TextRange)> {
+    pub fn ranges(&self, to: &TokenMap, start: TextUnit) -> Vec<(TextRange, TextRange)> {
+        dbg!(&self.ranges);
         self.ranges
             .iter()
             .filter_map(|(r, tid)| {
-                if to.map_id == tid.map_id() {
+                if to.map_id != tid.map_id() {
                     return None;
                 }
                 if let Some(to_range) = to.relative_range_of(*tid) {
-                    Some((*r, to_range))
+                    Some((*r, TextRange::from_to(to_range.start() + start, to_range.end() + start)))
                 } else {
                     None
                 }
@@ -320,7 +321,6 @@ struct TtTreeSink<'a> {
     cursor: Cursor<'a>,
     text_pos: TextUnit,
     inner: SyntaxTreeBuilder,
-    range_marker: Option<(TextRange, tt::TokenId)>,
     range_map: &'a mut ExpandedRangeMap,
 
     // Number of roots
@@ -337,7 +337,6 @@ impl<'a> TtTreeSink<'a> {
             inner: SyntaxTreeBuilder::default(),
             roots: smallvec::SmallVec::new(),
             range_map,
-            range_marker: None,
         }
     }
 }
@@ -362,8 +361,6 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             return;
         }
 
-        let mut last_ident = None;
-
         for _ in 0..n_tokens {
             if self.cursor.eof() {
                 break;
@@ -371,12 +368,20 @@ impl<'a> TreeSink for TtTreeSink<'a> {
 
             match self.cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
+                    // Mark the range if needed
+                    if let tt::Leaf::Ident(ident) = leaf {
+                        if kind == IDENT {
+                            let range = TextRange::offset_len(
+                                self.text_pos + TextUnit::of_str(&self.buf),
+                                TextUnit::of_str(&ident.text),
+                            );
+                            let token_id = ident.id;
+                            self.range_map.set(range, &token_id);
+                        }
+                    }
+
                     self.cursor = self.cursor.bump();
                     self.buf += &format!("{}", leaf);
-
-                    if let tt::Leaf::Ident(ident) = leaf {
-                        last_ident = Some(ident);
-                    }
                 }
                 Some(tt::TokenTree::Subtree(subtree)) => {
                     self.cursor = self.cursor.subtree().unwrap();
@@ -396,14 +401,6 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         self.buf.clear();
         self.inner.token(kind, text);
 
-        // Mark the range if needed
-        if let Some((range, token_id)) = self.range_marker.as_mut() {
-            if let Some(ident) = last_ident {
-                *range = TextRange::offset_len(range.start(), TextUnit::of_str(&ident.text));
-                *token_id = ident.id;
-            }
-        }
-
         // Add whitespace between adjoint puncts
         let next = self.cursor.bump();
         if let (
@@ -421,15 +418,6 @@ impl<'a> TreeSink for TtTreeSink<'a> {
     fn start_node(&mut self, kind: SyntaxKind) {
         self.inner.start_node(kind);
 
-        self.range_marker = if kind == IDENT {
-            Some((
-                TextRange::offset_len(self.text_pos, TextUnit::from_usize(0)),
-                tt::TokenId::unspecified(),
-            ))
-        } else {
-            None
-        };
-
         match self.roots.last_mut() {
             None | Some(0) => self.roots.push(1),
             Some(ref mut n) => **n += 1,
@@ -439,12 +427,6 @@ impl<'a> TreeSink for TtTreeSink<'a> {
     fn finish_node(&mut self) {
         self.inner.finish_node();
         *self.roots.last_mut().unwrap() -= 1;
-
-        if let Some(range) = self.range_marker {
-            if range.1 != tt::TokenId::unspecified() {
-                self.range_map.set(range.0, &range.1)
-            }
-        }
     }
 
     fn error(&mut self, error: ParseError) {
