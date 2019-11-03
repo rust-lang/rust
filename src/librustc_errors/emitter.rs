@@ -1816,10 +1816,9 @@ impl FileWithAnnotatedLines {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
                     add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
                 }
-                if middle < ann.line_end - 1 {
-                    for line in ann.line_end - 1..ann.line_end {
-                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                    }
+                let line_end = ann.line_end - 1;
+                if middle < line_end {
+                    add_annotation_to_file(&mut output, file.clone(), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;
