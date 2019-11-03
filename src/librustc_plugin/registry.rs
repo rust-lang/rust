@@ -101,7 +101,6 @@ impl<'a> Registry<'a> {
 
     /// Register an attribute with an attribute type.
     ///
-    /// Registered attributes will bypass the `custom_attribute` feature gate.
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
     /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
     pub fn register_attribute(&mut self, name: Symbol, ty: AttributeType) {

@@ -44,8 +44,6 @@ pub enum NonMacroAttrKind {
     Registered,
     /// Single-segment custom attribute registered by a legacy plugin (`register_attribute`).
     LegacyPluginHelper,
-    /// Single-segment custom attribute not registered in any way (`#[my_attr]`).
-    Custom,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -333,7 +331,6 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::DeriveHelper => "derive helper attribute",
             NonMacroAttrKind::Registered => "explicitly registered attribute",
             NonMacroAttrKind::LegacyPluginHelper => "legacy plugin helper attribute",
-            NonMacroAttrKind::Custom => "custom attribute",
         }
     }
 }

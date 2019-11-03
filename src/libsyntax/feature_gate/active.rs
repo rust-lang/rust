@@ -265,9 +265,6 @@ declare_features! (
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (active, simd_ffi, "1.0.0", Some(27731), None),
 
-    /// Allows using custom attributes (RFC 572).
-    (active, custom_attribute, "1.0.0", Some(29642), None),
-
     /// Allows using non lexical lifetimes (RFC 2094).
     (active, nll, "1.0.0", Some(43234), None),
 

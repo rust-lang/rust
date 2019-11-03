@@ -732,20 +732,7 @@ impl<'a> Resolver<'a> {
             return Ok(binding);
         }
 
-        let determinacy = Determinacy::determined(determinacy == Determinacy::Determined || force);
-        if determinacy == Determinacy::Determined && macro_kind == Some(MacroKind::Attr) &&
-           self.session.features_untracked().custom_attribute {
-            // For single-segment attributes interpret determinate "no resolution" as a custom
-            // attribute. (Lexical resolution implies the first segment and attr kind should imply
-            // the last segment, so we are certainly working with a single-segment attribute here.)
-            assert!(ns == MacroNS);
-            let binding = (Res::NonMacroAttr(NonMacroAttrKind::Custom),
-                           ty::Visibility::Public, orig_ident.span, ExpnId::root())
-                           .to_name_binding(self.arenas);
-            Ok(binding)
-        } else {
-            Err(determinacy)
-        }
+        Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
     }
 
     crate fn finalize_macro_resolutions(&mut self) {
@@ -756,16 +743,7 @@ impl<'a> Resolver<'a> {
                     // Make sure compilation does not succeed if preferred macro resolution
                     // has changed after the macro had been expanded. In theory all such
                     // situations should be reported as ambiguity errors, so this is a bug.
-                    if initial_res == Res::NonMacroAttr(NonMacroAttrKind::Custom) {
-                        // Yeah, legacy custom attributes are implemented using forced resolution
-                        // (which is a best effort error recovery tool, basically), so we can't
-                        // promise their resolution won't change later.
-                        let msg = format!("inconsistent resolution for a macro: first {}, then {}",
-                                          initial_res.descr(), res.descr());
-                        this.session.span_err(span, &msg);
-                    } else {
-                        span_bug!(span, "inconsistent resolution for a macro");
-                    }
+                    span_bug!(span, "inconsistent resolution for a macro");
                 }
             } else {
                 // It's possible that the macro was unresolved (indeterminate) and silently

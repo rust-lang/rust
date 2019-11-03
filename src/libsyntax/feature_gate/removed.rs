@@ -67,6 +67,9 @@ declare_features! (
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, macro_reexport, "1.0.0", Some(29638), None,
      Some("subsumed by `pub use`")),
+    /// Allows using custom attributes (RFC 572).
+    (removed, custom_attribute, "1.0.0", Some(29642), None,
+     Some("removed in favor of `#![register_tool]` and `#![register_attr]`")),
     (removed, pushpop_unsafe, "1.2.0", None, None, None),
     (removed, needs_allocator, "1.4.0", Some(27389), None,
      Some("subsumed by `#![feature(allocator_internals)]`")),
