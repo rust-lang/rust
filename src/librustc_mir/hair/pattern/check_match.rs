@@ -181,7 +181,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, &inlined_arms, source);
+            let matrix = check_arms(cx, &inlined_arms, source);
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
@@ -248,12 +248,6 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 return;
             }
 
-            let matrix: Matrix<'_, '_> = inlined_arms
-                .iter()
-                .filter(|&&(_, guard)| guard.is_none())
-                .flat_map(|arm| &arm.0)
-                .map(|pat| PatStack::from_pattern(pat.0))
-                .collect();
             let scrut_ty = self.tables.node_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id);
         })
@@ -403,11 +397,11 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms<'tcx>(
+fn check_arms<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
-    arms: &[(Vec<(&super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+    arms: &[(Vec<(&'p super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
     source: hir::MatchSource,
-) {
+) -> Matrix<'p, 'tcx> {
     let mut seen = Matrix::empty();
     let mut catchall = None;
     for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
@@ -485,6 +479,7 @@ fn check_arms<'tcx>(
             }
         }
     }
+    seen
 }
 
 fn check_not_useful(
