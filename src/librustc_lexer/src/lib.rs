@@ -480,7 +480,7 @@ impl Cursor<'_> {
                     match self.first() {
                         'e' | 'E' => {
                             self.bump();
-                            empty_exponent = self.float_exponent().is_err()
+                            empty_exponent = !self.eat_float_exponent();
                         }
                         _ => (),
                     }
@@ -489,7 +489,7 @@ impl Cursor<'_> {
             }
             'e' | 'E' => {
                 self.bump();
-                let empty_exponent = self.float_exponent().is_err();
+                let empty_exponent = !self.eat_float_exponent();
                 Float { base, empty_exponent }
             }
             _ => Int { base, empty_int: false },
@@ -662,12 +662,14 @@ impl Cursor<'_> {
         has_digits
     }
 
-    fn float_exponent(&mut self) -> Result<(), ()> {
+    /// Eats the float exponent. Returns true if at least one digit was met,
+    /// and returns false otherwise.
+    fn eat_float_exponent(&mut self) -> bool {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
         if self.first() == '-' || self.first() == '+' {
             self.bump();
         }
-        if self.eat_decimal_digits() { Ok(()) } else { Err(()) }
+        self.eat_decimal_digits()
     }
 
     // Eats the suffix of the literal, e.g. "_u8".
