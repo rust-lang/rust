@@ -40,6 +40,7 @@ fn find_range_from_node(
         .and_then(|(files, expansion_info)| expansion_info.find_range(text_range, files))
         .unwrap_or((src, text_range));
 
+    // FIXME: handle recursive macro generated macro
     (file_id.original_file(db), text_range)
 }
 
