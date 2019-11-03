@@ -101,19 +101,20 @@ pub(crate) fn name_definition(
         }
     }
 
-    if let Some(nav) = named_target(file_id, &parent) {
+    if let Some(nav) = named_target(db, file_id, &parent) {
         return Some(vec![nav]);
     }
 
     None
 }
 
-fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
+fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
     match_ast! {
         match node {
             ast::StructDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -121,7 +122,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::EnumDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -129,7 +131,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::EnumVariant(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -137,7 +140,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::FnDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -145,7 +149,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::TypeAliasDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -153,7 +158,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::ConstDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -161,7 +167,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::StaticDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -169,7 +176,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::TraitDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -177,7 +185,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::RecordFieldDef(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -185,7 +194,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::Module(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -193,7 +203,8 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
             },
             ast::MacroCall(it) => {
                 Some(NavigationTarget::from_named(
-                    file_id,
+                    db,
+                    file_id.into(),
                     &it,
                     it.doc_comment_text(),
                     None,

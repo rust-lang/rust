@@ -29,6 +29,20 @@ pub struct NavigationTarget {
     docs: Option<String>,
 }
 
+fn find_range_from_node(
+    db: &RootDatabase,
+    src: hir::HirFileId,
+    node: &SyntaxNode,
+) -> (FileId, TextRange) {
+    let text_range = node.text_range();
+    let (file_id, text_range) = src
+        .parent_expansion(db)
+        .and_then(|(files, expansion_info)| expansion_info.find_range(text_range, files))
+        .unwrap_or((src, text_range));
+
+    (file_id.original_file(db), text_range)
+}
+
 impl NavigationTarget {
     /// When `focus_range` is specified, returns it. otherwise
     /// returns `full_range`
@@ -72,8 +86,12 @@ impl NavigationTarget {
         self.focus_range
     }
 
-    pub(crate) fn from_bind_pat(file_id: FileId, pat: &ast::BindPat) -> NavigationTarget {
-        NavigationTarget::from_named(file_id, pat, None, None)
+    pub(crate) fn from_bind_pat(
+        db: &RootDatabase,
+        file_id: FileId,
+        pat: &ast::BindPat,
+    ) -> NavigationTarget {
+        NavigationTarget::from_named(db, file_id.into(), pat, None, None)
     }
 
     pub(crate) fn from_symbol(db: &RootDatabase, symbol: FileSymbol) -> NavigationTarget {
@@ -96,7 +114,7 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         let parse = db.parse(file_id);
         let pat = pat.to_node(parse.tree().syntax());
-        NavigationTarget::from_bind_pat(file_id, &pat)
+        NavigationTarget::from_bind_pat(db, file_id, &pat)
     }
 
     pub(crate) fn from_self_param(
@@ -119,31 +137,47 @@ impl NavigationTarget {
 
     pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let src = module.definition_source(db);
-        let file_id = src.file_id.original_file(db);
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
+
         match src.ast {
             ModuleSource::SourceFile(node) => {
-                NavigationTarget::from_syntax(file_id, name, None, node.syntax(), None, None)
+                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
+
+                NavigationTarget::from_syntax(
+                    file_id,
+                    name,
+                    None,
+                    text_range,
+                    node.syntax(),
+                    None,
+                    None,
+                )
             }
-            ModuleSource::Module(node) => NavigationTarget::from_syntax(
-                file_id,
-                name,
-                None,
-                node.syntax(),
-                node.doc_comment_text(),
-                node.short_label(),
-            ),
+            ModuleSource::Module(node) => {
+                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
+
+                NavigationTarget::from_syntax(
+                    file_id,
+                    name,
+                    None,
+                    text_range,
+                    node.syntax(),
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
+            }
         }
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
-            let file_id = src.file_id.original_file(db);
+            let (file_id, text_range) = find_range_from_node(db, src.file_id, src.ast.syntax());
             return NavigationTarget::from_syntax(
                 file_id,
                 name,
                 None,
+                text_range,
                 src.ast.syntax(),
                 src.ast.doc_comment_text(),
                 src.ast.short_label(),
@@ -154,13 +188,25 @@ impl NavigationTarget {
 
     pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {
         let src = field.source(db);
-        let file_id = src.file_id.original_file(db);
         match src.ast {
-            FieldSource::Named(it) => {
-                NavigationTarget::from_named(file_id, &it, it.doc_comment_text(), it.short_label())
-            }
+            FieldSource::Named(it) => NavigationTarget::from_named(
+                db,
+                src.file_id,
+                &it,
+                it.doc_comment_text(),
+                it.short_label(),
+            ),
             FieldSource::Pos(it) => {
-                NavigationTarget::from_syntax(file_id, "".into(), None, it.syntax(), None, None)
+                let (file_id, text_range) = find_range_from_node(db, src.file_id, it.syntax());
+                NavigationTarget::from_syntax(
+                    file_id,
+                    "".into(),
+                    None,
+                    text_range,
+                    it.syntax(),
+                    None,
+                    None,
+                )
             }
         }
     }
@@ -172,7 +218,8 @@ impl NavigationTarget {
     {
         let src = def.source(db);
         NavigationTarget::from_named(
-            src.file_id.original_file(db),
+            db,
+            src.file_id,
             &src.ast,
             src.ast.doc_comment_text(),
             src.ast.short_label(),
@@ -212,10 +259,13 @@ impl NavigationTarget {
         impl_block: hir::ImplBlock,
     ) -> NavigationTarget {
         let src = impl_block.source(db);
+        let (file_id, text_range) = find_range_from_node(db, src.file_id, src.ast.syntax());
+
         NavigationTarget::from_syntax(
-            src.file_id.original_file(db),
+            file_id,
             "impl".into(),
             None,
+            text_range,
             src.ast.syntax(),
             None,
             None,
@@ -236,12 +286,7 @@ impl NavigationTarget {
     pub(crate) fn from_macro_def(db: &RootDatabase, macro_call: hir::MacroDef) -> NavigationTarget {
         let src = macro_call.source(db);
         log::debug!("nav target {:#?}", src.ast.syntax());
-        NavigationTarget::from_named(
-            src.file_id.original_file(db),
-            &src.ast,
-            src.ast.doc_comment_text(),
-            None,
-        )
+        NavigationTarget::from_named(db, src.file_id, &src.ast, src.ast.doc_comment_text(), None)
     }
 
     #[cfg(test)]
@@ -270,21 +315,35 @@ impl NavigationTarget {
 
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(
-        file_id: FileId,
+        db: &RootDatabase,
+        file_id: hir::HirFileId,
         node: &impl ast::NameOwner,
         docs: Option<String>,
         description: Option<String>,
     ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
-        let focus_range = node.name().map(|it| it.syntax().text_range());
-        NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax(), docs, description)
+
+        let focus_range = node.name().map(|it| find_range_from_node(db, file_id, it.syntax()).1);
+
+        let (file_id, full_range) = find_range_from_node(db, file_id, node.syntax());
+
+        NavigationTarget::from_syntax(
+            file_id,
+            name,
+            focus_range,
+            full_range,
+            node.syntax(),
+            docs,
+            description,
+        )
     }
 
     fn from_syntax(
         file_id: FileId,
         name: SmolStr,
         focus_range: Option<TextRange>,
+        full_range: TextRange,
         node: &SyntaxNode,
         docs: Option<String>,
         description: Option<String>,
@@ -293,9 +352,8 @@ impl NavigationTarget {
             file_id,
             name,
             kind: node.kind(),
-            full_range: node.text_range(),
+            full_range,
             focus_range,
-            // ptr: Some(LocalSyntaxPtr::new(node)),
             container_name: None,
             description,
             docs,
