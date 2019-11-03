@@ -521,11 +521,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
-        if intrinsic == Some("panic_if_uninhabited") {
+        // These are intrinsics that compile to panics so that we can get a message
+        // which mentions the offending type, even from a const context.
+        #[derive(Debug, PartialEq)]
+        enum PanicIntrinsic { IfUninhabited, IfZeroInvalid, IfAnyInvalid };
+        let panic_intrinsic = intrinsic.and_then(|i| match i {
+            "panic_if_uninhabited" => Some(PanicIntrinsic::IfUninhabited),
+            "panic_if_zero_invalid" => Some(PanicIntrinsic::IfZeroInvalid),
+            "panic_if_any_invalid" => Some(PanicIntrinsic::IfAnyInvalid),
+            _ => None
+        });
+        if let Some(intrinsic) = panic_intrinsic {
+            use PanicIntrinsic::*;
             let ty = instance.unwrap().substs.type_at(0);
             let layout = bx.layout_of(ty);
-            if layout.abi.is_uninhabited() {
-                let msg_str = format!("Attempted to instantiate uninhabited type {}", ty);
+            let do_panic = match intrinsic {
+                IfUninhabited => layout.abi.is_uninhabited(),
+                IfZeroInvalid => // We unwrap as the error type is `!`.
+                    !layout.might_permit_raw_init(&bx, /*zero:*/ true).unwrap(),
+                IfAnyInvalid => // We unwrap as the error type is `!`.
+                    !layout.might_permit_raw_init(&bx, /*zero:*/ false).unwrap(),
+            };
+            if do_panic {
+                let msg_str = if layout.abi.is_uninhabited() {
+                    // Use this error even for the other intrinsics as it is more precise.
+                    format!("attempted to instantiate uninhabited type `{}`", ty)
+                } else if intrinsic == IfZeroInvalid {
+                    format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                } else {
+                    format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
+                };
                 let msg = bx.const_str(Symbol::intern(&msg_str));
                 let location = self.get_caller_location(&mut bx, span).immediate();
 

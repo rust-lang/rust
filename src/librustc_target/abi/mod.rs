@@ -919,6 +919,7 @@ impl<'a, Ty> Deref for TyLayout<'a, Ty> {
     }
 }
 
+/// Trait for context types that can compute layouts of things.
 pub trait LayoutOf {
     type Ty;
     type TyLayout;
@@ -926,6 +927,39 @@ pub trait LayoutOf {
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
     fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
         self.layout_of(ty)
+    }
+}
+
+/// The `TyLayout` above will always be a `MaybeResult<TyLayout<'_, Self>>`.
+/// We can't add the bound due to the lifetime, but this trait is still useful when
+/// writing code that's generic over the `LayoutOf` impl.
+pub trait MaybeResult<T> {
+    type Error;
+
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
+}
+
+impl<T> MaybeResult<T> for T {
+    type Error = !;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        let Ok(x) = x;
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl<T, E> MaybeResult<T> for Result<T, E> {
+    type Error = E;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        self
     }
 }
 
@@ -969,6 +1003,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     {
         Ty::for_variant(self, cx, variant_index)
     }
+
+    /// Callers might want to use `C: LayoutOf<Ty=Ty, TyLayout: MaybeResult<Self>>`
+    /// to allow recursion (see `might_permit_zero_init` below for an example).
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
     where
         Ty: TyLayoutMethods<'a, C>,
@@ -976,6 +1013,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     {
         Ty::field(self, cx, i)
     }
+
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
         Ty: TyLayoutMethods<'a, C>,
@@ -998,5 +1036,82 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
+    }
+
+    /// Determines if this type permits "raw" initialization by just transmuting some
+    /// memory into an instance of `T`.
+    /// `zero` indicates if the memory is zero-initialized, or alternatively
+    /// left entirely uninitialized.
+    /// This is conservative: in doubt, it will answer `true`.
+    pub fn might_permit_raw_init<C, E>(
+        self,
+        cx: &C,
+        zero: bool,
+    ) -> Result<bool, E>
+    where
+        Self: Copy,
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>>
+    {
+        let scalar_allows_raw_init = move |s: &Scalar| -> bool {
+            let range = &s.valid_range;
+            if zero {
+                // The range must contain 0.
+                range.contains(&0) ||
+                (*range.start() > *range.end()) // wrap-around allows 0
+            } else {
+                // The range must include all values.
+                *range.start() == range.end().wrapping_add(1)
+            }
+        };
+
+        // Abi is the most informative here.
+        let res = match &self.abi {
+            Abi::Uninhabited => false, // definitely UB
+            Abi::Scalar(s) => scalar_allows_raw_init(s),
+            Abi::ScalarPair(s1, s2) =>
+                scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+            Abi::Vector { element: s, count } =>
+                *count == 0 || scalar_allows_raw_init(s),
+            Abi::Aggregate { .. } => {
+                match self.variants {
+                    Variants::Multiple { .. } =>
+                        if zero {
+                            // FIXME: could we identify the variant with discriminant 0, check that?
+                            true
+                        } else {
+                            // FIXME: This needs to have some sort of discriminant,
+                            // which cannot be undef. But for now we are conservative.
+                            true
+                        },
+                    Variants::Single { .. } => {
+                        // For aggregates, recurse.
+                        match self.fields {
+                            FieldPlacement::Union(..) => true, // An all-0 unit is fine.
+                            FieldPlacement::Array { .. } =>
+                                // FIXME: The widely use smallvec 0.6 creates uninit arrays
+                                // with any element type, so let us not (yet) complain about that.
+                                // count == 0 ||
+                                // self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)?
+                                true,
+                            FieldPlacement::Arbitrary { ref offsets, .. } => {
+                                let mut res = true;
+                                // Check that all fields accept zero-init.
+                                for idx in 0..offsets.len() {
+                                    let field = self.field(cx, idx).to_result()?;
+                                    if !field.might_permit_raw_init(cx, zero)? {
+                                        res = false;
+                                        break;
+                                    }
+                                }
+                                res
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        trace!("might_permit_raw_init({:?}, zero={}) = {}", self.details, zero, res);
+        Ok(res)
     }
 }
