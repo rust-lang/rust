@@ -7,9 +7,8 @@ use parking_lot::Mutex;
 use ra_cfg::CfgOptions;
 use ra_db::{
     salsa, CrateGraph, CrateId, Edition, FileId, FileLoader, FileLoaderDelegate, FilePosition,
-    SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
+    RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
-use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 

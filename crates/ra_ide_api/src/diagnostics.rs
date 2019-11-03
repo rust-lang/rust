@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use hir::diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink};
 use itertools::Itertools;
-use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_db::{RelativePath, SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{
     algo,
@@ -12,7 +12,6 @@ use ra_syntax::{
     Location, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
-use relative_path::RelativePath;
 
 use crate::{db::RootDatabase, Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit};
 

@@ -3,8 +3,8 @@
 //!
 //! It can be viewed as a dual for `AnalysisChange`.
 
+use ra_db::RelativePathBuf;
 use ra_text_edit::TextEdit;
-use relative_path::RelativePathBuf;
 
 use crate::{FileId, FilePosition, SourceRootId, TextUnit};
 

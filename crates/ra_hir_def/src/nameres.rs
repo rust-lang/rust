@@ -504,8 +504,8 @@ impl CrateDefMap {
 
 mod diagnostics {
     use hir_expand::diagnostics::DiagnosticSink;
+    use ra_db::RelativePathBuf;
     use ra_syntax::{ast, AstPtr};
-    use relative_path::RelativePathBuf;
 
     use crate::{db::DefDatabase2, diagnostics::UnresolvedModule, nameres::CrateModuleId, AstId};
 
