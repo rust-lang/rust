@@ -48,11 +48,11 @@ fn main() {
         [true, .., true] => {}
     }
     match s {
-    //~^ ERROR `&[_]` not covered
+    //~^ ERROR `&[_, ..]` not covered
         [] => {}
     }
     match s {
-    //~^ ERROR `&[_, _]` not covered
+    //~^ ERROR `&[_, _, ..]` not covered
         [] => {}
         [_] => {}
     }

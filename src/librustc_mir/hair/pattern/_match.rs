@@ -841,9 +841,17 @@ impl<'tcx> Constructor<'tcx> {
 
             ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
 
-            ty::Slice(_) | ty::Array(..) => {
-                PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
-            }
+            ty::Slice(_) | ty::Array(..) => match self {
+                FixedLenSlice(_) => {
+                    PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
+                }
+                VarLenSlice(_) => {
+                    let prefix = subpatterns.collect();
+                    let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
+                    PatKind::Slice { prefix, slice: Some(wild), suffix: vec![] }
+                }
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
 
             _ => match *self {
                 ConstantValue(value, _) => PatKind::Constant { value },

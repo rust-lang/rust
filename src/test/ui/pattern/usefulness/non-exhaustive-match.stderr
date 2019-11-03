@@ -66,11 +66,11 @@ LL |     match *vec {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `[_, _, _, _]` not covered
+error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
   --> $DIR/non-exhaustive-match.rs:47:11
    |
 LL |     match *vec {
-   |           ^^^^ pattern `[_, _, _, _]` not covered
+   |           ^^^^ pattern `[_, _, _, _, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
