@@ -20,6 +20,7 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
+use std::sync::Arc;
 
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
@@ -63,6 +64,24 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
                 loc.ast_id.file_id().original_file(db)
+            }
+        }
+    }
+
+    /// Return expansion information if it is a macro-expansion file
+    pub fn parent_expansion(
+        self,
+        db: &dyn db::AstDatabase,
+    ) -> Option<((HirFileId, HirFileId), Arc<ExpansionInfo>)> {
+        match self.0 {
+            HirFileIdRepr::FileId(_) => None,
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+
+                let def_file = loc.def.ast_id.file_id;
+                let arg_file = loc.ast_id.file_id;
+
+                db.macro_expansion_info(macro_file).map(|ex| ((arg_file, def_file), ex))
             }
         }
     }
