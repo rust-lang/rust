@@ -23,6 +23,7 @@ use syntax_pos::{self, Span};
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
+pub use decoder::{provide, provide_extern};
 crate use encoder::encode_metadata;
 
 mod decoder;

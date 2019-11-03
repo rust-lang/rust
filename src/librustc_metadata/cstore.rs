@@ -17,7 +17,7 @@ use syntax_expand::base::SyntaxExtension;
 use syntax_pos;
 use proc_macro::bridge::client::ProcMacro;
 
-pub use crate::cstore_impl::{provide, provide_extern};
+pub use crate::schema::{provide, provide_extern};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external

@@ -40,6 +40,10 @@ use syntax_pos::symbol::{Symbol, sym};
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
 
+pub use cstore_impl::{provide, provide_extern};
+
+mod cstore_impl;
+
 crate struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<&'a CrateMetadata>,

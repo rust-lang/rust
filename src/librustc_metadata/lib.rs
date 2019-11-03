@@ -27,7 +27,6 @@ extern crate rustc_data_structures;
 pub mod error_codes;
 
 mod dependency_format;
-mod cstore_impl;
 mod foreign_modules;
 mod link_args;
 mod native_libs;
