@@ -24,7 +24,6 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 pub use decoder::{provide, provide_extern};
-crate use encoder::encode_metadata;
 
 mod decoder;
 mod encoder;
@@ -178,16 +177,16 @@ macro_rules! Lazy {
 crate struct CrateRoot<'tcx> {
     pub name: Symbol,
     pub triple: TargetTriple,
-    pub extra_filename: String,
+    extra_filename: String,
     pub hash: Svh,
     pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
-    pub edition: Edition,
+    edition: Edition,
     pub has_global_allocator: bool,
-    pub has_panic_handler: bool,
+    has_panic_handler: bool,
     pub has_default_lib_allocator: bool,
-    pub plugin_registrar_fn: Option<DefIndex>,
-    pub proc_macro_decls_static: Option<DefIndex>,
+    plugin_registrar_fn: Option<DefIndex>,
+    proc_macro_decls_static: Option<DefIndex>,
     proc_macro_stability: Option<attr::Stability>,
 
     pub crate_deps: Lazy<[CrateDep]>,
@@ -210,14 +209,14 @@ crate struct CrateRoot<'tcx> {
     /// this crate
     pub proc_macro_data: Option<Lazy<[DefIndex]>>,
 
-    pub compiler_builtins: bool,
+    compiler_builtins: bool,
     pub needs_allocator: bool,
     pub needs_panic_runtime: bool,
-    pub no_builtins: bool,
+    no_builtins: bool,
     pub panic_runtime: bool,
     pub profiler_runtime: bool,
     pub sanitizer_runtime: bool,
-    pub symbol_mangling_version: SymbolManglingVersion,
+    symbol_mangling_version: SymbolManglingVersion,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -313,9 +312,9 @@ struct ModData {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-crate struct MacroDef {
-    pub body: String,
-    pub legacy: bool,
+struct MacroDef {
+    body: String,
+    legacy: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
