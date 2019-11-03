@@ -7,7 +7,7 @@ use super::ParamMode;
 
 use crate::hir::{self, HirVec};
 use crate::hir::ptr::P;
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::LocalDefId;
 use crate::hir::def::{Res, DefKind};
 use crate::util::nodemap::NodeMap;
 
@@ -307,7 +307,7 @@ impl LoweringContext<'_> {
                 )
             }
             ItemKind::Fn(ref decl, header, ref generics, ref body) => {
-                let fn_def_id = self.resolver.definitions().local_def_id(id);
+                let fn_def_id = self.resolver.definitions().local_def_id(id).assert_local();
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -323,7 +323,7 @@ impl LoweringContext<'_> {
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| this.lower_fn_decl(
                             &decl,
-                            Some((fn_def_id, idty)),
+                            Some((fn_def_id.to_def_id(), idty)),
                             true,
                             header.asyncness.node.opt_return_id()
                         ),
@@ -389,7 +389,7 @@ impl LoweringContext<'_> {
                 ref ty,
                 ref impl_items,
             ) => {
-                let def_id = self.resolver.definitions().local_def_id(id);
+                let def_id = self.resolver.definitions().local_def_id(id).assert_local();
 
                 // Lower the "impl header" first. This ordering is important
                 // for in-band lifetimes! Consider `'a` here:
@@ -700,7 +700,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
-        let def_id = self.resolver.definitions().local_def_id(i.id);
+        let def_id = self.resolver.definitions().local_def_id(i.id).assert_local();
         hir::ForeignItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
@@ -809,7 +809,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
-        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
+        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id).assert_local();
 
         let (generics, kind) = match i.kind {
             TraitItemKind::Const(ref ty, ref default) => (
@@ -893,7 +893,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
-        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
+        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id).assert_local();
 
         let (generics, kind) = match i.kind {
             ImplItemKind::Const(ref ty, ref expr) => (
@@ -1261,7 +1261,7 @@ impl LoweringContext<'_> {
         &mut self,
         generics: &Generics,
         sig: &MethodSig,
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
     ) -> (hir::Generics, hir::MethodSig) {
@@ -1272,7 +1272,7 @@ impl LoweringContext<'_> {
             AnonymousLifetimeMode::PassThrough,
             |this, idty| this.lower_fn_decl(
                 &sig.decl,
-                Some((fn_def_id, idty)),
+                Some((fn_def_id.to_def_id(), idty)),
                 impl_trait_return_allow,
                 is_async,
             ),
