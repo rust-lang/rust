@@ -657,31 +657,43 @@ impl<'tcx> Constructor<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         other_ctors: &Vec<Constructor<'tcx>>,
     ) -> Vec<Constructor<'tcx>> {
-        let mut refined_ctors = vec![self.clone()];
-        for other_ctor in other_ctors {
-            if other_ctor == self {
-                // If a constructor appears in a `match` arm, we can
-                // eliminate it straight away.
-                refined_ctors = vec![]
-            } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, other_ctor) {
-                // Refine the required constructors for the type by subtracting
-                // the range defined by the current constructor pattern.
-                refined_ctors = interval.subtract_from(tcx, param_env, refined_ctors);
+        match self {
+            // Those constructors can only match themselves.
+            Single | Variant(_) | FixedLenSlice(_) => {
+                if other_ctors.iter().any(|c| c == self) {
+                    vec![]
+                } else {
+                    vec![self.clone()]
+                }
             }
+            ConstantRange(..) | ConstantValue(..) => {
+                let mut remaining_ctors = vec![self.clone()];
+                for other_ctor in other_ctors {
+                    if other_ctor == self {
+                        // If a constructor appears in a `match` arm, we can
+                        // eliminate it straight away.
+                        remaining_ctors = vec![]
+                    } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, other_ctor) {
+                        // Refine the required constructors for the type by subtracting
+                        // the range defined by the current constructor pattern.
+                        remaining_ctors = interval.subtract_from(tcx, param_env, remaining_ctors);
+                    }
 
-            // If the constructor patterns that have been considered so far
-            // already cover the entire range of values, then we know the
-            // constructor is not missing, and we can move on to the next one.
-            if refined_ctors.is_empty() {
-                break;
+                    // If the constructor patterns that have been considered so far
+                    // already cover the entire range of values, then we know the
+                    // constructor is not missing, and we can move on to the next one.
+                    if remaining_ctors.is_empty() {
+                        break;
+                    }
+                }
+
+                // If a constructor has not been matched, then it is missing.
+                // We add `remaining_ctors` instead of `self`, because then we can
+                // provide more detailed error information about precisely which
+                // ranges have been omitted.
+                remaining_ctors
             }
         }
-
-        // If a constructor has not been matched, then it is missing.
-        // We add `refined_ctors` instead of `self`, because then we can
-        // provide more detailed error information about precisely which
-        // ranges have been omitted.
-        refined_ctors
     }
 
     /// This returns one wildcard pattern for each argument to this constructor.
