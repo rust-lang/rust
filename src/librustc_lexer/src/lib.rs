@@ -248,7 +248,7 @@ impl Cursor<'_> {
         let first_char = self.bump().unwrap();
         let token_kind = match first_char {
             // Slash, comment or block comment.
-            '/' => match self.nth_char(0) {
+            '/' => match self.first() {
                 '/' => self.line_comment(),
                 '*' => self.block_comment(),
                 _ => Slash,
@@ -257,8 +257,8 @@ impl Cursor<'_> {
             // Whitespace sequence.
             c if is_whitespace(c) => self.whitespace(),
 
-            // Raw string literal or identifier.
-            'r' => match (self.nth_char(0), self.nth_char(1)) {
+            // Raw identifier, raw string literal or identifier.
+            'r' => match (self.first(), self.second()) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
                     let (n_hashes, started, terminated) = self.raw_double_quoted_string();
@@ -273,7 +273,7 @@ impl Cursor<'_> {
             },
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
-            'b' => match (self.nth_char(0), self.nth_char(1)) {
+            'b' => match (self.first(), self.second()) {
                 ('\'', _) => {
                     self.bump();
                     let terminated = self.single_quoted_string();
@@ -366,7 +366,7 @@ impl Cursor<'_> {
     }
 
     fn line_comment(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '/' && self.nth_char(0) == '/');
+        debug_assert!(self.prev() == '/' && self.first() == '/');
         self.bump();
         loop {
             match self.nth_char(0) {
@@ -381,16 +381,16 @@ impl Cursor<'_> {
     }
 
     fn block_comment(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '/' && self.nth_char(0) == '*');
+        debug_assert!(self.prev() == '/' && self.first() == '*');
         self.bump();
         let mut depth = 1usize;
         while let Some(c) = self.bump() {
             match c {
-                '/' if self.nth_char(0) == '*' => {
+                '/' if self.first() == '*' => {
                     self.bump();
                     depth += 1;
                 }
-                '*' if self.nth_char(0) == '/' => {
+                '*' if self.first() == '/' => {
                     self.bump();
                     depth -= 1;
                     if depth == 0 {
@@ -418,8 +418,8 @@ impl Cursor<'_> {
     fn raw_ident(&mut self) -> TokenKind {
         debug_assert!(
             self.prev() == 'r'
-                && self.nth_char(0) == '#'
-                && is_id_start(self.nth_char(1))
+                && self.first() == '#'
+                && is_id_start(self.second())
         );
         self.bump();
         self.bump();
@@ -442,7 +442,7 @@ impl Cursor<'_> {
         let mut base = Base::Decimal;
         if first_digit == '0' {
             // Attempt to parse encoding base.
-            let has_digits = match self.nth_char(0) {
+            let has_digits = match self.first() {
                 'b' => {
                     base = Base::Binary;
                     self.bump();
@@ -476,20 +476,20 @@ impl Cursor<'_> {
             self.eat_decimal_digits();
         };
 
-        match self.nth_char(0) {
+        match self.first() {
             // Don't be greedy if this is actually an
             // integer literal followed by field/method access or a range pattern
             // (`0..2` and `12.foo()`)
-            '.' if self.nth_char(1) != '.'
-                && !is_id_start(self.nth_char(1)) =>
+            '.' if self.second() != '.'
+                && !is_id_start(self.second()) =>
             {
                 // might have stuff after the ., and if it does, it needs to start
                 // with a number
                 self.bump();
                 let mut empty_exponent = false;
-                if self.nth_char(0).is_digit(10) {
+                if self.first().is_digit(10) {
                     self.eat_decimal_digits();
-                    match self.nth_char(0) {
+                    match self.first() {
                         'e' | 'E' => {
                             self.bump();
                             empty_exponent = self.float_exponent().is_err()
@@ -556,7 +556,7 @@ impl Cursor<'_> {
         // Parse until either quotes are terminated or error is detected.
         let mut first = true;
         loop {
-            match self.nth_char(0) {
+            match self.first() {
                 // Probably beginning of the comment, which we don't want to include
                 // to the error report.
                 '/' if !first => break,
@@ -643,7 +643,7 @@ impl Cursor<'_> {
     fn eat_decimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
-            match self.nth_char(0) {
+            match self.first() {
                 '_' => {
                     self.bump();
                 }
@@ -660,7 +660,7 @@ impl Cursor<'_> {
     fn eat_hexadecimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {
-            match self.nth_char(0) {
+            match self.first() {
                 '_' => {
                     self.bump();
                 }
@@ -676,7 +676,7 @@ impl Cursor<'_> {
 
     fn float_exponent(&mut self) -> Result<(), ()> {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
-        if self.nth_char(0) == '-' || self.nth_char(0) == '+' {
+        if self.first() == '-' || self.first() == '+' {
             self.bump();
         }
         if self.eat_decimal_digits() { Ok(()) } else { Err(()) }

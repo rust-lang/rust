@@ -45,6 +45,16 @@ impl<'a> Cursor<'a> {
         self.chars().nth(n).unwrap_or(EOF_CHAR)
     }
 
+    /// Peeks the next symbol from the input stream without consuming it.
+    pub(crate) fn first(&self) -> char {
+        self.nth_char(0)
+    }
+
+    /// Peeks the second symbol from the input stream without consuming it.
+    pub(crate) fn second(&self) -> char {
+        self.nth_char(1)
+    }
+
     /// Checks if there is nothing more to consume.
     pub(crate) fn is_eof(&self) -> bool {
         self.chars.as_str().is_empty()
