@@ -368,15 +368,7 @@ impl Cursor<'_> {
     fn line_comment(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '/' && self.first() == '/');
         self.bump();
-        loop {
-            match self.nth_char(0) {
-                '\n' => break,
-                EOF_CHAR if self.is_eof() => break,
-                _ => {
-                    self.bump();
-                }
-            }
-        }
+        self.eat_while(|c| c != '\n');
         LineComment
     }
 
@@ -409,9 +401,7 @@ impl Cursor<'_> {
 
     fn whitespace(&mut self) -> TokenKind {
         debug_assert!(is_whitespace(self.prev()));
-        while is_whitespace(self.nth_char(0)) {
-            self.bump();
-        }
+        self.eat_while(is_whitespace);
         Whitespace
     }
 
@@ -421,19 +411,17 @@ impl Cursor<'_> {
                 && self.first() == '#'
                 && is_id_start(self.second())
         );
+        // Eat "#" symbol.
         self.bump();
-        self.bump();
-        while is_id_continue(self.nth_char(0)) {
-            self.bump();
-        }
+        // Eat the identifier part of RawIdent.
+        self.eat_identifier();
         RawIdent
     }
 
     fn ident(&mut self) -> TokenKind {
         debug_assert!(is_id_start(self.prev()));
-        while is_id_continue(self.nth_char(0)) {
-            self.bump();
-        }
+        // Start is already eaten, eat the rest of identifier.
+        self.eat_while(is_id_continue);
         Ident
     }
 
@@ -682,15 +670,33 @@ impl Cursor<'_> {
         if self.eat_decimal_digits() { Ok(()) } else { Err(()) }
     }
 
-    // Eats the suffix if it's an identifier.
+    // Eats the suffix of the literal, e.g. "_u8".
     fn eat_literal_suffix(&mut self) {
-        if !is_id_start(self.nth_char(0)) {
+        self.eat_identifier();
+    }
+
+    // Eats the identifier.
+    fn eat_identifier(&mut self) {
+        if !is_id_start(self.first()) {
             return;
         }
         self.bump();
 
-        while is_id_continue(self.nth_char(0)) {
+        self.eat_while(is_id_continue);
+    }
+
+    /// Eats symbols while predicate returns true or until the end of file is reached.
+    /// Returns amount of eaten symbols.
+    fn eat_while<F>(&mut self, mut predicate: F) -> usize
+    where
+        F: FnMut(char) -> bool
+    {
+        let mut eaten: usize = 0;
+        while predicate(self.first()) && !self.is_eof() {
+            eaten += 1;
             self.bump();
         }
+
+        eaten
     }
 }
