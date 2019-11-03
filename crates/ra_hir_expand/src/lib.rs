@@ -145,17 +145,13 @@ impl ExpansionInfo {
         (arg_file_id, def_file_id): (HirFileId, HirFileId),
     ) -> Option<(HirFileId, TextRange)> {
         for (src, dest) in &self.arg_map {
-            dbg!((src, *dest, "arg_map"));
             if src.is_subrange(&from) {
-                dbg!((arg_file_id, *dest));
                 return Some((arg_file_id, *dest));
             }
         }
 
         for (src, dest) in &self.def_map {
-            dbg!((src, *dest, "def_map"));
             if src.is_subrange(&from) {
-                dbg!((arg_file_id, *dest));
                 return Some((def_file_id, *dest));
             }
         }

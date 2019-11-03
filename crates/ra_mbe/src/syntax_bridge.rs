@@ -158,7 +158,6 @@ impl ExpandedRangeMap {
     }
 
     pub fn ranges(&self, to: &TokenMap, start: TextUnit) -> Vec<(TextRange, TextRange)> {
-        dbg!(&self.ranges);
         self.ranges
             .iter()
             .filter_map(|(r, tid)| {
