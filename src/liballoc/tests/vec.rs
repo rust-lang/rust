@@ -1264,6 +1264,76 @@ fn test_try_reserve_exact() {
 
 }
 
+/// Tests that `recycle` successfully re-interprets the type to have different lifetime from the original
+#[test]
+fn test_recycle_lifetime() {
+    let s_1 = "foo".to_string();
+    let mut buf = Vec::with_capacity(100);
+    {
+        let mut buf2 = buf;
+        let s_2 = "foo".to_string();
+        buf2.push(s_2.as_str());
+
+        assert_eq!(buf2.len(), 1);
+        assert_eq!(buf2.capacity(), 100);
+
+        buf = buf2.recycle();
+    }
+    buf.push(s_1.as_str());
+}
+
+/// Tests that `recycle` successfully re-interprets the type itself
+#[test]
+fn test_recycle_type() {
+    let s = "foo".to_string();
+    let mut buf = Vec::with_capacity(100);
+    {
+        let mut buf2 = buf.recycle();
+
+        let mut i = Vec::new();
+        i.push(1);
+        i.push(2);
+        i.push(3);
+
+        buf2.push(i.as_slice());
+
+        assert_eq!(buf2.len(), 1);
+        assert_eq!(buf2.capacity(), 100);
+
+        buf = buf2.recycle();
+    }
+    buf.push(s.as_str());
+}
+
+/// Tests that `recycle` successfully panics with incompatible sizes
+#[test]
+#[should_panic]
+fn test_recycle_incompatible_size() {
+    let mut buf = Vec::with_capacity(100);
+    buf.push(1_u16);
+    {
+        let mut buf2 = buf.recycle();
+        buf2.push(1_u32);
+        buf = buf2.recycle();
+    }
+    buf.push(1_u16);
+}
+
+
+/// Tests that `recycle` successfully panics with incompatible alignments
+#[test]
+#[should_panic]
+fn test_recycle_incompatible_alignment() {
+    let mut buf = Vec::with_capacity(100);
+    buf.push([0_u16, 1_u16]);
+    {
+        let mut buf2 = buf.recycle();
+        buf2.push(1_u32);
+        buf = buf2.recycle();
+    }
+    buf.push([0_u16, 1_u16]);
+}
+
 #[test]
 fn test_stable_push_pop() {
     // Test that, if we reserved enough space, adding and removing elements does not

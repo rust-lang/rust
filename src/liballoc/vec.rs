@@ -616,30 +616,31 @@ impl<T> Vec<T> {
     /// By recycling the allocation, the `Vec` is able to safely
     /// outlive the lifetime of the type that was stored in it.
     /// ```
+    /// # #![feature(recycle_vec)]
     /// # use std::error::Error;
     /// #
-    /// # struct Stream;
+    /// # struct Stream(bool);
     /// #
     /// # impl Stream {
     /// #     fn new() -> Self {
-    /// #         Stream
+    /// #         Stream(false)
     /// #     }
     /// #
     /// #     fn next(&mut self) -> Option<&[u8]> {
-    /// #         Some(&b"foo"[..])
+    /// #         if self.0 {
+    /// #             None
+    /// #         } else {
+    /// #             self.0 = true;
+    /// #             Some(&b"foo"[..])
+    /// #         }
     /// #     }
     /// # }
     /// #
-    /// # struct DbConnection;
-    /// #
-    /// # impl DbConnection {
-    /// #     fn new() -> Self {
-    /// #         DbConnection
+    /// # fn process(input: &[Object<'_>]) -> Result<(), Box<dyn Error>> {
+    /// #     for obj in input {
+    /// #         let _ = obj.reference;
     /// #     }
-    /// #
-    /// #     fn insert(&mut self, _objects: &[Object<'_>]) -> Result<(), Box<dyn Error>> {
-    /// #         Ok(())
-    /// #     }
+    /// #     Ok(())
     /// # }
     /// #
     /// # struct Object<'a> {
@@ -651,22 +652,20 @@ impl<T> Vec<T> {
     /// #     Ok(())
     /// # }
     /// #
-    /// # fn processor() -> Result<(), Box<dyn Error>> {
-    /// #    let mut stream = Stream::new();
-    /// #    let mut db_connection = DbConnection::new();
-    ///     let mut objects: Vec<Object<'static>> = Vec::new();
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// # let mut stream = Stream::new();
+    /// let mut objects: Vec<Object<'static>> = Vec::new();    // Any lifetime goes here
     ///
-    ///     while let Some(byte_chunk) = stream.next() { // byte_chunk only lives this scope
-    ///         let mut objects_temp: Vec<Object<'_>> = objects.recycle();
+    /// while let Some(byte_chunk) = stream.next() {           // `byte_chunk` lifetime starts
+    ///     let mut temp: Vec<Object<'_>> = objects.recycle(); // `temp` lifetime starts
     ///
-    ///         // Zero-copy parsing; Object has references to chunk
-    ///         deserialize(byte_chunk, &mut objects_temp)?;
-    ///         db_connection.insert(&objects_temp)?;
+    ///     // Zero-copy parsing; deserialized `Object`s have references to `byte_chunk`
+    ///     deserialize(byte_chunk, &mut temp)?;
+    ///     process(&temp)?;
     ///
-    ///         objects = objects_temp.recycle();
-    ///     } // byte_chunk lifetime ends
-    /// #
-    /// #    Ok(())
+    ///     objects = temp.recycle();                          // `temp` lifetime ends
+    /// }                                                      // `byte_chunk` lifetime ends
+    /// # Ok(())
     /// # }
     /// ```
     ///
