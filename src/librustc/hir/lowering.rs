@@ -187,6 +187,8 @@ pub trait Resolver {
     fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool;
 
     fn lint_buffer(&mut self) -> &mut lint::LintBuffer;
+
+    fn next_node_id(&mut self) -> NodeId;
 }
 
 type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
@@ -677,7 +679,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn next_id(&mut self) -> hir::HirId {
-        self.lower_node_id(self.sess.next_node_id())
+        let node_id = self.resolver.next_node_id();
+        self.lower_node_id(node_id)
     }
 
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
@@ -786,7 +789,7 @@ impl<'a> LoweringContext<'a> {
         hir_name: ParamName,
         parent_index: DefIndex,
     ) -> hir::GenericParam {
-        let node_id = self.sess.next_node_id();
+        let node_id = self.resolver.next_node_id();
 
         // Get the name we'll use to make the def-path. Note
         // that collisions are ok here and this shouldn't
@@ -1105,7 +1108,7 @@ impl<'a> LoweringContext<'a> {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
-                    let impl_trait_node_id = self.sess.next_node_id();
+                    let impl_trait_node_id = self.resolver.next_node_id();
                     let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
                     self.resolver.definitions().create_def_with_parent(
                         parent_def_index,
@@ -1116,9 +1119,10 @@ impl<'a> LoweringContext<'a> {
                     );
 
                     self.with_dyn_type_scope(false, |this| {
+                        let node_id = this.resolver.next_node_id();
                         let ty = this.lower_ty(
                             &Ty {
-                                id: this.sess.next_node_id(),
+                                id: node_id,
                                 kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
                                 span: constraint.span,
                             },
@@ -1585,7 +1589,7 @@ impl<'a> LoweringContext<'a> {
                         name,
                     }));
 
-                    let def_node_id = self.context.sess.next_node_id();
+                    let def_node_id = self.context.resolver.next_node_id();
                     let hir_id =
                         self.context.lower_node_id_with_owner(def_node_id, self.opaque_ty_id);
                     self.context.resolver.definitions().create_def_with_parent(
@@ -3252,7 +3256,7 @@ impl<'a> LoweringContext<'a> {
             Some(id) => (id, "`'_` cannot be used here", "`'_` is a reserved lifetime name"),
 
             None => (
-                self.sess.next_node_id(),
+                self.resolver.next_node_id(),
                 "`&` without an explicit lifetime name cannot be used here",
                 "explicit lifetime name needed here",
             ),
@@ -3289,7 +3293,7 @@ impl<'a> LoweringContext<'a> {
                     span,
                     "expected 'implicit elided lifetime not allowed' error",
                 );
-                let id = self.sess.next_node_id();
+                let id = self.resolver.next_node_id();
                 self.new_named_lifetime(id, span, hir::LifetimeName::Error)
             }
             // `PassThrough` is the normal case.

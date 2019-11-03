@@ -449,7 +449,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                     name: kw::PathRoot,
                                     span: source.ident.span,
                                 },
-                                id: Some(self.r.session.next_node_id()),
+                                id: Some(self.r.next_node_id()),
                             });
                             source.ident.name = crate_name;
                         }

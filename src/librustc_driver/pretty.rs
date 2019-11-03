@@ -8,11 +8,9 @@ use rustc::session::Session;
 use rustc::session::config::Input;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
-use rustc_interface::util::ReplaceBodyWithLoop;
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;
-use syntax::mut_visit::MutVisitor;
 use syntax::print::{pprust};
 use syntax_pos::FileName;
 
@@ -569,12 +567,6 @@ impl UserIdentifiedItem {
 
         assert!(seen == 1);
         return saw_node;
-    }
-}
-
-pub fn visit_crate(sess: &Session, krate: &mut ast::Crate, ppm: PpMode) {
-    if let PpmSource(PpmEveryBodyLoops) = ppm {
-        ReplaceBodyWithLoop::new(sess).visit_crate(krate);
     }
 }
 

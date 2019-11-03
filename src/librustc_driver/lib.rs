@@ -290,7 +290,6 @@ pub fn run_compiler(
 
         if let Some((ppm, opt_uii)) = pretty_info {
             if ppm.needs_ast_map(&opt_uii) {
-                pretty::visit_crate(sess, &mut compiler.parse()?.peek_mut(), ppm);
                 compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                     let expanded_crate = compiler.expansion()?.take().0;
                     pretty::print_after_hir_lowering(
@@ -304,8 +303,7 @@ pub fn run_compiler(
                     Ok(())
                 })?;
             } else {
-                let mut krate = compiler.parse()?.take();
-                pretty::visit_crate(sess, &mut krate, ppm);
+                let krate = compiler.parse()?.take();
                 pretty::print_after_parsing(
                     sess,
                     &compiler.input(),
