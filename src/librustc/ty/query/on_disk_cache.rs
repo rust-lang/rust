@@ -657,7 +657,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
-        Ok(LocalDefId::from_def_id(DefId::decode(self)?))
+        Ok(DefId::decode(self)?.expect_local())
     }
 }
 

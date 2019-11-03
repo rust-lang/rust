@@ -425,7 +425,7 @@ impl<'tcx> DepNodeParams<'tcx> for LocalDefId {
     }
 
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        dep_node.extract_def_id(tcx).map(|id| id.to_local())
+        dep_node.extract_def_id(tcx).map(|id| id.expect_local())
     }
 }
 

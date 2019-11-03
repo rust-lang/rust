@@ -164,8 +164,9 @@ impl DefId {
     }
 
     #[inline]
-    pub fn to_local(self) -> LocalDefId {
-        LocalDefId::from_def_id(self)
+    pub fn expect_local(self) -> LocalDefId {
+        assert!(self.is_local());
+        LocalDefId { local_def_index: self.index }
     }
 
     pub fn is_top_level_module(self) -> bool {
@@ -216,12 +217,6 @@ pub struct LocalDefId {
 }
 
 impl LocalDefId {
-    #[inline]
-    pub fn from_def_id(def_id: DefId) -> LocalDefId {
-        assert!(def_id.is_local());
-        LocalDefId { local_def_index: def_id.index }
-    }
-
     #[inline]
     pub fn to_def_id(self) -> DefId {
         DefId { krate: LOCAL_CRATE, index: self.local_def_index }
