@@ -356,6 +356,41 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
         gv
     }
 
+    fn create_vtable_symbol(
+        &self,
+        vtable: &'ll Value,
+        align: Align,
+    ) {
+        unsafe {
+            // members of llvm.used must be named
+            let name = self.generate_local_symbol_name("vtable");
+            let gv = self.define_global(&name[..], self.val_ty(vtable)).unwrap_or_else(|| {
+                bug!("symbol `{}` is already defined", name);
+            });
+            llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
+            llvm::LLVMSetInitializer(gv, vtable);
+            set_global_alignment(&self, gv, align);
+            SetUnnamedAddr(gv, true);
+            llvm::LLVMSetGlobalConstant(gv, True);
+            let sect_name: Option<&[u8]> = if self.tcx.sess.target.target.options.is_like_windows {
+                Some(b".rdata.__rust_vtables$B\0")
+            } else if self.tcx.sess.target.target.options.is_like_osx {
+                Some(b"__DATA,__rust_vtables\0")
+            } else if self.tcx.sess.opts.target_triple.triple().contains("-linux-") {
+                Some(b"__rust_vtables\0")
+            } else {
+                None
+            };
+            let sect_name = sect_name.map(|name| CStr::from_bytes_with_nul_unchecked(name));
+            if let Some(sect_name) = sect_name {
+                llvm::LLVMSetSection(gv, sect_name.as_ptr());
+            }
+            // This static will be stored in the llvm.used variable which is an array of i8*
+            let cast = llvm::LLVMConstPointerCast(gv, self.type_i8p());
+            self.used_statics.borrow_mut().push(cast);
+        }
+    }
+
     fn codegen_static(
         &self,
         def_id: DefId,
