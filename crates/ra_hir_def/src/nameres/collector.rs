@@ -8,7 +8,7 @@ use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
 use ra_syntax::{ast, SmolStr};
 use rustc_hash::FxHashMap;
-// use test_utils::tested_by;
+use test_utils::tested_by;
 
 use crate::{
     attr::Attr,
@@ -218,7 +218,7 @@ where
         );
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
-            // tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
+            tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
             self.import_all_macros_exported(current_module_id, m.krate);
         }
     }
@@ -294,10 +294,10 @@ where
             match def.take_types() {
                 Some(ModuleDefId::ModuleId(m)) => {
                     if import.is_prelude {
-                        // tested_by!(std_prelude);
+                        tested_by!(std_prelude);
                         self.def_map.prelude = Some(m);
                     } else if m.krate != self.def_map.krate {
-                        // tested_by!(glob_across_crates);
+                        tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.crate_def_map(m.krate);
                         let scope = &item_map[m.module_id].scope;
@@ -332,7 +332,7 @@ where
                     }
                 }
                 Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
-                    // tested_by!(glob_enum);
+                    tested_by!(glob_enum);
                     // glob import from enum => just import all the variants
                     let enum_data = self.db.enum_data(e);
                     let resolutions = enum_data
@@ -373,8 +373,7 @@ where
                     let resolution = Resolution { def, import: Some(import_id) };
                     self.update(module_id, Some(import_id), &[(name, resolution)]);
                 }
-                // tested_by!(bogus_paths),
-                None => (),
+                None => tested_by!(bogus_paths),
             }
         }
     }
@@ -534,7 +533,7 @@ where
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
             if prelude_module.krate != self.def_collector.def_map.krate {
-                // tested_by!(prelude_is_macro_use);
+                tested_by!(prelude_is_macro_use);
                 self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
             }
         }

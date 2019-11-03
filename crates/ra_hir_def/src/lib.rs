@@ -17,6 +17,8 @@ pub mod diagnostics;
 
 #[cfg(test)]
 mod test_db;
+#[cfg(test)]
+mod marks;
 
 // FIXME: this should be private
 pub mod nameres;

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, SourceDatabase};
-// use test_utils::covers;
+use test_utils::covers;
 
 use crate::{db::DefDatabase2, nameres::*, test_db::TestDB, CrateModuleId};
 
@@ -104,7 +104,7 @@ fn crate_def_map_smoke_test() {
 
 #[test]
 fn bogus_paths() {
-    // covers!(bogus_paths);
+    covers!(bogus_paths);
     let map = def_map(
         "
         //- /lib.rs
@@ -219,7 +219,7 @@ fn re_exports() {
 
 #[test]
 fn std_prelude() {
-    // covers!(std_prelude);
+    covers!(std_prelude);
     let map = def_map(
         "
         //- /main.rs crate:main deps:test_crate
@@ -243,7 +243,7 @@ fn std_prelude() {
 
 #[test]
 fn can_import_enum_variant() {
-    // covers!(can_import_enum_variant);
+    covers!(can_import_enum_variant);
     let map = def_map(
         "
         //- /lib.rs

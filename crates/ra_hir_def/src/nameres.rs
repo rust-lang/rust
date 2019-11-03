@@ -18,7 +18,7 @@ use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast;
 use rustc_hash::{FxHashMap, FxHashSet};
-// use test_utils::tested_by;
+use test_utils::tested_by;
 
 use crate::{
     builtin_type::BuiltinType,
@@ -263,12 +263,12 @@ impl CrateDefMap {
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
-                    // tested_by!(macro_dollar_crate_self);
+                    tested_by!(macro_dollar_crate_self);
                     PerNs::types(ModuleId { krate: self.krate, module_id: self.root }.into())
                 } else {
                     let def_map = db.crate_def_map(krate);
                     let module = ModuleId { krate, module_id: def_map.root };
-                    // tested_by!(macro_dollar_crate_other);
+                    tested_by!(macro_dollar_crate_other);
                     PerNs::types(module.into())
                 }
             }
@@ -369,7 +369,7 @@ impl CrateDefMap {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
-                    // tested_by!(can_import_enum_variant);
+                    tested_by!(can_import_enum_variant);
                     let enum_data = db.enum_data(e);
                     match enum_data.variant(&segment.name) {
                         Some(local_id) => {
