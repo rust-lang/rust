@@ -23,16 +23,16 @@ LL | fn i(n{...,f #
    |        `..` must be at the end and cannot have a trailing comma
 
 error: expected `[`, found `}`
-  --> $DIR/issue-63135.rs:3:15
+  --> $DIR/issue-63135.rs:3:16
    |
 LL | fn i(n{...,f #
-   |               ^ expected `[`
+   |                ^ expected `[`
 
 error: expected one of `:` or `|`, found `)`
-  --> $DIR/issue-63135.rs:3:15
+  --> $DIR/issue-63135.rs:3:16
    |
 LL | fn i(n{...,f #
-   |               ^ expected one of `:` or `|` here
+   |                ^ expected one of `:` or `|` here
 
 error: aborting due to 5 previous errors
 
