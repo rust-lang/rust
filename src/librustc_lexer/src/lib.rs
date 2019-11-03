@@ -537,26 +537,30 @@ impl Cursor<'_> {
 
     fn single_quoted_string(&mut self) -> bool {
         debug_assert!(self.prev() == '\'');
-        // Parse `'''` as a single char literal.
-        if self.nth_char(0) == '\'' && self.nth_char(1) == '\'' {
+        // Check if it's a one-symbol literal.
+        if self.second() == '\'' && self.first() != '\\' {
             self.bump();
+            self.bump();
+            return true;
         }
+
+        // Literal has more than one symbol.
+
         // Parse until either quotes are terminated or error is detected.
-        let mut first = true;
         loop {
             match self.first() {
-                // Probably beginning of the comment, which we don't want to include
-                // to the error report.
-                '/' if !first => break,
-                // Newline without following '\'' means unclosed quote, stop parsing.
-                '\n' if self.nth_char(1) != '\'' => break,
-                // End of file, stop parsing.
-                EOF_CHAR if self.is_eof() => break,
                 // Quotes are terminated, finish parsing.
                 '\'' => {
                     self.bump();
                     return true;
                 }
+                // Probably beginning of the comment, which we don't want to include
+                // to the error report.
+                '/' => break,
+                // Newline without following '\'' means unclosed quote, stop parsing.
+                '\n' if self.second() != '\'' => break,
+                // End of file, stop parsing.
+                EOF_CHAR if self.is_eof() => break,
                 // Escaped slash is considered one character, so bump twice.
                 '\\' => {
                     self.bump();
@@ -567,8 +571,8 @@ impl Cursor<'_> {
                     self.bump();
                 }
             }
-            first = false;
         }
+        // String was not terminated.
         false
     }
 
