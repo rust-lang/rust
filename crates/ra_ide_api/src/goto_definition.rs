@@ -346,6 +346,46 @@ mod tests {
     }
 
     #[test]
+    fn goto_definition_works_for_macro_defined_fn_with_arg() {
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! define_fn {
+                ($name:ident) => (fn $name() {})
+            }
+
+            define_fn!(
+                foo
+            )
+
+            fn bar() {
+               <|>foo();
+            }
+            ",
+            "foo FN_DEF FileId(1) [80; 83) [80; 83)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_macro_defined_fn_no_arg() {
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! define_fn {
+                () => (fn foo() {})
+            }
+
+            define_fn!();
+
+            fn bar() {
+               <|>foo();
+            }
+            ",
+            "foo FN_DEF FileId(1) [39; 42) [39; 42)",
+        );
+    }
+
+    #[test]
     fn goto_definition_works_for_methods() {
         covers!(goto_definition_works_for_methods);
         check_goto(
