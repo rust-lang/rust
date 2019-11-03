@@ -15,6 +15,9 @@ pub mod builtin_type;
 pub mod adt;
 pub mod diagnostics;
 
+#[cfg(test)]
+mod test_db;
+
 // FIXME: this should be private
 pub mod nameres;
 

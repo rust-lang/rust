@@ -739,17 +739,18 @@ fn is_macro_rules(path: &Path) -> bool {
     path.as_ident() == Some(&name::MACRO_RULES)
 }
 
-#[cfg(never)]
+#[cfg(test)]
 mod tests {
-    use ra_db::SourceDatabase;
-
-    use super::*;
-    use crate::{db::DefDatabase, mock::MockDatabase, Crate};
     use ra_arena::Arena;
+    use ra_db::{fixture::WithFixture, SourceDatabase};
     use rustc_hash::FxHashSet;
 
+    use crate::{db::DefDatabase2, test_db::TestDB};
+
+    use super::*;
+
     fn do_collect_defs(
-        db: &impl DefDatabase,
+        db: &impl DefDatabase2,
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
     ) -> CrateDefMap {
@@ -768,12 +769,11 @@ mod tests {
     }
 
     fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
-        let (db, _source_root, _) = MockDatabase::with_single_file(&code);
-        let crate_id = db.crate_graph().iter().next().unwrap();
-        let krate = Crate { crate_id };
+        let (db, _file_id) = TestDB::with_single_file(&code);
+        let krate = db.crate_graph().iter().next().unwrap();
 
         let def_map = {
-            let edition = krate.edition(&db);
+            let edition = db.crate_graph().edition(krate);
             let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
