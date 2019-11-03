@@ -105,7 +105,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                        hir_to_node_id: &'a FxHashMap<HirId, NodeId>,
                        mut hcx: StableHashingContext<'a>)
                 -> NodeCollector<'a, 'hir> {
-        let root_mod_def_path_hash = definitions.def_path_hash(CRATE_DEF_INDEX);
+        let root_mod_def_path_hash = definitions.def_path_hash(LocalDefId {
+            index: CRATE_DEF_INDEX,
+        });
 
         let mut hir_body_nodes = Vec::new();
 
@@ -254,9 +256,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             assert_eq!(self.definitions.node_to_hir_id(node_id), hir_id);
 
             if hir_id.owner != self.current_dep_node_owner {
-                let node_str = match self.definitions.opt_def_index(node_id) {
-                    Some(def_index) => {
-                        self.definitions.def_path(def_index).to_string_no_crate()
+                let node_str = match self.definitions.opt_local_def_id(node_id) {
+                    Some(def_id) => {
+                        self.definitions.def_path(def_id).to_string_no_crate()
                     }
                     None => format!("{:?}", node)
                 };
@@ -274,10 +276,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     self.source_map.span_to_string(span),
                     node_str,
                     self.definitions
-                        .def_path(self.current_dep_node_owner.index)
+                        .def_path(self.current_dep_node_owner)
                         .to_string_no_crate(),
                     self.current_dep_node_owner,
-                    self.definitions.def_path(hir_id.owner.index).to_string_no_crate(),
+                    self.definitions.def_path(hir_id.owner).to_string_no_crate(),
                     hir_id.owner,
                     forgot_str,
                 )
@@ -308,7 +310,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let prev_full_dep_index = self.current_full_dep_index;
         let prev_in_body = self.currently_in_body;
 
-        let def_path_hash = self.definitions.def_path_hash(dep_node_owner.index);
+        let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
         let (signature_dep_index, full_dep_index) = alloc_hir_dep_nodes(
             self.dep_graph,
@@ -369,8 +371,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_item(&mut self, i: &'hir Item) {
         debug!("visit_item: {:?}", i);
-        debug_assert_eq!(i.hir_id.owner.index,
-                         self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap());
+        debug_assert_eq!(
+            i.hir_id.owner,
+            self.definitions.opt_local_def_id(self.hir_to_node_id[&i.hir_id]).unwrap(),
+        );
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.span, i.hir_id, Node::Item(i));
             this.with_parent(i.hir_id, |this| {
@@ -399,8 +403,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
-        debug_assert_eq!(ti.hir_id.owner.index,
-                         self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap());
+        debug_assert_eq!(
+            ti.hir_id.owner,
+            self.definitions.opt_local_def_id(self.hir_to_node_id[&ti.hir_id]).unwrap(),
+        );
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
             this.insert(ti.span, ti.hir_id, Node::TraitItem(ti));
 
@@ -411,8 +417,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_impl_item(&mut self, ii: &'hir ImplItem) {
-        debug_assert_eq!(ii.hir_id.owner.index,
-                         self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap());
+        debug_assert_eq!(
+            ii.hir_id.owner,
+            self.definitions.opt_local_def_id(self.hir_to_node_id[&ii.hir_id]).unwrap(),
+        );
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
             this.insert(ii.span, ii.hir_id, Node::ImplItem(ii));
 

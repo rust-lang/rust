@@ -247,7 +247,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
-        self.definitions.def_key(def_id.index)
+        self.definitions.def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
@@ -257,7 +257,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
-        self.definitions.def_path(def_id.index)
+        self.definitions.def_path(def_id)
     }
 
     #[inline]
@@ -280,12 +280,12 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_to_node_id(hir_id);
-        self.definitions.opt_local_def_id(node_id)
+        self.opt_local_def_id_from_node_id(node_id)
     }
 
     #[inline]
     pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<DefId> {
-        self.definitions.opt_local_def_id(node)
+        Some(self.definitions.opt_local_def_id(node)?.to_def_id())
     }
 
     #[inline]
@@ -309,13 +309,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> HirId {
-        self.definitions.def_index_to_hir_id(def_index)
-    }
-
-    #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.definitions.def_index_to_hir_id(def_id.index)
+        self.definitions.local_def_id_to_hir_id(def_id)
     }
 
     pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
@@ -466,7 +461,7 @@ impl<'hir> Map<'hir> {
     pub fn maybe_body_owned_by(&self, hir_id: HirId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(hir_id) {
             if self.dep_graph.is_fully_enabled() {
-                let def_path_hash = self.definitions.def_path_hash(hir_id.owner.index);
+                let def_path_hash = self.definitions.def_path_hash(hir_id.owner);
                 self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
             }
 
@@ -538,7 +533,9 @@ impl<'hir> Map<'hir> {
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
-        let def_path_hash = self.definitions.def_path_hash(CRATE_DEF_INDEX);
+        let def_path_hash = self.definitions.def_path_hash(LocalDefId {
+            index: CRATE_DEF_INDEX,
+        });
 
         self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
         &self.forest.krate.attrs
@@ -645,7 +642,7 @@ impl<'hir> Map<'hir> {
     /// which can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
         if self.dep_graph.is_fully_enabled() {
-            let def_path_hash = self.definitions.def_path_hash(hir_id.owner.index);
+            let def_path_hash = self.definitions.def_path_hash(hir_id.owner);
             self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
         }
 

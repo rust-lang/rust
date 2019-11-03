@@ -1272,7 +1272,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let escapes_from = if tcx.is_closure(self.mir_def_id) {
             let tables = tcx.typeck_tables_of(self.mir_def_id);
-            let mir_hir_id = tcx.hir().def_index_to_hir_id(self.mir_def_id.index);
+            let mir_hir_id = tcx.hir().local_def_id_to_hir_id(self.mir_def_id.assert_local());
             match tables.node_type(mir_hir_id).kind {
                 ty::Closure(..) => "closure",
                 ty::Generator(..) => "generator",

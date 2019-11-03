@@ -903,7 +903,7 @@ where
             local_id,
         } = *id;
 
-        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner.index);
+        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner);
 
         def_path_hash.encode(self)?;
         local_id.encode(self)

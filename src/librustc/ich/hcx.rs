@@ -132,7 +132,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
         if let Some(def_id) = def_id.as_local() {
-            self.definitions.def_path_hash(def_id.index)
+            self.definitions.def_path_hash(def_id)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -140,7 +140,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.definitions.def_path_hash(def_id.index)
+        self.definitions.def_path_hash(def_id)
     }
 
     #[inline]

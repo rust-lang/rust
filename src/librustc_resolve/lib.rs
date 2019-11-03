@@ -26,7 +26,7 @@ use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId};
 use rustc::hir::{TraitMap, GlobMap};
 use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
@@ -1010,9 +1010,9 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
 
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
-        match id.krate {
-            LOCAL_CRATE => self.definitions.def_key(id.index).parent,
-            _ => self.cstore().def_key(id).parent,
+        match id.as_local() {
+            Some(id) => self.definitions.def_key(id).parent,
+            None => self.cstore().def_key(id).parent,
         }.map(|index| DefId { index, ..id })
     }
 }

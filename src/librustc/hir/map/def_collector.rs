@@ -1,5 +1,5 @@
 use crate::hir::map::definitions::*;
-use crate::hir::def_id::DefIndex;
+use crate::hir::def_id::LocalDefId;
 
 use syntax::ast::*;
 use syntax::visit;
@@ -11,7 +11,7 @@ use syntax_pos::Span;
 /// Creates `DefId`s for nodes in the AST.
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
-    parent_def: DefIndex,
+    parent_def: LocalDefId,
     expansion: ExpnId,
 }
 
@@ -25,13 +25,13 @@ impl<'a> DefCollector<'a> {
                   node_id: NodeId,
                   data: DefPathData,
                   span: Span)
-                  -> DefIndex {
+                  -> LocalDefId {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
         self.definitions.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
     }
 
-    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {
+    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
         let orig_parent_def = std::mem::replace(&mut self.parent_def, parent_def);
         f(self);
         self.parent_def = orig_parent_def;
