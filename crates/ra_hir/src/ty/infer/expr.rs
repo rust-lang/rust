@@ -11,12 +11,11 @@ use crate::{
     db::HirDatabase,
     expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
-    nameres::Namespace,
     ty::{
         autoderef, method_resolution, op, primitive, CallableDef, InferTy, Mutability, Obligation,
         ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },
-    Adt, Name,
+    Adt, Name, Namespace,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

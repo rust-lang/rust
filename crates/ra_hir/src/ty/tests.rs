@@ -3403,7 +3403,7 @@ fn test() { S.foo()<|>; }
 
 #[test]
 fn infer_macro_with_dollar_crate_is_correct_in_expr() {
-    covers!(macro_dollar_crate_other);
+    // covers!(macro_dollar_crate_other);
     let (mut db, pos) = MockDatabase::with_position(
         r#"
 //- /main.rs

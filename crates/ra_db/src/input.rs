@@ -97,6 +97,7 @@ pub enum Edition {
 }
 
 impl Edition {
+    //FIXME: replace with FromStr with proper error handling
     pub fn from_string(s: &str) -> Edition {
         match s {
             "2015" => Edition::Edition2015,

@@ -1,45 +1,49 @@
 //! FIXME: write short doc here
 
-use hir_def::{
-    attr::Attr,
-    nameres::{mod_resolution::ModDir, raw},
+use hir_expand::{
+    name::{self, AsName, Name},
+    HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind,
 };
-use hir_expand::name;
 use ra_cfg::CfgOptions;
-use ra_db::FileId;
+use ra_db::{CrateId, FileId};
 use ra_syntax::{ast, SmolStr};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    db::DefDatabase,
-    ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
+    attr::Attr,
+    db::DefDatabase2,
     nameres::{
-        diagnostics::DefDiagnostic, Crate, CrateDefMap, CrateModuleId, ModuleData, ModuleDef,
-        PerNs, ReachedFixedPoint, Resolution, ResolveMode,
+        diagnostics::DefDiagnostic, mod_resolution::ModDir, per_ns::PerNs, raw, CrateDefMap,
+        ModuleData, ReachedFixedPoint, Resolution, ResolveMode,
     },
-    Adt, AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
-    Struct, Trait, TypeAlias, Union,
+    path::{Path, PathKind},
+    AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionId,
+    LocationCtx, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 
-pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
+pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> CrateDefMap {
+    let crate_graph = db.crate_graph();
+
     // populate external prelude
-    for dep in def_map.krate.dependencies(db) {
-        log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
-        if let Some(module) = dep.krate.root_module(db) {
-            def_map.extern_prelude.insert(dep.name.clone(), module.into());
-        }
+    for dep in crate_graph.dependencies(def_map.krate) {
+        let dep_def_map = db.crate_def_map(dep.crate_id);
+        log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
+        def_map.extern_prelude.insert(
+            dep.as_name(),
+            ModuleId { krate: dep.crate_id, module_id: dep_def_map.root }.into(),
+        );
+
         // look for the prelude
         if def_map.prelude.is_none() {
-            let map = db.crate_def_map(dep.krate);
+            let map = db.crate_def_map(dep.crate_id);
             if map.prelude.is_some() {
                 def_map.prelude = map.prelude;
             }
         }
     }
 
-    let crate_graph = db.crate_graph();
-    let cfg_options = crate_graph.cfg_options(def_map.krate().crate_id());
+    let cfg_options = crate_graph.cfg_options(def_map.krate);
 
     let mut collector = DefCollector {
         db,
@@ -101,11 +105,11 @@ struct DefCollector<'a, DB> {
 
 impl<DB> DefCollector<'_, DB>
 where
-    DB: DefDatabase,
+    DB: DefDatabase2,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
-        let file_id = crate_graph.crate_root(self.def_map.krate.crate_id());
+        let file_id = crate_graph.crate_root(self.def_map.krate);
         let raw_items = self.db.raw_items(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].definition = Some(file_id);
@@ -168,7 +172,7 @@ where
         &mut self,
         module_id: CrateModuleId,
         name: Name,
-        macro_: MacroDef,
+        macro_: MacroDefId,
         export: bool,
     ) {
         // Textual scoping
@@ -189,7 +193,7 @@ where
     /// the definition of current module.
     /// And also, `macro_use` on a module will import all legacy macros visable inside to
     /// current legacy scope, with possible shadowing.
-    fn define_legacy_macro(&mut self, module_id: CrateModuleId, name: Name, macro_: MacroDef) {
+    fn define_legacy_macro(&mut self, module_id: CrateModuleId, name: Name, macro_: MacroDefId) {
         // Always shadowing
         self.def_map.modules[module_id].scope.legacy_macros.insert(name, macro_);
     }
@@ -213,9 +217,9 @@ where
                 .expect("extern crate should have been desugared to one-element path"),
         );
 
-        if let Some(ModuleDef::Module(m)) = res.take_types() {
+        if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
             tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
-            self.import_all_macros_exported(current_module_id, m.krate());
+            self.import_all_macros_exported(current_module_id, m.krate);
         }
     }
 
@@ -224,7 +228,7 @@ where
     /// Exported macros are just all macros in the root module scope.
     /// Note that it contains not only all `#[macro_export]` macros, but also all aliases
     /// created by `use` in the root module, ignoring the visibility of `use`.
-    fn import_all_macros_exported(&mut self, current_module_id: CrateModuleId, krate: Crate) {
+    fn import_all_macros_exported(&mut self, current_module_id: CrateModuleId, krate: CrateId) {
         let def_map = self.db.crate_def_map(krate);
         for (name, def) in def_map[def_map.root].scope.macros() {
             // `macro_use` only bring things into legacy scope.
@@ -288,15 +292,15 @@ where
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
             match def.take_types() {
-                Some(ModuleDef::Module(m)) => {
+                Some(ModuleDefId::ModuleId(m)) => {
                     if import.is_prelude {
                         tested_by!(std_prelude);
                         self.def_map.prelude = Some(m);
-                    } else if m.krate() != self.def_map.krate {
+                    } else if m.krate != self.def_map.krate {
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
-                        let item_map = self.db.crate_def_map(m.krate());
-                        let scope = &item_map[m.id.module_id].scope;
+                        let item_map = self.db.crate_def_map(m.krate);
+                        let scope = &item_map[m.module_id].scope;
 
                         // Module scoped macros is included
                         let items = scope
@@ -310,7 +314,7 @@ where
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
                         // additions
-                        let scope = &self.def_map[m.id.module_id].scope;
+                        let scope = &self.def_map[m.module_id].scope;
 
                         // Module scoped macros is included
                         let items = scope
@@ -322,23 +326,25 @@ where
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items
                         self.glob_imports
-                            .entry(m.id.module_id)
+                            .entry(m.module_id)
                             .or_default()
                             .push((module_id, import_id));
                     }
                 }
-                Some(ModuleDef::Adt(Adt::Enum(e))) => {
+                Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
                     tested_by!(glob_enum);
                     // glob import from enum => just import all the variants
-                    let variants = e.variants(self.db);
-                    let resolutions = variants
-                        .into_iter()
-                        .filter_map(|variant| {
+                    let enum_data = self.db.enum_data(e);
+                    let resolutions = enum_data
+                        .variants
+                        .iter()
+                        .filter_map(|(local_id, variant_data)| {
+                            let name = variant_data.name.clone()?;
+                            let variant = EnumVariantId { parent: e, local_id };
                             let res = Resolution {
                                 def: PerNs::both(variant.into(), variant.into()),
                                 import: Some(import_id),
                             };
-                            let name = variant.name(self.db)?;
                             Some((name, res))
                         })
                         .collect::<Vec<_>>();
@@ -451,8 +457,8 @@ where
             );
 
             if let Some(def) = resolved_res.resolved_def.get_macros() {
-                let call_id = self.db.intern_macro(MacroCallLoc { def: def.id, ast_id: *ast_id });
-                resolved.push((*module_id, call_id, def.id));
+                let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id: *ast_id });
+                resolved.push((*module_id, call_id, def));
                 res = ReachedFixedPoint::No;
                 return false;
             }
@@ -517,7 +523,7 @@ struct ModCollector<'a, D> {
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<'_, DB>>
 where
-    DB: DefDatabase,
+    DB: DefDatabase2,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         // Note: don't assert that inserted value is fresh: it's simply not true
@@ -526,10 +532,9 @@ where
 
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
-            if prelude_module.krate() != self.def_collector.def_map.krate {
+            if prelude_module.krate != self.def_collector.def_map.krate {
                 tested_by!(prelude_is_macro_use);
-                self.def_collector
-                    .import_all_macros_exported(self.module_id, prelude_module.krate());
+                self.def_collector.import_all_macros_exported(self.module_id, prelude_module.krate);
             }
         }
 
@@ -635,7 +640,9 @@ where
         modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
-            def: PerNs::types(Module::new(self.def_collector.def_map.krate, res).into()),
+            def: PerNs::types(
+                ModuleId { krate: self.def_collector.def_map.krate, module_id: res }.into(),
+            ),
             import: None,
         };
         self.def_collector.update(self.module_id, None, &[(name, resolution)]);
@@ -643,30 +650,32 @@ where
     }
 
     fn define_def(&mut self, def: &raw::DefData) {
-        let module = Module::new(self.def_collector.def_map.krate, self.module_id);
-        let ctx = LocationCtx::new(self.def_collector.db, module.id, self.file_id);
+        let module =
+            ModuleId { krate: self.def_collector.def_map.krate, module_id: self.module_id };
+        let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
 
-        macro_rules! def {
-            ($kind:ident, $ast_id:ident) => {
-                $kind { id: AstItemDef::from_ast_id(ctx, $ast_id) }.into()
-            };
-        }
         let name = def.name.clone();
         let def: PerNs = match def.kind {
-            raw::DefKind::Function(ast_id) => PerNs::values(def!(Function, ast_id)),
+            raw::DefKind::Function(ast_id) => {
+                PerNs::values(FunctionId::from_ast_id(ctx, ast_id).into())
+            }
             raw::DefKind::Struct(ast_id) => {
-                let s = def!(Struct, ast_id);
+                let s = StructId::from_ast_id(ctx, ast_id).into();
                 PerNs::both(s, s)
             }
             raw::DefKind::Union(ast_id) => {
-                let s = def!(Union, ast_id);
+                let s = UnionId::from_ast_id(ctx, ast_id).into();
                 PerNs::both(s, s)
             }
-            raw::DefKind::Enum(ast_id) => PerNs::types(def!(Enum, ast_id)),
-            raw::DefKind::Const(ast_id) => PerNs::values(def!(Const, ast_id)),
-            raw::DefKind::Static(ast_id) => PerNs::values(def!(Static, ast_id)),
-            raw::DefKind::Trait(ast_id) => PerNs::types(def!(Trait, ast_id)),
-            raw::DefKind::TypeAlias(ast_id) => PerNs::types(def!(TypeAlias, ast_id)),
+            raw::DefKind::Enum(ast_id) => PerNs::types(EnumId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::Const(ast_id) => PerNs::values(ConstId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::Static(ast_id) => {
+                PerNs::values(StaticId::from_ast_id(ctx, ast_id).into())
+            }
+            raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::TypeAlias(ast_id) => {
+                PerNs::types(TypeAliasId::from_ast_id(ctx, ast_id).into())
+            }
         };
         let resolution = Resolution { def, import: None };
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
@@ -678,10 +687,8 @@ where
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                let macro_id =
-                    MacroDefId { ast_id, krate: self.def_collector.def_map.krate.crate_id };
-                let macro_ = MacroDef { id: macro_id };
-                self.def_collector.define_macro(self.module_id, name.clone(), macro_, mac.export);
+                let macro_id = MacroDefId { ast_id, krate: self.def_collector.def_map.krate };
+                self.def_collector.define_macro(self.module_id, name.clone(), macro_id, mac.export);
             }
             return;
         }
@@ -691,10 +698,10 @@ where
         if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
             self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
-            let def = macro_def.id;
-            let macro_call_id = self.def_collector.db.intern_macro(MacroCallLoc { def, ast_id });
+            let macro_call_id =
+                self.def_collector.db.intern_macro(MacroCallLoc { def: macro_def, ast_id });
 
-            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, def);
+            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_def);
             return;
         }
 
@@ -733,15 +740,16 @@ fn is_macro_rules(path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use ra_db::SourceDatabase;
-
-    use super::*;
-    use crate::{db::DefDatabase, mock::MockDatabase, Crate};
     use ra_arena::Arena;
+    use ra_db::{fixture::WithFixture, SourceDatabase};
     use rustc_hash::FxHashSet;
 
+    use crate::{db::DefDatabase2, test_db::TestDB};
+
+    use super::*;
+
     fn do_collect_defs(
-        db: &impl DefDatabase,
+        db: &impl DefDatabase2,
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
     ) -> CrateDefMap {
@@ -760,12 +768,11 @@ mod tests {
     }
 
     fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
-        let (db, _source_root, _) = MockDatabase::with_single_file(&code);
-        let crate_id = db.crate_graph().iter().next().unwrap();
-        let krate = Crate { crate_id };
+        let (db, _file_id) = TestDB::with_single_file(&code);
+        let krate = db.crate_graph().iter().next().unwrap();
 
         let def_map = {
-            let edition = krate.edition(&db);
+            let edition = db.crate_graph().edition(krate);
             let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {

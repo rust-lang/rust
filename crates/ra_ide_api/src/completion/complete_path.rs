@@ -18,15 +18,15 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
     match def {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
-            for (name, res) in module_scope.entries() {
-                if let Some(hir::ModuleDef::BuiltinType(..)) = res.def.take_types() {
+            for (name, def, import) in module_scope {
+                if let hir::ScopeDef::ModuleDef(hir::ModuleDef::BuiltinType(..)) = def {
                     if ctx.use_item_syntax.is_some() {
                         tested_by!(dont_complete_primitive_in_use);
                         continue;
                     }
                 }
                 if Some(module) == ctx.module {
-                    if let Some(import) = res.import {
+                    if let Some(import) = import {
                         if let Either::A(use_tree) = module.import_source(ctx.db, import) {
                             if use_tree.syntax().text_range().contains_inclusive(ctx.offset) {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
@@ -36,7 +36,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                         }
                     }
                 }
-                acc.add_resolution(ctx, name.to_string(), &res.def.into());
+                acc.add_resolution(ctx, name.to_string(), &def);
             }
         }
         hir::ModuleDef::Adt(_) | hir::ModuleDef::TypeAlias(_) => {

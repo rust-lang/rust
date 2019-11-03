@@ -36,6 +36,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
 fn no_docs_comments() {
     let crates = project_root().join("crates");
     let iter = WalkDir::new(crates);
+    let mut missing_docs = Vec::new();
     for f in iter.into_iter().filter_entry(|e| !is_hidden(e)) {
         let f = f.unwrap();
         if f.file_type().is_dir() {
@@ -54,12 +55,14 @@ fn no_docs_comments() {
         let mut line = String::new();
         reader.read_line(&mut line).unwrap();
         if !line.starts_with("//!") {
-            panic!(
-                "\nMissing docs strings\n\
-                 module: {}\n\
-                 Need add doc for module\n",
-                f.path().display()
-            )
+            missing_docs.push(f.path().display().to_string());
         }
+    }
+    if !missing_docs.is_empty() {
+        panic!(
+            "\nMissing docs strings\n\n\
+             modules:\n{}\n\n",
+            missing_docs.join("\n")
+        )
     }
 }

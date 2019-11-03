@@ -985,6 +985,7 @@ dependencies = [
  "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "salsa 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "test_utils 0.1.0",
 ]
 
 [[package]]
@@ -1027,6 +1028,7 @@ dependencies = [
 name = "ra_hir_def"
 version = "0.1.0"
 dependencies = [
+ "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",

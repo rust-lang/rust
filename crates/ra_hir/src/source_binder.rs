@@ -253,8 +253,11 @@ impl SourceAnalyzer {
             Some(res)
         });
 
-        let items =
-            self.resolver.resolve_module_path(db, &path).take_types().map(PathResolution::Def);
+        let items = self
+            .resolver
+            .resolve_module_path(db, &path)
+            .take_types()
+            .map(|it| PathResolution::Def(it.into()));
         types.or(values).or(items).or_else(|| {
             self.resolver.resolve_path_as_macro(db, &path).map(|def| PathResolution::Macro(def))
         })

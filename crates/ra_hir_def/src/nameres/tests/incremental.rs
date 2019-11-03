@@ -1,13 +1,12 @@
-use super::*;
-
 use std::sync::Arc;
 
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 
+use super::*;
+
 fn check_def_map_is_not_recomputed(initial: &str, file_change: &str) {
-    let (mut db, pos) = MockDatabase::with_position(initial);
-    let crate_id = db.crate_graph().iter().next().unwrap();
-    let krate = Crate { crate_id };
+    let (mut db, pos) = TestDB::with_position(initial);
+    let krate = db.crate_graph().iter().next().unwrap();
     {
         let events = db.log_executed(|| {
             db.crate_def_map(krate);
@@ -92,7 +91,7 @@ fn adding_inner_items_should_not_invalidate_def_map() {
 
 #[test]
 fn typing_inside_a_macro_should_not_invalidate_def_map() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (mut db, pos) = TestDB::with_position(
         "
         //- /lib.rs
         macro_rules! m {
@@ -112,15 +111,12 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         m!(X);
         ",
     );
+    let krate = db.crate_graph().iter().next().unwrap();
     {
         let events = db.log_executed(|| {
-            let src = crate::Source {
-                file_id: pos.file_id.into(),
-                ast: crate::ModuleSource::new(&db, Some(pos.file_id), None),
-            };
-            let module = crate::Module::from_definition(&db, src).unwrap();
-            let decls = module.declarations(&db);
-            assert_eq!(decls.len(), 18);
+            let crate_def_map = db.crate_def_map(krate);
+            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
+            assert_eq!(module_data.scope.items.len(), 1);
         });
         assert!(format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
     }
@@ -128,13 +124,9 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
 
     {
         let events = db.log_executed(|| {
-            let src = crate::Source {
-                file_id: pos.file_id.into(),
-                ast: crate::ModuleSource::new(&db, Some(pos.file_id), None),
-            };
-            let module = crate::Module::from_definition(&db, src).unwrap();
-            let decls = module.declarations(&db);
-            assert_eq!(decls.len(), 18);
+            let crate_def_map = db.crate_def_map(krate);
+            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
+            assert_eq!(module_data.scope.items.len(), 1);
         });
         assert!(!format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
     }

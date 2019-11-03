@@ -2,13 +2,16 @@
 use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
-use ra_db::{salsa, SourceDatabase};
+use ra_db::{salsa, CrateId, SourceDatabase};
 use ra_syntax::ast;
 
 use crate::{
     adt::{EnumData, StructData},
-    nameres::raw::{ImportSourceMap, RawItems},
-    EnumId, StructId,
+    nameres::{
+        raw::{ImportSourceMap, RawItems},
+        CrateDefMap,
+    },
+    EnumId, StructId, UnionId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -42,8 +45,14 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 
+    #[salsa::invoke(CrateDefMap::crate_def_map_query)]
+    fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
+
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, s: StructId) -> Arc<StructData>;
+
+    #[salsa::invoke(StructData::union_data_query)]
+    fn union_data(&self, s: UnionId) -> Arc<StructData>;
 
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;

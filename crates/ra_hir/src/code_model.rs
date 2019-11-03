@@ -9,7 +9,7 @@ use hir_def::{
     adt::VariantData,
     builtin_type::BuiltinType,
     type_ref::{Mutability, TypeRef},
-    CrateModuleId, LocalEnumVariantId, LocalStructFieldId, ModuleId,
+    CrateModuleId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -28,11 +28,10 @@ use crate::{
         TypeAliasId,
     },
     impl_block::ImplBlock,
-    nameres::{ImportId, ModuleScope, Namespace},
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
     ty::{InferenceResult, TraitRef},
-    Either, HasSource, Name, Ty,
+    Either, HasSource, Name, ScopeDef, Ty, {ImportId, Namespace},
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -66,7 +65,7 @@ impl Crate {
     }
 
     pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
-        let module_id = db.crate_def_map(self).root();
+        let module_id = db.crate_def_map(self.crate_id).root();
         Some(Module::new(self, module_id))
     }
 
@@ -120,7 +119,7 @@ impl Module {
 
     /// Name of this module.
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         let parent = def_map[self.id.module_id].parent?;
         def_map[parent].children.iter().find_map(|(name, module_id)| {
             if *module_id == self.id.module_id {
@@ -151,20 +150,20 @@ impl Module {
     /// might be missing `krate`. This can happen if a module's file is not included
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &impl DefDatabase) -> Module {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         self.with_module_id(def_map.root())
     }
 
     /// Finds a child module with the specified name.
     pub fn child(self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         let child_id = def_map[self.id.module_id].children.get(name)?;
         Some(self.with_module_id(*child_id))
     }
 
     /// Iterates over all child modules.
     pub fn children(self, db: &impl DefDatabase) -> impl Iterator<Item = Module> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         let children = def_map[self.id.module_id]
             .children
             .iter()
@@ -175,7 +174,7 @@ impl Module {
 
     /// Finds a parent module.
     pub fn parent(self, db: &impl DefDatabase) -> Option<Module> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         let parent_id = def_map[self.id.module_id].parent?;
         Some(self.with_module_id(parent_id))
     }
@@ -191,12 +190,16 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(self, db: &impl HirDatabase) -> ModuleScope {
-        db.crate_def_map(self.krate())[self.id.module_id].scope.clone()
+    pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef, Option<ImportId>)> {
+        db.crate_def_map(self.id.krate)[self.id.module_id]
+            .scope
+            .entries()
+            .map(|(name, res)| (name.clone(), res.def.into(), res.import))
+            .collect()
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
-        db.crate_def_map(self.krate()).add_diagnostics(db, self.id.module_id, sink);
+        db.crate_def_map(self.id.krate).add_diagnostics(db, self.id.module_id, sink);
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
@@ -220,12 +223,12 @@ impl Module {
     }
 
     pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         Resolver::default().push_module_scope(def_map, self.id.module_id)
     }
 
     pub fn declarations(self, db: &impl DefDatabase) -> Vec<ModuleDef> {
-        let def_map = db.crate_def_map(self.krate());
+        let def_map = db.crate_def_map(self.id.krate);
         def_map[self.id.module_id]
             .scope
             .entries()
@@ -233,6 +236,7 @@ impl Module {
             .flat_map(|per_ns| {
                 per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
             })
+            .map(ModuleDef::from)
             .collect()
     }
 
@@ -336,12 +340,12 @@ impl Struct {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Union {
-    pub(crate) id: StructId,
+    pub(crate) id: UnionId,
 }
 
 impl Union {
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.struct_data(self.id).name.clone()
+        db.union_data(self.id).name.clone()
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {

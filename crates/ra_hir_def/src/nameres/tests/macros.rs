@@ -71,16 +71,16 @@ fn macro_rules_can_define_modules() {
 
 #[test]
 fn macro_rules_from_other_crates_are_visible() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         foo::structs!(Foo, Bar)
         mod bar;
 
         //- /bar.rs
         use crate::*;
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         #[macro_export]
         macro_rules! structs {
             ($($i:ident),*) => {
@@ -88,10 +88,6 @@ fn macro_rules_from_other_crates_are_visible() {
             }
         }
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
    ⋮crate
@@ -108,16 +104,16 @@ fn macro_rules_from_other_crates_are_visible() {
 
 #[test]
 fn macro_rules_export_with_local_inner_macros_are_visible() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         foo::structs!(Foo, Bar)
         mod bar;
 
         //- /bar.rs
         use crate::*;
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         #[macro_export(local_inner_macros)]
         macro_rules! structs {
             ($($i:ident),*) => {
@@ -125,10 +121,6 @@ fn macro_rules_export_with_local_inner_macros_are_visible() {
             }
         }
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
    ⋮crate
@@ -145,9 +137,9 @@ fn macro_rules_export_with_local_inner_macros_are_visible() {
 
 #[test]
 fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         macro_rules! baz {
             () => {
                 use foo::bar;
@@ -158,7 +150,7 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
         bar!();
         baz!();
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         #[macro_export]
         macro_rules! foo {
             () => {
@@ -172,10 +164,6 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
             }
         }
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
    ⋮crate
@@ -188,9 +176,9 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
 #[test]
 fn macro_rules_from_other_crates_are_visible_with_macro_use() {
     covers!(macro_rules_from_other_crates_are_visible_with_macro_use);
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         structs!(Foo);
         structs_priv!(Bar);
         structs_not_exported!(MacroNotResolved1);
@@ -205,7 +193,7 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
         structs!(Baz);
         crate::structs!(MacroNotResolved3);
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         #[macro_export]
         macro_rules! structs {
             ($i:ident) => { struct $i; }
@@ -222,10 +210,6 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
             }
         }
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
    ⋮crate
@@ -242,9 +226,9 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
 #[test]
 fn prelude_is_macro_use() {
     covers!(prelude_is_macro_use);
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         structs!(Foo);
         structs_priv!(Bar);
         structs_outside!(Out);
@@ -256,7 +240,7 @@ fn prelude_is_macro_use() {
         structs!(Baz);
         crate::structs!(MacroNotResolved3);
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         #[prelude_import]
         use self::prelude::*;
 
@@ -279,10 +263,6 @@ fn prelude_is_macro_use() {
             ($i:ident) => { struct $i; }
         }
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
    ⋮crate
@@ -447,16 +427,16 @@ fn type_value_macro_live_in_different_scopes() {
 
 #[test]
 fn macro_use_can_be_aliased() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         #[macro_use]
         extern crate foo;
 
         foo!(Direct);
         bar!(Alias);
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         use crate::foo as bar;
 
         mod m {
@@ -466,10 +446,6 @@ fn macro_use_can_be_aliased() {
             }
         }
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
         ⋮crate
@@ -533,9 +509,9 @@ fn path_qualified_macros() {
 fn macro_dollar_crate_is_correct_in_item() {
     covers!(macro_dollar_crate_self);
     covers!(macro_dollar_crate_other);
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:foo
         #[macro_use]
         extern crate foo;
 
@@ -554,7 +530,7 @@ fn macro_dollar_crate_is_correct_in_item() {
         not_current1!();
         foo::not_current2!();
 
-        //- /lib.rs
+        //- /lib.rs crate:foo
         mod m {
             #[macro_export]
             macro_rules! not_current1 {
@@ -574,10 +550,6 @@ fn macro_dollar_crate_is_correct_in_item() {
         struct Bar;
         struct Baz;
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["foo"]),
-            "foo": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
         ⋮crate
@@ -596,12 +568,12 @@ fn macro_dollar_crate_is_correct_in_item() {
 fn macro_dollar_crate_is_correct_in_indirect_deps() {
     covers!(macro_dollar_crate_other);
     // From std
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         r#"
-        //- /main.rs
+        //- /main.rs crate:main deps:std
         foo!();
 
-        //- /std.rs
+        //- /std.rs crate:std deps:core
         #[prelude_import]
         use self::prelude::*;
 
@@ -612,7 +584,7 @@ fn macro_dollar_crate_is_correct_in_indirect_deps() {
         #[macro_use]
         mod std_macros;
 
-        //- /core.rs
+        //- /core.rs crate:core
         #[macro_export]
         macro_rules! foo {
             () => {
@@ -622,11 +594,6 @@ fn macro_dollar_crate_is_correct_in_indirect_deps() {
 
         pub struct bar;
         "#,
-        crate_graph! {
-            "main": ("/main.rs", ["std"]),
-            "std": ("/std.rs", ["core"]),
-            "core": ("/core.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
         ⋮crate
