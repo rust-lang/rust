@@ -55,50 +55,72 @@ Before the evaluation, a virtual memory location (in this case essentially a
 `vec![u8; 4]` or `vec![u8; 8]`) is created for storing the evaluation result.
 
 At the start of the evaluation, `_0` and `_1` are
-`ConstValue::Scalar(Scalar::Undef)`. When the initialization of `_1` is invoked, the
+`Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Undef))`.
+This is quite a mouthful: [`Operand`] can represent either data stored somewhere in the [interpreter memory](#memory) (`Operand::Indirect`), or (as an optimization) immediate data stored in-line.
+And [`Immediate`] can either be a single (potentially uninitialized) [scalar value][`Scalar`] (integer or thin pointer), or a pair of two of them.
+In our case, the single scalar value is *not* (yet) initialized.
+
+When the initialization of `_1` is invoked, the
 value of the `FOO` constant is required, and triggers another call to
 `tcx.const_eval`, which will not be shown here. If the evaluation of FOO is
-successful, 42 will be subtracted by its value `4096` and the result stored in
-`_1` as `ConstValue::ScalarPair(Scalar::Bytes(4054), Scalar::Bytes(0))`. The first
+successful, `42` will be subtracted from its value `4096` and the result stored in
+`_1` as `Operand::Immediate(Immediate::ScalarPair(Scalar::Raw { data: 4054, .. }, Scalar::Raw { data: 0, .. })`. The first
 part of the pair is the computed value, the second part is a bool that's true if
-an overflow happened.
+an overflow happened. A `Scalar::Raw` also stores the size (in bytes) of this scalar value; we are eliding that here.
 
 The next statement asserts that said boolean is `0`. In case the assertion
 fails, its error message is used for reporting a compile-time error.
 
-Since it does not fail, `ConstValue::Scalar(Scalar::Bytes(4054))` is stored in the
+Since it does not fail, `Operand::Immediate(Immediate::Scalar(Scalar::Raw { data: 4054, .. }))` is stored in the
 virtual memory was allocated before the evaluation. `_0` always refers to that
 location directly.
 
-After the evaluation is done, the virtual memory allocation is interned into the
-`TyCtxt`. Future evaluations of the same constants will not actually invoke
-miri, but just extract the value from the interned allocation.
-
-The `tcx.const_eval` function has one additional feature: it will not return a
-`ByRef(interned_allocation_id)`, but a `Scalar(computed_value)` if possible. This
-makes using the result much more convenient, as no further queries need to be
+After the evaluation is done, the return value is converted from [`Operand`] to [`ConstValue`] by [`op_to_const`]:
+the former representation is geared towards what is needed *during* cost evaluation, while [`ConstValue`]
+is shaped by the needs of the remaining parts of the compiler that consume the results of const evaluation.
+As part of this conversion, for types with scalar values, even if
+the resulting [`Operand`] is `Indirect`, it will return an immediate `ConstValue::Scalar(computed_value)` (instead of the usual `ConstValue::ByRef`).
+This makes using the result much more efficient and also more convenient, as no further queries need to be
 executed in order to get at something as simple as a `usize`.
+
+Future evaluations of the same constants will not actually invoke
+Miri, but just use the cached result.
+
+[`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.Operand.html
+[`Immediate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.Immediate.html
+[`ConstValue`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/enum.ConstValue.html
+[`Scalar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/enum.Scalar.html
+[`op_to_const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/fn.op_to_const.html
 
 ## Datastructures
 
-Miri's core datastructures can be found in
+Miri's outside-facing datastructures can be found in
 [librustc/mir/interpret](https://github.com/rust-lang/rust/blob/master/src/librustc/mir/interpret).
-This is mainly the error enum and the `ConstValue` and `Scalar` types. A `ConstValue` can
-be either `Scalar` (a single `Scalar`), `ScalarPair` (two `Scalar`s, usually fat
-pointers or two element tuples) or `ByRef`, which is used for anything else and
+This is mainly the error enum and the [`ConstValue`] and [`Scalar`] types. A `ConstValue` can
+be either `Scalar` (a single `Scalar`, i.e., integer or thin pointer),
+`Slice` (to represent byte slices and strings, as needed for pattern matching) or `ByRef`, which is used for anything else and
 refers to a virtual allocation. These allocations can be accessed via the
 methods on `tcx.interpret_interner`.
+A `Scalar` is either some `Raw` integer or a pointer; see [the next section](#memory) for more on that.
 
-If you are expecting a numeric result, you can use `unwrap_usize` (panics on
-anything that can't be representad as a `u64`) or `assert_usize` which results
-in an `Option<u128>` yielding the `Scalar` if possible.
+If you are expecting a numeric result, you can use `eval_usize` (panics on
+anything that can't be representad as a `u64`) or `try_eval_usize` which results
+in an `Option<u64>` yielding the `Scalar` if possible.
 
-## Allocations
+## Memory
 
-A miri allocation is either a byte sequence of the memory or an `Instance` in
-the case of function pointers. Byte sequences can additionally contain
-relocations that mark a group of bytes as a pointer to another allocation. The
-actual bytes at the relocation refer to the offset inside the other allocation.
+To support any kind of pointers, Miri needs to have a "virtual memory" that the pointers can point to.
+This is implemented in the [`Memory`] type.
+In the simplest model, every global variable, stack variable and every dynamic allocation corresponds to an [`Allocation`] in that memory.
+(Actually using an allocation for every MIR stack variable would be very inefficient; that's why we have `Operand::Immediate` for stack variables that are both small and never have their address taken.
+But that is purely an optimization.)
+
+Such an `Allocation` is basically just a sequence of `u8` storing the value of each byte in this allocation.
+(Plus some extra data, see below.)
+Every `Allocation` has a globally unique `AllocId` assigned in `Memory`.
+With that, a [`Pointer`] consists of a pair of an `AllocId` (indicating the allocation) and an offset into the allocation (indicating which byte of the allocation the pointer points to).
+It may seem odd that a `Pointer` is not just an integer address, but remember that during const evaluation, we cannot know at which actual integer address the allocation will end up -- so we use `AllocId` as symbolic base addresses, which means we need a separate offset.
+(As an aside, it turns out that pointers at run-time are [more than just integers, too](https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#pointer-provenance).)
 
 These allocations exist so that references and raw pointers have something to
 point to. There is no global linear heap in which things are allocated, but each
@@ -106,7 +128,42 @@ allocation (be it for a local variable, a static or a (future) heap allocation)
 gets its own little memory with exactly the required size. So if you have a
 pointer to an allocation for a local variable `a`, there is no possible (no
 matter how unsafe) operation that you can do that would ever change said pointer
-to a pointer to `b`.
+to a pointer to a different local variable `b`.
+Pointer arithmetic on `a` will only ever change its offset; the `AllocId` stays the same.
+
+This, however, causes a problem when we want to store a `Pointer` into an `Allocation`: we cannot turn it into a sequence of `u8` of the right length!
+`AllocId` and offset together are twice as big as a pointer "seems" to be.
+This is what the `relocation` field of `Allocation` is for: the byte offset of the `Pointer` gets stored as a bunch of `u8`, while its `AllocId` gets stored out-of-band.
+The two are reassembled when the `Pointer` is read from memory.
+The other bit of extra data an `Allocation` needs is `undef_mask` for keeping track of which of its bytes are initialized.
+
+### Global memory and exotic allocations
+
+`Memory` exists only during the Miri evaluation; it gets destroyed when the final value of the constant is computed.
+In case that constant contains any pointers, those get "interned" and moved to a global "const eval memory" that is part of `TyCtxt`.
+These allocations stay around for the remaining computation and get serialized into the final output (so that dependent crates can use them).
+
+Moreover, to also support function pointers, the global memory in `TyCtxt` can also contain "virtual allocations": instead of an `Allocation`, these contain an `Instance`.
+That allows a `Pointer` to point to either normal data or a function, which is needed to be able to evaluate casts from function pointers to raw pointers.
+
+Finally, the [`GlobalAlloc`] type used in the global memory also contains a variant `Static` that points to a particular `const` or `static` item.
+This is needed to support circular statics, where we need to have a `Pointer` to a `static` for which we cannot yet have an `Allocation` as we do not know the bytes of its value.
+
+[`Memory`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.Memory.html
+[`Allocation`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/struct.Allocation.html
+[`Pointer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/struct.Pointer.html
+[`GlobalAlloc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/enum.GlobalAlloc.html
+
+### Pointer values vs Pointer types
+
+One common cause of confusion in Miri is that being a pointer *value* and having a pointer *type* are entirely independent properties.
+By "pointer value", we refer to a `Scalar::Ptr` containing a `Pointer` and thus pointing somewhere into Miri's virtual memory.
+This is in contrast to `Scalar::Raw`, which is just some concrete integer.
+
+However, a variable of pointer or reference *type*, such as `*const T` or `&T`, does not have to have a pointer *value*:
+it could be obtaining by casting or transmuting an integer to a pointer (currently that is hard to do in const eval, but eventually `transmute` will be stable as a `const fn`).
+And similarly, when casting or transmuting a reference to some actual allocation to an integer, we end up with a pointer *value* (`Scalar::Ptr`) at integer *type* (`usize`).
+This is a problem because we cannot meaningfully perform integer operations such as division on pointer values.
 
 ## Interpretation
 
