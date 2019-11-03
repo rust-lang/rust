@@ -498,41 +498,48 @@ impl Cursor<'_> {
 
     fn lifetime_or_char(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '\'');
-        let mut starts_with_number = false;
 
-        // Check if the first symbol after '\'' is a valid identifier
-        // character or a number (not a digit followed by '\'').
-        if (is_id_start(self.nth_char(0))
-            || self.nth_char(0).is_digit(10) && {
-                starts_with_number = true;
-                true
-            })
-            && self.nth_char(1) != '\''
-        {
-            self.bump();
+        let can_be_a_lifetime = if self.second() == '\'' {
+            // It's surely not a lifetime.
+            false
+        } else {
+            // If the first symbol is valid for identifier, it can be a lifetime.
+            // Also check if it's a number for a better error reporting (so '0 will
+            // be reported as invalid lifetime and not as unterminated char literal).
+            is_id_start(self.first()) || self.first().is_digit(10)
+        };
 
-            // Skip the identifier.
-            while is_id_continue(self.nth_char(0)) {
-                self.bump();
+        if !can_be_a_lifetime {
+            let terminated = self.single_quoted_string();
+            let suffix_start = self.len_consumed();
+            if terminated {
+                self.eat_literal_suffix();
             }
-
-            return if self.nth_char(0) == '\'' {
-                self.bump();
-                let kind = Char { terminated: true };
-                Literal { kind, suffix_start: self.len_consumed() }
-            } else {
-                Lifetime { starts_with_number }
-            };
+            let kind = Char { terminated };
+            return Literal { kind, suffix_start };
         }
 
-        // This is not a lifetime (checked above), parse a char literal.
-        let terminated = self.single_quoted_string();
-        let suffix_start = self.len_consumed();
-        if terminated {
-            self.eat_literal_suffix();
+        // Either a lifetime or a character literal with
+        // length greater than 1.
+
+        let starts_with_number = self.first().is_digit(10);
+
+        // Skip the literal contents.
+        // First symbol can be a number (which isn't a valid identifier start),
+        // so skip it without any checks.
+        self.bump();
+        self.eat_while(is_id_continue);
+
+        // Check if after skipping literal contents we've met a closing
+        // single quote (which means that user attempted to create a
+        // string with single quotes).
+        if self.first() == '\'' {
+            self.bump();
+            let kind = Char { terminated: true };
+            return Literal { kind, suffix_start: self.len_consumed() };
         }
-        let kind = Char { terminated };
-        return Literal { kind, suffix_start };
+
+        return Lifetime { starts_with_number };
     }
 
     fn single_quoted_string(&mut self) -> bool {
