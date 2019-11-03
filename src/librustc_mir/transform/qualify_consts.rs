@@ -6,7 +6,6 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -20,7 +19,6 @@ use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
-use syntax::ast::LitKind;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
@@ -678,7 +676,6 @@ struct Checker<'a, 'tcx> {
     rpo: ReversePostorder<'a, 'tcx>,
 
     temp_promotion_state: IndexVec<Local, TempState>,
-    promotion_candidates: Vec<Candidate>,
     unchecked_promotion_candidates: Vec<Candidate>,
 
     /// If `true`, do not emit errors to the user, merely collect them in `errors`.
@@ -748,7 +745,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             def_id,
             rpo,
             temp_promotion_state: temps,
-            promotion_candidates: vec![],
             unchecked_promotion_candidates,
             errors: vec![],
             suppress_errors: false,
@@ -794,7 +790,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         let mut qualifs = self.qualifs_in_value(source);
 
         match source {
-            ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) => {
+            ValueSource::Rvalue(&Rvalue::Ref(_, kind, _)) => {
                 // Getting `true` from `HasMutInterior::in_rvalue` means
                 // the borrowed place is disallowed from being borrowed,
                 // due to either a mutable borrow (with some exceptions),
@@ -833,57 +829,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                             }
                         }
                     }
-                } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
-                    // Don't promote BorrowKind::Shallow borrows, as they don't
-                    // reach codegen.
-                    // FIXME(eddyb) the two other kinds of borrow (`Shallow` and `Unique`)
-                    // aren't promoted here but *could* be promoted as part of a larger
-                    // value because `IsNotPromotable` isn't being set for them,
-                    // need to figure out what is the intended behavior.
-
-                    // We might have a candidate for promotion.
-                    let candidate = Candidate::Ref(location);
-                    // Start by traversing to the "base", with non-deref projections removed.
-                    let deref_proj =
-                        place.projection.iter().rev().find(|&elem| *elem == ProjectionElem::Deref);
-
-                    debug!(
-                        "qualify_consts: promotion candidate: place={:?} {:?}",
-                        place.base, deref_proj
-                    );
-                    // We can only promote interior borrows of promotable temps (non-temps
-                    // don't get promoted anyway).
-                    // (If we bailed out of the loop due to a `Deref` above, we will definitely
-                    // not enter the conditional here.)
-                    if let (PlaceBase::Local(local), None) = (&place.base, deref_proj) {
-                        if self.body.local_kind(*local) == LocalKind::Temp {
-                            debug!("qualify_consts: promotion candidate: local={:?}", local);
-                            // The borrowed place doesn't have `HasMutInterior`
-                            // (from `in_rvalue`), so we can safely ignore
-                            // `HasMutInterior` from the local's qualifications.
-                            // This allows borrowing fields which don't have
-                            // `HasMutInterior`, from a type that does, e.g.:
-                            // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            let mut local_qualifs = self.qualifs_in_local(*local);
-                            // Any qualifications, except HasMutInterior (see above), disqualify
-                            // from promotion.
-                            // This is, in particular, the "implicit promotion" version of
-                            // the check making sure that we don't run drop glue during const-eval.
-                            local_qualifs[HasMutInterior] = false;
-                            if !local_qualifs.0.iter().any(|&qualif| qualif) {
-                                debug!("qualify_consts: promotion candidate: {:?}", candidate);
-                                self.promotion_candidates.push(candidate);
-                            }
-                        }
-                    }
-                }
-            },
-            ValueSource::Rvalue(&Rvalue::Repeat(ref operand, _)) => {
-                debug!("assign: self.cx.mode={:?} self.def_id={:?} location={:?} operand={:?}",
-                       self.cx.mode, self.def_id, location, operand);
-                if self.should_promote_repeat_expression(operand) &&
-                        self.tcx.features().const_in_array_repeat_expressions {
-                    self.promotion_candidates.push(Candidate::Repeat(location));
                 }
             },
             _ => {},
@@ -1047,22 +992,17 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Collect all the temps we need to promote.
         let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
 
-        // HACK(eddyb) don't try to validate promotion candidates if any
-        // parts of the control-flow graph were skipped due to an error.
-        let promotion_candidates = if has_controlflow_error {
-            let unleash_miri = self
-                .tcx
-                .sess
-                .opts
-                .debugging_opts
-                .unleash_the_miri_inside_of_you;
-            if !unleash_miri {
-                self.tcx.sess.delay_span_bug(
-                    body.span,
-                    "check_const: expected control-flow error(s)",
-                );
-            }
-            self.promotion_candidates.clone()
+        // HACK: if parts of the control-flow graph were skipped due to an error, don't try to
+        // promote anything, since that can cause errors in a `const` if e.g. rvalue static
+        // promotion is attempted within a loop body.
+        let unleash_miri = self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
+        let promotion_candidates = if has_controlflow_error && !unleash_miri {
+            self.tcx.sess.delay_span_bug(
+                body.span,
+                "check_const: expected control-flow error(s)",
+            );
+
+            vec![]
         } else {
             promote_consts::validate_candidates(
                 self.tcx,
@@ -1110,15 +1050,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
-    }
-
-    /// Returns `true` if the operand of a repeat expression is promotable.
-    fn should_promote_repeat_expression(&self, operand: &Operand<'tcx>) -> bool {
-        let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
-                             IsNotPromotable::in_operand(self, operand);
-        debug!("should_promote_repeat_expression: operand={:?} not_promotable={:?}",
-               operand, not_promotable);
-        !not_promotable
     }
 }
 
@@ -1431,11 +1362,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
 
             let fn_ty = func.ty(self.body, self.tcx);
-            let mut callee_def_id = None;
-            let mut is_shuffle = false;
             match fn_ty.kind {
                 ty::FnDef(def_id, _) => {
-                    callee_def_id = Some(def_id);
                     match self.tcx.fn_sig(def_id).abi() {
                         Abi::RustIntrinsic |
                         Abi::PlatformIntrinsic => {
@@ -1457,10 +1385,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                                 is gated in {}s", self.mode));
                                         }
                                     }
-                                }
-
-                                name if name.starts_with("simd_shuffle") => {
-                                    is_shuffle = true;
                                 }
 
                                 // no need to check feature gates, intrinsics are only callable
@@ -1547,36 +1471,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
                 _ => {
                     self.not_const(ops::FnCallOther);
-                }
-            }
-
-            // No need to do anything in constants and statics, as everything is "constant" anyway
-            // so promotion would be useless.
-            if self.mode != Mode::Static && self.mode != Mode::Const {
-                let constant_args = callee_def_id.and_then(|id| {
-                    args_required_const(self.tcx, id)
-                }).unwrap_or_default();
-                for (i, arg) in args.iter().enumerate() {
-                    if !(is_shuffle && i == 2 || constant_args.contains(&i)) {
-                        continue;
-                    }
-
-                    let candidate = Candidate::Argument { bb: location.block, index: i };
-                    // Since the argument is required to be constant,
-                    // we care about constness, not promotability.
-                    // If we checked for promotability, we'd miss out on
-                    // the results of function calls (which are never promoted
-                    // in runtime code).
-                    // This is not a problem, because the argument explicitly
-                    // requests constness, in contrast to regular promotion
-                    // which happens even without the user requesting it.
-                    //
-                    // `promote_consts` is responsible for emitting the error if
-                    // the argument is not promotable.
-                    if !IsNotPromotable::in_operand(self, arg) {
-                        debug!("visit_terminator_kind: candidate={:?}", candidate);
-                        self.promotion_candidates.push(candidate);
-                    }
                 }
             }
 
@@ -1885,19 +1779,6 @@ fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId)
             infcx.report_fulfillment_errors(&err, None, false);
         }
     });
-}
-
-fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize>> {
-    let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
-    let mut ret = FxHashSet::default();
-    for meta in attr.meta_item_list()? {
-        match meta.literal()?.kind {
-            LitKind::Int(a, _) => { ret.insert(a as usize); }
-            _ => return None,
-        }
-    }
-    Some(ret)
 }
 
 fn validator_mismatch(
