@@ -1415,7 +1415,9 @@ impl<'test> TestCx<'test> {
 
     fn check_no_compiler_crash(&self, proc_res: &ProcRes, should_ice: bool) {
         match proc_res.status.code() {
-            Some(101) if !should_ice => self.fatal_proc_rec("compiler encountered internal error", proc_res),
+            Some(101) if !should_ice => {
+                self.fatal_proc_rec("compiler encountered internal error", proc_res)
+            }
             None => self.fatal_proc_rec("compiler terminated by signal", proc_res),
             _ => (),
         }
