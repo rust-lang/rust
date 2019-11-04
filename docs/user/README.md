@@ -89,7 +89,7 @@ host.
         //Will autocomplete keys to available RA scopes. 
         "keyword.unsafe": ["keyword", "keyword.control"],
         //Values are string | TextMateScope | [string | TextMateScope]
-        "comments": "comment.block"
+        "variable.mut": "variable"
     }
    ```
 * `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts
