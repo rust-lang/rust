@@ -43,7 +43,7 @@ pub use crate::syntax_bridge::{
 pub struct MacroRules {
     pub(crate) rules: Vec<Rule>,
     /// Highest id of the token we have in TokenMap
-    pub(crate) shift: Option<u32>,
+    pub(crate) shift: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,14 +53,14 @@ pub(crate) struct Rule {
 }
 
 /// Find the "shift" (the highest id of the TokenId) inside a subtree
-fn find_subtree_shift(tt: &tt::Subtree, mut cur: Option<u32>) -> Option<u32> {
+fn find_subtree_shift(tt: &tt::Subtree, mut cur: u32) -> u32 {
     use std::cmp::max;
 
     for t in &tt.token_trees {
         cur = match t {
             tt::TokenTree::Leaf(leaf) => match leaf {
                 tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
-                    Some(max(cur.unwrap_or(0), ident.id.0))
+                    max(cur, ident.id.0)
                 }
                 _ => cur,
             },
@@ -110,16 +110,13 @@ impl MacroRules {
             validate(&rule.lhs)?;
         }
 
-        Ok(MacroRules { rules, shift: find_subtree_shift(tt, None) })
+        Ok(MacroRules { rules, shift: find_subtree_shift(tt, 0) })
     }
 
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
         // apply shift
         let mut tt = tt.clone();
-        if let Some(shift) = self.shift {
-            shift_subtree(&mut tt, shift)
-        }
-
+        shift_subtree(&mut tt, self.shift);
         mbe_expander::expand(self, &tt)
     }
 }
