@@ -21,3 +21,8 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
 fn rust_eh_personality() {
     unsafe { core::intrinsics::abort() }
 }
+
+// A dummy helper function for Miri.
+// Used to push an empty stack frame when we start unwinding
+#[cfg(miri)]
+pub fn miri_panic_trampoline() {}
