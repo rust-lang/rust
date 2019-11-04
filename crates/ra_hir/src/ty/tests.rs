@@ -2,8 +2,7 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use insta::assert_snapshot;
-
-use ra_db::{salsa::Database, FilePosition, SourceDatabase};
+use ra_db::{fixture::WithFixture, salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
@@ -25,9 +24,9 @@ mod coercion;
 
 #[test]
 fn cfg_impl_block() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:foo cfg:test
 use foo::S as T;
 struct S;
 
@@ -46,7 +45,7 @@ fn test() {
     t<|>;
 }
 
-//- /foo.rs
+//- /foo.rs crate:foo
 struct S;
 
 #[cfg(not(test))]
@@ -60,18 +59,14 @@ impl S {
 }
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["foo"], cfg = { "test" }),
-        "foo": ("/foo.rs", []),
-    });
     assert_eq!("(i32, {unknown}, i32, {unknown})", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_await() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 
 struct IntFuture;
 
@@ -85,7 +80,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs
+//- /std.rs crate:std
 #[prelude_import] use future::*;
 mod future {
     trait Future {
@@ -95,18 +90,14 @@ mod future {
 
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["std"]),
-        "std": ("/std.rs", []),
-    });
     assert_eq!("u64", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_box() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 
 fn test() {
     let x = box 1;
@@ -114,7 +105,7 @@ fn test() {
     t<|>;
 }
 
-//- /std.rs
+//- /std.rs crate:std
 #[prelude_import] use prelude::*;
 mod prelude {}
 
@@ -126,10 +117,6 @@ mod boxed {
 
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["std"]),
-        "std": ("/std.rs", []),
-    });
     assert_eq!("(Box<i32>, Box<Box<i32>>, Box<&i32>, Box<[i32;_]>)", type_at_pos(&db, pos));
 }
 
@@ -154,9 +141,9 @@ fn test() {
 
 #[test]
 fn infer_try() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
@@ -164,7 +151,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs
+//- /std.rs crate:std
 
 #[prelude_import] use ops::*;
 mod ops {
@@ -189,18 +176,14 @@ mod result {
 
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["std"]),
-        "std": ("/std.rs", []),
-    });
     assert_eq!("i32", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_for_loop() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:std
 
 use std::collections::Vec;
 
@@ -212,7 +195,7 @@ fn test() {
     }
 }
 
-//- /std.rs
+//- /std.rs crate:std
 
 #[prelude_import] use iter::*;
 mod iter {
@@ -234,10 +217,6 @@ mod collections {
 }
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["std"]),
-        "std": ("/std.rs", []),
-    });
     assert_eq!("&str", type_at_pos(&db, pos));
 }
 
@@ -2505,15 +2484,15 @@ pub fn main_loop() {
 
 #[test]
 fn cross_crate_associated_method_call() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:other_crate
 fn test() {
     let x = other_crate::foo::S::thing();
     x<|>;
 }
 
-//- /lib.rs
+//- /lib.rs crate:other_crate
 mod foo {
     struct S;
     impl S {
@@ -2522,10 +2501,6 @@ mod foo {
 }
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["other_crate"]),
-        "other_crate": ("/lib.rs", []),
-    });
     assert_eq!("i128", type_at_pos(&db, pos));
 }
 
@@ -3403,16 +3378,15 @@ fn test() { S.foo()<|>; }
 
 #[test]
 fn infer_macro_with_dollar_crate_is_correct_in_expr() {
-    // covers!(macro_dollar_crate_other);
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:foo
 fn test() {
     let x = (foo::foo!(1), foo::foo!(2));
     x<|>;
 }
 
-//- /lib.rs
+//- /lib.rs crate:foo
 #[macro_export]
 macro_rules! foo {
     (1) => { $crate::bar!() };
@@ -3427,10 +3401,6 @@ macro_rules! bar {
 pub fn baz() -> usize { 31usize }
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["foo"]),
-        "foo": ("/lib.rs", []),
-    });
     assert_eq!("(i32, usize)", type_at_pos(&db, pos));
 }
 
@@ -3512,9 +3482,9 @@ fn test() { (&S).foo()<|>; }
 
 #[test]
 fn method_resolution_trait_from_prelude() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (db, pos) = MockDatabase::with_position(
         r#"
-//- /main.rs
+//- /main.rs crate:main deps:other_crate
 struct S;
 impl Clone for S {}
 
@@ -3522,7 +3492,7 @@ fn test() {
     S.clone()<|>;
 }
 
-//- /lib.rs
+//- /lib.rs crate:other_crate
 #[prelude_import] use foo::*;
 
 mod foo {
@@ -3532,10 +3502,6 @@ mod foo {
 }
 "#,
     );
-    db.set_crate_graph_from_fixture(crate_graph! {
-        "main": ("/main.rs", ["other_crate"]),
-        "other_crate": ("/lib.rs", []),
-    });
     assert_eq!("S", type_at_pos(&db, pos));
 }
 

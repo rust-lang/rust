@@ -17,5 +17,4 @@ test_utils::marks!(
     prelude_is_macro_use
     coerce_merge_fail_fallback
     macro_dollar_crate_self
-    macro_dollar_crate_other
 );
