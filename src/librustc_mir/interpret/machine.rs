@@ -24,7 +24,10 @@ pub enum StackPopInfo {
     /// as the result of panic
     StartUnwinding,
 
-    /// Indicates that we performed a normal return
+    /// Indicates that no special handling should be
+    /// done - we'll either return normally or unwind
+    /// based on the terminator for the function
+    /// we're leaving.
     Normal,
 
     /// Indicates that we should stop unwinding,
