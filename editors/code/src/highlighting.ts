@@ -73,11 +73,13 @@ export class Highlighter {
                 return [tag, decor];
             }
             else {
+                const fallBackTag = 'ralsp.' + tag;
                 console.log(' ');
-                console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:')
-                console.log(scopesMapper.find(tag))
+                console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:');
+                console.log(scopesMapper.find(tag));
+                console.log('Falling back to values defiend in: ' + fallBackTag);
                 console.log(' ');
-                const color = new vscode.ThemeColor('ralsp.' + tag);
+                const color = new vscode.ThemeColor(fallBackTag);
                 const decor = vscode.window.createTextEditorDecorationType({
                     color,
                     textDecoration
