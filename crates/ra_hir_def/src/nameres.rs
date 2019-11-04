@@ -50,8 +50,8 @@
 // FIXME: review privacy of submodules
 pub mod raw;
 pub mod per_ns;
-pub mod collector;
-pub mod mod_resolution;
+mod collector;
+mod mod_resolution;
 
 #[cfg(test)]
 mod tests;
