@@ -6,7 +6,7 @@ use ra_syntax::SmolStr;
 use crate::{db::DefDatabase2, HirFileId};
 
 #[derive(Clone, Debug)]
-pub struct ModDir {
+pub(super) struct ModDir {
     /// `.` for `mod.rs`, `lib.rs`
     /// `./foo` for `foo.rs`
     /// `./foo/bar` for `mod bar { mod x; }` nested in `foo.rs`
@@ -16,11 +16,15 @@ pub struct ModDir {
 }
 
 impl ModDir {
-    pub fn root() -> ModDir {
+    pub(super) fn root() -> ModDir {
         ModDir { path: RelativePathBuf::default(), root_non_dir_owner: false }
     }
 
-    pub fn descend_into_definition(&self, name: &Name, attr_path: Option<&SmolStr>) -> ModDir {
+    pub(super) fn descend_into_definition(
+        &self,
+        name: &Name,
+        attr_path: Option<&SmolStr>,
+    ) -> ModDir {
         let mut path = self.path.clone();
         match attr_to_path(attr_path) {
             None => path.push(&name.to_string()),
@@ -34,7 +38,7 @@ impl ModDir {
         ModDir { path, root_non_dir_owner: false }
     }
 
-    pub fn resolve_declaration(
+    pub(super) fn resolve_declaration(
         &self,
         db: &impl DefDatabase2,
         file_id: HirFileId,
