@@ -2124,6 +2124,10 @@ impl Step for HashSign {
 
 // Maybe add libLLVM.so to the lib-dir. It will only have been built if
 // LLVM tools are linked dynamically.
+//
+// We add this to both the libdir of the rustc binary itself (for it to load at
+// runtime) and also to the target directory so it can find it at link-time.
+//
 // Note: This function does no yet support Windows but we also don't support
 //       linking LLVM tools dynamically on Windows yet.
 pub fn maybe_install_llvm_dylib(builder: &Builder<'_>,
@@ -2132,13 +2136,19 @@ pub fn maybe_install_llvm_dylib(builder: &Builder<'_>,
     let src_libdir = builder
         .llvm_out(target)
         .join("lib");
-    let dst_libdir = sysroot.join("lib/rustlib").join(&*target).join("lib");
-    t!(fs::create_dir_all(&dst_libdir));
+    let dst_libdir1 = sysroot.join("lib/rustlib").join(&*target).join("lib");
+    let dst_libdir2 = sysroot.join(builder.sysroot_libdir_relative(Compiler {
+        stage: 1,
+        host: target,
+    }));
+    t!(fs::create_dir_all(&dst_libdir1));
+    t!(fs::create_dir_all(&dst_libdir2));
 
     if target.contains("apple-darwin") {
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
-            builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
+            builder.install(&llvm_dylib_path, &dst_libdir1, 0o644);
+            builder.install(&llvm_dylib_path, &dst_libdir2, 0o644);
         }
         return
     }
@@ -2154,7 +2164,8 @@ pub fn maybe_install_llvm_dylib(builder: &Builder<'_>,
         });
 
 
-        builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
+        builder.install(&llvm_dylib_path, &dst_libdir1, 0o644);
+        builder.install(&llvm_dylib_path, &dst_libdir2, 0o644);
     }
 }
 

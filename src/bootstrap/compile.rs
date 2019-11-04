@@ -579,24 +579,6 @@ impl Step for RustcLink {
     }
 }
 
-fn copy_lld_to_sysroot(builder: &Builder<'_>,
-                       target_compiler: Compiler,
-                       lld_install_root: &Path) {
-    let target = target_compiler.host;
-
-    let dst = builder.sysroot_libdir(target_compiler, target)
-        .parent()
-        .unwrap()
-        .join("bin");
-    t!(fs::create_dir_all(&dst));
-
-    let src_exe = exe("lld", &target);
-    let dst_exe = exe("rust-lld", &target);
-    // we prepend this bin directory to the user PATH when linking Rust binaries. To
-    // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
-    builder.copy(&lld_install_root.join("bin").join(&src_exe), &dst.join(&dst_exe));
-}
-
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(
@@ -745,10 +727,16 @@ impl Step for Assemble {
             }
         }
 
+        let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
         if let Some(lld_install) = lld_install {
-            copy_lld_to_sysroot(builder, target_compiler, &lld_install);
+            let src_exe = exe("lld", &target_compiler.host);
+            let dst_exe = exe("rust-lld", &target_compiler.host);
+            // we prepend this bin directory to the user PATH when linking Rust binaries. To
+            // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
+            let dst = libdir.parent().unwrap().join("bin");
+            t!(fs::create_dir_all(&dst));
+            builder.copy(&lld_install.join("bin").join(&src_exe), &dst.join(&dst_exe));
         }
-
         dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
 
         // Link the compiler binary itself into place
