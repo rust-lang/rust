@@ -333,6 +333,22 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::LegacyPluginHelper => "legacy plugin helper attribute",
         }
     }
+
+    pub fn article(self) -> &'static str {
+        match self {
+            NonMacroAttrKind::Registered => "an",
+            _ => "a",
+        }
+    }
+
+    /// Users of some attributes cannot mark them as used, so they are considered always used.
+    pub fn is_used(self) -> bool {
+        match self {
+            NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper => true,
+            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered |
+            NonMacroAttrKind::LegacyPluginHelper => false,
+        }
+    }
 }
 
 impl<Id> Res<Id> {
@@ -389,6 +405,7 @@ impl<Id> Res<Id> {
     pub fn article(&self) -> &'static str {
         match *self {
             Res::Def(kind, _) => kind.article(),
+            Res::NonMacroAttr(kind) => kind.article(),
             Res::Err => "an",
             _ => "a",
         }

@@ -524,10 +524,10 @@ declare_features! (
     (active, abi_efiapi, "1.40.0", Some(65815), None),
 
     /// Allows using the `#[register_attr]` attribute.
-    (active, register_attr, "1.41.0", Some(29642), None),
+    (active, register_attr, "1.41.0", Some(66080), None),
 
     /// Allows using the `#[register_attr]` attribute.
-    (active, register_tool, "1.41.0", Some(44690), None),
+    (active, register_tool, "1.41.0", Some(66079), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

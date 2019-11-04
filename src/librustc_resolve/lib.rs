@@ -1472,7 +1472,7 @@ impl<'a> Resolver<'a> {
                 Scope::MacroRules(..) => true,
                 Scope::CrateRoot => true,
                 Scope::Module(..) => true,
-                Scope::RegisteredAttrs => true,
+                Scope::RegisteredAttrs => use_prelude,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
                 Scope::LegacyPluginHelpers => use_prelude || rust_2015,

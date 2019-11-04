@@ -94,6 +94,7 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
+/// The code common between processing `#![register_tool]` and `#![register_attr]`.
 fn registered_idents(
     sess: &Session,
     attrs: &[ast::Attribute],
@@ -832,7 +833,8 @@ impl<'a> Resolver<'a> {
                                          res: Option<Res>, span: Span) {
         if let Some(Res::NonMacroAttr(kind)) = res {
             if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
-                let msg = format!("cannot use a {} through an import", kind.descr());
+                let msg =
+                    format!("cannot use {} {} through an import", kind.article(), kind.descr());
                 let mut err = self.session.struct_span_err(span, &msg);
                 if let Some(binding) = binding {
                     err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
