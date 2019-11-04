@@ -13,7 +13,7 @@ doctest = false
 flate2 = "1.0"
 log = "0.4"
 memmap = "0.6"
-smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
