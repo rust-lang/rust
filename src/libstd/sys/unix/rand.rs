@@ -143,7 +143,7 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "freebsd", target_os = "netbsd")]
+#[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
 mod imp {
     use crate::ptr;
 
