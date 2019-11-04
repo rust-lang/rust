@@ -42,12 +42,46 @@ pub use crate::syntax_bridge::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MacroRules {
     pub(crate) rules: Vec<Rule>,
+    /// Highest id of the token we have in TokenMap
+    pub(crate) shift: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Rule {
     pub(crate) lhs: tt::Subtree,
     pub(crate) rhs: tt::Subtree,
+}
+
+// Find the max token id inside a subtree
+fn max_id(subtree: &tt::Subtree) -> Option<u32> {
+    subtree
+        .token_trees
+        .iter()
+        .filter_map(|tt| match tt {
+            tt::TokenTree::Subtree(subtree) => max_id(subtree),
+            tt::TokenTree::Leaf(tt::Leaf::Ident(ident))
+                if ident.id != tt::TokenId::unspecified() =>
+            {
+                Some(ident.id.0)
+            }
+            _ => None,
+        })
+        .max()
+}
+
+/// Shift given TokenTree token id
+fn shift_subtree(tt: &mut tt::Subtree, shift: u32) {
+    for t in tt.token_trees.iter_mut() {
+        match t {
+            tt::TokenTree::Leaf(leaf) => match leaf {
+                tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
+                    ident.id.0 += shift;
+                }
+                _ => (),
+            },
+            tt::TokenTree::Subtree(tt) => shift_subtree(tt, shift),
+        }
+    }
 }
 
 impl MacroRules {
@@ -72,10 +106,17 @@ impl MacroRules {
             validate(&rule.lhs)?;
         }
 
-        Ok(MacroRules { rules })
+        // Note that TokenId is started from zero,
+        // We have to add 1 to prevent duplication.
+        let shift = max_id(tt).map_or(0, |it| it + 1);
+        Ok(MacroRules { rules, shift })
     }
+
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
-        mbe_expander::expand(self, tt)
+        // apply shift
+        let mut tt = tt.clone();
+        shift_subtree(&mut tt, self.shift);
+        mbe_expander::expand(self, &tt)
     }
 }
 
