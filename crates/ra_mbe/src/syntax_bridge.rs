@@ -133,7 +133,7 @@ impl TokenMap {
 }
 
 impl ExpandedRangeMap {
-    fn set(&mut self, relative_range: TextRange, token_id: &tt::TokenId) {
+    fn add(&mut self, relative_range: TextRange, token_id: &tt::TokenId) {
         self.ranges.push((relative_range, token_id.clone()))
     }
 
@@ -145,13 +145,11 @@ impl ExpandedRangeMap {
     ) -> Vec<(TextRange, TextRange)> {
         self.ranges
             .iter()
-            .filter_map(|(r, tid)| if shift <= tid.0 { Some((r, tid.0 - shift)) } else { None })
             .filter_map(|(r, tid)| {
-                if let Some(to_range) = to.relative_range_of(tt::TokenId(tid)) {
-                    Some((*r, TextRange::from_to(to_range.start() + start, to_range.end() + start)))
-                } else {
-                    None
-                }
+                let adjusted_id = tt::TokenId(tid.0.checked_sub(shift)?);
+                let to_range = to.relative_range_of(adjusted_id)?;
+                
+                Some((*r, TextRange::offset_len(to_range.start() + start, to_range.len())))
             })
             .collect()
     }
@@ -361,8 +359,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                                 self.text_pos + TextUnit::of_str(&self.buf),
                                 TextUnit::of_str(&ident.text),
                             );
-                            let token_id = ident.id;
-                            self.range_map.set(range, &token_id);
+                            self.range_map.add(range, &ident.id);
                         }
                     }
 
