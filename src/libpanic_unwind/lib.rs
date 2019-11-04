@@ -100,5 +100,3 @@ pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
     let payload = payload as *mut &mut dyn BoxMeUp;
     imp::panic(Box::from_raw((*payload).box_me_up()))
 }
-
-
