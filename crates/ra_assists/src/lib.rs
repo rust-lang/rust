@@ -147,7 +147,7 @@ mod assists {
 #[cfg(test)]
 mod helpers {
     use hir::mock::MockDatabase;
-    use ra_db::FileRange;
+    use ra_db::{fixture::WithFixture, FileRange};
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
@@ -159,7 +159,7 @@ mod helpers {
         after: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -187,7 +187,7 @@ mod helpers {
         after: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -209,7 +209,7 @@ mod helpers {
         target: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -229,7 +229,7 @@ mod helpers {
         target: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -247,7 +247,7 @@ mod helpers {
         before: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
@@ -259,7 +259,7 @@ mod helpers {
         before: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
         assert!(assist.is_none());
@@ -269,7 +269,7 @@ mod helpers {
 #[cfg(test)]
 mod tests {
     use hir::mock::MockDatabase;
-    use ra_db::FileRange;
+    use ra_db::{fixture::WithFixture, FileRange};
     use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
 
@@ -277,7 +277,7 @@ mod tests {
     fn assist_order_field_struct() {
         let before = "struct Foo { <|>bar: u32 }";
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assists = super::assists(&db, frange);
@@ -298,7 +298,7 @@ mod tests {
             }
         }";
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = MockDatabase::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();

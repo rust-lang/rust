@@ -4665,7 +4665,7 @@ fn type_at(content: &str) -> String {
 }
 
 fn infer(content: &str) -> String {
-    let (db, _, file_id) = MockDatabase::with_single_file(content);
+    let (db, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id).ok().unwrap();
 
     let mut acc = String::new();

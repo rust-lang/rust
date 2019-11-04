@@ -5,10 +5,9 @@ use std::{panic, sync::Arc};
 use hir_def::{db::DefDatabase2, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
-use ra_cfg::CfgOptions;
 use ra_db::{
-    salsa, CrateGraph, CrateId, Edition, FileId, FileLoader, FileLoaderDelegate, RelativePath,
-    RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
+    salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase,
+    SourceRootId,
 };
 use rustc_hash::FxHashMap;
 
@@ -63,14 +62,6 @@ impl HirDebugHelper for MockDatabase {
 }
 
 impl MockDatabase {
-    pub fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
-        let mut db = MockDatabase::default();
-        let mut source_root = SourceRoot::default();
-        let file_id = db.add_file(WORKSPACE, "/", &mut source_root, "/main.rs", text);
-        db.set_source_root(WORKSPACE, Arc::new(source_root.clone()));
-        (db, source_root, file_id)
-    }
-
     pub fn file_id_of(&self, path: &str) -> FileId {
         match self.files.get(path) {
             Some(it) => *it,
@@ -95,41 +86,6 @@ impl MockDatabase {
             }
         }
         buf
-    }
-
-    fn add_file(
-        &mut self,
-        source_root_id: SourceRootId,
-        source_root_prefix: &str,
-        source_root: &mut SourceRoot,
-        path: &str,
-        text: &str,
-    ) -> FileId {
-        assert!(source_root_prefix.starts_with('/'));
-        assert!(source_root_prefix.ends_with('/'));
-        assert!(path.starts_with(source_root_prefix));
-        let rel_path = RelativePathBuf::from_path(&path[source_root_prefix.len()..]).unwrap();
-
-        let is_crate_root = rel_path == "lib.rs" || rel_path == "/main.rs";
-
-        let file_id = FileId(self.files.len() as u32);
-
-        let prev = self.files.insert(path.to_string(), file_id);
-        assert!(prev.is_none(), "duplicate files in the text fixture");
-        Arc::make_mut(&mut self.file_paths).insert(file_id, path.to_string());
-
-        let text = Arc::new(text.to_string());
-        self.set_file_text(file_id, text);
-        self.set_file_relative_path(file_id, rel_path.clone());
-        self.set_file_source_root(file_id, source_root_id);
-        source_root.insert_file(rel_path, file_id);
-
-        if is_crate_root {
-            let mut crate_graph = CrateGraph::default();
-            crate_graph.add_crate_root(file_id, Edition::Edition2018, CfgOptions::default());
-            self.set_crate_graph(Arc::new(crate_graph));
-        }
-        file_id
     }
 }
 
