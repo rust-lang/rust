@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
 use std::ffi::CString;
 use std::fs;
 use std::io;
+use std::path::{Path, PathBuf};
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
 // verbatim paths under the hood to non-verbatim paths! This manifests itself as
@@ -21,8 +21,8 @@ use std::io;
 //   https://github.com/rust-lang/rust/issues/25505#issuecomment-102876737
 #[cfg(windows)]
 pub fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
-    use std::path;
     use std::ffi::OsString;
+    use std::path;
     let mut components = p.components();
     let prefix = match components.next() {
         Some(path::Component::Prefix(p)) => p,
@@ -68,12 +68,10 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<Li
 
     match fs::hard_link(p, q) {
         Ok(()) => Ok(LinkOrCopy::Link),
-        Err(_) => {
-            match fs::copy(p, q) {
-                Ok(_) => Ok(LinkOrCopy::Copy),
-                Err(e) => Err(e),
-            }
-        }
+        Err(_) => match fs::copy(p, q) {
+            Ok(_) => Ok(LinkOrCopy::Copy),
+            Err(e) => Err(e),
+        },
     }
 }
 
@@ -86,29 +84,28 @@ pub enum RenameOrCopyRemove {
 /// Rename `p` into `q`, preferring to use `rename` if possible.
 /// If `rename` fails (rename may fail for reasons such as crossing
 /// filesystem), fallback to copy & remove
-pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(p: P,
-                                                             q: Q)
-                                                             -> io::Result<RenameOrCopyRemove> {
+pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(
+    p: P,
+    q: Q,
+) -> io::Result<RenameOrCopyRemove> {
     let p = p.as_ref();
     let q = q.as_ref();
     match fs::rename(p, q) {
         Ok(()) => Ok(RenameOrCopyRemove::Rename),
-        Err(_) => {
-            match fs::copy(p, q) {
-                Ok(_) => {
-                    fs::remove_file(p)?;
-                    Ok(RenameOrCopyRemove::CopyRemove)
-                }
-                Err(e) => Err(e),
+        Err(_) => match fs::copy(p, q) {
+            Ok(_) => {
+                fs::remove_file(p)?;
+                Ok(RenameOrCopyRemove::CopyRemove)
             }
-        }
+            Err(e) => Err(e),
+        },
     }
 }
 
 #[cfg(unix)]
 pub fn path_to_c_string(p: &Path) -> CString {
-    use std::os::unix::ffi::OsStrExt;
     use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
     let p: &OsStr = p.as_ref();
     CString::new(p.as_bytes()).unwrap()
 }
