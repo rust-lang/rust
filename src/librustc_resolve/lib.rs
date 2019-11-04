@@ -1236,20 +1236,12 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn reserve_node_ids(&mut self, count: usize) -> ast::NodeId {
-        let id = self.next_node_id;
-
-        match id.as_usize().checked_add(count) {
-            Some(next) => {
-                self.next_node_id = ast::NodeId::from_usize(next);
-            }
-            None => panic!("input too large; ran out of node-IDs!"),
-        }
-
-        id
-    }
     pub fn next_node_id(&mut self) -> NodeId {
-        self.reserve_node_ids(1)
+        let next = self.next_node_id.as_usize()
+            .checked_add(1)
+            .expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_usize(next);
+        self.next_node_id
     }
 
     pub fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
