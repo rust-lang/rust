@@ -5,7 +5,7 @@ source shared.sh
 
 VERSION=7.66.0
 
-curl https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/curl-$VERSION.tar.xz \
+curl https://ci-mirrors.rust-lang.org/rustc/curl-$VERSION.tar.xz \
   | xz --decompress \
   | tar xf -
 

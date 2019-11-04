@@ -59,7 +59,7 @@ done
 
 # Originally downloaded from:
 # https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
-URL=https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2019-04-04-freebsd-${freebsd_arch}-${freebsd_version}-RELEASE-base.txz
+URL=https://ci-mirrors.rust-lang.org/rustc/2019-04-04-freebsd-${freebsd_arch}-${freebsd_version}-RELEASE-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 
 # Fix up absolute symlinks from the system image.  This can be removed
