@@ -28,7 +28,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
         // of putting everything in allocas just so we can use llvm.dbg.declare.
         if fx.cx.sess().opts.debuginfo == DebugInfo::Full {
-            if mir.local_kind(local) == mir::LocalKind::Arg {
+            if fx.mir.local_kind(local) == mir::LocalKind::Arg {
                 analyzer.not_ssa(local);
                 continue;
             }

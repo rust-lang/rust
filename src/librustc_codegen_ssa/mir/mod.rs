@@ -171,7 +171,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         funclets,
         locals: IndexVec::new(),
         debug_context,
-        per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir),
+        per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir_body),
     };
 
     let memory_locals = analyze::non_ssa_locals(&fx);
