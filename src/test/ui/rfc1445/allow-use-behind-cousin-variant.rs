@@ -2,9 +2,8 @@
 // have non-structural-match variants, *if* the constant itself does not use
 // any such variant.
 
-// NOTE: for now, deliberately leaving the lint `indirect_structural_match` set
-// to its default, so that we will not issue a diangostic even if
-// rust-lang/rust#62614 remains an open issue.
+// Even when we turn this on, there is no warning diangostic.
+#![warn(indirect_structural_match)]
 
 // run-pass
 
