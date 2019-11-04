@@ -39,4 +39,11 @@ pub const OFFSET_FROM_NULL: isize = {
     unsafe { ptr.offset_from(ptr) }
 };
 
+pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
+    //~^ NOTE
+    let ptr1 = 8 as *const u8;
+    let ptr2 = 16 as *const u8;
+    unsafe { ptr2.offset_from(ptr1) }
+};
+
 fn main() {}

@@ -75,5 +75,24 @@ LL | |     unsafe { ptr.offset_from(ptr) }
 LL | | };
    | |__-
 
-error: aborting due to 4 previous errors
+error: any use of this value will cause an error
+  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+   |
+LL |           intrinsics::ptr_offset_from(self, origin)
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           |
+   |           a memory access tried to interpret some bytes as a pointer
+   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:46:14
+   | 
+  ::: $DIR/offset_from_ub.rs:42:1
+   |
+LL | / pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
+LL | |
+LL | |     let ptr1 = 8 as *const u8;
+LL | |     let ptr2 = 16 as *const u8;
+LL | |     unsafe { ptr2.offset_from(ptr1) }
+LL | | };
+   | |__-
+
+error: aborting due to 5 previous errors
 
