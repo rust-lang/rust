@@ -580,7 +580,9 @@ impl str {
     /// Returns None in the case the slices aren't adjacent.
     #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
     pub fn try_rejoin<'r>(&'r self, other: &'r str) -> Option<&'r str> {
-        self.as_bytes().try_rejoin(other.as_bytes()).map(|s| unsafe { core::str::from_utf8_unchecked(s) })
+        self.as_bytes().try_rejoin(other.as_bytes()).map(|s|
+            unsafe { core::str::from_utf8_unchecked(s) }
+        )
     }
 }
 

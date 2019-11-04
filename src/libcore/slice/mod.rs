@@ -1376,7 +1376,9 @@ impl<T> [T] {
         let self_len = self.len();
         let self_end = self[self_len..].as_mut_ptr();
         if crate::ptr::eq(self_end, other.as_mut_ptr()) {
-            Some(unsafe { crate::slice::from_raw_parts_mut(self.as_mut_ptr(), self.len() + other.len()) })
+            Some(unsafe {
+                crate::slice::from_raw_parts_mut(self.as_mut_ptr(), self.len() + other.len())
+            })
         } else {
             None
         }
