@@ -18,7 +18,9 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn sess(&self) -> &Session;
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
     fn used_statics(&self) -> &RefCell<Vec<Self::Value>>;
+    fn compiler_used_statics(&self) -> &RefCell<Vec<Self::Value>>;
     fn set_frame_pointer_elimination(&self, llfn: Self::Function);
     fn apply_target_cpu_attr(&self, llfn: Self::Function);
     fn create_used_variable(&self);
+    fn create_compiler_used_variable(&self);
 }

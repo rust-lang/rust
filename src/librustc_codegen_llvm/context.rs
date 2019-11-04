@@ -75,6 +75,9 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// Statics that will be placed in the llvm.used variable
     /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
+    /// Statics that will be placed in the llvm.compiler.used variable
+    /// see <http://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
+    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
@@ -301,6 +304,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             const_globals: Default::default(),
             statics_to_rauw: RefCell::new(Vec::new()),
             used_statics: RefCell::new(Vec::new()),
+            compiler_used_statics: RefCell::new(Vec::new()),
             lltypes: Default::default(),
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
@@ -438,6 +442,10 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.used_statics
     }
 
+    fn compiler_used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
+        &self.compiler_used_statics
+    }
+
     fn set_frame_pointer_elimination(&self, llfn: &'ll Value) {
         attributes::set_frame_pointer_elimination(self, llfn)
     }
@@ -452,6 +460,24 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let array = self.const_array(
             &self.type_ptr_to(self.type_i8()),
             &*self.used_statics.borrow()
+        );
+
+        unsafe {
+            let g = llvm::LLVMAddGlobal(self.llmod,
+                                        self.val_ty(array),
+                                        name.as_ptr());
+            llvm::LLVMSetInitializer(g, array);
+            llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
+            llvm::LLVMSetSection(g, section.as_ptr());
+        }
+    }
+
+    fn create_compiler_used_variable(&self) {
+        let name = const_cstr!("llvm.compiler.used");
+        let section = const_cstr!("llvm.metadata");
+        let array = self.const_array(
+            &self.type_ptr_to(self.type_i8()),
+            &*self.compiler_used_statics.borrow()
         );
 
         unsafe {

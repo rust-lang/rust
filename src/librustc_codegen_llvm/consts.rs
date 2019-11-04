@@ -358,7 +358,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
     fn append_vtable_lookup(
         &self,
-        vtable_lookup: &'ll Value,
+        vtable_record: &'ll Value,
         align: Align,
     ) {
         // Add a pointer to the vtable to a special section. The linker can provide pointers to the
@@ -390,14 +390,14 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
         } else {
             return;
         };
+        // members of llvm.compiler.used must be named
+        let name = self.generate_local_symbol_name("vtable_record");
+        let gv = self.define_global(&name[..], self.val_ty(vtable_record)).unwrap_or_else(|| {
+            bug!("symbol `{}` is already defined", name);
+        });
         unsafe {
-            // members of llvm.compiler.used must be named
-            let name = self.generate_local_symbol_name("vtable_ptr");
-            let gv = self.define_global(&name[..], self.val_ty(vtable_lookup)).unwrap_or_else(|| {
-                bug!("symbol `{}` is already defined", name);
-            });
             llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
-            llvm::LLVMSetInitializer(gv, vtable_lookup);
+            llvm::LLVMSetInitializer(gv, vtable_record);
             set_global_alignment(&self, gv, align);
             SetUnnamedAddr(gv, true);
             llvm::LLVMSetGlobalConstant(gv, True);
@@ -407,14 +407,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             // that prevents LLVM from optimizing away referenced values. Use this rather than
             // llvm.used so that the linker can optimize away the section if it is unused.
             let cast = llvm::LLVMConstPointerCast(gv, self.type_i8p());
-            let name = const_cstr!("llvm.compiler.used");
-            let section = const_cstr!("llvm.metadata");
-            let array = self.const_array(&self.type_ptr_to(self.type_i8()), &[cast]);
-
-            let gv = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
-            llvm::LLVMSetInitializer(gv, array);
-            llvm::LLVMRustSetLinkage(gv, llvm::Linkage::AppendingLinkage);
-            llvm::LLVMSetSection(gv, section.as_ptr());
+            self.compiler_used_statics.borrow_mut().push(cast);
         }
     }
 

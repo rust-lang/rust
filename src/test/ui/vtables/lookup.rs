@@ -30,6 +30,9 @@ struct Record {
 }
 
 fn vtables() -> &'static [Record] {
+    // This must be kept in sync with append_vtable_lookup in src/librustc_codegen_llvm/consts.rs
+    //
+    // \u{1} is used for the apple link_names to tell llvm not to prefix with an underscore
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos", target_os = "ios"))]
     #[allow(improper_ctypes)]
     extern "C" {
@@ -72,7 +75,7 @@ struct Struct;
 impl Trait for Struct {}
 
 #[inline(never)]
-fn foo() {
+fn multiple_upcasts() {
     let a: &dyn Trait = &Struct;
     let b: &(dyn Trait + Send) = &Struct;
     std::hint::black_box((a, b));
@@ -81,13 +84,13 @@ fn foo() {
 fn main() {
     let vtable: &'static () = unsafe { &*transmute::<&dyn Trait, TraitObject>(&Struct).vtable };
     let type_id = unsafe { type_id::<dyn Trait>() };
-    let count = vtables().iter().filter(|&&record| record.type_id == type_id).count();
+    let count = vtables().iter().filter(|&record| record.type_id == type_id).count();
     assert_ne!(count, 0, "The vtable record for dyn Trait is missing");
     assert_eq!(count, 1, "Duplicate vtable records found for dyn Trait");
-    let record = vtables().iter().find(|&&record| record.vtable as *const () == vtable).unwrap();
+    let record = vtables().iter().find(|&record| record.vtable as *const () == vtable).unwrap();
     assert_eq!(
         record.vtable as *const (), vtable,
         "The vtable for Struct as dyn Trait is incorrect"
     );
-    foo();
+    multiple_upcasts();
 }
