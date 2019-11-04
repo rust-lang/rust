@@ -1295,6 +1295,10 @@ fn test_recycle_lifetime() {
 #[test]
 fn test_recycle_type() {
     let s = "foo".to_string();
+
+    let val_size;
+    let val_align;
+
     let mut buf = Vec::with_capacity(100);
     {
         let mut buf2 = buf.recycle();
