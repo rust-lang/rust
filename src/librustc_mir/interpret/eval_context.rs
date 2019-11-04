@@ -593,26 +593,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => {}
         }
 
-        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
-        // In that case, we return early. We also avoid validation in that case,
-        // because this is CTFE and the final value will be thoroughly validated anyway.
-        let cleanup = unwinding || match frame.return_to_block {
-            StackPopCleanup::Goto{ .. } => true,
-            StackPopCleanup::None { cleanup, .. } => {
-                cleanup
-            }
-        };
-        if !cleanup {
-            assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
-            // Leak the locals, skip validation.
-            return Ok(());
-        }
-
-        // Cleanup: deallocate all locals that are backed by an allocation.
-        for local in frame.locals {
-            self.deallocate_local(local.value)?;
-        }
-
         // Now where do we jump next?
 
         // Determine if we leave this function normally or via unwinding.
@@ -622,20 +602,38 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => unwinding
         };
 
+        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
+        // In that case, we return early. We also avoid validation in that case,
+        // because this is CTFE and the final value will be thoroughly validated anyway.
+        let (cleanup, next_block) = match frame.return_to_block {
+            StackPopCleanup::Goto { ret, unwind } => {
+                (true, Some(if cur_unwinding { unwind } else { ret }))
+            },
+            StackPopCleanup::None { cleanup, .. } => (cleanup, None)
+        };
+
+        if !cleanup {
+            assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
+            assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
+            // Leak the locals, skip validation.
+            return Ok(());
+        }
+
+        // Cleanup: deallocate all locals that are backed by an allocation.
+        for local in frame.locals {
+            self.deallocate_local(local.value)?;
+        }
+
+
         trace!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
                frame.return_to_block, stack_pop_info, cur_unwinding);
         if cur_unwinding {
             // Follow the unwind edge.
-            match frame.return_to_block {
-                StackPopCleanup::Goto { unwind, .. } => {
-                    let next_frame = self.frame_mut();
-                    // If `unwind` is `None`, we'll leave that function immediately again.
-                    next_frame.block = unwind;
-                    next_frame.stmt = 0;
-                },
-                StackPopCleanup::None { .. } =>
-                    bug!("Encountered StackPopCleanup::None while unwinding"),
-            }
+            let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
+            let next_frame = self.frame_mut();
+            // If `unwind` is `None`, we'll leave that function immediately again.
+            next_frame.block = unwind;
+            next_frame.stmt = 0;
         } else {
             // Follow the normal return edge.
             // Validate the return value. Do this after deallocating so that we catch dangling
@@ -661,11 +659,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             // Jump to new block -- *after* validation so that the spans make more sense.
-            match frame.return_to_block {
-                StackPopCleanup::Goto { ret, ..  } => {
-                    self.goto_block(ret)?;
-                }
-                StackPopCleanup::None { .. } => {}
+            if let Some(ret) = next_block {
+                self.goto_block(ret)?;
             }
         }
 
