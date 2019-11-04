@@ -132,35 +132,33 @@ pub(crate) fn parse_macro_with_info(
             log::warn!("fail on macro_parse: (reason: {})", err,);
         })
         .ok()?;
-    let res = match macro_file.macro_file_kind {
+
+    let (parsed, exp_map) = match macro_file.macro_file_kind {
         MacroFileKind::Items => {
-            mbe::token_tree_to_items(&tt.0).ok().map(|(p, map)| (Parse::to_syntax(p), map))
+            mbe::token_tree_to_items(&tt.0).map(|(p, map)| (p.to_syntax(), map)).ok()?
         }
         MacroFileKind::Expr => {
-            mbe::token_tree_to_expr(&tt.0).ok().map(|(p, map)| (Parse::to_syntax(p), map))
+            mbe::token_tree_to_expr(&tt.0).map(|(p, map)| (p.to_syntax(), map)).ok()?
         }
     };
 
-    res.map(|(parsed, exp_map)| {
-        let expand_info = tt.1;
-        let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
+    let expand_info = tt.1;
+    let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
 
-        let def_start =
-            loc.def.ast_id.to_node(db).token_tree().map(|t| t.syntax().text_range().start());
-        let arg_start =
-            loc.ast_id.to_node(db).token_tree().map(|t| t.syntax().text_range().start());
+    let arg_tt = loc.ast_id.to_node(db).token_tree();
+    let def_tt = loc.def.ast_id.to_node(db).token_tree();
 
-        let arg_map = arg_start
-            .map(|start| exp_map.ranges(&expand_info.arg_map, start))
-            .unwrap_or_else(|| Vec::new());
-        let def_map = def_start
-            .map(|start| exp_map.ranges(&expand_info.def_map, start))
-            .unwrap_or_else(|| Vec::new());
+    let arg_start = arg_tt.map(|t| t.syntax().text_range().start());
+    let def_start = def_tt.map(|t| t.syntax().text_range().start());
 
-        let info = ExpansionInfo { arg_map, def_map };
+    let arg_map =
+        arg_start.map(|start| exp_map.ranges(&expand_info.arg_map, start)).unwrap_or_default();
+    let def_map =
+        def_start.map(|start| exp_map.ranges(&expand_info.def_map, start)).unwrap_or_default();
 
-        ParseMacroWithInfo { parsed, expansion_info: Arc::new(info) }
-    })
+    let info = ExpansionInfo { arg_map, def_map };
+
+    Some(ParseMacroWithInfo { parsed, expansion_info: Arc::new(info) })
 }
 
 pub(crate) fn macro_expansion_info(
