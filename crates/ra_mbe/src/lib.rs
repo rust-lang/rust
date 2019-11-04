@@ -42,12 +42,50 @@ pub use crate::syntax_bridge::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MacroRules {
     pub(crate) rules: Vec<Rule>,
+    /// Highest id of the token we have in TokenMap
+    pub(crate) shift: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Rule {
     pub(crate) lhs: tt::Subtree,
     pub(crate) rhs: tt::Subtree,
+}
+
+/// Find the "shift" (the highest id of the TokenId) inside a subtree
+fn find_subtree_shift(tt: &tt::Subtree, mut cur: Option<u32>) -> Option<u32> {
+    use std::cmp::max;
+
+    for t in &tt.token_trees {
+        cur = match t {
+            tt::TokenTree::Leaf(leaf) => match leaf {
+                tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
+                    Some(max(cur.unwrap_or(0), ident.id.0))
+                }
+                _ => cur,
+            },
+            tt::TokenTree::Subtree(tt) => find_subtree_shift(tt, cur),
+        }
+    }
+
+    cur
+}
+
+/// Shift given TokenTree token id
+fn shift_token_tree(tt: &mut tt::Subtree, shift: u32) {
+    for t in tt.token_trees.iter_mut() {
+        match t {
+            tt::TokenTree::Leaf(leaf) => match leaf {
+                tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
+                    // Note that TokenId is started from zero,
+                    // We have to add 1 to prevent duplication.
+                    ident.id.0 += shift + 1;
+                }
+                _ => (),
+            },
+            tt::TokenTree::Subtree(tt) => shift_token_tree(tt, shift),
+        }
+    }
 }
 
 impl MacroRules {
@@ -72,10 +110,17 @@ impl MacroRules {
             validate(&rule.lhs)?;
         }
 
-        Ok(MacroRules { rules })
+        Ok(MacroRules { rules, shift: find_subtree_shift(tt, None) })
     }
+
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
-        mbe_expander::expand(self, tt)
+        // apply shift
+        let mut tt = tt.clone();
+        if let Some(shift) = self.shift {
+            shift_token_tree(&mut tt, shift)
+        }
+
+        mbe_expander::expand(self, &tt)
     }
 }
 
