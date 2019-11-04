@@ -1,4 +1,4 @@
-// error-pattern: outside bounds of allocation
+// error-pattern: invalid use of NULL pointer
 
 fn main() {
     let x = 0 as *mut i32;
