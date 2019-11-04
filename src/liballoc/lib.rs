@@ -123,6 +123,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(associated_type_bounds)]
+#![feature(rejoin_slice)]
 
 // Allow testing this library
 

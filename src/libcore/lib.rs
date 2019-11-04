@@ -128,6 +128,7 @@
 #![feature(maybe_uninit_slice)]
 #![feature(external_doc)]
 #![feature(associated_type_bounds)]
+#![feature(rejoin_slice)]
 
 #[prelude_import]
 #[allow(unused)]

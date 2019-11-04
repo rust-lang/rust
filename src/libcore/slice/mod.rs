@@ -1340,6 +1340,47 @@ impl<T> [T] {
             }
         }
     }
+    /// Joins two slices that are adjacent in memory into one slice.
+    /// # Panics
+    /// Panics in the case the slices aren't adjacent.
+    #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
+    pub fn rejoin<'r>(&'r self, other: &'r [T]) -> &'r [T] {
+        self.try_rejoin(other).expect("the input slices must be adjacent in memory")
+    }
+
+    /// Joins two mutable slices that are adjacent in memory into one slice.
+    /// # Panics
+    /// Panics in the case the slices aren't adjacent.
+    #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
+    pub fn rejoin_mut<'r>(&'r mut self, other: &'r mut [T]) -> &'r mut [T] {
+        self.try_rejoin_mut(other).expect("the input slices must be adjacent in memory")
+    }
+
+    /// Joins two slices that are adjacent in memory into one slice.
+    /// Returns None in the case the slices aren't adjacent.
+    #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
+    pub fn try_rejoin<'r>(&'r self, other: &'r [T]) -> Option<&'r [T]> {
+        let self_len = self.len();
+        let self_end = self[self_len..].as_ptr();
+        if crate::ptr::eq(self_end, other.as_ptr()) {
+            Some(unsafe { crate::slice::from_raw_parts(self.as_ptr(), self.len() + other.len()) })
+        } else {
+            None
+        }
+    }
+
+    /// Joins two mutable slices that are adjacent in memory into one slice.
+    /// Returns None in the case the slices aren't adjacent.
+    #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
+    pub fn try_rejoin_mut<'r>(&'r mut self, other: &'r mut [T]) -> Option<&'r mut [T]> {
+        let self_len = self.len();
+        let self_end = self[self_len..].as_mut_ptr();
+        if crate::ptr::eq(self_end, other.as_mut_ptr()) {
+            Some(unsafe { crate::slice::from_raw_parts_mut(self.as_mut_ptr(), self.len() + other.len()) })
+        } else {
+            None
+        }
+    }
 
     /// Returns `true` if the slice contains an element with the given value.
     ///

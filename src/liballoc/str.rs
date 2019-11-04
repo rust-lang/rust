@@ -567,6 +567,21 @@ impl str {
         // make_ascii_lowercase() preserves the UTF-8 invariant.
         unsafe { String::from_utf8_unchecked(bytes) }
     }
+
+    /// Joins two string slices that are adjacent in memory into one string slice.
+    /// # Panics
+    /// Panics in the case the slices aren't adjacent.
+    #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
+    pub fn rejoin<'r>(&'r self, other: &'r str) -> &'r str {
+        self.try_rejoin(other).expect("the input string slices must be adjacent in memory")
+    }
+
+    /// Joins two string slices that are adjacent in memory into one string slice.
+    /// Returns None in the case the slices aren't adjacent.
+    #[unstable(feature = "rejoin_slice", reason = "new API", issue = "0")]
+    pub fn try_rejoin<'r>(&'r self, other: &'r str) -> Option<&'r str> {
+        self.as_bytes().try_rejoin(other.as_bytes()).map(|s| unsafe { core::str::from_utf8_unchecked(s) })
+    }
 }
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking

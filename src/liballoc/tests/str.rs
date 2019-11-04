@@ -1859,3 +1859,46 @@ fn different_str_pattern_forwarding_lifetimes() {
 
     foo::<&str>("x");
 }
+
+#[test]
+fn test_rejoin() {
+    let slice = &"abcdefg"[..];
+
+    assert_eq!(slice[..3].rejoin(&slice[3..]), slice);
+    assert_eq!(slice[..4].rejoin(&slice[4..]), slice);
+    assert_eq!(slice[..0].rejoin(&slice[0..]), slice);
+    assert_eq!(slice[..1].rejoin(&slice[1..]), slice);
+    assert_eq!(slice[..6].rejoin(&slice[6..]), slice);
+    assert_eq!(slice[..7].rejoin(&slice[7..]), slice);
+}
+
+#[test]
+#[should_panic]
+fn test_rejoin_nogaps() {
+    let slice = &"abcdefg"[..];
+
+    // Don't allow gaps between slices
+    slice[..3].rejoin(&slice[4..]);
+}
+#[test]
+#[should_panic]
+fn test_rejoin_leftright() {
+    let slice = &"abcdefg"[..];
+
+    // Don't allow joining in wrong order
+    slice[3..].rejoin(&slice[..3]);
+}
+
+#[test]
+fn test_try_rejoin() {
+    let slice = &"abcdefg"[..];
+
+    assert_eq!(slice[..3].try_rejoin(&slice[3..]), Some(slice));
+    assert_eq!(slice[..0].try_rejoin(&slice[0..]), Some(slice));
+    assert_eq!(slice[..1].try_rejoin(&slice[1..]), Some(slice));
+    assert_eq!(slice[..6].try_rejoin(&slice[6..]), Some(slice));
+    assert_eq!(slice[..7].try_rejoin(&slice[7..]), Some(slice));
+
+    assert_eq!(slice[..3].try_rejoin(&slice[4..]), None);
+    assert_eq!(slice[3..].try_rejoin(&slice[3..]), None);
+}

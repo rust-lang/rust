@@ -10,6 +10,7 @@
 #![feature(associated_type_bounds)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_drain_sorted)]
+#![feature(rejoin_slice)]
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

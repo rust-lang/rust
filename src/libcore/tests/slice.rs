@@ -1676,3 +1676,129 @@ fn test_is_sorted() {
     assert!(!["c", "bb", "aaa"].is_sorted());
     assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
 }
+
+#[test]
+fn test_rejoin() {
+    let slice = &[0, 1, 2, 3, 4, 5, 6][..];
+
+    assert_eq!(slice[..3].rejoin(&slice[3..]), slice);
+    assert_eq!(slice[..4].rejoin(&slice[4..]), slice);
+    assert_eq!(slice[..0].rejoin(&slice[0..]), slice);
+    assert_eq!(slice[..1].rejoin(&slice[1..]), slice);
+    assert_eq!(slice[..6].rejoin(&slice[6..]), slice);
+    assert_eq!(slice[..7].rejoin(&slice[7..]), slice);
+}
+
+#[test]
+#[should_panic]
+fn test_rejoin_nogaps() {
+    let slice = &[0, 1, 2, 3, 4, 5, 6][..];
+
+    // Don't allow gaps between slices
+    slice[..3].rejoin(&slice[4..]);
+}
+#[test]
+#[should_panic]
+fn test_rejoin_leftright() {
+    let slice = &[0, 1, 2, 3, 4, 5, 6][..];
+
+    // Don't allow joining in wrong order
+    slice[3..].rejoin(&slice[..3]);
+}
+
+#[test]
+fn test_rejoin_mut() {
+    let slice = &mut [0, 1, 2, 3, 4, 5, 6][..];
+
+    let (a, b) = slice.split_at_mut(3);
+    a.rejoin_mut(b).copy_from_slice(&[14, 15, 16, 17, 18, 19, 20][..]);
+    assert_eq!(slice, &[14, 15, 16, 17, 18, 19, 20][..]);
+
+    let (a, b) = slice.split_at_mut(4);
+    a.rejoin_mut(b).copy_from_slice(&[21, 22, 23, 24, 25, 26, 27][..]);
+    assert_eq!(slice, &[21, 22, 23, 24, 25, 26, 27][..]);
+
+    let (a, b) = slice.split_at_mut(0);
+    a.rejoin_mut(b).copy_from_slice(&[28, 29, 30, 31, 32, 33, 34][..]);
+    assert_eq!(slice, &[28, 29, 30, 31, 32, 33, 34][..]);
+
+    let (a, b) = slice.split_at_mut(1);
+    a.rejoin_mut(b).copy_from_slice(&[35, 36, 37, 38, 39, 40, 41][..]);
+    assert_eq!(slice, &[35, 36, 37, 38, 39, 40, 41][..]);
+
+    let (a, b) = slice.split_at_mut(6);
+    a.rejoin_mut(b).copy_from_slice(&[42, 43, 44, 45, 46, 47, 48][..]);
+    assert_eq!(slice, &[42, 43, 44, 45, 46, 47, 48][..]);
+
+    let (a, b) = slice.split_at_mut(7);
+    a.rejoin_mut(b).copy_from_slice(&[49, 50, 51, 52, 53, 54, 55][..]);
+    assert_eq!(slice, &[49, 50, 51, 52, 53, 54, 55][..]);
+}
+
+#[test]
+#[should_panic]
+fn test_rejoin_mut_nogaps() {
+    let slice = &mut [0, 1, 2, 3, 4, 5, 6][..];
+
+    // Don't allow gaps between slices
+    let (a, b) = slice.split_at_mut(3);
+    a.rejoin_mut(&mut b[1..]);
+}
+#[test]
+#[should_panic]
+fn test_rejoin_mut_leftright() {
+    let slice = &mut [0, 1, 2, 3, 4, 5, 6][..];
+
+    // Don't allow joining in wrong order
+    let (a, b) = slice.split_at_mut(3);
+    b.rejoin_mut(a);
+}
+
+#[test]
+fn test_try_rejoin() {
+    let slice = &[0, 1, 2, 3, 4, 5, 6][..];
+
+    assert_eq!(slice[..3].try_rejoin(&slice[3..]), Some(slice));
+    assert_eq!(slice[..0].try_rejoin(&slice[0..]), Some(slice));
+    assert_eq!(slice[..1].try_rejoin(&slice[1..]), Some(slice));
+    assert_eq!(slice[..6].try_rejoin(&slice[6..]), Some(slice));
+    assert_eq!(slice[..7].try_rejoin(&slice[7..]), Some(slice));
+
+    assert_eq!(slice[..3].try_rejoin(&slice[4..]), None);
+    assert_eq!(slice[3..].try_rejoin(&slice[3..]), None);
+}
+
+#[test]
+fn test_try_rejoin_mut() {
+    let slice = &mut [0, 1, 2, 3, 4, 5, 6][..];
+
+    let (a, b) = slice.split_at_mut(3);
+    a.try_rejoin_mut(b).as_mut().map(|s| s.copy_from_slice(&[14, 15, 16, 17, 18, 19, 20][..]));
+    assert_eq!(slice, &[14, 15, 16, 17, 18, 19, 20][..]);
+
+    let (a, b) = slice.split_at_mut(4);
+    a.try_rejoin_mut(b).as_mut().map(|s| s.copy_from_slice(&[21, 22, 23, 24, 25, 26, 27][..]));
+    assert_eq!(slice, &[21, 22, 23, 24, 25, 26, 27][..]);
+
+    let (a, b) = slice.split_at_mut(0);
+    a.try_rejoin_mut(b).as_mut().map(|s| s.copy_from_slice(&[28, 29, 30, 31, 32, 33, 34][..]));
+    assert_eq!(slice, &[28, 29, 30, 31, 32, 33, 34][..]);
+
+    let (a, b) = slice.split_at_mut(1);
+    a.try_rejoin_mut(b).as_mut().map(|s| s.copy_from_slice(&[35, 36, 37, 38, 39, 40, 41][..]));
+    assert_eq!(slice, &[35, 36, 37, 38, 39, 40, 41][..]);
+
+    let (a, b) = slice.split_at_mut(6);
+    a.try_rejoin_mut(b).as_mut().map(|s| s.copy_from_slice(&[42, 43, 44, 45, 46, 47, 48][..]));
+    assert_eq!(slice, &[42, 43, 44, 45, 46, 47, 48][..]);
+
+    let (a, b) = slice.split_at_mut(7);
+    a.try_rejoin_mut(b).as_mut().map(|s| s.copy_from_slice(&[49, 50, 51, 52, 53, 54, 55][..]));
+    assert_eq!(slice, &[49, 50, 51, 52, 53, 54, 55][..]);
+
+    let (a, b) = slice.split_at_mut(3);
+    assert_eq!(a.try_rejoin_mut(&mut b[1..]), None);
+
+    let (a, b) = slice.split_at_mut(4);
+    assert_eq!(b.try_rejoin_mut(a), None);
+}
