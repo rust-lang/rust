@@ -178,16 +178,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let mut bytes = vec![0; count as usize];
             let result = handle.file.read(&mut bytes);
 
-            if let Ok(c) = result {
-                // Check that we read less than `i64::MAX` bytes.
-                if (c as u64) > (i64::max_value() as u64) {
-                    throw_unsup_format!("Number of read bytes {} is larger than the maximum value", c);
+            match result {
+                Ok(c) => {
+                    if let Some(read_bytes) = helpers::try_from_host_usize::<i64>(c) {
+                        // If reading to `bytes` did not fail, we write those bytes to the buffer.
+                        this.memory.write_bytes(buf, bytes)?;
+                        Ok(read_bytes)
+                    } else {
+                        throw_unsup_format!("Number of read bytes {} cannot be transformed to i64", c);
+                    }
+                },
+                Err(e) => {
+                    this.set_last_error_from_io_error(e)?;
+                    Ok(-1)
                 }
-                // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                this.memory.write_bytes(buf, bytes)?
             }
-
-            this.try_unwrap_io_result(result.map(|c| c as i64))
         } else {
             this.handle_not_found()
         }
@@ -215,14 +220,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
             let result = handle.file.write(&bytes);
 
-            if let Ok(c) = result {
-                // Check that we wrote less than `i64::MAX` bytes.
-                if (c as u64) > (i64::max_value() as u64) {
-                    throw_unsup_format!("Number of written bytes {} is larger than the maximum value", c);
+            match result {
+                Ok(c) => {
+                    if let Some(written_bytes) = helpers::try_from_host_usize::<i64>(c) {
+                        Ok(written_bytes)
+                    } else {
+                        throw_unsup_format!("Number of written bytes {} cannot be transformed to i64", c);
+                    }
+                },
+                Err(e) => {
+                    this.set_last_error_from_io_error(e)?;
+                    Ok(-1)
                 }
             }
-
-            this.try_unwrap_io_result(result.map(|c| c as i64))
         } else {
             this.handle_not_found()
         }

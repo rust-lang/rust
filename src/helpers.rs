@@ -1,5 +1,6 @@
 use std::{mem, iter};
 use std::ffi::{OsStr, OsString};
+use std::convert::TryFrom;
 
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
@@ -458,4 +459,17 @@ fn bytes_to_os_str<'tcx, 'a>(bytes: &'a[u8]) -> InterpResult<'tcx, &'a OsStr> {
     let s = std::str::from_utf8(bytes)
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
     Ok(&OsStr::new(s))
+}
+
+pub fn try_into_host_usize(i: impl Into<u128>) -> Option<usize> {
+    let i: u128 = i.into();
+    if i > usize::max_value() as u128 {
+        None
+    } else {
+        Some(i as usize)
+    }
+}
+
+pub fn try_from_host_usize<T: TryFrom<u128>>(i: usize) -> Option<T> {
+    T::try_from(i as u128).ok()
 }
