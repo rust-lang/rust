@@ -58,7 +58,6 @@ export function load() {
         .filter(([_, value]) => isString(value) || isArrayOfString(value))
         .reduce((list, [key, value]: [string, string | string[]]) => {
             return list.set(key, isString(value) ? [value] : value);
-
         }, defaultMapping);
 
 }
