@@ -1698,6 +1698,10 @@ pub enum ExprKind {
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
+///
+/// To resolve the path to a `DefId`, call [`qpath_res`].
+///
+/// [`qpath_res`]: ty/struct.TypeckTables.html#method.qpath_res
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum QPath {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
