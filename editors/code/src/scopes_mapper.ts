@@ -1,10 +1,9 @@
-import * as vscode from 'vscode'
-import { TextMateRuleSettings } from './scopes'
+import * as vscode from 'vscode';
+import { TextMateRuleSettings } from './scopes';
 
 
 
-
-let mappings = new Map<string, string[]>()
+let mappings = new Map<string, string[]>();
 
 
 const defaultMapping = new Map<string, string[]>([
@@ -27,25 +26,39 @@ const defaultMapping = new Map<string, string[]>([
     ['field', ['variable.object.property', 'meta.field.declaration', 'meta.definition.property', 'variable.other',]],
     ['module', ['entity.name.section', 'entity.other']]
 ]
-)
+);
 
 // Temporary exported for debugging for now. 
 export function find(scope: string): string[] {
-    return mappings.get(scope) || []
+    return mappings.get(scope) || [];
 }
 
 export function toRule(scope: string, intoRule: (scope: string) => TextMateRuleSettings | undefined): TextMateRuleSettings | undefined {
-    return find(scope).map(intoRule).filter(rule => rule !== undefined)[0]
+    return find(scope).map(intoRule).filter(rule => rule !== undefined)[0];
+}
+
+
+function isString(value: any): value is string {
+    return typeof value === 'string';
+}
+
+function isArrayOfString(value: any): value is string[] {
+    return Array.isArray(value) && value.every(item => isString(item));
 }
 
 
 export function load() {
-    const configuration = vscode.workspace
+    const rawConfig: { [key: string]: any } = vscode.workspace
         .getConfiguration('rust-analyzer')
-        .get('scopeMappings') as Map<string, string[]> | undefined
-        || new Map()
+        .get('scopeMappings')
+        || {};
 
-    mappings = new Map([...Array.from(defaultMapping.entries()), ...Array.from(configuration.entries())])
+    mappings = Object
+        .entries(rawConfig)
+        .filter(([_, value]) => isString(value) || isArrayOfString(value))
+        .reduce((list, [key, value]: [string, string | string[]]) => {
+            return list.set(key, isString(value) ? [value] : value);
 
+        }, defaultMapping);
 
 }

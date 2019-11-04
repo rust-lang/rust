@@ -1,7 +1,7 @@
 import seedrandom = require('seedrandom');
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
-import * as scopes from './scopes'
+import * as scopes from './scopes';
 import * as scopesMapper from './scopes_mapper';
 
 import { Server } from './server';
@@ -25,35 +25,35 @@ function fancify(seed: string, shade: 'light' | 'dark') {
     return `hsl(${h},${s}%,${l}%)`;
 }
 
+
 function createDecorationFromTextmate(themeStyle: scopes.TextMateRuleSettings): vscode.TextEditorDecorationType {
-    const options: vscode.DecorationRenderOptions = {}
-    options.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen
+    const options: vscode.DecorationRenderOptions = {};
+    options.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
     if (themeStyle.foreground) {
-        options.color = themeStyle.foreground
+        options.color = themeStyle.foreground;
     }
     if (themeStyle.background) {
-        options.backgroundColor = themeStyle.background
+        options.backgroundColor = themeStyle.background;
     }
     if (themeStyle.fontStyle) {
-        const parts: string[] = themeStyle.fontStyle.split(' ')
+        const parts: string[] = themeStyle.fontStyle.split(' ');
         parts.forEach((part) => {
             switch (part) {
                 case 'italic':
-                    options.fontStyle = 'italic'
-                    break
+                    options.fontStyle = 'italic';
+                    break;
                 case 'bold':
-                    options.fontWeight = 'bold'
-
-                    break
+                    options.fontWeight = 'bold';
+                    break;
                 case 'underline':
-                    options.textDecoration = 'underline'
-                    break
+                    options.textDecoration = 'underline';
+                    break;
                 default:
-                    break
+                    break;
             }
         })
     }
-    return vscode.window.createTextEditorDecorationType(options)
+    return vscode.window.createTextEditorDecorationType(options);
 }
 
 export class Highlighter {
@@ -66,7 +66,7 @@ export class Highlighter {
             textDecoration?: string
         ): [string, vscode.TextEditorDecorationType] => {
 
-            const rule = scopesMapper.toRule(tag, scopes.find)
+            const rule = scopesMapper.toRule(tag, scopes.find);
 
             if (rule) {
                 const decor = createDecorationFromTextmate(rule);
