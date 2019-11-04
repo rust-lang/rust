@@ -163,56 +163,68 @@ function getSearchElement() {
 
     var main = document.getElementById("main");
 
-    function highlightSourceLines(ev) {
-        // If we're in mobile mode, we should add the sidebar in any case.
+    function onHashChange(ev) {
+        // If we're in mobile mode, we should hide the sidebar in any case.
         hideSidebar();
-        var elem;
-        var search = getSearchElement();
-        var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
+        var match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
-            from = parseInt(match[1], 10);
-            to = from;
-            if (typeof match[2] !== "undefined") {
-                to = parseInt(match[2], 10);
-            }
-            if (to < from) {
-                var tmp = to;
-                to = from;
-                from = tmp;
-            }
-            elem = document.getElementById(from);
-            if (!elem) {
-                return;
-            }
-            if (ev === null) {
-                var x = document.getElementById(from);
-                if (x) {
-                    x.scrollIntoView();
-                }
-            }
-            onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
-                onEachLazy(e.getElementsByTagName("span"), function(i_e) {
-                    removeClass(i_e, "line-highlighted");
-                });
-            });
-            for (i = from; i <= to; ++i) {
-                elem = document.getElementById(i);
-                if (!elem) {
-                    break;
-                }
-                addClass(elem, "line-highlighted");
-            }
-        } else if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+            return highlightSourceLines(match, ev);
+        }
+        var search = getSearchElement();
+        if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
             addClass(search, "hidden");
             removeClass(main, "hidden");
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (browserSupportsHistoryApi()) {
                 history.replaceState(hash, "", "?search=#" + hash);
             }
-            elem = document.getElementById(hash);
+            var elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
+        }
+    }
+
+    function highlightSourceLines(match, ev) {
+        if (typeof match === "undefined") {
+            // If we're in mobile mode, we should hide the sidebar in any case.
+            hideSidebar();
+            match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
+        }
+        if (!match) {
+            return;
+        }
+        var from = parseInt(match[1], 10);
+        var to = from;
+        if (typeof match[2] !== "undefined") {
+            to = parseInt(match[2], 10);
+        }
+        if (to < from) {
+            var tmp = to;
+            to = from;
+            from = tmp;
+        }
+        var elem = document.getElementById(from);
+        if (!elem) {
+            return;
+        }
+        if (!ev) {
+            var x = document.getElementById(from);
+            if (x) {
+                x.scrollIntoView();
+            }
+        }
+        onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
+            onEachLazy(e.getElementsByTagName("span"), function(i_e) {
+                removeClass(i_e, "line-highlighted");
+            });
+        });
+        for (var i = from; i <= to; ++i) {
+            elem = document.getElementById(i);
+            if (!elem) {
+                break;
+            }
+            addClass(elem, "line-highlighted");
         }
     }
 
@@ -234,8 +246,8 @@ function getSearchElement() {
         }
     }
 
-    highlightSourceLines(null);
-    window.onhashchange = highlightSourceLines;
+    highlightSourceLines();
+    window.onhashchange = onHashChange;
 
     // Gets the human-readable string for the virtual-key code of the
     // given KeyboardEvent, ev.
@@ -358,7 +370,7 @@ function getSearchElement() {
             var set_fragment = function(name) {
                 if (browserSupportsHistoryApi()) {
                     history.replaceState(null, null, "#" + name);
-                    highlightSourceLines(null);
+                    highlightSourceLines();
                 } else {
                     location.replace("#" + name);
                 }
