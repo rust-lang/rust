@@ -87,7 +87,6 @@
 use crate::cell::Cell;
 use crate::fmt;
 use crate::marker;
-use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use crate::thread::{self, Thread};
 
@@ -432,48 +431,47 @@ impl Once {
     }
 }
 
-fn wait(state_and_queue: &AtomicUsize, current_state: usize) {
-    // Create the node for our current thread that we are going to try to slot
-    // in at the head of the linked list.
-    let mut node = Waiter {
-        thread: Cell::new(Some(thread::current())),
-        signaled: AtomicBool::new(false),
-        next: ptr::null(),
-    };
-    let me = &node as *const Waiter as usize;
-    assert!(me & STATE_MASK == 0); // We assume pointers have 2 free bits that
-                                   // we can use for state.
-
-    // Try to slide in the node at the head of the linked list.
-    // Run in a loop where we make sure the status is still RUNNING, and that
-    // another thread did not just replace the head of the linked list.
-    let mut old_head_and_status = current_state;
+fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
+    // Note: the following code was carefully written to avoid creating a
+    // mutable reference to `node` that gets aliased.
     loop {
-        if old_head_and_status & STATE_MASK != RUNNING {
-            return; // No need anymore to enqueue ourselves.
+        // Don't queue this thread if the status is no longer running,
+        // otherwise we will not be woken up.
+        if current_state & STATE_MASK != RUNNING {
+            return;
         }
 
-        node.next = (old_head_and_status & !STATE_MASK) as *const Waiter;
-        let old = state_and_queue.compare_and_swap(old_head_and_status,
+        // Create the node for our current thread.
+        let node = Waiter {
+            thread: Cell::new(Some(thread::current())),
+            signaled: AtomicBool::new(false),
+            next: (current_state & !STATE_MASK) as *const Waiter,
+        };
+        let me = &node as *const Waiter as usize;
+
+        // Try to slide in the node at the head of the linked list, making sure
+        // that another thread didn't just replace the head of the linked list.
+        let old = state_and_queue.compare_and_swap(current_state,
                                                    me | RUNNING,
                                                    Ordering::Release);
-        if old == old_head_and_status {
-            break; // Success!
+        if old != current_state {
+            current_state = old;
+            continue;
         }
-        old_head_and_status = old;
-    }
 
-    // We have enqueued ourselves, now lets wait.
-    // It is important not to return before being signaled, otherwise we would
-    // drop our `Waiter` node and leave a hole in the linked list (and a
-    // dangling reference). Guard against spurious wakeups by reparking
-    // ourselves until we are signaled.
-    while !node.signaled.load(Ordering::Acquire) {
-        // If the managing thread happens to signal and unpark us before we can
-        // park ourselves, the result could be this thread never gets unparked.
-        // Luckily `park` comes with the guarantee that if it got an `unpark`
-        // just before on an unparked thread is does not park.
-        thread::park();
+        // We have enqueued ourselves, now lets wait.
+        // It is important not to return before being signaled, otherwise we
+        // would drop our `Waiter` node and leave a hole in the linked list
+        // (and a dangling reference). Guard against spurious wakeups by
+        // reparking ourselves until we are signaled.
+        while !node.signaled.load(Ordering::Acquire) {
+            // If the managing thread happens to signal and unpark us before we
+            // can park ourselves, the result could be this thread never gets
+            // unparked. Luckily `park` comes with the guarantee that if it got
+            // an `unpark` just before on an unparked thread is does not park.
+            thread::park();
+        }
+        break;
     }
 }
 
