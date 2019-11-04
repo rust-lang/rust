@@ -1109,11 +1109,11 @@ impl<T, E: Into<!>> Result<T, E> {
     ///     Ok("this is fine".into())
     /// }
     ///
-    /// let s: String = only_good_news().unwrap_infallible();
+    /// let s: String = only_good_news().into_ok();
     /// println!("{}", s);
     /// ```
     #[inline]
-    pub fn unwrap_infallible(self) -> T {
+    pub fn into_ok(self) -> T {
         match self {
             Ok(x) => x,
             Err(e) => e.into(),

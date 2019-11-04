@@ -198,12 +198,12 @@ pub fn test_unwrap_or_default() {
 }
 
 #[test]
-pub fn test_unwrap_infallible() {
+pub fn test_into_ok() {
     fn infallible_op() -> Result<isize, !> {
         Ok(666)
     }
 
-    assert_eq!(infallible_op().unwrap_infallible(), 666);
+    assert_eq!(infallible_op().into_ok(), 666);
 
     enum MyNeverToken {}
     impl From<MyNeverToken> for ! {
@@ -216,7 +216,7 @@ pub fn test_unwrap_infallible() {
         Ok(667)
     }
 
-    assert_eq!(infallible_op2().unwrap_infallible(), 667);
+    assert_eq!(infallible_op2().into_ok(), 667);
 }
 
 #[test]
