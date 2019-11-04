@@ -11,7 +11,7 @@ use ra_syntax::{
 use test_utils::covers;
 
 use crate::{
-    expr::BodySourceMap, mock::MockDatabase, ty::display::HirDisplay, ty::InferenceResult,
+    expr::BodySourceMap, test_db::TestDB, ty::display::HirDisplay, ty::InferenceResult,
     SourceAnalyzer,
 };
 
@@ -24,7 +24,7 @@ mod coercion;
 
 #[test]
 fn cfg_impl_block() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:foo cfg:test
 use foo::S as T;
@@ -64,7 +64,7 @@ impl S {
 
 #[test]
 fn infer_await() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:std
 
@@ -95,7 +95,7 @@ mod future {
 
 #[test]
 fn infer_box() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:std
 
@@ -122,7 +122,7 @@ mod boxed {
 
 #[test]
 fn infer_adt_self() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs
 enum Nat { Succ(Self), Demo(Nat), Zero }
@@ -141,7 +141,7 @@ fn test() {
 
 #[test]
 fn infer_try() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:std
 
@@ -181,7 +181,7 @@ mod result {
 
 #[test]
 fn infer_for_loop() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:std
 
@@ -223,7 +223,7 @@ mod collections {
 #[test]
 fn infer_while_let() {
     covers!(infer_while_let);
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs
 enum Option<T> { Some(T), None }
@@ -2484,7 +2484,7 @@ pub fn main_loop() {
 
 #[test]
 fn cross_crate_associated_method_call() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:other_crate
 fn test() {
@@ -3378,7 +3378,7 @@ fn test() { S.foo()<|>; }
 
 #[test]
 fn infer_macro_with_dollar_crate_is_correct_in_expr() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:foo
 fn test() {
@@ -3482,7 +3482,7 @@ fn test() { (&S).foo()<|>; }
 
 #[test]
 fn method_resolution_trait_from_prelude() {
-    let (db, pos) = MockDatabase::with_position(
+    let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs crate:main deps:other_crate
 struct S;
@@ -4651,7 +4651,7 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     assert_eq!(t, "{unknown}");
 }
 
-fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
+fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
     let analyzer = SourceAnalyzer::new(db, pos.file_id, expr.syntax(), Some(pos.offset));
@@ -4660,12 +4660,12 @@ fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
 }
 
 fn type_at(content: &str) -> String {
-    let (db, file_pos) = MockDatabase::with_position(content);
+    let (db, file_pos) = TestDB::with_position(content);
     type_at_pos(&db, file_pos)
 }
 
 fn infer(content: &str) -> String {
-    let (db, _, file_id) = MockDatabase::with_single_file(content);
+    let (db, file_id) = TestDB::with_single_file(content);
     let source_file = db.parse(file_id).ok().unwrap();
 
     let mut acc = String::new();
@@ -4748,7 +4748,7 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
 
 #[test]
 fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
-    let (mut db, pos) = MockDatabase::with_position(
+    let (mut db, pos) = TestDB::with_position(
         "
         //- /lib.rs
         fn foo() -> i32 {
@@ -4788,7 +4788,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
 
 #[test]
 fn no_such_field_diagnostics() {
-    let diagnostics = MockDatabase::with_files(
+    let diagnostics = TestDB::with_files(
         r"
         //- /lib.rs
         struct S { foo: i32, bar: () }
