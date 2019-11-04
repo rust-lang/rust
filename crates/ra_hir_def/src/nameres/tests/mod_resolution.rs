@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn name_res_works_for_broken_modules() {
-    // covers!(name_res_works_for_broken_modules);
+    covers!(name_res_works_for_broken_modules);
     let map = def_map(
         "
         //- /lib.rs
@@ -54,18 +54,15 @@ fn nested_module_resolution() {
 
 #[test]
 fn module_resolution_works_for_non_standard_filenames() {
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /my_library.rs
+        //- /my_library.rs crate:my_library
         mod foo;
         use self::foo::Bar;
 
         //- /foo/mod.rs
         pub struct Bar;
         ",
-        crate_graph! {
-            "my_library": ("/my_library.rs", []),
-        },
     );
 
     assert_snapshot!(map, @r###"
@@ -650,7 +647,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root_2() {
 
 #[test]
 fn unresolved_module_diagnostics() {
-    let diagnostics = MockDatabase::with_files(
+    let db = TestDB::with_files(
         r"
         //- /lib.rs
         mod foo;
@@ -658,11 +655,37 @@ fn unresolved_module_diagnostics() {
         mod baz {}
         //- /foo.rs
         ",
-    )
-    .diagnostics();
+    );
+    let krate = db.crate_graph().iter().next().unwrap();
 
-    assert_snapshot!(diagnostics, @r###"
-    "mod bar;": unresolved module
+    let crate_def_map = db.crate_def_map(krate);
+
+    insta::assert_debug_snapshot!(
+        crate_def_map.diagnostics,
+        @r###"
+    [
+        UnresolvedModule {
+            module: CrateModuleId(
+                0,
+            ),
+            declaration: AstId {
+                file_id: HirFileId(
+                    FileId(
+                        FileId(
+                            0,
+                        ),
+                    ),
+                ),
+                file_ast_id: FileAstId {
+                    raw: ErasedFileAstId(
+                        1,
+                    ),
+                    _ty: PhantomData,
+                },
+            },
+            candidate: "bar.rs",
+        },
+    ]
     "###
     );
 }

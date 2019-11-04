@@ -1,10 +1,9 @@
 //! FIXME: write short doc here
 
 use hir::ModuleSource;
-use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_db::{RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SyntaxNode};
 use ra_text_edit::TextEdit;
-use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
     db::RootDatabase, FileId, FilePosition, FileSystemEdit, RangeInfo, SourceChange,

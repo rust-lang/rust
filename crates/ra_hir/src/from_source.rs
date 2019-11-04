@@ -149,14 +149,20 @@ impl Module {
             ModuleSource::SourceFile(_) => None,
         };
 
-        db.relevant_crates(src.file_id.original_file(db))
-            .iter()
-            .map(|&crate_id| Crate { crate_id })
-            .find_map(|krate| {
-                let def_map = db.crate_def_map(krate);
-                let module_id = def_map.find_module_by_source(src.file_id, decl_id)?;
-                Some(Module::new(krate, module_id))
-            })
+        db.relevant_crates(src.file_id.original_file(db)).iter().find_map(|&crate_id| {
+            let def_map = db.crate_def_map(crate_id);
+
+            let (module_id, _module_data) =
+                def_map.modules.iter().find(|(_module_id, module_data)| {
+                    if decl_id.is_some() {
+                        module_data.declaration == decl_id
+                    } else {
+                        module_data.definition.map(|it| it.into()) == Some(src.file_id)
+                    }
+                })?;
+
+            Some(Module::new(Crate { crate_id }, module_id))
+        })
     }
 }
 

@@ -13,24 +13,24 @@ pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
 pub mod adt;
+pub mod diagnostics;
+
+#[cfg(test)]
+mod test_db;
+#[cfg(test)]
+mod marks;
 
 // FIXME: this should be private
 pub mod nameres;
 
 use std::hash::{Hash, Hasher};
 
-use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId};
+use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, Source};
 use ra_arena::{impl_arena_id, RawId};
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
 use crate::{builtin_type::BuiltinType, db::InternDatabase};
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Source<T> {
-    pub file_id: HirFileId,
-    pub ast: T,
-}
 
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),
@@ -91,15 +91,6 @@ impl ModuleSource {
     pub fn from_file_id(db: &impl db::DefDatabase2, file_id: FileId) -> ModuleSource {
         let source_file = db.parse(file_id).tree();
         ModuleSource::SourceFile(source_file)
-    }
-}
-
-impl<T> Source<T> {
-    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source { file_id: self.file_id, ast: f(self.ast) }
-    }
-    pub fn file_syntax(&self, db: &impl AstDatabase) -> SyntaxNode {
-        db.parse_or_expand(self.file_id).expect("source created from invalid file")
     }
 }
 
@@ -252,8 +243,8 @@ impl AstItemDef<ast::EnumDef> for EnumId {
 // FIXME: rename to `VariantId`, only enums can ave variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantId {
-    parent: EnumId,
-    local_id: LocalEnumVariantId,
+    pub parent: EnumId,
+    pub local_id: LocalEnumVariantId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

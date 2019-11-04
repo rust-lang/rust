@@ -2,17 +2,17 @@
 
 use std::{panic, sync::Arc};
 
+use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
 use ra_cfg::CfgOptions;
 use ra_db::{
     salsa, CrateGraph, CrateId, Edition, FileId, FileLoader, FileLoaderDelegate, FilePosition,
-    SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
+    RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
-use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
-use crate::{db, debug::HirDebugHelper, diagnostics::DiagnosticSink};
+use crate::{db, debug::HirDebugHelper};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -77,36 +77,11 @@ impl MockDatabase {
         (db, source_root, file_id)
     }
 
-    pub fn with_position(fixture: &str) -> (MockDatabase, FilePosition) {
-        let (db, position) = MockDatabase::from_fixture(fixture);
-        let position = position.expect("expected a marker ( <|> )");
-        (db, position)
-    }
-
     pub fn file_id_of(&self, path: &str) -> FileId {
         match self.files.get(path) {
             Some(it) => *it,
             None => panic!("unknown file: {:?}\nexisting files:\n{:#?}", path, self.files),
         }
-    }
-
-    pub fn set_crate_graph_from_fixture(&mut self, graph: CrateGraphFixture) {
-        let mut ids = FxHashMap::default();
-        let mut crate_graph = CrateGraph::default();
-        for (crate_name, (crate_root, edition, cfg_options, _)) in graph.0.iter() {
-            let crate_root = self.file_id_of(&crate_root);
-            let crate_id = crate_graph.add_crate_root(crate_root, *edition, cfg_options.clone());
-            Arc::make_mut(&mut self.crate_names).insert(crate_id, crate_name.clone());
-            ids.insert(crate_name, crate_id);
-        }
-        for (crate_name, (_, _, _, deps)) in graph.0.iter() {
-            let from = ids[crate_name];
-            for dep in deps {
-                let to = ids[dep];
-                crate_graph.add_dep(from, dep.as_str().into(), to).unwrap();
-            }
-        }
-        self.set_crate_graph(Arc::new(crate_graph))
     }
 
     pub fn diagnostics(&self) -> String {
@@ -284,47 +259,4 @@ impl MockDatabase {
             })
             .collect()
     }
-}
-
-#[derive(Default)]
-pub struct CrateGraphFixture(pub Vec<(String, (String, Edition, CfgOptions, Vec<String>))>);
-
-#[macro_export]
-macro_rules! crate_graph {
-    ($(
-        $crate_name:literal: (
-            $crate_path:literal,
-            $($edition:literal,)?
-            [$($dep:literal),*]
-            $(, cfg = {
-                $($key:literal $(= $value:literal)?),*
-                $(,)?
-            })?
-        ),
-    )*) => {{
-        let mut res = $crate::mock::CrateGraphFixture::default();
-        $(
-            #[allow(unused_mut, unused_assignments)]
-            let mut edition = ra_db::Edition::Edition2018;
-            $(edition = ra_db::Edition::from_string($edition);)?
-            let cfg_options = {
-                #[allow(unused_mut)]
-                let mut cfg = ::ra_cfg::CfgOptions::default();
-                $(
-                    $(
-                        if 0 == 0 $(+ { drop($value); 1})? {
-                            cfg.insert_atom($key.into());
-                        }
-                        $(cfg.insert_key_value($key.into(), $value.into());)?
-                    )*
-                )?
-                cfg
-            };
-            res.0.push((
-                $crate_name.to_string(),
-                ($crate_path.to_string(), edition, cfg_options, vec![$($dep.to_string()),*])
-            ));
-        )*
-        res
-    }}
 }

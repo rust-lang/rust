@@ -4,13 +4,13 @@ use std::{fmt, sync::Arc, time};
 
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
-    CrateGraph, CrateId, FileId, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
+    CrateGraph, CrateId, FileId, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot,
+    SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use ra_syntax::SourceFile;
 #[cfg(not(feature = "wasm"))]
 use rayon::prelude::*;
-use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
 
 use crate::{

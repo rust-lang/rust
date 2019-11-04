@@ -1,17 +1,18 @@
 //! ra_db defines basic database traits. The concrete DB is defined by ra_ide_api.
 mod cancellation;
 mod input;
+pub mod fixture;
 
 use std::{panic, sync::Arc};
 
 use ra_prof::profile;
 use ra_syntax::{ast, Parse, SourceFile, TextRange, TextUnit};
-use relative_path::{RelativePath, RelativePathBuf};
 
 pub use crate::{
     cancellation::Canceled,
     input::{CrateGraph, CrateId, Dependency, Edition, FileId, SourceRoot, SourceRootId},
 };
+pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
 
 pub trait CheckCanceled {

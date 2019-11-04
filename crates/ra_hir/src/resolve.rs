@@ -3,8 +3,9 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::BuiltinType,
+    nameres::CrateDefMap,
     path::{Path, PathKind},
-    CrateModuleId,
+    AdtId, CrateModuleId, ModuleDefId,
 };
 use hir_expand::name::{self, Name};
 use rustc_hash::FxHashSet;
@@ -18,8 +19,8 @@ use crate::{
     },
     generics::GenericParams,
     impl_block::ImplBlock,
-    nameres::{CrateDefMap, PerNs},
-    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, Static, Struct, Trait, TypeAlias,
+    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, PerNs, Static, Struct, Trait,
+    TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -90,7 +91,7 @@ impl Resolver {
     pub(crate) fn resolve_known_trait(&self, db: &impl HirDatabase, path: &Path) -> Option<Trait> {
         let res = self.resolve_module_path(db, path).take_types()?;
         match res {
-            ModuleDef::Trait(it) => Some(it),
+            ModuleDefId::TraitId(it) => Some(it.into()),
             _ => None,
         }
     }
@@ -103,7 +104,7 @@ impl Resolver {
     ) -> Option<Struct> {
         let res = self.resolve_module_path(db, path).take_types()?;
         match res {
-            ModuleDef::Adt(Adt::Struct(it)) => Some(it),
+            ModuleDefId::AdtId(AdtId::StructId(it)) => Some(it.into()),
             _ => None,
         }
     }
@@ -112,7 +113,7 @@ impl Resolver {
     pub(crate) fn resolve_known_enum(&self, db: &impl HirDatabase, path: &Path) -> Option<Enum> {
         let res = self.resolve_module_path(db, path).take_types()?;
         match res {
-            ModuleDef::Adt(Adt::Enum(it)) => Some(it),
+            ModuleDefId::AdtId(AdtId::EnumId(it)) => Some(it.into()),
             _ => None,
         }
     }
@@ -166,18 +167,18 @@ impl Resolver {
                 Scope::ModuleScope(m) => {
                     let (module_def, idx) = m.crate_def_map.resolve_path(db, m.module_id, path);
                     let res = match module_def.take_types()? {
-                        ModuleDef::Adt(it) => TypeNs::Adt(it),
-                        ModuleDef::EnumVariant(it) => TypeNs::EnumVariant(it),
+                        ModuleDefId::AdtId(it) => TypeNs::Adt(it.into()),
+                        ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariant(it.into()),
 
-                        ModuleDef::TypeAlias(it) => TypeNs::TypeAlias(it),
-                        ModuleDef::BuiltinType(it) => TypeNs::BuiltinType(it),
+                        ModuleDefId::TypeAliasId(it) => TypeNs::TypeAlias(it.into()),
+                        ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
 
-                        ModuleDef::Trait(it) => TypeNs::Trait(it),
+                        ModuleDefId::TraitId(it) => TypeNs::Trait(it.into()),
 
-                        ModuleDef::Function(_)
-                        | ModuleDef::Const(_)
-                        | ModuleDef::Static(_)
-                        | ModuleDef::Module(_) => return None,
+                        ModuleDefId::FunctionId(_)
+                        | ModuleDefId::ConstId(_)
+                        | ModuleDefId::StaticId(_)
+                        | ModuleDefId::ModuleId(_) => return None,
                     };
                     return Some((res, idx));
                 }
@@ -261,33 +262,35 @@ impl Resolver {
                     return match idx {
                         None => {
                             let value = match module_def.take_values()? {
-                                ModuleDef::Function(it) => ValueNs::Function(it),
-                                ModuleDef::Adt(Adt::Struct(it)) => ValueNs::Struct(it),
-                                ModuleDef::EnumVariant(it) => ValueNs::EnumVariant(it),
-                                ModuleDef::Const(it) => ValueNs::Const(it),
-                                ModuleDef::Static(it) => ValueNs::Static(it),
+                                ModuleDefId::FunctionId(it) => ValueNs::Function(it.into()),
+                                ModuleDefId::AdtId(AdtId::StructId(it)) => {
+                                    ValueNs::Struct(it.into())
+                                }
+                                ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariant(it.into()),
+                                ModuleDefId::ConstId(it) => ValueNs::Const(it.into()),
+                                ModuleDefId::StaticId(it) => ValueNs::Static(it.into()),
 
-                                ModuleDef::Adt(Adt::Enum(_))
-                                | ModuleDef::Adt(Adt::Union(_))
-                                | ModuleDef::Trait(_)
-                                | ModuleDef::TypeAlias(_)
-                                | ModuleDef::BuiltinType(_)
-                                | ModuleDef::Module(_) => return None,
+                                ModuleDefId::AdtId(AdtId::EnumId(_))
+                                | ModuleDefId::AdtId(AdtId::UnionId(_))
+                                | ModuleDefId::TraitId(_)
+                                | ModuleDefId::TypeAliasId(_)
+                                | ModuleDefId::BuiltinType(_)
+                                | ModuleDefId::ModuleId(_) => return None,
                             };
                             Some(ResolveValueResult::ValueNs(value))
                         }
                         Some(idx) => {
                             let ty = match module_def.take_types()? {
-                                ModuleDef::Adt(it) => TypeNs::Adt(it),
-                                ModuleDef::Trait(it) => TypeNs::Trait(it),
-                                ModuleDef::TypeAlias(it) => TypeNs::TypeAlias(it),
-                                ModuleDef::BuiltinType(it) => TypeNs::BuiltinType(it),
+                                ModuleDefId::AdtId(it) => TypeNs::Adt(it.into()),
+                                ModuleDefId::TraitId(it) => TypeNs::Trait(it.into()),
+                                ModuleDefId::TypeAliasId(it) => TypeNs::TypeAlias(it.into()),
+                                ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
 
-                                ModuleDef::Module(_)
-                                | ModuleDef::Function(_)
-                                | ModuleDef::EnumVariant(_)
-                                | ModuleDef::Const(_)
-                                | ModuleDef::Static(_) => return None,
+                                ModuleDefId::ModuleId(_)
+                                | ModuleDefId::FunctionId(_)
+                                | ModuleDefId::EnumVariantId(_)
+                                | ModuleDefId::ConstId(_)
+                                | ModuleDefId::StaticId(_) => return None,
                             };
                             Some(ResolveValueResult::Partial(ty, idx))
                         }
@@ -315,7 +318,7 @@ impl Resolver {
         path: &Path,
     ) -> Option<MacroDef> {
         let (item_map, module) = self.module()?;
-        item_map.resolve_path(db, module, path).0.get_macros()
+        item_map.resolve_path(db, module, path).0.get_macros().map(MacroDef::from)
     }
 
     pub(crate) fn process_all_names(
@@ -333,10 +336,11 @@ impl Resolver {
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
                 if let Some(prelude) = m.crate_def_map.prelude() {
-                    let prelude_def_map = db.crate_def_map(prelude.krate());
-                    traits.extend(prelude_def_map[prelude.id.module_id].scope.traits());
+                    let prelude_def_map = db.crate_def_map(prelude.krate);
+                    traits
+                        .extend(prelude_def_map[prelude.module_id].scope.traits().map(Trait::from));
                 }
-                traits.extend(m.crate_def_map[m.module_id].scope.traits());
+                traits.extend(m.crate_def_map[m.module_id].scope.traits().map(Trait::from));
             }
         }
         traits
@@ -351,7 +355,7 @@ impl Resolver {
     }
 
     pub(crate) fn krate(&self) -> Option<Crate> {
-        self.module().map(|t| t.0.krate())
+        self.module().map(|t| Crate { crate_id: t.0.krate() })
     }
 
     pub(crate) fn where_predicates_in_scope<'a>(
@@ -420,8 +424,10 @@ impl From<PerNs> for ScopeDef {
     fn from(def: PerNs) -> Self {
         def.take_types()
             .or_else(|| def.take_values())
-            .map(ScopeDef::ModuleDef)
-            .or_else(|| def.get_macros().map(ScopeDef::MacroDef))
+            .map(|module_def_id| ScopeDef::ModuleDef(module_def_id.into()))
+            .or_else(|| {
+                def.get_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
+            })
             .unwrap_or(ScopeDef::Unknown)
     }
 }
@@ -441,18 +447,16 @@ impl Scope {
                     f(name.clone(), res.def.into());
                 });
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
-                    f(name.clone(), ScopeDef::MacroDef(macro_));
+                    f(name.clone(), ScopeDef::MacroDef(macro_.into()));
                 });
-                m.crate_def_map.extern_prelude().iter().for_each(|(name, def)| {
-                    f(name.clone(), ScopeDef::ModuleDef(*def));
+                m.crate_def_map.extern_prelude().iter().for_each(|(name, &def)| {
+                    f(name.clone(), ScopeDef::ModuleDef(def.into()));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude() {
-                    let prelude_def_map = db.crate_def_map(prelude.krate());
-                    prelude_def_map[prelude.id.module_id].scope.entries().for_each(
-                        |(name, res)| {
-                            f(name.clone(), res.def.into());
-                        },
-                    );
+                    let prelude_def_map = db.crate_def_map(prelude.krate);
+                    prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
+                        f(name.clone(), res.def.into());
+                    });
                 }
             }
             Scope::GenericParams(gp) => {

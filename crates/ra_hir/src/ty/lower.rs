@@ -23,15 +23,14 @@ use crate::{
     db::HirDatabase,
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
-    nameres::Namespace,
     resolve::{Resolver, TypeNs},
     ty::{
         primitive::{FloatTy, IntTy},
         Adt,
     },
     util::make_mut_slice,
-    Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField, Trait,
-    TypeAlias, Union,
+    Const, Enum, EnumVariant, Function, ModuleDef, Namespace, Path, Static, Struct, StructField,
+    Trait, TypeAlias, Union,
 };
 
 impl Ty {

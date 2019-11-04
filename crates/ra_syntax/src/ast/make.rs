@@ -110,6 +110,23 @@ pub fn match_arm_list(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchAr
     }
 }
 
+pub fn let_match_early(expr: ast::Expr, path: &str, early_expression: &str) -> ast::LetStmt {
+    return from_text(&format!(
+        r#"let {} = match {} {{
+    {}(it) => it,
+    None => {},
+}};"#,
+        expr.syntax().text(),
+        expr.syntax().text(),
+        path,
+        early_expression
+    ));
+
+    fn from_text(text: &str) -> ast::LetStmt {
+        ast_from_text(&format!("fn f() {{ {} }}", text))
+    }
+}
+
 pub fn where_pred(path: ast::Path, bounds: impl Iterator<Item = ast::TypeBound>) -> ast::WherePred {
     let bounds = bounds.map(|b| b.syntax().to_string()).join(" + ");
     return from_text(&format!("{}: {}", path.syntax(), bounds));

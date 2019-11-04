@@ -6,12 +6,13 @@
 //! actual IO. See `vfs` and `project_model` in the `ra_lsp_server` crate for how
 //! actual IO is done and lowered to input.
 
-use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
+
+use crate::{RelativePath, RelativePathBuf};
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -97,6 +98,7 @@ pub enum Edition {
 }
 
 impl Edition {
+    //FIXME: replace with FromStr with proper error handling
     pub fn from_string(s: &str) -> Edition {
         match s {
             "2015" => Edition::Edition2015,

@@ -76,18 +76,14 @@ fn glob_2() {
 #[test]
 fn glob_across_crates() {
     covers!(glob_across_crates);
-    let map = def_map_with_crate_graph(
+    let map = def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:test_crate
         use test_crate::*;
 
-        //- /lib.rs
+        //- /lib.rs crate:test_crate
         pub struct Baz;
         ",
-        crate_graph! {
-            "main": ("/main.rs", ["test_crate"]),
-            "test_crate": ("/lib.rs", []),
-        },
     );
     assert_snapshot!(map, @r###"
    ⋮crate

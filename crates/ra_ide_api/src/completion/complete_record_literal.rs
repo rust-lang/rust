@@ -32,6 +32,34 @@ mod tests {
     }
 
     #[test]
+    fn test_record_literal_deprecated_field() {
+        let completions = complete(
+            r"
+            struct A {
+                #[deprecated]
+                the_field: u32,
+            }
+            fn foo() {
+               A { the<|> }
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_field",
+       ⋮        source_range: [142; 145),
+       ⋮        delete: [142; 145),
+       ⋮        insert: "the_field",
+       ⋮        kind: Field,
+       ⋮        detail: "u32",
+       ⋮        deprecated: true,
+       ⋮    },
+       ⋮]
+        "###);
+    }
+
+    #[test]
     fn test_record_literal_field() {
         let completions = complete(
             r"
