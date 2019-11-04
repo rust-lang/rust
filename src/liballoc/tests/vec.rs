@@ -1264,22 +1264,31 @@ fn test_try_reserve_exact() {
 
 }
 
-/// Tests that `recycle` successfully re-interprets the type to have different lifetime from the original
+/// Tests that `recycle` successfully re-interprets the type
+/// to have a different lifetime from the original
 #[test]
 fn test_recycle_lifetime() {
     let s_1 = "foo".to_string();
+
+    let val_size;
+    let val_align;
+
     let mut buf = Vec::with_capacity(100);
     {
         let mut buf2 = buf;
-        let s_2 = "foo".to_string();
+        let s_2 = "bar".to_string();
         buf2.push(s_2.as_str());
 
         assert_eq!(buf2.len(), 1);
         assert_eq!(buf2.capacity(), 100);
+        val_size = core::mem::size_of_val(&buf[0]);
+        val_align = core::mem::align_of_val(&buf[0]);
 
         buf = buf2.recycle();
     }
     buf.push(s_1.as_str());
+    assert_eq!(val_size, core::mem::size_of_val(&buf[0]));
+    assert_eq!(val_align, core::mem::align_of_val(&buf[0]));
 }
 
 /// Tests that `recycle` successfully re-interprets the type itself
@@ -1299,10 +1308,14 @@ fn test_recycle_type() {
 
         assert_eq!(buf2.len(), 1);
         assert_eq!(buf2.capacity(), 100);
+        val_size = core::mem::size_of_val(&buf[0]);
+        val_align = core::mem::align_of_val(&buf[0]);
 
         buf = buf2.recycle();
     }
     buf.push(s.as_str());
+    assert_eq!(val_size, core::mem::size_of_val(&buf[0]));
+    assert_eq!(val_align, core::mem::align_of_val(&buf[0]));
 }
 
 /// Tests that `recycle` successfully panics with incompatible sizes

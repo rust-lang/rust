@@ -603,11 +603,15 @@ impl<T> Vec<T> {
         self.buf.try_reserve_exact(self.len, additional)
     }
 
-    /// Allows re-interpreting the type of a Vec to reuse the allocation.
+    /// Allows reusing the allocation of the `Vec<T>` at a different,
+    /// but compatible, type `Vec<U>`.
     /// The vector is emptied and any values contained in it will be dropped.
+    /// As a result, no elements of type `T` are transmuted to `U`
+    /// and so this operation is safe.
     /// The target type must have the same size and alignment as the source type.
-    /// This API doesn't transmute any values of T to U, because it makes sure
-    /// to empty the vector before any unsafe operations.
+    ///
+    /// # Panics
+    /// Panics if the size or alignment of the source and target types don't match.
     ///
     /// # Example
     ///
@@ -616,7 +620,7 @@ impl<T> Vec<T> {
     /// By recycling the allocation, the `Vec` is able to safely
     /// outlive the lifetime of the type that was stored in it.
     /// ```
-    /// # #![feature(recycle_vec)]
+    /// #![feature(recycle_vec)]
     /// # use std::error::Error;
     /// #
     /// # struct Stream(bool);
@@ -637,17 +641,18 @@ impl<T> Vec<T> {
     /// # }
     /// #
     /// # fn process(input: &[Object<'_>]) -> Result<(), Box<dyn Error>> {
-    /// #     for obj in input {
-    /// #         let _ = obj.reference;
-    /// #     }
     /// #     Ok(())
     /// # }
     /// #
     /// # struct Object<'a> {
+    /// #     #[allow(dead_code)]
     /// #     reference: &'a [u8],
     /// # }
     /// #
-    /// # fn deserialize<'a>(input: &'a [u8], output: &mut Vec<Object<'a>>) -> Result<(), Box<dyn Error>> {
+    /// # fn deserialize<'a>(
+    /// #     input: &'a [u8],
+    /// #     output: &mut Vec<Object<'a>>,
+    /// # ) -> Result<(), Box<dyn Error>> {
     /// #     output.push(Object { reference: input });
     /// #     Ok(())
     /// # }
@@ -659,7 +664,7 @@ impl<T> Vec<T> {
     /// while let Some(byte_chunk) = stream.next() {           // `byte_chunk` lifetime starts
     ///     let mut temp: Vec<Object<'_>> = objects.recycle(); // `temp` lifetime starts
     ///
-    ///     // Zero-copy parsing; deserialized `Object`s have references to `byte_chunk`
+    ///     // Zero-copy parsing; deserialized `Object`s have references to `byte_chunk`.
     ///     deserialize(byte_chunk, &mut temp)?;
     ///     process(&temp)?;
     ///
@@ -669,9 +674,6 @@ impl<T> Vec<T> {
     /// # }
     /// ```
     ///
-    /// # Panics
-    /// Panics if the size or alignment of the source and target types don't match.
-    ///
     /// # Note about stabilization
     /// The size and alignment contract is enforceable at compile-time,
     /// so we will want to wait until compile-time asserts become stable and
@@ -679,13 +681,11 @@ impl<T> Vec<T> {
     /// before stabilizing it.
     #[unstable(feature = "recycle_vec", reason = "new API", issue = "0")]
     pub fn recycle<U>(mut self) -> Vec<U> {
-        self.truncate(0);
-        // TODO make these const asserts once it becomes possible
         assert_eq!(core::mem::size_of::<T>(), core::mem::size_of::<U>());
         assert_eq!(core::mem::align_of::<T>(), core::mem::align_of::<U>());
-        let capacity = self.capacity();
-        let ptr = self.as_mut_ptr() as *mut U;
-        core::mem::forget(self);
+        self.clear();
+        let (ptr, len, capacity) = self.into_raw_parts();
+        let ptr = ptr as *mut U;
         unsafe { Vec::from_raw_parts(ptr, 0, capacity) }
     }
 
