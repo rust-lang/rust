@@ -1,16 +1,11 @@
 use std::convert::TryFrom;
 
-use rustc::ty::{Ty, layout::LayoutOf};
+use rustc::ty::{Ty, layout::{Size, Align, LayoutOf}};
 use rustc::mir;
 
 use crate::*;
 
 pub trait EvalContextExt<'tcx> {
-    fn pointer_inbounds(
-        &self,
-        ptr: Pointer<Tag>
-    ) -> InterpResult<'tcx>;
-
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -33,13 +28,6 @@ pub trait EvalContextExt<'tcx> {
 }
 
 impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
-    /// Test if the pointer is in-bounds of a live allocation.
-    #[inline]
-    fn pointer_inbounds(&self, ptr: Pointer<Tag>) -> InterpResult<'tcx> {
-        let (size, _align) = self.memory.get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
-        ptr.check_inbounds_alloc(size, CheckInAllocMsg::InboundsTest)
-    }
-
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -110,9 +98,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     }
 
     /// Raises an error if the offset moves the pointer outside of its allocation.
-    /// We consider ZSTs their own huge allocation that doesn't overlap with anything (and nothing
-    /// moves in there because the size is 0). We also consider the NULL pointer its own separate
-    /// allocation, and all the remaining integers pointers their own allocation.
+    /// For integers, we consider each of them their own tiny allocation of size 0,
+    /// so offset-by-0 is okay for them -- except for NULL, which we rule out entirely.
     fn pointer_offset_inbounds(
         &self,
         ptr: Scalar<Tag>,
@@ -123,25 +110,16 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         let offset = offset
             .checked_mul(pointee_size)
             .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
-        // Now let's see what kind of pointer this is.
-        let ptr = if offset == 0 {
-            match ptr {
-                Scalar::Ptr(ptr) => ptr,
-                Scalar::Raw { .. } => {
-                    // Offset 0 on an integer. We accept that, pretending there is
-                    // a little zero-sized allocation here.
-                    return Ok(ptr);
-                }
-            }
-        } else {
-            // Offset > 0. We *require* a pointer.
-            self.force_ptr(ptr)?
-        };
-        // Both old and new pointer must be in-bounds of a *live* allocation.
-        // (Of the same allocation, but that part is trivial with our representation.)
-        self.pointer_inbounds(ptr)?;
-        let ptr = ptr.signed_offset(offset, self)?;
-        self.pointer_inbounds(ptr)?;
-        Ok(Scalar::Ptr(ptr))
+        // We do this forst, to rule out overflows.
+        let offset_ptr = ptr.ptr_signed_offset(offset, self)?;
+        // What we need to check is that starting at `ptr`,
+        // we could do an access of size `offset`. Alignment does not matter.
+        self.memory.check_ptr_access(
+            ptr,
+            Size::from_bytes(u64::try_from(offset).unwrap()),
+            Align::from_bytes(1).unwrap(),
+        )?;
+        // That's it!
+        Ok(offset_ptr)
     }
 }
