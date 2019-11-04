@@ -1,7 +1,7 @@
 // rust-lang/rust#22323: regression test demonstrating that NLL
 // precisely tracks temporary destruction order.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 fn main() {
     let _s = construct().borrow().consume_borrowed();

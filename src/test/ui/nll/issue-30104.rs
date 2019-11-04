@@ -1,6 +1,6 @@
 // Regression test for #30104
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 use std::ops::{Deref, DerefMut};
 

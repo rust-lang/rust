@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 // Test that the requirement (in `Bar`) that `T::Bar : 'static` does
 // not wind up propagating to `T`.
