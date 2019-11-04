@@ -1,4 +1,4 @@
-// For windows, linux, android, macos and ios only
+// Only Windows, Linux, Android, macOS and iOS have this implemented for now.
 
 // run-pass
 

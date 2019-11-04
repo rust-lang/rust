@@ -117,7 +117,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let align = cx.data_layout().pointer_align.abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
-    cx.create_vtable_symbol(vtable, align);
+    cx.append_vtable_pointer(vtable, align);
 
     cx.create_vtable_metadata(ty, vtable);
 

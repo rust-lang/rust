@@ -356,14 +356,43 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
         gv
     }
 
-    fn create_vtable_symbol(
+    fn append_vtable_pointer(
         &self,
         vtable: &'ll Value,
         align: Align,
     ) {
+        // Add a pointer to the vtable to a special section. The linker can provide pointers to the
+        // start and end of this section, enabling user code to retrieve an array of all
+        // materializable vtable pointers.
+        //
+        // On Windows, the contents of sections is sorted by the string after the $. Static
+        // variables with link_sections .rdata.__rust_vtables$A and .rdata.__rust_vtables$C can be
+        // used as the start and end pointers. Unreferenced data elimination (rustc enables this
+        // with /OPT:REF) removes the section if it's not used.
+        //
+        // On Mac and iOS, the linker-defined symbols section$start$__DATA$__rust_vtables and
+        // section$end$__DATA$__rust_vtables are the start and end pointers. Mac aggressively strips
+        // ostensibly-dead symbols (llvm and rustc enable this with .subsections_via_symbols and
+        // -dead_strip). live_support inverts the live-marking process: symbols that reference live
+        // symbols are themselves marked live.
+        //
+        // On Linux and Android, the linker-defined symbols __start___rust_vtables and
+        // __stop___rust_vtables are the start and end pointers. Section garbage collection (rustc
+        // enables this with --gc-sections) removes the section if it's not used.
+        //
+        // A few other platforms work much the same way as Linux here, but for now just do nothing.
+        let sect_name = if self.tcx.sess.target.target.options.is_like_windows {
+            const_cstr!(".rdata.__rust_vtables$B")
+        } else if self.tcx.sess.target.target.options.is_like_osx {
+            const_cstr!("__DATA,__rust_vtables,regular,live_support")
+        } else if self.tcx.sess.opts.target_triple.triple().contains("-linux-") {
+            const_cstr!("__rust_vtables")
+        } else {
+            return;
+        };
         unsafe {
-            // members of llvm.used must be named
-            let name = self.generate_local_symbol_name("vtable");
+            // members of llvm.compiler.used must be named
+            let name = self.generate_local_symbol_name("vtable_ptr");
             let gv = self.define_global(&name[..], self.val_ty(vtable)).unwrap_or_else(|| {
                 bug!("symbol `{}` is already defined", name);
             });
@@ -372,22 +401,20 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             set_global_alignment(&self, gv, align);
             SetUnnamedAddr(gv, true);
             llvm::LLVMSetGlobalConstant(gv, True);
-            let sect_name: Option<&[u8]> = if self.tcx.sess.target.target.options.is_like_windows {
-                Some(b".rdata.__rust_vtables$B\0")
-            } else if self.tcx.sess.target.target.options.is_like_osx {
-                Some(b"__DATA,__rust_vtables\0")
-            } else if self.tcx.sess.opts.target_triple.triple().contains("-linux-") {
-                Some(b"__rust_vtables\0")
-            } else {
-                None
-            };
-            let sect_name = sect_name.map(|name| CStr::from_bytes_with_nul_unchecked(name));
-            if let Some(sect_name) = sect_name {
-                llvm::LLVMSetSection(gv, sect_name.as_ptr());
-            }
-            // This static will be stored in the llvm.used variable which is an array of i8*
+            llvm::LLVMSetSection(gv, sect_name.as_ptr());
+
+            // Add this static to the special llvm.compiler.used variable, which is an array of i8*
+            // that prevents LLVM from optimizing away referenced values. Use this rather than
+            // llvm.used so that the linker can optimize away the section if it is unused.
             let cast = llvm::LLVMConstPointerCast(gv, self.type_i8p());
-            self.used_statics.borrow_mut().push(cast);
+            let name = const_cstr!("llvm.compiler.used");
+            let section = const_cstr!("llvm.metadata");
+            let array = self.const_array(&self.type_ptr_to(self.type_i8()), &[cast]);
+
+            let gv = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
+            llvm::LLVMSetInitializer(gv, array);
+            llvm::LLVMRustSetLinkage(gv, llvm::Linkage::AppendingLinkage);
+            llvm::LLVMSetSection(gv, section.as_ptr());
         }
     }
 
