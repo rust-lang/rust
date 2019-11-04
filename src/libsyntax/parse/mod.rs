@@ -1,7 +1,7 @@
 //! The main parser interface.
 
 use crate::ast;
-use crate::parse::parser::{Parser, emit_unclosed_delims};
+use crate::parse::parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
 use crate::parse::token::Nonterminal;
 use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
@@ -108,7 +108,7 @@ pub fn parse_stream_from_source_str(
         sess.source_map().new_source_file(name, source),
         override_span,
     );
-    emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
+    emit_unclosed_delims(&mut errors, &sess);
     stream
 }
 
@@ -242,18 +242,9 @@ pub fn maybe_file_to_stream(
             err.buffer(&mut buffer);
             // Not using `emit_unclosed_delims` to use `db.buffer`
             for unmatched in unmatched_braces {
-                let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
-                    "incorrect close delimiter: `{}`",
-                    pprust::token_kind_to_string(&token::CloseDelim(unmatched.found_delim)),
-                ));
-                db.span_label(unmatched.found_span, "incorrect close delimiter");
-                if let Some(sp) = unmatched.candidate_span {
-                    db.span_label(sp, "close delimiter possibly meant for this");
+                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
+                    err.buffer(&mut buffer);
                 }
-                if let Some(sp) = unmatched.unclosed_span {
-                    db.span_label(sp, "un-closed delimiter");
-                }
-                db.buffer(&mut buffer);
             }
             Err(buffer)
         }

@@ -27,7 +27,7 @@ use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::ThinVec;
 
-use errors::{Applicability, DiagnosticId, FatalError};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
 use log::debug;
@@ -148,8 +148,7 @@ pub struct Parser<'a> {
 
 impl<'a> Drop for Parser<'a> {
     fn drop(&mut self) {
-        let diag = self.diagnostic();
-        emit_unclosed_delims(&mut self.unclosed_delims, diag);
+        emit_unclosed_delims(&mut self.unclosed_delims, &self.sess);
     }
 }
 
@@ -1370,20 +1369,31 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: &errors::Handler) {
-    for unmatched in unclosed_delims.iter() {
-        let mut err = handler.struct_span_err(unmatched.found_span, &format!(
-            "incorrect close delimiter: `{}`",
-            pprust::token_kind_to_string(&token::CloseDelim(unmatched.found_delim)),
-        ));
-        err.span_label(unmatched.found_span, "incorrect close delimiter");
-        if let Some(sp) = unmatched.candidate_span {
-            err.span_label(sp, "close delimiter possibly meant for this");
-        }
-        if let Some(sp) = unmatched.unclosed_span {
-            err.span_label(sp, "un-closed delimiter");
-        }
-        err.emit();
+crate fn make_unclosed_delims_error(
+    unmatched: UnmatchedBrace,
+    sess: &ParseSess,
+) -> Option<DiagnosticBuilder<'_>> {
+    // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
+    // `unmatched_braces` only for error recovery in the `Parser`.
+    let found_delim = unmatched.found_delim?;
+    let mut err = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
+        "incorrect close delimiter: `{}`",
+        pprust::token_kind_to_string(&token::CloseDelim(found_delim)),
+    ));
+    err.span_label(unmatched.found_span, "incorrect close delimiter");
+    if let Some(sp) = unmatched.candidate_span {
+        err.span_label(sp, "close delimiter possibly meant for this");
     }
-    unclosed_delims.clear();
+    if let Some(sp) = unmatched.unclosed_span {
+        err.span_label(sp, "un-closed delimiter");
+    }
+    Some(err)
+}
+
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &ParseSess) {
+    *sess.reached_eof.borrow_mut() |= unclosed_delims.iter()
+        .any(|unmatched_delim| unmatched_delim.found_delim.is_none());
+    for unmatched in unclosed_delims.drain(..) {
+        make_unclosed_delims_error(unmatched, sess).map(|mut e| e.emit());
+    }
 }
