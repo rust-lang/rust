@@ -1281,8 +1281,8 @@ fn test_recycle_lifetime() {
 
         assert_eq!(buf2.len(), 1);
         assert_eq!(buf2.capacity(), 100);
-        val_size = core::mem::size_of_val(&buf[0]);
-        val_align = core::mem::align_of_val(&buf[0]);
+        val_size = core::mem::size_of_val(&buf2[0]);
+        val_align = core::mem::align_of_val(&buf2[0]);
 
         buf = buf2.recycle();
     }
@@ -1312,8 +1312,8 @@ fn test_recycle_type() {
 
         assert_eq!(buf2.len(), 1);
         assert_eq!(buf2.capacity(), 100);
-        val_size = core::mem::size_of_val(&buf[0]);
-        val_align = core::mem::align_of_val(&buf[0]);
+        val_size = core::mem::size_of_val(&buf2[0]);
+        val_align = core::mem::align_of_val(&buf2[0]);
 
         buf = buf2.recycle();
     }
