@@ -684,7 +684,7 @@ impl<T> Vec<T> {
         assert_eq!(core::mem::size_of::<T>(), core::mem::size_of::<U>());
         assert_eq!(core::mem::align_of::<T>(), core::mem::align_of::<U>());
         self.clear();
-        let (ptr, len, capacity) = self.into_raw_parts();
+        let (ptr, _, capacity) = self.into_raw_parts();
         let ptr = ptr as *mut U;
         unsafe { Vec::from_raw_parts(ptr, 0, capacity) }
     }
