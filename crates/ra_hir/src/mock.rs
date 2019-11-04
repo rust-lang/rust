@@ -9,7 +9,6 @@ use ra_db::{
     salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase,
     SourceRootId,
 };
-use rustc_hash::FxHashMap;
 
 use crate::{db, debug::HirDebugHelper};
 
@@ -28,9 +27,6 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
 pub struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
-    files: FxHashMap<String, FileId>,
-    crate_names: Arc<FxHashMap<CrateId, String>>,
-    file_paths: Arc<FxHashMap<FileId, String>>,
 }
 
 impl panic::RefUnwindSafe for MockDatabase {}
@@ -51,24 +47,18 @@ impl FileLoader for MockDatabase {
     }
 }
 
+// FIXME: improve `WithFixture` to bring useful hir debugging back
 impl HirDebugHelper for MockDatabase {
-    fn crate_name(&self, krate: CrateId) -> Option<String> {
-        self.crate_names.get(&krate).cloned()
+    fn crate_name(&self, _krate: CrateId) -> Option<String> {
+        None
     }
 
-    fn file_path(&self, file_id: FileId) -> Option<String> {
-        self.file_paths.get(&file_id).cloned()
+    fn file_path(&self, _file_id: FileId) -> Option<String> {
+        None
     }
 }
 
 impl MockDatabase {
-    pub fn file_id_of(&self, path: &str) -> FileId {
-        match self.files.get(path) {
-            Some(it) => *it,
-            None => panic!("unknown file: {:?}\nexisting files:\n{:#?}", path, self.files),
-        }
-    }
-
     pub fn diagnostics(&self) -> String {
         let mut buf = String::new();
         let crate_graph = self.crate_graph();
@@ -104,13 +94,8 @@ impl salsa::Database for MockDatabase {
 
 impl Default for MockDatabase {
     fn default() -> MockDatabase {
-        let mut db = MockDatabase {
-            events: Default::default(),
-            runtime: salsa::Runtime::default(),
-            files: FxHashMap::default(),
-            crate_names: Default::default(),
-            file_paths: Default::default(),
-        };
+        let mut db =
+            MockDatabase { events: Default::default(), runtime: salsa::Runtime::default() };
         db.set_crate_graph(Default::default());
         db
     }
@@ -121,10 +106,6 @@ impl salsa::ParallelDatabase for MockDatabase {
         salsa::Snapshot::new(MockDatabase {
             events: Default::default(),
             runtime: self.runtime.snapshot(self),
-            // only the root database can be used to get file_id by path.
-            files: FxHashMap::default(),
-            file_paths: Arc::clone(&self.file_paths),
-            crate_names: Arc::clone(&self.crate_names),
         })
     }
 }
