@@ -255,11 +255,11 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
-        self.copy_derives.contains(&expn_id)
+        self.containers_deriving_copy.contains(&expn_id)
     }
 
     fn add_derive_copy(&mut self, expn_id: ExpnId) {
-        self.copy_derives.insert(expn_id);
+        self.containers_deriving_copy.insert(expn_id);
     }
 }
 

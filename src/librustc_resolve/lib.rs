@@ -936,7 +936,7 @@ pub struct Resolver<'a> {
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    copy_derives: FxHashSet<ExpnId>,
+    containers_deriving_copy: FxHashSet<ExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
@@ -1219,7 +1219,7 @@ impl<'a> Resolver<'a> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
-            copy_derives: Default::default(),
+            containers_deriving_copy: Default::default(),
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
