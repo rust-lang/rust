@@ -492,6 +492,10 @@ impl<'a> Resolver<'a> {
         // Go through all the scopes and try to resolve the name.
         let break_result = self.visit_scopes(scope_set, parent_scope, orig_ident,
                                              |this, scope, use_prelude, ident| {
+            let ok = |res, span, arenas| Ok((
+                (res, ty::Visibility::Public, span, ExpnId::root()).to_name_binding(arenas),
+                Flags::empty(),
+            ));
             let result = match scope {
                 Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
@@ -500,10 +504,8 @@ impl<'a> Resolver<'a> {
                         match this.resolve_macro_path(derive, Some(MacroKind::Derive),
                                                       parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
-                                let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                               ty::Visibility::Public, derive.span, ExpnId::root())
-                                               .to_name_binding(this.arenas);
-                                result = Ok((binding, Flags::empty()));
+                                let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                                result = ok(res, derive.span, this.arenas);
                                 break;
                             }
                             Ok(_) | Err(Determinacy::Determined) => {}
@@ -571,12 +573,9 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::RegisteredAttrs => match this.registered_attrs.get(&ident).cloned() {
-                    Some(ident) => {
-                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::Registered),
-                                       ty::Visibility::Public, ident.span, ExpnId::root())
-                                       .to_name_binding(this.arenas);
-                        Ok((binding, Flags::empty()))
-                    }
+                    Some(ident) => ok(
+                        Res::NonMacroAttr(NonMacroAttrKind::Registered), ident.span, this.arenas
+                    ),
                     None => Err(Determinacy::Determined)
                 }
                 Scope::MacroUsePrelude => match this.macro_use_prelude.get(&ident.name).cloned() {
@@ -586,19 +585,14 @@ impl<'a> Resolver<'a> {
                     ))
                 }
                 Scope::BuiltinAttrs => if is_builtin_attr_name(ident.name) {
-                    let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
-                                   ty::Visibility::Public, DUMMY_SP, ExpnId::root())
-                                   .to_name_binding(this.arenas);
-                    Ok((binding, Flags::empty()))
+                    ok(Res::NonMacroAttr(NonMacroAttrKind::Builtin), DUMMY_SP, this.arenas)
                 } else {
                     Err(Determinacy::Determined)
                 }
                 Scope::LegacyPluginHelpers => if this.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == *name) {
-                    let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
-                                   ty::Visibility::Public, DUMMY_SP, ExpnId::root())
-                                   .to_name_binding(this.arenas);
-                    Ok((binding, Flags::empty()))
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
+                    ok(res, DUMMY_SP, this.arenas)
                 } else {
                     Err(Determinacy::Determined)
                 }
@@ -609,12 +603,7 @@ impl<'a> Resolver<'a> {
                     )),
                 }
                 Scope::ToolPrelude => match this.registered_tools.get(&ident).cloned() {
-                    Some(ident) => {
-                        let binding = (Res::ToolMod,
-                                       ty::Visibility::Public, ident.span, ExpnId::root())
-                                       .to_name_binding(this.arenas);
-                        Ok((binding, Flags::empty()))
-                    }
+                    Some(ident) => ok(Res::ToolMod, ident.span, this.arenas),
                     None => Err(Determinacy::Determined)
                 }
                 Scope::StdLibPrelude => {
@@ -637,11 +626,7 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::BuiltinTypes => match this.primitive_type_table.primitive_types
                                                  .get(&ident.name).cloned() {
-                    Some(prim_ty) => {
-                        let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
-                                       DUMMY_SP, ExpnId::root()).to_name_binding(this.arenas);
-                        Ok((binding, Flags::empty()))
-                    }
+                    Some(prim_ty) => ok(Res::PrimTy(prim_ty), DUMMY_SP, this.arenas),
                     None => Err(Determinacy::Determined)
                 }
             };
