@@ -356,9 +356,9 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
         gv
     }
 
-    fn append_vtable_pointer(
+    fn append_vtable_lookup(
         &self,
-        vtable: &'ll Value,
+        vtable_lookup: &'ll Value,
         align: Align,
     ) {
         // Add a pointer to the vtable to a special section. The linker can provide pointers to the
@@ -393,11 +393,11 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
         unsafe {
             // members of llvm.compiler.used must be named
             let name = self.generate_local_symbol_name("vtable_ptr");
-            let gv = self.define_global(&name[..], self.val_ty(vtable)).unwrap_or_else(|| {
+            let gv = self.define_global(&name[..], self.val_ty(vtable_lookup)).unwrap_or_else(|| {
                 bug!("symbol `{}` is already defined", name);
             });
             llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
-            llvm::LLVMSetInitializer(gv, vtable);
+            llvm::LLVMSetInitializer(gv, vtable_lookup);
             set_global_alignment(&self, gv, align);
             SetUnnamedAddr(gv, true);
             llvm::LLVMSetGlobalConstant(gv, True);

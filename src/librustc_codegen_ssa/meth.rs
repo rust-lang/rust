@@ -67,6 +67,7 @@ impl<'a, 'tcx> VirtualIndex {
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
+    trait_ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
@@ -117,7 +118,10 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let align = cx.data_layout().pointer_align.abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
-    cx.append_vtable_pointer(vtable, align);
+    let type_id = tcx.type_id_hash(trait_ty);
+    let type_id = cx.const_u64(type_id);
+    let vtable_lookup_const = cx.const_struct(&[type_id, vtable], true);
+    cx.append_vtable_lookup(vtable_lookup_const, align);
 
     cx.create_vtable_metadata(ty, vtable);
 

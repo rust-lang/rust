@@ -14,6 +14,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn get_vtable(
         &mut self,
         ty: Ty<'tcx>,
+        _poly_trait_ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
