@@ -324,7 +324,7 @@ impl<T> MaybeUninit<T> {
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
     /// into a reference is undefined behavior unless the `MaybeUninit<T>` is initialized.
     /// Writing to memory that this pointer (non-transitively) points to is undefined behavior
-    /// (except inside an `UnsafeCell<T>` when already initialized).
+    /// (except inside an `UnsafeCell<T>`, [see `UnsafeCell`]).
     ///
     /// # Examples
     ///
@@ -352,6 +352,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
+    ///
+    /// [see `UnsafeCell`]: ../cell/struct.UnsafeCell.html#using-unsafecell-through-a-raw-reference
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {

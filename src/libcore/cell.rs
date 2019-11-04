@@ -1426,8 +1426,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// allow internal mutability, such as `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their
 /// internal data. There is *no* legal way to obtain aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
-/// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
-/// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.
+/// The `UnsafeCell` API itself is technically very simple: `get` gives you a raw pointer `*mut T`
+/// to its contents. It is up to _you_ as the abstraction designer to use that raw pointer
+/// correctly.
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
@@ -1458,17 +1459,51 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// ok (provided you enforce the invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases.
 ///
+///
 /// # Examples
+///
+/// ## Wrapper not handing out references
+///
+/// A tiny wrapper similar to `Cell`, safe because it never creates an `&T` or `&mut T` reference:
 ///
 /// ```
 /// use std::cell::UnsafeCell;
 ///
 /// # #[allow(dead_code)]
-/// struct NotThreadSafe<T> {
-///     value: UnsafeCell<T>,
+/// struct MyCell<T> {
+///     value: UnsafeCell<T>
 /// }
 ///
-/// unsafe impl<T> Sync for NotThreadSafe<T> {}
+/// # #[allow(dead_code)]
+/// impl<T: Copy> MyCell<T> {
+///     fn get(&self) -> T {
+///         unsafe { *self.value.get() }
+///     }
+///
+///     fn set(&self, val: T) {
+///         unsafe { *self.value.get() = val}
+///     }
+/// }
+/// ```
+///
+/// Wrappers that hand out references get to complex for an example, where you somehow have to
+/// ensure there are no live references when modifying the wrapped value.
+///
+/// ## Using UnsafeCell through a raw reference
+///
+/// If you have a raw reference to an `UnsafeCell` that can't be turned into a shared reference
+/// (because for example the wrapped value may be uninitialized), use a pointer cast instead of
+/// `get`:
+///
+/// ```
+/// use std::cell::UnsafeCell;
+/// use std::mem::MaybeUninit;
+///
+/// let cell: MaybeUninit<UnsafeCell<bool>> = MaybeUninit::uninit();
+/// let inner: *const UnsafeCell = cell.as_ptr();
+/// // Do a raw pointer cast instead of `get`:
+/// let val = cell as *mut bool;
+/// unsafe { val.write(true) };
 /// ```
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
