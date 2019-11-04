@@ -532,6 +532,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // We should only emit a call to this intrinsic in #[cfg(miri)] mode,
         // which means that we will never actually use the generate object files
         // (we will just be interpreting the MIR)
+        //
+        // Note that we still need to be able to codegen *something* for this intrisnic:
+        // Miri currently uses Xargo to build a special libstd. As a side effect,
+        // we generate normal object files for libstd - while these are never used,
+        // we still need to be able to build them.
         if intrinsic == Some("miri_start_panic") {
             bx.abort();
             bx.unreachable();
