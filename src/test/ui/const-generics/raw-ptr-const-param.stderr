@@ -15,6 +15,15 @@ LL |     let _: Const<{15 as *const _}> = Const::<{10 as *const _}>;
    = note: expected type `Const<$PREFIX0000000f : *const u32>`
               found type `Const<$PREFIX0000000a : *const u32>`
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/raw-ptr-const-param.rs:13:38
+   |
+LL |     let _: Const<{10 as *const _}> = Const::<{&8_u32 as *const _}>;
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `$PREFIX0000000a : *const u32`, found `{pointer} : *const u32`
+   |
+   = note: expected type `Const<$PREFIX0000000a : *const u32>`
+              found type `Const<{pointer} : *const u32>`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

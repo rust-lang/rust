@@ -919,8 +919,13 @@ pub trait PrettyPrinter<'tcx>:
             },
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Char) =>
                 p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap())),
-            (ConstValue::Scalar(Scalar::Raw { data, size }), ty::RawPtr(_)) => {
-                p!(write("0x{:01$x} : ", data, size as usize * 2));
+            (ConstValue::Scalar(value), ty::RawPtr(_)) => {
+                match value {
+                    Scalar::Raw { data, size } => {
+                        p!(write("0x{:01$x} : ", data, size as usize * 2));
+                    }
+                    _ => p!(write("{{pointer}} : "))
+                };
                 p!(print(ct.ty));
             }
             (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::FnPtr(_)) => {
