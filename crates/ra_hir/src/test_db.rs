@@ -5,10 +5,7 @@ use std::{panic, sync::Arc};
 use hir_def::{db::DefDatabase2, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
-use ra_db::{
-    salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase,
-    SourceRootId,
-};
+use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase};
 
 use crate::{db, debug::HirDebugHelper};
 
@@ -21,10 +18,32 @@ use crate::{db, debug::HirDebugHelper};
     db::DefDatabase2Storage,
     db::HirDatabaseStorage
 )]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TestDB {
     events: Mutex<Option<Vec<salsa::Event<TestDB>>>>,
     runtime: salsa::Runtime<TestDB>,
+}
+
+impl salsa::Database for TestDB {
+    fn salsa_runtime(&self) -> &salsa::Runtime<TestDB> {
+        &self.runtime
+    }
+
+    fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
+        let mut events = self.events.lock();
+        if let Some(events) = &mut *events {
+            events.push(event());
+        }
+    }
+}
+
+impl salsa::ParallelDatabase for TestDB {
+    fn snapshot(&self) -> salsa::Snapshot<TestDB> {
+        salsa::Snapshot::new(TestDB {
+            events: Default::default(),
+            runtime: self.runtime.snapshot(self),
+        })
+    }
 }
 
 impl panic::RefUnwindSafe for TestDB {}
@@ -74,36 +93,6 @@ impl TestDB {
             }
         }
         buf
-    }
-}
-
-impl salsa::Database for TestDB {
-    fn salsa_runtime(&self) -> &salsa::Runtime<TestDB> {
-        &self.runtime
-    }
-
-    fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
-        let mut events = self.events.lock();
-        if let Some(events) = &mut *events {
-            events.push(event());
-        }
-    }
-}
-
-impl Default for TestDB {
-    fn default() -> TestDB {
-        let mut db = TestDB { events: Default::default(), runtime: salsa::Runtime::default() };
-        db.set_crate_graph(Default::default());
-        db
-    }
-}
-
-impl salsa::ParallelDatabase for TestDB {
-    fn snapshot(&self) -> salsa::Snapshot<TestDB> {
-        salsa::Snapshot::new(TestDB {
-            events: Default::default(),
-            runtime: self.runtime.snapshot(self),
-        })
     }
 }
 
