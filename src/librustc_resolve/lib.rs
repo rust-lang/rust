@@ -620,7 +620,6 @@ enum AmbiguityKind {
     Import,
     BuiltinAttr,
     DeriveHelper,
-    LegacyHelperVsPrelude,
     LegacyVsModern,
     GlobVsOuter,
     GlobVsGlob,
@@ -637,8 +636,6 @@ impl AmbiguityKind {
                 "built-in attribute vs any other name",
             AmbiguityKind::DeriveHelper =>
                 "derive helper attribute vs any other name",
-            AmbiguityKind::LegacyHelperVsPrelude =>
-                "legacy plugin helper attribute vs name from prelude",
             AmbiguityKind::LegacyVsModern =>
                 "`macro_rules` vs non-`macro_rules` from other module",
             AmbiguityKind::GlobVsOuter =>

@@ -456,10 +456,9 @@ impl<'a> Resolver<'a> {
             struct Flags: u8 {
                 const MACRO_RULES        = 1 << 0;
                 const MODULE             = 1 << 1;
-                const PRELUDE            = 1 << 2;
-                const MISC_SUGGEST_CRATE = 1 << 3;
-                const MISC_SUGGEST_SELF  = 1 << 4;
-                const MISC_FROM_PRELUDE  = 1 << 5;
+                const MISC_SUGGEST_CRATE = 1 << 2;
+                const MISC_SUGGEST_SELF  = 1 << 3;
+                const MISC_FROM_PRELUDE  = 1 << 4;
             }
         }
 
@@ -576,12 +575,12 @@ impl<'a> Resolver<'a> {
                         let binding = (Res::NonMacroAttr(NonMacroAttrKind::Registered),
                                        ty::Visibility::Public, ident.span, ExpnId::root())
                                        .to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
+                        Ok((binding, Flags::empty()))
                     }
                     None => Err(Determinacy::Determined)
                 }
                 Scope::MacroUsePrelude => match this.macro_use_prelude.get(&ident.name).cloned() {
-                    Some(binding) => Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
+                    Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
                     None => Err(Determinacy::determined(
                         this.graph_root.unexpanded_invocations.borrow().is_empty()
                     ))
@@ -590,7 +589,7 @@ impl<'a> Resolver<'a> {
                     let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
                                    ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                                    .to_name_binding(this.arenas);
-                    Ok((binding, Flags::PRELUDE))
+                    Ok((binding, Flags::empty()))
                 } else {
                     Err(Determinacy::Determined)
                 }
@@ -599,12 +598,12 @@ impl<'a> Resolver<'a> {
                     let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
                                    ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                                    .to_name_binding(this.arenas);
-                    Ok((binding, Flags::PRELUDE))
+                    Ok((binding, Flags::empty()))
                 } else {
                     Err(Determinacy::Determined)
                 }
                 Scope::ExternPrelude => match this.extern_prelude_get(ident, !record_used) {
-                    Some(binding) => Ok((binding, Flags::PRELUDE)),
+                    Some(binding) => Ok((binding, Flags::empty())),
                     None => Err(Determinacy::determined(
                         this.graph_root.unexpanded_invocations.borrow().is_empty()
                     )),
@@ -614,7 +613,7 @@ impl<'a> Resolver<'a> {
                         let binding = (Res::ToolMod,
                                        ty::Visibility::Public, ident.span, ExpnId::root())
                                        .to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
+                        Ok((binding, Flags::empty()))
                     }
                     None => Err(Determinacy::Determined)
                 }
@@ -630,7 +629,7 @@ impl<'a> Resolver<'a> {
                             path_span,
                         ) {
                             if use_prelude || this.is_builtin_macro(binding.res()) {
-                                result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
+                                result = Ok((binding, Flags::MISC_FROM_PRELUDE));
                             }
                         }
                     }
@@ -641,7 +640,7 @@ impl<'a> Resolver<'a> {
                     Some(prim_ty) => {
                         let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
                                        DUMMY_SP, ExpnId::root()).to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
+                        Ok((binding, Flags::empty()))
                     }
                     None => Err(Determinacy::Determined)
                 }
@@ -659,8 +658,6 @@ impl<'a> Resolver<'a> {
                         if res != innermost_res {
                             let builtin = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
                             let derive_helper = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                            let legacy_helper =
-                                Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
 
                             let ambiguity_error_kind = if is_import {
                                 Some(AmbiguityKind::Import)
@@ -668,11 +665,6 @@ impl<'a> Resolver<'a> {
                                 Some(AmbiguityKind::BuiltinAttr)
                             } else if innermost_res == derive_helper || res == derive_helper {
                                 Some(AmbiguityKind::DeriveHelper)
-                            } else if innermost_res == legacy_helper &&
-                                      flags.contains(Flags::PRELUDE) ||
-                                      res == legacy_helper &&
-                                      innermost_flags.contains(Flags::PRELUDE) {
-                                Some(AmbiguityKind::LegacyHelperVsPrelude)
                             } else if innermost_flags.contains(Flags::MACRO_RULES) &&
                                       flags.contains(Flags::MODULE) &&
                                       !this.disambiguate_legacy_vs_modern(innermost_binding,
