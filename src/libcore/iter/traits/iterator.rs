@@ -202,8 +202,9 @@ pub trait Iterator {
     /// Consumes the iterator, counting the number of iterations and returning it.
     ///
     /// This method will evaluate the iterator until its [`next`] returns
-    /// [`None`]. Once [`None`] is encountered, `count()` returns the number of
-    /// times it called [`next`].
+    /// [`None`]. Once [`None`] is encountered, `count()` returns one less than the 
+    /// number of times it called [`next`]. Note that [`next`] has to be called at
+    /// least once even if the iterator does not have any elements.
     ///
     /// [`next`]: #tymethod.next
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
