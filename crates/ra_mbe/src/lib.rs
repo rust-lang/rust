@@ -108,7 +108,7 @@ impl MacroRules {
 
         // Note that TokenId is started from zero,
         // We have to add 1 to prevent duplication.
-        let shift = max_id(tt).unwrap_or(0) + 1;
+        let shift = max_id(tt).map_or(0, |it| it + 1);
         Ok(MacroRules { rules, shift })
     }
 
