@@ -12,8 +12,6 @@ use ra_db::{
 
 use crate::{db, debug::HirDebugHelper};
 
-pub const WORKSPACE: SourceRootId = SourceRootId(0);
-
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
     ra_db::SourceDatabaseStorage,
@@ -24,14 +22,14 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
     db::HirDatabaseStorage
 )]
 #[derive(Debug)]
-pub struct MockDatabase {
-    events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
-    runtime: salsa::Runtime<MockDatabase>,
+pub struct TestDB {
+    events: Mutex<Option<Vec<salsa::Event<TestDB>>>>,
+    runtime: salsa::Runtime<TestDB>,
 }
 
-impl panic::RefUnwindSafe for MockDatabase {}
+impl panic::RefUnwindSafe for TestDB {}
 
-impl FileLoader for MockDatabase {
+impl FileLoader for TestDB {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         FileLoaderDelegate(self).file_text(file_id)
     }
@@ -48,7 +46,7 @@ impl FileLoader for MockDatabase {
 }
 
 // FIXME: improve `WithFixture` to bring useful hir debugging back
-impl HirDebugHelper for MockDatabase {
+impl HirDebugHelper for TestDB {
     fn crate_name(&self, _krate: CrateId) -> Option<String> {
         None
     }
@@ -58,7 +56,7 @@ impl HirDebugHelper for MockDatabase {
     }
 }
 
-impl MockDatabase {
+impl TestDB {
     pub fn diagnostics(&self) -> String {
         let mut buf = String::new();
         let crate_graph = self.crate_graph();
@@ -79,12 +77,12 @@ impl MockDatabase {
     }
 }
 
-impl salsa::Database for MockDatabase {
-    fn salsa_runtime(&self) -> &salsa::Runtime<MockDatabase> {
+impl salsa::Database for TestDB {
+    fn salsa_runtime(&self) -> &salsa::Runtime<TestDB> {
         &self.runtime
     }
 
-    fn salsa_event(&self, event: impl Fn() -> salsa::Event<MockDatabase>) {
+    fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
         let mut events = self.events.lock();
         if let Some(events) = &mut *events {
             events.push(event());
@@ -92,26 +90,25 @@ impl salsa::Database for MockDatabase {
     }
 }
 
-impl Default for MockDatabase {
-    fn default() -> MockDatabase {
-        let mut db =
-            MockDatabase { events: Default::default(), runtime: salsa::Runtime::default() };
+impl Default for TestDB {
+    fn default() -> TestDB {
+        let mut db = TestDB { events: Default::default(), runtime: salsa::Runtime::default() };
         db.set_crate_graph(Default::default());
         db
     }
 }
 
-impl salsa::ParallelDatabase for MockDatabase {
-    fn snapshot(&self) -> salsa::Snapshot<MockDatabase> {
-        salsa::Snapshot::new(MockDatabase {
+impl salsa::ParallelDatabase for TestDB {
+    fn snapshot(&self) -> salsa::Snapshot<TestDB> {
+        salsa::Snapshot::new(TestDB {
             events: Default::default(),
             runtime: self.runtime.snapshot(self),
         })
     }
 }
 
-impl MockDatabase {
-    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<MockDatabase>> {
+impl TestDB {
+    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<TestDB>> {
         *self.events.lock() = Some(Vec::new());
         f();
         self.events.lock().take().unwrap()

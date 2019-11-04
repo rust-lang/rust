@@ -5,13 +5,13 @@
 
 mod generated;
 
-use hir::mock::MockDatabase;
+use hir::mock::TestDB;
 use ra_db::{fixture::WithFixture, FileRange};
 use test_utils::{assert_eq_text, extract_range_or_offset};
 
 fn check(assist_id: &str, before: &str, after: &str) {
     let (selection, before) = extract_range_or_offset(before);
-    let (db, file_id) = MockDatabase::with_single_file(&before);
+    let (db, file_id) = TestDB::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
     let (_assist_id, action) = crate::assists(&db, frange)
