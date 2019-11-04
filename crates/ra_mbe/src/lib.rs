@@ -72,7 +72,7 @@ fn find_subtree_shift(tt: &tt::Subtree, mut cur: Option<u32>) -> Option<u32> {
 }
 
 /// Shift given TokenTree token id
-fn shift_token_tree(tt: &mut tt::Subtree, shift: u32) {
+fn shift_subtree(tt: &mut tt::Subtree, shift: u32) {
     for t in tt.token_trees.iter_mut() {
         match t {
             tt::TokenTree::Leaf(leaf) => match leaf {
@@ -83,7 +83,7 @@ fn shift_token_tree(tt: &mut tt::Subtree, shift: u32) {
                 }
                 _ => (),
             },
-            tt::TokenTree::Subtree(tt) => shift_token_tree(tt, shift),
+            tt::TokenTree::Subtree(tt) => shift_subtree(tt, shift),
         }
     }
 }
@@ -117,7 +117,7 @@ impl MacroRules {
         // apply shift
         let mut tt = tt.clone();
         if let Some(shift) = self.shift {
-            shift_token_tree(&mut tt, shift)
+            shift_subtree(&mut tt, shift)
         }
 
         mbe_expander::expand(self, &tt)
