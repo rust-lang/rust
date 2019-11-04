@@ -66,9 +66,8 @@ fn compile_fail(path: &str, target: &str, opt: bool) {
 
     let mut flags = Vec::new();
     if opt {
-        // Optimizing too aggressivley makes UB detection harder, but test at least
-        // the default value.
-        // FIXME: Opt level 3 ICEs during stack trace generation.
+        // FIXME: Opt level 2 ICEs during stack trace generation.
+        // See https://github.com/rust-lang/rust/issues/66077.
         flags.push("-Zmir-opt-level=1".to_owned());
     }
 
