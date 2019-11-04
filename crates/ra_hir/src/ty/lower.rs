@@ -29,9 +29,20 @@ use crate::{
         Adt,
     },
     util::make_mut_slice,
-    Const, Enum, EnumVariant, Function, ModuleDef, Namespace, Path, Static, Struct, StructField,
-    Trait, TypeAlias, Union,
+    Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField, Trait,
+    TypeAlias, Union,
 };
+
+// FIXME: this is only really used in `type_for_def`, which contains a bunch of
+// impossible cases. Perhaps we should recombine `TypeableDef` and `Namespace`
+// into a `AsTypeDef`, `AsValueDef` enums?
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Namespace {
+    Types,
+    Values,
+    // Note that only type inference uses this enum, and it doesn't care about macros.
+    // Macro,
+}
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {

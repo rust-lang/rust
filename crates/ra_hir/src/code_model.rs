@@ -30,8 +30,8 @@ use crate::{
     impl_block::ImplBlock,
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
-    ty::{InferenceResult, TraitRef},
-    Either, HasSource, Name, ScopeDef, Ty, {ImportId, Namespace},
+    ty::{InferenceResult, Namespace, TraitRef},
+    Either, HasSource, ImportId, Name, ScopeDef, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which

@@ -50,8 +50,8 @@
 // FIXME: review privacy of submodules
 pub mod raw;
 pub mod per_ns;
-pub mod collector;
-pub mod mod_resolution;
+mod collector;
+mod mod_resolution;
 
 #[cfg(test)]
 mod tests;
@@ -196,7 +196,7 @@ pub struct Resolution {
 }
 
 impl Resolution {
-    pub(crate) fn from_macro(macro_: MacroDefId) -> Self {
+    fn from_macro(macro_: MacroDefId) -> Self {
         Resolution { def: PerNs::macros(macro_), import: None }
     }
 }
@@ -460,7 +460,7 @@ impl CrateDefMap {
         from_crate_root.or(from_extern_prelude)
     }
 
-    pub(crate) fn resolve_name_in_module(
+    fn resolve_name_in_module(
         &self,
         db: &impl DefDatabase2,
         module: CrateModuleId,

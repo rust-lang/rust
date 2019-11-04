@@ -29,8 +29,6 @@ macro_rules! impl_froms {
 pub mod debug;
 
 pub mod db;
-#[macro_use]
-pub mod mock;
 pub mod source_binder;
 
 mod ids;
@@ -51,6 +49,8 @@ mod code_model;
 
 pub mod from_source;
 
+#[cfg(test)]
+mod test_db;
 #[cfg(test)]
 mod marks;
 
@@ -81,10 +81,7 @@ pub use crate::{
 
 pub use hir_def::{
     builtin_type::BuiltinType,
-    nameres::{
-        per_ns::{Namespace, PerNs},
-        raw::ImportId,
-    },
+    nameres::{per_ns::PerNs, raw::ImportId},
     path::{Path, PathKind},
     type_ref::Mutability,
 };

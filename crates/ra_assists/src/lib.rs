@@ -9,6 +9,8 @@ mod assist_ctx;
 mod marks;
 #[cfg(test)]
 mod doc_tests;
+#[cfg(test)]
+mod test_db;
 
 use hir::db::HirDatabase;
 use ra_db::FileRange;
@@ -146,20 +148,19 @@ mod assists {
 
 #[cfg(test)]
 mod helpers {
-    use hir::mock::MockDatabase;
-    use ra_db::FileRange;
+    use ra_db::{fixture::WithFixture, FileRange};
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
-    use crate::{Assist, AssistCtx};
+    use crate::{test_db::TestDB, Assist, AssistCtx};
 
     pub(crate) fn check_assist(
-        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
         before: &str,
         after: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -182,12 +183,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range(
-        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
         before: &str,
         after: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -204,12 +205,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_target(
-        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
         before: &str,
         target: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist =
@@ -224,12 +225,12 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range_target(
-        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
         before: &str,
         target: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist =
             AssistCtx::with_ctx(&db, frange, true, assist).expect("code action is not applicable");
@@ -243,11 +244,11 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_not_applicable(
-        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
         before: &str,
     ) {
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
@@ -255,11 +256,11 @@ mod helpers {
     }
 
     pub(crate) fn check_assist_range_not_applicable(
-        assist: fn(AssistCtx<MockDatabase>) -> Option<Assist>,
+        assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
         before: &str,
     ) {
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assist = AssistCtx::with_ctx(&db, frange, true, assist);
         assert!(assist.is_none());
@@ -268,16 +269,17 @@ mod helpers {
 
 #[cfg(test)]
 mod tests {
-    use hir::mock::MockDatabase;
-    use ra_db::FileRange;
+    use ra_db::{fixture::WithFixture, FileRange};
     use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
+
+    use crate::test_db::TestDB;
 
     #[test]
     fn assist_order_field_struct() {
         let before = "struct Foo { <|>bar: u32 }";
         let (before_cursor_pos, before) = extract_offset(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange =
             FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
         let assists = super::assists(&db, frange);
@@ -298,7 +300,7 @@ mod tests {
             }
         }";
         let (range, before) = extract_range(before);
-        let (db, _source_root, file_id) = MockDatabase::with_single_file(&before);
+        let (db, file_id) = TestDB::with_single_file(&before);
         let frange = FileRange { file_id, range };
         let assists = super::assists(&db, frange);
         let mut assists = assists.iter();

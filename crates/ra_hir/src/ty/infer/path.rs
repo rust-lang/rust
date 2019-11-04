@@ -6,8 +6,8 @@ use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
-    ty::{method_resolution, Substs, Ty, TypableDef, TypeWalk},
-    AssocItem, Container, HasGenericParams, Name, Namespace, Path,
+    ty::{method_resolution, Namespace, Substs, Ty, TypableDef, TypeWalk},
+    AssocItem, Container, HasGenericParams, Name, Path,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

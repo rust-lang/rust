@@ -59,6 +59,33 @@ mod rule_parsing {
 // * Make it pass :-)
 
 #[test]
+fn test_token_id_shift() {
+    let macro_definition = r#"
+macro_rules! foobar {
+    ($e:ident) => { foo bar $e }
+}
+"#;
+    let rules = create_rules(macro_definition);
+    let expansion = expand(&rules, "foobar!(baz);");
+
+    fn get_id(t: &tt::TokenTree) -> Option<u32> {
+        if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = t {
+            return Some(ident.id.0);
+        }
+        None
+    }
+
+    assert_eq!(expansion.token_trees.len(), 3);
+    // ($e:ident) => { foo bar $e }
+    //   0 1            2   3   4
+    assert_eq!(get_id(&expansion.token_trees[0]), Some(2));
+    assert_eq!(get_id(&expansion.token_trees[1]), Some(3));
+
+    // So baz should be 5
+    assert_eq!(get_id(&expansion.token_trees[2]), Some(5));
+}
+
+#[test]
 fn test_convert_tt() {
     let macro_definition = r#"
 macro_rules! impl_froms {
