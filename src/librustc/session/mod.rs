@@ -6,7 +6,6 @@ use crate::hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
@@ -76,13 +75,6 @@ pub struct Session {
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
-
-    /// This is intended to be used from a single thread.
-    ///
-    /// FIXME: there was a previous comment about this not being thread safe,
-    /// but it's not clear how or why that's the case. The LintBuffer itself is certainly thread
-    /// safe at least from a "Rust safety" standpoint.
-    pub buffered_lints: Lock<Option<lint::LintBuffer>>,
 
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
@@ -364,35 +356,6 @@ impl Session {
     }
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
-    }
-
-    pub fn buffer_lint<S: Into<MultiSpan>>(
-        &self,
-        lint: &'static lint::Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-    ) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => {
-                buffer.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
-            }
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
-    }
-
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
-        &self,
-        lint: &'static lint::Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg, diagnostic),
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
     }
 
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
@@ -1218,7 +1181,6 @@ fn build_session_(
         sysroot,
         local_crate_source_file,
         working_dir,
-        buffered_lints: Lock::new(Some(Default::default())),
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: Lock::new(Vec::new()),

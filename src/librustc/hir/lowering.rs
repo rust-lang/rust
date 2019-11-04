@@ -43,6 +43,7 @@ use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::def::{Namespace, Res, DefKind, PartialRes, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::hir::ptr::P;
+use crate::lint;
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
@@ -184,6 +185,8 @@ pub trait Resolver {
     ) -> (ast::Path, Res<NodeId>);
 
     fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool;
+
+    fn lint_buffer(&mut self) -> &mut lint::LintBuffer;
 }
 
 type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
@@ -1857,7 +1860,7 @@ impl<'a> LoweringContext<'a> {
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
                     ParenthesizedGenericArgs::Warn => {
-                        self.sess.buffer_lint(
+                        self.resolver.lint_buffer().buffer_lint(
                             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                             CRATE_NODE_ID,
                             data.span,
@@ -1953,7 +1956,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     AnonymousLifetimeMode::PassThrough |
                     AnonymousLifetimeMode::ReportError => {
-                        self.sess.buffer_lint_with_diagnostic(
+                        self.resolver.lint_buffer().buffer_lint_with_diagnostic(
                             ELIDED_LIFETIMES_IN_PATHS,
                             CRATE_NODE_ID,
                             path_span,
@@ -3346,7 +3349,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
+    fn maybe_lint_bare_trait(&mut self, span: Span, id: NodeId, is_global: bool) {
         // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
         // call site which do not have a macro backtrace. See #61963.
         let is_macro_callsite = self.sess.source_map()
@@ -3354,7 +3357,7 @@ impl<'a> LoweringContext<'a> {
             .map(|snippet| snippet.starts_with("#["))
             .unwrap_or(true);
         if !is_macro_callsite {
-            self.sess.buffer_lint_with_diagnostic(
+            self.resolver.lint_buffer().buffer_lint_with_diagnostic(
                 builtin::BARE_TRAIT_OBJECTS,
                 id,
                 span,
