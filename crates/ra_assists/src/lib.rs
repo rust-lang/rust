@@ -9,6 +9,8 @@ mod assist_ctx;
 mod marks;
 #[cfg(test)]
 mod doc_tests;
+#[cfg(test)]
+mod test_db;
 
 use hir::db::HirDatabase;
 use ra_db::FileRange;
@@ -146,12 +148,11 @@ mod assists {
 
 #[cfg(test)]
 mod helpers {
-    use hir::mock::TestDB;
     use ra_db::{fixture::WithFixture, FileRange};
     use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
-    use crate::{Assist, AssistCtx};
+    use crate::{test_db::TestDB, Assist, AssistCtx};
 
     pub(crate) fn check_assist(
         assist: fn(AssistCtx<TestDB>) -> Option<Assist>,
@@ -268,10 +269,11 @@ mod helpers {
 
 #[cfg(test)]
 mod tests {
-    use hir::mock::TestDB;
     use ra_db::{fixture::WithFixture, FileRange};
     use ra_syntax::TextRange;
     use test_utils::{extract_offset, extract_range};
+
+    use crate::test_db::TestDB;
 
     #[test]
     fn assist_order_field_struct() {

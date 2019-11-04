@@ -5,9 +5,10 @@
 
 mod generated;
 
-use hir::mock::TestDB;
 use ra_db::{fixture::WithFixture, FileRange};
 use test_utils::{assert_eq_text, extract_range_or_offset};
+
+use crate::test_db::TestDB;
 
 fn check(assist_id: &str, before: &str, after: &str) {
     let (selection, before) = extract_range_or_offset(before);
