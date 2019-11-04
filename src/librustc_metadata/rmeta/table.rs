@@ -1,4 +1,4 @@
-use crate::schema::*;
+use crate::rmeta::*;
 
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc_serialize::{Encodable, opaque::Encoder};

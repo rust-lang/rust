@@ -1,8 +1,8 @@
 // Decoding metadata from a single crate's metadata
 
 use crate::cstore::{self, CrateMetadata, MetadataBlob};
-use crate::schema::*;
-use crate::schema::table::{FixedSizeEncoding, PerDefTable};
+use crate::rmeta::*;
+use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
