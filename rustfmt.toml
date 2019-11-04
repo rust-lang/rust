@@ -29,7 +29,6 @@ ignore = [
     "src/librustc_data_structures/",
     "src/librustc_driver/",
     "src/librustc_errors/",
-    "src/librustc_fs_util/",
     "src/librustc_feature/",
     "src/librustc_incremental/",
     "src/librustc_index/",
