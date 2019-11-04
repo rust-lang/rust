@@ -25,26 +25,11 @@ use smol_str::SmolStr;
 /// source token and making sure that identities are preserved during macro
 /// expansion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TokenId {
-    token_id: u32,
-    map_id: u32,
-}
+pub struct TokenId(pub u32);
 
 impl TokenId {
-    pub fn new(token_id: u32, map_id: u32) -> TokenId {
-        TokenId { token_id, map_id }
-    }
-
     pub const fn unspecified() -> TokenId {
-        TokenId { token_id: !0, map_id: !0 }
-    }
-
-    pub fn token_id(&self) -> u32 {
-        self.token_id
-    }
-
-    pub fn map_id(&self) -> u32 {
-        self.map_id
+        TokenId(!0)
     }
 }
 

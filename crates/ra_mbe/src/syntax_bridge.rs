@@ -12,31 +12,12 @@ use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::subtree_source::SubtreeTokenSource;
 use crate::ExpandError;
-use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     tokens: Vec<TextRange>,
-    map_id: u32,
-}
-
-static TOKEN_MAP_COUNTER: AtomicU32 = AtomicU32::new(0);
-
-/// Generate an unique token map id for each instance
-fn make_uniq_token_map_id() -> u32 {
-    let res = TOKEN_MAP_COUNTER.fetch_add(1, Ordering::SeqCst);
-    if res == std::u32::MAX {
-        panic!("TOKEN_MAP_COUNTER is overflowed");
-    }
-    res
-}
-
-impl std::default::Default for TokenMap {
-    fn default() -> TokenMap {
-        TokenMap { tokens: Default::default(), map_id: make_uniq_token_map_id() }
-    }
 }
 
 /// Maps relative range of the expanded syntax node to `tt::TokenId`
@@ -140,17 +121,14 @@ pub fn token_tree_to_items(
 
 impl TokenMap {
     pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
-        if self.map_id != tt.map_id() {
-            return None;
-        }
-        let idx = tt.token_id() as usize;
+        let idx = tt.0 as usize;
         self.tokens.get(idx).copied()
     }
 
     fn alloc(&mut self, relative_range: TextRange) -> tt::TokenId {
         let id = self.tokens.len();
         self.tokens.push(relative_range);
-        tt::TokenId::new(id as u32, self.map_id)
+        tt::TokenId(id as u32)
     }
 }
 
@@ -159,14 +137,17 @@ impl ExpandedRangeMap {
         self.ranges.push((relative_range, token_id.clone()))
     }
 
-    pub fn ranges(&self, to: &TokenMap, start: TextUnit) -> Vec<(TextRange, TextRange)> {
+    pub fn map_ranges(
+        &self,
+        to: &TokenMap,
+        start: TextUnit,
+        shift: u32,
+    ) -> Vec<(TextRange, TextRange)> {
         self.ranges
             .iter()
+            .filter_map(|(r, tid)| if shift <= tid.0 { Some((r, tid.0 - shift)) } else { None })
             .filter_map(|(r, tid)| {
-                if to.map_id != tid.map_id() {
-                    return None;
-                }
-                if let Some(to_range) = to.relative_range_of(*tid) {
+                if let Some(to_range) = to.relative_range_of(tt::TokenId(tid)) {
                     Some((*r, TextRange::from_to(to_range.start() + start, to_range.end() + start)))
                 } else {
                     None

@@ -118,6 +118,10 @@ impl MacroRules {
         shift_subtree(&mut tt, self.shift);
         mbe_expander::expand(self, &tt)
     }
+
+    pub fn shift(&self) -> u32 {
+        self.shift
+    }
 }
 
 impl Rule {

@@ -151,10 +151,15 @@ pub(crate) fn parse_macro_with_info(
     let arg_start = arg_tt.map(|t| t.syntax().text_range().start());
     let def_start = def_tt.map(|t| t.syntax().text_range().start());
 
-    let arg_map =
-        arg_start.map(|start| exp_map.ranges(&expand_info.arg_map, start)).unwrap_or_default();
-    let def_map =
-        def_start.map(|start| exp_map.ranges(&expand_info.def_map, start)).unwrap_or_default();
+    let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition").ok()?.0;
+    let shift = macro_rules.shift();
+
+    let arg_map = arg_start
+        .map(|start| exp_map.map_ranges(&expand_info.arg_map, start, shift))
+        .unwrap_or_default();
+    let def_map = def_start
+        .map(|start| exp_map.map_ranges(&expand_info.def_map, start, 0))
+        .unwrap_or_default();
 
     let info = ExpansionInfo { arg_map, def_map };
 
