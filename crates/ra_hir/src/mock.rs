@@ -2,15 +2,15 @@
 
 use std::{panic, sync::Arc};
 
+use hir_def::{db::DefDatabase2, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
 use ra_cfg::CfgOptions;
 use ra_db::{
-    salsa, CrateGraph, CrateId, Edition, FileId, FileLoader, FileLoaderDelegate, FilePosition,
-    RelativePath, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
+    salsa, CrateGraph, CrateId, Edition, FileId, FileLoader, FileLoaderDelegate, RelativePath,
+    RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
 use crate::{db, debug::HirDebugHelper};
 
@@ -63,12 +63,6 @@ impl HirDebugHelper for MockDatabase {
 }
 
 impl MockDatabase {
-    pub fn with_files(fixture: &str) -> MockDatabase {
-        let (db, position) = MockDatabase::from_fixture(fixture);
-        assert!(position.is_none());
-        db
-    }
-
     pub fn with_single_file(text: &str) -> (MockDatabase, SourceRoot, FileId) {
         let mut db = MockDatabase::default();
         let mut source_root = SourceRoot::default();
@@ -86,67 +80,21 @@ impl MockDatabase {
 
     pub fn diagnostics(&self) -> String {
         let mut buf = String::new();
-        let mut files: Vec<FileId> = self.files.values().copied().collect();
-        files.sort();
-        for file in files {
-            let src = crate::Source {
-                file_id: file.into(),
-                ast: crate::ModuleSource::new(self, Some(file), None),
-            };
-            let module = crate::Module::from_definition(self, src).unwrap();
-            module.diagnostics(
-                self,
-                &mut DiagnosticSink::new(|d| {
-                    buf += &format!("{:?}: {}\n", d.syntax_node(self).text(), d.message());
-                }),
-            )
+        let crate_graph = self.crate_graph();
+        for krate in crate_graph.iter().next() {
+            let crate_def_map = self.crate_def_map(krate);
+            for (module_id, _) in crate_def_map.modules.iter() {
+                let module_id = ModuleId { krate, module_id };
+                let module = crate::Module::from(module_id);
+                module.diagnostics(
+                    self,
+                    &mut DiagnosticSink::new(|d| {
+                        buf += &format!("{:?}: {}\n", d.syntax_node(self).text(), d.message());
+                    }),
+                )
+            }
         }
         buf
-    }
-
-    fn from_fixture(fixture: &str) -> (MockDatabase, Option<FilePosition>) {
-        let mut db = MockDatabase::default();
-
-        let pos = db.add_fixture(fixture);
-
-        (db, pos)
-    }
-
-    fn add_fixture(&mut self, fixture: &str) -> Option<FilePosition> {
-        let mut position = None;
-        let mut source_root = SourceRoot::default();
-        let mut source_root_id = WORKSPACE;
-        let mut source_root_prefix = "/".to_string();
-        for entry in parse_fixture(fixture) {
-            if entry.meta.starts_with("root") {
-                self.set_source_root(source_root_id, Arc::new(source_root));
-                source_root = SourceRoot::default();
-
-                source_root_id = SourceRootId(source_root_id.0 + 1);
-                source_root_prefix = entry.meta["root".len()..].trim().to_string();
-                continue;
-            }
-            if entry.text.contains(CURSOR_MARKER) {
-                assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
-                position = Some(self.add_file_with_position(
-                    source_root_id,
-                    &source_root_prefix,
-                    &mut source_root,
-                    &entry.meta,
-                    &entry.text,
-                ));
-            } else {
-                self.add_file(
-                    source_root_id,
-                    &source_root_prefix,
-                    &mut source_root,
-                    &entry.meta,
-                    &entry.text,
-                );
-            }
-        }
-        self.set_source_root(source_root_id, Arc::new(source_root));
-        position
     }
 
     fn add_file(
@@ -182,19 +130,6 @@ impl MockDatabase {
             self.set_crate_graph(Arc::new(crate_graph));
         }
         file_id
-    }
-
-    fn add_file_with_position(
-        &mut self,
-        source_root_id: SourceRootId,
-        source_root_prefix: &str,
-        source_root: &mut SourceRoot,
-        path: &str,
-        text: &str,
-    ) -> FilePosition {
-        let (offset, text) = extract_offset(text);
-        let file_id = self.add_file(source_root_id, source_root_prefix, source_root, path, &text);
-        FilePosition { file_id, offset }
     }
 }
 
