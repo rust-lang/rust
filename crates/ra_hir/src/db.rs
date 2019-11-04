@@ -14,10 +14,10 @@ use crate::{
     traits::TraitData,
     ty::{
         method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
-        InferenceResult, Substs, Ty, TypableDef, TypeCtor,
+        InferenceResult, Namespace, Substs, Ty, TypableDef, TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, ExprScopes, FnData, Function, Module, Namespace, Static,
+    Const, ConstData, Crate, DefWithBody, ExprScopes, FnData, Function, Module, Static,
     StructField, Trait, TypeAlias,
 };
 

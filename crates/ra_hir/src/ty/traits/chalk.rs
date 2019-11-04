@@ -18,7 +18,10 @@ use crate::{
     db::HirDatabase,
     generics::GenericDef,
     ty::display::HirDisplay,
-    ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
+    ty::{
+        ApplicationTy, GenericPredicate, Namespace, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+        TypeWalk,
+    },
     AssocItem, Crate, HasGenericParams, ImplBlock, Trait, TypeAlias,
 };
 
@@ -652,7 +655,7 @@ fn impl_block_datum(
         })
         .filter_map(|t| {
             let assoc_ty = trait_.associated_type_by_name(db, &t.name(db))?;
-            let ty = db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
+            let ty = db.type_for_def(t.into(), Namespace::Types).subst(&bound_vars);
             Some(chalk_rust_ir::AssociatedTyValue {
                 impl_id,
                 associated_ty_id: assoc_ty.to_chalk(db),
