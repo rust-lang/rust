@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rustc::ty::{Ty, layout::{Size, Align, LayoutOf}};
+use rustc::ty::{Ty, layout::{Size, LayoutOf}};
 use rustc::mir;
 
 use crate::*;
@@ -110,14 +110,15 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         let offset = offset
             .checked_mul(pointee_size)
             .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
-        // We do this forst, to rule out overflows.
+        // We do this first, to rule out overflows.
         let offset_ptr = ptr.ptr_signed_offset(offset, self)?;
         // What we need to check is that starting at `ptr`,
         // we could do an access of size `offset`. Alignment does not matter.
-        self.memory.check_ptr_access(
+        self.memory.check_ptr_access_align(
             ptr,
             Size::from_bytes(u64::try_from(offset).unwrap()),
-            Align::from_bytes(1).unwrap(),
+            None,
+            CheckInAllocMsg::InboundsTest,
         )?;
         // That's it!
         Ok(offset_ptr)
