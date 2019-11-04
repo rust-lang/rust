@@ -52,23 +52,21 @@ pub(crate) struct Rule {
     pub(crate) rhs: tt::Subtree,
 }
 
-/// Find the "shift" (the highest id of the TokenId) inside a subtree
-fn find_subtree_shift(tt: &tt::Subtree, mut cur: u32) -> u32 {
-    use std::cmp::max;
-
-    for t in &tt.token_trees {
-        cur = match t {
-            tt::TokenTree::Leaf(leaf) => match leaf {
-                tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
-                    max(cur, ident.id.0)
-                }
-                _ => cur,
-            },
-            tt::TokenTree::Subtree(tt) => find_subtree_shift(tt, cur),
-        }
-    }
-
-    cur
+// Find the max token id inside a subtree
+fn max_id(subtree: &tt::Subtree) -> Option<u32> {
+    subtree
+        .token_trees
+        .iter()
+        .filter_map(|tt| match tt {
+            tt::TokenTree::Subtree(subtree) => max_id(subtree),
+            tt::TokenTree::Leaf(tt::Leaf::Ident(ident))
+                if ident.id != tt::TokenId::unspecified() =>
+            {
+                Some(ident.id.0)
+            }
+            _ => None,
+        })
+        .max()
 }
 
 /// Shift given TokenTree token id
@@ -77,9 +75,7 @@ fn shift_subtree(tt: &mut tt::Subtree, shift: u32) {
         match t {
             tt::TokenTree::Leaf(leaf) => match leaf {
                 tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
-                    // Note that TokenId is started from zero,
-                    // We have to add 1 to prevent duplication.
-                    ident.id.0 += shift + 1;
+                    ident.id.0 += shift;
                 }
                 _ => (),
             },
@@ -110,7 +106,10 @@ impl MacroRules {
             validate(&rule.lhs)?;
         }
 
-        Ok(MacroRules { rules, shift: find_subtree_shift(tt, 0) })
+        // Note that TokenId is started from zero,
+        // We have to add 1 to prevent duplication.
+        let shift = max_id(tt).unwrap_or(0) + 1;
+        Ok(MacroRules { rules, shift })
     }
 
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
