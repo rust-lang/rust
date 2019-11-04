@@ -268,6 +268,7 @@ mod overflow_check_conditional;
 mod panic_unimplemented;
 mod partialeq_ne_impl;
 mod path_buf_push_overwrite;
+pub mod pattern_type_mismatch;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
@@ -741,6 +742,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &panic_unimplemented::UNREACHABLE,
         &partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         &path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE,
+        &pattern_type_mismatch::PATTERN_TYPE_MISMATCH,
         &precedence::PRECEDENCE,
         &ptr::CMP_NULL,
         &ptr::MUT_FROM_REF,
@@ -1064,6 +1066,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
     store.register_late_pass(|| box map_identity::MapIdentity);
+    store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1097,6 +1100,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&panic_unimplemented::TODO),
         LintId::of(&panic_unimplemented::UNIMPLEMENTED),
         LintId::of(&panic_unimplemented::UNREACHABLE),
+        LintId::of(&pattern_type_mismatch::PATTERN_TYPE_MISMATCH),
         LintId::of(&shadow::SHADOW_REUSE),
         LintId::of(&shadow::SHADOW_SAME),
         LintId::of(&strings::STRING_ADD),
