@@ -1250,7 +1250,7 @@ impl Setting {
                 format!(
                     "<div class='setting-line'>\
                         <div class='title'>{}</div>\
-                        <div class='sub-setting'>{}</div>
+                        <div class='sub-settings'>{}</div>
                     </div>",
                     description,
                     sub_settings.iter().map(|s| s.display()).collect::<String>()

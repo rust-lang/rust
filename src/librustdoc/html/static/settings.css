@@ -68,7 +68,7 @@ input:checked + .slider:before {
 	transform: translateX(19px);
 }
 
-.setting-line > .sub-setting {
+.setting-line > .sub-settings {
 	padding-left: 42px;
 	width: 100%;
 	display: block;
