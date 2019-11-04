@@ -4,14 +4,6 @@ use hir_expand::MacroDefId;
 
 use crate::ModuleDefId;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Namespace {
-    Types,
-    Values,
-    // Note that only type inference uses this enum, and it doesn't care about macros.
-    // Macro,
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PerNs {
     pub types: Option<ModuleDefId>,

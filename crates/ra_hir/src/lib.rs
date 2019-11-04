@@ -81,10 +81,7 @@ pub use crate::{
 
 pub use hir_def::{
     builtin_type::BuiltinType,
-    nameres::{
-        per_ns::{Namespace, PerNs},
-        raw::ImportId,
-    },
+    nameres::{per_ns::PerNs, raw::ImportId},
     path::{Path, PathKind},
     type_ref::Mutability,
 };

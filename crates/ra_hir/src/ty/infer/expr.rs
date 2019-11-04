@@ -12,10 +12,10 @@ use crate::{
     expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
     ty::{
-        autoderef, method_resolution, op, primitive, CallableDef, InferTy, Mutability, Obligation,
-        ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
+        autoderef, method_resolution, op, primitive, CallableDef, InferTy, Mutability, Namespace,
+        Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },
-    Adt, Name, Namespace,
+    Adt, Name,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
