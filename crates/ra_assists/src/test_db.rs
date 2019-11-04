@@ -1,3 +1,5 @@
+//! Database used for testing `ra_assists`.
+
 use std::sync::Arc;
 
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath};

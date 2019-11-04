@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Database used for testing `hir`.
 
 use std::{panic, sync::Arc};
 
