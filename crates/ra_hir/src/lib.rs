@@ -61,6 +61,7 @@ use crate::{ids::MacroFileKind, resolve::Resolver};
 pub use crate::{
     adt::VariantDef,
     code_model::{
+        attrs::{AttrDef, Attrs},
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
         Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
