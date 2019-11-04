@@ -384,7 +384,8 @@ impl Builder {
             File::open(self.input.join("toolstates-linux.json")).ok()
                 .and_then(|f| serde_json::from_reader(&f).ok());
         let toolstates = toolstates.unwrap_or_else(|| {
-            println!("WARNING: `toolstates-linux.json` missing; assuming all tools failed");
+            println!("WARNING: `toolstates-linux.json` missing/malformed; \
+                assuming all tools failed");
             HashMap::default() // Use empty map if anything went wrong.
         });
         // Mark some tools as missing based on toolstate.
