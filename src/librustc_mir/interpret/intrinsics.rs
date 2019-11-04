@@ -251,8 +251,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             "ptr_offset_from" => {
-                let a = self.read_immediate(args[0])?.to_scalar()?.to_ptr()?;
-                let b = self.read_immediate(args[1])?.to_scalar()?.to_ptr()?;
+                let a = self.force_ptr(self.read_immediate(args[0])?.to_scalar()?)?;
+                let b = self.force_ptr(self.read_immediate(args[1])?.to_scalar()?)?;
                 if a.alloc_id != b.alloc_id {
                     throw_ub_format!(
                         "ptr_offset_from cannot compute offset of pointers into different \
