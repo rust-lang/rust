@@ -354,7 +354,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn maybe_annotate_with_ascription(
-        &self,
+        &mut self,
         err: &mut DiagnosticBuilder<'_>,
         maybe_expected_semicolon: bool,
     ) {
@@ -395,6 +395,7 @@ impl<'a> Parser<'a> {
                 err.note("for more information, see \
                           https://github.com/rust-lang/rust/issues/23416");
             }
+            self.last_type_ascription = None;
         }
     }
 
