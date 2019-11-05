@@ -256,8 +256,9 @@ impl<'a, 'b> Context<'a, 'b> {
                     "X" => "UpperHex",
                     _ => {
                         let fmtsp = self.fmtsp;
+                        let sp = arg.format.ty_span.map(|sp| fmtsp.from_inner(sp));
                         let mut err = self.ecx.struct_span_err(
-                            arg.format.ty_span.map(|sp| fmtsp.from_inner(sp)).unwrap_or(fmtsp),
+                            sp.unwrap_or(fmtsp),
                             &format!("unknown format trait `{}`", arg.format.ty),
                         );
                         err.note("the only appropriate formatting traits are:\n\
@@ -270,6 +271,26 @@ impl<'a, 'b> Context<'a, 'b> {
                                 - `b`, which uses the `Binary` trait\n\
                                 - `x`, which uses the `LowerHex` trait\n\
                                 - `X`, which uses the `UpperHex` trait");
+                        if let Some(sp) = sp {
+                            for (fmt, name) in &[
+                                ("", "Display"),
+                                ("?", "Debug"),
+                                ("e", "LowerExp"),
+                                ("E", "UpperExp"),
+                                ("o", "Octal"),
+                                ("p", "Pointer"),
+                                ("b", "Binary"),
+                                ("x", "LowerHex"),
+                                ("X", "UpperHex"),
+                            ] {
+                                err.tool_only_span_suggestion(
+                                    sp,
+                                    &format!("use the `{}` trait", name),
+                                    fmt.to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
                         err.emit();
                         "<invalid>"
                     }
