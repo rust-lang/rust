@@ -588,8 +588,8 @@ enum Constructor<'tcx> {
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
     /// Array patterns of length n.
     FixedLenSlice(u64),
-    /// Slice patterns. Stands for any array constructor of length >= n.
-    VarLenSlice(u64),
+    /// Slice patterns. Captures any array constructor of length >= i+j.
+    VarLenSlice(u64, u64),
 }
 
 // Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -604,7 +604,10 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
                 Constructor::ConstantRange(b_start, b_end, b_ty, b_range_end, _),
             ) => a_start == b_start && a_end == b_end && a_ty == b_ty && a_range_end == b_range_end,
             (Constructor::FixedLenSlice(a), Constructor::FixedLenSlice(b)) => a == b,
-            (Constructor::VarLenSlice(a), Constructor::VarLenSlice(b)) => a == b,
+            (
+                Constructor::VarLenSlice(a_prefix, a_suffix),
+                Constructor::VarLenSlice(b_prefix, b_suffix),
+            ) => a_prefix == b_prefix && a_suffix == b_suffix,
             _ => false,
         }
     }
@@ -649,7 +652,7 @@ impl<'tcx> Constructor<'tcx> {
                 )
             }
             Constructor::FixedLenSlice(val) => format!("[{}]", val),
-            Constructor::VarLenSlice(val) => format!("[{}, ..]", val),
+            Constructor::VarLenSlice(prefix, suffix) => format!("[{}, .., {}]", prefix, suffix),
             _ => bug!("bad constructor being displayed: `{:?}", self),
         }
     }
@@ -662,7 +665,7 @@ impl<'tcx> Constructor<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         other_ctors: &Vec<Constructor<'tcx>>,
     ) -> Vec<Constructor<'tcx>> {
-        match self {
+        match *self {
             // Those constructors can only match themselves.
             Single | Variant(_) => {
                 if other_ctors.iter().any(|c| c == self) {
@@ -672,47 +675,58 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             FixedLenSlice(self_len) => {
-                let overlaps = |c: &Constructor<'_>| match c {
+                let overlaps = |c: &Constructor<'_>| match *c {
                     FixedLenSlice(other_len) => other_len == self_len,
-                    VarLenSlice(other_len) => other_len <= self_len,
+                    VarLenSlice(prefix, suffix) => prefix + suffix <= self_len,
                     _ => false,
                 };
                 if other_ctors.iter().any(overlaps) { vec![] } else { vec![self.clone()] }
             }
-            VarLenSlice(_) => {
+            VarLenSlice(..) => {
                 let mut remaining_ctors = vec![self.clone()];
 
                 // For each used ctor, subtract from the current set of constructors.
                 // Naming: we remove the "neg" constructors from the "pos" ones.
-                // Remember, VarLenSlice(n) covers the union of FixedLenSlice from
-                // n to infinity.
+                // Remember, VarLenSlice(i, j) covers the union of FixedLenSlice from
+                // i+j to infinity.
                 for neg_ctor in other_ctors {
                     remaining_ctors = remaining_ctors
                         .into_iter()
                         .flat_map(|pos_ctor| -> SmallVec<[Constructor<'tcx>; 1]> {
                             // Compute pos_ctor \ neg_ctor
                             match (&pos_ctor, neg_ctor) {
-                                (FixedLenSlice(pos_len), VarLenSlice(neg_len)) => {
+                                (&FixedLenSlice(pos_len), &VarLenSlice(neg_prefix, neg_suffix)) => {
+                                    let neg_len = neg_prefix + neg_suffix;
                                     if neg_len <= pos_len {
                                         smallvec![]
                                     } else {
                                         smallvec![pos_ctor]
                                     }
                                 }
-                                (VarLenSlice(pos_len), VarLenSlice(neg_len)) => {
+                                (
+                                    &VarLenSlice(pos_prefix, pos_suffix),
+                                    &VarLenSlice(neg_prefix, neg_suffix),
+                                ) => {
+                                    let neg_len = neg_prefix + neg_suffix;
+                                    let pos_len = pos_prefix + pos_suffix;
                                     if neg_len <= pos_len {
                                         smallvec![]
                                     } else {
-                                        (*pos_len..*neg_len).map(FixedLenSlice).collect()
+                                        (pos_len..neg_len).map(FixedLenSlice).collect()
                                     }
                                 }
-                                (VarLenSlice(pos_len), FixedLenSlice(neg_len)) => {
+                                (&VarLenSlice(pos_prefix, pos_suffix), &FixedLenSlice(neg_len)) => {
+                                    let pos_len = pos_prefix + pos_suffix;
                                     if neg_len < pos_len {
                                         smallvec![pos_ctor]
                                     } else {
-                                        (*pos_len..*neg_len)
+                                        (pos_len..neg_len)
                                             .map(FixedLenSlice)
-                                            .chain(Some(VarLenSlice(neg_len + 1)))
+                                            // We know neg_len + 1 >= pos_len >= pos_suffix
+                                            .chain(Some(VarLenSlice(
+                                                neg_len + 1 - pos_suffix,
+                                                pos_suffix,
+                                            )))
                                             .collect()
                                     }
                                 }
@@ -784,7 +798,8 @@ impl<'tcx> Constructor<'tcx> {
         match ty.kind {
             ty::Tuple(ref fs) => fs.len() as u64,
             ty::Slice(..) | ty::Array(..) => match *self {
-                FixedLenSlice(length) | VarLenSlice(length) => length,
+                FixedLenSlice(length) => length,
+                VarLenSlice(prefix, suffix) => prefix + suffix,
                 ConstantValue(..) => 0,
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
@@ -845,10 +860,11 @@ impl<'tcx> Constructor<'tcx> {
                 FixedLenSlice(_) => {
                     PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
                 }
-                VarLenSlice(_) => {
-                    let prefix = subpatterns.collect();
+                VarLenSlice(prefix_len, _suffix_len) => {
+                    let prefix = subpatterns.by_ref().take(*prefix_len as usize).collect();
+                    let suffix = subpatterns.collect();
                     let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
-                    PatKind::Slice { prefix, slice: Some(wild), suffix: vec![] }
+                    PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
@@ -1072,7 +1088,7 @@ fn all_constructors<'a, 'tcx>(
             if cx.is_uninhabited(sub_ty) {
                 vec![FixedLenSlice(0)]
             } else {
-                vec![VarLenSlice(0)]
+                vec![VarLenSlice(0, 0)]
             }
         }
         ty::Adt(def, substs) if def.is_enum() => def
@@ -1796,11 +1812,12 @@ fn pat_constructors<'tcx>(
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-            let pat_len = prefix.len() as u64 + suffix.len() as u64;
+            let prefix = prefix.len() as u64;
+            let suffix = suffix.len() as u64;
             if slice.is_some() {
-                Some(vec![VarLenSlice(pat_len)])
+                Some(vec![VarLenSlice(prefix, suffix)])
             } else {
-                Some(vec![FixedLenSlice(pat_len)])
+                Some(vec![FixedLenSlice(prefix + suffix)])
             }
         }
         PatKind::Or { .. } => {
@@ -1822,7 +1839,8 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
     match ty.kind {
         ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
         ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
-            FixedLenSlice(length) | VarLenSlice(length) => (0..length).map(|_| ty).collect(),
+            FixedLenSlice(length) => (0..length).map(|_| ty).collect(),
+            VarLenSlice(prefix, suffix) => (0..prefix + suffix).map(|_| ty).collect(),
             ConstantValue(..) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
         },
@@ -2078,8 +2096,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                     split_ctors.push(IntRange::range_to_ctor(tcx, ty, range, span));
                 }
             }
-            VarLenSlice(len) => {
-                split_ctors.extend((len..pcx.max_slice_length + 1).map(FixedLenSlice))
+            VarLenSlice(prefix, suffix) => {
+                split_ctors.extend((prefix + suffix..pcx.max_slice_length + 1).map(FixedLenSlice))
             }
             // Any other constructor can be used unchanged.
             _ => split_ctors.push(ctor),
