@@ -87,6 +87,14 @@ extern "C" char *LLVMRustGetLastError(void) {
   return Ret;
 }
 
+extern "C" unsigned int LLVMRustGetInstructionCount(LLVMModuleRef M) {
+#if LLVM_VERSION_GE(7, 0)
+  return unwrap(M)->getInstructionCount();
+#else
+  report_fatal_error("Module::getInstructionCount not available before LLVM 7");
+#endif
+}
+
 extern "C" void LLVMRustSetLastError(const char *Err) {
   free((void *)LastError);
   LastError = strdup(Err);

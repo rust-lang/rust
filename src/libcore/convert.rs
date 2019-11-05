@@ -438,16 +438,16 @@ pub trait TryInto<T>: Sized {
 /// ```
 /// use std::convert::TryFrom;
 ///
-/// struct SuperiorThanZero(i32);
+/// struct GreaterThanZero(i32);
 ///
-/// impl TryFrom<i32> for SuperiorThanZero {
+/// impl TryFrom<i32> for GreaterThanZero {
 ///     type Error = &'static str;
 ///
 ///     fn try_from(value: i32) -> Result<Self, Self::Error> {
-///         if value < 0 {
-///             Err("SuperiorThanZero only accepts value superior than zero!")
+///         if value <= 0 {
+///             Err("GreaterThanZero only accepts value superior than zero!")
 ///         } else {
-///             Ok(SuperiorThanZero(value))
+///             Ok(GreaterThanZero(value))
 ///         }
 ///     }
 /// }

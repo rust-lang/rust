@@ -10,6 +10,16 @@ trait Grab {
     type Value;
     fn grab(&self) -> Grab::Value;
     //~^ ERROR ambiguous associated type
+
+    fn get(&self) -> Get::Value;
+    //~^ ERROR ambiguous associated type
+}
+
+trait Bar {}
+
+trait Foo where Foo::Assoc: Bar {
+//~^ ERROR ambiguous associated type
+    type Assoc;
 }
 
 type X = std::ops::Deref::Target;
