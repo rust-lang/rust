@@ -1,0 +1,8 @@
+error: to use a constant of type `NoPartialEq` in a pattern, `NoPartialEq` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/reject_non_partial_eq.rs:28:9
+   |
+LL |         NO_PARTIAL_EQ_NONE => println!("NO_PARTIAL_EQ_NONE"),
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
