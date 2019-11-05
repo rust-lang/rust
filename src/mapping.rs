@@ -12,10 +12,11 @@ use rustc::{
     ty::{AssocKind, GenericParamDef, GenericParamDefKind},
 };
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::hash::{Hash, Hasher};
 use syntax::ast::Name;
 
 /// A description of an item found in an inherent impl.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq)]
 pub struct InherentEntry {
     /// The parent item's `DefId`.
     pub parent_def_id: DefId,
@@ -23,6 +24,36 @@ pub struct InherentEntry {
     pub kind: AssocKind,
     /// The item's name.
     pub name: Name,
+}
+
+impl Eq for InherentEntry {}
+
+fn assert_impl_eq<T: Eq>() {}
+
+#[allow(dead_code)]
+fn assert_inherent_entry_members_impl_eq() {
+    assert_impl_eq::<DefId>();
+
+    // FIXME derive Eq again once AssocKind impls Eq again.
+    // assert_impl_eq::<AssocKind>();
+
+    assert_impl_eq::<Name>();
+}
+
+impl Hash for InherentEntry {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.parent_def_id.hash(hasher);
+
+        // FIXME derive Hash again once AssocKind derives Hash again.
+        match self.kind {
+            AssocKind::Const => 0u8.hash(hasher),
+            AssocKind::Method => 1u8.hash(hasher),
+            AssocKind::OpaqueTy => 2u8.hash(hasher),
+            AssocKind::Type => 3u8.hash(hasher),
+        }
+
+        self.name.hash(hasher);
+    }
 }
 
 /// A set of pairs of impl- and item `DefId`s for inherent associated items.

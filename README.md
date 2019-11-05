@@ -32,6 +32,7 @@ If you are already using Rust nightly and have successfully installed tools like
 
 ```sh
 $ rustup update nightly
+$ rustup component add rustc-dev --toolchain nightly
 $ cargo +nightly install semverver
 ```
 
@@ -43,6 +44,7 @@ You can also install the newest version of the tool from git:
 
 ```sh
 $ rustup update nightly
+$ rustup component add rustc-dev --toolchain nightly
 $ cargo +nightly install --git https://github.com/rust-dev-tools/rust-semverver
 ```
 
