@@ -44,18 +44,55 @@ LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           exact_div: 1 cannot be divided by 2 without remainder
-   |           inside call to `std::ptr::<impl *const u16>::offset_from` at $DIR/offset_from_ub.rs:33:27
+   |           inside call to `std::ptr::<impl *const u16>::offset_from` at $DIR/offset_from_ub.rs:33:14
    | 
   ::: $DIR/offset_from_ub.rs:28:1
    |
-LL | / pub const NOT_MULTIPLE_OF_SIZE: usize = {
+LL | / pub const NOT_MULTIPLE_OF_SIZE: isize = {
 LL | |
 LL | |     let data = [5u8, 6, 7];
 LL | |     let base_ptr = data.as_ptr();
-...  |
-LL | |     offset as usize
+LL | |     let field_ptr = &data[1] as *const u8 as *const u16;
+LL | |     unsafe { field_ptr.offset_from(base_ptr as *const u16) }
 LL | | };
    | |__-
 
-error: aborting due to 3 previous errors
+error: any use of this value will cause an error
+  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+   |
+LL |           intrinsics::ptr_offset_from(self, origin)
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           |
+   |           invalid use of NULL pointer
+   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:39:14
+   | 
+  ::: $DIR/offset_from_ub.rs:36:1
+   |
+LL | / pub const OFFSET_FROM_NULL: isize = {
+LL | |
+LL | |     let ptr = 0 as *const u8;
+LL | |     unsafe { ptr.offset_from(ptr) }
+LL | | };
+   | |__-
+
+error: any use of this value will cause an error
+  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+   |
+LL |           intrinsics::ptr_offset_from(self, origin)
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           |
+   |           a memory access tried to interpret some bytes as a pointer
+   |           inside call to `std::ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:46:14
+   | 
+  ::: $DIR/offset_from_ub.rs:42:1
+   |
+LL | / pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
+LL | |
+LL | |     let ptr1 = 8 as *const u8;
+LL | |     let ptr2 = 16 as *const u8;
+LL | |     unsafe { ptr2.offset_from(ptr1) }
+LL | | };
+   | |__-
+
+error: aborting due to 5 previous errors
 

@@ -40,8 +40,14 @@ pub const OVERFLOW: isize = {
     unsafe { (base_ptr as *const u8).offset_from(field_ptr) }
 };
 
+pub const OFFSET_EQUAL_INTS: isize = {
+    let ptr = 1 as *const u8;
+    unsafe { ptr.offset_from(ptr) }
+};
+
 fn main() {
     assert_eq!(OFFSET, 0);
     assert_eq!(OFFSET_2, 1);
     assert_eq!(OVERFLOW, -1);
+    assert_eq!(OFFSET_EQUAL_INTS, 0);
 }

@@ -251,8 +251,28 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             "ptr_offset_from" => {
-                let a = self.read_immediate(args[0])?.to_scalar()?.to_ptr()?;
-                let b = self.read_immediate(args[1])?.to_scalar()?.to_ptr()?;
+                let isize_layout = self.layout_of(self.tcx.types.isize)?;
+                let a = self.read_immediate(args[0])?.to_scalar()?;
+                let b = self.read_immediate(args[1])?.to_scalar()?;
+
+                // Special case: if both scalars are *equal integers*
+                // and not NULL, we pretend there is an allocation of size 0 right there,
+                // and their offset is 0. (There's never a valid object at NULL, making it an
+                // exception from the exception.)
+                // This is the dual to the special exception for offset-by-0
+                // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
+                if a.is_bits() && b.is_bits() {
+                    let a = a.to_usize(self)?;
+                    let b = b.to_usize(self)?;
+                    if a == b && a != 0 {
+                        self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
+                        return Ok(true);
+                    }
+                }
+
+                // General case: we need two pointers.
+                let a = self.force_ptr(a)?;
+                let b = self.force_ptr(b)?;
                 if a.alloc_id != b.alloc_id {
                     throw_ub_format!(
                         "ptr_offset_from cannot compute offset of pointers into different \
@@ -266,7 +286,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     BinOp::Sub, a_offset, b_offset,
                 )?;
                 let pointee_layout = self.layout_of(substs.type_at(0))?;
-                let isize_layout = self.layout_of(self.tcx.types.isize)?;
                 let val = ImmTy::from_scalar(val, isize_layout);
                 let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
                 self.exact_div(val, size, dest)?;
