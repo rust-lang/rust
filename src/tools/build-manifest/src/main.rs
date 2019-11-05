@@ -11,10 +11,11 @@ use serde::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
-use std::fs;
+use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
+use std::collections::HashMap;
 
 static HOSTS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
@@ -366,12 +367,32 @@ impl Builder {
         self.lldb_git_commit_hash = self.git_commit_hash("lldb", "x86_64-unknown-linux-gnu");
         self.miri_git_commit_hash = self.git_commit_hash("miri", "x86_64-unknown-linux-gnu");
 
+        self.check_toolstate();
         self.digest_and_sign();
         let manifest = self.build_manifest();
         self.write_channel_files(&self.rust_release, &manifest);
 
         if self.rust_release != "beta" && self.rust_release != "nightly" {
             self.write_channel_files("stable", &manifest);
+        }
+    }
+
+    /// If a tool does not pass its tests, don't ship it.
+    /// Right now, we do this only for Miri.
+    fn check_toolstate(&mut self) {
+        let toolstates: Option<HashMap<String, String>> =
+            File::open(self.input.join("toolstates-linux.json")).ok()
+                .and_then(|f| serde_json::from_reader(&f).ok());
+        let toolstates = toolstates.unwrap_or_else(|| {
+            println!("WARNING: `toolstates-linux.json` missing/malformed; \
+                assuming all tools failed");
+            HashMap::default() // Use empty map if anything went wrong.
+        });
+        // Mark some tools as missing based on toolstate.
+        if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
+            println!("Miri tests are not passing, removing component");
+            self.miri_version = None;
+            self.miri_git_commit_hash = None;
         }
     }
 
