@@ -309,11 +309,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         // position that belongs to it, as opposed to hashing the first
         // position past it.
         let span = self.data();
-
-        if span.hi < span.lo {
-            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
-        }
-
         let (file_lo, line_lo, col_lo) = match hcx.source_map()
                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,

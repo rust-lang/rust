@@ -796,11 +796,6 @@ where
         }
 
         let span_data = span.data();
-
-        if span_data.hi < span_data.lo {
-            return TAG_INVALID_SPAN.encode(self);
-        }
-
         let (file_lo, line_lo, col_lo) = match self.source_map
                                                    .byte_pos_to_line_and_col(span_data.lo) {
             Some(pos) => pos,
