@@ -1,6 +1,6 @@
 // revisions: cfail1 cfail2
 // should-ice
-// error-pattern: fatal error triggered by #[rustc_error]
+// error-pattern: delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]
 
 #![feature(rustc_attrs)]
 
