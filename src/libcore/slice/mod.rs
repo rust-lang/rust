@@ -5311,7 +5311,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 /// assert_eq!(slice[0], 42);
 /// ```
 ///
-/// [valid]: ../ptr/index.html#safety
+/// [valid]: ../../std/ptr/index.html#safety
 /// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
 /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
@@ -5348,7 +5348,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 /// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
 ///   See the safety documentation of [`pointer::offset`].
 ///
-/// [valid]: ../ptr/index.html#safety
+/// [valid]: ../../std/ptr/index.html#safety
 /// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
 /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 /// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
