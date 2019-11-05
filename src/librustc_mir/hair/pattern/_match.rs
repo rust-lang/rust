@@ -1615,13 +1615,13 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructors) = pat_constructors(cx, v.head(), pcx) {
-        debug!("is_useful - expanding constructors: {:#?}", constructors);
+    if let Some(constructor) = pat_constructor(cx, v.head(), pcx) {
+        debug!("is_useful - expanding constructor: {:#?}", constructor);
         split_grouped_constructors(
             cx.tcx,
             cx.param_env,
             pcx,
-            constructors,
+            vec![constructor],
             matrix,
             pcx.span,
             Some(hir_id),
@@ -1634,7 +1634,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         debug!("is_useful - expanding wildcard");
 
         let used_ctors: Vec<Constructor<'_>> =
-            matrix.heads().flat_map(|p| pat_constructors(cx, p, pcx).unwrap_or(vec![])).collect();
+            matrix.heads().filter_map(|p| pat_constructor(cx, p, pcx)).collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
@@ -1777,47 +1777,39 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
         .unwrap_or(NotUseful)
 }
 
-/// Determines the constructors that the given pattern can be specialized to.
-///
-/// In most cases, there's only one constructor that a specific pattern
-/// represents, such as a specific enum variant or a specific literal value.
-/// Slice patterns, however, can match slices of different lengths. For instance,
-/// `[a, b, tail @ ..]` can match a slice of length 2, 3, 4 and so on.
-///
+/// Determines the constructor that the given pattern can be specialized to.
 /// Returns `None` in case of a catch-all, which can't be specialized.
-fn pat_constructors<'tcx>(
+fn pat_constructor<'tcx>(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
     pat: &Pat<'tcx>,
     pcx: PatCtxt<'tcx>,
-) -> Option<Vec<Constructor<'tcx>>> {
+) -> Option<Constructor<'tcx>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => pat_constructors(cx, subpattern, pcx),
+        PatKind::AscribeUserType { ref subpattern, .. } => pat_constructor(cx, subpattern, pcx),
         PatKind::Binding { .. } | PatKind::Wild => None,
-        PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(vec![Single]),
+        PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
         PatKind::Variant { adt_def, variant_index, .. } => {
-            Some(vec![Variant(adt_def.variants[variant_index].def_id)])
+            Some(Variant(adt_def.variants[variant_index].def_id))
         }
-        PatKind::Constant { value } => Some(vec![ConstantValue(value, pat.span)]),
-        PatKind::Range(PatRange { lo, hi, end }) => Some(vec![ConstantRange(
+        PatKind::Constant { value } => Some(ConstantValue(value, pat.span)),
+        PatKind::Range(PatRange { lo, hi, end }) => Some(ConstantRange(
             lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
             hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
             lo.ty,
             end,
             pat.span,
-        )]),
+        )),
         PatKind::Array { .. } => match pcx.ty.kind {
-            ty::Array(_, length) => {
-                Some(vec![FixedLenSlice(length.eval_usize(cx.tcx, cx.param_env))])
-            }
+            ty::Array(_, length) => Some(FixedLenSlice(length.eval_usize(cx.tcx, cx.param_env))),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let prefix = prefix.len() as u64;
             let suffix = suffix.len() as u64;
             if slice.is_some() {
-                Some(vec![VarLenSlice(prefix, suffix)])
+                Some(VarLenSlice(prefix, suffix))
             } else {
-                Some(vec![FixedLenSlice(prefix + suffix)])
+                Some(FixedLenSlice(prefix + suffix))
             }
         }
         PatKind::Or { .. } => {
