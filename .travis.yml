@@ -90,6 +90,7 @@ matrix:
   allow_failures:
     - os: windows
       env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
+    - env: INTEGRATION=rust-lang-nursery/stdsimd
 
 before_script:
   - |
