@@ -18,7 +18,7 @@
 //! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
 //! * All pointers (except for the null pointer) are valid for all operations of
 //!   [size zero][zst].
-//! * For a pointer to be valid, it is necessary (but not always sufficient) that the pointer
+//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer
 //!   be *dereferencable*: the memory range of the given size starting at the pointer must all be
 //!   within the bounds of a single allocated object. Note that in Rust,
 //!   every (stack-allocated) variable is considered a separate allocated object.
@@ -253,7 +253,7 @@ pub fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 }
 
 /// Performs the same functionality as [`slice_from_raw_parts`], except that a
-/// raw mutable slice is returned.
+/// raw mutable slice is returned, as opposed to a raw immutable slice.
 ///
 /// See the documentation of [`slice_from_raw_parts`] for more details.
 ///
