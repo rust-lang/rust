@@ -360,11 +360,11 @@ impl<'a> Parser<'a> {
     }
 
     pub fn maybe_annotate_with_ascription(
-        &self,
+        &mut self,
         err: &mut DiagnosticBuilder<'_>,
         maybe_expected_semicolon: bool,
     ) {
-        if let Some((sp, likely_path)) = self.last_type_ascription {
+        if let Some((sp, likely_path)) = self.last_type_ascription.take() {
             let sm = self.sess.source_map();
             let next_pos = sm.lookup_char_pos(self.token.span.lo());
             let op_pos = sm.lookup_char_pos(sp.hi());
@@ -1088,8 +1088,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
-        self.token.is_ident() &&
-            if let ast::ExprKind::Path(..) = node { true } else { false } &&
+        (self.token == token::Lt && // `foo:<bar`, likely a typoed turbofish.
+            self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+        ) ||
+            self.token.is_ident() &&
+            match node {
+                // `foo::` → `foo:` or `foo.bar::` → `foo.bar:`
+                ast::ExprKind::Path(..) | ast::ExprKind::Field(..) => true,
+                _ => false,
+            } &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
             self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren)) ||
             self.look_ahead(1, |t| t == &token::Lt) &&     // `foo:bar<baz`
