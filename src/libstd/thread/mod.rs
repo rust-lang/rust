@@ -1271,6 +1271,18 @@ impl fmt::Debug for Thread {
 ///
 /// Indicates the manner in which a thread exited.
 ///
+/// The value contained in the `Result::Err` variant
+/// is the value the thread panicked with;
+/// that is, the parameter the `panic!` macro was called with.
+/// Unlike with normal errors, this value doesn't implement
+/// the `std::error::Error` trait.
+///
+/// Thus, a sensible way to handle a thread panic is to either
+/// `unwrap` the `Result`, propagating the panic,
+/// or in case the thread is intended to be a subsystem boundary
+/// that is supposed to isolate system-level failures,
+/// match for the `Err` variant and handle the panic in an appropriate way.
+///
 /// A thread that completes without panicking is considered to exit successfully.
 ///
 /// # Examples
