@@ -256,7 +256,7 @@ in other sections:
   - `./x.py build --stage 1` – builds everything using the stage 1 compiler,
     not just up to libstd
   - `./x.py build` – builds the stage2 compiler
-- Running tests (see the [section on running tests](./tests/running.html) for
+- Running tests (see the [section on running tests](../tests/running.html) for
   more details):
   - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from libstd
   - `./x.py test --stage 1 src/test/ui` – runs the `ui` test suite
