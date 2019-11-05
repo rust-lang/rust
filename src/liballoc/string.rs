@@ -687,7 +687,7 @@ impl String {
     /// checked:
     ///
     /// * The memory at `ptr` needs to have been previously allocated by the
-    ///   same allocator the standard library uses.
+    ///   same allocator the standard library uses, with a required alignment of exactly 1.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the correct value.
     ///
