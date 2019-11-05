@@ -1,10 +1,10 @@
 use rustc_index::vec::Idx;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnAbiExt};
 use rustc::mir::{self, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::PanicInfo;
-use rustc_target::abi::call::{ArgType, FnType, PassMode};
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::abi::Abi;
 use crate::base;
 use crate::MemFlags;
@@ -99,13 +99,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
         }
     }
 
-    /// Call `fn_ptr` of `fn_ty` with the arguments `llargs`, the optional
+    /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the cleanup function `cleanup`.
     fn do_call<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
         &self,
         fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
         bx: &mut Bx,
-        fn_ty: FnType<'tcx, Ty<'tcx>>,
+        fn_abi: FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
@@ -122,16 +122,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
                                       ret_bx,
                                       self.llblock(fx, cleanup),
                                       self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_ty, invokeret);
+            bx.apply_attrs_callsite(&fn_abi, invokeret);
 
             if let Some((ret_dest, target)) = destination {
                 let mut ret_bx = fx.build_block(target);
                 fx.set_debug_loc(&mut ret_bx, self.terminator.source_info);
-                fx.store_return(&mut ret_bx, ret_dest, &fn_ty.ret, invokeret);
+                fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
             let llret = bx.call(fn_ptr, &llargs, self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_ty, llret);
+            bx.apply_attrs_callsite(&fn_abi, llret);
             if fx.mir[*self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested
@@ -141,7 +141,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                fx.store_return(bx, ret_dest, &fn_ty.ret, llret);
+                fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
                 self.funclet_br(fx, bx, target);
             } else {
                 bx.unreachable();
@@ -248,9 +248,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_return_terminator(&mut self, mut bx: Bx) {
         // Call `va_end` if this is the definition of a C-variadic function.
-        if self.fn_ty.c_variadic {
+        if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
-            let va_list_arg_idx = self.fn_ty.args.len();
+            let va_list_arg_idx = self.fn_abi.args.len();
             match self.locals[mir::Local::new(1 + va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
                     bx.va_end(va_list.llval);
@@ -258,14 +258,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
-        if self.fn_ty.ret.layout.abi.is_uninhabited() {
+        if self.fn_abi.ret.layout.abi.is_uninhabited() {
             // Functions with uninhabited return values are marked `noreturn`,
             // so we should make sure that we never actually do.
             bx.abort();
             bx.unreachable();
             return;
         }
-        let llval = match self.fn_ty.ret.mode {
+        let llval = match self.fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect(..) => {
                 bx.ret_void();
                 return;
@@ -296,7 +296,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
                         let scratch =
-                            PlaceRef::alloca(&mut bx, self.fn_ty.ret.layout);
+                            PlaceRef::alloca(&mut bx, self.fn_abi.ret.layout);
                         op.val.store(&mut bx, scratch);
                         scratch.llval
                     }
@@ -309,7 +309,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let addr = bx.pointercast(llslot, bx.type_ptr_to(
                     bx.cast_backend_type(&cast_ty)
                 ));
-                bx.load(addr, self.fn_ty.ret.layout.align.abi)
+                bx.load(addr, self.fn_abi.ret.layout.align.abi)
             }
         };
         bx.ret(llval);
@@ -344,25 +344,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.llval];
             &args1[..]
         };
-        let (drop_fn, fn_ty) = match ty.kind {
+        let (drop_fn, fn_abi) = match ty.kind {
             ty::Dynamic(..) => {
                 let sig = drop_fn.fn_sig(self.cx.tcx());
                 let sig = self.cx.tcx().normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &sig,
                 );
-                let fn_ty = FnType::new_vtable(&bx, sig, &[]);
+                let fn_abi = FnAbi::new_vtable(&bx, sig, &[]);
                 let vtable = args[1];
                 args = &args[..1];
-                (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
+                (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_abi), fn_abi)
             }
             _ => {
                 (bx.get_fn_addr(drop_fn),
-                 FnType::of_instance(&bx, drop_fn))
+                 FnAbi::of_instance(&bx, drop_fn))
             }
         };
         helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-        helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
+        helper.do_call(self, &mut bx, fn_abi, drop_fn, args,
                        Some((ReturnDest::Nothing, target)),
                        unwind);
     }
@@ -439,11 +439,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_ty = FnType::of_instance(&bx, instance);
+        let fn_abi = FnAbi::of_instance(&bx, instance);
         let llfn = bx.get_fn_addr(instance);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
+        helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
     }
 
     fn codegen_call_terminator<'b>(
@@ -514,9 +514,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.monomorphize(&op_ty)
         }).collect::<Vec<_>>();
 
-        let fn_ty = match def {
+        let fn_abi = match def {
             Some(ty::InstanceDef::Virtual(..)) => {
-                FnType::new_vtable(&bx, sig, &extra_args)
+                FnAbi::new_vtable(&bx, sig, &extra_args)
             }
             Some(ty::InstanceDef::DropGlue(_, None)) => {
                 // Empty drop glue; a no-op.
@@ -525,7 +525,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, &mut bx, target);
                 return;
             }
-            _ => FnType::new(&bx, sig, &extra_args)
+            _ => FnAbi::new(&bx, sig, &extra_args)
         };
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
@@ -541,7 +541,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_ty = FnType::of_instance(&bx, instance);
+                let fn_abi = FnAbi::of_instance(&bx, instance);
                 let llfn = bx.get_fn_addr(instance);
 
                 if let Some((_, target)) = destination.as_ref() {
@@ -551,7 +551,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.do_call(
                     self,
                     &mut bx,
-                    fn_ty,
+                    fn_abi,
                     llfn,
                     &[msg.0, msg.1, location],
                     destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
@@ -567,13 +567,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         // The arguments we'll be passing. Plus one to account for outptr, if used.
-        let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
+        let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
         let ret_dest = if let Some((ref dest, _)) = *destination {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, dest, &fn_ty.ret, &mut llargs,
+            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs,
                                   is_intrinsic)
         } else {
             ReturnDest::Nothing
@@ -586,7 +586,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(&mut bx, tmp);
                 }
-                self.store_return(&mut bx, ret_dest, &fn_ty.ret, location.immediate());
+                self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
 
                 helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
                 helper.funclet_br(self, &mut bx, *target);
@@ -596,9 +596,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
             let dest = match ret_dest {
-                _ if fn_ty.ret.is_indirect() => llargs[0],
+                _ if fn_abi.ret.is_indirect() => llargs[0],
                 ReturnDest::Nothing =>
-                    bx.const_undef(bx.type_ptr_to(bx.memory_ty(&fn_ty.ret))),
+                    bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret))),
                 ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) =>
                     dst.llval,
                 ReturnDest::DirectOperand(_) =>
@@ -667,11 +667,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }).collect();
 
 
-            bx.codegen_intrinsic_call(*instance.as_ref().unwrap(), &fn_ty, &args, dest,
+            bx.codegen_intrinsic_call(*instance.as_ref().unwrap(), &fn_abi, &args, dest,
                                       terminator.source_info.span);
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                self.store_return(&mut bx, ret_dest, &fn_ty.ret, dst.llval);
+                self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
             }
 
             if let Some((_, target)) = *destination {
@@ -726,7 +726,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     match op.val {
                         Pair(data_ptr, meta) => {
                             llfn = Some(meth::VirtualIndex::from_index(idx)
-                                .get_fn(&mut bx, meta, &fn_ty));
+                                .get_fn(&mut bx, meta, &fn_abi));
                             llargs.push(data_ptr);
                             continue 'make_args
                         }
@@ -735,7 +735,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else if let Ref(data_ptr, Some(meta), _) = op.val {
                     // by-value dynamic dispatch
                     llfn = Some(meth::VirtualIndex::from_index(idx)
-                        .get_fn(&mut bx, meta, &fn_ty));
+                        .get_fn(&mut bx, meta, &fn_abi));
                     llargs.push(data_ptr);
                     continue;
                 } else {
@@ -755,11 +755,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => {}
             }
 
-            self.codegen_argument(&mut bx, op, &mut llargs, &fn_ty.args[i]);
+            self.codegen_argument(&mut bx, op, &mut llargs, &fn_abi.args[i]);
         }
         if let Some(tup) = untuple {
             self.codegen_arguments_untupled(&mut bx, tup, &mut llargs,
-                &fn_ty.args[first_args.len()..])
+                &fn_abi.args[first_args.len()..])
         }
 
         let fn_ptr = match (llfn, instance) {
@@ -771,7 +771,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some((_, target)) = destination.as_ref() {
             helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
         }
-        helper.do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
+        helper.do_call(self, &mut bx, fn_abi, fn_ptr, &llargs,
                        destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                        cleanup);
     }
@@ -874,7 +874,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         op: OperandRef<'tcx, Bx::Value>,
         llargs: &mut Vec<Bx::Value>,
-        arg: &ArgType<'tcx, Ty<'tcx>>
+        arg: &ArgAbi<'tcx, Ty<'tcx>>
     ) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
@@ -967,7 +967,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         operand: &mir::Operand<'tcx>,
         llargs: &mut Vec<Bx::Value>,
-        args: &[ArgType<'tcx, Ty<'tcx>>]
+        args: &[ArgAbi<'tcx, Ty<'tcx>>]
     ) {
         let tuple = self.codegen_operand(bx, operand);
 
@@ -1095,7 +1095,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         dest: &mir::Place<'tcx>,
-        fn_ret: &ArgType<'tcx, Ty<'tcx>>,
+        fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>, is_intrinsic: bool
     ) -> ReturnDest<'tcx, Bx::Value> {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
@@ -1204,14 +1204,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         dest: ReturnDest<'tcx, Bx::Value>,
-        ret_ty: &ArgType<'tcx, Ty<'tcx>>,
+        ret_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         llval: Bx::Value
     ) {
         use self::ReturnDest::*;
 
         match dest {
             Nothing => (),
-            Store(dst) => bx.store_arg_ty(&ret_ty, llval, dst),
+            Store(dst) => bx.store_arg(&ret_abi, llval, dst),
             IndirectOperand(tmp, index) => {
                 let op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
@@ -1219,15 +1219,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
-                let op = if let PassMode::Cast(_) = ret_ty.mode {
-                    let tmp = PlaceRef::alloca(bx, ret_ty.layout);
+                let op = if let PassMode::Cast(_) = ret_abi.mode {
+                    let tmp = PlaceRef::alloca(bx, ret_abi.layout);
                     tmp.storage_live(bx);
-                    bx.store_arg_ty(&ret_ty, llval, tmp);
+                    bx.store_arg(&ret_abi, llval, tmp);
                     let op = bx.load_operand(tmp);
                     tmp.storage_dead(bx);
                     op
                 } else {
-                    OperandRef::from_immediate_or_packed_pair(bx, llval, ret_ty.layout)
+                    OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
                 self.locals[index] = LocalRef::Operand(Some(op));
             }

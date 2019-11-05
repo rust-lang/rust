@@ -1,4 +1,4 @@
-use rustc_target::abi::call::FnType;
+use rustc_target::abi::call::FnAbi;
 
 use crate::traits::*;
 
@@ -20,14 +20,14 @@ impl<'a, 'tcx> VirtualIndex {
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
-        fn_ty: &FnType<'tcx, Ty<'tcx>>
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>
     ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
         let llvtable = bx.pointercast(
             llvtable,
-            bx.type_ptr_to(bx.fn_ptr_backend_type(fn_ty))
+            bx.type_ptr_to(bx.fn_ptr_backend_type(fn_abi))
         );
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let gep = bx.inbounds_gep(llvtable, &[bx.const_usize(self.0)]);

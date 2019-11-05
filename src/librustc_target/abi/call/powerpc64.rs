@@ -2,7 +2,7 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use crate::abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
+use crate::abi::call::{FnAbi, ArgAbi, Reg, RegKind, Uniform};
 use crate::abi::{Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use crate::spec::HasTargetSpec;
 
@@ -13,7 +13,7 @@ enum ABI {
 }
 use ABI::*;
 
-fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI)
                                        -> Option<Uniform>
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
@@ -43,7 +43,7 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: A
     })
 }
 
-fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, abi: ABI)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, abi: ABI)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -88,7 +88,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>, abi: ABI)
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -120,7 +120,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, abi: ABI)
     });
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
 {
@@ -133,12 +133,12 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
         }
     };
 
-    if !fty.ret.is_ignore() {
-        classify_ret_ty(cx, &mut fty.ret, abi);
+    if !fn_abi.ret.is_ignore() {
+        classify_ret(cx, &mut fn_abi.ret, abi);
     }
 
-    for arg in &mut fty.args {
+    for arg in &mut fn_abi.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(cx, arg, abi);
+        classify_arg(cx, arg, abi);
     }
 }

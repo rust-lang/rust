@@ -1,10 +1,10 @@
 // FIXME: The assumes we're using the non-vector ABI, i.e., compiling
 // for a pre-z13 machine or using -mno-vx.
 
-use crate::abi::call::{FnType, ArgType, Reg};
+use crate::abi::call::{FnAbi, ArgAbi, Reg};
 use crate::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<'_, Ty>)
+fn classify_ret<'a, Ty, C>(ret: &mut ArgAbi<'_, Ty>)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
@@ -31,7 +31,7 @@ fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyLayout<'a, Ty>) -> bool
     }
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -57,16 +57,16 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
     }
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
-    if !fty.ret.is_ignore() {
-        classify_ret_ty(&mut fty.ret);
+    if !fn_abi.ret.is_ignore() {
+        classify_ret(&mut fn_abi.ret);
     }
 
-    for arg in &mut fty.args {
+    for arg in &mut fn_abi.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(cx, arg);
+        classify_arg(cx, arg);
     }
 }

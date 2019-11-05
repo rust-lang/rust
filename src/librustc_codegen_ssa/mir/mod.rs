@@ -1,7 +1,7 @@
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
-use rustc::ty::layout::{TyLayout, HasTyCtxt, FnTypeExt};
+use rustc::ty::layout::{TyLayout, HasTyCtxt, FnAbiExt};
 use rustc::mir::{self, Body};
-use rustc_target::abi::call::{FnType, PassMode};
+use rustc_target::abi::call::{FnAbi, PassMode};
 use crate::base;
 use crate::traits::*;
 
@@ -29,7 +29,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     cx: &'a Bx::CodegenCx,
 
-    fn_ty: FnType<'tcx, Ty<'tcx>>,
+    fn_abi: FnAbi<'tcx, Ty<'tcx>>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -126,8 +126,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     assert!(!instance.substs.needs_infer());
 
-    let fn_ty = FnType::new(cx, sig, &[]);
-    debug!("fn_ty: {:?}", fn_ty);
+    let fn_abi = FnAbi::new(cx, sig, &[]);
+    debug!("fn_abi: {:?}", fn_abi);
 
     let debug_context =
         cx.create_function_debug_context(instance, sig, llfn, mir);
@@ -159,7 +159,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         instance,
         mir,
         llfn,
-        fn_ty,
+        fn_abi,
         cx,
         personality_slot: None,
         blocks: block_bxs,
@@ -183,7 +183,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let layout = bx.layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
-            if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
+            if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {
                 debug!("alloc: {:?} (return place) -> place", local);
                 let llretptr = bx.get_param(0);
                 return LocalRef::Place(PlaceRef::new_sized(llretptr, layout));
@@ -323,7 +323,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let mut idx = 0;
-    let mut llarg_idx = fx.fn_ty.ret.is_indirect() as usize;
+    let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
@@ -342,7 +342,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
             for i in 0..tupled_arg_tys.len() {
-                let arg = &fx.fn_ty.args[idx];
+                let arg = &fx.fn_abi.args[idx];
                 idx += 1;
                 if arg.pad.is_some() {
                     llarg_idx += 1;
@@ -354,7 +354,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             return LocalRef::Place(place);
         }
 
-        if fx.fn_ty.c_variadic && arg_index == fx.fn_ty.args.len() {
+        if fx.fn_abi.c_variadic && arg_index == fx.fn_abi.args.len() {
             let arg_ty = fx.monomorphize(&arg_decl.ty);
 
             let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
@@ -363,7 +363,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             return LocalRef::Place(va_list);
         }
 
-        let arg = &fx.fn_ty.args[idx];
+        let arg = &fx.fn_abi.args[idx];
         idx += 1;
         if arg.pad.is_some() {
             llarg_idx += 1;
