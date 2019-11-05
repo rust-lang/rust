@@ -39,7 +39,7 @@ pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
-    marker: PhantomData<T>,
+    marker: PhantomData<Box<Node<T>>>,
 }
 
 struct Node<T> {
@@ -60,7 +60,7 @@ pub struct Iter<'a, T: 'a> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
-    marker: PhantomData<&'a T>,
+    marker: PhantomData<&'a Node<T>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
