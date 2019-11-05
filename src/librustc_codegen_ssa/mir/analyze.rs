@@ -17,13 +17,14 @@ use super::FunctionCx;
 use crate::traits::*;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>
+    fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
+    let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
-    analyzer.visit_body(fx.mir);
+    analyzer.visit_body(mir);
 
-    for (local, decl) in fx.mir.local_decls.iter_enumerated()
+    for (local, decl) in mir.local_decls.iter_enumerated()
     {
         // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
         // of putting everything in allocas just so we can use llvm.dbg.declare.
@@ -65,7 +66,7 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     first_assignment: IndexVec<mir::Local, Location>,
 }
 
-impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
+impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();

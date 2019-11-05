@@ -46,7 +46,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
     fn lltarget<'b, 'c, Bx: BuilderMethods<'b, 'tcx>>(
         &self,
         fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
-        target: mir::BasicBlock
+        target: mir::BasicBlock,
     ) -> (Bx::BasicBlock, bool) {
         let span = self.terminator.source_info.span;
         let lltarget = fx.blocks[target];
@@ -66,7 +66,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
     fn llblock<'c, 'b, Bx: BuilderMethods<'b, 'tcx>>(
         &self,
         fx: &'c mut FunctionCx<'b, 'tcx, Bx>,
-        target: mir::BasicBlock
+        target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
         let (lltarget, is_cleanupret) = self.lltarget(fx, target);
         if is_cleanupret {
@@ -153,7 +153,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
     // a loop.
     fn maybe_sideeffect<'b, 'tcx2: 'b, Bx: BuilderMethods<'b, 'tcx2>>(
         &self,
-        mir: mir::ReadOnlyBodyCache<'_, 'tcx>,
+        mir: mir::ReadOnlyBodyCache<'b, 'tcx>,
         bx: &mut Bx,
         targets: &[mir::BasicBlock],
     ) {
@@ -173,9 +173,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator<'c>(
+    fn codegen_resume_terminator<'b>(
         &mut self,
-        helper: TerminatorCodegenHelper<'c, 'tcx>,
+        helper: TerminatorCodegenHelper<'b, 'tcx>,
         mut bx: Bx,
     ) {
         if let Some(funclet) = helper.funclet(self) {
@@ -201,9 +201,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_switchint_terminator<'c>(
+    fn codegen_switchint_terminator<'b>(
         &mut self,
-        helper: TerminatorCodegenHelper<'c, 'tcx>,
+        helper: TerminatorCodegenHelper<'b, 'tcx>,
         mut bx: Bx,
         discr: &mir::Operand<'tcx>,
         switch_ty: Ty<'tcx>,
@@ -316,9 +316,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
 
-    fn codegen_drop_terminator<'c>(
+    fn codegen_drop_terminator<'b>(
         &mut self,
-        helper: TerminatorCodegenHelper<'c, 'tcx>,
+        helper: TerminatorCodegenHelper<'b, 'tcx>,
         mut bx: Bx,
         location: &mir::Place<'tcx>,
         target: mir::BasicBlock,
@@ -367,9 +367,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                        unwind);
     }
 
-    fn codegen_assert_terminator<'c>(
+    fn codegen_assert_terminator<'b>(
         &mut self,
-        helper: TerminatorCodegenHelper<'c, 'tcx>,
+        helper: TerminatorCodegenHelper<'b, 'tcx>,
         mut bx: Bx,
         terminator: &mir::Terminator<'tcx>,
         cond: &mir::Operand<'tcx>,
@@ -446,9 +446,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
     }
 
-    fn codegen_call_terminator<'c>(
+    fn codegen_call_terminator<'b>(
         &mut self,
-        helper: TerminatorCodegenHelper<'c, 'tcx>,
+        helper: TerminatorCodegenHelper<'b, 'tcx>,
         mut bx: Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
@@ -581,7 +581,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Prepare the return value destination
         let ret_dest = if let Some((ref dest, _)) = *destination {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs, is_intrinsic)
+            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs,
+                                  is_intrinsic)
         } else {
             ReturnDest::Nothing
         };
@@ -805,7 +806,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         mut bx: Bx,
         bb: mir::BasicBlock,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>
     ) {
         debug!("codegen_terminator: {:?}", terminator);
 
@@ -834,7 +835,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::TerminatorKind::SwitchInt {
                 ref discr, switch_ty, ref values, ref targets
             } => {
-                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, values, targets);
+                self.codegen_switchint_terminator(helper, bx, discr, switch_ty,
+                                                  values, targets);
             }
 
             mir::TerminatorKind::Return => {
@@ -1034,7 +1036,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// No-op in MSVC SEH scheme.
     fn landing_pad_to(
         &mut self,
-        target_bb: mir::BasicBlock,
+        target_bb: mir::BasicBlock
     ) -> Bx::BasicBlock {
         if let Some(block) = self.landing_pads[target_bb] {
             return block;
@@ -1103,7 +1105,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         dest: &mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
-        llargs: &mut Vec<Bx::Value>, is_intrinsic: bool,
+        llargs: &mut Vec<Bx::Value>, is_intrinsic: bool
     ) -> ReturnDest<'tcx, Bx::Value> {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {

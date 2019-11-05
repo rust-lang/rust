@@ -696,11 +696,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn rvalue_creates_operand(
-        &self,
-        rvalue: &mir::Rvalue<'tcx>,
-        span: Span,
-    ) -> bool {
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
             mir::Rvalue::Len(..) |

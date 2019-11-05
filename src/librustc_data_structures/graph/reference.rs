@@ -21,6 +21,7 @@ impl<'graph, G: WithSuccessors> WithSuccessors for &'graph G {
         (**self).successors(node)
     }
 }
+
 impl<'graph, G: WithPredecessors> WithPredecessors for &'graph G {
     fn predecessors(&self,
                     node: Self::Node)

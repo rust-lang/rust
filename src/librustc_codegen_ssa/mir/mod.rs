@@ -323,13 +323,14 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
+    let mir = fx.mir;
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
-    fx.mir.args_iter().enumerate().map(|(arg_index, local)| {
-        let arg_decl = &fx.mir.local_decls[local];
+    mir.args_iter().enumerate().map(|(arg_index, local)| {
+        let arg_decl = &mir.local_decls[local];
 
-        if Some(local) == fx.mir.spread_arg {
+        if Some(local) == mir.spread_arg {
             // This argument (e.g., the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple
