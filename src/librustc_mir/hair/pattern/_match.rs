@@ -588,6 +588,8 @@ enum Constructor<'tcx> {
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
     /// Array patterns of length n.
     FixedLenSlice(u64),
+    /// Slice patterns. Stands for any array constructor of length >= n.
+    VarLenSlice(u64),
 }
 
 // Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -602,6 +604,7 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
                 Constructor::ConstantRange(b_start, b_end, b_ty, b_range_end, _),
             ) => a_start == b_start && a_end == b_end && a_ty == b_ty && a_range_end == b_range_end,
             (Constructor::FixedLenSlice(a), Constructor::FixedLenSlice(b)) => a == b,
+            (Constructor::VarLenSlice(a), Constructor::VarLenSlice(b)) => a == b,
             _ => false,
         }
     }
@@ -611,6 +614,7 @@ impl<'tcx> Constructor<'tcx> {
     fn is_slice(&self) -> bool {
         match self {
             FixedLenSlice { .. } => true,
+            VarLenSlice { .. } => true,
             _ => false,
         }
     }
@@ -645,6 +649,7 @@ impl<'tcx> Constructor<'tcx> {
                 )
             }
             Constructor::FixedLenSlice(val) => format!("[{}]", val),
+            Constructor::VarLenSlice(val) => format!("[{}, ..]", val),
             _ => bug!("bad constructor being displayed: `{:?}", self),
         }
     }
@@ -653,18 +658,58 @@ impl<'tcx> Constructor<'tcx> {
     // anything in `other_ctors`.
     fn subtract_ctors(
         &self,
+        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         other_ctors: &Vec<Constructor<'tcx>>,
     ) -> Vec<Constructor<'tcx>> {
         match self {
             // Those constructors can only match themselves.
-            Single | Variant(_) | FixedLenSlice(_) => {
+            Single | Variant(_) => {
                 if other_ctors.iter().any(|c| c == self) {
                     vec![]
                 } else {
                     vec![self.clone()]
                 }
+            }
+            FixedLenSlice(_) | VarLenSlice(_) => {
+                let mut remaining_ctors = if let VarLenSlice(len) = self {
+                    (*len..pcx.max_slice_length + 1).map(FixedLenSlice).collect()
+                } else {
+                    vec![self.clone()]
+                };
+
+                // For each used ctor, subtract from the current set of constructors.
+                // Naming: we remove the "neg" constructors from the "pos" ones.
+                // Remember, VarLenSlice(n) covers the union of FixedLenSlice from
+                // n to infinity.
+                for neg_ctor in other_ctors {
+                    remaining_ctors = remaining_ctors
+                        .into_iter()
+                        .flat_map(|pos_ctor| -> SmallVec<[Constructor<'tcx>; 1]> {
+                            // Compute pos_ctor \ neg_ctor
+                            match (&pos_ctor, neg_ctor) {
+                                (FixedLenSlice(pos_len), VarLenSlice(neg_len)) => {
+                                    if neg_len <= pos_len {
+                                        smallvec![]
+                                    } else {
+                                        smallvec![pos_ctor]
+                                    }
+                                }
+                                _ if pos_ctor == *neg_ctor => smallvec![],
+                                _ => smallvec![pos_ctor],
+                            }
+                        })
+                        .collect();
+
+                    // If the constructors that have been considered so far already cover
+                    // the entire range of `self`, no need to look at more constructors.
+                    if remaining_ctors.is_empty() {
+                        break;
+                    }
+                }
+
+                remaining_ctors
             }
             ConstantRange(..) | ConstantValue(..) => {
                 let mut remaining_ctors = vec![self.clone()];
@@ -719,7 +764,7 @@ impl<'tcx> Constructor<'tcx> {
         match ty.kind {
             ty::Tuple(ref fs) => fs.len() as u64,
             ty::Slice(..) | ty::Array(..) => match *self {
-                FixedLenSlice(length) => length,
+                FixedLenSlice(length) | VarLenSlice(length) => length,
                 ConstantValue(..) => 0,
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
@@ -999,7 +1044,7 @@ fn all_constructors<'a, 'tcx>(
             if cx.is_uninhabited(sub_ty) {
                 vec![FixedLenSlice(0)]
             } else {
-                (0..pcx.max_slice_length + 1).map(|length| FixedLenSlice(length)).collect()
+                vec![VarLenSlice(0)]
             }
         }
         ty::Adt(def, substs) if def.is_enum() => def
@@ -1403,6 +1448,7 @@ impl<'tcx> IntRange<'tcx> {
 
 // A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
 struct MissingConstructors<'tcx> {
+    pcx: PatCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
@@ -1411,12 +1457,13 @@ struct MissingConstructors<'tcx> {
 
 impl<'tcx> MissingConstructors<'tcx> {
     fn new(
+        pcx: PatCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         all_ctors: Vec<Constructor<'tcx>>,
         used_ctors: Vec<Constructor<'tcx>>,
     ) -> Self {
-        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
+        MissingConstructors { pcx, tcx, param_env, all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -1435,7 +1482,7 @@ impl<'tcx> MissingConstructors<'tcx> {
     /// Iterate over all_ctors \ used_ctors
     fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
         self.all_ctors.iter().flat_map(move |req_ctor| {
-            req_ctor.subtract_ctors(self.tcx, self.param_env, &self.used_ctors)
+            req_ctor.subtract_ctors(self.pcx, self.tcx, self.param_env, &self.used_ctors)
         })
     }
 }
@@ -1531,9 +1578,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
         split_grouped_constructors(
             cx.tcx,
             cx.param_env,
+            pcx,
             constructors,
             matrix,
-            pcx.ty,
             pcx.span,
             Some(hir_id),
         )
@@ -1578,7 +1625,8 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // non-wildcard patterns in the current column. To determine if
         // the set is empty, we can check that `.peek().is_none()`, so
         // we only fully construct them on-demand, because they're rarely used and can be big.
-        let missing_ctors = MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, used_ctors);
+        let missing_ctors =
+            MissingConstructors::new(pcx, cx.tcx, cx.param_env, all_ctors, used_ctors);
 
         debug!(
             "missing_ctors.empty()={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
@@ -1595,19 +1643,13 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
             let (all_ctors, _) = missing_ctors.into_inner();
-            split_grouped_constructors(
-                cx.tcx,
-                cx.param_env,
-                all_ctors,
-                matrix,
-                pcx.ty,
-                DUMMY_SP,
-                None,
-            )
-            .into_iter()
-            .map(|c| is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference, hir_id))
-            .find(|result| result.is_useful())
-            .unwrap_or(NotUseful)
+            split_grouped_constructors(cx.tcx, cx.param_env, pcx, all_ctors, matrix, DUMMY_SP, None)
+                .into_iter()
+                .map(|c| {
+                    is_useful_specialized(cx, matrix, v, c, pcx.ty, witness_preference, hir_id)
+                })
+                .find(|result| result.is_useful())
+                .unwrap_or(NotUseful)
         } else {
             let matrix = matrix.specialize_wildcard();
             let v = v.to_tail();
@@ -1731,7 +1773,7 @@ fn pat_constructors<'tcx>(
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
-                Some((pat_len..pcx.max_slice_length + 1).map(FixedLenSlice).collect())
+                Some(vec![VarLenSlice(pat_len)])
             } else {
                 Some(vec![FixedLenSlice(pat_len)])
             }
@@ -1755,7 +1797,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx>(
     match ty.kind {
         ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
         ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
-            FixedLenSlice(length) => (0..length).map(|_| ty).collect(),
+            FixedLenSlice(length) | VarLenSlice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(..) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
         },
@@ -1914,21 +1956,22 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
 ///
 /// `hir_id` is `None` when we're evaluating the wildcard pattern, do not lint for overlapping in
 /// ranges that case.
+///
+/// This also splits variable-length slices into fixed-length slices.
 fn split_grouped_constructors<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    pcx: PatCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     matrix: &Matrix<'p, 'tcx>,
-    ty: Ty<'tcx>,
     span: Span,
     hir_id: Option<HirId>,
 ) -> Vec<Constructor<'tcx>> {
+    let ty = pcx.ty;
     let mut split_ctors = Vec::with_capacity(ctors.len());
 
     for ctor in ctors.into_iter() {
         match ctor {
-            // For now, only ranges may denote groups of "subconstructors", so we only need to
-            // special-case constant ranges.
             ConstantRange(..) if should_treat_range_exhaustively(tcx, &ctor) => {
                 // We only care about finding all the subranges within the range of the constructor
                 // range. Anything else is irrelevant, because it is guaranteed to result in
@@ -2009,6 +2052,9 @@ fn split_grouped_constructors<'p, 'tcx>(
                 {
                     split_ctors.push(IntRange::range_to_ctor(tcx, ty, range, span));
                 }
+            }
+            VarLenSlice(len) => {
+                split_ctors.extend((len..pcx.max_slice_length + 1).map(FixedLenSlice))
             }
             // Any other constructor can be used unchanged.
             _ => split_ctors.push(ctor),
@@ -2252,7 +2298,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
-            FixedLenSlice(..) => {
+            FixedLenSlice(..) | VarLenSlice(..) => {
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
