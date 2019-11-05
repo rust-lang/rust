@@ -1,6 +1,6 @@
 // revisions: cfail1 cfail2
 // should-ice
-// error-pattern: compilation successful
+// error-pattern: fatal error triggered by #[rustc_error]
 
 #![feature(rustc_attrs)]
 

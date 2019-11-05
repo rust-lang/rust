@@ -1,4 +1,4 @@
-error: compilation successful
+error: fatal error triggered by #[rustc_error]
   --> $DIR/bound-lifetime-in-return-only.rs:49:1
    |
 LL | fn main() { }

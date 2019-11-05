@@ -1,4 +1,4 @@
-error: compilation successful
+error: fatal error triggered by #[rustc_error]
   --> $DIR/hr-subtype.rs:100:1
    |
 LL | / fn main() {

@@ -45,4 +45,4 @@ fn clause2<T>() where T: for<'a> Fn() -> <() as Foo<'a>>::Item {
 }
 
 #[rustc_error]
-fn main() { } //[ok]~ ERROR compilation successful
+fn main() { } //[ok]~ ERROR fatal error triggered by #[rustc_error]

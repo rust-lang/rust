@@ -29,7 +29,10 @@ pub mod symbol_names_test;
 
 
 pub fn trigger_delay_span_bug(tcx: TyCtxt<'_>, key: DefId) {
-    tcx.sess.delay_span_bug(tcx.def_span(key), "compilation successful");
+    tcx.sess.delay_span_bug(
+        tcx.def_span(key),
+        "delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]"
+    );
 }
 
 /// check for the #[rustc_error] annotation, which forces an
@@ -53,7 +56,10 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
                     }
                     // bare #[rustc_error]
                     None => {
-                        tcx.sess.span_fatal(tcx.def_span(def_id), "compilation successful");
+                        tcx.sess.span_fatal(
+                            tcx.def_span(def_id),
+                            "fatal error triggered by #[rustc_error]"
+                        );
                     }
                 }
             }

@@ -46,4 +46,4 @@ fn ok2(_: &dyn for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>) {
 }
 
 #[rustc_error]
-fn main() { } //[ok]~ ERROR compilation successful
+fn main() { } //[ok]~ ERROR fatal error triggered by #[rustc_error]

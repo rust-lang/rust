@@ -98,9 +98,9 @@ check! { bound_a_b_ret_a_vs_bound_a_ret_a: (for<'a,'b> fn(&'a u32, &'b u32) -> &
 
 #[rustc_error]
 fn main() {
-//[bound_a_vs_bound_a]~^ ERROR compilation successful
-//[bound_a_vs_bound_b]~^^ ERROR compilation successful
-//[bound_inv_a_vs_bound_inv_b]~^^^ ERROR compilation successful
-//[bound_co_a_vs_bound_co_b]~^^^^ ERROR compilation successful
-//[free_x_vs_free_x]~^^^^^ ERROR compilation successful
+//[bound_a_vs_bound_a]~^ ERROR fatal error triggered by #[rustc_error]
+//[bound_a_vs_bound_b]~^^ ERROR fatal error triggered by #[rustc_error]
+//[bound_inv_a_vs_bound_inv_b]~^^^ ERROR fatal error triggered by #[rustc_error]
+//[bound_co_a_vs_bound_co_b]~^^^^ ERROR fatal error triggered by #[rustc_error]
+//[free_x_vs_free_x]~^^^^^ ERROR fatal error triggered by #[rustc_error]
 }
