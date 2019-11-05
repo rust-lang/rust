@@ -199,6 +199,8 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                             bb: location.block,
                             index: 2,
                         });
+
+                        return; // Don't double count `simd_shuffle` candidates
                     }
                 }
 
