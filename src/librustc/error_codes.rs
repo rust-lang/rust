@@ -335,7 +335,7 @@ This works because `Box` is a pointer, so its size is well-known.
 "##,
 
 E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
+This error indicates that the compiler was unable to sensibly evaluate a
 constant expression that had to be evaluated. Attempting to divide by 0
 or causing integer overflow are two ways to induce this error. For example:
 
