@@ -39,7 +39,7 @@ pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
-    marker: PhantomData<Box<Node<T>>>,
+    marker: PhantomData<T>,
 }
 
 struct Node<T> {
@@ -60,7 +60,7 @@ pub struct Iter<'a, T: 'a> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
-    marker: PhantomData<&'a Node<T>>,
+    marker: PhantomData<&'a T>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -90,7 +90,7 @@ impl<T> Clone for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     // We do *not* exclusively own the entire list here, references to node's `element`
-    // have been handed out by the iterator!  So be careful when using this; the methods
+    // have been handed out by the iterator! So be careful when using this; the methods
     // called must be aware that there can be aliasing pointers to `element`.
     list: &'a mut LinkedList<T>,
     head: Option<NonNull<Node<T>>>,
