@@ -1,0 +1,135 @@
+error[E0277]: `dyn Baz` doesn't implement `std::fmt::Debug`
+  --> $DIR/invalid-upcast.rs:35:35
+   |
+LL |     let _: &dyn std::fmt::Debug = baz;
+   |                                   ^^^ `dyn Baz` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `dyn Baz`
+   = note: required for the cast to the object type `dyn std::fmt::Debug`
+
+error[E0277]: `dyn Baz` cannot be sent between threads safely
+  --> $DIR/invalid-upcast.rs:37:24
+   |
+LL |     let _: &dyn Send = baz;
+   |                        ^^^ `dyn Baz` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dyn Baz`
+   = note: required for the cast to the object type `dyn std::marker::Send`
+
+error[E0277]: `dyn Baz` cannot be shared between threads safely
+  --> $DIR/invalid-upcast.rs:39:24
+   |
+LL |     let _: &dyn Sync = baz;
+   |                        ^^^ `dyn Baz` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `dyn Baz`
+   = note: required for the cast to the object type `dyn std::marker::Sync`
+
+error[E0277]: the trait bound `dyn Baz: Bar` is not satisfied
+  --> $DIR/invalid-upcast.rs:42:25
+   |
+LL |     let bar: &dyn Bar = baz;
+   |                         ^^^ the trait `Bar` is not implemented for `dyn Baz`
+   |
+   = note: required for the cast to the object type `dyn Bar`
+
+error[E0277]: `dyn Bar` doesn't implement `std::fmt::Debug`
+  --> $DIR/invalid-upcast.rs:44:35
+   |
+LL |     let _: &dyn std::fmt::Debug = bar;
+   |                                   ^^^ `dyn Bar` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `dyn Bar`
+   = note: required for the cast to the object type `dyn std::fmt::Debug`
+
+error[E0277]: `dyn Bar` cannot be sent between threads safely
+  --> $DIR/invalid-upcast.rs:46:24
+   |
+LL |     let _: &dyn Send = bar;
+   |                        ^^^ `dyn Bar` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dyn Bar`
+   = note: required for the cast to the object type `dyn std::marker::Send`
+
+error[E0277]: `dyn Bar` cannot be shared between threads safely
+  --> $DIR/invalid-upcast.rs:48:24
+   |
+LL |     let _: &dyn Sync = bar;
+   |                        ^^^ `dyn Bar` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `dyn Bar`
+   = note: required for the cast to the object type `dyn std::marker::Sync`
+
+error[E0277]: the trait bound `dyn Baz: Foo` is not satisfied
+  --> $DIR/invalid-upcast.rs:51:25
+   |
+LL |     let foo: &dyn Foo = baz;
+   |                         ^^^ the trait `Foo` is not implemented for `dyn Baz`
+   |
+   = note: required for the cast to the object type `dyn Foo`
+
+error[E0277]: `dyn Foo` doesn't implement `std::fmt::Debug`
+  --> $DIR/invalid-upcast.rs:53:35
+   |
+LL |     let _: &dyn std::fmt::Debug = foo;
+   |                                   ^^^ `dyn Foo` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `dyn Foo`
+   = note: required for the cast to the object type `dyn std::fmt::Debug`
+
+error[E0277]: `dyn Foo` cannot be sent between threads safely
+  --> $DIR/invalid-upcast.rs:55:24
+   |
+LL |     let _: &dyn Send = foo;
+   |                        ^^^ `dyn Foo` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dyn Foo`
+   = note: required for the cast to the object type `dyn std::marker::Send`
+
+error[E0277]: `dyn Foo` cannot be shared between threads safely
+  --> $DIR/invalid-upcast.rs:57:24
+   |
+LL |     let _: &dyn Sync = foo;
+   |                        ^^^ `dyn Foo` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `dyn Foo`
+   = note: required for the cast to the object type `dyn std::marker::Sync`
+
+error[E0277]: the trait bound `dyn Bar: Foo` is not satisfied
+  --> $DIR/invalid-upcast.rs:60:25
+   |
+LL |     let foo: &dyn Foo = bar;
+   |                         ^^^ the trait `Foo` is not implemented for `dyn Bar`
+   |
+   = note: required for the cast to the object type `dyn Foo`
+
+error[E0277]: `dyn Foo` doesn't implement `std::fmt::Debug`
+  --> $DIR/invalid-upcast.rs:62:35
+   |
+LL |     let _: &dyn std::fmt::Debug = foo;
+   |                                   ^^^ `dyn Foo` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `dyn Foo`
+   = note: required for the cast to the object type `dyn std::fmt::Debug`
+
+error[E0277]: `dyn Foo` cannot be sent between threads safely
+  --> $DIR/invalid-upcast.rs:64:24
+   |
+LL |     let _: &dyn Send = foo;
+   |                        ^^^ `dyn Foo` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `dyn Foo`
+   = note: required for the cast to the object type `dyn std::marker::Send`
+
+error[E0277]: `dyn Foo` cannot be shared between threads safely
+  --> $DIR/invalid-upcast.rs:66:24
+   |
+LL |     let _: &dyn Sync = foo;
+   |                        ^^^ `dyn Foo` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `dyn Foo`
+   = note: required for the cast to the object type `dyn std::marker::Sync`
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
