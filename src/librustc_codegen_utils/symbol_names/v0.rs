@@ -601,8 +601,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             | DefPathData::Misc
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
-            | DefPathData::LifetimeNs(_)
-            | DefPathData::GlobalMetaData(_) => {
+            | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
         };

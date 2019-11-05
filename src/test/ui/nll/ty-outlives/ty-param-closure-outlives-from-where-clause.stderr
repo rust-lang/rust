@@ -11,7 +11,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:23 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:14 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]::{{closure}}[0]) with closure substs [
                T,
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T)),
@@ -32,7 +32,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:20 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]) with substs [
+   = note: defining type: DefId(0:11 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]) with substs [
                T,
            ]
 
@@ -49,7 +49,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:20 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(21), 'a))`...
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:11 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(12), 'a))`...
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
@@ -64,7 +64,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:27 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:18 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
@@ -85,7 +85,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:24 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]) with substs [
+   = note: defining type: DefId(0:15 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]) with substs [
                '_#1r,
                T,
            ]
@@ -101,7 +101,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:32 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:23 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
@@ -123,7 +123,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:28 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]) with substs [
+   = note: defining type: DefId(0:19 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]) with substs [
                '_#1r,
                T,
            ]
@@ -139,7 +139,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:28 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(29), 'a))`...
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:19 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(20), 'a))`...
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26
@@ -151,7 +151,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:37 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:28 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                '_#2r,
                T,
@@ -173,7 +173,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:33 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]) with substs [
+   = note: defining type: DefId(0:24 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]) with substs [
                '_#1r,
                '_#2r,
                T,
