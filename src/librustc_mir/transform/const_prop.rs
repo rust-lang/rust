@@ -164,6 +164,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<BasicBlock>,
+        _unwind: Option<BasicBlock>
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("calling intrinsics isn't supported in ConstProp");
     }

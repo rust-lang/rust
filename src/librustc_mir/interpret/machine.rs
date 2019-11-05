@@ -20,10 +20,6 @@ use super::{
 /// to provide further control over the popping of the stack frame
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum StackPopInfo {
-    /// Indicates that we have just started unwinding
-    /// as the result of panic
-    StartUnwinding,
-
     /// Indicates that no special handling should be
     /// done - we'll either return normally or unwind
     /// based on the terminator for the function
@@ -177,6 +173,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
+        ret: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
     /// Called for read access to a foreign static item.

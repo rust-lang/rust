@@ -39,9 +39,6 @@ cfg_if::cfg_if! {
     if #[cfg(miri)] {
         #[path = "miri.rs"]
         mod imp;
-        // Export this at the root of the crate so that Miri
-        // has a stable palce to look it up
-        pub use imp::miri_panic_trampoline;
     } else if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;

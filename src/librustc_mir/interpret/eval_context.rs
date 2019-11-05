@@ -585,21 +585,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             "tried to pop a stack frame, but there were none",
         );
         let stack_pop_info = M::stack_pop(self, frame.extra, unwinding)?;
-        match (unwinding, stack_pop_info) {
-            (true, StackPopInfo::StartUnwinding) =>
-                bug!("Attempted to start unwinding while already unwinding!"),
-            (false, StackPopInfo::StopUnwinding) =>
-                bug!("Attempted to stop unwinding while there is no unwinding!"),
-            _ => {}
+        if let (false, StackPopInfo::StopUnwinding) = (unwinding, stack_pop_info) {
+            bug!("Attempted to stop unwinding while there is no unwinding!");
         }
 
         // Now where do we jump next?
 
         // Determine if we leave this function normally or via unwinding.
-        let cur_unwinding = match stack_pop_info {
-            StackPopInfo::StartUnwinding => true,
-            StackPopInfo::StopUnwinding => false,
-            _ => unwinding
+        let cur_unwinding = if let StackPopInfo::StopUnwinding = stack_pop_info {
+            false
+        } else {
+            unwinding
         };
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.

@@ -265,7 +265,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 let old_stack = self.cur_frame();
-                M::call_intrinsic(self, span, instance, args, dest)?;
+                M::call_intrinsic(self, span, instance, args, dest, ret, unwind)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
                 if ret.is_some() {

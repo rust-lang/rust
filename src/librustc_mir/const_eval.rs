@@ -376,6 +376,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<mir::BasicBlock>,
+        _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         if ecx.emulate_intrinsic(span, instance, args, dest)? {
             return Ok(());
