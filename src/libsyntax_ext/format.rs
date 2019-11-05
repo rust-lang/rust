@@ -374,10 +374,12 @@ impl<'a, 'b> Context<'a, 'b> {
                                 format!("are {} arguments", count)
                             },
                         ));
-                        e.span_label(
-                            self.args[pos].span,
-                            "this parameter corresponds to the precision flag",
-                        );
+                        if let Some(arg) = self.args.get(pos) {
+                            e.span_label(
+                                arg.span,
+                                "this parameter corresponds to the precision flag",
+                            );
+                        }
                         zero_based_note = true;
                     }
                     _ => {}
