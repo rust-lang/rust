@@ -3045,4 +3045,9 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(cnum, LOCAL_CRATE);
         attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
     };
+    providers.has_panic_handler = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        // We want to check if the panic handler was defined in this crate
+        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+    };
 }
