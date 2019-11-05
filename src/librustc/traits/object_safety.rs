@@ -331,17 +331,26 @@ impl<'tcx> TyCtxt<'tcx> {
             return Some(MethodViolationCode::Generic);
         }
 
-        if self.predicates_of(method.def_id).predicates.iter()
-                // A trait object can't claim to live more than the concrete type,
-                // so outlives predicates will always hold.
-                .cloned()
-                .filter(|(p, _)| p.to_opt_type_outlives().is_none())
-                .collect::<Vec<_>>()
-                // Do a shallow visit so that `contains_illegal_self_type_reference`
-                // may apply it's custom visiting.
-                .visit_tys_shallow(|t| {
-                    self.contains_illegal_self_type_reference(trait_def_id, t)
-                }) {
+        if self
+            .predicates_of(method.def_id)
+            .predicates
+            .iter()
+            .cloned()
+            // A trait object can't claim to live more than the concrete type,
+            // so outlives predicates will always hold. Auto trait predicates
+            // are allowed as they don't affect vtables thus can't introduce
+            // unsoundness.
+            .filter(|(p, _)| {
+                p.to_opt_type_outlives().is_none()
+                    && p.to_opt_poly_trait_ref()
+                        .map_or(true, |trait_ref| !self.trait_is_auto(trait_ref.def_id()))
+            })
+            .collect::<Vec<_>>()
+            // Do a shallow visit so that `contains_illegal_self_type_reference`
+            // may apply it's custom visiting.
+            .visit_tys_shallow(|t| {
+                self.contains_illegal_self_type_reference(trait_def_id, t)
+            }) {
             return Some(MethodViolationCode::WhereClauseReferencesSelf);
         }
 
