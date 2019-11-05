@@ -153,7 +153,10 @@
 //! impl<T: ?Sized> Clone for Rc<T> {
 //!     fn clone(&self) -> Rc<T> {
 //!         self.inc_strong();
-//!         Rc { ptr: self.ptr }
+//!         Rc {
+//!             ptr: self.ptr,
+//!             phantom: PhantomData,
+//!         }
 //!     }
 //! }
 //!
