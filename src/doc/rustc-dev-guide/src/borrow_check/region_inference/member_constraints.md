@@ -97,7 +97,7 @@ placement of impl Trait, though in the future it may not be the case.
 We take some advantage of this fact, as it simplifies the current
 code. In particular, we don't have to consider a case like `'0 member
 of ['1, 'static]`, in which the value of both `'0` and `'1` are being
-inferred and hence changing. See [rust-lang/rust#61773] for more
+inferred and hence changing. See [rust-lang/rust#61773][#61773] for more
 information.
 
 [#61773]: https://github.com/rust-lang/rust/issues/61773

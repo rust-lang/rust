@@ -99,7 +99,7 @@ parameter `X` with respect to its defining class. `Term x Term`
 represents the "variance transform" as defined in the paper:
 
 >  If the variance of a type variable `X` in type expression `E` is `V2`
-  and the definition-site variance of the [corresponding] type parameter
+  and the definition-site variance of the corresponding type parameter
   of a class `C` is `V1`, then the variance of `X` in the type expression
   `C<E>` is `V3 = V1.xform(V2)`.
 

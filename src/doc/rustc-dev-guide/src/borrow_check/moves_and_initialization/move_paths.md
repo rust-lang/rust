@@ -88,6 +88,7 @@ If you have a [`Place`] and you would like to convert it to a [`MovePathIndex`],
 can do that using the [`MovePathLookup`] structure found in the [`rev_lookup`] field
 of [`MoveData`]. There are two different methods:
 
+[`MoveData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html
 [`MovePathLookup`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathLookup.html
 [`rev_lookup`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#structfield.rev_lookup
 
