@@ -161,6 +161,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = features.join(",");
     let features = CString::new(features).unwrap();
+    let abi = SmallCStr::new(&sess.target.target.options.llvm_abiname);
     let is_pie_binary = !find_features && is_pie_binary(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
@@ -170,7 +171,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
     Arc::new(move || {
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
-                triple.as_ptr(), cpu.as_ptr(), features.as_ptr(),
+                triple.as_ptr(), cpu.as_ptr(), features.as_ptr(), abi.as_ptr(),
                 code_model,
                 reloc_model,
                 opt_level,
