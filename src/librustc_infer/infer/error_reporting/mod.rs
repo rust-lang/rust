@@ -1589,6 +1589,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
         if let Some(exp_found) = exp_found {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
+
+            if let &TypeError::Traits(ref exp_found_traits) = terr {
+                self.note_enable_trait_upcasting_where_appropriate(
+                    &exp_found_traits, diag
+                );
+            }
         }
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases
@@ -1665,6 +1671,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    /// When encountering a coercion to a supertrait object is attempted,
+    /// note that this is permitted with the "trait upcasting" feature enabled.
+    fn note_enable_trait_upcasting_where_appropriate(
+        &self,
+        exp_found: &ty::error::ExpectedFound<DefId>,
+        diag: &mut DiagnosticBuilder<'tcx>,
+    ) {
+        use rustc::ty::{Binder, TraitRef};
+
+        let trait_ref = Binder::bind(TraitRef::identity(self.tcx, exp_found.found));
+        let supertraits = crate::traits::supertraits(self.tcx, trait_ref);
+        if supertraits.into_iter().any(|trait_ref| trait_ref.def_id() == exp_found.expected) {
+            diag.note("enable the `trait_upcasting` feature to permit upcasting of trait objects");
         }
     }
 
