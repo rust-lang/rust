@@ -4,7 +4,7 @@ note: External requirements
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:20 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:11 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]::{{closure}}[0]) with closure substs [
                T,
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 'r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 's)) T)),
@@ -21,7 +21,7 @@ LL | |     twice(cell, value, |a, b| invoke(a, b));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:18 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]) with substs [
+   = note: defining type: DefId(0:9 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]) with substs [
                T,
            ]
 
@@ -31,7 +31,7 @@ note: External requirements
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:24 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:15 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]::{{closure}}[0]) with closure substs [
                T,
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 'r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 's)) T)),
@@ -49,7 +49,7 @@ LL | |
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:21 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]) with substs [
+   = note: defining type: DefId(0:12 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]) with substs [
                T,
            ]
 
@@ -59,7 +59,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:21 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(22), 'a))`...
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:12 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(13), 'a))`...
 
 error: aborting due to previous error
 
