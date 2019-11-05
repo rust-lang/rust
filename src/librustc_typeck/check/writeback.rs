@@ -4,7 +4,6 @@
 
 use crate::check::FnCtxt;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
@@ -110,11 +109,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         body: &'tcx hir::Body,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'tcx> {
-        let owner = body.id().hir_id;
+        let owner = body.id().hir_id.owner;
 
         WritebackCx {
             fcx,
-            tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
+            tables: ty::TypeckTables::empty(Some(owner.to_def_id())),
             body,
             rustc_dump_user_substs,
         }
@@ -358,7 +357,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
             let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
+                owner: common_local_id_root.assert_local(),
                 local_id: id,
             };
             self.tables
@@ -390,7 +389,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let mut errors_buffer = Vec::new();
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
             let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
+                owner: common_local_id_root.assert_local(),
                 local_id,
             };
 
@@ -621,7 +620,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
             let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
+                owner: common_local_id_root.assert_local(),
                 local_id,
             };
             let fn_sig = self.resolve(fn_sig, &hir_id);
@@ -638,7 +637,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
             let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
+                owner: common_local_id_root.assert_local(),
                 local_id,
             };
             let ftys = self.resolve(ftys, &hir_id);

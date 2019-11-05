@@ -667,13 +667,14 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
         // Load the `DefPathHash` which is what we encoded the `DefIndex` as.
         let def_path_hash = DefPathHash::decode(self)?;
 
-        // Use the `DefPathHash` to map to the current `DefId`.
-        let def_id = self.tcx()
-                         .def_path_hash_to_def_id
-                         .as_ref()
-                         .unwrap()[&def_path_hash];
-
-        debug_assert!(def_id.is_local());
+        // Use the `DefPathHash` to map to the current `LocalDefId`.
+        // FIXME(eddyb) make this cheaper by having `LocalDefId` instead of
+        // `DefId` in `def_path_hash_to_def_id`.
+        let owner = self.tcx()
+            .def_path_hash_to_def_id
+            .as_ref()
+            .unwrap()[&def_path_hash]
+            .assert_local();
 
         // The `ItemLocalId` needs no remapping.
         let local_id = hir::ItemLocalId::decode(self)?;
@@ -681,7 +682,7 @@ impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
         // Reconstruct the `HirId` and look up the corresponding `NodeId` in the
         // context of the current session.
         Ok(hir::HirId {
-            owner: def_id.index,
+            owner,
             local_id
         })
     }
@@ -902,7 +903,7 @@ where
             local_id,
         } = *id;
 
-        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner);
+        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner.index);
 
         def_path_hash.encode(self)?;
         local_id.encode(self)

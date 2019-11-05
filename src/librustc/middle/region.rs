@@ -672,7 +672,7 @@ impl<'tcx> ScopeTree {
                               region scope tree for {:?} / {:?}",
                              param_owner,
                              self.root_parent.map(|id| tcx.hir().local_def_id(id)),
-                             self.root_body.map(|hir_id| DefId::local(hir_id.owner))));
+                             self.root_body.map(|hir_id| hir_id.owner)));
             }
 
             // The trait/impl lifetime is in scope for the method's body.

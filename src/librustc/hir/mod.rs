@@ -64,7 +64,7 @@ pub mod ptr;
 pub mod upvars;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
-/// composed of the `owner`, which is the `DefIndex` of the directly enclosing
+/// composed of the `owner`, which is the `LocalDefId` of the directly enclosing
 /// `hir::Item`, `hir::TraitItem`, or `hir::ImplItem` (i.e., the closest "item-like"),
 /// and the `local_id` which is unique within the given owner.
 ///
@@ -75,20 +75,8 @@ pub mod upvars;
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct HirId {
-    pub owner: DefIndex,
+    pub owner: LocalDefId,
     pub local_id: ItemLocalId,
-}
-
-impl HirId {
-    pub fn owner_def_id(self) -> DefId {
-        DefId::local(self.owner)
-    }
-
-    pub fn owner_local_def_id(self) -> LocalDefId {
-        LocalDefId {
-            index: self.owner,
-        }
-    }
 }
 
 impl rustc_serialize::UseSpecializedEncodable for HirId {
@@ -98,7 +86,9 @@ impl rustc_serialize::UseSpecializedEncodable for HirId {
             local_id,
         } = *self;
 
-        owner.encode(s)?;
+        // HACK(eddyb) this avoids `LocalDefId` because that encodes as a `DefId`,
+        // maybe try to fix that? (but it's unclear if anything relies on it)
+        owner.index.encode(s)?;
         local_id.encode(s)?;
         Ok(())
     }
@@ -106,7 +96,9 @@ impl rustc_serialize::UseSpecializedEncodable for HirId {
 
 impl rustc_serialize::UseSpecializedDecodable for HirId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<HirId, D::Error> {
-        let owner = DefIndex::decode(d)?;
+        // HACK(eddyb) this avoids `LocalDefId` because that encodes as a `DefId`,
+        // maybe try to fix that? (but it's unclear if anything relies on it)
+        let owner = LocalDefId { index: DefIndex::decode(d)? };
         let local_id = ItemLocalId::decode(d)?;
 
         Ok(HirId {
@@ -145,12 +137,12 @@ pub use self::item_local_id_inner::ItemLocalId;
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
 pub const CRATE_HIR_ID: HirId = HirId {
-    owner: CRATE_DEF_INDEX,
+    owner: LocalDefId { index: CRATE_DEF_INDEX },
     local_id: ItemLocalId::from_u32_const(0)
 };
 
 pub const DUMMY_HIR_ID: HirId = HirId {
-    owner: CRATE_DEF_INDEX,
+    owner: LocalDefId { index: CRATE_DEF_INDEX },
     local_id: DUMMY_ITEM_LOCAL_ID,
 };
 

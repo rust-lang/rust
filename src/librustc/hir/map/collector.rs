@@ -34,7 +34,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     // These fields keep track of the currently relevant DepNodes during
     // the visitor's traversal.
-    current_dep_node_owner: DefIndex,
+    current_dep_node_owner: LocalDefId,
     current_signature_dep_index: DepNodeIndex,
     current_full_dep_index: DepNodeIndex,
     currently_in_body: bool,
@@ -153,7 +153,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             parent_node: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
-            current_dep_node_owner: CRATE_DEF_INDEX,
+            current_dep_node_owner: LocalDefId { index: CRATE_DEF_INDEX },
             currently_in_body: false,
             dep_graph,
             definitions,
@@ -227,7 +227,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let local_map = &mut self.map[id.owner];
+        let local_map = &mut self.map[id.owner.index];
         let i = id.local_id.as_u32() as usize;
         let len = local_map.len();
         if i >= len {
@@ -274,10 +274,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     self.source_map.span_to_string(span),
                     node_str,
                     self.definitions
-                        .def_path(self.current_dep_node_owner)
+                        .def_path(self.current_dep_node_owner.index)
                         .to_string_no_crate(),
                     self.current_dep_node_owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate(),
+                    self.definitions.def_path(hir_id.owner.index).to_string_no_crate(),
                     hir_id.owner,
                     forgot_str,
                 )
@@ -300,7 +300,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn with_dep_node_owner<T: for<'b> HashStable<StableHashingContext<'b>>,
                            F: FnOnce(&mut Self)>(&mut self,
-                                                 dep_node_owner: DefIndex,
+                                                 dep_node_owner: LocalDefId,
                                                  item_like: &T,
                                                  f: F) {
         let prev_owner = self.current_dep_node_owner;
@@ -308,7 +308,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let prev_full_dep_index = self.current_full_dep_index;
         let prev_in_body = self.currently_in_body;
 
-        let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
+        let def_path_hash = self.definitions.def_path_hash(dep_node_owner.index);
 
         let (signature_dep_index, full_dep_index) = alloc_hir_dep_nodes(
             self.dep_graph,
@@ -369,7 +369,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_item(&mut self, i: &'hir Item) {
         debug!("visit_item: {:?}", i);
-        debug_assert_eq!(i.hir_id.owner,
+        debug_assert_eq!(i.hir_id.owner.index,
                          self.definitions.opt_def_index(self.hir_to_node_id[&i.hir_id]).unwrap());
         self.with_dep_node_owner(i.hir_id.owner, i, |this| {
             this.insert(i.span, i.hir_id, Node::Item(i));
@@ -399,7 +399,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
-        debug_assert_eq!(ti.hir_id.owner,
+        debug_assert_eq!(ti.hir_id.owner.index,
                          self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap());
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {
             this.insert(ti.span, ti.hir_id, Node::TraitItem(ti));
@@ -411,7 +411,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_impl_item(&mut self, ii: &'hir ImplItem) {
-        debug_assert_eq!(ii.hir_id.owner,
+        debug_assert_eq!(ii.hir_id.owner.index,
                          self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap());
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {
             this.insert(ii.span, ii.hir_id, Node::ImplItem(ii));
@@ -531,10 +531,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir MacroDef) {
-        let node_id = self.hir_to_node_id[&macro_def.hir_id];
-        let def_index = self.definitions.opt_def_index(node_id).unwrap();
-
-        self.with_dep_node_owner(def_index, macro_def, |this| {
+        self.with_dep_node_owner(macro_def.hir_id.owner, macro_def, |this| {
             this.insert(macro_def.span, macro_def.hir_id, Node::MacroDef(macro_def));
         });
     }

@@ -174,7 +174,7 @@ impl rustc_serialize::UseSpecializedDecodable for DefId {}
 /// few cases where we know that only DefIds from the local crate are expected
 /// and a DefId from a different crate would signify a bug somewhere. This
 /// is when LocalDefId comes in handy.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LocalDefId {
     pub index: DefIndex,
 }

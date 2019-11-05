@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // compile-flags: -Z span_free_formats
 
 // Tests that MIR inliner can handle closure arguments,
@@ -20,7 +21,7 @@ fn foo<T: Copy>(_t: T, q: &i32) -> i32 {
 // ...
 // bb0: {
 //     ...
-//     _3 = [closure@HirId { owner: DefIndex(4), local_id: 31 }];
+//     _3 = [closure@HirId { owner: DefId(0:4 ~ inline_closure_borrows_arg[317d]::foo[0]), local_id: 31 }];
 //     ...
 //     _4 = &_3;
 //     ...

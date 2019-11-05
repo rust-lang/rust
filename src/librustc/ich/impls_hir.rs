@@ -374,9 +374,10 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
             import_ids,
         } = self;
 
-        let import_keys = import_ids.iter().map(|node_id| hcx.node_to_hir_id(*node_id))
-                                           .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
-                                                          hir_id.local_id)).collect();
+        let import_keys = import_ids.iter()
+            .map(|node_id| hcx.node_to_hir_id(*node_id))
+            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner.index), hir_id.local_id))
+            .collect();
         (hcx.def_path_hash(*def_id), import_keys)
     }
 }

@@ -1397,7 +1397,7 @@ impl EncodeContext<'tcx> {
             let tcx = self.tcx;
             Some(self.lazy(tcx.hir().krate().items.values().filter_map(|item| {
                 if item.attrs.iter().any(|attr| is_proc_macro_attr(attr)) {
-                    Some(item.hir_id.owner)
+                    Some(item.hir_id.owner.index)
                 } else {
                     None
                 }

@@ -565,7 +565,7 @@ impl<'tcx> DepNodeParams<'tcx> for HirId {
             local_id,
         } = *self;
 
-        let def_path_hash = tcx.def_path_hash(DefId::local(owner));
+        let def_path_hash = tcx.def_path_hash(owner.to_def_id());
         let local_id = Fingerprint::from_smaller_hash(local_id.as_u32().into());
 
         def_path_hash.0.combine(local_id)

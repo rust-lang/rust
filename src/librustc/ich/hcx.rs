@@ -238,7 +238,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::HirId {
                     local_id,
                 } = *self;
 
-                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
+                hcx.local_def_path_hash(owner.index).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
             }
         }
@@ -252,7 +252,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
     fn to_stable_hash_key(&self,
                           hcx: &StableHashingContext<'a>)
                           -> (DefPathHash, hir::ItemLocalId) {
-        let def_path_hash = hcx.local_def_path_hash(self.owner);
+        let def_path_hash = hcx.local_def_path_hash(self.owner.index);
         (def_path_hash, self.local_id)
     }
 }

@@ -222,7 +222,7 @@ impl<'map> Iterator for ParentHirIterator<'map> {
 impl<'hir> Map<'hir> {
     #[inline]
     fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map.get(id.owner)?;
+        let local_map = self.map.get(id.owner.index)?;
         local_map.get(id.local_id)?.as_ref()
     }
 
@@ -466,8 +466,7 @@ impl<'hir> Map<'hir> {
     pub fn maybe_body_owned_by(&self, hir_id: HirId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(hir_id) {
             if self.dep_graph.is_fully_enabled() {
-                let hir_id_owner = hir_id.owner;
-                let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+                let def_path_hash = self.definitions.def_path_hash(hir_id.owner.index);
                 self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
             }
 
@@ -646,8 +645,7 @@ impl<'hir> Map<'hir> {
     /// which can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
         if self.dep_graph.is_fully_enabled() {
-            let hir_id_owner = hir_id.owner;
-            let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+            let def_path_hash = self.definitions.def_path_hash(hir_id.owner.index);
             self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
         }
 
@@ -1034,7 +1032,7 @@ impl<'hir> Map<'hir> {
             local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
                 // Reconstruct the `HirId` based on the 3 indices we used to find it.
                 HirId {
-                    owner,
+                    owner: LocalDefId { index: owner },
                     local_id: i,
                 }
             }))
