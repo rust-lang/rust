@@ -209,12 +209,12 @@ impl TokenCursor {
         loop {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
-                TokenTree::open_tt(self.frame.span.open, self.frame.delim)
+                TokenTree::open_tt(self.frame.span, self.frame.delim)
             } else if let Some(tree) = self.frame.tree_cursor.next() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
-                TokenTree::close_tt(self.frame.span.close, self.frame.delim)
+                TokenTree::close_tt(self.frame.span, self.frame.delim)
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
                 continue

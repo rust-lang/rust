@@ -15,7 +15,7 @@
 
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
 
-use syntax_pos::{BytePos, Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
@@ -110,23 +110,13 @@ impl TokenTree {
     }
 
     /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(span: Span, delim: DelimToken) -> TokenTree {
-        let open_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_hi(span.lo() + BytePos(delim.len() as u32))
-        };
-        TokenTree::token(token::OpenDelim(delim), open_span)
+    pub fn open_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
+        TokenTree::token(token::OpenDelim(delim), span.open)
     }
 
     /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(span: Span, delim: DelimToken) -> TokenTree {
-        let close_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_lo(span.hi() - BytePos(delim.len() as u32))
-        };
-        TokenTree::token(token::CloseDelim(delim), close_span)
+    pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
+        TokenTree::token(token::CloseDelim(delim), span.close)
     }
 }
 

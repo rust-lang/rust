@@ -566,7 +566,7 @@ impl FirstSets {
                     }
                     TokenTree::Delimited(span, ref delimited) => {
                         build_recur(sets, &delimited.tts[..]);
-                        first.replace_with(delimited.open_tt(span.open));
+                        first.replace_with(delimited.open_tt(span));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts[..]);
@@ -628,7 +628,7 @@ impl FirstSets {
                     return first;
                 }
                 TokenTree::Delimited(span, ref delimited) => {
-                    first.add_one(delimited.open_tt(span.open));
+                    first.add_one(delimited.open_tt(span));
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
@@ -826,7 +826,7 @@ fn check_matcher_core(
                 }
             }
             TokenTree::Delimited(span, ref d) => {
-                let my_suffix = TokenSet::singleton(d.close_tt(span.close));
+                let my_suffix = TokenSet::singleton(d.close_tt(span));
                 check_matcher_core(sess, features, attrs, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
