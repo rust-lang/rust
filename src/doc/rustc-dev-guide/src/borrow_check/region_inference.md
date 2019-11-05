@@ -100,7 +100,7 @@ The kinds of region elements are as follows:
 - There is an element `!1` for each placeholder region `!1`. This
   corresponds (intuitively) to some unknown set of other elements –
   for details on placeholders, see the section
-  [placeholders and universes](#placeholder).
+  [placeholders and universes](region_inference/placeholders_and_universes.md).
 
 ## Constraints
 
