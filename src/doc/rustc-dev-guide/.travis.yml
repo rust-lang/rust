@@ -4,7 +4,7 @@ rust:
 cache:
 - cargo
 - directories:
-  - $HOME/linkcheck/
+  - book/linkcheck/
 before_install:
 - shopt -s globstar
 - MAX_LINE_LENGTH=100 bash ci/check_line_lengths.sh src/**/*.md
@@ -12,7 +12,7 @@ install:
 - source ~/.cargo/env || true
 - bash -x ci/install.sh
 script:
-- bash -x ci/build.sh
+- mdbook build
 - mdbook test
 notifications:
   email:

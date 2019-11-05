@@ -11,6 +11,7 @@ create-missing = false
 [output.html.search]
 
 [output.linkcheck]
-command = "sed 's/.*//'" # tell mdbook not to run, since we want to run it manually
 follow-web-links = true
 exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "dl\\.acm\\.org" ]
+cache-timeout = 172800
+warning-policy = "error"
