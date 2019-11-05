@@ -16,7 +16,7 @@ use rustc_data_structures::fx::FxHashSet;
 use std::hash::Hash;
 
 use super::{
-    GlobalAlloc, InterpResult,
+    GlobalAlloc, InterpResult, CheckInAllocMsg,
     Scalar, OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
@@ -424,7 +424,12 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // alignment should take attributes into account).
                     .unwrap_or_else(|| (layout.size, layout.align.abi));
                 let ptr: Option<_> = match
-                    self.ecx.memory.check_ptr_access_align(ptr, size, Some(align))
+                    self.ecx.memory.check_ptr_access_align(
+                        ptr,
+                        size,
+                        Some(align),
+                        CheckInAllocMsg::InboundsTest,
+                    )
                 {
                     Ok(ptr) => ptr,
                     Err(err) => {
