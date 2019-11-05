@@ -424,6 +424,14 @@ impl Emitter for EmitterWriter {
     }
 }
 
+/// An emitter that does nothing when emitting a diagnostic.
+pub struct SilentEmitter;
+
+impl Emitter for SilentEmitter {
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
+    fn emit_diagnostic(&mut self, _: &Diagnostic) {}
+}
+
 /// maximum number of lines we will print for each error; arbitrary.
 pub const MAX_HIGHLIGHT_LINES: usize = 6;
 /// maximum number of suggestions to be shown
