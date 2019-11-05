@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `&[_, Some(_), None, _]` not covered
+error[E0004]: non-exhaustive patterns: `&[_, Some(_), .., None, _]` not covered
   --> $DIR/match-slice-patterns.rs:4:11
    |
 LL |     match list {
-   |           ^^^^ pattern `&[_, Some(_), None, _]` not covered
+   |           ^^^^ pattern `&[_, Some(_), .., None, _]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

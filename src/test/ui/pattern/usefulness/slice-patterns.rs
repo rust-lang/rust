@@ -37,7 +37,7 @@ fn main() {
         [.., false] => {}
     }
     match s {
-    //~^ ERROR `&[false, true]` not covered
+    //~^ ERROR `&[false, .., true]` not covered
         [] => {}
         [true, ..] => {}
         [.., false] => {}
@@ -57,18 +57,18 @@ fn main() {
         [_] => {}
     }
     match s {
-    //~^ ERROR `&[false]` not covered
+    //~^ ERROR `&[false, ..]` not covered
         [] => {}
         [true, ..] => {}
     }
     match s {
-    //~^ ERROR `&[false, _]` not covered
+    //~^ ERROR `&[false, _, ..]` not covered
         [] => {}
         [_] => {}
         [true, ..] => {}
     }
     match s {
-    //~^ ERROR `&[_, false]` not covered
+    //~^ ERROR `&[_, .., false]` not covered
         [] => {}
         [_] => {}
         [.., true] => {}
@@ -94,14 +94,14 @@ fn main() {
         [..] => {}
     }
     match s {
-    //~^ ERROR `&[_, _, true]` not covered
+    //~^ ERROR `&[_, _, .., true]` not covered
         [] => {}
         [_] => {}
         [_, _] => {}
         [.., false] => {}
     }
     match s {
-    //~^ ERROR `&[true, _, _]` not covered
+    //~^ ERROR `&[true, _, .., _]` not covered
         [] => {}
         [_] => {}
         [_, _] => {}

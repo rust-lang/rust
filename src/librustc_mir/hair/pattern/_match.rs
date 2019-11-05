@@ -2042,7 +2042,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                 //
                 // Of course, if fixed-length patterns exist, we must be sure
                 // that our length is large enough to miss them all, so
-                // we can pick `L = max(FIXED_LEN+1 ∪ {max(PREFIX_LEN) + max(SUFFIX_LEN)})`
+                // we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
                 //
                 // for example, with the above pair of patterns, all elements
                 // but the first and last can be added/removed, so any
@@ -2080,9 +2080,24 @@ fn split_grouped_constructors<'p, 'tcx>(
                     }
                 }
 
-                let max_slice_length = cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len);
-                split_ctors
-                    .extend((self_prefix + self_suffix..=max_slice_length).map(FixedLenSlice))
+                // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
+                // where `max_fixed_len+1` is the largest, we adapt `max_prefix_len` accordingly,
+                // so that `L = max_prefix_len + max_suffix_len`.
+                if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
+                    // The subtraction can't overflow thanks to the above check.
+                    // The new `max_prefix_len` is also guaranteed to be larger than its previous
+                    // value.
+                    max_prefix_len = max_fixed_len + 1 - max_suffix_len;
+                }
+
+                // `ctor` originally covered the range `(self_prefix + self_suffix..infinity)`. We
+                // now split it into two: lengths smaller than `max_prefix_len + max_suffix_len`
+                // are treated independently as fixed-lengths slices, and lengths above are
+                // captured by a final VarLenSlice constructor.
+                split_ctors.extend(
+                    (self_prefix + self_suffix..max_prefix_len + max_suffix_len).map(FixedLenSlice),
+                );
+                split_ctors.push(VarLenSlice(max_prefix_len, max_suffix_len));
             }
             // Any other constructor can be used unchanged.
             _ => split_ctors.push(ctor),
