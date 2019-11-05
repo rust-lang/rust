@@ -8,7 +8,9 @@ create-missing = false
 
 [output.html]
 
-[output.html.search]
+[output.html.fold]
+enable = true
+level = 1
 
 [output.linkcheck]
 follow-web-links = true
