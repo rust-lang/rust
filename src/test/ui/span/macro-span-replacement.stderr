@@ -1,8 +1,11 @@
 warning: struct is never constructed: `S`
-  --> $DIR/macro-span-replacement.rs:7:12
+  --> $DIR/macro-span-replacement.rs:7:14
    |
 LL |         $b $a;
-   |            ^^
+   |              ^
+...
+LL |     m!(S struct);
+   |     ------------- in this macro invocation
    |
 note: lint level defined here
   --> $DIR/macro-span-replacement.rs:3:9
