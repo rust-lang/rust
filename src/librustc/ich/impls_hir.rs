@@ -327,22 +327,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::BodyId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::def_id::DefIndex {
-
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.local_def_path_hash(*self).hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::def_id::DefIndex {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
-         hcx.local_def_path_hash(*self)
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::lang_items::LangItem {
     fn hash_stable(&self, _: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
@@ -376,7 +360,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
 
         let import_keys = import_ids.iter()
             .map(|node_id| hcx.node_to_hir_id(*node_id))
-            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner.index), hir_id.local_id))
+            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner), hir_id.local_id))
             .collect();
         (hcx.def_path_hash(*def_id), import_keys)
     }

@@ -1,5 +1,5 @@
 use crate::hir;
-use crate::hir::def_id::{DefId, DefIndex};
+use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::map::DefPathHash;
 use crate::hir::map::definitions::Definitions;
 use crate::ich::{self, CachingSourceMapView, Fingerprint};
@@ -139,8 +139,8 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash {
-        self.definitions.def_path_hash(def_index)
+    pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
+        self.definitions.def_path_hash(def_id.index)
     }
 
     #[inline]
@@ -238,7 +238,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::HirId {
                     local_id,
                 } = *self;
 
-                hcx.local_def_path_hash(owner.index).hash_stable(hcx, hasher);
+                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
             }
         }
@@ -252,7 +252,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
     fn to_stable_hash_key(&self,
                           hcx: &StableHashingContext<'a>)
                           -> (DefPathHash, hir::ItemLocalId) {
-        let def_path_hash = hcx.local_def_path_hash(self.owner.index);
+        let def_path_hash = hcx.local_def_path_hash(self.owner);
         (def_path_hash, self.local_id)
     }
 }
