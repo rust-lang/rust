@@ -148,7 +148,7 @@ impl ExpandedRangeMap {
             .filter_map(|(r, tid)| {
                 let adjusted_id = tt::TokenId(tid.0.checked_sub(shift)?);
                 let to_range = to.relative_range_of(adjusted_id)?;
-                
+
                 Some((*r, TextRange::offset_len(to_range.start() + start, to_range.len())))
             })
             .collect()
