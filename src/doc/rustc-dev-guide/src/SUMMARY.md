@@ -103,7 +103,8 @@
 [Appendix B: Background material](./appendix/background.md)
 [Appendix C: Glossary](./appendix/glossary.md)
 [Appendix D: Code Index](./appendix/code-index.md)
-[Appendix E: Bibliography](./appendix/bibliography.md)
+[Appendix E: Compiler Lecture Series](./appendix/compiler-lecture.md)
+[Appendix F: Bibliography](./appendix/bibliography.md)
 
 [Appendix Z: HumorRust](./appendix/humorust.md)
 
