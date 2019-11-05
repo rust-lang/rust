@@ -3407,7 +3407,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     layout::provide(providers);
     util::provide(providers);
     constness::provide(providers);
-    crate::traits::query::dropck_outlives::provide(providers);
     *providers = ty::query::Providers {
         asyncness,
         associated_item,
