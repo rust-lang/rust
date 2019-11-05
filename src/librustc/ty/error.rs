@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::fmt;
 use rustc_target::spec::abi;
 use syntax::ast;
-use syntax::errors::pluralise;
+use syntax::errors::pluralize;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
@@ -100,17 +100,17 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected a tuple with {} element{}, \
                            found one with {} element{}",
                        values.expected,
-                       pluralise!(values.expected),
+                       pluralize!(values.expected),
                        values.found,
-                       pluralise!(values.found))
+                       pluralize!(values.found))
             }
             FixedArraySize(values) => {
                 write!(f, "expected an array with a fixed size of {} element{}, \
                            found one with {} element{}",
                        values.expected,
-                       pluralise!(values.expected),
+                       pluralize!(values.expected),
                        values.found,
-                       pluralise!(values.found))
+                       pluralize!(values.found))
             }
             ArgCount => {
                 write!(f, "incorrect number of function parameters")
@@ -165,7 +165,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ProjectionBoundsLength(ref values) => {
                 write!(f, "expected {} associated type binding{}, found {}",
                        values.expected,
-                       pluralise!(values.expected),
+                       pluralize!(values.expected),
                        values.found)
             },
             ExistentialMismatch(ref values) => {
@@ -196,7 +196,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 let n = tcx.lift(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     Some(n) => {
-                        format!("array of {} element{}", n, pluralise!(n)).into()
+                        format!("array of {} element{}", n, pluralize!(n)).into()
                     }
                     None => "array".into(),
                 }

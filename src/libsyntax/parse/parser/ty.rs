@@ -10,7 +10,7 @@ use crate::parse::token::{self, Token};
 use crate::source_map::Span;
 use crate::symbol::{kw};
 
-use errors::{Applicability, pluralise};
+use errors::{Applicability, pluralize};
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
                 }
                 err.span_suggestion_hidden(
                     bound_list,
-                    &format!("remove the trait bound{}", pluralise!(negative_bounds_len)),
+                    &format!("remove the trait bound{}", pluralize!(negative_bounds_len)),
                     new_bound_list,
                     Applicability::MachineApplicable,
                 );

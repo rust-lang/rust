@@ -10,7 +10,7 @@ use rustc::util::common::ErrorReported;
 use errors::{Applicability, DiagnosticId};
 
 use syntax_pos::Span;
-use syntax::errors::pluralise;
+use syntax::errors::pluralize;
 
 use super::{Inherited, FnCtxt, potentially_plural_count};
 
@@ -649,9 +649,9 @@ fn compare_number_of_generics<'tcx>(
                      declaration has {} {kind} parameter{}",
                     trait_.ident,
                     impl_count,
-                    pluralise!(impl_count),
+                    pluralize!(impl_count),
                     trait_count,
-                    pluralise!(trait_count),
+                    pluralize!(trait_count),
                     kind = kind,
                 ),
                 DiagnosticId::Error("E0049".into()),
@@ -666,7 +666,7 @@ fn compare_number_of_generics<'tcx>(
                         "expected {} {} parameter{}",
                         trait_count,
                         kind,
-                        pluralise!(trait_count),
+                        pluralize!(trait_count),
                     ));
                 }
                 for span in spans {
@@ -681,7 +681,7 @@ fn compare_number_of_generics<'tcx>(
                     "found {} {} parameter{}{}",
                     impl_count,
                     kind,
-                    pluralise!(impl_count),
+                    pluralize!(impl_count),
                     suffix.unwrap_or_else(|| String::new()),
                 ));
             }

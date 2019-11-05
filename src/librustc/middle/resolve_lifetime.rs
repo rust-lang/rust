@@ -17,7 +17,7 @@ use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use crate::rustc::lint;
 use crate::session::Session;
 use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use rustc_macros::HashStable;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -3044,7 +3044,7 @@ pub fn report_missing_lifetime_specifiers(
         span,
         E0106,
         "missing lifetime specifier{}",
-        pluralise!(count)
+        pluralize!(count)
     )
 }
 

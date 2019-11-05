@@ -1027,7 +1027,7 @@ impl Level {
 }
 
 #[macro_export]
-macro_rules! pluralise {
+macro_rules! pluralize {
     ($x:expr) => {
         if $x != 1 { "s" } else { "" }
     };
