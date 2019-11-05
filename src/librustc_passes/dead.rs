@@ -579,14 +579,15 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::Impl(..) => {
                     // FIXME(66095): Because item.span is annotated with things
-                    // like a macro_backtrace, and ident.span isn't, we use the
+                    // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation
+                    // (and thus has asource_callee set).
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
-                    if item.span.macro_backtrace().len() == 0 {
-                        item.ident.span
-                    } else {
+                    if item.span.source_callee().is_some() {
                         self.tcx.sess.source_map().def_span(item.span)
+                    } else {
+                        item.ident.span
                     }
                 },
                 _ => item.span,
