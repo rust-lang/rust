@@ -257,10 +257,10 @@ LL |     println!("{} {:07$} {}", 1, 3.2, 4);
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
 error: unknown format trait `foo`
-  --> $DIR/ifmt-bad-arg.rs:86:24
+  --> $DIR/ifmt-bad-arg.rs:86:17
    |
 LL |     println!("{:foo}", 1);
-   |                        ^
+   |                 ^^^
    |
    = note: the only appropriate formatting traits are:
            - ``, which uses the `Display` trait

@@ -74,6 +74,8 @@ pub struct FormatSpec<'a> {
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
     pub ty: &'a str,
+    /// The span of the descriptor string (for diagnostics).
+    pub ty_span: Option<InnerSpan>,
 }
 
 /// Enum describing where an argument for a format can be located.
@@ -475,6 +477,7 @@ impl<'a> Parser<'a> {
             width: CountImplied,
             width_span: None,
             ty: &self.input[..0],
+            ty_span: None,
         };
         if !self.consume(':') {
             return spec;
@@ -548,6 +551,7 @@ impl<'a> Parser<'a> {
                 spec.precision_span = sp;
             }
         }
+        let ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
         // Optional radix followed by the actual format specifier
         if self.consume('x') {
             if self.consume('?') {
@@ -567,6 +571,11 @@ impl<'a> Parser<'a> {
             spec.ty = "?";
         } else {
             spec.ty = self.word();
+            let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
+            let this = self;
+            spec.ty_span = ty_span_start
+                .and_then(|s| ty_span_end.map(|e| (s, e)))
+                .map(|(start, end)| this.to_span_index(start).to(this.to_span_index(end)));
         }
         spec
     }
