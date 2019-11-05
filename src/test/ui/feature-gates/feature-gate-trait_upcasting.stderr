@@ -2,11 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/feature-gate-trait_upcasting.rs:11:25
    |
 LL |     let foo: &dyn Foo = bar;
-   |                         ^^^ expected trait `Foo`, found trait `Bar`
+   |              --------   ^^^ expected trait `Foo`, found trait `Bar`
+   |              |
+   |              expected due to this
    |
-   = note: add `#![feature(trait_upcasting)]` to the crate attributes to enable
-   = note: expected type `&dyn Foo`
-              found type `&dyn Bar`
+   = note: expected reference `&dyn Foo`
+              found reference `&dyn Bar`
+   = note: add `#![feature(trait_upcasting)]` to the crate attributes to enable trait upcasting
 
 error: aborting due to previous error
 
