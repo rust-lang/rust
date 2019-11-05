@@ -343,7 +343,7 @@ extern "C" const char* LLVMRustGetHostCPUName(size_t *len) {
 
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
-    LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
+    const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections,
@@ -374,6 +374,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.FunctionSections = FunctionSections;
   Options.MCOptions.AsmVerbose = AsmComments;
   Options.MCOptions.PreserveAsmComments = AsmComments;
+  Options.MCOptions.ABIName = ABIStr;
 
   if (TrapUnreachable) {
     // Tell LLVM to codegen `unreachable` into an explicit trap instruction.

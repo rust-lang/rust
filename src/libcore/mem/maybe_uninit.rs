@@ -509,32 +509,183 @@ impl<T> MaybeUninit<T> {
         self.as_ptr().read()
     }
 
-    /// Gets a reference to the contained value.
+    /// Gets a shared reference to the contained value.
+    ///
+    /// This can be useful when we want to access a `MaybeUninit` that has been
+    /// initialized but don't have ownership of the `MaybeUninit` (preventing the use
+    /// of `.assume_init()`).
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
-    /// state. Calling this when the content is not yet fully initialized causes undefined
-    /// behavior.
+    /// Calling this when the content is not yet fully initialized causes undefined
+    /// behavior: it is up to the caller to guarantee that the `MaybeUninit<T>` really
+    /// is in an initialized state.
+    ///
+    /// # Examples
+    ///
+    /// ### Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
+    /// // Initialize `x`:
+    /// unsafe { x.as_mut_ptr().write(vec![1, 2, 3]); }
+    /// // Now that our `MaybeUninit<_>` is known to be initialized, it is okay to
+    /// // create a shared reference to it:
+    /// let x: &Vec<u32> = unsafe {
+    ///     // Safety: `x` has been initialized.
+    ///     x.get_ref()
+    /// };
+    /// assert_eq!(x, &vec![1, 2, 3]);
+    /// ```
+    ///
+    /// ### *Incorrect* usages of this method:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let x = MaybeUninit::<Vec<u32>>::uninit();
+    /// let x_vec: &Vec<u32> = unsafe { x.get_ref() };
+    /// // We have created a reference to an uninitialized vector! This is undefined behavior.
+    /// ```
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::{cell::Cell, mem::MaybeUninit};
+    ///
+    /// let b = MaybeUninit::<Cell<bool>>::uninit();
+    /// // Initialize the `MaybeUninit` using `Cell::set`:
+    /// unsafe {
+    ///     b.get_ref().set(true);
+    ///  // ^^^^^^^^^^^
+    ///  // Reference to an uninitialized `Cell<bool>`: UB!
+    /// }
+    /// ```
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
+        intrinsics::panic_if_uninhabited::<T>();
         &*self.value
     }
 
-    /// Gets a mutable reference to the contained value.
+    /// Gets a mutable (unique) reference to the contained value.
+    ///
+    /// This can be useful when we want to access a `MaybeUninit` that has been
+    /// initialized but don't have ownership of the `MaybeUninit` (preventing the use
+    /// of `.assume_init()`).
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
-    /// state. Calling this when the content is not yet fully initialized causes undefined
-    /// behavior.
+    /// Calling this when the content is not yet fully initialized causes undefined
+    /// behavior: it is up to the caller to guarantee that the `MaybeUninit<T>` really
+    /// is in an initialized state. For instance, `.get_mut()` cannot be used to
+    /// initialize a `MaybeUninit`.
+    ///
+    /// # Examples
+    ///
+    /// ### Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 2048]) { *buf = [0; 2048] }
+    /// # #[cfg(FALSE)]
+    /// extern "C" {
+    ///     /// Initializes *all* the bytes of the input buffer.
+    ///     fn initialize_buffer(buf: *mut [u8; 2048]);
+    /// }
+    ///
+    /// let mut buf = MaybeUninit::<[u8; 2048]>::uninit();
+    ///
+    /// // Initialize `buf`:
+    /// unsafe { initialize_buffer(buf.as_mut_ptr()); }
+    /// // Now we know that `buf` has been initialized, so we could `.assume_init()` it.
+    /// // However, using `.assume_init()` may trigger a `memcpy` of the 2048 bytes.
+    /// // To assert our buffer has been initialized without copying it, we upgrade
+    /// // the `&mut MaybeUninit<[u8; 2048]>` to a `&mut [u8; 2048]`:
+    /// let buf: &mut [u8; 2048] = unsafe {
+    ///     // Safety: `buf` has been initialized.
+    ///     buf.get_mut()
+    /// };
+    ///
+    /// // Now we can use `buf` as a normal slice:
+    /// buf.sort_unstable();
+    /// assert!(
+    ///     buf.chunks(2).all(|chunk| chunk[0] <= chunk[1]),
+    ///     "buffer is sorted",
+    /// );
+    /// ```
+    ///
+    /// ### *Incorrect* usages of this method:
+    ///
+    /// You cannot use `.get_mut()` to initialize a value:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut b = MaybeUninit::<bool>::uninit();
+    /// unsafe {
+    ///     *b.get_mut() = true;
+    ///     // We have created a (mutable) reference to an uninitialized `bool`!
+    ///     // This is undefined behavior.
+    /// }
+    /// ```
+    ///
+    /// For instance, you cannot [`Read`] into an uninitialized buffer:
+    ///
+    /// [`Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::{io, mem::MaybeUninit};
+    ///
+    /// fn read_chunk (reader: &'_ mut dyn io::Read) -> io::Result<[u8; 64]>
+    /// {
+    ///     let mut buffer = MaybeUninit::<[u8; 64]>::uninit();
+    ///     reader.read_exact(unsafe { buffer.get_mut() })?;
+    ///                             // ^^^^^^^^^^^^^^^^
+    ///                             // (mutable) reference to uninitialized memory!
+    ///                             // This is undefined behavior.
+    ///     Ok(unsafe { buffer.assume_init() })
+    /// }
+    /// ```
+    ///
+    /// Nor can you use direct field access to do field-by-field gradual initialization:
+    ///
+    /// ```rust,no_run
+    /// #![feature(maybe_uninit_ref)]
+    /// use std::{mem::MaybeUninit, ptr};
+    ///
+    /// struct Foo {
+    ///     a: u32,
+    ///     b: u8,
+    /// }
+    ///
+    /// let foo: Foo = unsafe {
+    ///     let mut foo = MaybeUninit::<Foo>::uninit();
+    ///     ptr::write(&mut foo.get_mut().a as *mut u32, 1337);
+    ///                  // ^^^^^^^^^^^^^
+    ///                  // (mutable) reference to uninitialized memory!
+    ///                  // This is undefined behavior.
+    ///     ptr::write(&mut foo.get_mut().b as *mut u8, 42);
+    ///                  // ^^^^^^^^^^^^^
+    ///                  // (mutable) reference to uninitialized memory!
+    ///                  // This is undefined behavior.
+    ///     foo.assume_init()
+    /// };
+    /// ```
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
+        intrinsics::panic_if_uninhabited::<T>();
         &mut *self.value
     }
 
