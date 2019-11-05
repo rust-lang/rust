@@ -221,9 +221,14 @@ pub(crate) struct FatPtr<T> {
     pub(crate) len: usize,
 }
 
-/// Forms a slice from a pointer and a length.
+/// Forms a raw slice from a pointer and a length.
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.
+///
+/// This function is safe, but actually using the return value is unsafe.
+/// See the documentation of [`from_raw_parts`] for slice safety requirements.
+///
+/// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
 ///
 /// # Examples
 ///
@@ -243,12 +248,16 @@ pub fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     unsafe { Repr { raw: FatPtr { data, len } }.rust }
 }
 
-/// Performs the same functionality as [`from_raw_parts`], except that a
-/// mutable slice is returned.
+/// Performs the same functionality as [`slice_from_raw_parts`], except that a
+/// raw mutable slice is returned.
 ///
-/// See the documentation of [`from_raw_parts`] for more details.
+/// See the documentation of [`slice_from_raw_parts`] for more details.
 ///
-/// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
+/// This function is safe, but actually using the return value is unsafe.
+/// See the documentation of [`from_raw_parts_mut`] for slice safety requirements.
+///
+/// [`slice_from_raw_parts`]: fn.slice_from_raw_parts.html
+/// [`from_raw_parts_mut`]: ../../std/slice/fn.from_raw_parts_mut.html
 #[inline]
 #[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
 pub fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
