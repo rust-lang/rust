@@ -271,6 +271,15 @@ If you need a combination of options that's not supported by the
 `declare_lint!` macro, you can always define your own static with a type of
 `&Lint` but this is currently linted against in the compiler tree.
 
+####  Guidelines for creating a future incompatibility lint
+
+- Create a lint defaulting to warn as normal, with ideally the same error
+  message you would normally give.
+- Add a suitable reference, typically an RFC or tracking issue. Go ahead
+  and include the full URL, sort items in ascending order of issue numbers.
+- Later, change lint to error.
+- Eventually, remove lint.
+
 ### Lint Groups
 
 Lints can be turned on in groups. These groups are declared in the
