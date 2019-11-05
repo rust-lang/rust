@@ -11,6 +11,7 @@ fn main() {
     direct_mut_to_const_raw();
     two_raw();
     shr_and_raw();
+    disjoint_mutable_subborrows();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -138,3 +139,31 @@ fn shr_and_raw() { /* unsafe {
     *y2 += 1;
     // TODO: Once this works, add compile-fail test that tries to read from y1 again.
 } */ }
+
+fn disjoint_mutable_subborrows() {
+    struct Foo {
+        a: String,
+        b: Vec<u32>,
+    }
+
+    unsafe fn borrow_field_a<'a>(this:*mut Foo) -> &'a mut String {
+        &mut (*this).a
+    }
+
+    unsafe fn borrow_field_b<'a>(this:*mut Foo) -> &'a mut Vec<u32> {
+        &mut (*this).b
+    }
+
+    let mut foo = Foo {
+        a: "hello".into(),
+        b: vec![0,1,2],
+    };
+
+    let ptr = &mut foo as *mut Foo;
+
+    let a = unsafe{ borrow_field_a(ptr) };
+    let b = unsafe{ borrow_field_b(ptr) };
+    b.push(4);
+    a.push_str(" world");
+    dbg!(a,b);
+}
