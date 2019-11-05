@@ -256,9 +256,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let b = self.read_immediate(args[1])?.to_scalar()?;
 
                 // Special case: if both scalars are *equal integers*
-                // and not NULL, their offset is 0.
+                // and not NULL, we pretend there is an allocation of size 0 right there,
+                // and their offset is 0. (There's never a valid object at NULL, making it an
+                // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
-                // in the inbounds pointer offset operation.
+                // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
                 if a.is_bits() && b.is_bits() {
                     let a = a.to_usize(self)?;
                     let b = b.to_usize(self)?;
