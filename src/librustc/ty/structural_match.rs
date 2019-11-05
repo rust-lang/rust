@@ -446,6 +446,13 @@ impl<'a, 'v, 'tcx> Visitor<'v> for SearchHirExpr<'a, 'tcx> {
                 }
             }
 
+            hir::ExprKind::Index(base, _index) => {
+                // skip the index, focus solely on the base content.
+                // (alternative would be to do type-based analysis, which would
+                // be even more conservative).
+                intravisit::walk_expr(self, base);
+            }
+
             hir::ExprKind::Loop(..) |
             hir::ExprKind::Call(..) |
             hir::ExprKind::MethodCall(..) |
@@ -456,7 +463,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for SearchHirExpr<'a, 'tcx> {
             hir::ExprKind::Assign(..) |
             hir::ExprKind::AssignOp(..) |
             hir::ExprKind::Field(..) |
-            hir::ExprKind::Index(..) |
             hir::ExprKind::Break(..) |
             hir::ExprKind::Continue(..) |
             hir::ExprKind::Ret(..) |
