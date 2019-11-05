@@ -1,3 +1,6 @@
+![Travis CI badge](https://api.travis-ci.com/rust-lang/rustc-guide.svg?branch=master)
+
+
 This is a collaborative effort to build a guide that explains how rustc
 works. The aim of the guide is to help new contributors get oriented
 to rustc, as well as to help more experienced folks in figuring out
