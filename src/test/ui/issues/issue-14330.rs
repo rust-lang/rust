@@ -1,4 +1,4 @@
-// build-pass
+// check-pass
 #![allow(unused_imports)]
 // pretty-expanded FIXME #23616
 

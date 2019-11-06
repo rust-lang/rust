@@ -1,4 +1,4 @@
-// build-pass
+// check-pass
 // aux-build:issue-57264-2.rs
 
 extern crate issue_57264_2;
