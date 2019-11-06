@@ -17,10 +17,9 @@ use std::sync::{Arc, Mutex};
 use syntax::{self, parse};
 use syntax::ast::{self, MetaItemKind};
 use syntax::parse::token;
-use syntax::source_map::{FileName, FilePathMapping, FileLoader, SourceMap};
+use syntax::source_map::{FileName, FileLoader, SourceMap};
 use syntax::sess::ParseSess;
 use syntax_pos::edition;
-use rustc_errors::{Diagnostic, emitter::Emitter, Handler, SourceMapperDyn};
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
@@ -63,18 +62,9 @@ impl Compiler {
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    struct NullEmitter;
-    impl Emitter for NullEmitter {
-        fn emit_diagnostic(&mut self, _: &Diagnostic) {}
-        fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
-    }
-
     syntax::with_default_globals(move || {
         let cfg = cfgspecs.into_iter().map(|s| {
-
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let handler = Handler::with_emitter(false, None, Box::new(NullEmitter));
-            let sess = ParseSess::with_span_handler(handler, cm);
+            let sess = ParseSess::with_silent_emitter();
             let filename = FileName::cfg_spec_source_code(&s);
             let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
 
