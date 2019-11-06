@@ -655,44 +655,45 @@ impl<'tcx> Constructor<'tcx> {
                         .into_iter()
                         .flat_map(|pos_ctor| -> SmallVec<[Constructor<'tcx>; 1]> {
                             // Compute `pos_ctor \ neg_ctor`.
-                            match (&pos_ctor, neg_ctor) {
-                                (&FixedLenSlice(pos_len), &VarLenSlice(neg_prefix, neg_suffix)) => {
-                                    let neg_len = neg_prefix + neg_suffix;
-                                    if neg_len <= pos_len {
+                            match pos_ctor {
+                                FixedLenSlice(pos_len) => match *neg_ctor {
+                                    FixedLenSlice(neg_len) if neg_len == pos_len => smallvec![],
+                                    VarLenSlice(neg_prefix, neg_suffix)
+                                        if neg_prefix + neg_suffix <= pos_len =>
+                                    {
                                         smallvec![]
-                                    } else {
-                                        smallvec![pos_ctor]
                                     }
-                                }
-                                (
-                                    &VarLenSlice(pos_prefix, pos_suffix),
-                                    &VarLenSlice(neg_prefix, neg_suffix),
-                                ) => {
-                                    let neg_len = neg_prefix + neg_suffix;
+                                    _ => smallvec![pos_ctor],
+                                },
+                                VarLenSlice(pos_prefix, pos_suffix) => {
                                     let pos_len = pos_prefix + pos_suffix;
-                                    if neg_len <= pos_len {
-                                        smallvec![]
-                                    } else {
-                                        (pos_len..neg_len).map(FixedLenSlice).collect()
+                                    match *neg_ctor {
+                                        FixedLenSlice(neg_len) if neg_len >= pos_len => {
+                                            (pos_len..neg_len)
+                                                .map(FixedLenSlice)
+                                                // We know that `neg_len + 1 >= pos_len >=
+                                                // pos_suffix`.
+                                                .chain(Some(VarLenSlice(
+                                                    neg_len + 1 - pos_suffix,
+                                                    pos_suffix,
+                                                )))
+                                                .collect()
+                                        }
+                                        VarLenSlice(neg_prefix, neg_suffix) => {
+                                            let neg_len = neg_prefix + neg_suffix;
+                                            if neg_len <= pos_len {
+                                                smallvec![]
+                                            } else {
+                                                (pos_len..neg_len).map(FixedLenSlice).collect()
+                                            }
+                                        }
+                                        _ => smallvec![pos_ctor],
                                     }
                                 }
-                                (&VarLenSlice(pos_prefix, pos_suffix), &FixedLenSlice(neg_len)) => {
-                                    let pos_len = pos_prefix + pos_suffix;
-                                    if neg_len < pos_len {
-                                        smallvec![pos_ctor]
-                                    } else {
-                                        (pos_len..neg_len)
-                                            .map(FixedLenSlice)
-                                            // We know that `neg_len + 1 >= pos_len >= pos_suffix`.
-                                            .chain(Some(VarLenSlice(
-                                                neg_len + 1 - pos_suffix,
-                                                pos_suffix,
-                                            )))
-                                            .collect()
-                                    }
-                                }
-                                _ if pos_ctor == *neg_ctor => smallvec![],
-                                _ => smallvec![pos_ctor],
+                                _ => bug!(
+                                    "unexpected ctor while subtracting from VarLenSlice: {:?}",
+                                    pos_ctor
+                                ),
                             }
                         })
                         .collect();
