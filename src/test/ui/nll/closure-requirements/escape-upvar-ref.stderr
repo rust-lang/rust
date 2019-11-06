@@ -4,7 +4,7 @@ note: External requirements
 LL |         let mut closure = || p = &y;
    |                           ^^^^^^^^^
    |
-   = note: defining type: DefId(0:13 ~ escape_upvar_ref[317d]::test[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:4 ~ escape_upvar_ref[317d]::test[0]::{{closure}}[0]) with closure substs [
                i16,
                extern "rust-call" fn(()),
                &'_#1r i32,
@@ -25,7 +25,7 @@ LL | |     deref(p);
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:12 ~ escape_upvar_ref[317d]::test[0]) with substs []
+   = note: defining type: DefId(0:3 ~ escape_upvar_ref[317d]::test[0]) with substs []
 
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-upvar-ref.rs:23:35
