@@ -409,10 +409,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let five = 5.0_f64;
+    /// let twenty_five = 25.0_f64;
     ///
-    /// // log5(5) - 1 == 0
-    /// let abs_difference = (five.log(5.0) - 1.0).abs();
+    /// // log5(25) - 2 == 0
+    /// let abs_difference = (twenty_five.log(5.0) - 2.0).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -425,10 +425,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let two = 2.0_f64;
+    /// let four = 4.0_f64;
     ///
-    /// // log2(2) - 1 == 0
-    /// let abs_difference = (two.log2() - 1.0).abs();
+    /// // log2(4) - 2 == 0
+    /// let abs_difference = (four.log2() - 2.0).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -448,10 +448,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let ten = 10.0_f64;
+    /// let hundred = 100.0_f64;
     ///
-    /// // log10(10) - 1 == 0
-    /// let abs_difference = (ten.log10() - 1.0).abs();
+    /// // log10(100) - 2 == 0
+    /// let abs_difference = (hundred.log10() - 2.0).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
