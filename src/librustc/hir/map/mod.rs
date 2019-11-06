@@ -79,6 +79,33 @@ impl<'hir> Entry<'hir> {
         }
     }
 
+    fn fn_sig(&self) -> Option<&'hir FnSig> {
+        match &self.node {
+            Node::Item(item) => {
+                match &item.kind {
+                    ItemKind::Fn(sig, _, _) => Some(sig),
+                    _ => None,
+                }
+            }
+
+            Node::TraitItem(item) => {
+                match &item.kind {
+                    TraitItemKind::Method(sig, _) => Some(sig),
+                    _ => None
+                }
+            }
+
+            Node::ImplItem(item) => {
+                match &item.kind {
+                    ImplItemKind::Method(sig, _) => Some(sig),
+                    _ => None,
+                }
+            }
+
+            _ => None,
+        }
+    }
+
     fn associated_body(self) -> Option<BodyId> {
         match self.node {
             Node::Item(item) => {
@@ -445,6 +472,14 @@ impl<'hir> Map<'hir> {
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl> {
         if let Some(entry) = self.find_entry(hir_id) {
             entry.fn_decl()
+        } else {
+            bug!("no entry for hir_id `{}`", hir_id)
+        }
+    }
+
+    pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig> {
+        if let Some(entry) = self.find_entry(hir_id) {
+            entry.fn_sig()
         } else {
             bug!("no entry for hir_id `{}`", hir_id)
         }
