@@ -1,4 +1,5 @@
 // check-pass
+// compile-flags: -Zsave-analysis
 
 #![feature(rustc_attrs)]
 #![allow(warnings)]
