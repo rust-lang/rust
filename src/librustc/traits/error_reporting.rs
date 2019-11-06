@@ -33,7 +33,7 @@ use crate::ty::subst::Subst;
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use errors::{Applicability, DiagnosticBuilder, pluralise, Style};
+use errors::{Applicability, DiagnosticBuilder, pluralize, Style};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 param_env,
                 new_trait_ref.to_predicate(),
             );
-            if self.predicate_may_hold(&new_obligation) {
+            if self.predicate_must_hold_modulo_regions(&new_obligation) {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     // We have a very specific type of error, where just borrowing this argument
                     // might solve the problem. In cases like this, the important part is the
@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         span,
                         "consider borrowing here",
                         format!("&{}", snippet),
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     );
                     return true;
                 }
