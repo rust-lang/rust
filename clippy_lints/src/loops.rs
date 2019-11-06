@@ -1993,7 +1993,13 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'_, 'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.kind {
-        ty::Array(_, n) => (0..=32).contains(&n.eval_usize(cx.tcx, cx.param_env)),
+        ty::Array(_, n) => {
+            if let Some(val) = n.try_eval_usize(cx.tcx, cx.param_env) {
+                (0..=32).contains(&val)
+            } else {
+                false
+            }
+        },
         _ => false,
     }
 }
