@@ -780,11 +780,7 @@ impl<'tcx> Constructor<'tcx> {
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ty: Ty<'tcx>,
     ) -> impl Iterator<Item = Pat<'tcx>> + DoubleEndedIterator {
-        constructor_sub_pattern_tys(cx, self, ty).into_iter().map(|ty| Pat {
-            ty,
-            span: DUMMY_SP,
-            kind: box PatKind::Wild,
-        })
+        constructor_sub_pattern_tys(cx, self, ty).into_iter().map(Pat::wildcard_from_ty)
     }
 
     /// This computes the arity of a constructor. The arity of a constructor
@@ -862,7 +858,7 @@ impl<'tcx> Constructor<'tcx> {
                 VarLenSlice(prefix_len, _suffix_len) => {
                     let prefix = subpatterns.by_ref().take(*prefix_len as usize).collect();
                     let suffix = subpatterns.collect();
-                    let wild = Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) };
+                    let wild = Pat::wildcard_from_ty(ty);
                     PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
@@ -931,7 +927,7 @@ impl<'tcx> Usefulness<'tcx> {
     fn apply_wildcard(self, ty: Ty<'tcx>) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
-                let wild = Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
+                let wild = Pat::wildcard_from_ty(ty);
                 UsefulWithWitness(
                     witnesses
                         .into_iter()
