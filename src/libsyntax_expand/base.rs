@@ -953,18 +953,7 @@ impl<'a> ExtCtxt<'a> {
     ///
     /// Stops backtracing at include! boundary.
     pub fn expansion_cause(&self) -> Option<Span> {
-        let mut expn_id = self.current_expansion.id;
-        let mut last_macro = None;
-        loop {
-            let expn_data = expn_id.expn_data();
-            // Stop going up the backtrace once include! is encountered
-            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
-                break;
-            }
-            expn_id = expn_data.call_site.ctxt().outer_expn();
-            last_macro = Some(expn_data.call_site);
-        }
-        last_macro
+        self.current_expansion.id.expansion_cause()
     }
 
     pub fn struct_span_warn<S: Into<MultiSpan>>(&self,
