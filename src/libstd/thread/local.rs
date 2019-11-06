@@ -149,7 +149,7 @@ macro_rules! thread_local {
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
-    (@key $(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+    (@key $t:ty, $init:expr) => {
         {
             #[inline]
             fn __init() -> $t { $init }
@@ -184,7 +184,7 @@ macro_rules! __thread_local_inner {
     };
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::__thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
+            $crate::__thread_local_inner!(@key $t, $init);
     }
 }
 
