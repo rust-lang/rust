@@ -105,7 +105,7 @@ contributions to the compiler and the standard library. It also lists some
 really useful commands to the build system (`./x.py`), which could save you a
 lot of time.
 
-[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html
+[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/building/how-to-build-and-run.html
 
 ## Pull Requests
 [pull-requests]: #pull-requests
