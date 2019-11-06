@@ -112,11 +112,18 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             .ok_or_else(|| err_panic!(Overflow(mir::BinOp::Mul)))?;
         // We do this first, to rule out overflows.
         let offset_ptr = ptr.ptr_signed_offset(offset, self)?;
-        // What we need to check is that starting at `ptr`,
-        // we could do an access of size `offset`. Alignment does not matter.
+        // What we need to check is that starting at `min(ptr, offset_ptr)`,
+        // we could do an access of size `abs(offset)`. Alignment does not matter.
+        let (min_ptr, abs_offset) = if offset >= 0 {
+            (ptr, u64::try_from(offset).unwrap())
+        } else {
+            // Negative offset.
+            // If the negation overflows, the result will be negative so the try_from will fail.
+            (offset_ptr, u64::try_from(-offset).unwrap())
+        };
         self.memory.check_ptr_access_align(
-            ptr,
-            Size::from_bytes(u64::try_from(offset).unwrap()),
+            min_ptr,
+            Size::from_bytes(abs_offset),
             None,
             CheckInAllocMsg::InboundsTest,
         )?;
