@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 log = "0.4"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
-smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
 syntax_expand = { path = "../libsyntax_expand" }

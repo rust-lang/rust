@@ -210,7 +210,7 @@ impl<'a> Parser<'a> {
             // `/` to `\`.
             #[cfg(windows)]
             let s = s.replace("/", "\\");
-            Some(dir_path.join(s))
+            Some(dir_path.join(&*s))
         } else {
             None
         }
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
         // `./<id>.rs` and `./<id>/mod.rs`.
         let relative_prefix_string;
         let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident.as_str(), path::MAIN_SEPARATOR);
+            relative_prefix_string = format!("{}{}", ident, path::MAIN_SEPARATOR);
             &relative_prefix_string
         } else {
             ""
@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
-            self.directory.path.to_mut().push(&path.as_str());
+            self.directory.path.to_mut().push(&*path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
             // We have to push on the current module name in the case of relative
@@ -325,10 +325,10 @@ impl<'a> Parser<'a> {
             // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
                 if let Some(ident) = relative.take() { // remove the relative offset
-                    self.directory.path.to_mut().push(ident.as_str());
+                    self.directory.path.to_mut().push(&*ident.as_str());
                 }
             }
-            self.directory.path.to_mut().push(&id.as_str());
+            self.directory.path.to_mut().push(&*id.as_str());
         }
     }
 }

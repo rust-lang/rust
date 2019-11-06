@@ -974,7 +974,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = self.cannot_borrow_across_destructor(borrow_span);
 
         let what_was_dropped = match self.describe_place(place.as_ref()) {
-            Some(name) => format!("`{}`", name.as_str()),
+            Some(name) => format!("`{}`", name),
             None => String::from("temporary value"),
         };
 

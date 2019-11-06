@@ -823,7 +823,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             if let Some(allowed) = allow_features.as_ref() {
-                if allowed.iter().find(|&f| f == &name.as_str() as &str).is_none() {
+                if allowed.iter().find(|&f| name.as_str() == *f).is_none() {
                     span_err!(span_handler, mi.span(), E0725,
                               "the feature `{}` is not in the list of allowed features",
                               name);

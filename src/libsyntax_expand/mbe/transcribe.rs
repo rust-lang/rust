@@ -9,7 +9,7 @@ use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
 
-use errors::pluralise;
+use errors::pluralize;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::hygiene::{ExpnId, Transparency};
@@ -350,10 +350,10 @@ impl LockstepIterSize {
                         "meta-variable `{}` repeats {} time{}, but `{}` repeats {} time{}",
                         l_id,
                         l_len,
-                        pluralise!(l_len),
+                        pluralize!(l_len),
                         r_id,
                         r_len,
-                        pluralise!(r_len),
+                        pluralize!(r_len),
                     );
                     LockstepIterSize::Contradiction(msg)
                 }

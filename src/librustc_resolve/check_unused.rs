@@ -26,7 +26,7 @@
 use crate::Resolver;
 use crate::resolve_imports::ImportDirectiveSubclass;
 
-use errors::pluralise;
+use errors::pluralize;
 
 use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
@@ -297,7 +297,7 @@ impl Resolver<'_> {
                 }).collect::<Vec<String>>();
             span_snippets.sort();
             let msg = format!("unused import{}{}",
-                            pluralise!(len),
+                            pluralize!(len),
                             if !span_snippets.is_empty() {
                                 format!(": {}", span_snippets.join(", "))
                             } else {

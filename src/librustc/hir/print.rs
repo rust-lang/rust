@@ -564,7 +564,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global asm"));
-                self.s.word(ga.asm.as_str().to_string());
+                self.s.word(ga.asm.to_string());
                 self.end()
             }
             hir::ItemKind::TyAlias(ref ty, ref generics) => {
@@ -1855,7 +1855,7 @@ impl<'a> State<'a> {
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(INDENT_UNIT);
             if let Some(arg_name) = arg_names.get(i) {
-                s.s.word(arg_name.as_str().to_string());
+                s.s.word(arg_name.to_string());
                 s.s.word(":");
                 s.s.space();
             } else if let Some(body_id) = body_id {

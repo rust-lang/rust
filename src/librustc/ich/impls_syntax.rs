@@ -9,7 +9,7 @@ use std::mem;
 use syntax::ast;
 use syntax::feature_gate;
 use syntax::parse::token;
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::SymbolStr;
 use syntax::tokenstream;
 use syntax_pos::SourceFile;
 
@@ -18,7 +18,7 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
-impl<'a> HashStable<StableHashingContext<'a>> for LocalInternedString {
+impl<'a> HashStable<StableHashingContext<'a>> for SymbolStr {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let str = self as &str;
@@ -26,13 +26,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for LocalInternedString {
     }
 }
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for LocalInternedString {
-    type KeyType = LocalInternedString;
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for SymbolStr {
+    type KeyType = SymbolStr;
 
     #[inline]
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
-                          -> LocalInternedString {
+                          -> SymbolStr {
         self.clone()
     }
 }
@@ -45,12 +45,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
 }
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::Name {
-    type KeyType = LocalInternedString;
+    type KeyType = SymbolStr;
 
     #[inline]
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
-                          -> LocalInternedString {
+                          -> SymbolStr {
         self.as_str()
     }
 }

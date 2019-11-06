@@ -1476,14 +1476,12 @@ impl KeywordIdents {
         let mut lint = cx.struct_span_lint(
             KEYWORD_IDENTS,
             ident.span,
-            &format!("`{}` is a keyword in the {} edition",
-                     ident.as_str(),
-                     next_edition),
+            &format!("`{}` is a keyword in the {} edition", ident, next_edition),
         );
         lint.span_suggestion(
             ident.span,
             "you can use a raw identifier to stay compatible",
-            format!("r#{}", ident.as_str()),
+            format!("r#{}", ident),
             Applicability::MachineApplicable,
         );
         lint.emit()

@@ -552,8 +552,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
         let llmod_id = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                        &["crate"],
-                                                       Some("allocator")).as_str()
-                                                                         .to_string();
+                                                       Some("allocator")).to_string();
         let mut modules = backend.new_metadata(tcx, &llmod_id);
         time(tcx.sess, "write allocator module", || {
             backend.codegen_allocator(tcx, &mut modules, kind)
@@ -576,8 +575,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         // Codegen the encoded metadata.
         let metadata_cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                                 &["crate"],
-                                                                Some("metadata")).as_str()
-                                                                                 .to_string();
+                                                                Some("metadata")).to_string();
         let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
         time(tcx.sess, "write compressed metadata", || {
             backend.write_compressed_metadata(tcx, &ongoing_codegen.metadata,

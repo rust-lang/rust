@@ -537,7 +537,7 @@ impl Qualif for IsNotPromotable {
                     Abi::RustIntrinsic |
                     Abi::PlatformIntrinsic => {
                         assert!(!cx.tcx.is_const_fn(def_id));
-                        match &cx.tcx.item_name(def_id).as_str()[..] {
+                        match &*cx.tcx.item_name(def_id).as_str() {
                             | "size_of"
                             | "min_align_of"
                             | "needs_drop"
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         Abi::RustIntrinsic |
                         Abi::PlatformIntrinsic => {
                             assert!(!self.tcx.is_const_fn(def_id));
-                            match &self.tcx.item_name(def_id).as_str()[..] {
+                            match &*self.tcx.item_name(def_id).as_str() {
                                 // special intrinsic that can be called diretly without an intrinsic
                                 // feature gate needs a language feature gate
                                 "transmute" => {

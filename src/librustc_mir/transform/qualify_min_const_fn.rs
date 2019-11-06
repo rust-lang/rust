@@ -402,7 +402,7 @@ fn check_terminator(
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
 fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    match &tcx.item_name(def_id).as_str()[..] {
+    match &*tcx.item_name(def_id).as_str() {
         | "size_of"
         | "min_align_of"
         | "needs_drop"

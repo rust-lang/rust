@@ -642,8 +642,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 struct_span_err!(
                     tcx.sess, source_info.span, E0133,
                     "{} is unsafe and requires unsafe function or block", description)
-                    .span_label(source_info.span, &description.as_str()[..])
-                    .note(&details.as_str()[..])
+                    .span_label(source_info.span, &*description.as_str())
+                    .note(&details.as_str())
                     .emit();
             }
             UnsafetyViolationKind::ExternStatic(lint_hir_id) => {
@@ -651,8 +651,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                               lint_hir_id,
                               source_info.span,
                               &format!("{} is unsafe and requires unsafe function or block \
-                                        (error E0133)", &description.as_str()[..]),
-                              &details.as_str()[..]);
+                                        (error E0133)", description),
+                              &details.as_str());
             }
             UnsafetyViolationKind::BorrowPacked(lint_hir_id) => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
@@ -662,8 +662,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                                   lint_hir_id,
                                   source_info.span,
                                   &format!("{} is unsafe and requires unsafe function or block \
-                                            (error E0133)", &description.as_str()[..]),
-                                  &details.as_str()[..]);
+                                            (error E0133)", description),
+                                  &details.as_str());
                 }
             }
         }

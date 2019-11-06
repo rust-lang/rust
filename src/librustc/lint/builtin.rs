@@ -7,7 +7,7 @@
 use crate::lint::{LintPass, LateLintPass, LintArray, FutureIncompatibleInfo};
 use crate::middle::stability;
 use crate::session::Session;
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax::source_map::Span;
@@ -651,7 +651,7 @@ pub(crate) fn add_elided_lifetime_in_path_suggestion(
     };
     db.span_suggestion(
         replace_span,
-        &format!("indicate the anonymous lifetime{}", pluralise!(n)),
+        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
         suggestion,
         Applicability::MachineApplicable
     );

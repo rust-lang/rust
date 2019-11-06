@@ -243,7 +243,7 @@ impl TokenStream {
 
                 // Get the first stream. If it's `None`, create an empty
                 // stream.
-                let mut iter = streams.drain();
+                let mut iter = streams.drain(..);
                 let mut first_stream_lrc = iter.next().unwrap().0;
 
                 // Append the elements to the first stream, after reserving

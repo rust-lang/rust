@@ -10,7 +10,7 @@ use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use syntax::ast;
 use syntax::attr;
-use syntax::errors::{Applicability, pluralise};
+use syntax::errors::{Applicability, pluralize};
 use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
@@ -144,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 return true;
             }
 
-            let plural_suffix = pluralise!(plural_len);
+            let plural_suffix = pluralize!(plural_len);
 
             match ty.kind {
                 ty::Adt(..) if ty.is_box() => {
