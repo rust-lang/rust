@@ -11,6 +11,7 @@
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::convert::AsRef;
+use std::mem::MaybeUninit;
 
 // `v` should be warned
 // `w`, `x` and `y` are allowed (moved or mutated)
@@ -111,8 +112,8 @@ trait FalsePositive {
 }
 
 // shouldn't warn on extern funcs
-extern "C" fn ext(x: String) -> usize {
-    x.len()
+extern "C" fn ext(x: MaybeUninit<usize>) -> usize {
+    unsafe { x.assume_init() }
 }
 
 // whitelist RangeArgument
