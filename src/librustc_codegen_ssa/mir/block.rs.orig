@@ -324,7 +324,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
-        let ty = location.ty(&*self.mir, bx.tcx()).ty;
+        let ty = location.ty(self.mir.body(), bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
@@ -362,7 +362,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
         helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-        helper.do_call(self, &mut bx, fn_abi, drop_fn, args,
+        helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
                        Some((ReturnDest::Nothing, target)),
                        unwind);
     }
@@ -510,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let extra_args = &args[sig.inputs().len()..];
         let extra_args = extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.ty(&*self.mir, bx.tcx());
+            let op_ty = op_arg.ty(self.mir.body(), bx.tcx());
             self.monomorphize(&op_ty)
         }).collect::<Vec<_>>();
 
@@ -527,14 +527,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => FnAbi::new(&bx, sig, &extra_args)
         };
-
-        // For normal codegen, this Miri-specific intrinsic is just a NOP.
-        if intrinsic == Some("miri_start_panic") {
-            let target = destination.as_ref().unwrap().1;
-            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-            helper.funclet_br(self, &mut bx, target);
-            return;
-        }
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
         if intrinsic == Some("panic_if_uninhabited") {
@@ -569,7 +561,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // a NOP
                 let target = destination.as_ref().unwrap().1;
                 helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-                helper.funclet_br(self, &mut bx, target)
+                helper.funclet_br(self, &mut bx, destination.as_ref().unwrap().1)
             }
             return;
         }
@@ -581,8 +573,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Prepare the return value destination
         let ret_dest = if let Some((ref dest, _)) = *destination {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs,
+<<<<<<< HEAD
+            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs, is_intrinsic)
+=======
+            self.make_return_dest(&mut bx, dest, &fn_ty.ret, &mut llargs,
                                   is_intrinsic)
+>>>>>>> Undo minor changes that weren't needed, fix one lifetime typo
         } else {
             ReturnDest::Nothing
         };
@@ -779,7 +775,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some((_, target)) = destination.as_ref() {
             helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
         }
-        helper.do_call(self, &mut bx, fn_abi, fn_ptr, &llargs,
+        helper.do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
                        destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                        cleanup);
     }
@@ -791,8 +787,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bb: mir::BasicBlock,
     ) {
         let mut bx = self.build_block(bb);
-        let mir = self.mir;
-        let data = &mir[bb];
+        let data = &self.mir.body()[bb];
 
         debug!("codegen_block({:?}={:?})", bb, data);
 
@@ -1105,8 +1100,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         dest: &mir::Place<'tcx>,
+<<<<<<< HEAD
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
+        llargs: &mut Vec<Bx::Value>, is_intrinsic: bool,
+=======
+        fn_ret: &ArgType<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>, is_intrinsic: bool
+>>>>>>> Undo minor changes that weren't needed, fix one lifetime typo
     ) -> ReturnDest<'tcx, Bx::Value> {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
