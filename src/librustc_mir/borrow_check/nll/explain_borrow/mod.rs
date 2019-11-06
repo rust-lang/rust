@@ -237,7 +237,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let regioncx = &self.nonlexical_regioncx;
-        let body = self.body_cache.body();
+        let body: &Body<'_> = &self.body_cache;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;

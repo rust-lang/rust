@@ -85,7 +85,7 @@ pub fn liveness_of_locals(
     // any benefits. Benchmark this and find out.
     let mut dirty_queue: WorkQueue<BasicBlock>
         = WorkQueue::with_none(body_cache.basic_blocks().len());
-    for (bb, _) in traversal::postorder(body_cache.body()) {
+    for (bb, _) in traversal::postorder(&body_cache) {
         dirty_queue.insert(bb);
     }
 

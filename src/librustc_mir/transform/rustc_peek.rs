@@ -58,15 +58,15 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
                         |_, i| DebugFormatted::new(&i));
 
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_init).is_some() {
-            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_inits);
+            sanity_check_via_rustc_peek(tcx, body_cache, def_id, &attributes, &flow_inits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_uninit).is_some() {
-            sanity_check_via_rustc_peek(tcx, body_cache.body(), def_id, &attributes, &flow_uninits);
+            sanity_check_via_rustc_peek(tcx, body_cache, def_id, &attributes, &flow_uninits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
             sanity_check_via_rustc_peek(
                 tcx,
-                body_cache.body(),
+                body_cache,
                 def_id,
                 &attributes,
                 &flow_def_inits);
@@ -74,7 +74,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
             sanity_check_via_rustc_peek(
                 tcx,
-                body_cache.body(),
+                body_cache,
                 def_id,
                 &attributes,
                 &flow_indirectly_mut);

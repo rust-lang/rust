@@ -13,7 +13,7 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body_cache: &mut BodyCa
     if tcx.sess.no_landing_pads() {
         return
     }
-    debug!("remove_noop_landing_pads({:?})", body_cache.body());
+    debug!("remove_noop_landing_pads({:?})", body_cache);
 
     RemoveNoopLandingPads.remove_nop_landing_pads(body_cache)
 }

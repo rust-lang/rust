@@ -1249,11 +1249,10 @@ fn collect_neighbours<'tcx>(
 ) {
     debug!("collect_neighbours: {:?}", instance.def_id());
     let body_cache = tcx.instance_mir(instance.def);
-    let body = body_cache.body();
 
     MirNeighborCollector {
         tcx,
-        body: &body,
+        body: &body_cache,
         output,
         param_substs: instance.substs,
     }.visit_body(body_cache);

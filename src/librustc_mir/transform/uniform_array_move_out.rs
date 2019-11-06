@@ -223,7 +223,7 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
                             let src_ty = Place::ty_from(
                                 src_place.base,
                                 src_place.projection,
-                                body_cache.body(),
+                                body_cache,
                                 tcx
                             ).ty;
                             if let ty::Array(_, ref size_o) = src_ty.kind {

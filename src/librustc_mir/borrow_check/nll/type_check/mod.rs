@@ -169,7 +169,7 @@ pub(crate) fn type_check<'tcx>(
         &universal_region_relations,
         |mut cx| {
             cx.equate_inputs_and_outputs(
-                body_cache.body(),
+                &body_cache,
                 universal_regions,
                 &normalized_inputs_and_output);
             liveness::generate(
@@ -201,7 +201,7 @@ fn type_check_internal<'a, 'tcx, R>(
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     mut extra: impl FnMut(&mut TypeChecker<'a, 'tcx>) -> R,
-) -> R where {
+) -> R {
     let mut checker = TypeChecker::new(
         infcx,
         body_cache.body(),
@@ -220,7 +220,7 @@ fn type_check_internal<'a, 'tcx, R>(
 
     if !errors_reported {
         // if verifier failed, don't do further checks to avoid ICEs
-        checker.typeck_mir(body_cache.body());
+        checker.typeck_mir(&body_cache);
     }
 
     extra(&mut checker)

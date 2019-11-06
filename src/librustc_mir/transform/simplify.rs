@@ -59,7 +59,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn run_pass(
         &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
     ) {
-        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body_cache.body());
+        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body_cache);
         simplify_cfg(body_cache);
     }
 }
@@ -264,7 +264,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
 pub fn remove_dead_blocks(body_cache: &mut BodyCache<'_>) {
     let mut seen = BitSet::new_empty(body_cache.basic_blocks().len());
-    for (bb, _) in traversal::preorder(body_cache.body()) {
+    for (bb, _) in traversal::preorder(body_cache) {
         seen.insert(bb.index());
     }
 

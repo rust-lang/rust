@@ -181,7 +181,8 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(body_cache.body()));
+    let elements
+        = &Rc::new(RegionValueElements::new(&body_cache));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -206,7 +207,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         all_facts
             .universal_region
             .extend(universal_regions.universal_regions());
-        populate_polonius_move_facts(all_facts, move_data, location_table, body_cache.body());
+        populate_polonius_move_facts(all_facts, move_data, location_table, &body_cache);
     }
 
     // Create the region inference context, taking ownership of the
@@ -230,7 +231,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         &mut liveness_constraints,
         &mut all_facts,
         location_table,
-        body_cache.body(),
+        &body_cache,
         borrow_set,
     );
 
@@ -239,7 +240,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         universal_regions,
         placeholder_indices,
         universal_region_relations,
-        body_cache.body(),
         outlives_constraints,
         member_constraints,
         closure_bounds_mapping,
@@ -284,14 +284,14 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let closure_region_requirements =
-        regioncx.solve(infcx, body_cache.body(), local_names, upvars, def_id, errors_buffer);
+        regioncx.solve(infcx, &body_cache, local_names, upvars, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
     dump_mir_results(
         infcx,
         MirSource::item(def_id),
-        body_cache.body(),
+        &body_cache,
         &regioncx,
         &closure_region_requirements,
     );
@@ -300,7 +300,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     // information
     dump_annotation(
         infcx,
-        body_cache.body(),
+        &body_cache,
         def_id,
         &regioncx,
         &closure_region_requirements,

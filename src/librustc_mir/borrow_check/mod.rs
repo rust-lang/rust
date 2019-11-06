@@ -646,7 +646,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(self.body_cache.body(), self.infcx.tcx);
+                let drop_place_ty = drop_place.ty(&self.body_cache, self.infcx.tcx);
 
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
@@ -990,7 +990,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
-        let body = self.body_cache.body();
+        let body_cache = self.body_cache;
+        let body: &Body<'_> = &body_cache;
         let param_env = self.param_env;
         let location_table = self.location_table.start_index(location);
         let borrow_set = self.borrow_set.clone();
@@ -1341,7 +1342,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             _ => bug!("temporary initialized in arguments"),
                         };
 
-                        let bbd = &self.body_cache.body()[loc.block];
+                        let body_cache = self.body_cache;
+                        let bbd = &body_cache[loc.block];
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 

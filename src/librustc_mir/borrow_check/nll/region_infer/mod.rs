@@ -239,7 +239,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
-        _body: &Body<'tcx>,
         outlives_constraints: OutlivesConstraintSet,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<

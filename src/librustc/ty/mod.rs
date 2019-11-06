@@ -3023,7 +3023,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
-        self.optimized_mir(def_id).body().generator_layout.as_ref().unwrap()
+        self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

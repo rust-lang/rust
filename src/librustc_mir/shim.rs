@@ -113,7 +113,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
         }
     };
-    debug!("make_shim({:?}) = untransformed {:?}", instance, result.body());
+    debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
     run_passes(tcx, &mut result, instance, None, MirPhase::Const, &[
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
@@ -123,7 +123,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         &add_call_guards::CriticalCallEdges,
     ]);
 
-    debug!("make_shim({:?}) = {:?}", instance, result.body());
+    debug!("make_shim({:?}) = {:?}", instance, result);
 
     result.ensure_predecessors();
     tcx.arena.alloc(result)
@@ -220,8 +220,8 @@ fn build_drop_shim<'tcx>(
         let patch = {
             let param_env = tcx.param_env(def_id).with_reveal_all();
             let mut elaborator = DropShimElaborator {
-                body: body_cache.body(),
-                patch: MirPatch::new(body_cache.body()),
+                body: &body_cache,
+                patch: MirPatch::new(&body_cache),
                 tcx,
                 param_env
             };

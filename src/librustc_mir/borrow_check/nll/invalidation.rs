@@ -38,7 +38,7 @@ pub(super) fn generate_invalidates<'tcx>(
             param_env,
             tcx,
             location_table,
-            body: body_cache.body(),
+            body: &body_cache,
             dominators,
         };
         ig.visit_body(body_cache);

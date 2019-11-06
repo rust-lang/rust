@@ -487,7 +487,7 @@ fn locals_live_across_suspend_points(
 ) -> LivenessInfo {
     let dead_unwinds = BitSet::new_empty(body_cache.basic_blocks().len());
     let def_id = source.def_id();
-    let body = body_cache.body();
+    let body: &Body<'_> = &body_cache;
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
@@ -932,7 +932,7 @@ fn create_generator_drop_shim<'tcx>(
 ) -> BodyCache<'tcx> {
     let mut body_cache = body_cache.clone();
 
-    let source_info = source_info(body_cache.body());
+    let source_info = source_info(&body_cache);
 
     let mut cases = create_cases(&mut body_cache, transform, |point| point.drop);
 

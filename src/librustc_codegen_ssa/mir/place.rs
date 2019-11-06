@@ -594,8 +594,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let place_ty = mir::Place::ty_from(
             place_ref.base,
             place_ref.projection,
-            self.mir.body(),
-            tcx);
+            &self.mir,
+            tcx,
+        );
         self.monomorphize(&place_ty.ty)
     }
 }
