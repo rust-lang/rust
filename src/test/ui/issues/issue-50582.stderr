@@ -1,3 +1,9 @@
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/issue-50582.rs:2:20
+   |
+LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
+   |                    ^^^^^^^^^^^^^^^^
+
 error[E0277]: cannot add `()` to `{integer}`
   --> $DIR/issue-50582.rs:2:18
    |
@@ -6,6 +12,7 @@ LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
    |
    = help: the trait `std::ops::Add<()>` is not implemented for `{integer}`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0744.
+For more information about an error, try `rustc --explain E0277`.

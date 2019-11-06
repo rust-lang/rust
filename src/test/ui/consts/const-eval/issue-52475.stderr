@@ -1,3 +1,15 @@
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/issue-52475.rs:6:9
+   |
+LL | /         while n < 5 {
+LL | |
+LL | |
+LL | |
+LL | |             n = (n + 1) % 5;
+LL | |             x = &0; // Materialize a new AllocId
+LL | |         }
+   | |_________^
+
 error[E0019]: constant contains unimplemented expression type
   --> $DIR/issue-52475.rs:6:15
    |
@@ -8,6 +20,7 @@ error[E0019]: constant contains unimplemented expression type
   --> $DIR/issue-52475.rs:6:9
    |
 LL | /         while n < 5 {
+LL | |
 LL | |
 LL | |
 LL | |             n = (n + 1) % 5;
@@ -29,12 +42,12 @@ LL | |     }];
    | |_____^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52475.rs:9:17
+  --> $DIR/issue-52475.rs:10:17
    |
 LL |             n = (n + 1) % 5;
    |                 ^^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0019, E0080.
+Some errors have detailed explanations: E0019, E0080, E0744.
 For more information about an error, try `rustc --explain E0019`.
