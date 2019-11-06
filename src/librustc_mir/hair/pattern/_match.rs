@@ -586,9 +586,9 @@ enum Constructor<'tcx> {
     ConstantValue(&'tcx ty::Const<'tcx>, Span),
     /// Ranges of literal values (`2..=5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
-    /// Array patterns of length n.
+    /// Array patterns of length `n`.
     FixedLenSlice(u64),
-    /// Slice patterns. Captures any array constructor of length >= i+j.
+    /// Slice patterns. Captures any array constructor of `length >= i + j`.
     VarLenSlice(u64, u64),
 }
 
@@ -616,8 +616,7 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
 impl<'tcx> Constructor<'tcx> {
     fn is_slice(&self) -> bool {
         match self {
-            FixedLenSlice { .. } => true,
-            VarLenSlice { .. } => true,
+            FixedLenSlice { .. } | VarLenSlice { .. } => true,
             _ => false,
         }
     }
@@ -687,13 +686,13 @@ impl<'tcx> Constructor<'tcx> {
 
                 // For each used ctor, subtract from the current set of constructors.
                 // Naming: we remove the "neg" constructors from the "pos" ones.
-                // Remember, VarLenSlice(i, j) covers the union of FixedLenSlice from
-                // i+j to infinity.
+                // Remember, `VarLenSlice(i, j)` covers the union of `FixedLenSlice` from
+                // `i + j` to infinity.
                 for neg_ctor in other_ctors {
                     remaining_ctors = remaining_ctors
                         .into_iter()
                         .flat_map(|pos_ctor| -> SmallVec<[Constructor<'tcx>; 1]> {
-                            // Compute pos_ctor \ neg_ctor
+                            // Compute `pos_ctor \ neg_ctor`.
                             match (&pos_ctor, neg_ctor) {
                                 (&FixedLenSlice(pos_len), &VarLenSlice(neg_prefix, neg_suffix)) => {
                                     let neg_len = neg_prefix + neg_suffix;
@@ -722,7 +721,7 @@ impl<'tcx> Constructor<'tcx> {
                                     } else {
                                         (pos_len..neg_len)
                                             .map(FixedLenSlice)
-                                            // We know neg_len + 1 >= pos_len >= pos_suffix
+                                            // We know that `neg_len + 1 >= pos_len >= pos_suffix`.
                                             .chain(Some(VarLenSlice(
                                                 neg_len + 1 - pos_suffix,
                                                 pos_suffix,
@@ -2081,7 +2080,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                 }
 
                 // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
-                // where `max_fixed_len+1` is the largest, we adapt `max_prefix_len` accordingly,
+                // where `max_fixed_len + 1` is the largest, we adapt `max_prefix_len` accordingly,
                 // so that `L = max_prefix_len + max_suffix_len`.
                 if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
                     // The subtraction can't overflow thanks to the above check.
