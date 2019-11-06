@@ -68,7 +68,7 @@ name = "arena"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
- "smallvec",
+ "smallvec 1.0.0",
 ]
 
 [[package]]
@@ -487,7 +487,7 @@ dependencies = [
  "regex-syntax",
  "semver",
  "serde",
- "smallvec",
+ "smallvec 0.6.10",
  "toml",
  "unicode-normalization",
  "url 2.1.0",
@@ -655,7 +655,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f0ed1a4de2235cabda8558ff5840bffb97fcb64c97827f354a451307df5f72b"
 dependencies = [
  "crossbeam-utils 0.6.5",
- "smallvec",
+ "smallvec 0.6.10",
 ]
 
 [[package]]
@@ -2392,7 +2392,7 @@ dependencies = [
  "libc",
  "rand 0.6.1",
  "rustc_version",
- "smallvec",
+ "smallvec 0.6.10",
  "winapi 0.3.6",
 ]
 
@@ -2407,7 +2407,7 @@ dependencies = [
  "libc",
  "redox_syscall",
  "rustc_version",
- "smallvec",
+ "smallvec 0.6.10",
  "winapi 0.3.6",
 ]
 
@@ -3135,7 +3135,7 @@ dependencies = [
  "rustc_target",
  "scoped-tls",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
 ]
@@ -3147,7 +3147,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a623fd4805842e9bd0bb6e6dace63efede0ee22de4522a0b03b7c3d15a22f009"
 dependencies = [
  "rustc-ap-rustc_data_structures",
- "smallvec",
+ "smallvec 0.6.10",
 ]
 
 [[package]]
@@ -3176,7 +3176,7 @@ dependencies = [
  "rustc-hash",
  "rustc-rayon 0.2.0",
  "rustc-rayon-core 0.2.0",
- "smallvec",
+ "smallvec 0.6.10",
  "stable_deref_trait",
 ]
 
@@ -3204,7 +3204,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "457a5c204ae2fdaa5bdb5b196e58ca59896870d80445fe423063c9453496e3ea"
 dependencies = [
  "rustc-ap-serialize",
- "smallvec",
+ "smallvec 0.6.10",
 ]
 
 [[package]]
@@ -3250,7 +3250,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92679240e86f4583cc05f8dcf6439bdab87bac9e6555718469176de9bd52ba20"
 dependencies = [
  "indexmap",
- "smallvec",
+ "smallvec 0.6.10",
 ]
 
 [[package]]
@@ -3270,7 +3270,7 @@ dependencies = [
  "rustc-ap-serialize",
  "rustc-ap-syntax_pos",
  "scoped-tls",
- "smallvec",
+ "smallvec 0.6.10",
 ]
 
 [[package]]
@@ -3393,7 +3393,7 @@ dependencies = [
  "crossbeam-utils 0.6.5",
  "serde",
  "serde_json",
- "smallvec",
+ "smallvec 0.6.10",
  "syn 0.15.35",
  "url 2.1.0",
  "winapi 0.3.6",
@@ -3404,7 +3404,7 @@ name = "rustc_apfloat"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "smallvec",
+ "smallvec 1.0.0",
 ]
 
 [[package]]
@@ -3484,7 +3484,7 @@ dependencies = [
  "rustc-rayon-core 0.3.0",
  "rustc_index",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "stable_deref_trait",
 ]
 
@@ -3552,7 +3552,7 @@ name = "rustc_index"
 version = "0.0.0"
 dependencies = [
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
 ]
 
 [[package]]
@@ -3579,7 +3579,7 @@ dependencies = [
  "rustc_traits",
  "rustc_typeck",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_expand",
  "syntax_ext",
@@ -3650,7 +3650,7 @@ dependencies = [
  "rustc_index",
  "rustc_target",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "stable_deref_trait",
  "syntax",
  "syntax_expand",
@@ -3675,7 +3675,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_target",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
 ]
@@ -3746,7 +3746,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_metadata",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_expand",
  "syntax_pos",
@@ -3799,7 +3799,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_target",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
 ]
@@ -3826,7 +3826,7 @@ dependencies = [
  "rustc_errors",
  "rustc_index",
  "rustc_target",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
 ]
@@ -4070,7 +4070,7 @@ name = "serialize"
 version = "0.0.0"
 dependencies = [
  "indexmap",
- "smallvec",
+ "smallvec 1.0.0",
 ]
 
 [[package]]
@@ -4133,6 +4133,12 @@ name = "smallvec"
 version = "0.6.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab606a9c5e214920bb66c458cd7be8ef094f813f20fe77a54cc7dbfff220d4b7"
+
+[[package]]
+name = "smallvec"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ecf3b85f68e8abaa7555aa5abdb1153079387e60b718283d732f03897fcfc86"
 
 [[package]]
 name = "socket2"
@@ -4359,7 +4365,7 @@ dependencies = [
  "rustc_target",
  "scoped-tls",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax_pos",
 ]
 
@@ -4377,7 +4383,7 @@ dependencies = [
  "rustc_target",
  "scoped-tls",
  "serialize",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
 ]
@@ -4391,7 +4397,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_target",
- "smallvec",
+ "smallvec 1.0.0",
  "syntax",
  "syntax_expand",
  "syntax_pos",
