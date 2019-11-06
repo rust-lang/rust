@@ -223,7 +223,7 @@ struct UseSelfVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if path.segments.len() >= 2 {
+        if path.segments.len() >= 2 && !path.segments.iter().any(|p| p.ident.span.is_dummy()) {
             let last_but_one = &path.segments[path.segments.len() - 2];
             if last_but_one.ident.name != kw::SelfUpper {
                 let enum_def_id = match path.res {

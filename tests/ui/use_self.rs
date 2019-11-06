@@ -332,3 +332,17 @@ mod issue3567 {
         }
     }
 }
+
+// Test with paths in ranges
+mod paths_in_ranges {
+    struct S {}
+
+    impl S {
+        const A: usize = 0;
+        const B: usize = 1;
+
+        fn f<'a>(&self, p: &'a [u8]) -> &'a [u8] {
+            &p[S::A..S::B]
+        }
+    }
+}

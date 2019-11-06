@@ -222,5 +222,17 @@ error: unnecessary structure name repetition
 LL |             TestStruct::from_something()
    |             ^^^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 36 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:345:16
+   |
+LL |             &p[S::A..S::B]
+   |                ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:345:22
+   |
+LL |             &p[S::A..S::B]
+   |                      ^ help: use the applicable keyword: `Self`
+
+error: aborting due to 38 previous errors
 
