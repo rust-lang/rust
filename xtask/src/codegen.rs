@@ -46,7 +46,7 @@ pub enum Mode {
 /// With verify = false,
 fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     match fs::read_to_string(path) {
-        Ok(ref old_contents) if old_contents == contents => {
+        Ok(ref old_contents) if normalize(old_contents) == normalize(contents) => {
             return Ok(());
         }
         _ => (),
@@ -56,7 +56,11 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
     }
     eprintln!("updating {}", path.display());
     fs::write(path, contents)?;
-    Ok(())
+    return Ok(());
+
+    fn normalize(s: &str) -> String {
+        s.replace("\r\n", "\n")
+    }
 }
 
 fn reformat(text: impl std::fmt::Display) -> Result<String> {
