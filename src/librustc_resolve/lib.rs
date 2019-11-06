@@ -36,7 +36,6 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
 use syntax::{struct_span_err, unwrap_or};
-use syntax::expand::SpecialDerives;
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ast::{CRATE_NODE_ID, Crate};
 use syntax::ast::{ItemKind, Path};
@@ -934,12 +933,10 @@ pub struct Resolver<'a> {
     multi_segment_macro_resolutions: Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>,
                                           Option<Res>)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
-    /// Some built-in derives mark items they are applied to so they are treated specially later.
+    /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    /// FIXME: Find a way for `PartialEq` and `Eq` to emulate `#[structural_match]`
-    /// by marking the produced impls rather than the original items.
-    special_derives: FxHashMap<ExpnId, SpecialDerives>,
+    containers_deriving_copy: FxHashSet<ExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
@@ -1076,12 +1073,6 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn definitions(&mut self) -> &mut Definitions {
         &mut self.definitions
-    }
-
-    fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool {
-        let def_id = self.definitions.local_def_id(node_id);
-        let expn_id = self.definitions.expansion_that_defined(def_id.index);
-        self.has_derives(expn_id, derives)
     }
 
     fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
@@ -1228,7 +1219,7 @@ impl<'a> Resolver<'a> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
-            special_derives: Default::default(),
+            containers_deriving_copy: Default::default(),
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
@@ -1312,10 +1303,6 @@ impl<'a> Resolver<'a> {
                 None => ctxt.remove_mark(),
             };
         }
-    }
-
-    fn has_derives(&self, expn_id: ExpnId, markers: SpecialDerives) -> bool {
-        self.special_derives.get(&expn_id).map_or(false, |m| m.contains(markers))
     }
 
     /// Entry point to crate resolution.

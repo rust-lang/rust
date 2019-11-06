@@ -13,7 +13,6 @@ use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax::{ThinVec, MACRO_ARGUMENTS};
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
-crate use syntax::expand::SpecialDerives;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
@@ -860,8 +859,8 @@ pub trait Resolver {
 
     fn check_unused_macros(&mut self);
 
-    fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool;
-    fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives);
+    fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    fn add_derive_copy(&mut self, expn_id: ExpnId);
 }
 
 #[derive(Clone)]
