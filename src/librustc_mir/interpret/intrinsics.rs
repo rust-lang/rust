@@ -95,11 +95,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
 
-        // The intrinsic itself cannot diverge, so if we got here without a return
-        // place... (can happen e.g., for transmute returning `!`)
+        // We currently do not handle any diverging intrinsics.
         let dest = match dest {
             Some(dest) => dest,
-            None => throw_ub!(Unreachable)
+            None => return Ok(false)
         };
         let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
 
