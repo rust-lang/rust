@@ -22,11 +22,6 @@ publish = false
 travis-ci = { repository = "rust-lang/rust-clippy" }
 appveyor = { repository = "rust-lang/rust-clippy" }
 
-[lib]
-name = "clippy"
-plugin = true
-test = false
-
 [[bin]]
 name = "cargo-clippy"
 test = false
