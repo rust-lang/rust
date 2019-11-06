@@ -835,11 +835,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     sp,
                                     &message(format!(
                                         "restrict type parameter `{}` with",
-                                        param.name.ident().as_str(),
+                                        param.name.ident(),
                                     )),
                                     candidates.iter().map(|t| format!(
                                         "{}{} {}{}",
-                                        param.name.ident().as_str(),
+                                        param.name.ident(),
                                         if impl_trait { " +" } else { ":" },
                                         self.tcx.def_path_str(t.def_id),
                                         if has_bounds.is_some() { " + "} else { "" },

@@ -404,7 +404,7 @@ impl<'a> fmt::Display for Html<'a> {
                 if !human_readable.is_empty() {
                     fmt.write_str(human_readable)
                 } else if let Some(v) = value {
-                    write!(fmt, "<code>{}=\"{}\"</code>", Escape(n), Escape(&*v.as_str()))
+                    write!(fmt, "<code>{}=\"{}\"</code>", Escape(n), Escape(&v.as_str()))
                 } else {
                     write!(fmt, "<code>{}</code>", Escape(n))
                 }

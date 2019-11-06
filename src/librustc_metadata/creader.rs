@@ -121,7 +121,7 @@ impl<'a> CrateLoader<'a> {
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
             let source = &self.cstore.get_crate_data(cnum).source;
-            if let Some(entry) = self.sess.opts.externs.get(&*name.as_str()) {
+            if let Some(entry) = self.sess.opts.externs.get(&name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 let found = entry.locations.iter().filter_map(|l| l.as_ref()).any(|l| {
                     let l = fs::canonicalize(l).ok();

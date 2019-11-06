@@ -1167,7 +1167,7 @@ fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, ha
         global: false,
         res: Res::Err,
         segments: vec![PathSegment {
-            name: name.as_str().to_string(),
+            name: name.to_string(),
             args: external_generic_args(cx, trait_did, has_self, bindings, substs)
         }],
     }
@@ -3704,7 +3704,7 @@ fn qpath_to_string(p: &hir::QPath) -> String {
             s.push_str("::");
         }
         if seg.ident.name != kw::PathRoot {
-            s.push_str(&*seg.ident.as_str());
+            s.push_str(&seg.ident.as_str());
         }
     }
     s

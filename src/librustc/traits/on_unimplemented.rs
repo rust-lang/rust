@@ -180,7 +180,7 @@ impl<'tcx> OnUnimplementedDirective {
                     c.ident().map_or(false, |ident| {
                         options.contains(&(
                             ident.name,
-                            c.value_str().map(|s| s.as_str().to_string())
+                            c.value_str().map(|s| s.to_string())
                         ))
                     })
                 }) {

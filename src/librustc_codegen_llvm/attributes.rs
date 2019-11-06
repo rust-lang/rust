@@ -314,7 +314,7 @@ pub fn from_fn_attrs(
             codegen_fn_attrs.target_features
                 .iter()
                 .map(|f| {
-                    let feature = &*f.as_str();
+                    let feature = &f.as_str();
                     format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
                 })
         )

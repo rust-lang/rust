@@ -2964,7 +2964,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     if attr.is_word() {
         Some(path)
     } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", path, v.as_str()))
+        Some(format!("{} = {:?}", path, v))
     } else if let Some(values) = attr.meta_item_list() {
         let display: Vec<_> = values.iter().filter_map(|attr| {
             attr.meta_item().and_then(|mi| render_attribute(mi))

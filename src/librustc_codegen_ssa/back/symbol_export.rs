@@ -129,9 +129,9 @@ fn reachable_non_generics_provider(
                 //
                 // In general though we won't link right if these
                 // symbols are stripped, and LTO currently strips them.
-                if &*name == "rust_eh_personality" ||
-                   &*name == "rust_eh_register_frames" ||
-                   &*name == "rust_eh_unregister_frames" {
+                if name == "rust_eh_personality" ||
+                   name == "rust_eh_register_frames" ||
+                   name == "rust_eh_unregister_frames" {
                     SymbolExportLevel::C
                 } else {
                     SymbolExportLevel::Rust
