@@ -148,9 +148,6 @@ pub struct Session {
     /// Metadata about the allocators for the current crate being compiled.
     pub has_global_allocator: Once<bool>,
 
-    /// Metadata about the panic handlers for the current crate being compiled.
-    pub has_panic_handler: Once<bool>,
-
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -1211,7 +1208,6 @@ fn build_session_(
         print_fuel,
         jobserver: jobserver::client(),
         has_global_allocator: Once::new(),
-        has_panic_handler: Once::new(),
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
