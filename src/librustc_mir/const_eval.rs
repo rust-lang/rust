@@ -337,7 +337,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_fn(instance, args, dest)? {
+                return if ecx.hook_panic_fn(instance, args, dest)? {
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {

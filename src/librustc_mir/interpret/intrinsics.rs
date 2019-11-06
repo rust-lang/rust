@@ -354,9 +354,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(true)
     }
 
-    /// "Intercept" a function call because we have something special to do for it.
+    /// "Intercept" a function call to a panic-related function
+    /// because we have something special to do for it.
     /// Returns `true` if an intercept happened.
-    pub fn hook_fn(
+    pub fn hook_panic_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
