@@ -1345,48 +1345,27 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
         let mode = determine_mode(tcx, hir_id, def_id);
 
         debug!("run_pass: mode={:?}", mode);
-        if let Mode::NonConstFn | Mode::ConstFn = mode {
+        if let Mode::NonConstFn = mode {
+            // No need to const-check a non-const `fn` now that we don't do promotion here.
+            return;
+        } else if let Mode::ConstFn = mode {
             let mut checker = Checker::new(tcx, def_id, body, mode);
-            if let Mode::ConstFn = mode {
-                let use_min_const_fn_checks =
-                    !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
-                    tcx.is_min_const_fn(def_id);
-                if use_min_const_fn_checks {
-                    // Enforce `min_const_fn` for stable `const fn`s.
-                    use super::qualify_min_const_fn::is_min_const_fn;
-                    if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
-                        error_min_const_fn_violation(tcx, span, err);
-                        return;
-                    }
-
-                    // `check_const` should not produce any errors, but better safe than sorry
-                    // FIXME(#53819)
-                    // NOTE(eddyb) `check_const` is actually needed for promotion inside
-                    // `min_const_fn` functions.
-                }
-
-                // Enforce a constant-like CFG for `const fn`.
-                checker.check_const();
-            } else {
-                while let Some((bb, data)) = checker.rpo.next() {
-                    checker.visit_basic_block_data(bb, data);
+            let use_min_const_fn_checks =
+                !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
+                tcx.is_min_const_fn(def_id);
+            if use_min_const_fn_checks {
+                // Enforce `min_const_fn` for stable `const fn`s.
+                use super::qualify_min_const_fn::is_min_const_fn;
+                if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
+                    error_min_const_fn_violation(tcx, span, err);
+                    return;
                 }
             }
 
-            // Promote only the promotable candidates.
-            let temps = checker.temp_promotion_state;
-            let candidates = promote_consts::validate_candidates(
-                tcx,
-                body,
-                def_id,
-                &temps,
-                &checker.unchecked_promotion_candidates,
-            );
-
-            // Do the actual promotion, now that we know what's viable.
-            self.promoted.set(
-                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
-            );
+            // `check_const` should not produce any errors, but better safe than sorry
+            // FIXME(#53819)
+            // Enforce a constant-like CFG for `const fn`.
+            checker.check_const();
         } else {
             check_short_circuiting_in_const_local(tcx, body, mode);
 
@@ -1394,7 +1373,6 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                 Mode::Const => tcx.mir_const_qualif(def_id),
                 _ => Checker::new(tcx, def_id, body, mode).check_const(),
             };
-            remove_drop_and_storage_dead_on_promoted_locals(body, unimplemented!());
         }
 
         if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {
