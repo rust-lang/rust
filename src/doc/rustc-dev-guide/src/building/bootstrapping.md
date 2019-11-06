@@ -39,7 +39,7 @@ Building stage2 tool error_index_generator
 
 A deeper look into `x.py`'s phases can be seen here:
 
-<img alt="A diagram of the rustc compilation phases" src="img/rustc_stages.svg" class="center" />
+<img alt="A diagram of the rustc compilation phases" src="../img/rustc_stages.svg" class="center" />
 
 Keep in mind this diagram is a simplification, i.e. `rustdoc` can be built at
 different stages, the process is a bit different when passing flags such as
