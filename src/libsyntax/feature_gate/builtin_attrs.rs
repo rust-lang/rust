@@ -30,7 +30,7 @@ const GATED_CFGS: &[(Symbol, Symbol, GateFn)] = &[
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
-    (sym::rustdoc, sym::doc_cfg, cfg_fn!(doc_cfg)),
+    (sym::doc, sym::doc_cfg, cfg_fn!(doc_cfg)),
 ];
 
 #[derive(Debug)]
