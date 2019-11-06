@@ -2,9 +2,12 @@ error[E0308]: mismatched types
   --> $DIR/type-parameter-names.rs:5:5
    |
 LL | fn foo<Foo, Bar>(x: Foo) -> Bar {
-   |                             --- expected `Bar` because of return type
+   |        ---  ---             --- expected `Bar` because of return type
+   |        |    |
+   |        |    expected type parameter
+   |        found type parameter
 LL |     x
-   |     ^ expected type parameter, found a different type parameter
+   |     ^ expected type parameter `Bar`, found type parameter `Foo`
    |
    = note: expected type `Bar`
               found type `Foo`
