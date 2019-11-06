@@ -82,26 +82,6 @@ impl<'tcx, Tag> Immediate<Tag> {
             Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
         }
     }
-
-    /// Converts the immediate into a pointer (or a pointer-sized integer).
-    /// Throws away the second half of a ScalarPair!
-    #[inline]
-    pub fn to_scalar_ptr(self) -> InterpResult<'tcx, Scalar<Tag>> {
-        match self {
-            Immediate::Scalar(ptr) |
-            Immediate::ScalarPair(ptr, _) => ptr.not_undef(),
-        }
-    }
-
-    /// Converts the value into its metadata.
-    /// Throws away the first half of a ScalarPair!
-    #[inline]
-    pub fn to_meta(self) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
-        Ok(match self {
-            Immediate::Scalar(_) => None,
-            Immediate::ScalarPair(_, meta) => Some(meta.not_undef()?),
-        })
-    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
