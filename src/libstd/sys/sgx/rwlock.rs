@@ -172,6 +172,7 @@ const EINVAL: i32 = 22;
 
 #[cfg(not(test))]
 #[no_mangle]
+#[allow(improper_ctypes)]
 pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
@@ -181,6 +182,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
 }
 
 #[cfg(not(test))]
+#[allow(improper_ctypes)]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -190,6 +192,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     return 0;
 }
 #[cfg(not(test))]
+#[allow(improper_ctypes)]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     if p.is_null() {

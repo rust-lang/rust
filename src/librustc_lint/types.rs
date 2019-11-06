@@ -4,7 +4,7 @@ use rustc::hir::{ExprKind, Node};
 use crate::hir::def_id::DefId;
 use rustc::hir::lowering::is_range_literal;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx, SizeSkeleton};
 use rustc::{lint, util};
 use rustc_index::vec::Idx;
@@ -835,16 +835,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Array(ty, _) => self.check_type_for_ffi(cache, ty),
 
             ty::FnPtr(sig) => {
-                match sig.abi() {
-                    Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
-                        return FfiUnsafe {
-                            ty,
-                            reason: "this function pointer has Rust-specific calling convention",
-                            help: Some("consider using an `extern fn(...) -> ...` \
-                                        function pointer instead"),
-                        }
-                    }
-                    _ => {}
+                if self.is_internal_abi(sig.abi()) {
+                    return FfiUnsafe {
+                        ty,
+                        reason: "this function pointer has Rust-specific calling convention",
+                        help: Some("consider using an `extern fn(...) -> ...` \
+                                    function pointer instead"),
+                    };
                 }
 
                 let sig = cx.erase_late_bound_regions(&sig);
@@ -871,7 +868,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Foreign(..) => FfiSafe,
 
-            ty::Param(..) |
+            // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
+            //  so they are currently ignored for the purposes of this lint, see #65134.
+            ty::Param(..) | ty::Projection(..) => FfiSafe,
+
             ty::Infer(..) |
             ty::Bound(..) |
             ty::Error |
@@ -880,7 +880,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::GeneratorWitness(..) |
             ty::Placeholder(..) |
             ty::UnnormalizedProjection(..) |
-            ty::Projection(..) |
             ty::Opaque(..) |
             ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
@@ -892,11 +891,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         sp: Span,
         note: &str,
         help: Option<&str>,
+        is_foreign_item: bool,
     ) {
         let mut diag = self.cx.struct_span_lint(
             IMPROPER_CTYPES,
             sp,
-            &format!("`extern` block uses type `{}`, which is not FFI-safe", ty),
+            &format!(
+                "`extern` {} uses type `{}`, which is not FFI-safe",
+                if is_foreign_item { "block" } else { "fn" },
+                ty,
+            ),
         );
         diag.span_label(sp, "not FFI-safe");
         if let Some(help) = help {
@@ -911,9 +915,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         diag.emit();
     }
 
-    fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        use crate::rustc::ty::TypeFoldable;
-
+    fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>, is_foreign_item: bool) -> bool {
         struct ProhibitOpaqueTypes<'tcx> {
             ty: Option<Ty<'tcx>>,
         };
@@ -937,6 +939,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 sp,
                 "opaque types have no C equivalent",
                 None,
+                is_foreign_item,
             );
             true
         } else {
@@ -944,42 +947,46 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
+    fn check_type_for_ffi_and_report_errors(
+        &mut self,
+        sp: Span,
+        ty: Ty<'tcx>,
+        is_foreign_item: bool,
+    ) {
         // We have to check for opaque types before `normalize_erasing_regions`,
         // which will replace opaque types with their underlying concrete type.
-        if self.check_for_opaque_ty(sp, ty) {
+        if self.check_for_opaque_ty(sp, ty, is_foreign_item) {
             // We've already emitted an error due to an opaque type.
             return;
         }
 
-        // it is only OK to use this function because extern fns cannot have
-        // any generic types right now:
-        let ty = self.cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-
+        let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
         match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, "composed only of `PhantomData`", None);
+                self.emit_ffi_unsafe_type_lint(
+                    ty, sp, "composed only of `PhantomData`", None, is_foreign_item);
             }
             FfiResult::FfiUnsafe { ty, reason, help } => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
+                self.emit_ffi_unsafe_type_lint(
+                    ty, sp, reason, help, is_foreign_item);
             }
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl) {
+    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl, is_foreign_item: bool) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
+            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, is_foreign_item);
         }
 
         if let hir::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
             if !ret_ty.is_unit() {
-                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
+                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, is_foreign_item);
             }
         }
     }
@@ -987,7 +994,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let ty = self.cx.tcx.type_of(def_id);
-        self.check_type_for_ffi_and_report_errors(span, ty);
+        self.check_type_for_ffi_and_report_errors(span, ty, true);
+    }
+
+    fn is_internal_abi(&self, abi: Abi) -> bool {
+        if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -995,18 +1010,39 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx };
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
-        if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
-            // Don't worry about types in internal ABIs.
-        } else {
+        if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id, decl);
+                    vis.check_foreign_fn(it.hir_id, decl, true);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
                     vis.check_foreign_static(it.hir_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => ()
             }
+        }
+    }
+
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: hir::intravisit::FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl,
+        _: &'tcx hir::Body,
+        _: Span,
+        hir_id: hir::HirId,
+    ) {
+        use hir::intravisit::FnKind;
+
+        let abi = match kind {
+            FnKind::ItemFn(_, _, header, ..) => (header.abi),
+            FnKind::Method(_, sig, ..) => (sig.header.abi),
+            _ => return,
+        };
+
+        let mut vis = ImproperCTypesVisitor { cx };
+        if !vis.is_internal_abi(abi) {
+            vis.check_foreign_fn(hir_id, decl, false);
         }
     }
 }
