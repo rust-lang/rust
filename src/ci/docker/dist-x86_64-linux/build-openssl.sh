@@ -4,7 +4,11 @@ set -ex
 source shared.sh
 
 VERSION=1.0.2k
-URL=https://ci-mirrors.rust-lang.org/rustc/openssl-$VERSION.tar.gz
+
+# This needs to be downloaded directly from S3, it can't go through the CDN.
+# That's because the CDN is backed by CloudFront, which requires SNI and TLSv1
+# (without paying an absurd amount of money).
+URL=https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/openssl-$VERSION.tar.gz
 
 curl $URL | tar xzf -
 
