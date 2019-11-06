@@ -1077,10 +1077,11 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 match self.variants {
                     Variants::Multiple { .. } =>
                         if zero {
-                            // FIXME: could we identify the variant with discriminant 0, check that?
+                            // FIXME(#66151):
+                            // could we identify the variant with discriminant 0, check that?
                             true
                         } else {
-                            // FIXME: This needs to have some sort of discriminant,
+                            // FIXME(#66151): This needs to have some sort of discriminant,
                             // which cannot be undef. But for now we are conservative.
                             true
                         },
@@ -1089,7 +1090,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                         match self.fields {
                             FieldPlacement::Union(..) => true, // An all-0 unit is fine.
                             FieldPlacement::Array { .. } =>
-                                // FIXME: The widely use smallvec 0.6 creates uninit arrays
+                                // FIXME(#66151): The widely use smallvec 0.6 creates uninit arrays
                                 // with any element type, so let us not (yet) complain about that.
                                 // count == 0 ||
                                 // self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)?
