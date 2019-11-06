@@ -3,7 +3,6 @@ use crate::rustfmt_diff::{make_diff, DiffLine, Mismatch};
 use serde::Serialize;
 use serde_json::to_string as to_json_string;
 use std::io::{self, Write};
-use std::path::Path;
 
 #[derive(Debug, Default)]
 pub(crate) struct JsonEmitter {
@@ -47,7 +46,6 @@ impl Emitter for JsonEmitter {
         }: FormattedFile<'_>,
     ) -> Result<EmitterResult, io::Error> {
         const CONTEXT_SIZE: usize = 0;
-        let filename = ensure_real_path(filename);
         let diff = make_diff(original_text, formatted_text, CONTEXT_SIZE);
         let has_diff = !diff.is_empty();
 
@@ -62,7 +60,7 @@ impl Emitter for JsonEmitter {
 
 fn output_json_file<T>(
     mut writer: T,
-    filename: &Path,
+    filename: &FileName,
     diff: Vec<Mismatch>,
     num_emitted_files: u32,
 ) -> Result<(), io::Error>
@@ -106,7 +104,7 @@ where
         });
     }
     let json = to_json_string(&MismatchedFile {
-        name: String::from(filename.to_str().unwrap()),
+        name: format!("{}", filename),
         mismatches,
     })?;
     let prefix = if num_emitted_files > 0 { "," } else { "" };
@@ -148,7 +146,12 @@ mod tests {
 
         let mut writer = Vec::new();
         let exp_json = to_json_string(&mismatched_file).unwrap();
-        let _ = output_json_file(&mut writer, &PathBuf::from(file), vec![mismatch], 0);
+        let _ = output_json_file(
+            &mut writer,
+            &FileName::Real(PathBuf::from(file)),
+            vec![mismatch],
+            0,
+        );
         assert_eq!(&writer[..], format!("{}", exp_json).as_bytes());
     }
 
@@ -188,7 +191,12 @@ mod tests {
 
         let mut writer = Vec::new();
         let exp_json = to_json_string(&mismatched_file).unwrap();
-        let _ = output_json_file(&mut writer, &PathBuf::from(file), vec![mismatch], 0);
+        let _ = output_json_file(
+            &mut writer,
+            &FileName::Real(PathBuf::from(file)),
+            vec![mismatch],
+            0,
+        );
         assert_eq!(&writer[..], format!("{}", exp_json).as_bytes());
     }
 

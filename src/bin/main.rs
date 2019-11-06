@@ -74,14 +74,10 @@ pub enum OperationError {
     /// An io error during reading or writing.
     #[error("{0}")]
     IoError(IoError),
-    /// Attempt to use --check with stdin, which isn't currently
-    /// supported.
-    #[error("The `--check` option is not supported with standard input.")]
-    CheckWithStdin,
-    /// Attempt to use --emit=json with stdin, which isn't currently
-    /// supported.
-    #[error("Using `--emit` other than stdout is not supported with standard input.")]
-    EmitWithStdin,
+    /// Attempt to use --emit with a mode which is not currently
+    /// supported with stdandard input.
+    #[error("Emit mode {0} not supported with standard output.")]
+    StdinBadEmit(EmitMode),
 }
 
 impl From<IoError> for OperationError {
@@ -255,15 +251,20 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32> {
     let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
 
     if options.check {
-        return Err(OperationError::CheckWithStdin.into());
-    }
-    if let Some(emit_mode) = options.emit_mode {
-        if emit_mode != EmitMode::Stdout {
-            return Err(OperationError::EmitWithStdin.into());
+        config.set().emit_mode(EmitMode::Diff);
+    } else {
+        match options.emit_mode {
+            // Emit modes which work with standard input
+            // None means default, which is Stdout.
+            None | Some(EmitMode::Stdout) | Some(EmitMode::Checkstyle) | Some(EmitMode::Json) => {}
+            Some(emit_mode) => {
+                return Err(OperationError::StdinBadEmit(emit_mode).into());
+            }
         }
+        config
+            .set()
+            .emit_mode(options.emit_mode.unwrap_or(EmitMode::Stdout));
     }
-    // emit mode is always Stdout for Stdin.
-    config.set().emit_mode(EmitMode::Stdout);
     config.set().verbose(Verbosity::Quiet);
 
     // parse file_lines
