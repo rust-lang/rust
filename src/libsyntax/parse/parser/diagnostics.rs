@@ -12,7 +12,7 @@ use crate::ptr::P;
 use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralise};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
@@ -515,11 +515,11 @@ impl<'a> Parser<'a> {
             self.diagnostic()
                 .struct_span_err(
                     span,
-                    &format!("unmatched angle bracket{}", pluralise!(total_num_of_gt)),
+                    &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
                 )
                 .span_suggestion(
                     span,
-                    &format!("remove extra angle bracket{}", pluralise!(total_num_of_gt)),
+                    &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
                     String::new(),
                     Applicability::MachineApplicable,
                 )

@@ -17,7 +17,7 @@ use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use crate::astconv::AstConv as _;
 
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::symbol::{Symbol, kw, sym};
@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             struct_span_err!(tcx.sess, span, E0063,
                              "missing field{} {}{} in initializer of `{}`",
-                             pluralise!(remaining_fields.len()),
+                             pluralize!(remaining_fields.len()),
                              remaining_fields_names,
                              truncated_fields_error,
                              adt_ty)
