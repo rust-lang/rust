@@ -6,7 +6,7 @@ use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 
-use errors::{Applicability, Handler, ColorConfig, DiagnosticBuilder};
+use errors::{Applicability, emitter::SilentEmitter, Handler, ColorConfig, DiagnosticBuilder};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock, Once};
 use syntax_pos::{Symbol, Span, MultiSpan};
@@ -105,6 +105,12 @@ impl ParseSess {
             gated_spans: GatedSpans::default(),
             reached_eof: Lock::new(false),
         }
+    }
+
+    pub fn with_silent_emitter() -> Self {
+        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let handler = Handler::with_emitter(false, None, Box::new(SilentEmitter));
+        ParseSess::with_span_handler(handler, cm)
     }
 
     #[inline]

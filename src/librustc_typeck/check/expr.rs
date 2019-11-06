@@ -583,7 +583,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     assert!(e_ty.is_unit());
                     let ty = coerce.expected_ty();
-                    coerce.coerce_forced_unit(self, &cause, &mut |err| {
+                    coerce.coerce_forced_unit(self, &cause, &mut |mut err| {
+                        self.suggest_mismatched_types_on_tail(
+                            &mut err,
+                            expr,
+                            ty,
+                            e_ty,
+                            cause.span,
+                            target_id,
+                        );
                         let val = match ty.kind {
                             ty::Bool => "true",
                             ty::Char => "'a'",

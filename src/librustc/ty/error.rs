@@ -241,7 +241,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
             ty::Projection(_) => "associated type".into(),
             ty::UnnormalizedProjection(_) => "non-normalized associated type".into(),
-            ty::Param(_) => "type parameter".into(),
+            ty::Param(p) => format!("type parameter `{}`", p).into(),
             ty::Opaque(..) => "opaque type".into(),
             ty::Error => "type error".into(),
         }
@@ -254,6 +254,7 @@ impl<'tcx> TyCtxt<'tcx> {
         db: &mut DiagnosticBuilder<'_>,
         err: &TypeError<'tcx>,
         sp: Span,
+        body_owner_def_id: DefId,
     ) {
         use self::TypeError::*;
 
@@ -288,7 +289,16 @@ impl<'tcx> TyCtxt<'tcx> {
                             );
                         }
                     },
-                    (ty::Param(_), ty::Param(_)) => {
+                    (ty::Param(expected), ty::Param(found)) => {
+                        let generics = self.generics_of(body_owner_def_id);
+                        let e_span = self.def_span(generics.type_param(expected, self).def_id);
+                        if !sp.contains(e_span) {
+                            db.span_label(e_span, "expected type parameter");
+                        }
+                        let f_span = self.def_span(generics.type_param(found, self).def_id);
+                        if !sp.contains(f_span) {
+                            db.span_label(f_span, "found type parameter");
+                        }
                         db.note("a type parameter was expected, but a different one was found; \
                                  you might be missing a type parameter or trait bound");
                         db.note("for more information, visit \
@@ -301,7 +311,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Param(_), ty::Projection(_)) | (ty::Projection(_), ty::Param(_)) => {
                         db.note("you might be missing a type parameter or trait bound");
                     }
-                    (ty::Param(_), _) | (_, ty::Param(_)) => {
+                    (ty::Param(p), _) | (_, ty::Param(p)) => {
+                        let generics = self.generics_of(body_owner_def_id);
+                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        if !sp.contains(p_span) {
+                            db.span_label(p_span, "this type parameter");
+                        }
                         db.help("type parameters must be constrained to match other types");
                         if self.sess.teach(&db.get_code().unwrap()) {
                             db.help("given a type parameter `T` and a method `foo`:

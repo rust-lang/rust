@@ -36,13 +36,13 @@ LL | )
    |
 
 error: expected one of `.`, `?`, `{`, or an operator, found `}`
-  --> $DIR/issue-62973.rs:8:1
+  --> $DIR/issue-62973.rs:8:2
    |
 LL | fn p() { match s { v, E { [) {) }
    |          ----- while parsing this match expression
 LL | 
 LL | 
-   | ^ expected one of `.`, `?`, `{`, or an operator here
+   |  ^ expected one of `.`, `?`, `{`, or an operator here
 
 error: incorrect close delimiter: `)`
   --> $DIR/issue-62973.rs:6:28

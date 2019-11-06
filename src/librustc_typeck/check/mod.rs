@@ -1267,11 +1267,6 @@ fn check_fn<'a, 'tcx>(
     if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
         if panic_impl_did == fcx.tcx.hir().local_def_id(fn_id) {
             if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
-                // at this point we don't care if there are duplicate handlers or if the handler has
-                // the wrong signature as this value we'll be used when writing metadata and that
-                // only happens if compilation succeeded
-                fcx.tcx.sess.has_panic_handler.try_set_same(true);
-
                 if declared_ret_ty.kind != ty::Never {
                     fcx.tcx.sess.span_err(
                         decl.output.span(),
@@ -4250,7 +4245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
     pub fn suggest_mismatched_types_on_tail(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &'tcx hir::Expr,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -4277,7 +4272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn suggest_fn_call(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -4390,7 +4385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_ref_or_into(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -4458,7 +4453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// in the heap by calling `Box::new()`.
     fn suggest_boxing_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -4502,7 +4497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// it suggests adding a semicolon.
     fn suggest_missing_semicolon(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expression: &'tcx hir::Expr,
         expected: Ty<'tcx>,
         cause_span: Span,
@@ -4541,7 +4536,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// type.
     fn suggest_missing_return_type(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         fn_decl: &hir::FnDecl,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -4607,7 +4602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `.await` to the tail of the expression.
     fn suggest_missing_await(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,

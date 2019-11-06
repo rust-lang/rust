@@ -1231,7 +1231,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn suggest_fn_call(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {

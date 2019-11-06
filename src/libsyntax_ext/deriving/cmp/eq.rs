@@ -3,7 +3,6 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Ident, Expr, MetaItem, GenericArg};
-use syntax::expand::SpecialDerives;
 use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
 use syntax_expand::base::{Annotatable, ExtCtxt};
@@ -14,8 +13,6 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
                           mitem: &MetaItem,
                           item: &Annotatable,
                           push: &mut dyn FnMut(Annotatable)) {
-    cx.resolver.add_derives(cx.current_expansion.id.expn_data().parent, SpecialDerives::EQ);
-
     let inline = cx.meta_word(span, sym::inline);
     let hidden = syntax::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
     let doc = syntax::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);

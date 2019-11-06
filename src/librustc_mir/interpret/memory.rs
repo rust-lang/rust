@@ -314,16 +314,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         align: Align,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
         let align = if M::CHECK_ALIGN { Some(align) } else { None };
-        self.check_ptr_access_align(sptr, size, align)
+        self.check_ptr_access_align(sptr, size, align, CheckInAllocMsg::MemoryAccessTest)
     }
 
     /// Like `check_ptr_access`, but *definitely* checks alignment when `align`
-    /// is `Some` (overriding `M::CHECK_ALIGN`).
-    pub(super) fn check_ptr_access_align(
+    /// is `Some` (overriding `M::CHECK_ALIGN`). Also lets the caller control
+    /// the error message for the out-of-bounds case.
+    pub fn check_ptr_access_align(
         &self,
         sptr: Scalar<M::PointerTag>,
         size: Size,
         align: Option<Align>,
+        msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
         fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
             if offset % align.bytes() == 0 {
@@ -368,7 +370,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
                 let end_ptr = ptr.offset(size, self)?;
-                end_ptr.check_inbounds_alloc(allocation_size, CheckInAllocMsg::MemoryAccessTest)?;
+                end_ptr.check_inbounds_alloc(allocation_size, msg)?;
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {

@@ -1,10 +1,16 @@
 error[E0308]: mismatched types
   --> $DIR/type-params-in-different-spaces-3.rs:3:9
    |
-LL |     fn test<X>(u: X) -> Self {
-   |                         ---- expected `Self` because of return type
-LL |         u
-   |         ^ expected type parameter, found a different type parameter
+LL | / trait Tr : Sized {
+LL | |     fn test<X>(u: X) -> Self {
+   | |             -           ---- expected `Self` because of return type
+   | |             |
+   | |             found type parameter
+LL | |         u
+   | |         ^ expected type parameter `Self`, found type parameter `X`
+LL | |     }
+LL | | }
+   | |_- expected type parameter
    |
    = note: expected type `Self`
               found type `X`

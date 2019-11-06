@@ -432,7 +432,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     // can be in scope for all code produced by that container's expansion.
                     item.visit_with(&mut MarkAttrs(&helper_attrs));
                     if has_copy {
-                        self.cx.resolver.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
+                        self.cx.resolver.add_derive_copy(invoc.expansion_data.id);
                     }
 
                     let mut derive_placeholders = Vec::with_capacity(derives.len());
