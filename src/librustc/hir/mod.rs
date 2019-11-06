@@ -1620,7 +1620,7 @@ pub enum ExprKind {
     /// To resolve the called method to a `DefId`, call [`type_dependent_def_id`] with
     /// the `hir_id` of the `MethodCall` node itself.
     ///
-    /// [`qpath_res`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
+    /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
     MethodCall(P<PathSegment>, Span, HirVec<Expr>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(HirVec<Expr>),
