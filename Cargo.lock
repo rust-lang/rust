@@ -487,7 +487,7 @@ dependencies = [
  "regex-syntax",
  "semver",
  "serde",
- "smallvec 0.6.10",
+ "smallvec 1.0.0",
  "toml",
  "unicode-normalization",
  "url 2.1.0",
