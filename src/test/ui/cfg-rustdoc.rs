@@ -1,4 +1,4 @@
-#[cfg(rustdoc)]
+#[cfg(doc)]
 pub struct Foo;
 
 fn main() {

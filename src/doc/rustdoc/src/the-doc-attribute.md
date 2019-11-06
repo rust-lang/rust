@@ -215,7 +215,7 @@ Since primitive types are defined in the compiler, there's no place to attach do
 attributes. This attribute is used by the standard library to provide a way to generate
 documentation for primitive types.
 
-## `#[cfg(rustdoc)]`: Documenting platform-/feature-specific information
+## `#[cfg(doc)]`: Documenting platform-/feature-specific information
 
 For conditional compilation, Rustdoc treats your crate the same way the compiler does: Only things
 from the host target are available (or from the given `--target` if present), and everything else is
@@ -224,9 +224,9 @@ on different targets and you want your documentation to reflect all the availabl
 provide.
 
 If you want to make sure an item is seen by Rustdoc regardless of what platform it's targeting,
-you can apply `#[cfg(rustdoc)]` to it. Rustdoc sets this whenever it's building documentation, so
+you can apply `#[cfg(doc)]` to it. Rustdoc sets this whenever it's building documentation, so
 anything that uses that flag will make it into documentation it generates. To apply this to an item
-with other `#[cfg]` filters on it, you can write something like `#[cfg(any(windows, rustdoc))]`.
+with other `#[cfg]` filters on it, you can write something like `#[cfg(any(windows, doc))]`.
 This will preserve the item either when built normally on Windows, or when being documented
 anywhere.
 
@@ -236,10 +236,10 @@ Example:
 
 ```rust
 /// Token struct that can only be used on Windows.
-#[cfg(any(windows, rustdoc))]
+#[cfg(any(windows, doc))]
 pub struct WindowsToken;
 /// Token struct that can only be used on Unix.
-#[cfg(any(unix, rustdoc))]
+#[cfg(any(unix, doc))]
 pub struct UnixToken;
 ```
 
