@@ -397,6 +397,7 @@ impl<'a> Parser<'a> {
             }
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
+                    self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(Stmt {
