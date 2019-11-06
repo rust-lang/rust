@@ -195,7 +195,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             // We need to consult `meta` metadata
             match self.layout.ty.kind {
                 ty::Slice(..) | ty::Str =>
-                    return self.mplace.meta.unwrap().to_usize(cx),
+                    return self.mplace.meta.unwrap().to_machine_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {

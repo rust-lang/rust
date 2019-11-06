@@ -282,7 +282,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 // FIXME: More checks for the vtable.
             }
             ty::Slice(..) | ty::Str => {
-                let _len = try_validation!(meta.unwrap().to_usize(self.ecx),
+                let _len = try_validation!(meta.unwrap().to_machine_usize(self.ecx),
                     "non-integer slice length in wide pointer", self.path);
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the

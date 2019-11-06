@@ -447,7 +447,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             ty::Slice(_) | ty::Str => {
-                let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
+                let len = metadata.expect("slice fat ptr must have length").to_machine_usize(self)?;
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.

@@ -915,7 +915,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         match scalar {
             Scalar::Ptr(ptr) => Ok(ptr),
-            _ => M::int_to_ptr(&self, scalar.to_usize(self)?)
+            _ => M::int_to_ptr(&self, scalar.to_machine_usize(self)?)
         }
     }
 
