@@ -1,8 +1,8 @@
 error: struct is never constructed: `Foo`
-  --> $DIR/lint-dead-code-3.rs:13:1
+  --> $DIR/lint-dead-code-3.rs:13:8
    |
 LL | struct Foo;
-   | ^^^^^^^^^^^
+   |        ^^^
    |
 note: lint level defined here
   --> $DIR/lint-dead-code-3.rs:3:9
@@ -17,16 +17,16 @@ LL |     fn foo(&self) {
    |     ^^^^^^^^^^^^^
 
 error: function is never used: `bar`
-  --> $DIR/lint-dead-code-3.rs:20:1
+  --> $DIR/lint-dead-code-3.rs:20:4
    |
 LL | fn bar() {
-   | ^^^^^^^^
+   |    ^^^
 
 error: enum is never used: `c_void`
-  --> $DIR/lint-dead-code-3.rs:59:1
+  --> $DIR/lint-dead-code-3.rs:59:6
    |
 LL | enum c_void {}
-   | ^^^^^^^^^^^
+   |      ^^^^^^
 
 error: foreign function is never used: `free`
   --> $DIR/lint-dead-code-3.rs:61:5
