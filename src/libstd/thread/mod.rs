@@ -1275,7 +1275,7 @@ impl fmt::Debug for Thread {
 /// is the value the thread panicked with;
 /// that is, the argument the `panic!` macro was called with.
 /// Unlike with normal errors, this value doesn't implement
-/// the [`Error`](std::error::Error) trait.
+/// the [`Error`](crate::error::Error) trait.
 ///
 /// Thus, a sensible way to handle a thread panic is to either:
 /// 1. `unwrap` the `Result<T>`, propagating the panic
