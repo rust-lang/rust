@@ -1,26 +1,10 @@
 #![feature(slice_patterns)]
-#![deny(unreachable_patterns)]
 
 fn main() {
     let s: &[bool] = &[true; 0];
-    let s0: &[bool; 0] = &[];
     let s1: &[bool; 1] = &[false; 1];
     let s2: &[bool; 2] = &[false; 2];
     let s3: &[bool; 3] = &[false; 3];
-
-    let [] = s0;
-    let [_] = s1;
-    let [_, _] = s2;
-
-    let [..] = s;
-    let [..] = s0;
-    let [..] = s1;
-    let [..] = s2;
-    let [..] = s3;
-
-    let [_, _, ..] = s2;
-    let [_, .., _] = s2;
-    let [.., _, _] = s2;
 
     match s1 {
         [true, ..] => {}
@@ -74,25 +58,6 @@ fn main() {
         [.., true] => {}
     }
 
-    match s {
-        [true, ..] => {}
-        [true, ..] => {} //~ ERROR unreachable pattern
-        [true] => {} //~ ERROR unreachable pattern
-        [..] => {}
-    }
-    match s {
-        [.., true] => {}
-        [.., true] => {} //~ ERROR unreachable pattern
-        [true] => {} //~ ERROR unreachable pattern
-        [..] => {}
-    }
-    match s {
-        [false, .., true] => {}
-        [false, .., true] => {} //~ ERROR unreachable pattern
-        [false, true] => {} //~ ERROR unreachable pattern
-        [false] => {}
-        [..] => {}
-    }
     match s {
     //~^ ERROR `&[_, _, .., true]` not covered
         [] => {}
