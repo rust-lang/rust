@@ -15,7 +15,6 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
-use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
@@ -31,7 +30,6 @@ use std::usize;
 
 use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
-use super::promote_consts::{self, Candidate, TempState};
 use crate::transform::check_consts::ops::{self, NonConstOp};
 
 /// What kind of item we are in.
@@ -477,10 +475,6 @@ struct Checker<'a, 'tcx> {
 
     span: Span,
     def_id: DefId,
-    rpo: ReversePostorder<'a, 'tcx>,
-
-    temp_promotion_state: IndexVec<Local, TempState>,
-    unchecked_promotion_candidates: Vec<Candidate>,
 
     /// If `true`, do not emit errors to the user, merely collect them in `errors`.
     suppress_errors: bool,
@@ -509,10 +503,6 @@ impl Deref for Checker<'a, 'tcx> {
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
         assert!(def_id.is_local());
-        let mut rpo = traversal::reverse_postorder(body);
-        let (temps, unchecked_promotion_candidates) =
-            promote_consts::collect_temps_and_candidates(tcx, body, &mut rpo);
-        rpo.reset();
 
         let param_env = tcx.param_env(def_id);
 
@@ -539,9 +529,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             cx,
             span: body.span,
             def_id,
-            rpo,
-            temp_promotion_state: temps,
-            unchecked_promotion_candidates,
             errors: vec![],
             suppress_errors: false,
         }
@@ -661,14 +648,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         let kind = self.body.local_kind(index);
         debug!("store to {:?} {:?}", kind, index);
-
-        // Only handle promotable temps in non-const functions.
-        if self.mode == Mode::NonConstFn {
-            if kind != LocalKind::Temp ||
-               !self.temp_promotion_state[index].is_promotable() {
-                return;
-            }
-        }
 
         // this is overly restrictive, because even full assignments do not clear the qualif
         // While we could special case full assignments, this would be inconsistent with
