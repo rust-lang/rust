@@ -1,8 +1,8 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{db::HirDatabase, Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
+use hir::{db::HirDatabase, Attrs, Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
-use ra_syntax::ast::{AttrsOwner, NameOwner};
+use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
 
 use crate::completion::{
@@ -18,11 +18,7 @@ impl Completions {
         field: hir::StructField,
         substs: &hir::Substs,
     ) {
-        let ast_node = field.source(ctx.db).ast;
-        let is_deprecated = match ast_node {
-            hir::FieldSource::Named(m) => is_deprecated(m),
-            hir::FieldSource::Pos(m) => is_deprecated(m),
-        };
+        let is_deprecated = is_deprecated(field, ctx.db);
         CompletionItem::new(
             CompletionKind::Reference,
             ctx.source_range(),
@@ -185,7 +181,7 @@ impl Completions {
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), &macro_declaration)
                 .kind(CompletionItemKind::Macro)
                 .set_documentation(docs.clone())
-                .set_deprecated(is_deprecated(ast_node))
+                .set_deprecated(is_deprecated(macro_, ctx.db))
                 .detail(detail);
 
         builder = if ctx.use_item_syntax.is_some() {
@@ -218,7 +214,7 @@ impl Completions {
                     CompletionItemKind::Function
                 })
                 .set_documentation(func.docs(ctx.db))
-                .set_deprecated(is_deprecated(ast_node))
+                .set_deprecated(is_deprecated(func, ctx.db))
                 .detail(detail);
 
         // Add `<>` for generic types
@@ -250,7 +246,7 @@ impl Completions {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
             .kind(CompletionItemKind::Const)
             .set_documentation(constant.docs(ctx.db))
-            .set_deprecated(is_deprecated(ast_node))
+            .set_deprecated(is_deprecated(constant, ctx.db))
             .detail(detail)
             .add_to(self);
     }
@@ -266,13 +262,13 @@ impl Completions {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
             .kind(CompletionItemKind::TypeAlias)
             .set_documentation(type_alias.docs(ctx.db))
-            .set_deprecated(is_deprecated(type_def))
+            .set_deprecated(is_deprecated(type_alias, ctx.db))
             .detail(detail)
             .add_to(self);
     }
 
     pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {
-        let is_deprecated = is_deprecated(variant.source(ctx.db).ast);
+        let is_deprecated = is_deprecated(variant, ctx.db);
         let name = match variant.name(ctx.db) {
             Some(it) => it,
             None => return,
@@ -291,8 +287,11 @@ impl Completions {
     }
 }
 
-fn is_deprecated(node: impl AttrsOwner) -> bool {
-    node.attrs().filter_map(|x| x.simple_name()).any(|x| x == "deprecated")
+fn is_deprecated(node: impl Attrs, db: &impl HirDatabase) -> bool {
+    match node.attrs(db) {
+        None => false,
+        Some(attrs) => attrs.iter().any(|x| x.is_simple_atom("deprecated")),
+    }
 }
 
 fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {
