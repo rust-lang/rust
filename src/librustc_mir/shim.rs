@@ -205,14 +205,14 @@ fn build_drop_shim<'tcx>(
         sig.inputs().len(),
         span);
 
-    let mut body_cache = BodyCache::new(body);
+    let mut body = BodyCache::new(body);
 
     if let Some(..) = ty {
         // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::from(Local::new(1+0));
         if tcx.sess.opts.debugging_opts.mir_emit_retag {
             // Function arguments should be retagged, and we make this one raw.
-            body_cache.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
+            body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
                 source_info,
                 kind: StatementKind::Retag(RetagKind::Raw, box(dropee_ptr.clone())),
             });
@@ -220,8 +220,8 @@ fn build_drop_shim<'tcx>(
         let patch = {
             let param_env = tcx.param_env(def_id).with_reveal_all();
             let mut elaborator = DropShimElaborator {
-                body: &body_cache,
-                patch: MirPatch::new(&body_cache),
+                body: &body,
+                patch: MirPatch::new(&body),
                 tcx,
                 param_env
             };
@@ -238,10 +238,10 @@ fn build_drop_shim<'tcx>(
             );
             elaborator.patch
         };
-        patch.apply(&mut body_cache);
+        patch.apply(&mut body);
     }
 
-    body_cache
+    body
 }
 
 fn new_body<'tcx>(
@@ -931,7 +931,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyCache<'_> {
         |_, _| Ok(()),
     );
 
-    let mut body_cache = BodyCache::new(body);
-    body_cache.ensure_predecessors();
-    tcx.arena.alloc(body_cache)
+    let mut body = BodyCache::new(body);
+    body.ensure_predecessors();
+    tcx.arena.alloc(body)
 }

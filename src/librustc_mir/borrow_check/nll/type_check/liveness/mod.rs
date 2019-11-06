@@ -28,7 +28,7 @@ mod trace;
 /// performed before
 pub(super) fn generate<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -41,14 +41,14 @@ pub(super) fn generate<'tcx>(
         &typeck.borrowck_context.universal_regions,
         &typeck.borrowck_context.constraints.outlives_constraints,
     );
-    let live_locals = compute_live_locals(typeck.tcx(), &free_regions, &body_cache);
+    let live_locals = compute_live_locals(typeck.tcx(), &free_regions, &body);
     let facts_enabled = AllFacts::enabled(typeck.tcx());
 
     let polonius_drop_used = if facts_enabled {
         let mut drop_used = Vec::new();
         polonius::populate_access_facts(
             typeck,
-            body_cache,
+            body,
             location_table,
             move_data,
             &mut drop_used,
@@ -61,7 +61,7 @@ pub(super) fn generate<'tcx>(
     if !live_locals.is_empty() || facts_enabled {
         trace::trace(
             typeck,
-            body_cache,
+            body,
             elements,
             flow_inits,
             move_data,

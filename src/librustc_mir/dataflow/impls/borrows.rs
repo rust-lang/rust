@@ -153,8 +153,8 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         }
 
         Borrows {
-            tcx: tcx,
-            body: body,
+            tcx,
+            body,
             param_env,
             borrow_set: borrow_set.clone(),
             borrows_out_of_scope_at_location,

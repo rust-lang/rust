@@ -55,7 +55,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body_cache: &mut BodyCache<'tcx>,
+    body: &mut BodyCache<'tcx>,
     promoted: &mut IndexVec<Promoted, BodyCache<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
@@ -64,10 +64,10 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, body_cache, promoted);
+    renumber::renumber_mir(infcx, body, promoted);
 
     let source = MirSource::item(def_id);
-    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body_cache, |_, _| Ok(()));
+    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
 
     universal_regions
 }
@@ -158,8 +158,8 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
-    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
-    promoted_cache: &IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
+    promoted: &IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
     local_names: &IndexVec<Local, Option<Symbol>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
@@ -182,7 +182,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     let universal_regions = Rc::new(universal_regions);
 
     let elements
-        = &Rc::new(RegionValueElements::new(&body_cache));
+        = &Rc::new(RegionValueElements::new(&body));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -191,8 +191,8 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     } = type_check::type_check(
         infcx,
         param_env,
-        body_cache,
-        promoted_cache,
+        body,
+        promoted,
         def_id,
         &universal_regions,
         location_table,
@@ -207,7 +207,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         all_facts
             .universal_region
             .extend(universal_regions.universal_regions());
-        populate_polonius_move_facts(all_facts, move_data, location_table, &body_cache);
+        populate_polonius_move_facts(all_facts, move_data, location_table, &body);
     }
 
     // Create the region inference context, taking ownership of the
@@ -231,7 +231,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         &mut liveness_constraints,
         &mut all_facts,
         location_table,
-        &body_cache,
+        &body,
         borrow_set,
     );
 
@@ -254,7 +254,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         param_env,
         &mut all_facts,
         location_table,
-        body_cache,
+        body,
         borrow_set,
     );
 
@@ -284,14 +284,14 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let closure_region_requirements =
-        regioncx.solve(infcx, &body_cache, local_names, upvars, def_id, errors_buffer);
+        regioncx.solve(infcx, &body, local_names, upvars, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
     dump_mir_results(
         infcx,
         MirSource::item(def_id),
-        &body_cache,
+        &body,
         &regioncx,
         &closure_region_requirements,
     );
@@ -300,7 +300,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     // information
     dump_annotation(
         infcx,
-        &body_cache,
+        &body,
         def_id,
         &regioncx,
         &closure_region_requirements,

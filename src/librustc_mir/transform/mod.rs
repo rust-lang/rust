@@ -224,14 +224,14 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
-    let mut body_cache = tcx.mir_built(def_id).steal();
-    run_passes(tcx, &mut body_cache, InstanceDef::Item(def_id), None, MirPhase::Const, &[
+    let mut body = tcx.mir_built(def_id).steal();
+    run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Const, &[
         // What we need to do constant evaluation.
         &simplify::SimplifyCfg::new("initial"),
         &rustc_peek::SanityCheck,
         &uniform_array_move_out::UniformArrayMoveOut,
     ]);
-    tcx.alloc_steal_mir(body_cache)
+    tcx.alloc_steal_mir(body)
 }
 
 fn mir_validated(
@@ -242,25 +242,25 @@ fn mir_validated(
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id);
 
-    let mut body_cache = tcx.mir_const(def_id).steal();
+    let mut body = tcx.mir_const(def_id).steal();
     let promote_pass = promote_consts::PromoteTemps::default();
-    run_passes(tcx, &mut body_cache, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
+    run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
         // What we need to run borrowck etc.
         &promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
-    (tcx.alloc_steal_mir(body_cache), tcx.alloc_steal_promoted(promoted))
+    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
 fn run_optimization_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body_cache: &mut BodyCache<'tcx>,
+    body: &mut BodyCache<'tcx>,
     def_id: DefId,
     promoted: Option<Promoted>,
 ) {
-    run_passes(tcx, body_cache, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
+    run_passes(tcx, body, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
         // Remove all things only needed by analysis
         &no_landing_pads::NoLandingPads::new(tcx),
         &simplify_branches::SimplifyBranches::new("initial"),
@@ -332,10 +332,10 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyCache<'_> {
     tcx.ensure().mir_borrowck(def_id);
 
     let (body, _) = tcx.mir_validated(def_id);
-    let mut body_cache = body.steal();
-    run_optimization_passes(tcx, &mut body_cache, def_id, None);
-    body_cache.ensure_predecessors();
-    tcx.arena.alloc(body_cache)
+    let mut body = body.steal();
+    run_optimization_passes(tcx, &mut body, def_id, None);
+    body.ensure_predecessors();
+    tcx.arena.alloc(body)
 }
 
 fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyCache<'_>> {
@@ -347,9 +347,9 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyCache
     let (_, promoted) = tcx.mir_validated(def_id);
     let mut promoted = promoted.steal();
 
-    for (p, mut body_cache) in promoted.iter_enumerated_mut() {
-        run_optimization_passes(tcx, &mut body_cache, def_id, Some(p));
-        body_cache.ensure_predecessors();
+    for (p, mut body) in promoted.iter_enumerated_mut() {
+        run_optimization_passes(tcx, &mut body, def_id, Some(p));
+        body.ensure_predecessors();
     }
 
     tcx.intern_promoted(promoted)

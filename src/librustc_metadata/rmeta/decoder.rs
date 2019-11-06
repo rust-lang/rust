@@ -1101,8 +1101,8 @@ impl<'a, 'tcx> CrateMetadata {
                 bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
             .decode((self, tcx));
-        for body_cache in cache.iter_mut() {
-            body_cache.ensure_predecessors();
+        for body in cache.iter_mut() {
+            body.ensure_predecessors();
         }
         cache
     }

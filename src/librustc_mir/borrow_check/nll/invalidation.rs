@@ -22,7 +22,7 @@ pub(super) fn generate_invalidates<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if all_facts.is_none() {
@@ -31,17 +31,17 @@ pub(super) fn generate_invalidates<'tcx>(
     }
 
     if let Some(all_facts) = all_facts {
-        let dominators = body_cache.dominators();
+        let dominators = body.dominators();
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
             param_env,
             tcx,
             location_table,
-            body: &body_cache,
+            body: &body,
             dominators,
         };
-        ig.visit_body(body_cache);
+        ig.visit_body(body);
     }
 }
 

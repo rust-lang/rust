@@ -237,7 +237,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let regioncx = &self.nonlexical_regioncx;
-        let body: &Body<'_> = &self.body_cache;
+        let body: &Body<'_> = &self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
@@ -297,7 +297,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
                     let (category, from_closure, span, region_name) =
                         self.nonlexical_regioncx.free_region_constraint_info(
-                            &self.body_cache,
+                            &self.body,
                             &self.local_names,
                             &self.upvars,
                             self.mir_def_id,
@@ -365,7 +365,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return outmost_back_edge;
             }
 
-            let block = &self.body_cache.basic_blocks()[location.block];
+            let block = &self.body.basic_blocks()[location.block];
 
             if location.statement_index < block.statements.len() {
                 let successor = location.successor_within_block();
@@ -427,7 +427,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         if loop_head.dominates(from, &self.dominators) {
-            let block = &self.body_cache.basic_blocks()[from.block];
+            let block = &self.body.basic_blocks()[from.block];
 
             if from.statement_index < block.statements.len() {
                 let successor = from.successor_within_block();
@@ -475,7 +475,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 (LaterUseKind::ClosureCapture, var_span)
             }
             UseSpans::OtherUse(span) => {
-                let block = &self.body_cache.basic_blocks()[location.block];
+                let block = &self.body.basic_blocks()[location.block];
 
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(FakeReadCause::ForLet, _),
@@ -498,7 +498,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Operand::Copy(place) |
                             Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {
-                                    let local_decl = &self.body_cache.local_decls[l];
+                                    let local_decl = &self.body.local_decls[l];
                                     if self.local_names[l].is_none() {
                                         local_decl.source_info.span
                                     } else {
@@ -528,7 +528,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
         // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
-        let block = &self.body_cache[location.block];
+        let block = &self.body[location.block];
         let stmt = block.statements.get(location.statement_index);
         debug!(
             "was_captured_by_trait_object: location={:?} stmt={:?}",
@@ -558,7 +558,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
         while let Some(current_location) = queue.pop() {
             debug!("was_captured_by_trait: target={:?}", target);
-            let block = &self.body_cache[current_location.block];
+            let block = &self.body[current_location.block];
             // We need to check the current location to find out if it is a terminator.
             let is_terminator = current_location.statement_index == block.statements.len();
             if !is_terminator {

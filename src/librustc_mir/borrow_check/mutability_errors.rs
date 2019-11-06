@@ -64,7 +64,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Place::ty_from(
                         &the_place_err.base,
                         proj_base,
-                        &self.body_cache,
+                        &*self.body,
                         self.infcx.tcx
                     ).ty));
 
@@ -110,12 +110,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     proj_base.is_empty() &&
                     !self.upvars.is_empty() {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    debug_assert!(self.body_cache.local_decls[Local::new(1)].ty.is_region_ptr());
+                    debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
                             the_place_err.base,
                             the_place_err.projection,
-                            &self.body_cache,
+                            &*self.body,
                             self.infcx.tcx
                         )
                         .ty
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if let Some((span, message)) = annotate_struct_field(
                     self.infcx.tcx,
-                    Place::ty_from(base, proj_base, &self.body_cache, self.infcx.tcx).ty,
+                    Place::ty_from(base, proj_base, &*self.body, self.infcx.tcx).ty,
                     field,
                 ) {
                     err.span_suggestion(
@@ -246,7 +246,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 base: PlaceBase::Local(local),
                 projection: [],
             } if {
-                self.body_cache.local_decls.get(*local).map(|local_decl| {
+                self.body.local_decls.get(*local).map(|local_decl| {
                     if let LocalInfo::User(ClearCrossCrate::Set(
                         mir::BindingForm::ImplicitSelf(kind)
                     )) = local_decl.local_info {
@@ -281,12 +281,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [],
-            } if self.body_cache.local_decls[*local].can_be_made_mutable() => {
+            } if self.body.local_decls[*local].can_be_made_mutable() => {
                 // ... but it doesn't make sense to suggest it on
                 // variables that are `ref x`, `ref mut x`, `&self`,
                 // or `&mut self` (such variables are simply not
                 // mutable).
-                let local_decl = &self.body_cache.local_decls[*local];
+                let local_decl = &self.body.local_decls[*local];
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -304,7 +304,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(base, proj_base, &self.body_cache, self.infcx.tcx).ty
+                    Place::ty_from(base, proj_base, &*self.body, self.infcx.tcx).ty
                 ));
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
@@ -350,7 +350,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [ProjectionElem::Deref],
-            } if self.body_cache.local_decls[*local].is_ref_for_guard() => {
+            } if self.body.local_decls[*local].is_ref_for_guard() => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.note(
                     "variables bound in patterns are immutable until the end of the pattern guard",
@@ -365,9 +365,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [ProjectionElem::Deref],
-            } if self.body.local_decls[*local].is_user_variable() =>
+            } if self.body_cache.local_decls[*local].is_user_variable.is_some() =>
             {
-                let local_decl = &self.body_cache.local_decls[*local];
+                let local_decl = &self.body.local_decls[*local];
                 let suggestion = match local_decl.local_info {
                     LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_))) => {
                         Some(suggest_ampmut_self(self.infcx.tcx, local_decl))
@@ -381,7 +381,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         },
                     ))) => Some(suggest_ampmut(
                         self.infcx.tcx,
-                        self.body_cache,
+                        self.body,
                         *local,
                         local_decl,
                         opt_ty_info,
@@ -455,7 +455,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_help(
-                    self.body_cache.span,
+                    self.body.span,
                     "consider changing this to accept closures that implement `FnMut`"
                 );
             }
@@ -533,14 +533,14 @@ fn suggest_ampmut_self<'tcx>(
 // by trying (3.), then (2.) and finally falling back on (1.).
 fn suggest_ampmut<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
-    let locations = body_cache.find_assignments(local);
+    let locations = body.find_assignments(local);
     if !locations.is_empty() {
-        let assignment_rhs_span = body_cache.source_info(locations[0]).span;
+        let assignment_rhs_span = body.source_info(locations[0]).span;
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             if let (true, Some(ws_pos)) = (
                 src.starts_with("&'"),

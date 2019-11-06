@@ -1083,8 +1083,8 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.hir_map
     }
 
-    pub fn alloc_steal_mir(self, mir_cache: BodyCache<'tcx>) -> &'tcx Steal<BodyCache<'tcx>> {
-        self.arena.alloc(Steal::new(mir_cache))
+    pub fn alloc_steal_mir(self, mir: BodyCache<'tcx>) -> &'tcx Steal<BodyCache<'tcx>> {
+        self.arena.alloc(Steal::new(mir))
     }
 
     pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, BodyCache<'tcx>>) ->

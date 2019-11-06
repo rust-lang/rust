@@ -19,7 +19,7 @@ impl<'tcx> MirPass<'tcx> for Marker {
     }
 
     fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body_cache: &mut BodyCache<'tcx>
+        &self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut BodyCache<'tcx>
     ) {}
 }
 

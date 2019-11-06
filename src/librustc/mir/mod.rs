@@ -2602,7 +2602,7 @@ impl Location {
     pub fn is_predecessor_of<'tcx>(
         &self,
         other: Location,
-        body_cache: ReadOnlyBodyCache<'_, 'tcx>
+        body: ReadOnlyBodyCache<'_, 'tcx>
     ) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
@@ -2611,13 +2611,13 @@ impl Location {
         }
 
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body_cache.predecessors_for(other.block).to_vec();
+        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.extend(body_cache.predecessors_for(block).iter().cloned());
+                queue.extend(body.predecessors_for(block).iter().cloned());
             } else {
                 continue;
             }

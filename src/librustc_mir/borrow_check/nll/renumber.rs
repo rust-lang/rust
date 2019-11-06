@@ -9,11 +9,11 @@ use rustc_index::vec::IndexVec;
 /// inference variables, returning the number of variables created.
 pub fn renumber_mir<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    body_cache: &mut BodyCache<'tcx>,
+    body: &mut BodyCache<'tcx>,
     promoted: &mut IndexVec<Promoted, BodyCache<'tcx>>,
 ) {
     debug!("renumber_mir()");
-    debug!("renumber_mir: body.arg_count={:?}", body_cache.arg_count);
+    debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
     let mut visitor = NLLVisitor { infcx };
 
@@ -21,7 +21,7 @@ pub fn renumber_mir<'tcx>(
         visitor.visit_body(body);
     }
 
-    visitor.visit_body(body_cache);
+    visitor.visit_body(body);
 }
 
 /// Replaces all regions appearing in `value` with fresh inference

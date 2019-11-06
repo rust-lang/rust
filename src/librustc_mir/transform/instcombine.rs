@@ -14,7 +14,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -24,14 +24,14 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
         let optimizations = {
-            let read_only_cache = read_only!(body_cache);
-            let mut optimization_finder = OptimizationFinder::new(body_cache, tcx);
+            let read_only_cache = read_only!(body);
+            let mut optimization_finder = OptimizationFinder::new(body, tcx);
             optimization_finder.visit_body(read_only_cache);
             optimization_finder.optimizations
         };
 
         // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body_cache);
+        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
     }
 }
 

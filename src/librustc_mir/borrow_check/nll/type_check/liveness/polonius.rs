@@ -97,7 +97,7 @@ fn add_var_uses_regions(typeck: &mut TypeChecker<'_, 'tcx>, local: Local, ty: Ty
 
 pub(super) fn populate_access_facts(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body_cache: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     location_table: &LocationTable,
     move_data: &MoveData<'_>,
     drop_used: &mut Vec<(Local, Location)>,
@@ -113,14 +113,14 @@ pub(super) fn populate_access_facts(
             location_table,
             move_data,
         }
-        .visit_body(body_cache);
+        .visit_body(body);
 
         facts.var_drop_used.extend(drop_used.iter().map(|&(local, location)| {
             (local, location_table.mid_index(location))
         }));
     }
 
-    for (local, local_decl) in body_cache.local_decls.iter_enumerated() {
+    for (local, local_decl) in body.local_decls.iter_enumerated() {
         add_var_uses_regions(typeck, local, local_decl.ty);
     }
 }

@@ -32,7 +32,7 @@ pub struct CopyPropagation;
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
     fn run_pass(
-        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
     ) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
@@ -40,16 +40,16 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
             return;
         }
 
-        let mut def_use_analysis = DefUseAnalysis::new(body_cache);
+        let mut def_use_analysis = DefUseAnalysis::new(body);
         loop {
-            def_use_analysis.analyze(read_only!(body_cache));
+            def_use_analysis.analyze(read_only!(body));
 
-            if eliminate_self_assignments(body_cache, &def_use_analysis) {
-                def_use_analysis.analyze(read_only!(body_cache));
+            if eliminate_self_assignments(body, &def_use_analysis) {
+                def_use_analysis.analyze(read_only!(body));
             }
 
             let mut changed = false;
-            for dest_local in body_cache.local_decls.indices() {
+            for dest_local in body.local_decls.indices() {
                 debug!("considering destination local: {:?}", dest_local);
 
                 let action;
@@ -76,7 +76,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     }
                     // Conservatively gives up if the dest is an argument,
                     // because there may be uses of the original argument value.
-                    if body_cache.local_kind(dest_local) == LocalKind::Arg {
+                    if body.local_kind(dest_local) == LocalKind::Arg {
                         debug!("  Can't copy-propagate local: dest {:?} (argument)",
                             dest_local);
                         continue;
@@ -84,7 +84,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     let dest_place_def = dest_use_info.defs_not_including_drop().next().unwrap();
                     location = dest_place_def.location;
 
-                    let basic_block = &body_cache[location.block];
+                    let basic_block = &body[location.block];
                     let statement_index = location.statement_index;
                     let statement = match basic_block.statements.get(statement_index) {
                         Some(statement) => statement,
@@ -103,7 +103,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                                         Operand::Copy(ref src_place) |
                                         Operand::Move(ref src_place) => {
                                             Action::local_copy(
-                                                &body_cache,
+                                                &body,
                                                 &def_use_analysis,
                                                 src_place)
                                         }
@@ -134,7 +134,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                     }
                 }
 
-                changed = action.perform(body_cache, &def_use_analysis, dest_local, location, tcx)
+                changed = action.perform(body, &def_use_analysis, dest_local, location, tcx)
                     || changed;
                 // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
                 // regenerating the chains.
@@ -250,7 +250,7 @@ impl<'tcx> Action<'tcx> {
     }
 
     fn perform(self,
-               body_cache: &mut BodyCache<'tcx>,
+               body: &mut BodyCache<'tcx>,
                def_use_analysis: &DefUseAnalysis,
                dest_local: Local,
                location: Location,
@@ -268,22 +268,22 @@ impl<'tcx> Action<'tcx> {
                        src_local);
                 for place_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
                     if place_use.context.is_storage_marker() {
-                        body_cache.make_statement_nop(place_use.location)
+                        body.make_statement_nop(place_use.location)
                     }
                 }
                 for place_use in &def_use_analysis.local_info(src_local).defs_and_uses {
                     if place_use.context.is_storage_marker() {
-                        body_cache.make_statement_nop(place_use.location)
+                        body.make_statement_nop(place_use.location)
                     }
                 }
 
                 // Replace all uses of the destination local with the source local.
                 def_use_analysis
-                    .replace_all_defs_and_uses_with(dest_local, body_cache, src_local, tcx);
+                    .replace_all_defs_and_uses_with(dest_local, body, src_local, tcx);
 
                 // Finally, zap the now-useless assignment instruction.
                 debug!("  Deleting assignment");
-                body_cache.make_statement_nop(location);
+                body.make_statement_nop(location);
 
                 true
             }
@@ -297,7 +297,7 @@ impl<'tcx> Action<'tcx> {
                 let dest_local_info = def_use_analysis.local_info(dest_local);
                 for place_use in &dest_local_info.defs_and_uses {
                     if place_use.context.is_storage_marker() {
-                        body_cache.make_statement_nop(place_use.location)
+                        body.make_statement_nop(place_use.location)
                     }
                 }
 
@@ -306,7 +306,7 @@ impl<'tcx> Action<'tcx> {
                                                                   src_constant,
                                                                   tcx);
                 for dest_place_use in &dest_local_info.defs_and_uses {
-                    visitor.visit_location(body_cache, dest_place_use.location)
+                    visitor.visit_location(body, dest_place_use.location)
                 }
 
                 // Zap the assignment instruction if we eliminated all the uses. We won't have been
@@ -317,7 +317,7 @@ impl<'tcx> Action<'tcx> {
                     debug!("  {} of {} use(s) replaced; deleting assignment",
                            visitor.uses_replaced,
                            use_count);
-                    body_cache.make_statement_nop(location);
+                    body.make_statement_nop(location);
                     true
                 } else if visitor.uses_replaced == 0 {
                     debug!("  No uses replaced; not deleting assignment");

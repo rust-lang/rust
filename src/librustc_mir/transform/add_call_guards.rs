@@ -32,23 +32,22 @@ pub use self::AddCallGuards::*;
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
     fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body_cache: &mut BodyCache<'tcx>
+        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyCache<'tcx>
     ) {
-        self.add_call_guards(body_cache);
+        self.add_call_guards(body);
     }
 }
 
 impl AddCallGuards {
-    pub fn add_call_guards(&self, body_cache: &mut BodyCache<'_>) {
-        let pred_count: IndexVec<_, _> =
-            body_cache.predecessors().iter().map(|ps| ps.len()).collect();
+    pub fn add_call_guards(&self, body: &mut BodyCache<'_>) {
+        let pred_count: IndexVec<_, _> = body.predecessors().iter().map(|ps| ps.len()).collect();
 
         // We need a place to store the new blocks generated
         let mut new_blocks = Vec::new();
 
-        let cur_len = body_cache.basic_blocks().len();
+        let cur_len = body.basic_blocks().len();
 
-        for block in body_cache.basic_blocks_mut() {
+        for block in body.basic_blocks_mut() {
             match block.terminator {
                 Some(Terminator {
                     kind: TerminatorKind::Call {
@@ -80,6 +79,6 @@ impl AddCallGuards {
 
         debug!("Broke {} N edges", new_blocks.len());
 
-        body_cache.basic_blocks_mut().extend(new_blocks);
+        body.basic_blocks_mut().extend(new_blocks);
     }
 }

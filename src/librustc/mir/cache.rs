@@ -2,7 +2,7 @@ use rustc_index::vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use crate::ich::StableHashingContext;
-use crate::mir::{BasicBlock, BasicBlockData, Body, HasLocalDecls, LocalDecls, Location, Successors};
+use crate::mir::{BasicBlock, BasicBlockData, Body, LocalDecls, Location, Successors};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use std::iter;
@@ -160,10 +160,10 @@ impl BodyCache<'tcx> {
 
 #[macro_export]
 macro_rules! read_only {
-    ($body_cache:expr) => {
+    ($body:expr) => {
         {
-            $body_cache.ensure_predecessors();
-            $body_cache.unwrap_read_only()
+            $body.ensure_predecessors();
+            $body.unwrap_read_only()
         }
     };
 }
@@ -220,12 +220,6 @@ impl<'tcx> Deref for BodyCache<'tcx> {
 impl<'tcx> DerefMut for BodyCache<'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.body
-    }
-}
-
-impl<'tcx> HasLocalDecls<'tcx> for BodyCache<'tcx> {
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        &self.body.local_decls
     }
 }
 
@@ -344,12 +338,6 @@ impl Index<BasicBlock> for ReadOnlyBodyCache<'a, 'tcx> {
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.body[index]
-    }
-}
-
-impl<'a, 'tcx> HasLocalDecls<'tcx> for ReadOnlyBodyCache<'a, 'tcx> {
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        &self.body.local_decls
     }
 }
 

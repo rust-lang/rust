@@ -30,7 +30,7 @@ impl DefUseAnalysis {
         }
     }
 
-    pub fn analyze(&mut self, body_cache: ReadOnlyBodyCache<'_, '_>) {
+    pub fn analyze(&mut self, body: ReadOnlyBodyCache<'_, '_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
@@ -38,7 +38,7 @@ impl DefUseAnalysis {
             var_debug_info_index: 0,
             in_var_debug_info: false,
         };
-        finder.visit_body(body_cache);
+        finder.visit_body(body);
         self.info = finder.info
     }
 
@@ -55,7 +55,7 @@ impl DefUseAnalysis {
     fn mutate_defs_and_uses(
         &self,
         local: Local,
-        body_cache: &mut BodyCache<'tcx>,
+        body: &mut BodyCache<'tcx>,
         new_local: Local,
         tcx: TyCtxt<'tcx>,
     ) {
@@ -66,17 +66,17 @@ impl DefUseAnalysis {
         }
         // Update debuginfo as well, alongside defs/uses.
         for &i in &info.var_debug_info_indices {
-            visitor.visit_var_debug_info(&mut body_cache.var_debug_info[i]);
+            visitor.visit_var_debug_info(&mut body.var_debug_info[i]);
         }
     }
 
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          body_cache: &mut BodyCache<'tcx>,
+                                          body: &mut BodyCache<'tcx>,
                                           new_local: Local,
                                           tcx: TyCtxt<'tcx>) {
-        self.mutate_defs_and_uses(local, body_cache, new_local, tcx)
+        self.mutate_defs_and_uses(local, body, new_local, tcx)
     }
 }
 

@@ -770,8 +770,8 @@ pub fn validate_candidates(
 
 struct Promoter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    source_cache: &'a mut BodyCache<'tcx>,
-    promoted_cache: BodyCache<'tcx>,
+    source: &'a mut BodyCache<'tcx>,
+    promoted: BodyCache<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
 
     /// If true, all nested temps are also kept in the
@@ -781,8 +781,8 @@ struct Promoter<'a, 'tcx> {
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
-        let span = self.promoted_cache.span;
-        self.promoted_cache.basic_blocks_mut().push(BasicBlockData {
+        let span = self.promoted.span;
+        self.promoted.basic_blocks_mut().push(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo {
@@ -796,8 +796,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted_cache.basic_blocks().last().unwrap();
-        let data = &mut self.promoted_cache[last];
+        let last = self.promoted.basic_blocks().last().unwrap();
+        let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span,
@@ -808,7 +808,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn is_temp_kind(&self, local: Local) -> bool {
-        self.source_cache.local_kind(local) == LocalKind::Temp
+        self.source.local_kind(local) == LocalKind::Temp
     }
 
     /// Copies the initialization of this temp to the
@@ -823,7 +823,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 location
             }
             state =>  {
-                span_bug!(self.promoted_cache.span, "{:?} not promotable: {:?}",
+                span_bug!(self.promoted.span, "{:?} not promotable: {:?}",
                           temp, state);
             }
         };
@@ -831,10 +831,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.temps[temp] = TempState::PromotedOut;
         }
 
-        let num_stmts = self.source_cache[loc.block].statements.len();
-        let new_temp = self.promoted_cache.local_decls.push(
-            LocalDecl::new_temp(self.source_cache.local_decls[temp].ty,
-                                self.source_cache.local_decls[temp].source_info.span));
+        let num_stmts = self.source[loc.block].statements.len();
+        let new_temp = self.promoted.local_decls.push(
+            LocalDecl::new_temp(self.source.local_decls[temp].ty,
+                                self.source.local_decls[temp].source_info.span));
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})",
                temp, loc, num_stmts, self.keep_original);
@@ -843,7 +843,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         // or duplicate it, depending on keep_original.
         if loc.statement_index < num_stmts {
             let (mut rvalue, source_info) = {
-                let statement = &mut self.source_cache[loc.block].statements[loc.statement_index];
+                let statement = &mut self.source[loc.block].statements[loc.statement_index];
                 let rhs = match statement.kind {
                     StatementKind::Assign(box(_, ref mut rhs)) => rhs,
                     _ => {
@@ -864,9 +864,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.assign(new_temp, rvalue, source_info.span);
         } else {
             let terminator = if self.keep_original {
-                self.source_cache[loc.block].terminator().clone()
+                self.source[loc.block].terminator().clone()
             } else {
-                let terminator = self.source_cache[loc.block].terminator_mut();
+                let terminator = self.source[loc.block].terminator_mut();
                 let target = match terminator.kind {
                     TerminatorKind::Call { destination: Some((_, target)), .. } => target,
                     ref kind => {
@@ -888,10 +888,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         self.visit_operand(arg, loc);
                     }
 
-                    let last = self.promoted_cache.basic_blocks().last().unwrap();
+                    let last = self.promoted.basic_blocks().last().unwrap();
                     let new_target = self.new_block();
 
-                    *self.promoted_cache[last].terminator_mut() = Terminator {
+                    *self.promoted[last].terminator_mut() = Terminator {
                         kind: TerminatorKind::Call {
                             func,
                             args,
@@ -921,7 +921,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         next_promoted_id: usize,
     ) -> Option<BodyCache<'tcx>> {
         let mut operand = {
-            let promoted = &mut self.promoted_cache;
+            let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;
             let mut promoted_place = |ty, span| {
@@ -940,7 +940,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     projection: List::empty(),
                 }
             };
-            let (blocks, local_decls) = self.source_cache.basic_blocks_and_local_decls_mut();
+            let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
@@ -1004,9 +1004,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             statement_index: usize::MAX
         });
 
-        let span = self.promoted_cache.span;
+        let span = self.promoted.span;
         self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
-        Some(self.promoted_cache)
+        Some(self.promoted)
     }
 }
 
@@ -1040,7 +1040,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
 pub fn promote_candidates<'tcx>(
     def_id: DefId,
-    body_cache: &mut BodyCache<'tcx>,
+    body: &mut BodyCache<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
@@ -1054,7 +1054,7 @@ pub fn promote_candidates<'tcx>(
         match candidate {
             Candidate::Repeat(Location { block, statement_index }) |
             Candidate::Ref(Location { block, statement_index }) => {
-                match &body_cache[block].statements[statement_index].kind {
+                match &body[block].statements[statement_index].kind {
                     StatementKind::Assign(box(place, _)) => {
                         if let Some(local) = place.as_local() {
                             if temps[local] == TempState::PromotedOut {
@@ -1072,26 +1072,26 @@ pub fn promote_candidates<'tcx>(
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(
-            LocalDecl::new_return_place(tcx.types.never, body_cache.span)
+            LocalDecl::new_return_place(tcx.types.never, body.span)
         ).collect();
 
         let promoter = Promoter {
-            promoted_cache: BodyCache::new(Body::new(
+            promoted: BodyCache::new(Body::new(
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
-                body_cache.source_scopes.clone(),
-                body_cache.source_scope_local_data.clone(),
+                body.source_scopes.clone(),
+                body.source_scope_local_data.clone(),
                 initial_locals,
                 IndexVec::new(),
                 0,
                 vec![],
-                body_cache.span,
+                body.span,
                 vec![],
-                body_cache.generator_kind,
+                body.generator_kind,
             )),
             tcx,
-            source_cache: body_cache,
+            source: body,
             temps: &mut temps,
             keep_original: false
         };
@@ -1104,7 +1104,7 @@ pub fn promote_candidates<'tcx>(
 
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
-    for block in body_cache.basic_blocks_mut() {
+    for block in body.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match &statement.kind {
                 StatementKind::Assign(box(place, _)) => {

@@ -90,13 +90,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // flow could be used.
                 if let Some(StatementKind::Assign(
                     box(place, Rvalue::Use(Operand::Move(move_from)))
-                )) = self.body_cache.basic_blocks()[location.block]
+                )) = self.body.basic_blocks()[location.block]
                     .statements
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)
                 {
                     if let Some(local) = place.as_local() {
-                        let local_decl = &self.body_cache.local_decls[local];
+                        let local_decl = &self.body.local_decls[local];
                         // opt_match_place is the
                         // match_span is the span of the expression being matched on
                         // match *x.y { ... }        match_place is Some(*x.y)
@@ -112,7 +112,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 pat_span: _,
                             },
                         ))) = local_decl.local_info {
-                            let stmt_source_info = self.body_cache.source_info(location);
+                            let stmt_source_info = self.body.source_info(location);
                             self.append_binding_error(
                                 grouped_errors,
                                 kind,
@@ -300,7 +300,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
-        let ty = deref_target_place.ty(&self.body_cache, self.infcx.tcx).ty;
+        let ty = deref_target_place.ty(&*self.body, self.infcx.tcx).ty;
         let upvar_field = self.prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
 
@@ -318,7 +318,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             base: PlaceBase::Local(local),
             projection: [],
         } = deref_base {
-            let decl = &self.body_cache.local_decls[*local];
+            let decl = &self.body.local_decls[*local];
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(
                     span,
@@ -411,7 +411,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         let move_ty = format!(
             "{:?}",
-            move_place.ty(&self.body_cache, self.infcx.tcx).ty,
+            move_place.ty(&*self.body, self.infcx.tcx).ty,
         );
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             let is_option = move_ty.starts_with("std::option::Option");
@@ -454,7 +454,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
 
                 if binds_to.is_empty() {
-                    let place_ty = move_from.ty(&self.body_cache, self.infcx.tcx).ty;
+                    let place_ty = move_from.ty(&*self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{}`", desc),
                         None => format!("value"),
@@ -482,7 +482,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let span = use_spans.var_or_use();
-                let place_ty = original_path.ty(&self.body_cache, self.infcx.tcx).ty;
+                let place_ty = original_path.ty(&*self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{}`", desc),
                     None => format!("value"),
@@ -510,7 +510,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
         for local in binds_to {
-            let bind_to = &self.body_cache.local_decls[*local];
+            let bind_to = &self.body.local_decls[*local];
             if let LocalInfo::User(
                 ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                     pat_span,
@@ -559,7 +559,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         binds_to: &[Local],
     ) {
         for (j, local) in binds_to.into_iter().enumerate() {
-            let bind_to = &self.body_cache.local_decls[*local];
+            let bind_to = &self.body.local_decls[*local];
             let binding_span = bind_to.source_info.span;
 
             if j == 0 {

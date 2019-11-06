@@ -82,9 +82,9 @@ macro_rules! make_mir_visitor {
 
             fn visit_body(
                 &mut self,
-                body_cache: body_cache_type!($($mutability)? '_, 'tcx)
+                body: body_cache_type!($($mutability)? '_, 'tcx)
             ) {
-                self.super_body(body_cache);
+                self.super_body(body);
             }
 
             fn visit_basic_block_data(&mut self,
@@ -254,10 +254,10 @@ macro_rules! make_mir_visitor {
 
             fn super_body(
                 &mut self,
-                $($mutability)? body_cache: body_cache_type!($($mutability)? '_, 'tcx)
+                $($mutability)? body: body_cache_type!($($mutability)? '_, 'tcx)
             ) {
-                let span = body_cache.span;
-                if let Some(yield_ty) = &$($mutability)? body_cache.yield_ty {
+                let span = body.span;
+                if let Some(yield_ty) = &$($mutability)? body.yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
                         span,
                         scope: OUTERMOST_SOURCE_SCOPE,
@@ -268,14 +268,14 @@ macro_rules! make_mir_visitor {
                 // than a for-loop, to avoid calling `body::Body::invalidate` for
                 // each basic block.
                 macro_rules! basic_blocks {
-                    (mut) => (body_cache.basic_blocks_mut().iter_enumerated_mut());
-                    () => (body_cache.basic_blocks().iter_enumerated());
+                    (mut) => (body.basic_blocks_mut().iter_enumerated_mut());
+                    () => (body.basic_blocks().iter_enumerated());
                 };
                 for (bb, data) in basic_blocks!($($mutability)?) {
                     self.visit_basic_block_data(bb, data);
                 }
 
-                let body: & $($mutability)? Body<'_> = & $($mutability)? body_cache;
+                let body: & $($mutability)? Body<'_> = & $($mutability)? body;
                 for scope in &$($mutability)? body.source_scopes {
                     self.visit_source_scope_data(scope);
                 }
@@ -808,10 +808,10 @@ macro_rules! make_mir_visitor {
 
             fn visit_location(
                 &mut self,
-                body_cache: body_cache_type!($($mutability)? '_, 'tcx),
+                body: body_cache_type!($($mutability)? '_, 'tcx),
                 location: Location
             ) {
-                let basic_block = & $($mutability)? body_cache[location.block];
+                let basic_block = & $($mutability)? body[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)
