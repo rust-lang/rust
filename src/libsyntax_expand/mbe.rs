@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax::parse::token::{self, Token, TokenKind};
 use syntax::tokenstream::{DelimSpan};
 
-use syntax_pos::{BytePos, Span};
+use syntax_pos::Span;
 
 use rustc_data_structures::sync::Lrc;
 
@@ -27,23 +27,13 @@ struct Delimited {
 
 impl Delimited {
     /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
-        };
-        TokenTree::token(token::OpenDelim(self.delim), open_span)
+    fn open_tt(&self, span: DelimSpan) -> TokenTree {
+        TokenTree::token(token::OpenDelim(self.delim), span.open)
     }
 
     /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
-        };
-        TokenTree::token(token::CloseDelim(self.delim), close_span)
+    fn close_tt(&self, span: DelimSpan) -> TokenTree {
+        TokenTree::token(token::CloseDelim(self.delim), span.close)
     }
 }
 
@@ -138,10 +128,10 @@ impl TokenTree {
             }
             (&TokenTree::Delimited(span, ref delimed), _) => {
                 if index == 0 {
-                    return delimed.open_tt(span.open);
+                    return delimed.open_tt(span);
                 }
                 if index == delimed.tts.len() + 1 {
-                    return delimed.close_tt(span.close);
+                    return delimed.close_tt(span);
                 }
                 delimed.tts[index - 1].clone()
             }
