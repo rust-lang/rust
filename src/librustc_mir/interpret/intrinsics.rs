@@ -101,7 +101,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Some(dest) => dest,
             None => throw_ub!(Unreachable)
         };
-        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str();
+        let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
 
         match intrinsic_name {
             "caller_location" => {
