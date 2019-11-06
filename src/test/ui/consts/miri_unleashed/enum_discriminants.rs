@@ -20,9 +20,9 @@ const OVERFLOW: usize = {
         C(WithWraparoundInvalidValues),
     }
 
-    let x = Foo::B;
+    let x = Foo::B; //~ WARNING skipping const checks
     match x {
-        Foo::B => 0,
+        Foo::B => 0, //~ WARNING skipping const checks
         _ => panic!(),
     }
 };
@@ -86,6 +86,8 @@ const MORE_OVERFLOW: usize = {
     }
 
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
+        //~^ WARNING skipping const checks
+        //~| WARNING skipping const checks
         unreachable!()
     }
     if let E1::V1 { .. } = (E1::V1 { f: true }) {

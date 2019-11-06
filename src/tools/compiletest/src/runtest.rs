@@ -3148,11 +3148,20 @@ impl<'test> TestCx<'test> {
                explicit, self.config.compare_mode, expected_errors, proc_res.status,
                self.props.error_patterns);
         if !explicit && self.config.compare_mode.is_none() {
-            if !self.should_run() && !self.props.error_patterns.is_empty() {
+            let check_patterns =
+                !self.should_run() &&
+                !self.props.error_patterns.is_empty();
+
+            let check_annotations =
+                !check_patterns ||
+                !expected_errors.is_empty();
+
+            if check_patterns {
                 // "// error-pattern" comments
                 self.check_error_patterns(&proc_res.stderr, &proc_res);
             }
-            if !expected_errors.is_empty() {
+
+            if check_annotations {
                 // "//~ERROR comments"
                 self.check_expected_errors(expected_errors, &proc_res);
             }

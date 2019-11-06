@@ -7,7 +7,6 @@
 pub trait Parser {
     type Input;
 
-    #[inline(always)]
     fn parse_first(input: &mut Self::Input);
 }
 
