@@ -1807,6 +1807,7 @@ extern "C" {
 
     pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: &Value);
+    pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
     pub fn LLVMRustModuleBufferCreate(M: &Module) -> &'static mut ModuleBuffer;
     pub fn LLVMRustModuleBufferPtr(p: &ModuleBuffer) -> *const u8;
