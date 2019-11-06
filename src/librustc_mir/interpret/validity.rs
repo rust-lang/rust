@@ -613,7 +613,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // reject it.  However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
-                // We also accept undef, for consistency with the type-based checks.
+                // We also accept undef, for consistency with the slow path.
                 match self.ecx.memory.get(ptr.alloc_id)?.check_bytes(
                     self.ecx,
                     ptr,
