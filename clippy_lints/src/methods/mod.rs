@@ -17,7 +17,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::Span;
-use syntax::symbol::{sym, LocalInternedString, Symbol};
+use syntax::symbol::{sym, Symbol, SymbolStr};
 
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
@@ -1148,8 +1148,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         }
 
         let (method_names, arg_lists, method_spans) = method_calls(expr, 2);
-        let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
-        let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
+        let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
+        let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
 
         match method_names.as_slice() {
             ["unwrap", "get"] => lint_get_unwrap(cx, expr, arg_lists[1], false),

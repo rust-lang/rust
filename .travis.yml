@@ -56,15 +56,15 @@ matrix:
     # We don't want to run these always because they go towards
     # the build limit within the Travis rust-lang account.
     # The jobs are approximately sorted by execution time
+    - env: INTEGRATION=rust-lang/rls
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/cargo
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/chalk
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=rust-lang/rls
-      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Geal/nom
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    # FIXME blocked on https://github.com/rust-lang/rust-clippy/issues/4742
+    # FIXME blocked on https://github.com/rust-lang/rust-clippy/issues/4727
     #- env: INTEGRATION=rust-lang/rustfmt
     #  if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=hyperium/hyper
@@ -90,7 +90,6 @@ matrix:
   allow_failures:
     - os: windows
       env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
-    - env: INTEGRATION=rust-lang-nursery/stdsimd
 
 before_script:
   - |
