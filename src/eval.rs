@@ -221,10 +221,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
                 };
 
                 let msg = format!("Miri evaluation error: {}", msg);
-                let mut err = {
-                    let new_tcx = ecx.tcx.tcx.at(span);
-                    new_tcx.sess.struct_span_err(new_tcx.span, msg.as_str())
-                };
+                let mut err = ecx.tcx.sess.struct_span_err(span, msg.as_str());
                 let frames = ecx.generate_stacktrace(None);
                 err.span_label(span, msg);
                 // We iterate with indices because we need to look at the next frame (the caller).
