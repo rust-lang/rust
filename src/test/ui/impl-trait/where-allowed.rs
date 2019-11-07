@@ -163,6 +163,7 @@ type InTypeAlias<R> = impl Debug;
 
 type InReturnInTypeAlias<R> = fn() -> impl Debug;
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+//~| ERROR `impl Trait` in type aliases is unstable
 
 // Disallowed in impl headers
 impl PartialEq<impl Debug> for () {
