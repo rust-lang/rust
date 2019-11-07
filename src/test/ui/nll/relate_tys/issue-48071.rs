@@ -4,7 +4,7 @@
 // placeholder region, but in NLL land it would fail because we had
 // rewritten `'static` to a region variable.
 //
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 trait Foo {
     fn foo(&self) { }

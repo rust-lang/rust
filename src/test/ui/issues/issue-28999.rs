@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 pub struct Xyz<'a, V> {
     pub v: (V, &'a u32),
 }

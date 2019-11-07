@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 pub trait Foo<'a> {
     type Bar;
     fn foo(&'a self) -> Self::Bar;

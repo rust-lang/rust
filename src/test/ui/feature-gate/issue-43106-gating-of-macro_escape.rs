@@ -3,7 +3,7 @@
 // `#![macro_escape]` is incompatible with crate-level `#![macro_use]`
 // already present in issue-43106-gating-of-builtin-attrs.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![macro_escape]
 //~^ WARN macro_escape is a deprecated synonym for macro_use

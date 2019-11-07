@@ -1,6 +1,6 @@
 // aux-build:foo.rs
 // compile-flags:--extern foo
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // edition:2018
 
 #![deny(unused_extern_crates)]
