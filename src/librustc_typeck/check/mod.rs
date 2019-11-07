@@ -114,7 +114,7 @@ use rustc::ty::{
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
-use rustc::ty::fold::TypeFoldable;
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{
     GenericArgKind, Subst, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts,
@@ -872,6 +872,58 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: DefId) -> &DefIdSet {
     &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 
+/// Inspects the substs of opaque types, replacing any inference variables
+/// with proper generic parameter from the identity substs.
+///
+/// This is run after we normalize the function signature, to fix any inference
+/// variables introduced by the projection of associated types. This ensures that
+/// any opaque types used in the signature continue to refer to generic parameters,
+/// allowing them to be considered for defining uses in the function body
+fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFoldable<'tcx> {
+    struct FixupFolder<'tcx> {
+        tcx: TyCtxt<'tcx>
+    }
+
+    impl<'tcx> TypeFolder<'tcx> for FixupFolder<'tcx> {
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            match ty.kind {
+                ty::Opaque(def_id, substs) => {
+                    debug!("fixup_opaque_types: found type {:?}", ty);
+                    if ty.has_infer_types() {
+                        let new_substs = InternalSubsts::for_item(self.tcx, def_id, |param, _| {
+                            let old_param = substs[param.index as usize];
+                            match old_param.unpack() {
+                                GenericArgKind::Type(old_ty) => {
+                                    if let ty::Infer(_) = old_ty.kind {
+                                        // Replace inference type with a generic parameter
+                                        self.tcx.mk_param_from_def(param)
+                                    } else {
+                                        old_param.fold_with(self)
+                                    }
+                                },
+                                _ => old_param
+                            }
+                        });
+                        let new_ty = self.tcx.mk_opaque(def_id, new_substs);
+                        debug!("fixup_opaque_types: new type: {:?}", new_ty);
+                        new_ty
+                    } else {
+                        ty
+                    }
+                },
+                _ => ty.super_fold_with(self)
+            }
+        }
+    }
+
+    debug!("fixup_opaque_types({:?})", val);
+    val.fold_with(&mut FixupFolder { tcx })
+}
+
 fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
@@ -910,6 +962,8 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
                                                   body_id.hir_id,
                                                   param_env,
                                                   &fn_sig);
+
+            let fn_sig = fixup_opaque_types(tcx, &fn_sig);
 
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx

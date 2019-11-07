@@ -2059,6 +2059,9 @@ fn explicit_predicates_of(
                 ty::print::with_no_queries(|| {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
+                    debug!("explicit_predicates_of({:?}): created opaque type {:?}",
+                        def_id, opaque_ty);
+
 
                     // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
                     let bounds = AstConv::compute_bounds(
