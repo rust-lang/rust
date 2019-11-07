@@ -641,6 +641,15 @@ impl<'tcx> Constructor<'tcx> {
         IntRange::should_treat_range_exhaustively(tcx, ty)
     }
 
+    fn is_integral_range(&self) -> bool {
+        let ty = match self {
+            ConstantValue(value, _) => value.ty,
+            ConstantRange(_, _, ty, _, _) => ty,
+            _ => return false,
+        };
+        IntRange::is_integral(ty)
+    }
+
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -1469,6 +1478,12 @@ impl<'tcx> IntRange<'tcx> {
         } else {
             None
         }
+    }
+
+    fn is_subrange(&self, other: &Self) -> bool {
+        let (lo, hi) = (*self.range.start(), *self.range.end());
+        let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
+        other_lo <= lo && hi <= other_hi
     }
 
     fn suspicious_intersection(&self, other: &Self) -> bool {
@@ -2300,11 +2315,23 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                     IntRange::from_pat(cx.tcx, cx.param_env, pat),
                 ) {
                     (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| {
+                        // Constructor splitting should ensure that all intersections we encounter
+                        // are actually inclusions.
                         let (pat_lo, pat_hi) = pat.range.into_inner();
                         let (ctor_lo, ctor_hi) = ctor.range.into_inner();
                         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
                         PatStack::default()
                     }),
+                    _ => None,
+                }
+            } else if constructor.is_integral_range() {
+                // If we have an integer range that should not be matched exhaustively, fallback to
+                // checking for inclusion.
+                match (
+                    IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
+                    IntRange::from_pat(cx.tcx, cx.param_env, pat),
+                ) {
+                    (Some(ctor), Some(pat)) if ctor.is_subrange(&pat) => Some(PatStack::default()),
                     _ => None,
                 }
             } else {
