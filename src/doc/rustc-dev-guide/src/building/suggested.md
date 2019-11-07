@@ -1,7 +1,7 @@
 # Suggested Workflows
 
 The full bootstrapping process takes quite a while. Here are three suggestions
-to make you're life easier.
+to make your life easier.
 
 ## Check, check, and check again
 
