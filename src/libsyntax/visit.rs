@@ -244,12 +244,11 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemKind::Fn(ref declaration, ref header, ref generics, ref body) => {
+        ItemKind::Fn(ref sig, ref generics, ref body) => {
             visitor.visit_generics(generics);
-            visitor.visit_fn_header(header);
-            visitor.visit_fn(FnKind::ItemFn(item.ident, header,
-                                            &item.vis, body),
-                             declaration,
+            visitor.visit_fn_header(&sig.header);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, &sig.header, &item.vis, body),
+                             &sig.decl,
                              item.span,
                              item.id)
         }

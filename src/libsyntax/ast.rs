@@ -2433,7 +2433,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
+    Fn(FnSig, Generics, P<Block>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.

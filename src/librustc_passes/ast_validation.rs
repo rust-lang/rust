@@ -575,12 +575,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with default").emit();
                 }
             }
-            ItemKind::Fn(ref decl, ref header, ref generics, _) => {
-                self.visit_fn_header(header);
-                self.check_fn_decl(decl);
+            ItemKind::Fn(ref sig, ref generics, _) => {
+                self.visit_fn_header(&sig.header);
+                self.check_fn_decl(&sig.decl);
                 // We currently do not permit const generics in `const fn`, as
                 // this is tantamount to allowing compile-time dependent typing.
-                if header.constness.node == Constness::Const {
+                if sig.header.constness.node == Constness::Const {
                     // Look for const generics and error if we find any.
                     for param in &generics.params {
                         match param.kind {

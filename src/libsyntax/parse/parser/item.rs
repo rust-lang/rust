@@ -1800,7 +1800,7 @@ impl<'a> Parser<'a> {
             is_name_required: |_| true,
         })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        let kind = ItemKind::Fn(decl, header, generics, body);
+        let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
         self.mk_item_with_info(attrs, lo, vis, (ident, kind, Some(inner_attrs)))
     }
 

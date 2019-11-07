@@ -306,7 +306,7 @@ impl LoweringContext<'_> {
                     self.lower_const_body(e)
                 )
             }
-            ItemKind::Fn(ref decl, header, ref generics, ref body) => {
+            ItemKind::Fn(FnSig { ref decl, header }, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
