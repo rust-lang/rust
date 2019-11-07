@@ -164,8 +164,13 @@ PHINode* canonicalizeIVs(fake::SCEVExpander &e, Type *Ty, Loop *L, DominatorTree
 
 Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI) {
  static std::map<Function*,Function*> cache;
- if (cache.find(F) != cache.end()) return cache[F];
-
+ static std::map<Function*, BasicAAResult*> cache_AA;
+ llvm::errs() << "Before cache lookup for " << F->getName() << "\n";
+ if (cache.find(F) != cache.end()) {
+   AA.addAAResult(*(cache_AA[F]));
+   return cache[F];
+ }
+ llvm::errs() << "Did not do cache lookup for " << F->getName() << "\n";
  Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(), "preprocess_" + F->getName(), F->getParent());
 
  ValueToValueMapTy VMap;
@@ -439,7 +444,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
     FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });
      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-     AM.registerPass([] { return AssumptionAnalysis(); });
+     //AM.registerPass([] { return AssumptionAnalysis(); });
      AM.registerPass([] { return TargetLibraryAnalysis(); });
      AM.registerPass([] { return TargetIRAnalysis(); });
      AM.registerPass([] { return LoopAnalysis(); });
@@ -458,13 +463,22 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(AM); });
 
  //Alias analysis is necessary to ensure can query whether we can move a forward pass function
- BasicAA ba;
- auto baa = new BasicAAResult(ba.run(*NewF, AM));
+ //BasicAA ba;
+ //auto baa = new BasicAAResult(ba.run(*NewF, AM));
+ AssumptionCache* AC = new AssumptionCache(*NewF);
+ TargetLibraryInfo* TLI = new TargetLibraryInfo(AM.getResult<TargetLibraryAnalysis>(*NewF));
+ auto baa = new BasicAAResult(NewF->getParent()->getDataLayout(),
+                        *NewF,
+                        *TLI,
+                        *AC,
+                        &AM.getResult<DominatorTreeAnalysis>(*NewF),
+                        AM.getCachedResult<LoopAnalysis>(*NewF),
+                        AM.getCachedResult<PhiValuesAnalysis>(*NewF));
+ cache_AA[F] = baa;
  AA.addAAResult(*baa);
-
- ScopedNoAliasAA sa;
- auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
- AA.addAAResult(*saa);
+ //ScopedNoAliasAA sa;
+ //auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
+ //AA.addAAResult(*saa);
 
  }
 

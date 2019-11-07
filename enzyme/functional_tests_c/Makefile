@@ -18,7 +18,7 @@ OBJ := $(wildcard *.c)
 
 all: $(patsubst %.c,build/%-enzyme0,$(OBJ)) $(patsubst %.c,build/%-enzyme1,$(OBJ)) $(patsubst %.c,build/%-enzyme2,$(OBJ)) $(patsubst %.c,build/%-enzyme3,$(OBJ))
 
-POST_ENZYME_FLAGS := -mem2reg -sroa -adce -simplifycfg -enzyme_cachereads=true
+POST_ENZYME_FLAGS := -mem2reg -sroa -adce -simplifycfg
 
 #all: $(patsubst %.c,build/%-enzyme1,$(OBJ)) $(patsubst %.c,build/%-enzyme2,$(OBJ)) $(patsubst %.c,build/%-enzyme3,$(OBJ))
 #clean:
@@ -31,7 +31,7 @@ POST_ENZYME_FLAGS := -mem2reg -sroa -adce -simplifycfg -enzyme_cachereads=true
 
 #EXTRA_FLAGS = -indvars -loop-simplify -loop-rotate
 
-# NOTE(TFK): Optimization level 0 is broken right now.
+# /efs/home/tfk/valgrind-3.12.0/vg-in-place
 build/%-enzyme0: %.c
 	@./setup.sh $(CLANG_BIN_PATH)/clang -std=c11 -O1 $(patsubst %.c,%,$<).c -S -emit-llvm -o $@.ll
 	@./setup.sh $(CLANG_BIN_PATH)/opt $@.ll $(EXTRA_FLAGS) -load=$(ENZYME_PLUGIN) -enzyme $(POST_ENZYME_FLAGS) -o $@.bc

@@ -51,11 +51,11 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { {}, i1, {}, i1 } } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = extractvalue { { {}, i1, {}, i1 } } %0, 0
+; CHECK-NEXT:   %0 = call { { {}, i1, {}, i1, double } } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:   %1 = extractvalue { { {}, i1, {}, i1, double } } %0, 0
 ; CHECK-NEXT:   store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %2 = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, i1, {}, i1 } %1)
+; CHECK-NEXT:   %2 = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, i1, {}, i1, double } %1)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -63,7 +63,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 
 ; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_metasubf(double* nocapture %x, double* %"x'") 
 
-; CHECK: define internal {{(dso_local )?}}{ { {}, i1, {}, i1 } } @augmented_subf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ { {}, i1, {}, i1, double } } @augmented_subf(double* nocapture %x, double* %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %x, align 8
 ; CHECK-NEXT:   %mul = fmul fast double %0, 2.000000e+00
@@ -72,12 +72,13 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT:   %2 = extractvalue { {}, i1 } %1, 1
 ; CHECK-NEXT:   %3 = call { {}, i1 } @augmented_othermetasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %4 = extractvalue { {}, i1 } %3, 1
-; CHECK-NEXT:   %[[iv1:.+]] = insertvalue { { {}, i1, {}, i1 } } undef, i1 %4, 0, 1
-; CHECK-NEXT:   %[[iv2:.+]] = insertvalue { { {}, i1, {}, i1 } } %[[iv1]], i1 %2, 0, 3
-; CHECK-NEXT:   ret { { {}, i1, {}, i1 } } %[[iv2]]
+; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { {}, i1, {}, i1, double } } undef, i1 %4, 0, 1
+; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { {}, i1, {}, i1, double } } %.fca.0.1.insert, i1 %2, 0, 3
+; CHECK-NEXT:   %.fca.0.4.insert = insertvalue { { {}, i1, {}, i1, double } } %.fca.0.3.insert, double %0, 0, 4
+; CHECK-NEXT:   ret { { {}, i1, {}, i1, double } } %.fca.0.4.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, i1, {}, i1 } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, i1, {}, i1, double } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call {} @diffeothermetasubf(double* %x, double* %"x'", {} undef)
 ; CHECK-NEXT:   %1 = call {} @diffemetasubf(double* %x, double* %"x'", {} undef)

@@ -155,7 +155,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
 
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
-  auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), constants, TLI, AA, /*should return*/false, differentialReturn, /*topLevel*/true, /*addedType*/nullptr);//, LI, DT);
+  std::set<unsigned> volatile_args;
+  auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), constants, TLI, AA, /*should return*/false, differentialReturn, /*topLevel*/true, /*addedType*/nullptr, volatile_args);//, LI, DT);
 
   if (differentialReturn)
     args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
