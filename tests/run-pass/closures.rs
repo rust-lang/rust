@@ -40,8 +40,19 @@ fn fn_once_closure_with_multiple_args() -> i64 {
     }
 }
 
-fn boxed(f: Box<dyn FnOnce() -> i32>) -> i32 {
+fn boxed_fn_once(f: Box<dyn FnOnce() -> i32>) -> i32 {
     f()
+}
+
+fn box_dyn() {
+    let x: Box<dyn Fn(i32) -> i32> = Box::new(|x| x * 2);
+    assert_eq!(x(21), 42);
+    let mut i = 5;
+    {
+        let mut x: Box<dyn FnMut()> = Box::new(|| i *= 2);
+        x(); x();
+    }
+    assert_eq!(i, 20);
 }
 
 fn fn_item_as_closure_trait_object() {
@@ -96,8 +107,9 @@ fn main() {
     assert_eq!(crazy_closure(), (84, 10, 10));
     assert_eq!(closure_arg_adjustment_problem(), 3);
     assert_eq!(fn_once_closure_with_multiple_args(), 6);
-    assert_eq!(boxed(Box::new({let x = 13; move || x})), 13);
+    assert_eq!(boxed_fn_once(Box::new({let x = 13; move || x})), 13);
 
+    box_dyn();
     fn_item_as_closure_trait_object();
     fn_item_with_args_as_closure_trait_object();
     fn_item_with_multiple_args_as_closure_trait_object();

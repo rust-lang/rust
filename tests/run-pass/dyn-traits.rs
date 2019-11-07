@@ -1,6 +1,6 @@
 #![feature(unsized_locals)]
 
-fn ref_dyn() {
+fn ref_box_dyn() {
     struct Struct(i32);
 
     trait Trait {
@@ -17,21 +17,18 @@ fn ref_dyn() {
 
     let y: &dyn Trait = &Struct(42);
     y.method();
+
     let x: Foo<Struct> = Foo(Struct(42));
     let y: &Foo<dyn Trait> = &x;
     y.0.method();
+
+    let y: Box<dyn Trait> = Box::new(Struct(42));
+    y.method();
+
+    let y = &y;
+    y.method();
 }
 
-fn box_dyn() {
-    let x: Box<dyn Fn(i32) -> i32> = Box::new(|x| x * 2);
-    assert_eq!(x(21), 42);
-    let mut i = 5;
-    {
-        let mut x: Box<dyn FnMut()> = Box::new(|| i *= 2);
-        x(); x();
-    }
-    assert_eq!(i, 20);
-}
 
 fn box_box_trait() {
     struct DroppableStruct;
@@ -130,8 +127,7 @@ fn unsized_dyn_autoderef() {
 }
 
 fn main() {
-    ref_dyn();
-    box_dyn();
+    ref_box_dyn();
     box_box_trait();
 
     // "exotic" receivers
