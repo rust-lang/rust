@@ -1616,6 +1616,11 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    ///
+    /// To resolve the called method to a `DefId`, call [`type_dependent_def_id`] with
+    /// the `hir_id` of the `MethodCall` node itself.
+    ///
+    /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
     MethodCall(P<PathSegment>, Span, HirVec<Expr>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(HirVec<Expr>),
@@ -1698,6 +1703,10 @@ pub enum ExprKind {
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
+///
+/// To resolve the path to a `DefId`, call [`qpath_res`].
+///
+/// [`qpath_res`]: ../ty/struct.TypeckTables.html#method.qpath_res
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum QPath {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
