@@ -1,5 +1,9 @@
 //! FIXME: write short doc here
 
+use hir::{Ty, TypeCtor};
+use ra_syntax::{ast::AstNode, TextRange, TextUnit};
+use ra_text_edit::TextEdit;
+
 use crate::{
     completion::{
         completion_context::CompletionContext,
@@ -7,9 +11,53 @@ use crate::{
     },
     CompletionItem,
 };
-use hir::{Ty, TypeCtor};
-use ra_syntax::{ast::AstNode, TextRange, TextUnit};
-use ra_text_edit::TextEdit;
+
+pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
+    let dot_receiver = match &ctx.dot_receiver {
+        Some(it) => it,
+        None => return,
+    };
+
+    let receiver_text = if ctx.dot_receiver_is_ambiguous_float_literal {
+        let text = dot_receiver.syntax().text();
+        let without_dot = ..text.len() - TextUnit::of_char('.');
+        text.slice(without_dot).to_string()
+    } else {
+        dot_receiver.syntax().text().to_string()
+    };
+
+    let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
+
+    if is_bool_or_unknown(receiver_ty) {
+        postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
+            .add_to(acc);
+        postfix_snippet(
+            ctx,
+            "while",
+            "while expr {}",
+            &format!("while {} {{\n$0\n}}", receiver_text),
+        )
+        .add_to(acc);
+    }
+
+    postfix_snippet(ctx, "not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
+
+    postfix_snippet(ctx, "ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
+    postfix_snippet(ctx, "refm", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
+
+    postfix_snippet(
+        ctx,
+        "match",
+        "match expr {}",
+        &format!("match {} {{\n    ${{1:_}} => {{$0\\}},\n}}", receiver_text),
+    )
+    .add_to(acc);
+
+    postfix_snippet(ctx, "dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc);
+
+    postfix_snippet(ctx, "box", "Box::new(expr)", &format!("Box::new({})", receiver_text))
+        .add_to(acc);
+}
 
 fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: &str) -> Builder {
     let edit = {
@@ -24,61 +72,18 @@ fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: 
 }
 
 fn is_bool_or_unknown(ty: Option<Ty>) -> bool {
-    if let Some(ty) = ty {
-        match ty {
-            Ty::Apply(at) => match at.ctor {
-                TypeCtor::Bool => true,
-                _ => false,
-            },
-            Ty::Unknown => true,
-            _ => false,
-        }
-    } else {
-        true
-    }
-}
-
-pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some(dot_receiver) = &ctx.dot_receiver {
-        let receiver_text = if ctx.dot_receiver_is_ambiguous_float_literal {
-            let text = dot_receiver.syntax().text();
-            let without_dot = ..text.len() - TextUnit::of_char('.');
-            text.slice(without_dot).to_string()
-        } else {
-            dot_receiver.syntax().text().to_string()
-        };
-        let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
-        if is_bool_or_unknown(receiver_ty) {
-            postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
-                .add_to(acc);
-            postfix_snippet(
-                ctx,
-                "while",
-                "while expr {}",
-                &format!("while {} {{\n$0\n}}", receiver_text),
-            )
-            .add_to(acc);
-        }
-        postfix_snippet(ctx, "not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
-        postfix_snippet(ctx, "ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
-        postfix_snippet(ctx, "refm", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
-        postfix_snippet(
-            ctx,
-            "match",
-            "match expr {}",
-            &format!("match {} {{\n    ${{1:_}} => {{$0\\}},\n}}", receiver_text),
-        )
-        .add_to(acc);
-        postfix_snippet(ctx, "dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc);
-        postfix_snippet(ctx, "box", "Box::new(expr)", &format!("Box::new({})", receiver_text))
-            .add_to(acc);
+    match &ty {
+        Some(Ty::Apply(app)) if app.ctor == TypeCtor::Bool => true,
+        Some(Ty::Unknown) | None => true,
+        Some(_) => false,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
+
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
 
     fn do_postfix_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Postfix)

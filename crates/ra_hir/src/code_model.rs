@@ -2,6 +2,7 @@
 
 pub(crate) mod src;
 pub(crate) mod docs;
+pub(crate) mod attrs;
 
 use std::sync::Arc;
 
