@@ -1374,29 +1374,10 @@ impl<'tcx> IntRange<'tcx> {
     fn from_pat(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        mut pat: &Pat<'tcx>,
+        pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        loop {
-            match pat.kind {
-                box PatKind::Constant { value } => {
-                    return Self::from_const(tcx, param_env, value, pat.span);
-                }
-                box PatKind::Range(PatRange { lo, hi, end }) => {
-                    return Self::from_range(
-                        tcx,
-                        lo.eval_bits(tcx, param_env, lo.ty),
-                        hi.eval_bits(tcx, param_env, hi.ty),
-                        &lo.ty,
-                        &end,
-                        pat.span,
-                    );
-                }
-                box PatKind::AscribeUserType { ref subpattern, .. } => {
-                    pat = subpattern;
-                }
-                _ => return None,
-            }
-        }
+        let ctor = pat_constructor(tcx, param_env, pat)?;
+        IntRange::from_ctor(tcx, param_env, &ctor)
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
@@ -1632,7 +1613,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructor) = pat_constructor(cx, v.head()) {
+    if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         split_grouped_constructors(
             cx.tcx,
@@ -1651,7 +1632,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         debug!("is_useful - expanding wildcard");
 
         let used_ctors: Vec<Constructor<'_>> =
-            matrix.heads().filter_map(|p| pat_constructor(cx, p)).collect();
+            matrix.heads().filter_map(|p| pat_constructor(cx.tcx, cx.param_env, p)).collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
@@ -1754,11 +1735,14 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 /// Determines the constructor that the given pattern can be specialized to.
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructor<'tcx>(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
 ) -> Option<Constructor<'tcx>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => pat_constructor(cx, subpattern),
+        PatKind::AscribeUserType { ref subpattern, .. } => {
+            pat_constructor(tcx, param_env, subpattern)
+        }
         PatKind::Binding { .. } | PatKind::Wild => None,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
         PatKind::Variant { adt_def, variant_index, .. } => {
@@ -1766,14 +1750,14 @@ fn pat_constructor<'tcx>(
         }
         PatKind::Constant { value } => Some(ConstantValue(value, pat.span)),
         PatKind::Range(PatRange { lo, hi, end }) => Some(ConstantRange(
-            lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
-            hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+            lo.eval_bits(tcx, param_env, lo.ty),
+            hi.eval_bits(tcx, param_env, hi.ty),
             lo.ty,
             end,
             pat.span,
         )),
         PatKind::Array { .. } => match pat.ty.kind {
-            ty::Array(_, length) => Some(FixedLenSlice(length.eval_usize(cx.tcx, cx.param_env))),
+            ty::Array(_, length) => Some(FixedLenSlice(length.eval_usize(tcx, param_env))),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pat.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
