@@ -66,10 +66,6 @@ of the compiler and not intended to be stable (though they do wind up
 getting used by some crates in the wild; a practice we hope to
 gradually phase out).
 
-Each crate has a `README.md` file that describes, at a high-level,
-what it contains, and tries to give some kind of explanation (some
-better than others).
-
 ## The main stages of compilation
 
 The Rust compiler is in a bit of transition right now. It used to be a
