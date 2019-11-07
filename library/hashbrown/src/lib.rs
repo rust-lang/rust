@@ -19,7 +19,6 @@
         test,
         core_intrinsics,
         dropck_eyepatch,
-        cfg_doctest,
     )
 )]
 #![allow(
