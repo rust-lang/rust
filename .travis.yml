@@ -47,7 +47,6 @@ matrix:
   fast_finish: true
   include:
     # Builds that are executed for every PR
-    - os: osx # run base tests on both platforms
     - os: linux
     - os: windows
       env: CARGO_INCREMENTAL=0 OS_WINDOWS=true
@@ -56,6 +55,8 @@ matrix:
     # We don't want to run these always because they go towards
     # the build limit within the Travis rust-lang account.
     # The jobs are approximately sorted by execution time
+    - os: osx
+      if: branch IN (auto, try)
     - env: INTEGRATION=rust-lang/rls
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/cargo
