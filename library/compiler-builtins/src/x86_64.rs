@@ -73,3 +73,10 @@ pub unsafe fn ___chkstk() {
     );
     intrinsics::unreachable();
 }
+
+// HACK(https://github.com/rust-lang/rust/issues/62785): x86_64-unknown-uefi needs special LLVM
+// support unless we emit the _fltused
+#[no_mangle]
+#[used]
+#[cfg(target_os = "uefi")]
+static _fltused: i32 = 0;
