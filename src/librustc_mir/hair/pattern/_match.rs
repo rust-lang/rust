@@ -1632,7 +1632,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructor) = pat_constructor(cx, v.head(), pcx) {
+    if let Some(constructor) = pat_constructor(cx, v.head()) {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         split_grouped_constructors(
             cx.tcx,
@@ -1651,7 +1651,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         debug!("is_useful - expanding wildcard");
 
         let used_ctors: Vec<Constructor<'_>> =
-            matrix.heads().filter_map(|p| pat_constructor(cx, p, pcx)).collect();
+            matrix.heads().filter_map(|p| pat_constructor(cx, p)).collect();
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
@@ -1756,10 +1756,9 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 fn pat_constructor<'tcx>(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
     pat: &Pat<'tcx>,
-    pcx: PatCtxt<'tcx>,
 ) -> Option<Constructor<'tcx>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => pat_constructor(cx, subpattern, pcx),
+        PatKind::AscribeUserType { ref subpattern, .. } => pat_constructor(cx, subpattern),
         PatKind::Binding { .. } | PatKind::Wild => None,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
         PatKind::Variant { adt_def, variant_index, .. } => {
@@ -1773,9 +1772,9 @@ fn pat_constructor<'tcx>(
             end,
             pat.span,
         )),
-        PatKind::Array { .. } => match pcx.ty.kind {
+        PatKind::Array { .. } => match pat.ty.kind {
             ty::Array(_, length) => Some(FixedLenSlice(length.eval_usize(cx.tcx, cx.param_env))),
-            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty),
+            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pat.ty),
         },
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let prefix = prefix.len() as u64;
