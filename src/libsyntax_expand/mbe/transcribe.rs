@@ -4,7 +4,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
 use syntax::ast::{Ident, Mac};
 use syntax::mut_visit::{self, MutVisitor};
-use syntax::parse::token::{self, NtTT, Token};
+use syntax::token::{self, NtTT, Token};
 use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};

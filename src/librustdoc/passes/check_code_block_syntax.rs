@@ -1,6 +1,6 @@
 use errors::Applicability;
 use syntax::parse::lexer::{StringReader as Lexer};
-use syntax::parse::token;
+use syntax::token;
 use syntax::sess::ParseSess;
 use syntax::source_map::FilePathMapping;
 use syntax_pos::{InnerSpan, FileName};

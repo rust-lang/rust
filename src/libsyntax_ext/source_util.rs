@@ -1,10 +1,11 @@
 use syntax_expand::panictry;
 use syntax_expand::base::{self, *};
 use syntax::ast;
-use syntax::parse::{self, token, DirectoryOwnership};
+use syntax::parse::{self, DirectoryOwnership};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
+use syntax::token;
 use syntax::tokenstream::TokenStream;
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 

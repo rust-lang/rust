@@ -29,7 +29,7 @@ use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, Attribute, DUMMY_NODE_ID, NodeId, PatKind};
 use syntax::source_map::Spanned;
-use syntax::parse::lexer::comments::strip_doc_comment_decoration;
+use syntax::util::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{param_to_string, ty_to_string};

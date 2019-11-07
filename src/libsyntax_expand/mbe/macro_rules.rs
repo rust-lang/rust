@@ -13,12 +13,11 @@ use syntax::attr::{self, TransparencyError};
 use syntax::edition::Edition;
 use syntax::feature_gate::Features;
 use syntax::parse::parser::Parser;
-use syntax::parse::token::TokenKind::*;
-use syntax::parse::token::{self, NtTT, Token};
 use syntax::parse::Directory;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
+use syntax::token::{self, NtTT, Token, TokenKind::*};
 use syntax::tokenstream::{DelimSpan, TokenStream};
 
 use errors::{DiagnosticBuilder, FatalError};

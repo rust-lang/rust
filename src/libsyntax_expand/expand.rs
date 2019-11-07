@@ -12,18 +12,18 @@ use syntax::configure;
 use syntax::config::StripUnconfigured;
 use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use syntax::mut_visit::*;
-use syntax::parse::{DirectoryOwnership, PResult};
-use syntax::parse::token;
+use syntax::parse::DirectoryOwnership;
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{sym, Symbol};
+use syntax::token;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::{self, Visitor};
 use syntax::util::map_in_place::MapInPlace;
 
-use errors::{Applicability, FatalError};
+use errors::{PResult, Applicability, FatalError};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, DUMMY_SP, FileName};
 

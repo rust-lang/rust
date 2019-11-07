@@ -11,7 +11,7 @@ use crate::attr::{self, check_builtin_attribute};
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
-use crate::parse::token;
+use crate::token;
 use crate::sess::ParseSess;
 use crate::symbol::{Symbol, sym};
 use crate::tokenstream::TokenTree;

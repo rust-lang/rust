@@ -85,7 +85,10 @@ pub mod diagnostics {
 pub mod error_codes;
 
 pub mod util {
+    crate mod classify;
+    pub mod comments;
     pub mod lev_distance;
+    crate mod literal;
     pub mod node_count;
     pub mod parser;
     pub mod map_in_place;
@@ -107,6 +110,7 @@ pub mod show_span;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod sess;
+pub mod token;
 pub mod tokenstream;
 pub mod visit;
 

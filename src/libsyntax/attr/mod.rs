@@ -14,16 +14,16 @@ use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned};
-use crate::parse::lexer::comments::doc_comment_style;
 use crate::parse;
-use crate::parse::PResult;
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
+
+use errors::PResult;
 
 use log::debug;
 use syntax_pos::Span;
@@ -400,11 +400,11 @@ pub fn mk_attr_outer(item: MetaItem) -> Attribute {
     mk_attr(AttrStyle::Outer, item.path, item.kind.tokens(item.span), item.span)
 }
 
-pub fn mk_doc_comment(comment: Symbol, span: Span) -> Attribute {
+pub fn mk_doc_comment(style: AttrStyle, comment: Symbol, span: Span) -> Attribute {
     Attribute {
         kind: AttrKind::DocComment(comment),
         id: mk_attr_id(),
-        style: doc_comment_style(&comment.as_str()),
+        style,
         span,
     }
 }

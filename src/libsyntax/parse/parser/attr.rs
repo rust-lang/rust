@@ -1,9 +1,13 @@
-use super::{SeqSep, PResult, Parser, TokenType, PathStyle};
+use super::{SeqSep, Parser, TokenType, PathStyle};
 use crate::attr;
 use crate::ast;
-use crate::parse::token::{self, Nonterminal, DelimToken};
+use crate::util::comments;
+use crate::token::{self, Nonterminal, DelimToken};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::source_map::Span;
+
+use syntax_pos::Symbol;
+use errors::PResult;
 
 use log::debug;
 
@@ -43,7 +47,7 @@ impl<'a> Parser<'a> {
                     just_parsed_doc_comment = false;
                 }
                 token::DocComment(s) => {
-                    let attr = attr::mk_doc_comment(s, self.token.span);
+                    let attr = self.mk_doc_comment(s);
                     if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
                         err.note("inner doc comments like this (starting with \
@@ -58,6 +62,11 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(attrs)
+    }
+
+    fn mk_doc_comment(&self, s: Symbol) -> ast::Attribute {
+        let style = comments::doc_comment_style(&s.as_str());
+        attr::mk_doc_comment(style, s, self.token.span)
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
@@ -228,7 +237,7 @@ impl<'a> Parser<'a> {
                 }
                 token::DocComment(s) => {
                     // We need to get the position of this token before we bump.
-                    let attr = attr::mk_doc_comment(s, self.token.span);
+                    let attr = self.mk_doc_comment(s);
                     if attr.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
                         self.bump();

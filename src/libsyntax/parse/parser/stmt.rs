@@ -1,4 +1,4 @@
-use super::{Parser, PResult, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
+use super::{Parser, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
 use super::expr::LhsExpr;
 use super::path::PathStyle;
 use super::pat::GateOr;
@@ -8,13 +8,14 @@ use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
-use crate::parse::{classify, DirectoryOwnership};
-use crate::parse::token;
+use crate::parse::DirectoryOwnership;
+use crate::util::classify;
+use crate::token;
 use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};
 
 use std::mem;
-use errors::Applicability;
+use errors::{PResult, Applicability};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.

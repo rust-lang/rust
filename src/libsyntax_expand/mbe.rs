@@ -10,7 +10,7 @@ crate mod macro_rules;
 crate mod quoted;
 
 use syntax::ast;
-use syntax::parse::token::{self, Token, TokenKind};
+use syntax::token::{self, Token, TokenKind};
 use syntax::tokenstream::{DelimSpan};
 
 use syntax_pos::Span;

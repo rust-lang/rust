@@ -9,7 +9,7 @@
 
 use crate::ast::*;
 use crate::source_map::{Spanned, respan};
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::ptr::P;
 use crate::ThinVec;
 use crate::tokenstream::*;
