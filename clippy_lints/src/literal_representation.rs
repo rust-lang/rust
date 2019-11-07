@@ -509,17 +509,12 @@ impl DecimalLiteralRepresentation {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
-            if let LitKind::Int(..) = lit.kind;
+            if let LitKind::Int(val, _) = lit.kind;
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(firstch) = src.chars().next();
             if char::to_digit(firstch, 10).is_some();
             let digit_info = DigitInfo::new(&src, false);
             if digit_info.radix == Radix::Decimal;
-            if let Ok(val) = digit_info.digits
-                .chars()
-                .filter(|&c| c != '_')
-                .collect::<String>()
-                .parse::<u128>();
             if val >= u128::from(self.threshold);
             then {
                 let hex = format!("{:#X}", val);
