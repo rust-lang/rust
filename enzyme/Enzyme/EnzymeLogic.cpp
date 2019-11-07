@@ -633,6 +633,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             }
 
             if (called == nullptr) {
+              llvm::errs() << gutils->newFunc << "\n";
               assert(op);
               llvm::errs() << "cannot handle augment non constant function\n" << *op << "\n";
               report_fatal_error("unknown augment non constant function");

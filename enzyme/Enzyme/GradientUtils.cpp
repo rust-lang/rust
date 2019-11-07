@@ -642,7 +642,6 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
           assert(cmp->getOperand(0) == increment);
 
           auto scv = SE.getSCEVAtScope(cmp->getOperand(1), L);
-          llvm::errs() << "coing to think about " << *cmp << "\n";
           if (cmp->isUnsigned() || (scv != SE.getCouldNotCompute() && SE.isKnownNonNegative(scv)) ) {
 
             // valid replacements (since unsigned comparison and i starts at 0 counting up)

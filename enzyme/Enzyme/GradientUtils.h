@@ -906,7 +906,7 @@ endCheck:
             if (!getContext(blk, idx)) {
                 break;
             }
-            llvm::errs() << " adding to contexts: " << idx.header->getName() << " starting ctx=" << ctx->getName() << "\n";
+            //llvm::errs() << " adding to contexts: " << idx.header->getName() << " starting ctx=" << ctx->getName() << "\n";
             contexts.emplace_back(idx);
             blk = idx.preheader;
         }
@@ -929,11 +929,17 @@ endCheck:
                     ValueToValueMapTy emptyMap;
                     IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
                     Value* limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                    
                     if (limitMinus1 == nullptr) {
+                        allocationPreheaders[i] = contexts[i].preheader;
+                        allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
+                        limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                        /*
                         assert(allocationPreheaders[i]);
                         llvm::errs() << *oldFunc << "\n";
                         llvm::errs() << *newFunc << "\n";
                         llvm::errs() << "needed value " << *contexts[i].limit << " at " << allocationPreheaders[i]->getName() << "\n";
+                        */
                     }
                     assert(limitMinus1 != nullptr);
                     limits[i] = allocationBuilder.CreateNUWAdd(limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
@@ -964,9 +970,9 @@ endCheck:
               size = allocationBuilder.CreateNUWMul(size, limits[i]);
           }
 
-          llvm::errs() << "considering ctx " << ctx->getName() << " alph=" << allocationPreheaders[i]->getName() << " ctxheader=" << contexts[i].header->getName() << "\n";
-          if (contexts[i].dynamic) {
-            llvm::errs() << "starting outermost ph at " << allocationPreheaders[i]->getName() << "|ctx=" << ctx->getName() <<"\n";
+          //llvm::errs() << "considering ctx " << ctx->getName() << " alph=" << allocationPreheaders[i]->getName() << " ctxheader=" << contexts[i].header->getName() << "\n";
+          if ( (i+1 < contexts.size()) && (allocationPreheaders[i] != allocationPreheaders[i+1]) ) {
+            //llvm::errs() << "starting outermost ph at " << allocationPreheaders[i]->getName() << "|ctx=" << ctx->getName() <<"\n";
             sublimits.push_back(std::make_pair(size, lims));
             size = nullptr;
             lims.clear();
@@ -974,7 +980,7 @@ endCheck:
         }
 
         if (size != nullptr) {
-          llvm::errs() << "starting final outermost ph at " << allocationPreheaders[contexts.size()-1]->getName()<<"|ctx=" << ctx->getName() << "\n";
+          //llvm::errs() << "starting final outermost ph at " << allocationPreheaders[contexts.size()-1]->getName()<<"|ctx=" << ctx->getName() << "\n";
           sublimits.push_back(std::make_pair(size, lims));
           lims.clear();
         }
@@ -1073,8 +1079,9 @@ endCheck:
                 if (tbuild.GetInsertBlock()->size()) {
                       tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getFirstNonPHI());
                 }
-
-                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(tbuild.CreateLoad(unwrapM(storeInto, tbuild, antimap, /*lookup*/false)), Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
+                auto forfree = cast<LoadInst>(tbuild.CreateLoad(unwrapM(storeInto, tbuild, antimap, /*lookup*/false)));
+                forfree->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(forfree->getContext(), {}));
+                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(forfree, Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
                 ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
                 if (ci->getParent()==nullptr) {
                     tbuild.Insert(ci);
@@ -1106,6 +1113,7 @@ endCheck:
         Value* next = cache;
         for(int i=sublimits.size()-1; i>=0; i--) {
             next = BuilderM.CreateLoad(next);
+            cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(next->getContext(), {}));
 
             const auto& containedloops = sublimits[i].second; 
 
