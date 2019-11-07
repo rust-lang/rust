@@ -3,7 +3,7 @@ use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 use crate::ptr::P;
-use crate::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
+use crate::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
 use crate::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
 use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
@@ -17,7 +17,6 @@ use crate::ThinVec;
 
 use log::debug;
 use std::mem;
-use rustc_target::spec::abi::Abi;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
 use syntax_pos::BytePos;
 
@@ -111,7 +110,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
 
-            let opt_abi = self.parse_opt_abi()?;
+            let abi = self.parse_opt_abi()?;
 
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM
@@ -120,12 +119,12 @@ impl<'a> Parser<'a> {
                     unsafety: Unsafety::Normal,
                     asyncness: respan(fn_span, IsAsync::NotAsync),
                     constness: respan(fn_span, Constness::NotConst),
-                    abi: opt_abi.unwrap_or(Abi::C),
+                    abi,
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             } else if self.check(&token::OpenDelim(token::Brace)) {
                 return Ok(Some(
-                    self.parse_item_foreign_mod(lo, opt_abi, vis, attrs, extern_sp)?,
+                    self.parse_item_foreign_mod(lo, abi, vis, attrs, extern_sp)?,
                 ));
             }
 
@@ -201,7 +200,7 @@ impl<'a> Parser<'a> {
                     unsafety,
                     asyncness,
                     constness: respan(fn_span, Constness::NotConst),
-                    abi: Abi::Rust,
+                    abi: Abi::new(sym::Rust, fn_span),
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             }
@@ -238,7 +237,7 @@ impl<'a> Parser<'a> {
                 unsafety: Unsafety::Normal,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
-                abi: Abi::Rust,
+                abi: Abi::new(sym::Rust, fn_span),
             };
             return self.parse_item_fn(lo, vis, attrs, header);
         }
@@ -1115,14 +1114,12 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_mod(
         &mut self,
         lo: Span,
-        opt_abi: Option<Abi>,
+        abi: Abi,
         visibility: Visibility,
         mut attrs: Vec<Attribute>,
         extern_sp: Span,
     ) -> PResult<'a, P<Item>> {
         self.expect(&token::OpenDelim(token::Brace))?;
-
-        let abi = opt_abi.unwrap_or(Abi::C);
 
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -1801,7 +1798,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<P<Item>>> {
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: header.abi == Abi::C && header.unsafety == Unsafety::Unsafe,
+            allow_c_variadic: header.abi.symbol == sym::C && header.unsafety == Unsafety::Unsafe,
             is_name_required: |_| true,
         })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1930,7 +1927,7 @@ impl<'a> Parser<'a> {
         let asyncness = respan(self.prev_span, asyncness);
         let unsafety = self.parse_unsafety();
         let (constness, unsafety, abi) = if is_const_fn {
-            (respan(const_span, Constness::Const), unsafety, Abi::Rust)
+            (respan(const_span, Constness::Const), unsafety, Abi::default())
         } else {
             let abi = self.parse_extern_abi()?;
             (respan(self.prev_span, Constness::NotConst), unsafety, abi)

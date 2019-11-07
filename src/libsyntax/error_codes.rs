@@ -540,6 +540,5 @@ equivalent in Rust would be to use macros directly.
     E0630,
     E0693, // incorrect `repr(align)` attribute format
 //  E0694, // an unknown tool name found in scoped attributes
-    E0703, // invalid ABI
     E0717, // rustc_promotable without stability attribute
 }

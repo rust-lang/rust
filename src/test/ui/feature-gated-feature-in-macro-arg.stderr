@@ -1,10 +1,8 @@
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gated-feature-in-macro-arg.rs:8:9
+  --> $DIR/feature-gated-feature-in-macro-arg.rs:8:16
    |
-LL | /         extern "rust-intrinsic" {
-LL | |             fn atomic_fence();
-LL | |         }
-   | |_________^
+LL |         extern "rust-intrinsic" {
+   |                ^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 

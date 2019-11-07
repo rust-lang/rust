@@ -566,6 +566,7 @@ symbols! {
         rust_2018_preview,
         rust_begin_unwind,
         rustc,
+        Rust,
         RustcDecodable,
         RustcEncodable,
         rustc_allocator,

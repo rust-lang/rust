@@ -12,6 +12,7 @@ use crate::hir::def::{Res, DefKind};
 use crate::util::nodemap::NodeMap;
 
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_target::spec::abi;
 
 use std::collections::BTreeSet;
 use smallvec::SmallVec;
@@ -735,7 +736,7 @@ impl LoweringContext<'_> {
 
     fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod {
         hir::ForeignMod {
-            abi: fm.abi,
+            abi: self.lower_abi(fm.abi),
             items: fm.items
                 .iter()
                 .map(|x| self.lower_foreign_item(x))
@@ -1291,8 +1292,28 @@ impl LoweringContext<'_> {
             unsafety: self.lower_unsafety(h.unsafety),
             asyncness: self.lower_asyncness(h.asyncness.node),
             constness: self.lower_constness(h.constness),
-            abi: h.abi,
+            abi: self.lower_abi(h.abi),
         }
+    }
+
+    pub(super) fn lower_abi(&mut self, abi: Abi) -> abi::Abi {
+        abi::lookup(&abi.symbol.as_str()).unwrap_or_else(|| {
+            self.error_on_invalid_abi(abi);
+            abi::Abi::Rust
+        })
+    }
+
+    fn error_on_invalid_abi(&self, abi: Abi) {
+        struct_span_err!(
+            self.sess,
+            abi.span,
+            E0703,
+            "invalid ABI: found `{}`",
+            abi.symbol
+        )
+        .span_label(abi.span, "invalid ABI")
+        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
+        .emit();
     }
 
     pub(super) fn lower_unsafety(&mut self, u: Unsafety) -> hir::Unsafety {

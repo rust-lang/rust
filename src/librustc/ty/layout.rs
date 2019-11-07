@@ -538,7 +538,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Uint(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
-            ty::Float(fty) => scalar(Float(fty)),
+            ty::Float(fty) => scalar(Float(match fty {
+                ast::FloatTy::F32 => FloatTy::F32,
+                ast::FloatTy::F64 => FloatTy::F64,
+            })),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range = 1..=*ptr.valid_range.end();
