@@ -2,16 +2,15 @@
 
 #![warn(clippy::useless_attribute)]
 #![warn(unreachable_pub)]
+#![feature(rustc_private)]
 
 #[allow(dead_code)]
 #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
 #[rustfmt::skip]
-#[cfg_attr(feature = "cargo-clippy",
-           allow(dead_code))]
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
 #[macro_use]
-extern crate clippy_lints;
+extern crate rustc;
 
 #[macro_use]
 extern crate proc_macro_derive;
