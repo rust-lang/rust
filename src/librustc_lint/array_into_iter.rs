@@ -15,7 +15,7 @@ use syntax::{
 
 declare_lint! {
     pub ARRAY_INTO_ITER,
-    Warn,
+    Deny,
     "detects calling `into_iter` on arrays",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #66145 <https://github.com/rust-lang/rust/issues/66145>",
