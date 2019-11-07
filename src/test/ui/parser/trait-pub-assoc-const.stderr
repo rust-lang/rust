@@ -1,8 +1,9 @@
-error: unnecessary visibility qualifier
+error[E0449]: unnecessary visibility qualifier
   --> $DIR/trait-pub-assoc-const.rs:2:5
    |
 LL |     pub const Foo: u32;
-   |     ^^^ `pub` not permitted here
+   |     ^^^ `pub` not permitted here because it's implied
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0449`.

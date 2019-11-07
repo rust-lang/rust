@@ -346,6 +346,8 @@ impl SeqSep {
     }
 }
 
+pub enum FollowedByType { Yes, No }
+
 impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
@@ -1116,7 +1118,7 @@ impl<'a> Parser<'a> {
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
     /// so emit a proper diagnostic.
-    pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
+    pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
@@ -1171,7 +1173,9 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                 };
                 return Ok(respan(lo.to(self.prev_span), vis));
-            } else if !can_take_tuple { // Provide this diagnostic if this is not a tuple struct.
+            } else if let FollowedByType::No = fbt {
+                // Provide this diagnostic if a type cannot follow;
+                // in particular, if this is not a tuple struct.
                 self.recover_incorrect_vis_restriction()?;
                 // Emit diagnostic, but continue with public visibility.
             }

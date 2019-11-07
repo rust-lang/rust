@@ -53,7 +53,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
-            id, span, ident, attrs, generics,
+            id, span, ident, vis, attrs, generics,
             kind: ast::TraitItemKind::Macro(mac_placeholder()),
             tokens: None,
         }]),
@@ -150,6 +150,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
                 id,
                 ident,
                 span,
+                vis,
                 is_placeholder: true,
             }
         ])

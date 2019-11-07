@@ -1,14 +1,15 @@
-error: unnecessary visibility qualifier
+error[E0449]: unnecessary visibility qualifier
   --> $DIR/issue-28433.rs:2:5
    |
 LL |     pub Duck,
-   |     ^^^ `pub` not permitted here
+   |     ^^^ `pub` not permitted here because it's implied
 
-error: unnecessary visibility qualifier
+error[E0449]: unnecessary visibility qualifier
   --> $DIR/issue-28433.rs:5:5
    |
 LL |     pub(crate) Dove
-   |     ^^^^^^^^^^ `pub` not permitted here
+   |     ^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0449`.
