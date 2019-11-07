@@ -585,6 +585,9 @@ impl TestProps {
                 _ => 1,
             };
         }
+        if self.should_ice {
+            self.failure_status = 101;
+        }
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
