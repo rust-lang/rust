@@ -1815,6 +1815,15 @@ impl TyKind {
             false
         }
     }
+
+    /// HACK(type_alias_impl_trait, Centril): A temporary crutch used
+    /// in lowering to avoid making larger changes there and beyond.
+    pub fn opaque_top_hack(&self) -> Option<&GenericBounds> {
+        match self {
+            Self::ImplTrait(_, bounds) => Some(bounds),
+            _ => None,
+        }
+    }
 }
 
 /// Syntax used to declare a trait object.
