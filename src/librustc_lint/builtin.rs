@@ -2052,7 +2052,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 );
                 err.span_label(expr.span,
                     "this code causes undefined behavior when executed");
-                err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
+                err.span_label(expr.span, "help: use `MaybeUninit<T>` instead, \
+                    and only call `assume_init` after initialization is done");
                 if let Some(span) = span {
                     err.span_note(span, &msg);
                 } else {
