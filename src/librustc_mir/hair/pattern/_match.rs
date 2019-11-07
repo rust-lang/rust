@@ -630,17 +630,6 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    // Whether to evaluate a constructor using exhaustive integer matching. This is true if the
-    // constructor is a range or constant with an integer type.
-    fn is_range_and_should_match_exhaustively(&self, tcx: TyCtxt<'tcx>) -> bool {
-        let ty = match self {
-            ConstantValue(value, _) => value.ty,
-            ConstantRange(_, _, ty, _, _) => ty,
-            _ => return false,
-        };
-        IntRange::should_treat_range_exhaustively(tcx, ty)
-    }
-
     fn is_integral_range(&self) -> bool {
         let ty = match self {
             ConstantValue(value, _) => value.ty,
@@ -1468,22 +1457,21 @@ impl<'tcx> IntRange<'tcx> {
         remaining_ranges
     }
 
-    fn intersection(&self, other: &Self) -> Option<Self> {
+    fn intersection(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Option<Self> {
         let ty = self.ty;
         let (lo, hi) = (*self.range.start(), *self.range.end());
         let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
-        if lo <= other_hi && other_lo <= hi {
-            let span = other.span;
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty, span })
+        if Self::should_treat_range_exhaustively(tcx, ty) {
+            if lo <= other_hi && other_lo <= hi {
+                let span = other.span;
+                Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty, span })
+            } else {
+                None
+            }
         } else {
-            None
+            // If the range sould not be treated exhaustively, fallback to checking for inclusion.
+            if other_lo <= lo && hi <= other_hi { Some(self.clone()) } else { None }
         }
-    }
-
-    fn is_subrange(&self, other: &Self) -> bool {
-        let (lo, hi) = (*self.range.start(), *self.range.end());
-        let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
-        other_lo <= lo && hi <= other_hi
     }
 
     fn suspicious_intersection(&self, other: &Self) -> bool {
@@ -1913,7 +1901,7 @@ fn split_grouped_constructors<'p, 'tcx>(
 
     for ctor in ctors.into_iter() {
         match ctor {
-            ConstantRange(..) if ctor.is_range_and_should_match_exhaustively(tcx) => {
+            ConstantRange(..) if IntRange::should_treat_range_exhaustively(tcx, ty) => {
                 // We only care about finding all the subranges within the range of the constructor
                 // range. Anything else is irrelevant, because it is guaranteed to result in
                 // `NotUseful`, which is the default case anyway, and can be ignored.
@@ -1951,7 +1939,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                         IntRange::from_pat(tcx, param_env, row.head()).map(|r| (r, row.len()))
                     })
                     .flat_map(|(range, row_len)| {
-                        let intersection = ctor_range.intersection(&range);
+                        let intersection = ctor_range.intersection(tcx, &range);
                         let should_lint = ctor_range.suspicious_intersection(&range);
                         if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
                             // FIXME: for now, only check for overlapping ranges on simple range
@@ -2309,12 +2297,12 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             // If the constructor is a:
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
-            if constructor.is_range_and_should_match_exhaustively(cx.tcx) {
+            if constructor.is_integral_range() {
                 match (
                     IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
                     IntRange::from_pat(cx.tcx, cx.param_env, pat),
                 ) {
-                    (Some(ctor), Some(pat)) => ctor.intersection(&pat).map(|_| {
+                    (Some(ctor), Some(pat)) => ctor.intersection(cx.tcx, &pat).map(|_| {
                         // Constructor splitting should ensure that all intersections we encounter
                         // are actually inclusions.
                         let (pat_lo, pat_hi) = pat.range.into_inner();
@@ -2322,16 +2310,6 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
                         PatStack::default()
                     }),
-                    _ => None,
-                }
-            } else if constructor.is_integral_range() {
-                // If we have an integer range that should not be matched exhaustively, fallback to
-                // checking for inclusion.
-                match (
-                    IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
-                    IntRange::from_pat(cx.tcx, cx.param_env, pat),
-                ) {
-                    (Some(ctor), Some(pat)) if ctor.is_subrange(&pat) => Some(PatStack::default()),
                     _ => None,
                 }
             } else {
