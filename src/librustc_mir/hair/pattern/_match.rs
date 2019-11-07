@@ -779,8 +779,67 @@ impl<'tcx> Constructor<'tcx> {
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
         ty: Ty<'tcx>,
-    ) -> impl Iterator<Item = Pat<'tcx>> + DoubleEndedIterator {
-        constructor_sub_pattern_tys(cx, self, ty).into_iter().map(Pat::wildcard_from_ty)
+    ) -> Vec<Pat<'tcx>> {
+        debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
+        match ty.kind {
+            ty::Tuple(ref fs) => {
+                fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
+            }
+            ty::Slice(ty) | ty::Array(ty, _) => match *self {
+                FixedLenSlice(length) => (0..length).map(|_| Pat::wildcard_from_ty(ty)).collect(),
+                VarLenSlice(prefix, suffix) => {
+                    (0..prefix + suffix).map(|_| Pat::wildcard_from_ty(ty)).collect()
+                }
+                ConstantValue(..) => vec![],
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
+            ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
+            ty::Adt(adt, substs) => {
+                if adt.is_box() {
+                    // Use T as the sub pattern type of Box<T>.
+                    vec![Pat::wildcard_from_ty(substs.type_at(0))]
+                } else {
+                    let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
+                    let is_non_exhaustive =
+                        variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
+                    variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let is_visible =
+                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
+                            let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
+                            match (is_visible, is_non_exhaustive, is_uninhabited) {
+                                // Treat all uninhabited types in non-exhaustive variants as `TyErr`.
+                                (_, true, true) => cx.tcx.types.err,
+                                // Treat all non-visible fields as `TyErr`. They can't appear in any
+                                // other pattern from this match (because they are private), so their
+                                // type does not matter - but we don't want to know they are
+                                // uninhabited.
+                                (false, ..) => cx.tcx.types.err,
+                                (true, ..) => {
+                                    let ty = field.ty(cx.tcx, substs);
+                                    match ty.kind {
+                                        // If the field type returned is an array of an unknown size
+                                        // return an TyErr.
+                                        ty::Array(_, len)
+                                            if len
+                                                .try_eval_usize(cx.tcx, cx.param_env)
+                                                .is_none() =>
+                                        {
+                                            cx.tcx.types.err
+                                        }
+                                        _ => ty,
+                                    }
+                                }
+                            }
+                        })
+                        .map(Pat::wildcard_from_ty)
+                        .collect()
+                }
+            }
+            _ => vec![],
+        }
     }
 
     /// This computes the arity of a constructor. The arity of a constructor
@@ -880,7 +939,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let subpatterns = self.wildcard_subpatterns(cx, ty).rev();
+        let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter().rev();
         self.apply(cx, ty, subpatterns)
     }
 }
@@ -1659,7 +1718,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 ) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty).collect();
+    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty);
     let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
     let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
     v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
@@ -1706,69 +1765,6 @@ fn pat_constructor<'tcx>(
         PatKind::Or { .. } => {
             bug!("support for or-patterns has not been fully implemented yet.");
         }
-    }
-}
-
-/// This computes the types of the sub patterns that a constructor should be
-/// expanded to.
-///
-/// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
-fn constructor_sub_pattern_tys<'a, 'tcx>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
-    ctor: &Constructor<'tcx>,
-    ty: Ty<'tcx>,
-) -> Vec<Ty<'tcx>> {
-    debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
-    match ty.kind {
-        ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
-        ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
-            FixedLenSlice(length) => (0..length).map(|_| ty).collect(),
-            VarLenSlice(prefix, suffix) => (0..prefix + suffix).map(|_| ty).collect(),
-            ConstantValue(..) => vec![],
-            _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
-        },
-        ty::Ref(_, rty, _) => vec![rty],
-        ty::Adt(adt, substs) => {
-            if adt.is_box() {
-                // Use T as the sub pattern type of Box<T>.
-                vec![substs.type_at(0)]
-            } else {
-                let variant = &adt.variants[ctor.variant_index_for_adt(cx, adt)];
-                let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
-                variant
-                    .fields
-                    .iter()
-                    .map(|field| {
-                        let is_visible =
-                            adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                        let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
-                        match (is_visible, is_non_exhaustive, is_uninhabited) {
-                            // Treat all uninhabited types in non-exhaustive variants as `TyErr`.
-                            (_, true, true) => cx.tcx.types.err,
-                            // Treat all non-visible fields as `TyErr`. They can't appear in any
-                            // other pattern from this match (because they are private), so their
-                            // type does not matter - but we don't want to know they are
-                            // uninhabited.
-                            (false, ..) => cx.tcx.types.err,
-                            (true, ..) => {
-                                let ty = field.ty(cx.tcx, substs);
-                                match ty.kind {
-                                    // If the field type returned is an array of an unknown size
-                                    // return an TyErr.
-                                    ty::Array(_, len)
-                                        if len.try_eval_usize(cx.tcx, cx.param_env).is_none() =>
-                                    {
-                                        cx.tcx.types.err
-                                    }
-                                    _ => ty,
-                                }
-                            }
-                        }
-                    })
-                    .collect()
-            }
-        }
-        _ => vec![],
     }
 }
 
