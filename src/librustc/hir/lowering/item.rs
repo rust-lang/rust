@@ -328,7 +328,7 @@ impl LoweringContext<'_> {
                             header.asyncness.node.opt_return_id()
                         ),
                     );
-                    let sig = hir::MethodSig { decl, header: this.lower_fn_header(header) };
+                    let sig = hir::FnSig { decl, header: this.lower_fn_header(header) };
                     hir::ItemKind::Fn(sig, generics, body_id)
                 })
             }
@@ -1259,7 +1259,7 @@ impl LoweringContext<'_> {
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
-    ) -> (hir::Generics, hir::MethodSig) {
+    ) -> (hir::Generics, hir::FnSig) {
         let header = self.lower_fn_header(sig.header);
         let (generics, decl) = self.add_in_band_defs(
             generics,
@@ -1272,7 +1272,7 @@ impl LoweringContext<'_> {
                 is_async,
             ),
         );
-        (generics, hir::MethodSig { header, decl })
+        (generics, hir::FnSig { header, decl })
     }
 
     fn lower_is_auto(&mut self, a: IsAuto) -> hir::IsAuto {

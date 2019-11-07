@@ -1984,7 +1984,7 @@ pub struct Method {
     pub ret_types: Vec<Type>,
 }
 
-impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
+impl<'a> Clean<Method> for (&'a hir::FnSig, &'a hir::Generics, hir::BodyId,
                             Option<hir::Defaultness>) {
     fn clean(&self, cx: &DocContext<'_>) -> Method {
         let (generics, decl) = enter_impl_trait(cx, || {

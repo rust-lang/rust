@@ -835,7 +835,7 @@ impl<'a> State<'a> {
     }
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
-                            m: &hir::MethodSig,
+                            m: &hir::FnSig,
                             generics: &hir::Generics,
                             vis: &hir::Visibility,
                             arg_names: &[ast::Ident],

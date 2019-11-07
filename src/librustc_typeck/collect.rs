@@ -1809,7 +1809,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         },
 
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(MethodSig { header, decl }, _),
+            kind: TraitItemKind::Method(FnSig { header, decl }, _),
             ..
         }) => {
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
