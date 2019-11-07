@@ -90,7 +90,7 @@ impl<T> Clone for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     // We do *not* exclusively own the entire list here, references to node's `element`
-    // have been handed out by the iterator!  So be careful when using this; the methods
+    // have been handed out by the iterator! So be careful when using this; the methods
     // called must be aware that there can be aliasing pointers to `element`.
     list: &'a mut LinkedList<T>,
     head: Option<NonNull<Node<T>>>,

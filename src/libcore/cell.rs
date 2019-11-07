@@ -137,9 +137,11 @@
 //! use std::cell::Cell;
 //! use std::ptr::NonNull;
 //! use std::intrinsics::abort;
+//! use std::marker::PhantomData;
 //!
 //! struct Rc<T: ?Sized> {
-//!     ptr: NonNull<RcBox<T>>
+//!     ptr: NonNull<RcBox<T>>,
+//!     phantom: PhantomData<RcBox<T>>,
 //! }
 //!
 //! struct RcBox<T: ?Sized> {
@@ -151,7 +153,10 @@
 //! impl<T: ?Sized> Clone for Rc<T> {
 //!     fn clone(&self) -> Rc<T> {
 //!         self.inc_strong();
-//!         Rc { ptr: self.ptr }
+//!         Rc {
+//!             ptr: self.ptr,
+//!             phantom: PhantomData,
+//!         }
 //!     }
 //! }
 //!
