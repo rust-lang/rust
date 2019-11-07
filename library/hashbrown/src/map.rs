@@ -958,10 +958,7 @@ where
     }
 }
 
-impl<K, V, S> HashMap<K, V, S>
-where
-    S: BuildHasher,
-{
+impl<K, V, S> HashMap<K, V, S> {
     /// Creates a raw entry builder for the HashMap.
     ///
     /// Raw entries provide the lowest level of control for searching and
@@ -1047,7 +1044,6 @@ impl<K, V, S> Debug for HashMap<K, V, S>
 where
     K: Debug,
     V: Debug,
-    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
@@ -1056,7 +1052,7 @@ where
 
 impl<K, V, S> Default for HashMap<K, V, S>
 where
-    S: BuildHasher + Default,
+    S: Default,
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1318,15 +1314,13 @@ pub struct RawEntryBuilder<'a, K, V, S> {
     map: &'a HashMap<K, V, S>,
 }
 
-impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
-where
-    S: BuildHasher,
-{
+impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
     /// Creates a `RawEntryMut` from the given key.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S>
     where
+        S: BuildHasher,
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
@@ -1347,10 +1341,7 @@ where
     }
 }
 
-impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
-where
-    S: BuildHasher,
-{
+impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
     /// Creates a `RawEntryMut` from the given hash.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
@@ -1379,15 +1370,13 @@ where
     }
 }
 
-impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
-where
-    S: BuildHasher,
-{
+impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
     /// Access an entry by key.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
+        S: BuildHasher,
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
@@ -1692,7 +1681,6 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         hasher: H,
     ) -> (&'a mut K, &'a mut V)
     where
-        S: BuildHasher,
         H: Fn(&K) -> u64,
     {
         unsafe {
@@ -3636,7 +3624,7 @@ mod test_map {
         #[derive(Debug)]
         struct IntWrapper(u64);
 
-        let mut m: HashMap<IntWrapper, ()> = HashMap::new();
+        let mut m: HashMap<IntWrapper, (), ()> = HashMap::default();
         {
             assert!(m.raw_entry().from_hash(0, |k| k.0 == 0).is_none());
         }
