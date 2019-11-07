@@ -188,6 +188,7 @@ pub mod escape;
 pub mod eta_reduction;
 pub mod eval_order_dependence;
 pub mod excessive_precision;
+pub mod exit;
 pub mod explicit_write;
 pub mod fallible_impl_from;
 pub mod format;
@@ -501,6 +502,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         &eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         &excessive_precision::EXCESSIVE_PRECISION,
+        &exit::EXIT,
         &explicit_write::EXPLICIT_WRITE,
         &fallible_impl_from::FALLIBLE_IMPL_FROM,
         &format::USELESS_FORMAT,
@@ -941,12 +943,14 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
+    store.register_late_pass(|| box exit::Exit);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
         LintId::of(&arithmetic::INTEGER_ARITHMETIC),
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
+        LintId::of(&exit::EXIT),
         LintId::of(&implicit_return::IMPLICIT_RETURN),
         LintId::of(&indexing_slicing::INDEXING_SLICING),
         LintId::of(&inherent_impl::MULTIPLE_INHERENT_IMPL),

@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 331] = [
+pub const ALL_LINTS: [Lint; 332] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -489,6 +489,13 @@ pub const ALL_LINTS: [Lint; 331] = [
         desc: "excessive precision for float literal",
         deprecation: None,
         module: "excessive_precision",
+    },
+    Lint {
+        name: "exit",
+        group: "restriction",
+        desc: "`std::process::exit` is called, terminating the program",
+        deprecation: None,
+        module: "exit",
     },
     Lint {
         name: "expect_fun_call",
