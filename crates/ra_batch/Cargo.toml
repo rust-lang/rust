@@ -7,7 +7,7 @@ authors = ["rust-analyzer developers"]
 [dependencies]
 log = "0.4.5"
 rustc-hash = "1.0"
-crossbeam-channel = "0.3.5"
+crossbeam-channel = "0.4.0"
 
 ra_vfs = "0.5.0"
 ra_vfs_glob = { path = "../ra_vfs_glob" }
