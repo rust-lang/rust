@@ -9,13 +9,13 @@ since documentation is more about the content.
 
 ## Document everything
 
-```ignore
+```bash
 ./x.py doc
 ```
 
 ## If you want to avoid the whole Stage 2 build
 
-```ignore
+```bash
 ./x.py doc --stage 1
 ```
 
@@ -24,7 +24,7 @@ and then it documents the files.
 
 ## Document specific components
 
-```ignore
+```bash
 ./x.py doc src/doc/book
 ./x.py doc src/doc/nomicon
 ./x.py doc src/doc/book src/libstd
@@ -35,25 +35,15 @@ Much like individual tests or building certain components you can build only
 
 ## Document internal rustc items
 
-Compiler documentation is not built by default. There's a flag in
-config.toml for achieving the same.
-But, when enabled, compiler documentation does include internal items.
-
-Next open up config.toml and make sure these two lines are set to true:
+Compiler documentation is not built by default. To enable it, modify config.toml:
 
 ```toml
-docs = true
+[build]
 compiler-docs = true
 ```
 
-When you want to build the compiler docs as well run this command:
-
-```ignore
-./x.py doc
-```
-
-This will see that the docs and compiler-docs options are set to true
-and build the normally hidden compiler docs!
+Note that when enabled,
+documentation for internal compiler items will also be built.
 
 ### Compiler Documentation
 
