@@ -531,6 +531,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
     {
         let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor, target_cpu);
+        link_sanitizer_runtime(sess, crate_type, &mut *linker);
         link_args::<B>(
             &mut *linker,
             flavor,
@@ -732,6 +733,47 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         if let Err(e) = Command::new("dsymutil").arg(out_filename).output() {
             sess.fatal(&format!("failed to run dsymutil: {}", e))
         }
+    }
+}
+
+fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker: &mut dyn Linker) {
+    let sanitizer = match &sess.opts.debugging_opts.sanitizer {
+        Some(s) => s,
+        None => return,
+    };
+
+    if crate_type != config::CrateType::Executable {
+        return;
+    }
+
+    let name = match sanitizer {
+        Sanitizer::Address => "asan",
+        Sanitizer::Leak => "lsan",
+        Sanitizer::Memory => "msan",
+        Sanitizer::Thread => "tsan",
+    };
+
+    let default_sysroot = filesearch::get_or_default_sysroot();
+    let default_tlib =
+        filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
+
+    match sess.opts.target_triple.triple() {
+        "x86_64-apple-darwin" => {
+            // On Apple platforms, the sanitizer is always built as a dylib, and
+            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
+            // rpath to the library as well (the rpath should be absolute, see
+            // PR #41352 for details).
+            let libname = format!("rustc_rt.{}", name);
+            let rpath = default_tlib.to_str().expect("non-utf8 component in path");
+            linker.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
+            linker.link_dylib(Symbol::intern(&libname));
+        }
+        "x86_64-unknown-linux-gnu" => {
+            let filename = format!("librustc_rt.{}.a", name);
+            let path = default_tlib.join(&filename);
+            linker.link_whole_rlib(&path);
+        }
+        _ => {}
     }
 }
 
@@ -1415,12 +1457,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
                 add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
             }
-            _ if codegen_results.crate_info.sanitizer_runtime == Some(cnum)
-                && crate_type == config::CrateType::Executable =>
-            {
-                // Link the sanitizer runtimes only if we are actually producing an executable
-                link_sanitizer_runtime::<B>(cmd, sess, codegen_results, tmpdir, cnum);
-            }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if codegen_results.crate_info.compiler_builtins == Some(cnum) => {
@@ -1455,47 +1491,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         } else {
             stem
         }
-    }
-
-    // We must link the sanitizer runtime using -Wl,--whole-archive but since
-    // it's packed in a .rlib, it contains stuff that are not objects that will
-    // make the linker error. So we must remove those bits from the .rlib before
-    // linking it.
-    fn link_sanitizer_runtime<'a, B: ArchiveBuilder<'a>>(
-        cmd: &mut dyn Linker,
-        sess: &'a Session,
-        codegen_results: &CodegenResults,
-        tmpdir: &Path,
-        cnum: CrateNum,
-    ) {
-        let src = &codegen_results.crate_info.used_crate_source[&cnum];
-        let cratepath = &src.rlib.as_ref().unwrap().0;
-
-        if sess.target.target.options.is_like_osx {
-            // On Apple platforms, the sanitizer is always built as a dylib, and
-            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
-            // rpath to the library as well (the rpath should be absolute, see
-            // PR #41352 for details).
-            //
-            // FIXME: Remove this logic into librustc_*san once Cargo supports it
-            let rpath = cratepath.parent().unwrap();
-            let rpath = rpath.to_str().expect("non-utf8 component in path");
-            cmd.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
-        }
-
-        let dst = tmpdir.join(cratepath.file_name().unwrap());
-        let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
-        archive.update_symbols();
-
-        for f in archive.src_files() {
-            if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
-                archive.remove_file(&f);
-            }
-        }
-
-        archive.build();
-
-        cmd.link_whole_rlib(&dst);
     }
 
     // Adds the static "rlib" versions of all crates to the command line.

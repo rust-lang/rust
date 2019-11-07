@@ -1124,6 +1124,32 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                   See https://github.com/rust-lang/rust/issues/61002 for details.",
         );
     }
+
+    // Sanitizers can only be used on some tested platforms.
+    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
+        const ASAN_SUPPORTED_TARGETS: &[&str] =
+            &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
+        const TSAN_SUPPORTED_TARGETS: &[&str] =
+            &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
+        const LSAN_SUPPORTED_TARGETS: &[&str] =
+            &["x86_64-unknown-linux-gnu", "x86_64-apple-darwin"];
+        const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+
+        let supported_targets = match *sanitizer {
+            Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
+            Sanitizer::Thread => TSAN_SUPPORTED_TARGETS,
+            Sanitizer::Leak => LSAN_SUPPORTED_TARGETS,
+            Sanitizer::Memory => MSAN_SUPPORTED_TARGETS,
+        };
+
+        if !supported_targets.contains(&&*sess.opts.target_triple.triple()) {
+            sess.err(&format!(
+                "{:?}Sanitizer only works with the `{}` target",
+                sanitizer,
+                supported_targets.join("` or `")
+            ));
+        }
+    }
 }
 
 /// Hash value constructed out of all the `-C metadata` arguments passed to the
