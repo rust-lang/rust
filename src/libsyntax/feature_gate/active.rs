@@ -134,9 +134,6 @@ declare_features! (
     /// Allows using `rustc_*` attributes (RFC 572).
     (active, rustc_attrs, "1.0.0", Some(29642), None),
 
-    /// Allows using `#[on_unimplemented(..)]` on traits.
-    (active, on_unimplemented, "1.0.0", Some(29628), None),
-
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
 

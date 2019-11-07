@@ -1,6 +1,6 @@
 // Test if the on_unimplemented message override works
 
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 
 struct Foo<T>(T);

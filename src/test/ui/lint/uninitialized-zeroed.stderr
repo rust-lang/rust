@@ -307,8 +307,30 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |
    = note: std::ptr::NonNull<i32> must be non-null
 
+error: the type `*const dyn std::marker::Send` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:70:37
+   |
+LL |         let _val: *const dyn Send = mem::zeroed();
+   |                                     ^^^^^^^^^^^^^
+   |                                     |
+   |                                     this code causes undefined behavior when executed
+   |                                     help: use `MaybeUninit<T>` instead
+   |
+   = note: The vtable of a wide raw pointer must be non-null
+
+error: the type `*const dyn std::marker::Send` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:71:37
+   |
+LL |         let _val: *const dyn Send = mem::uninitialized();
+   |                                     ^^^^^^^^^^^^^^^^^^^^
+   |                                     |
+   |                                     this code causes undefined behavior when executed
+   |                                     help: use `MaybeUninit<T>` instead
+   |
+   = note: The vtable of a wide raw pointer must be non-null
+
 error: the type `bool` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:72:26
+  --> $DIR/uninitialized-zeroed.rs:75:26
    |
 LL |         let _val: bool = mem::uninitialized();
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -319,7 +341,7 @@ LL |         let _val: bool = mem::uninitialized();
    = note: Booleans must be `true` or `false`
 
 error: the type `Wrap<char>` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:75:32
+  --> $DIR/uninitialized-zeroed.rs:78:32
    |
 LL |         let _val: Wrap<char> = mem::uninitialized();
    |                                ^^^^^^^^^^^^^^^^^^^^
@@ -334,7 +356,7 @@ LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 error: the type `NonBig` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:78:28
+  --> $DIR/uninitialized-zeroed.rs:81:28
    |
 LL |         let _val: NonBig = mem::uninitialized();
    |                            ^^^^^^^^^^^^^^^^^^^^
@@ -345,7 +367,7 @@ LL |         let _val: NonBig = mem::uninitialized();
    = note: NonBig must be initialized inside its custom valid range
 
 error: the type `&'static i32` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:81:34
+  --> $DIR/uninitialized-zeroed.rs:84:34
    |
 LL |         let _val: &'static i32 = mem::transmute(0usize);
    |                                  ^^^^^^^^^^^^^^^^^^^^^^
@@ -356,7 +378,7 @@ LL |         let _val: &'static i32 = mem::transmute(0usize);
    = note: References must be non-null
 
 error: the type `&'static [i32]` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:82:36
+  --> $DIR/uninitialized-zeroed.rs:85:36
    |
 LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -367,7 +389,7 @@ LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
    = note: References must be non-null
 
 error: the type `std::num::NonZeroU32` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:83:32
+  --> $DIR/uninitialized-zeroed.rs:86:32
    |
 LL |         let _val: NonZeroU32 = mem::transmute(0);
    |                                ^^^^^^^^^^^^^^^^^
@@ -377,5 +399,38 @@ LL |         let _val: NonZeroU32 = mem::transmute(0);
    |
    = note: std::num::NonZeroU32 must be non-null
 
-error: aborting due to 30 previous errors
+error: the type `std::ptr::NonNull<i32>` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:89:34
+   |
+LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: std::ptr::NonNull<i32> must be non-null
+
+error: the type `std::ptr::NonNull<i32>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:90:34
+   |
+LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: std::ptr::NonNull<i32> must be non-null
+
+error: the type `bool` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:91:26
+   |
+LL |         let _val: bool = MaybeUninit::uninit().assume_init();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          this code causes undefined behavior when executed
+   |                          help: use `MaybeUninit<T>` instead
+   |
+   = note: Booleans must be `true` or `false`
+
+error: aborting due to 35 previous errors
 

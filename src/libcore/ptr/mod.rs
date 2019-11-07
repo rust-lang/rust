@@ -18,6 +18,10 @@
 //! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
 //! * All pointers (except for the null pointer) are valid for all operations of
 //!   [size zero][zst].
+//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer
+//!   be *dereferencable*: the memory range of the given size starting at the pointer must all be
+//!   within the bounds of a single allocated object. Note that in Rust,
+//!   every (stack-allocated) variable is considered a separate allocated object.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -221,9 +225,14 @@ pub(crate) struct FatPtr<T> {
     pub(crate) len: usize,
 }
 
-/// Forms a slice from a pointer and a length.
+/// Forms a raw slice from a pointer and a length.
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.
+///
+/// This function is safe, but actually using the return value is unsafe.
+/// See the documentation of [`from_raw_parts`] for slice safety requirements.
+///
+/// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
 ///
 /// # Examples
 ///
@@ -243,12 +252,16 @@ pub fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     unsafe { Repr { raw: FatPtr { data, len } }.rust }
 }
 
-/// Performs the same functionality as [`from_raw_parts`], except that a
-/// mutable slice is returned.
+/// Performs the same functionality as [`slice_from_raw_parts`], except that a
+/// raw mutable slice is returned, as opposed to a raw immutable slice.
 ///
-/// See the documentation of [`from_raw_parts`] for more details.
+/// See the documentation of [`slice_from_raw_parts`] for more details.
 ///
-/// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
+/// This function is safe, but actually using the return value is unsafe.
+/// See the documentation of [`from_raw_parts_mut`] for slice safety requirements.
+///
+/// [`slice_from_raw_parts`]: fn.slice_from_raw_parts.html
+/// [`from_raw_parts_mut`]: ../../std/slice/fn.from_raw_parts_mut.html
 #[inline]
 #[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
 pub fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
