@@ -419,7 +419,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
 
                     let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
+                    item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
                     let mut helper_attrs = Vec::new();
                     let mut has_copy = false;
                     for ext in exts {
@@ -634,9 +634,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         | Annotatable::Variant(..)
                             => panic!("unexpected annotatable"),
                     })), DUMMY_SP).into();
-                    let input = self.extract_proc_macro_attr_input(attr.item.tokens, span);
+                    let item = attr.unwrap_normal_item();
+                    let input = self.extract_proc_macro_attr_input(item.tokens, span);
                     let tok_result = expander.expand(self.cx, span, input, item_tok);
-                    self.parse_ast_fragment(tok_result, fragment_kind, &attr.item.path, span)
+                    self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match attr.parse_meta(self.cx.parse_sess) {
@@ -974,7 +975,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                        -> Option<ast::Attribute> {
         let attr = attrs.iter()
                         .position(|a| {
-                            if a.path == sym::derive {
+                            if a.has_name(sym::derive) {
                                 *after_derive = true;
                             }
                             !attr::is_known(a) && !is_builtin_attr(a)
@@ -982,7 +983,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
             if !self.cx.ecfg.custom_inner_attributes() &&
-               attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
+               attr.style == ast::AttrStyle::Inner && !attr.has_name(sym::test) {
                 emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
                                  "non-builtin inner attributes are unstable");
@@ -1032,7 +1033,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             feature_gate::check_attribute(attr, self.cx.parse_sess, features);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
-            if attr.path == sym::derive {
+            if attr.has_name(sym::derive) {
                 self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
@@ -1547,11 +1548,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
-                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                kind: ast::AttrKind::Normal(
+                    AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                ),
                 span: at.span,
                 id: at.id,
                 style: at.style,
-                is_sugared_doc: false,
             };
         } else {
             noop_visit_attribute(at, self)

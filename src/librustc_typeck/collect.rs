@@ -2706,7 +2706,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.path != sym::inline {
+        if !attr.has_name(sym::inline) {
             return ia;
         }
         match attr.meta().map(|i| i.kind) {
@@ -2746,7 +2746,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     });
 
     codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
-        if attr.path != sym::optimize {
+        if !attr.has_name(sym::optimize) {
             return ia;
         }
         let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);

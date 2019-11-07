@@ -3,8 +3,8 @@ use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 use crate::ptr::P;
-use crate::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrStyle, AnonConst, Item, ItemKind};
-use crate::ast::{ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
+use crate::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
+use crate::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
 use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
@@ -483,12 +483,14 @@ impl<'a> Parser<'a> {
     /// Emits an expected-item-after-attributes error.
     fn expected_item_err(&mut self, attrs: &[Attribute]) -> PResult<'a,  ()> {
         let message = match attrs.last() {
-            Some(&Attribute { is_sugared_doc: true, .. }) => "expected item after doc comment",
-            _ => "expected item after attributes",
+            Some(&Attribute { kind: AttrKind::DocComment(_), .. }) =>
+                "expected item after doc comment",
+            _ =>
+                "expected item after attributes",
         };
 
         let mut err = self.diagnostic().struct_span_err(self.prev_span, message);
-        if attrs.last().unwrap().is_sugared_doc {
+        if attrs.last().unwrap().is_doc_comment() {
             err.span_label(self.prev_span, "this doc comment doesn't document anything");
         }
         Err(err)

@@ -329,7 +329,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
             Some((name, _, template, _)) if name != sym::rustc_dummy =>
                 check_builtin_attribute(self.parse_sess, attr, name, template),
-            _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
+            _ => if let Some(TokenTree::Token(token)) =
+                    attr.get_normal_item().tokens.trees().next() {
                 if token == token::Eq {
                     // All key-value attributes are restricted to meta-item syntax.
                     attr.parse_meta(self.parse_sess).map_err(|mut err| err.emit()).ok();

@@ -1229,8 +1229,10 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
-        if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope));
+        if !attr.is_doc_comment() && is_builtin_attr(attr) {
+            self.r.builtin_attrs.push(
+                (attr.get_normal_item().path.segments[0].ident, self.parent_scope)
+            );
         }
         visit::walk_attribute(self, attr);
     }

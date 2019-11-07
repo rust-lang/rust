@@ -997,14 +997,20 @@ impl<'a> LoweringContext<'a> {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
+        let kind = match attr.kind {
+            AttrKind::Normal(ref item) => {
+                AttrKind::Normal(AttrItem {
+                    path: item.path.clone(),
+                    tokens: self.lower_token_stream(item.tokens.clone()),
+                })
+            }
+            AttrKind::DocComment(comment) => AttrKind::DocComment(comment)
+        };
+
         Attribute {
-            item: AttrItem {
-                path: attr.path.clone(),
-                tokens: self.lower_token_stream(attr.tokens.clone()),
-            },
+            kind,
             id: attr.id,
             style: attr.style,
-            is_sugared_doc: attr.is_sugared_doc,
             span: attr.span,
         }
     }

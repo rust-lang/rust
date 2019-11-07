@@ -706,7 +706,7 @@ impl EarlyLintPass for DeprecatedAttr {
             }
         }
         if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
-            let path_str = pprust::path_to_string(&attr.path);
+            let path_str = pprust::path_to_string(&attr.get_normal_item().path);
             let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
             lint_deprecated_attr(cx, attr, &msg, None);
         }
@@ -736,7 +736,7 @@ impl UnusedDocComment {
         let mut sugared_span: Option<Span> = None;
 
         while let Some(attr) = attrs.next() {
-            if attr.is_sugared_doc {
+            if attr.is_doc_comment() {
                 sugared_span = Some(
                     sugared_span.map_or_else(
                         || attr.span,
@@ -745,7 +745,7 @@ impl UnusedDocComment {
                 );
             }
 
-            if attrs.peek().map(|next_attr| next_attr.is_sugared_doc).unwrap_or_default() {
+            if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
                 continue;
             }
 

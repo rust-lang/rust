@@ -181,7 +181,7 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
 crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
-        if attr.path != sym::derive {
+        if !attr.has_name(sym::derive) {
             return true;
         }
         if !attr.is_meta_item_list() {
@@ -196,7 +196,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
         }
 
         let parse_derive_paths = |attr: &ast::Attribute| {
-            if attr.tokens.is_empty() {
+            if attr.get_normal_item().tokens.is_empty() {
                 return Ok(Vec::new());
             }
             parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())

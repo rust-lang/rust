@@ -26,7 +26,7 @@ use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use syntax::ast::{self, Attribute, AttrStyle, AttrItem, Ident};
+use syntax::ast::{self, Attribute, AttrStyle, AttrKind, Ident};
 use syntax::attr;
 use syntax::parse::lexer::comments;
 use syntax::source_map::DUMMY_SP;
@@ -859,31 +859,32 @@ impl Attributes {
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
-        /// Converts `attr` to a normal `#[doc="foo"]` comment, if it is a
-        /// comment like `///` or `/** */`. (Returns `attr` unchanged for
-        /// non-sugared doc attributes.)
-        pub fn with_desugared_doc<T>(attr: &Attribute, f: impl FnOnce(&Attribute) -> T) -> T {
-            if attr.is_sugared_doc {
-                let comment = attr.value_str().unwrap();
-                let meta = attr::mk_name_value_item_str(
-                    Ident::with_dummy_span(sym::doc),
-                    Symbol::intern(&comments::strip_doc_comment_decoration(&comment.as_str())),
-                    DUMMY_SP,
-                );
-                f(&Attribute {
-                    item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
-                    id: attr.id,
-                    style: attr.style,
-                    is_sugared_doc: true,
-                    span: attr.span,
-                })
-            } else {
-                f(attr)
+        /// If `attr` is a doc comment, strips the leading and (if present)
+        /// trailing comments symbols, e.g. `///`, `/**`, and `*/`. Otherwise,
+        /// returns `attr` unchanged.
+        pub fn with_doc_comment_markers_stripped<T>(
+            attr: &Attribute,
+            f: impl FnOnce(&Attribute) -> T
+        ) -> T {
+            match attr.kind {
+                AttrKind::Normal(_) => {
+                    f(attr)
+                }
+                AttrKind::DocComment(comment) => {
+                    let comment =
+                        Symbol::intern(&comments::strip_doc_comment_decoration(&comment.as_str()));
+                    f(&Attribute {
+                        kind: AttrKind::DocComment(comment),
+                        id: attr.id,
+                        style: attr.style,
+                        span: attr.span,
+                    })
+                }
             }
         }
 
         let other_attrs = attrs.iter().filter_map(|attr| {
-            with_desugared_doc(attr, |attr| {
+            with_doc_comment_markers_stripped(attr, |attr| {
                 if attr.check_name(sym::doc) {
                     if let Some(mi) = attr.meta() {
                         if let Some(value) = mi.value_str() {
@@ -892,7 +893,7 @@ impl Attributes {
                             let line = doc_line;
                             doc_line += value.lines().count();
 
-                            if attr.is_sugared_doc {
+                            if attr.is_doc_comment() {
                                 doc_strings.push(DocFragment::SugaredDoc(line, attr.span, value));
                             } else {
                                 doc_strings.push(DocFragment::RawDoc(line, attr.span, value));

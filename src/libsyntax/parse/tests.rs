@@ -246,7 +246,7 @@ let mut fflags: c_int = wb();
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name_2, source, &sess)
             .unwrap().unwrap();
-        let docs = item.attrs.iter().filter(|a| a.path == sym::doc)
+        let docs = item.attrs.iter().filter(|a| a.has_name(sym::doc))
                     .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
         assert_eq!(&docs[..], b);

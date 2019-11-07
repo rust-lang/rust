@@ -2190,22 +2190,29 @@ pub struct AttrItem {
 }
 
 /// Metadata associated with an item.
-/// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Attribute {
-    pub item: AttrItem,
+    pub kind: AttrKind,
     pub id: AttrId,
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
-    pub is_sugared_doc: bool,
     pub span: Span,
 }
 
-// Compatibility impl to avoid churn, consider removing.
-impl std::ops::Deref for Attribute {
-    type Target = AttrItem;
-    fn deref(&self) -> &Self::Target { &self.item }
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AttrKind {
+    /// A normal attribute.
+    Normal(AttrItem),
+
+    /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
+    /// variant (which is much less compact and thus more expensive).
+    ///
+    /// Note: `self.has_name(sym::doc)` and `self.check_name(sym::doc)` succeed
+    /// for this variant, but this may change in the future.
+    /// ```
+    DocComment(Symbol),
 }
 
 /// `TraitRef`s appear in impls.

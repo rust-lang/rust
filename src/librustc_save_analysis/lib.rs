@@ -885,7 +885,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         for attr in attrs {
             if attr.check_name(sym::doc) {
                 if let Some(val) = attr.value_str() {
-                    if attr.is_sugared_doc {
+                    if attr.is_doc_comment() {
                         result.push_str(&strip_doc_comment_decoration(&val.as_str()));
                     } else {
                         result.push_str(&val.as_str());
@@ -1195,7 +1195,7 @@ fn null_id() -> rls_data::Id {
 fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext<'_, '_>) -> Vec<rls_data::Attribute> {
     attrs.into_iter()
     // Only retain real attributes. Doc comments are lowered separately.
-    .filter(|attr| attr.path != sym::doc)
+    .filter(|attr| !attr.has_name(sym::doc))
     .map(|mut attr| {
         // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
         // attribute. First normalize all inner attribute (#![..]) to outer
