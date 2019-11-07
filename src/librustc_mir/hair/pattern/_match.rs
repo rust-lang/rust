@@ -1156,6 +1156,7 @@ fn all_constructors<'a, 'tcx>(
     pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
+    let make_range = |start, end| ConstantRange(start, end, pcx.ty, RangeEnd::Included, pcx.span);
     match pcx.ty.kind {
         ty::Bool => [true, false]
             .iter()
@@ -1219,20 +1220,8 @@ fn all_constructors<'a, 'tcx>(
         ty::Char => {
             vec![
                 // The valid Unicode Scalar Value ranges.
-                ConstantRange(
-                    '\u{0000}' as u128,
-                    '\u{D7FF}' as u128,
-                    cx.tcx.types.char,
-                    RangeEnd::Included,
-                    pcx.span,
-                ),
-                ConstantRange(
-                    '\u{E000}' as u128,
-                    '\u{10FFFF}' as u128,
-                    cx.tcx.types.char,
-                    RangeEnd::Included,
-                    pcx.span,
-                ),
+                make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
             ]
         }
         ty::Int(_) | ty::Uint(_)
@@ -1248,12 +1237,12 @@ fn all_constructors<'a, 'tcx>(
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = min - 1;
-            vec![ConstantRange(min, max, pcx.ty, RangeEnd::Included, pcx.span)]
+            vec![make_range(min, max)]
         }
         ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = truncate(u128::max_value(), size);
-            vec![ConstantRange(0, max, pcx.ty, RangeEnd::Included, pcx.span)]
+            vec![make_range(0, max)]
         }
         _ => {
             if cx.is_uninhabited(pcx.ty) {
