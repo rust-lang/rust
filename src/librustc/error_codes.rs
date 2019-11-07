@@ -607,7 +607,7 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 fn foo<T: Index<u8>>(x: T){}
 
@@ -639,7 +639,7 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 fn foo<T: Index<u8>>(x: T){}
 
@@ -669,7 +669,7 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 fn foo<T: Index<u8>>(x: T){}
 

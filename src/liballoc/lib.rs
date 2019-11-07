@@ -116,7 +116,7 @@
 #![feature(unsize)]
 #![feature(unsized_locals)]
 #![feature(allocator_internals)]
-#![feature(on_unimplemented)]
+#![cfg_attr(bootstrap, feature(on_unimplemented))]
 #![feature(rustc_const_unstable)]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]

@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 pub mod Bar {
   #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}` in `{Foo}`"]
