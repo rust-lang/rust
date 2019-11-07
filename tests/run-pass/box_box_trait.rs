@@ -1,5 +1,3 @@
-#![feature(box_syntax)]
-
 struct DroppableStruct;
 
 static mut DROPPED: bool = false;
@@ -13,7 +11,6 @@ impl Drop for DroppableStruct {
 trait MyTrait { fn dummy(&self) { } }
 impl MyTrait for Box<DroppableStruct> {}
 
-#[allow(dead_code)]
 struct Whatever { w: Box<dyn MyTrait+'static> }
 
 impl  Whatever {
@@ -24,8 +21,9 @@ impl  Whatever {
 
 fn main() {
     {
-        let f: Box<_> = box DroppableStruct;
-        let _a = Whatever::new(box f as Box<dyn MyTrait>);
+        let f = Box::new(DroppableStruct);
+        let a = Whatever::new(Box::new(f) as Box<dyn MyTrait>);
+        a.w.dummy();
     }
     assert!(unsafe { DROPPED });
 }
