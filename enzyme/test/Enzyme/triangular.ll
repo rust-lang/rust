@@ -5,7 +5,6 @@ define dso_local double @get(double* nocapture %x, i64 %i, i64 %j) local_unnamed
 entry:
   %arrayidx = getelementptr inbounds double, double* %x, i64 %i
   %0 = load double, double* %arrayidx, align 8
-  store double 0.000000e+00, double* %arrayidx, align 8
   ret double %0
 }
 

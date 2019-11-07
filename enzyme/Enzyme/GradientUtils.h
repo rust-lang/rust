@@ -906,7 +906,6 @@ endCheck:
             if (!getContext(blk, idx)) {
                 break;
             }
-            //llvm::errs() << " adding to contexts: " << idx.header->getName() << " starting ctx=" << ctx->getName() << "\n";
             contexts.emplace_back(idx);
             blk = idx.preheader;
         }
@@ -925,35 +924,19 @@ endCheck:
             if (contexts[i].dynamic) {
                 limits[i] = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1);
             } else {
-                //while (limits[i] == nullptr) {
-                    ValueToValueMapTy emptyMap;
-                    IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
-                    Value* limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
-                    
-                    if (limitMinus1 == nullptr) {
-                        allocationPreheaders[i] = contexts[i].preheader;
-                        allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
-                        limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
-                        /*
-                        assert(allocationPreheaders[i]);
-                        llvm::errs() << *oldFunc << "\n";
-                        llvm::errs() << *newFunc << "\n";
-                        llvm::errs() << "needed value " << *contexts[i].limit << " at " << allocationPreheaders[i]->getName() << "\n";
-                        */
-                    }
-                    assert(limitMinus1 != nullptr);
-                    limits[i] = allocationBuilder.CreateNUWAdd(limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
-                    //TODO allow triangular arrays per above
-                /*
-                    if (limits[i] == nullptr) {
-                        int firstDifferent = j+1;
-                        while (allocationPreheaders[firstDifferent] == allocationPreheaders[i]) {
-                            firstDifferent++;
-                            assert(firstDifferent < contexts.size());
-                        }
-                        allocationPreheaders[i] = allocationPreheaders[firstDifferent];
-                    }
-                }*/
+                ValueToValueMapTy emptyMap;
+                IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
+                Value* limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                
+                // We have a loop with static bounds, but whose limit is not available to be computed at the current loop preheader (such as the innermost loop of triangular iteration domain)
+                // Handle this case like a dynamic loop
+                if (limitMinus1 == nullptr) {
+                    allocationPreheaders[i] = contexts[i].preheader;
+                    allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
+                    limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                }
+                assert(limitMinus1 != nullptr);
+                limits[i] = allocationBuilder.CreateNUWAdd(limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
             }
         }
         
@@ -970,9 +953,8 @@ endCheck:
               size = allocationBuilder.CreateNUWMul(size, limits[i]);
           }
 
-          //llvm::errs() << "considering ctx " << ctx->getName() << " alph=" << allocationPreheaders[i]->getName() << " ctxheader=" << contexts[i].header->getName() << "\n";
+          // We are now starting a new allocation context
           if ( (i+1 < contexts.size()) && (allocationPreheaders[i] != allocationPreheaders[i+1]) ) {
-            //llvm::errs() << "starting outermost ph at " << allocationPreheaders[i]->getName() << "|ctx=" << ctx->getName() <<"\n";
             sublimits.push_back(std::make_pair(size, lims));
             size = nullptr;
             lims.clear();
@@ -980,7 +962,6 @@ endCheck:
         }
 
         if (size != nullptr) {
-          //llvm::errs() << "starting final outermost ph at " << allocationPreheaders[contexts.size()-1]->getName()<<"|ctx=" << ctx->getName() << "\n";
           sublimits.push_back(std::make_pair(size, lims));
           lims.clear();
         }
