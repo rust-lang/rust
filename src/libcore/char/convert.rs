@@ -224,6 +224,7 @@ impl TryFrom<u32> for char {
         if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
             Err(CharTryFromError(()))
         } else {
+            // SAFETY: checked that it's a legal unicode value
             Ok(unsafe { from_u32_unchecked(i) })
         }
     }

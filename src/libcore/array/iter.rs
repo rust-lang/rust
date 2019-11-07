@@ -51,7 +51,7 @@ where
     /// iterator (either via `IntoIterator` for arrays or via another way).
     #[unstable(feature = "array_value_iter", issue = "65798")]
     pub fn new(array: [T; N]) -> Self {
-        // The transmute here is actually safe. The docs of `MaybeUninit`
+        // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
         // promise:
         //
         // > `MaybeUninit<T>` is guaranteed to have the same size and alignment
@@ -84,10 +84,10 @@ where
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
     fn as_slice(&self) -> &[T] {
-        // This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
+        let slice = &self.data[self.alive.clone()];
+        // SAFETY: This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
         // the size and alignment of `T`. Furthermore, we know that all
         // elements within `alive` are properly initialized.
-        let slice = &self.data[self.alive.clone()];
         unsafe {
             mem::transmute::<&[MaybeUninit<T>], &[T]>(slice)
         }
@@ -117,7 +117,8 @@ where
         let idx = self.alive.start;
         self.alive.start += 1;
 
-        // Read the element from the array. This is safe: `idx` is an index
+        // Read the element from the array.
+        // SAFETY: This is safe: `idx` is an index
         // into the "alive" region of the array. Reading this element means
         // that `data[idx]` is regarded as dead now (i.e. do not touch). As
         // `idx` was the start of the alive-zone, the alive zone is now
@@ -163,7 +164,8 @@ where
         // + 1]`.
         self.alive.end -= 1;
 
-        // Read the element from the array. This is safe: `alive.end` is an
+        // Read the element from the array.
+        // SAFETY: This is safe: `alive.end` is an
         // index into the "alive" region of the array. Compare the previous
         // comment that states that the alive region is
         // `data[alive.start..alive.end + 1]`. Reading this element means that
@@ -226,6 +228,7 @@ where
     [T; N]: LengthAtMost32,
 {
     fn clone(&self) -> Self {
+        // SAFETY: each point of unsafety is documented inside the unsafe block
         unsafe {
             // This creates a new uninitialized array. Note that the `assume_init`
             // refers to the array, not the individual elements. And it is Ok if

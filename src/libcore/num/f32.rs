@@ -414,6 +414,7 @@ impl f32 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u32 {
+        // SAFETY: `u32` is a plain old datatype so we can always transmute to it
         unsafe { mem::transmute(self) }
     }
 
@@ -456,6 +457,7 @@ impl f32 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(v: u32) -> Self {
+        // SAFETY: `u32` is a plain old datatype so we can always transmute from it
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
     }

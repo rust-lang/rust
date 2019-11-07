@@ -133,6 +133,8 @@
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`i32`]: ../../std/primitive.i32.html
 
+// ignore-tidy-undocumented-unsafe
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};

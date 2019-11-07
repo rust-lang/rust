@@ -5,6 +5,8 @@ use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ptr::NonNull;
 
+// ignore-tidy-undocumented-unsafe
+
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. Useful for building abstractions like
 /// `Box<T>`, `Vec<T>`, `String`, and `HashMap<K, V>`.

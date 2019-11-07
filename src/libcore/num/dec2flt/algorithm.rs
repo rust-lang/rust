@@ -58,6 +58,8 @@ mod fpu_precision {
     pub struct FPUControlWord(u16);
 
     fn set_cw(cw: u16) {
+        // SAFETY: the `fldcw` instruction has been audited to be able to work correctly with
+        // any `u16`
         unsafe { asm!("fldcw $0" :: "m" (cw) :: "volatile") }
     }
 
@@ -74,6 +76,8 @@ mod fpu_precision {
 
         // Get the original value of the control word to restore it later, when the
         // `FPUControlWord` structure is dropped
+        // SAFETY: the `fnstcw` instruction has been audited to be able to work correctly with
+        // any `u16`
         unsafe { asm!("fnstcw $0" : "=*m" (&cw) ::: "volatile") }
 
         // Set the control word to the desired precision. This is achieved by masking away the old
