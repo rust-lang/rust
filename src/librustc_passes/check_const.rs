@@ -1,5 +1,6 @@
-//! This pass checks the HIR bodies in a const context (e.g., `const`, `static`, `const fn`) for
-//! structured control flow (e.g. `if`, `while`), which is forbidden in a const context.
+//! This pass checks HIR bodies that may be evaluated at compile-time (e.g., `const`, `static`,
+//! `const fn`) for structured control flow (e.g. `if`, `while`), which is forbidden in a const
+//! context.
 //!
 //! By the time the MIR const-checker runs, these high-level constructs have been lowered to
 //! control-flow primitives (e.g., `Goto`, `SwitchInt`), making it tough to properly attribute
@@ -98,7 +99,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         span_err!(self.sess, span, E0744, "`{}` is not allowed in a `{}`", bad_op, const_kind);
     }
 
-    /// Saves the parent `const_kind` before visiting a nested `Body` and restores it afterwards.
+    /// Saves the parent `const_kind` before calling `f` and restores it afterwards.
     fn recurse_into(&mut self, kind: Option<ConstKind>, f: impl FnOnce(&mut Self)) {
         let parent_kind = self.const_kind;
         self.const_kind = kind;
@@ -124,7 +125,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr) {
         match &e.kind {
-            // Skip these checks if the current item is not const.
+            // Skip the following checks if we are not currently in a const context.
             _ if self.const_kind.is_none() => {}
 
             hir::ExprKind::Loop(_, _, source) => {
