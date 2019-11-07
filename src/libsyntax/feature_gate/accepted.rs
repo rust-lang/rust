@@ -255,7 +255,7 @@ declare_features! (
     (accepted, cfg_doctest, "1.40.0", Some(62210), None),
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
-    (accepted, re_rebalance_coherence, "1.40.0", Some(55437), None),
+    (accepted, re_rebalance_coherence, "1.41.0", Some(55437), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
