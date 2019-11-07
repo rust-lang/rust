@@ -1,10 +1,11 @@
 error: the lint `TEST_LINT` is not added to any `LintPass`
-  --> $DIR/lint_without_lint_pass.rs:11:1
+  --> $DIR/lint_without_lint_pass.rs:8:1
    |
-LL | / declare_clippy_lint! {
-LL | |     pub TEST_LINT,
-LL | |     correctness,
-LL | |     ""
+LL | / declare_tool_lint! {
+LL | |     pub clippy::TEST_LINT,
+LL | |     Warn,
+LL | |     "",
+LL | |     report_in_external_macro: true
 LL | | }
    | |_^
    |
