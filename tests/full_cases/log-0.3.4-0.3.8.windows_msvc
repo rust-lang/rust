@@ -31,7 +31,7 @@ warning: technically breaking changes in `<new::LogMetadata<'a> as std::cmp::Eq>
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::LogMetadata<'a> as std::cmp::PartialEq>`
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::marker::StructuralPartialEq>`
    --> log-0.3.8\src\lib.rs:552:14
     |
 552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -79,7 +79,7 @@ warning: technically breaking changes in `<new::LogLocation as std::cmp::Eq>`
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::LogLocation as std::cmp::PartialEq>`
+warning: technically breaking changes in `<new::LogLocation as std::marker::StructuralPartialEq>`
    --> log-0.3.8\src\lib.rs:604:34
     |
 604 | #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

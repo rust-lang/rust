@@ -13,7 +13,7 @@ error: breaking changes in `E`
 11 | pub type E<T: IntoIterator> = T;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: type error: expected associated type, found type parameter (breaking)
+   = warning: type error: expected associated type, found type parameter `T` (breaking)
 
 error: breaking changes in `abc`
   --> regions/new.rs:13:1

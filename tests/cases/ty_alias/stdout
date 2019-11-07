@@ -51,8 +51,8 @@ error: breaking changes in `F`
 error: breaking changes in `G`
  --> ty_alias/new.rs:9:1
   |
-9 | pub type G<'a> = (&'a u8);
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+9 | pub type G<'a> = &'a u8;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = warning: type parameter removed (breaking)
 
