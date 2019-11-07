@@ -1075,6 +1075,13 @@ impl Mutability {
             MutImmutable => MutMutable,
         }
     }
+
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            MutMutable => "mut ",
+            MutImmutable => "",
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2182,6 +2189,15 @@ pub enum IsAsync {
 pub enum Unsafety {
     Unsafe,
     Normal,
+}
+
+impl Unsafety {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Unsafety::Unsafe => "unsafe ",
+            Unsafety::Normal => "",
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]

@@ -592,20 +592,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             cause.span,
                             target_id,
                         );
-                        let val = match ty.kind {
-                            ty::Bool => "true",
-                            ty::Char => "'a'",
-                            ty::Int(_) | ty::Uint(_) => "42",
-                            ty::Float(_) => "3.14159",
-                            ty::Error | ty::Never => return,
-                            _ => "value",
-                        };
-                        let msg = "give it a value of the expected type";
-                        let label = destination.label
-                            .map(|l| format!(" {}", l.ident))
-                            .unwrap_or_else(String::new);
-                        let sugg = format!("break{} {}", label, val);
-                        err.span_suggestion(expr.span, msg, sugg, Applicability::HasPlaceholders);
+                        if let Some(val) = ty_kind_suggestion(ty) {
+                            let label = destination.label
+                                .map(|l| format!(" {}", l.ident))
+                                .unwrap_or_else(String::new);
+                            err.span_suggestion(
+                                expr.span,
+                                "give it a value of the expected type",
+                                format!("break{} {}", label, val),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
                     }, false);
                 }
             } else {
@@ -1724,4 +1721,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.tcx.mk_unit()
     }
+}
+
+pub(super) fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
+    Some(match ty.kind {
+        ty::Bool => "true",
+        ty::Char => "'a'",
+        ty::Int(_) | ty::Uint(_) => "42",
+        ty::Float(_) => "3.14159",
+        ty::Error | ty::Never => return None,
+        _ => "value",
+    })
 }

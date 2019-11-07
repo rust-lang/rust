@@ -897,11 +897,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             } else {
                 r.push(' ');
             }
-            s.push_highlighted(format!(
-                "&{}{}",
-                r,
-                if mutbl == hir::MutMutable { "mut " } else { "" }
-            ));
+            s.push_highlighted(format!("&{}{}", r, mutbl.prefix_str()));
             s.push_normal(ty.to_string());
         }
 

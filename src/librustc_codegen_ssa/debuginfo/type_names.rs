@@ -76,9 +76,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             if !cpp_like_names {
                 output.push('&');
             }
-            if mutbl == hir::MutMutable {
-                output.push_str("mut ");
-            }
+            output.push_str(mutbl.prefix_str());
 
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
@@ -140,9 +138,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 
 
             let sig = t.fn_sig(tcx);
-            if sig.unsafety() == hir::Unsafety::Unsafe {
-                output.push_str("unsafe ");
-            }
+            output.push_str(sig.unsafety().prefix_str());
 
             let abi = sig.abi();
             if abi != rustc_target::spec::abi::Abi::Rust {
