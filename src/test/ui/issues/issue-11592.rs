@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 //! Ensure the private trait Bar isn't complained about.
 
 #![deny(missing_docs)]

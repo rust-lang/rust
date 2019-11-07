@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 #![allow(unused_attributes)]
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616

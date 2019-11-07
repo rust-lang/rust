@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 use std::collections::HashMap;
 use std::sync::Mutex;

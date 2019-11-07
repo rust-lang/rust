@@ -1,4 +1,4 @@
-use super::{Parser, PResult, PathStyle};
+use super::{Parser, PathStyle};
 use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
@@ -17,7 +17,7 @@ use crate::ThinVec;
 
 use log::debug;
 use std::mem;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
+use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
 use syntax_pos::BytePos;
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.

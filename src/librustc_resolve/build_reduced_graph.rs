@@ -33,7 +33,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
 use syntax::feature_gate::is_builtin_attr;
-use syntax::parse::token::{self, Token};
+use syntax::token::{self, Token};
 use syntax::print::pprust;
 use syntax::{span_err, struct_span_err};
 use syntax::source_map::{respan, Spanned};

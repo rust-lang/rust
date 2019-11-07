@@ -13,7 +13,7 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::parse::token::{self, DelimToken, Token, TokenKind};
+use crate::token::{self, DelimToken, Token, TokenKind};
 
 use syntax_pos::{Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]

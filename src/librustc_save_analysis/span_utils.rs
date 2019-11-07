@@ -3,7 +3,7 @@ use rustc::session::Session;
 use crate::generated_code;
 
 use syntax::parse::lexer::{self, StringReader};
-use syntax::parse::token::{self, TokenKind};
+use syntax::token::{self, TokenKind};
 use syntax_pos::*;
 
 #[derive(Clone)]

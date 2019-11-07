@@ -8,9 +8,9 @@ use std::mem;
 
 use syntax::ast;
 use syntax::feature_gate;
-use syntax::parse::token;
-use syntax::symbol::SymbolStr;
+use syntax::token;
 use syntax::tokenstream;
+use syntax_pos::symbol::SymbolStr;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};

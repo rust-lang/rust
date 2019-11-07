@@ -15,7 +15,7 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_driver;
 
-use syntax::parse::token::{self, Token};
+use syntax::token::{self, Token};
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax_expand::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax_pos::Span;

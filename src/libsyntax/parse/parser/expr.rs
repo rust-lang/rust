@@ -1,9 +1,7 @@
-use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
+use super::{Parser, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
-
-use crate::parse::literal::LitError;
 
 use crate::ast::{
     self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
@@ -11,14 +9,15 @@ use crate::ast::{
     FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use crate::parse::classify;
-use crate::parse::token::{self, Token, TokenKind};
+use crate::token::{self, Token, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};
+use crate::util::classify;
+use crate::util::literal::LitError;
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
-use errors::Applicability;
+use errors::{PResult, Applicability};
 use syntax_pos::symbol::{kw, sym};
 use syntax_pos::Symbol;
 use std::mem;

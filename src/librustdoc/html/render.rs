@@ -1230,18 +1230,87 @@ impl AllTypes {
     }
 }
 
+#[derive(Debug)]
+enum Setting {
+    Section {
+        description: &'static str,
+        sub_settings: Vec<Setting>,
+    },
+    Entry {
+        js_data_name: &'static str,
+        description: &'static str,
+        default_value: bool,
+    }
+}
+
+impl Setting {
+    fn display(&self) -> String {
+        match *self {
+            Setting::Section { ref description, ref sub_settings } => {
+                format!(
+                    "<div class='setting-line'>\
+                        <div class='title'>{}</div>\
+                        <div class='sub-settings'>{}</div>
+                    </div>",
+                    description,
+                    sub_settings.iter().map(|s| s.display()).collect::<String>()
+                )
+            }
+            Setting::Entry { ref js_data_name, ref description, ref default_value } => {
+                format!(
+                    "<div class='setting-line'>\
+                        <label class='toggle'>\
+                        <input type='checkbox' id='{}' {}>\
+                        <span class='slider'></span>\
+                        </label>\
+                        <div>{}</div>\
+                    </div>",
+                    js_data_name,
+                    if *default_value { " checked" } else { "" },
+                    description,
+                )
+            }
+        }
+    }
+}
+
+impl From<(&'static str, &'static str, bool)> for Setting {
+    fn from(values: (&'static str, &'static str, bool)) -> Setting {
+        Setting::Entry {
+            js_data_name: values.0,
+            description: values.1,
+            default_value: values.2,
+        }
+    }
+}
+
+impl<T: Into<Setting>> From<(&'static str, Vec<T>)> for Setting {
+    fn from(values: (&'static str, Vec<T>)) -> Setting {
+        Setting::Section {
+            description: values.0,
+            sub_settings: values.1.into_iter().map(|v| v.into()).collect::<Vec<_>>(),
+        }
+    }
+}
+
 fn settings(root_path: &str, suffix: &str) -> String {
     // (id, explanation, default value)
-    let settings = [
-        ("item-declarations", "Auto-hide item declarations.", true),
-        ("item-attributes", "Auto-hide item attributes.", true),
-        ("trait-implementations", "Auto-hide trait implementations documentation",
-            true),
-        ("method-docs", "Auto-hide item methods' documentation", false),
+    let settings: &[Setting] = &[
+        ("Auto-hide item declarations", vec![
+            ("auto-hide-struct", "Auto-hide structs declaration", true),
+            ("auto-hide-enum", "Auto-hide enums declaration", false),
+            ("auto-hide-union", "Auto-hide unions declaration", true),
+            ("auto-hide-trait", "Auto-hide traits declaration", true),
+            ("auto-hide-macro", "Auto-hide macros declaration", false),
+        ]).into(),
+        ("auto-hide-attributes", "Auto-hide item attributes.", true).into(),
+        ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
+        ("auto-hide-trait-implementations", "Auto-hide trait implementations documentation",
+            true).into(),
         ("go-to-only-result", "Directly go to item in search if there is only one result",
-            false),
-        ("line-numbers", "Show line numbers on code examples", false),
-        ("disable-shortcuts", "Disable keyboard shortcuts", false),
+            false).into(),
+        ("line-numbers", "Show line numbers on code examples", false).into(),
+        ("disable-shortcuts", "Disable keyboard shortcuts", false).into(),
     ];
     format!(
 "<h1 class='fqn'>\
@@ -1249,17 +1318,7 @@ fn settings(root_path: &str, suffix: &str) -> String {
 </h1>\
 <div class='settings'>{}</div>\
 <script src='{}settings{}.js'></script>",
-            settings.iter()
-                        .map(|(id, text, enabled)| {
-                            format!("<div class='setting-line'>\
-                                            <label class='toggle'>\
-                                            <input type='checkbox' id='{}' {}>\
-                                            <span class='slider'></span>\
-                                            </label>\
-                                            <div>{}</div>\
-                                        </div>", id, if *enabled { " checked" } else { "" }, text)
-                        })
-                        .collect::<String>(),
+            settings.iter().map(|s| s.display()).collect::<String>(),
             root_path,
             suffix)
 }

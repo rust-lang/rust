@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 // rust-lang/rust#55552: The strategy pnkfelix landed in PR #55274
 // (for ensuring that NLL respects user-provided lifetime annotations)

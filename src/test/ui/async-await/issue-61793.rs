@@ -3,7 +3,7 @@
 // while those two fields were at the same offset (which is impossible).
 // That is, memory ordering of `(X, ())`, but offsets of `((), X)`.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 // edition:2018
 
 async fn foo<F>(_: &(), _: F) {}

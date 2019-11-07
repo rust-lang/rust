@@ -2,14 +2,14 @@ use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
 use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
+use crate::util::comments;
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use crate::parse::lexer::comments;
-use crate::parse;
+use crate::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
+use crate::util::classify;
 use crate::sess::ParseSess;
 use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
@@ -1659,7 +1659,7 @@ impl<'a> State<'a> {
             ast::StmtKind::Expr(ref expr) => {
                 self.space_if_not_bol();
                 self.print_expr_outer_attr_style(expr, false);
-                if parse::classify::expr_requires_semi_to_be_stmt(expr) {
+                if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.s.word(";");
                 }
             }

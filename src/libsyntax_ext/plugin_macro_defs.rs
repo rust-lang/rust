@@ -4,12 +4,12 @@
 use syntax::ast::*;
 use syntax::attr;
 use syntax::edition::Edition;
-use syntax_expand::base::{Resolver, NamedSyntaxExtension};
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::source_map::respan;
 use syntax::symbol::sym;
+use syntax::token;
 use syntax::tokenstream::*;
+use syntax_expand::base::{Resolver, NamedSyntaxExtension};
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::{ExpnData, ExpnKind, AstPass};
 

@@ -920,7 +920,7 @@ impl fmt::Debug for Duration {
             if end == 0 {
                 write!(f, "{}", integer_part)
             } else {
-                // We are only writing ASCII digits into the buffer and it was
+                // SAFETY: We are only writing ASCII digits into the buffer and it was
                 // initialized with '0's, so it contains valid UTF8.
                 let s = unsafe {
                     crate::str::from_utf8_unchecked(&buf[..end])

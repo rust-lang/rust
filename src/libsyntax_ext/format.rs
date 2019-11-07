@@ -9,7 +9,7 @@ use errors::pluralize;
 
 use syntax::ast;
 use syntax_expand::base::{self, *};
-use syntax::parse::token;
+use syntax::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
 use syntax::tokenstream::TokenStream;

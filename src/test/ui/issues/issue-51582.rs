@@ -14,5 +14,5 @@ fn main() {
     assert_eq!(1, make_b() as u8);
     assert_eq!(1, make_b() as i32);
     assert_eq!(1, make_b() as u32);
-    assert_eq!(1, unsafe { std::intrinsics::discriminant_value(&make_b()) });
+    assert_eq!(1, std::intrinsics::discriminant_value(&make_b()));
 }

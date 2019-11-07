@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 // This test ensures that each pointer type `P<X>` is covariant in `X`.
 

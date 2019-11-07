@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 // This test is reduced from a scenario pnkfelix encountered while
 // bootstrapping the compiler.

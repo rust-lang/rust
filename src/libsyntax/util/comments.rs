@@ -2,12 +2,13 @@ pub use CommentStyle::*;
 
 use crate::ast;
 use crate::source_map::SourceMap;
-use crate::parse::lexer::is_block_doc_comment;
-use crate::parse::lexer::ParseSess;
+use crate::sess::ParseSess;
 
 use syntax_pos::{BytePos, CharPos, Pos, FileName};
 
 use std::usize;
+
+use log::debug;
 
 #[cfg(test)]
 mod tests;
@@ -31,8 +32,23 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
-fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && super::is_doc_comment(s)) || s.starts_with("//!") ||
+crate fn is_line_doc_comment(s: &str) -> bool {
+    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/') ||
+              s.starts_with("//!");
+    debug!("is {:?} a doc comment? {}", s, res);
+    res
+}
+
+crate fn is_block_doc_comment(s: &str) -> bool {
+    // Prevent `/**/` from being parsed as a doc comment
+    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*') ||
+               s.starts_with("/*!")) && s.len() >= 5;
+    debug!("is {:?} a doc comment? {}", s, res);
+    res
+}
+
+crate fn is_doc_comment(s: &str) -> bool {
+    (s.starts_with("///") && is_line_doc_comment(s)) || s.starts_with("//!") ||
     (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
 }
 

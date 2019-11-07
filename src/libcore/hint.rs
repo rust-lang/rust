@@ -2,6 +2,8 @@
 
 //! Hints to compiler that affects how code should be emitted or optimized.
 
+// ignore-tidy-undocumented-unsafe
+
 use crate::intrinsics;
 
 /// Informs the compiler that this point in the code is not reachable, enabling

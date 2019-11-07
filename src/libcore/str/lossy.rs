@@ -3,6 +3,8 @@ use crate::str as core_str;
 use crate::fmt::{self, Write};
 use crate::mem;
 
+// ignore-tidy-undocumented-unsafe
+
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "0")]
 pub struct Utf8Lossy {

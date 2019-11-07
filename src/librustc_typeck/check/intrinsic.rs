@@ -67,11 +67,13 @@ fn equate_intrinsic_type<'tcx>(
 pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
         "size_of" | "min_align_of" | "needs_drop" | "caller_location" |
+        "size_of_val" | "min_align_of_val" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "wrapping_add" | "wrapping_sub" | "wrapping_mul" |
         "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
         "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" |
+        "discriminant_value" | "type_id" | "likely" | "unlikely" |
         "minnumf32" | "minnumf64" | "maxnumf32" | "maxnumf64" | "type_name"
         => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,

@@ -1,5 +1,5 @@
 //
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 trait DictLike<'a> {
     type ItemsIterator: Iterator<Item=u8>;

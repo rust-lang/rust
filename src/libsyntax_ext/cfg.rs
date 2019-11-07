@@ -8,7 +8,7 @@ use syntax::ast;
 use syntax_expand::base::{self, *};
 use syntax::attr;
 use syntax::tokenstream::TokenStream;
-use syntax::parse::token;
+use syntax::token;
 use syntax_pos::Span;
 
 pub fn expand_cfg(

@@ -315,6 +315,7 @@ impl<'f> Clone for VaListImpl<'f> {
     #[inline]
     fn clone(&self) -> Self {
         let mut dest = crate::mem::MaybeUninit::uninit();
+        // SAFETY: we write to the `MaybeUninit`, thus it is initialized and `assume_init` is legal
         unsafe {
             va_copy(dest.as_mut_ptr(), self);
             dest.assume_init()

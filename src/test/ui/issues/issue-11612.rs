@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 // #11612
 // We weren't updating the auto adjustments with all the resolved

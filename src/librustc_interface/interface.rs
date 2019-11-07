@@ -16,7 +16,7 @@ use std::result;
 use std::sync::{Arc, Mutex};
 use syntax::{self, parse};
 use syntax::ast::{self, MetaItemKind};
-use syntax::parse::token;
+use syntax::token;
 use syntax::source_map::{FileName, FileLoader, SourceMap};
 use syntax::sess::ParseSess;
 use syntax_pos::edition;

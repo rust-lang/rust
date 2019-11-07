@@ -425,3 +425,6 @@ div.files > a:hover, div.name:hover {
 div.files > .selected {
 	background-color: #333;
 }
+.setting-line > .title {
+	border-bottom-color: #ddd;
+}

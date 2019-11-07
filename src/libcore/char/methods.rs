@@ -438,6 +438,7 @@ impl char {
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         let code = self as u32;
+        // SAFETY: each arm checks the size of the slice and only uses `get_unchecked` unsafe ops
         unsafe {
             let len = if code < MAX_ONE_B && !dst.is_empty() {
                 *dst.get_unchecked_mut(0) = code as u8;
@@ -507,6 +508,7 @@ impl char {
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         let mut code = self as u32;
+        // SAFETY: each arm checks whether there are enough bits to write into
         unsafe {
             if (code & 0xFFFF) == code && !dst.is_empty() {
                 // The BMP falls through (assuming non-surrogate, as it should)
