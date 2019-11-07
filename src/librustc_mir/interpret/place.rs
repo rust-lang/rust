@@ -287,17 +287,23 @@ where
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
+        let pointee_type = val.layout.ty.builtin_deref(true)
+            .expect("`ref_to_mplace` called on non-ptr type")
+            .ty;
         let layout = self.layout_of(pointee_type)?;
+        let (ptr, meta) = match *val {
+            Immediate::Scalar(ptr) => (ptr.not_undef()?, None),
+            Immediate::ScalarPair(ptr, meta) => (ptr.not_undef()?, Some(meta.not_undef()?)),
+        };
 
         let mplace = MemPlace {
-            ptr: val.to_scalar_ptr()?,
+            ptr,
             // We could use the run-time alignment here. For now, we do not, because
             // the point of tracking the alignment here is to make sure that the *static*
             // alignment information emitted with the loads is correct. The run-time
             // alignment can only be more restrictive.
             align: layout.align.abi,
-            meta: val.to_meta()?,
+            meta,
         };
         Ok(MPlaceTy { mplace, layout })
     }

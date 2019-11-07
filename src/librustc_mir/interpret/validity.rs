@@ -388,44 +388,31 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             ty::RawPtr(..) => {
-                // Check pointer part.
-                if self.ref_tracking_for_consts.is_some() {
-                    // Integers/floats in CTFE: For consistency with integers, we do not
-                    // accept undef.
-                    let _ptr = try_validation!(value.to_scalar_ptr(),
-                        "undefined address in raw pointer", self.path);
-                } else {
-                    // Remain consistent with `usize`: Accept anything.
-                }
-
-                // Check metadata.
-                let meta = try_validation!(value.to_meta(),
-                    "uninitialized data in wide pointer metadata", self.path);
-                let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
-                if layout.is_unsized() {
-                    self.check_wide_ptr_meta(meta, layout)?;
+                // We are conservative with undef for integers, but try to
+                // actually enforce our current rules for raw pointers.
+                let place = try_validation!(self.ecx.ref_to_mplace(value),
+                    "undefined pointer", self.path);
+                if place.layout.is_unsized() {
+                    self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
             }
             _ if ty.is_box() || ty.is_region_ptr() => {
                 // Handle wide pointers.
                 // Check metadata early, for better diagnostics
-                let ptr = try_validation!(value.to_scalar_ptr(),
-                    "undefined address in pointer", self.path);
-                let meta = try_validation!(value.to_meta(),
-                    "uninitialized data in wide pointer metadata", self.path);
-                let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
-                if layout.is_unsized() {
-                    self.check_wide_ptr_meta(meta, layout)?;
+                let place = try_validation!(self.ecx.ref_to_mplace(value),
+                    "undefined pointer", self.path);
+                if place.layout.is_unsized() {
+                    self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
                 // Make sure this is dereferencable and all.
-                let (size, align) = self.ecx.size_and_align_of(meta, layout)?
+                let (size, align) = self.ecx.size_and_align_of(place.meta, place.layout)?
                     // for the purpose of validity, consider foreign types to have
                     // alignment and size determined by the layout (size will be 0,
                     // alignment should take attributes into account).
-                    .unwrap_or_else(|| (layout.size, layout.align.abi));
+                    .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
                 let ptr: Option<_> = match
                     self.ecx.memory.check_ptr_access_align(
-                        ptr,
+                        place.ptr,
                         size,
                         Some(align),
                         CheckInAllocMsg::InboundsTest,
@@ -435,7 +422,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         info!(
                             "{:?} did not pass access check for size {:?}, align {:?}",
-                            ptr, size, align
+                            place.ptr, size, align
                         );
                         match err.kind {
                             err_unsup!(InvalidNullPointerUsage) =>
@@ -459,7 +446,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 };
                 // Recursive checking
                 if let Some(ref mut ref_tracking) = self.ref_tracking_for_consts {
-                    let place = self.ecx.ref_to_mplace(value)?;
                     if let Some(ptr) = ptr { // not a ZST
                         // Skip validation entirely for some external statics
                         let alloc_kind = self.ecx.tcx.alloc_map.lock().get(ptr.alloc_id);
@@ -627,7 +613,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // reject it.  However, that's good: We don't inherently want
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
-                // We also accept undef, for consistency with the type-based checks.
+                // We also accept undef, for consistency with the slow path.
                 match self.ecx.memory.get(ptr.alloc_id)?.check_bytes(
                     self.ecx,
                     ptr,
