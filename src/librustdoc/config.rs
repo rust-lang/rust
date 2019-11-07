@@ -615,10 +615,6 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
         let location = parts.next().map(|s| s.to_string());
-        if location.is_none() && !nightly_options::is_unstable_enabled(matches) {
-            return Err("the `-Z unstable-options` flag must also be passed to \
-                        enable `--extern crate_name` without `=path`".to_string());
-        }
         let name = name.to_string();
         // For Rustdoc purposes, we can treat all externs as public
         externs.entry(name)
