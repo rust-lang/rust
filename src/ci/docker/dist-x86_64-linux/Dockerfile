@@ -69,7 +69,7 @@ RUN ./build-python.sh
 
 # Now build LLVM+Clang 7, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
-COPY dist-x86_64-linux/build-clang.sh /tmp/
+COPY dist-x86_64-linux/build-clang.sh dist-x86_64-linux/llvm-project-centos.patch /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 

@@ -1,0 +1,18 @@
+diff --git a/clang/lib/DirectoryWatcher/linux/DirectoryWatcher-linux.cpp b/clang/lib/DirectoryWatcher/linux/DirectoryWatcher-linux.cpp
+index 176d6d6abf3..a6d63bf24b8 100644
+--- a/clang/lib/DirectoryWatcher/linux/DirectoryWatcher-linux.cpp
++++ b/clang/lib/DirectoryWatcher/linux/DirectoryWatcher-linux.cpp
+@@ -33,6 +33,13 @@ namespace {
+ using namespace llvm;
+ using namespace clang;
+ 
++#define EPOLL_CLOEXEC -1
++#define IN_CLOEXEC -1
++#define O_CLOEXEC -1
++static int epoll_create1(int flags) { return -1; }
++static int inotify_init1(int flags) { return -1; }
++static int pipe2(int *fds, int flags) { return -1; }
++
+ /// Pipe for inter-thread synchronization - for epoll-ing on multiple
+ /// conditions. It is meant for uni-directional 1:1 signalling - specifically:
+ /// no multiple consumers, no data passing. Thread waiting for signal should
