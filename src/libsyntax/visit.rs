@@ -25,7 +25,7 @@ pub enum FnKind<'a> {
     ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
 
     /// E.g., `fn foo(&self)`.
-    Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
+    Method(Ident, &'a FnSig, Option<&'a Visibility>, &'a Block),
 
     /// E.g., `|x, y| body`.
     Closure(&'a Expr),

@@ -8,7 +8,7 @@ use crate::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, Use
 use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
 use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
-use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, MethodSig, SelfKind, Param};
+use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
 use crate::parse::token;
 use crate::tokenstream::{TokenTree, TokenStream};
 use crate::symbol::{kw, sym};
@@ -1897,14 +1897,14 @@ impl<'a> Parser<'a> {
     fn parse_method_sig(
         &mut self,
         is_name_required: fn(&token::Token) -> bool,
-    ) -> PResult<'a, (Ident, MethodSig, Generics)> {
+    ) -> PResult<'a, (Ident, FnSig, Generics)> {
         let header = self.parse_fn_front_matter()?;
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: true,
             allow_c_variadic: false,
             is_name_required,
         })?;
-        Ok((ident, MethodSig { header, decl }, generics))
+        Ok((ident, FnSig { header, decl }, generics))
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to

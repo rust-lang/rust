@@ -272,7 +272,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_method(
         &mut self,
-        sig: &'l ast::MethodSig,
+        sig: &'l ast::FnSig,
         body: Option<&'l ast::Block>,
         id: ast::NodeId,
         ident: ast::Ident,

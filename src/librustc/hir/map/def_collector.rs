@@ -228,7 +228,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.kind {
-            ImplItemKind::Method(MethodSig {
+            ImplItemKind::Method(FnSig {
                 ref header,
                 ref decl,
             }, ref body) if header.asyncness.node.is_async() => {

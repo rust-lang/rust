@@ -802,7 +802,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn flat_map_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         let is_const = match i.kind {
             ast::TraitItemKind::Const(..) => true,
-            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
+            ast::TraitItemKind::Method(ast::FnSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
@@ -812,7 +812,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         let is_const = match i.kind {
             ast::ImplItemKind::Const(..) => true,
-            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
+            ast::ImplItemKind::Method(ast::FnSig { ref decl, ref header, .. }, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };

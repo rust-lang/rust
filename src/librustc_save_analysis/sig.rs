@@ -72,7 +72,7 @@ pub fn method_signature(
     id: NodeId,
     ident: ast::Ident,
     generics: &ast::Generics,
-    m: &ast::MethodSig,
+    m: &ast::FnSig,
     scx: &SaveContext<'_, '_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
@@ -932,7 +932,7 @@ fn make_method_signature(
     id: NodeId,
     ident: ast::Ident,
     generics: &ast::Generics,
-    m: &ast::MethodSig,
+    m: &ast::FnSig,
     scx: &SaveContext<'_, '_>,
 ) -> Result {
     // FIXME code dup with function signature

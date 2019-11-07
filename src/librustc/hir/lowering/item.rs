@@ -1255,7 +1255,7 @@ impl LoweringContext<'_> {
     fn lower_method_sig(
         &mut self,
         generics: &Generics,
-        sig: &MethodSig,
+        sig: &FnSig,
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
