@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]
+#![feature(matches_macro)]
 
 #![recursion_limit="256"]
 
