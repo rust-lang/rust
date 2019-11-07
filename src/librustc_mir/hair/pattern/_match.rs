@@ -630,6 +630,17 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    // Whether to evaluate a constructor using exhaustive integer matching. This is true if the
+    // constructor is a range or constant with an integer type.
+    fn is_range_and_should_match_exhaustively(&self, tcx: TyCtxt<'tcx>) -> bool {
+        let ty = match self {
+            ConstantValue(value, _) => value.ty,
+            ConstantRange(_, _, ty, _, _) => ty,
+            _ => return false,
+        };
+        IntRange::should_treat_range_exhaustively(tcx, ty)
+    }
+
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -1280,6 +1291,13 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
+    fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+        // Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching`
+        // feature is enabled.
+        IntRange::is_integral(ty)
+            && (!ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching)
+    }
+
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
         match ty.kind {
@@ -1857,21 +1875,6 @@ fn slice_pat_covered_by_const<'tcx>(
     Ok(true)
 }
 
-// Whether to evaluate a constructor using exhaustive integer matching. This is true if the
-// constructor is a range or constant with an integer type.
-fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) -> bool {
-    let ty = match ctor {
-        ConstantValue(value, _) => value.ty,
-        ConstantRange(_, _, ty, _, _) => ty,
-        _ => return false,
-    };
-    if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.kind {
-        !ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
-    } else {
-        false
-    }
-}
-
 /// For exhaustive integer matching, some constructors are grouped within other constructors
 /// (namely integer typed values are grouped within ranges). However, when specialising these
 /// constructors, we want to be specialising for the underlying constructors (the integers), not
@@ -1923,7 +1926,7 @@ fn split_grouped_constructors<'p, 'tcx>(
 
     for ctor in ctors.into_iter() {
         match ctor {
-            ConstantRange(..) if should_treat_range_exhaustively(tcx, &ctor) => {
+            ConstantRange(..) if ctor.is_range_and_should_match_exhaustively(tcx) => {
                 // We only care about finding all the subranges within the range of the constructor
                 // range. Anything else is irrelevant, because it is guaranteed to result in
                 // `NotUseful`, which is the default case anyway, and can be ignored.
@@ -2342,7 +2345,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             // If the constructor is a:
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
-            if should_treat_range_exhaustively(cx.tcx, constructor) {
+            if constructor.is_range_and_should_match_exhaustively(cx.tcx) {
                 match (
                     IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
                     IntRange::from_pat(cx.tcx, cx.param_env, pat),
