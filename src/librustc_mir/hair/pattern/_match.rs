@@ -1389,20 +1389,15 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    /// Converts a `RangeInclusive` to a `ConstantValue` or inclusive `ConstantRange`.
-    fn range_to_ctor(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        r: RangeInclusive<u128>,
-        span: Span,
-    ) -> Constructor<'tcx> {
-        let bias = IntRange::signed_bias(tcx, ty);
-        let (lo, hi) = r.into_inner();
+    /// Converts an `IntRange` to a `ConstantValue` or inclusive `ConstantRange`.
+    fn into_ctor(self, tcx: TyCtxt<'tcx>) -> Constructor<'tcx> {
+        let bias = IntRange::signed_bias(tcx, self.ty);
+        let (lo, hi) = self.range.into_inner();
         if lo == hi {
-            let ty = ty::ParamEnv::empty().and(ty);
-            ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty), span)
+            let ty = ty::ParamEnv::empty().and(self.ty);
+            ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty), self.span)
         } else {
-            ConstantRange(lo ^ bias, hi ^ bias, ty, RangeEnd::Included, span)
+            ConstantRange(lo ^ bias, hi ^ bias, self.ty, RangeEnd::Included, self.span)
         }
     }
 
@@ -1419,38 +1414,27 @@ impl<'tcx> IntRange<'tcx> {
             .filter_map(|r| IntRange::from_ctor(tcx, param_env, &r).map(|i| i.range));
         let mut remaining_ranges = vec![];
         let ty = self.ty;
+        let span = self.span;
         let (lo, hi) = self.range.into_inner();
         for subrange in ranges {
             let (subrange_lo, subrange_hi) = subrange.into_inner();
             if lo > subrange_hi || subrange_lo > hi {
                 // The pattern doesn't intersect with the subrange at all,
                 // so the subrange remains untouched.
-                remaining_ranges.push(Self::range_to_ctor(
-                    tcx,
-                    ty,
-                    subrange_lo..=subrange_hi,
-                    self.span,
-                ));
+                remaining_ranges
+                    .push(IntRange { range: subrange_lo..=subrange_hi, ty, span }.into_ctor(tcx));
             } else {
                 if lo > subrange_lo {
                     // The pattern intersects an upper section of the
                     // subrange, so a lower section will remain.
-                    remaining_ranges.push(Self::range_to_ctor(
-                        tcx,
-                        ty,
-                        subrange_lo..=(lo - 1),
-                        self.span,
-                    ));
+                    remaining_ranges
+                        .push(IntRange { range: subrange_lo..=(lo - 1), ty, span }.into_ctor(tcx));
                 }
                 if hi < subrange_hi {
                     // The pattern intersects a lower section of the
                     // subrange, so an upper section will remain.
-                    remaining_ranges.push(Self::range_to_ctor(
-                        tcx,
-                        ty,
-                        (hi + 1)..=subrange_hi,
-                        self.span,
-                    ));
+                    remaining_ranges
+                        .push(IntRange { range: (hi + 1)..=subrange_hi, ty, span }.into_ctor(tcx));
                 }
             }
         }
@@ -1964,23 +1948,24 @@ fn split_grouped_constructors<'p, 'tcx>(
                 // We're going to iterate through every adjacent pair of borders, making sure that
                 // each represents an interval of nonnegative length, and convert each such
                 // interval into a constructor.
-                for IntRange { range, .. } in
-                    borders.windows(2).filter_map(|window| match (window[0], window[1]) {
-                        (Border::JustBefore(n), Border::JustBefore(m)) => {
-                            if n < m {
-                                Some(IntRange { range: n..=(m - 1), ty, span })
-                            } else {
-                                None
+                split_ctors.extend(
+                    borders
+                        .windows(2)
+                        .filter_map(|window| match (window[0], window[1]) {
+                            (Border::JustBefore(n), Border::JustBefore(m)) => {
+                                if n < m {
+                                    Some(IntRange { range: n..=(m - 1), ty, span })
+                                } else {
+                                    None
+                                }
                             }
-                        }
-                        (Border::JustBefore(n), Border::AfterMax) => {
-                            Some(IntRange { range: n..=u128::MAX, ty, span })
-                        }
-                        (Border::AfterMax, _) => None,
-                    })
-                {
-                    split_ctors.push(IntRange::range_to_ctor(tcx, ty, range, span));
-                }
+                            (Border::JustBefore(n), Border::AfterMax) => {
+                                Some(IntRange { range: n..=u128::MAX, ty, span })
+                            }
+                            (Border::AfterMax, _) => None,
+                        })
+                        .map(|range| range.into_ctor(tcx)),
+                );
             }
             VarLenSlice(self_prefix, self_suffix) => {
                 // The exhaustiveness-checking paper does not include any details on
@@ -2127,7 +2112,9 @@ fn lint_overlapping_patterns(
                 int_range.span,
                 &format!(
                     "this range overlaps on `{}`",
-                    IntRange::range_to_ctor(tcx, ty, int_range.range, DUMMY_SP).display(tcx),
+                    IntRange { range: int_range.range, ty, span: DUMMY_SP }
+                        .into_ctor(tcx)
+                        .display(tcx),
                 ),
             );
         }
