@@ -2118,7 +2118,7 @@ function getSearchElement() {
     function autoCollapse(pageId, collapse) {
         if (collapse) {
             toggleAllDocs(pageId, true);
-        } else if (getCurrentValue("rustdoc-trait-implementations") !== "false") {
+        } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("implementations-list");
 
             if (impl_list !== null) {
@@ -2156,7 +2156,7 @@ function getSearchElement() {
     }
 
     var toggle = createSimpleToggle(false);
-    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") === "true";
+    var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
     var pageId = getPageId();
 
     var func = function(e) {
@@ -2286,7 +2286,31 @@ function getSearchElement() {
         return wrapper;
     }
 
-    var showItemDeclarations = getCurrentValue("rustdoc-item-declarations") === "false";
+    var currentType = document.getElementsByClassName("type-decl")[0];
+    var className = null;
+    if (currentType) {
+        currentType = currentType.getElementsByClassName("rust")[0];
+        if (currentType) {
+            currentType.classList.forEach(function(item) {
+                if (item !== "main") {
+                    className = item;
+                    return true;
+                }
+            });
+        }
+    }
+    var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
+    if (showItemDeclarations === null) {
+        if (className === "enum" || className === "macro") {
+            showItemDeclarations = "false";
+        } else if (className === "struct" || className === "union" || className === "trait") {
+            showItemDeclarations = "true";
+        } else {
+            // In case we found an unknown type, we just use the "parent" value.
+            showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
+        }
+    }
+    showItemDeclarations = showItemDeclarations === "false";
     function buildToggleWrapper(e) {
         if (hasClass(e, "autohide")) {
             var wrap = e.previousElementSibling;
@@ -2369,7 +2393,7 @@ function getSearchElement() {
 
     // To avoid checking on "rustdoc-item-attributes" value on every loop...
     var itemAttributesFunc = function() {};
-    if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+    if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
         itemAttributesFunc = function(x) {
             collapseDocs(x.previousSibling.childNodes[0], "toggle");
         };
