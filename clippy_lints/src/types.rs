@@ -15,7 +15,7 @@ use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
-use syntax::ast::{FloatTy, IntTy, LitIntType, LitKind, UintTy};
+use syntax::ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
 use syntax::symbol::{sym, Symbol};
@@ -1186,7 +1186,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
                     }
                 }
                 match lit.node {
-                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::FloatUnsuffixed(_) => {},
+                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
                     _ => {
                         if cast_from.kind == cast_to.kind && !in_external_macro(cx.sess(), expr.span) {
                             span_lint(

@@ -17,7 +17,7 @@
     unused,
     dead_code
 )]
-#[allow(clippy::many_single_char_names, unused_variables, clippy::into_iter_on_array)]
+#[allow(clippy::many_single_char_names, unused_variables)]
 fn main() {
     for i in 5..5 {
         println!("{}", i);

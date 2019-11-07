@@ -969,34 +969,6 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `into_iter` calls on types which should be replaced by `iter` or
-    /// `iter_mut`.
-    ///
-    /// **Why is this bad?** Arrays and `PathBuf` do not yet have an `into_iter` method which move out
-    /// their content into an iterator. Auto-referencing resolves the `into_iter` call to its reference
-    /// instead, like `<&[T; N] as IntoIterator>::into_iter`, which just iterates over item references
-    /// like calling `iter` would. Furthermore, when the standard library actually
-    /// [implements the `into_iter` method](https://github.com/rust-lang/rust/issues/25725) which moves
-    /// the content out of the array, the original use of `into_iter` got inferred with the wrong type
-    /// and the code will be broken.
-    ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
-    /// ```rust
-    /// let _ = [1, 2, 3].into_iter().map(|x| *x).collect::<Vec<u32>>();
-    /// ```
-    /// Could be written as:
-    /// ```rust
-    /// let _ = [1, 2, 3].iter().map(|x| *x).collect::<Vec<u32>>();
-    /// ```
-    pub INTO_ITER_ON_ARRAY,
-    correctness,
-    "using `.into_iter()` on an array"
-}
-
-declare_clippy_lint! {
     /// **What it does:** Checks for `into_iter` calls on references which should be replaced by `iter`
     /// or `iter_mut`.
     ///
@@ -1133,7 +1105,6 @@ declare_lint_pass!(Methods => [
     USELESS_ASREF,
     UNNECESSARY_FOLD,
     UNNECESSARY_FILTER_MAP,
-    INTO_ITER_ON_ARRAY,
     INTO_ITER_ON_REF,
     SUSPICIOUS_MAP,
     UNINIT_ASSUMED_INIT,
@@ -2786,16 +2757,8 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
     }
 }
 
-fn ty_has_iter_method(
-    cx: &LateContext<'_, '_>,
-    self_ref_ty: Ty<'_>,
-) -> Option<(&'static Lint, &'static str, &'static str)> {
+fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(&'static str, &'static str)> {
     has_iter_method(cx, self_ref_ty).map(|ty_name| {
-        let lint = if ty_name == "array" || ty_name == "PathBuf" {
-            INTO_ITER_ON_ARRAY
-        } else {
-            INTO_ITER_ON_REF
-        };
         let mutbl = match self_ref_ty.kind {
             ty::Ref(_, _, mutbl) => mutbl,
             _ => unreachable!(),
@@ -2804,7 +2767,7 @@ fn ty_has_iter_method(
             hir::MutImmutable => "iter",
             hir::MutMutable => "iter_mut",
         };
-        (lint, ty_name, method_name)
+        (ty_name, method_name)
     })
 }
 
@@ -2812,10 +2775,10 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_
     if !match_trait_method(cx, expr, &paths::INTO_ITERATOR) {
         return;
     }
-    if let Some((lint, kind, method_name)) = ty_has_iter_method(cx, self_ref_ty) {
+    if let Some((kind, method_name)) = ty_has_iter_method(cx, self_ref_ty) {
         span_lint_and_sugg(
             cx,
-            lint,
+            INTO_ITER_ON_REF,
             method_span,
             &format!(
                 "this .into_iter() call is equivalent to .{}() and will not move the {}",

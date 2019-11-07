@@ -430,6 +430,10 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         "clippy::unused_collect",
         "`collect` has been marked as #[must_use] in rustc and that covers all cases of this lint",
     );
+    store.register_removed(
+        "clippy::into_iter_on_array",
+        "this lint has been uplifted to rustc and is now called `array_into_iter`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -584,7 +588,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &methods::FLAT_MAP_IDENTITY,
         &methods::GET_UNWRAP,
         &methods::INEFFICIENT_TO_STRING,
-        &methods::INTO_ITER_ON_ARRAY,
         &methods::INTO_ITER_ON_REF,
         &methods::ITER_CLONED_COLLECT,
         &methods::ITER_NTH,
@@ -1142,7 +1145,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&methods::FILTER_NEXT),
         LintId::of(&methods::FLAT_MAP_IDENTITY),
         LintId::of(&methods::INEFFICIENT_TO_STRING),
-        LintId::of(&methods::INTO_ITER_ON_ARRAY),
         LintId::of(&methods::INTO_ITER_ON_REF),
         LintId::of(&methods::ITER_CLONED_COLLECT),
         LintId::of(&methods::ITER_NTH),
@@ -1481,7 +1483,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&mem_discriminant::MEM_DISCRIMINANT_NON_ENUM),
         LintId::of(&mem_replace::MEM_REPLACE_WITH_UNINIT),
         LintId::of(&methods::CLONE_DOUBLE_REF),
-        LintId::of(&methods::INTO_ITER_ON_ARRAY),
         LintId::of(&methods::TEMPORARY_CSTRING_AS_PTR),
         LintId::of(&methods::UNINIT_ASSUMED_INIT),
         LintId::of(&minmax::MIN_MAX),

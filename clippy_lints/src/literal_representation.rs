@@ -373,7 +373,7 @@ impl LiteralDigitGrouping {
                     }
                 }
             },
-            LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
+            LitKind::Float(..) => {
                 // Lint floating-point literals.
                 if_chain! {
                     if let Some(src) = snippet_opt(cx, lit.span);

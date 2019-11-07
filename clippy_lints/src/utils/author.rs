@@ -9,7 +9,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::session::Session;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
-use syntax::ast::{Attribute, LitKind};
+use syntax::ast::{Attribute, LitFloatType, LitKind};
 
 declare_clippy_lint! {
     /// **What it does:** Generates clippy code that detects the offending pattern
@@ -288,10 +288,14 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     LitKind::Byte(b) => println!("    if let LitKind::Byte({}) = {}.node;", b, lit_pat),
                     // FIXME: also check int type
                     LitKind::Int(i, _) => println!("    if let LitKind::Int({}, _) = {}.node;", i, lit_pat),
-                    LitKind::Float(..) => println!("    if let LitKind::Float(..) = {}.node;", lit_pat),
-                    LitKind::FloatUnsuffixed(_) => {
-                        println!("    if let LitKind::FloatUnsuffixed(_) = {}.node;", lit_pat)
-                    },
+                    LitKind::Float(_, LitFloatType::Suffixed(_)) => println!(
+                        "    if let LitKind::Float(_, LitFloatType::Suffixed(_)) = {}.node;",
+                        lit_pat
+                    ),
+                    LitKind::Float(_, LitFloatType::Unsuffixed) => println!(
+                        "    if let LitKind::Float(_, LitFloatType::Unsuffixed) = {}.node;",
+                        lit_pat
+                    ),
                     LitKind::ByteStr(ref vec) => {
                         let vec_pat = self.next("vec");
                         println!("    if let LitKind::ByteStr(ref {}) = {}.node;", vec_pat, lit_pat);

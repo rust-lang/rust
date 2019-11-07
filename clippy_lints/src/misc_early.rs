@@ -482,8 +482,8 @@ impl MiscEarlyLints {
 
         if let LitKind::Int(value, lit_int_type) = lit.kind {
             let suffix = match lit_int_type {
-                LitIntType::Signed(ty) => ty.ty_to_string(),
-                LitIntType::Unsigned(ty) => ty.ty_to_string(),
+                LitIntType::Signed(ty) => ty.name_str(),
+                LitIntType::Unsigned(ty) => ty.name_str(),
                 LitIntType::Unsuffixed => "",
             };
 
@@ -543,8 +543,8 @@ impl MiscEarlyLints {
                     },
                 );
             }
-        } else if let LitKind::Float(_, float_ty) = lit.kind {
-            let suffix = float_ty.ty_to_string();
+        } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
+            let suffix = float_ty.name_str();
             let maybe_last_sep_idx = lit_snip.len() - suffix.len() - 1;
             if lit_snip.as_bytes()[maybe_last_sep_idx] != b'_' {
                 span_lint_and_sugg(
