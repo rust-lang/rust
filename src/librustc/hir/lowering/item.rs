@@ -317,7 +317,7 @@ impl LoweringContext<'_> {
                     // declaration (decl), not the return types.
                     let body_id = this.lower_maybe_async_body(&decl, header.asyncness.node, body);
 
-                    let (generics, fn_decl) = this.add_in_band_defs(
+                    let (generics, decl) = this.add_in_band_defs(
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
@@ -328,13 +328,8 @@ impl LoweringContext<'_> {
                             header.asyncness.node.opt_return_id()
                         ),
                     );
-
-                    hir::ItemKind::Fn(
-                        fn_decl,
-                        this.lower_fn_header(header),
-                        generics,
-                        body_id,
-                    )
+                    let sig = hir::MethodSig { decl, header: this.lower_fn_header(header) };
+                    hir::ItemKind::Fn(sig, generics, body_id)
                 })
             }
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),

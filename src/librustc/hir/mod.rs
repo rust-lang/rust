@@ -2534,7 +2534,7 @@ pub enum ItemKind {
     /// A `const` item.
     Const(P<Ty>, BodyId),
     /// A function declaration.
-    Fn(P<FnDecl>, FnHeader, Generics, BodyId),
+    Fn(MethodSig, Generics, BodyId),
     /// A module.
     Mod(Mod),
     /// An external module, e.g. `extern { .. }`.
@@ -2599,7 +2599,7 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Fn(_, ref generics, _) |
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |

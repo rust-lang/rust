@@ -219,16 +219,16 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             map::Node::Item(i) => match i.kind {
-                ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
+                ast::ItemKind::Fn(ref sig, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.hir_id,
                         ident: i.ident,
-                        decl: &decl,
+                        decl: &sig.decl,
                         body: block,
                         vis: &i.vis,
                         span: i.span,
                         attrs: &i.attrs,
-                        header,
+                        header: sig.header,
                         generics,
                     }),
                 _ => bug!("item FnLikeNode that is not fn-like"),

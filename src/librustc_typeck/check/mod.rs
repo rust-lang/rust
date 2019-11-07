@@ -815,8 +815,8 @@ fn primary_body_of(
                 hir::ItemKind::Const(ref ty, body) |
                 hir::ItemKind::Static(ref ty, _, body) =>
                     Some((body, Some(ty), None, None)),
-                hir::ItemKind::Fn(ref decl, ref header, .., body) =>
-                    Some((body, None, Some(header), Some(decl))),
+                hir::ItemKind::Fn(ref sig, .., body) =>
+                    Some((body, None, Some(&sig.header), Some(&sig.decl))),
                 _ =>
                     None,
             }
@@ -1297,7 +1297,7 @@ fn check_fn<'a, 'tcx>(
                     }
 
                     if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
-                        if let ItemKind::Fn(_, _, ref generics, _) = item.kind {
+                        if let ItemKind::Fn(_, ref generics, _) = item.kind {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1345,7 +1345,7 @@ fn check_fn<'a, 'tcx>(
                     }
 
                     if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
-                        if let ItemKind::Fn(_, _, ref generics, _) = item.kind {
+                        if let ItemKind::Fn(_, ref generics, _) = item.kind {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -4278,7 +4278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let node = self.tcx.hir().get(self.tcx.hir().get_parent_item(id));
         match node {
             Node::Item(&hir::Item {
-                kind: hir::ItemKind::Fn(_, _, _, body_id), ..
+                kind: hir::ItemKind::Fn(_, _, body_id), ..
             }) |
             Node::ImplItem(&hir::ImplItem {
                 kind: hir::ImplItemKind::Method(_, body_id), ..
@@ -4303,23 +4303,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn get_node_fn_decl(&self, node: Node<'tcx>) -> Option<(&'tcx hir::FnDecl, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
-                ident, kind: hir::ItemKind::Fn(ref decl, ..), ..
+                ident, kind: hir::ItemKind::Fn(ref sig, ..), ..
             }) => {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((decl, ident, ident.name != sym::main))
+                Some((&sig.decl, ident, ident.name != sym::main))
             }
             Node::TraitItem(&hir::TraitItem {
-                ident, kind: hir::TraitItemKind::Method(hir::MethodSig {
-                    ref decl, ..
-                }, ..), ..
-            }) => Some((decl, ident, true)),
+                ident, kind: hir::TraitItemKind::Method(ref sig, ..), ..
+            }) => Some((&sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
-                ident, kind: hir::ImplItemKind::Method(hir::MethodSig {
-                    ref decl, ..
-                }, ..), ..
-            }) => Some((decl, ident, false)),
+                ident, kind: hir::ImplItemKind::Method(ref sig, ..), ..
+            }) => Some((&sig.decl, ident, false)),
             _ => None,
         }
     }

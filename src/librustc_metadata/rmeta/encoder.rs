@@ -1095,10 +1095,10 @@ impl EncodeContext<'tcx> {
                     self.encode_rendered_const_for_body(body_id)
                 )
             }
-            hir::ItemKind::Fn(_, header, .., body) => {
+            hir::ItemKind::Fn(ref sig, .., body) => {
                 let data = FnData {
-                    asyncness: header.asyncness,
-                    constness: header.constness,
+                    asyncness: sig.header.asyncness,
+                    constness: sig.header.constness,
                     param_names: self.encode_fn_param_names_for_body(body),
                 };
 
@@ -1284,14 +1284,14 @@ impl EncodeContext<'tcx> {
 
         let mir = match item.kind {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => true,
-            hir::ItemKind::Fn(_, header, ..) => {
+            hir::ItemKind::Fn(ref sig, ..) => {
                 let generics = tcx.generics_of(def_id);
                 let needs_inline =
                     (generics.requires_monomorphization(tcx) ||
                         tcx.codegen_fn_attrs(def_id).requests_inline()) &&
                         !self.metadata_output_only();
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-                needs_inline || header.constness == hir::Constness::Const || always_encode_mir
+                needs_inline || sig.header.constness == hir::Constness::Const || always_encode_mir
             }
             _ => false,
         };

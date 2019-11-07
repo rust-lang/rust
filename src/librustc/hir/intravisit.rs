@@ -481,13 +481,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             visitor.visit_nested_body(body);
         }
-        ItemKind::Fn(ref declaration, header, ref generics, body_id) => {
+        ItemKind::Fn(ref sig, ref generics, body_id) => {
             visitor.visit_fn(FnKind::ItemFn(item.ident,
                                             generics,
-                                            header,
+                                            sig.header,
                                             &item.vis,
                                             &item.attrs),
-                             declaration,
+                             &sig.decl,
                              body_id,
                              item.span,
                              item.hir_id)
