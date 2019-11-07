@@ -429,7 +429,7 @@ impl<T> RawTable<T> {
 
     /// Returns the index of a bucket from a `Bucket`.
     #[cfg_attr(feature = "inline-more", inline)]
-    unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
+    pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
         if mem::size_of::<T>() == 0 {
             bucket.ptr as usize
         } else {
