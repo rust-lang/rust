@@ -1281,9 +1281,10 @@ pub fn main() {
             .collect::<Vec<_>>();
         run_compiler(&args, &mut callbacks, None, None)
     }).and_then(|result| result);
-    let exit_code = match result {
-        Ok(_) => EXIT_SUCCESS,
-        Err(_) => EXIT_FAILURE,
+    let exit_code = if result.is_ok() {
+        EXIT_SUCCESS
+    } else {
+        EXIT_FAILURE
     };
     // The extra `\t` is necessary to align this label with the others.
     set_time_depth(0);
