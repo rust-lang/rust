@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Write};
+use std::convert::TryFrom;
 
 use rustc::ty::layout::Size;
 
@@ -174,16 +175,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.read_scalar(buf_op)?.not_undef()?;
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
-            let count = helpers::try_into_host_usize(count)
-                .ok_or_else(|| err_unsup_format!("Program tries to read into buffer too big for this host platform"))?;
-            // We want to read at most `count` bytes
-            let mut bytes = vec![0; count];
+            let count = isize::try_from(count)
+                .map_err(|_| err_unsup_format!("Program tries to read into buffer too big for this host platform"))?;
+            // We want to read at most `count` bytes. We are sure that `count` is not negative
+            // because it was a target's `usize`. Also we are sure that its smaller than
+            // `usize::max_value()` because it is a host's `isize`.
+            let mut bytes = vec![0; count as usize];
             let result = handle.file.read(&mut bytes);
 
             match result {
                 Ok(c) => {
-                    let read_bytes = helpers::try_from_host_usize::<i64>(c)
-                        .ok_or_else(|| err_unsup_format!("Number of read bytes {} cannot be transformed to i64", c))?;
+                    let read_bytes = i64::try_from(c)
+                        .map_err(|_| err_unsup_format!("Number of read bytes {} cannot be transformed to i64", c))?;
                     // If reading to `bytes` did not fail, we write those bytes to the buffer.
                     this.memory.write_bytes(buf, bytes)?;
                     Ok(read_bytes)
@@ -221,8 +224,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let result = handle.file.write(&bytes);
 
             match result {
-                Ok(c) => helpers::try_from_host_usize::<i64>(c)
-                    .ok_or_else(|| err_unsup_format!("Number of written bytes {} cannot be transformed to i64", c).into()),
+                Ok(c) => i64::try_from(c)
+                    .map_err(|_| err_unsup_format!("Number of written bytes {} cannot be transformed to i64", c).into()),
                 Err(e) => {
                     this.set_last_error_from_io_error(e)?;
                     Ok(-1)
