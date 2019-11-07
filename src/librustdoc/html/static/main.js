@@ -265,7 +265,7 @@ function getSearchElement() {
         if (match) {
             return highlightSourceLines(match, ev);
         }
-        handleHashes();
+        handleHashes(ev);
     }
 
     function expandSection(id) {
@@ -2652,8 +2652,7 @@ function getSearchElement() {
         insertAfter(popup, getSearchElement());
     }
 
-    handleHashes();
-    highlightSourceLines();
+    onHashChange();
     window.onhashchange = onHashChange;
 
     buildHelperPopup();
