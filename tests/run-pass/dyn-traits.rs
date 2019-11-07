@@ -5,11 +5,17 @@ fn ref_box_dyn() {
 
     trait Trait {
         fn method(&self);
+
+        fn box_method(self: Box<Self>);
     }
 
     impl Trait for Struct {
         fn method(&self) {
             assert_eq!(self.0, 42);
+        }
+
+        fn box_method(self: Box<Self>) {
+            assert_eq!(self.0, 7);
         }
     }
 
@@ -27,6 +33,9 @@ fn ref_box_dyn() {
 
     let y = &y;
     y.method();
+
+    let y: Box<dyn Trait> = Box::new(Struct(7));
+    y.box_method();
 }
 
 
