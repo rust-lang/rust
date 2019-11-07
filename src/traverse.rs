@@ -420,6 +420,11 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
         _ => return,
     };
 
+    let is_enum = match old {
+        Def(Enum, _) => true,
+        _ => false,
+    };
+
     let mut variants = BTreeMap::new();
     let mut fields = BTreeMap::new();
 
@@ -457,6 +462,7 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                     let c = ChangeType::VariantStyleChanged {
                         now_struct: new.ctor_kind == CtorKind::Fictive,
                         total_private,
+                        is_enum,
                     };
                     changes.add_change(c, old_def_id, Some(tcx.def_span(new.def_id)));
 
@@ -486,6 +492,7 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                             let c = ChangeType::VariantFieldRemoved {
                                 public: o.vis == Public,
                                 total_public,
+                                is_enum,
                             };
                             changes.add_change(c, old_def_id, Some(tcx.def_span(o.did)));
                         }
@@ -493,6 +500,7 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                             let c = ChangeType::VariantFieldAdded {
                                 public: n.vis == Public,
                                 total_public,
+                                is_enum,
                             };
                             changes.add_change(c, old_def_id, Some(tcx.def_span(n.did)));
                         }

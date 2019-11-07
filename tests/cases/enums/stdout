@@ -93,12 +93,12 @@ warning: variant with no public fields changed to a struct variant (breaking)
    |
 23 |     Efg { f: u8 },
    |     ^^^^^^^^^^^^^
-warning: variant field removed from variant with private fields (breaking)
+warning: private field removed from variant with private fields (breaking)
   --> enums/old.rs:25:11
    |
 25 |     Ghi { f: u8 },
    |           ^^^^^
-warning: variant field added to variant with private fields (breaking)
+note: private field added to variant with private fields (non-breaking)
   --> enums/new.rs:25:11
    |
 25 |     Ghi { g: u8 },

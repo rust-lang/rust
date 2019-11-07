@@ -306,11 +306,11 @@ pub enum ChangeType<'tcx> {
     /// A possibly public field has been added to a variant or struct.
     ///
     /// This also records whether all fields are public were public before the change.
-    VariantFieldAdded { public: bool, total_public: bool },
+    VariantFieldAdded { public: bool, total_public: bool, is_enum: bool },
     /// A possibly public field has been removed from a variant or struct.
     ///
-    /// This also records whether all fields are public were public before the change.
-    VariantFieldRemoved { public: bool, total_public: bool },
+    /// This also records whether all fields were public before the change.
+    VariantFieldRemoved { public: bool, total_public: bool, is_enum: bool },
     /// A variant or struct has changed it's style.
     ///
     /// The style could have been changed from a tuple variant/struct to a regular
@@ -319,6 +319,7 @@ pub enum ChangeType<'tcx> {
     VariantStyleChanged {
         now_struct: bool,
         total_private: bool,
+        is_enum: bool,
     },
     /// A function has changed it's constness.
     FnConstChanged { now_const: bool },
@@ -373,8 +374,10 @@ impl<'tcx> ChangeType<'tcx> {
             TypeParameterRemoved { .. } |
             VariantAdded |
             VariantRemoved |
-            VariantFieldAdded { .. } | // TODO: this (and the two below) appear wrong
-            VariantFieldRemoved { .. } |
+            VariantFieldAdded { public: true, .. } |
+            VariantFieldAdded { public: false, total_public: true, .. } |
+            VariantFieldRemoved { public: true, .. } |
+            VariantFieldRemoved { public: false, is_enum: true, .. } |
             VariantStyleChanged { .. } |
             TypeChanged { .. } |
             FnConstChanged { now_const: false } |
@@ -396,6 +399,8 @@ impl<'tcx> ChangeType<'tcx> {
             StaticMutabilityChanged { now_mut: true } |
             VarianceLoosened |
             TypeParameterAdded { defaulted: true } |
+            VariantFieldAdded { public: false, .. } |
+            VariantFieldRemoved { public: false, .. } |
             FnConstChanged { now_const: true } => NonBreaking,
         }
     }
@@ -477,13 +482,13 @@ on said enum can become non-exhaustive."
 to the removed variant is rendered invalid."
             }
             VariantFieldAdded { .. } => {
-                "Adding a field to an enum variant is breaking, as matches on the variant are
-invalidated. In case of structs, this only holds for public fields, or the
-first private field being added."
+                "Adding a field to an enum variant or struct is breaking, as matches on the
+variant or struct are invalidated. In case of structs, this only holds for
+public fields, or the first private field being added."
             }
             VariantFieldRemoved { .. } => {
-                "Removing a field from an enum variant is breaking, as matches on the variant
-are invalidated. In case of structs, this only holds for public fields."
+                "Removing a field from an enum variant or struct is breaking, as matches on the
+variant are invalidated. In case of structs, this only holds for public fields."
             }
             VariantStyleChanged { .. } => {
                 "Changing the style of a variant is a breaking change, since most old
@@ -616,51 +621,123 @@ impl<'a> fmt::Display for ChangeType<'a> {
             VariantFieldAdded {
                 public: true,
                 total_public: true,
-            } => "public variant field added to variant with no private fields",
+                is_enum: true,
+            } => "public field added to variant with no private fields",
+            VariantFieldAdded {
+                public: true,
+                total_public: true,
+                is_enum: false,
+            } => "public field added to struct with no private fields",
             VariantFieldAdded {
                 public: true,
                 total_public: false,
-            } => "public variant field added to variant with private fields",
+                is_enum: true,
+            } => "public field added to variant with private fields",
+            VariantFieldAdded {
+                public: true,
+                total_public: false,
+                is_enum: false,
+            } => "public field added to struct with private fields",
             VariantFieldAdded {
                 public: false,
                 total_public: true,
-            } => "variant field added to variant with no private fields",
+                is_enum: true,
+            } => "private field added to variant with no private fields",
+            VariantFieldAdded {
+                public: false,
+                total_public: true,
+                is_enum: false,
+            } => "private field added to struct with no private fields",
             VariantFieldAdded {
                 public: false,
                 total_public: false,
-            } => "variant field added to variant with private fields",
+                is_enum: true,
+            } => "private field added to variant with private fields",
+            VariantFieldAdded {
+                public: false,
+                total_public: false,
+                is_enum: false,
+            } => "private field added to struct with private fields",
             VariantFieldRemoved {
                 public: true,
                 total_public: true,
-            } => "public variant field removed from variant with no private fields",
+                is_enum: true,
+            } => "public field removed from variant with no private fields",
+            VariantFieldRemoved {
+                public: true,
+                total_public: true,
+                is_enum: false,
+            } => "public field removed from struct with no private fields",
             VariantFieldRemoved {
                 public: true,
                 total_public: false,
-            } => "public variant field removed from variant with private fields",
+                is_enum: true
+            } => "public field removed from variant with private fields",
+            VariantFieldRemoved {
+                public: true,
+                total_public: false,
+                is_enum: false,
+            } => "public field removed from struct with private fields",
             VariantFieldRemoved {
                 public: false,
                 total_public: true,
-            } => "variant field removed from variant with no private fields",
+                is_enum: true,
+            } => "private field removed from variant with no private fields",
+            VariantFieldRemoved {
+                public: false,
+                total_public: true,
+                is_enum: false,
+            } => "private field removed from struct with no private fields",
             VariantFieldRemoved {
                 public: false,
                 total_public: false,
-            } => "variant field removed from variant with private fields",
+                is_enum: true,
+            } => "private field removed from variant with private fields",
+            VariantFieldRemoved {
+                public: false,
+                total_public: false,
+                is_enum: false,
+            } => "private field removed from struct with private fields",
             VariantStyleChanged {
                 now_struct: true,
                 total_private: true,
+                is_enum: true,
             } => "variant with no public fields changed to a struct variant",
             VariantStyleChanged {
                 now_struct: true,
+                total_private: true,
+                is_enum: false,
+            } => "tuple struct with no public fields changed to a regular struct",
+            VariantStyleChanged {
+                now_struct: true,
                 total_private: false,
-            } => "variant changed to a struct variant",
+                is_enum: true,
+            } => "variant with public fields changed to a struct variant",
+            VariantStyleChanged {
+                now_struct: true,
+                total_private: false,
+                is_enum: false,
+            } => "tuple struct with public fields changed to a regular struct",
             VariantStyleChanged {
                 now_struct: false,
                 total_private: true,
+                is_enum: true,
             } => "variant with no public fields changed to a tuple variant",
             VariantStyleChanged {
                 now_struct: false,
+                total_private: true,
+                is_enum: false,
+            } => "struct with no public fields changed to a tuple struct",
+            VariantStyleChanged {
+                now_struct: false,
                 total_private: false,
-            } => "variant changed to a tuple variant",
+                is_enum: true,
+            } => "variant with public fields changed to a tuple variant",
+            VariantStyleChanged {
+                now_struct: false,
+                total_private: false,
+                is_enum: false,
+            } => "struct with public fields changed to a tuple struct",
             FnConstChanged { now_const: true } => "fn item made const",
             FnConstChanged { now_const: false } => "fn item made non-const",
             MethodSelfChanged { now_self: true } => "added self-argument to method",
@@ -1210,14 +1287,17 @@ pub mod tests {
         VariantFieldAdded {
             public: bool,
             total_public: bool,
+            is_enum: bool,
         },
         VariantFieldRemoved {
             public: bool,
             total_public: bool,
+            is_enum: bool,
         },
         VariantStyleChanged {
             now_struct: bool,
             total_private: bool,
+            is_enum: bool,
         },
         FnConstChanged {
             now_const: bool,
@@ -1255,23 +1335,29 @@ pub mod tests {
                 ChangeType_::VariantFieldAdded {
                     public,
                     total_public,
+                    is_enum,
                 } => VariantFieldAdded {
                     public,
                     total_public,
+                    is_enum,
                 },
                 ChangeType_::VariantFieldRemoved {
                     public,
                     total_public,
+                    is_enum,
                 } => VariantFieldRemoved {
                     public,
                     total_public,
+                    is_enum,
                 },
                 ChangeType_::VariantStyleChanged {
                     now_struct,
                     total_private,
+                    is_enum,
                 } => VariantStyleChanged {
                     now_struct,
                     total_private,
+                    is_enum,
                 },
                 ChangeType_::FnConstChanged { now_const } => FnConstChanged { now_const },
                 ChangeType_::MethodSelfChanged { now_self } => MethodSelfChanged { now_self },
@@ -1312,14 +1398,17 @@ pub mod tests {
                 VariantFieldAdded {
                     public: b1,
                     total_public: b2,
+                    is_enum: b2,
                 },
                 VariantFieldRemoved {
                     public: b1,
                     total_public: b2,
+                    is_enum: b2,
                 },
                 VariantStyleChanged {
                     now_struct: b1,
                     total_private: b2,
+                    is_enum: b2,
                 },
                 FnConstChanged { now_const: b1 },
                 MethodSelfChanged { now_self: b1 },

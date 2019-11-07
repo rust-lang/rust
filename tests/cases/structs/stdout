@@ -71,7 +71,7 @@ error: breaking changes in `Hij`
 28 | | }
    | |_^
    |
-warning: variant with no public fields changed to a struct variant (breaking)
+warning: tuple struct with no public fields changed to a regular struct (breaking)
   --> structs/new.rs:26:1
    |
 26 | / pub struct Hij {
