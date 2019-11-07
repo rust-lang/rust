@@ -244,8 +244,13 @@ crate struct LazyPerDefTables<'tcx> {
     pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
     pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
     pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
-    pub predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
-    pub predicates_defined_on: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    pub explicit_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    // FIXME(eddyb) this would ideally be `Lazy<[...]>` but `ty::Predicate`
+    // doesn't handle shorthands in its own (de)serialization impls,
+    // as it's an `enum` for which we want to derive (de)serialization,
+    // so the `ty::codec` APIs handle the whole `&'tcx [...]` at once.
+    // Also, as an optimization, a missing entry indicates an empty `&[]`.
+    pub inferred_outlives: Lazy!(PerDefTable<Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>),
     pub super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 
     pub mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),

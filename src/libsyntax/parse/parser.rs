@@ -12,7 +12,7 @@ mod diagnostics;
 use diagnostics::Error;
 
 use crate::ast::{
-    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
+    self, Abi, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
 use crate::parse::{PResult, Directory, DirectoryOwnership};
@@ -28,7 +28,6 @@ use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::ThinVec;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
-use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
 use log::debug;
 
@@ -1121,7 +1120,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
         if self.is_crate_vis() {
             self.bump(); // `crate`
-            self.sess.gated_spans.crate_visibility_modifier.borrow_mut().push(self.prev_span);
+            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_span);
             return Ok(respan(self.prev_span, VisibilityKind::Crate(CrateSugar::JustCrate)));
         }
 
@@ -1206,48 +1205,41 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses `extern` followed by an optional ABI string, or nothing.
+    /// Parses `extern string_literal?`.
+    /// If `extern` is not found, the Rust ABI is used.
+    /// If `extern` is found and a `string_literal` does not follow, the C ABI is used.
     fn parse_extern_abi(&mut self) -> PResult<'a, Abi> {
-        if self.eat_keyword(kw::Extern) {
-            Ok(self.parse_opt_abi()?.unwrap_or(Abi::C))
+        Ok(if self.eat_keyword(kw::Extern) {
+            self.parse_opt_abi()?
         } else {
-            Ok(Abi::Rust)
-        }
+            Abi::default()
+        })
     }
 
-    /// Parses a string as an ABI spec on an extern type or module. Consumes
-    /// the `extern` keyword, if one is found.
-    fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
-        match self.token.kind {
-            token::Literal(token::Lit { kind: token::Str, symbol, suffix }) |
-            token::Literal(token::Lit { kind: token::StrRaw(..), symbol, suffix }) => {
-                self.expect_no_suffix(self.token.span, "an ABI spec", suffix);
-                self.bump();
-                match abi::lookup(&symbol.as_str()) {
-                    Some(abi) => Ok(Some(abi)),
-                    None => {
-                        self.error_on_invalid_abi(symbol);
-                        Ok(None)
-                    }
+    /// Parses a string literal as an ABI spec.
+    /// If one is not found, the "C" ABI is used.
+    fn parse_opt_abi(&mut self) -> PResult<'a, Abi> {
+        let span = if self.token.can_begin_literal_or_bool() {
+            let ast::Lit { span, kind, .. } = self.parse_lit()?;
+            match kind {
+                ast::LitKind::Str(symbol, _) => return Ok(Abi::new(symbol, span)),
+                ast::LitKind::Err(_) => {}
+                _ => {
+                    self.struct_span_err(span, "non-string ABI literal")
+                        .span_suggestion(
+                            span,
+                            "specify the ABI with a string literal",
+                            "\"C\"".to_string(),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
                 }
             }
-            _ => Ok(None),
-        }
-    }
-
-    /// Emit an error where `symbol` is an invalid ABI.
-    fn error_on_invalid_abi(&self, symbol: Symbol) {
-        let prev_span = self.prev_span;
-        struct_span_err!(
-            self.sess.span_diagnostic,
-            prev_span,
-            E0703,
-            "invalid ABI: found `{}`",
-            symbol
-        )
-        .span_label(prev_span, "invalid ABI")
-        .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
-        .emit();
+            span
+        } else {
+            self.prev_span
+        };
+        Ok(Abi::new(sym::C, span))
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.

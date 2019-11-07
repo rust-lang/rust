@@ -22,7 +22,6 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use crate::util::parser::ExprPrecedence;
 
-pub use rustc_target::abi::FloatTy;
 pub use syntax_pos::symbol::{Ident, Symbol as Name};
 
 use crate::parse::token::{self, DelimToken};
@@ -38,7 +37,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_target::spec::abi::Abi;
 
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
@@ -1401,13 +1399,22 @@ pub struct Lit {
 
 // Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
     /// e.g. `42_u32`.
     Unsigned(UintTy),
     /// e.g. `42`.
+    Unsuffixed,
+}
+
+/// Type of the float literal based on provided suffix.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+pub enum LitFloatType {
+    /// A float literal with a suffix (`1f32` or `1E10f32`).
+    Suffixed(FloatTy),
+    /// A float literal without a suffix (`1.0 or 1.0E10`).
     Unsuffixed,
 }
 
@@ -1428,9 +1435,7 @@ pub enum LitKind {
     /// An integer literal (`1`).
     Int(u128, LitIntType),
     /// A float literal (`1f64` or `1E10f64`).
-    Float(Symbol, FloatTy),
-    /// A float literal without a suffix (`1.0 or 1.0E10`).
-    FloatUnsuffixed(Symbol),
+    Float(Symbol, LitFloatType),
     /// A boolean literal.
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
@@ -1457,7 +1462,7 @@ impl LitKind {
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {
-            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => true,
+            LitKind::Int(..) | LitKind::Float(..) => true,
             _ => false,
         }
     }
@@ -1474,14 +1479,14 @@ impl LitKind {
             // suffixed variants
             LitKind::Int(_, LitIntType::Signed(..))
             | LitKind::Int(_, LitIntType::Unsigned(..))
-            | LitKind::Float(..) => true,
+            | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)
             | LitKind::ByteStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
             | LitKind::Int(_, LitIntType::Unsuffixed)
-            | LitKind::FloatUnsuffixed(..)
+            | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
             | LitKind::Err(..) => false,
         }
@@ -1553,7 +1558,36 @@ pub enum ImplItemKind {
     Macro(Mac),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl FloatTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            FloatTy::F32 => sym::f32,
+            FloatTy::F64 => sym::f64,
+        }
+    }
+
+    pub fn bit_width(self) -> usize {
+        match self {
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1563,20 +1597,8 @@ pub enum IntTy {
     I128,
 }
 
-impl fmt::Debug for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
-    }
-}
-
 impl IntTy {
-    pub fn ty_to_string(&self) -> &'static str {
+    pub fn name_str(&self) -> &'static str {
         match *self {
             IntTy::Isize => "isize",
             IntTy::I8 => "i8",
@@ -1587,7 +1609,7 @@ impl IntTy {
         }
     }
 
-    pub fn to_symbol(&self) -> Symbol {
+    pub fn name(&self) -> Symbol {
         match *self {
             IntTy::Isize => sym::isize,
             IntTy::I8 => sym::i8,
@@ -1602,7 +1624,7 @@ impl IntTy {
         // Cast to a `u128` so we can correctly print `INT128_MIN`. All integral types
         // are parsed as `u128`, so we wouldn't want to print an extra negative
         // sign.
-        format!("{}{}", val as u128, self.ty_to_string())
+        format!("{}{}", val as u128, self.name_str())
     }
 
     pub fn bit_width(&self) -> Option<usize> {
@@ -1617,7 +1639,7 @@ impl IntTy {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy, Debug)]
 pub enum UintTy {
     Usize,
     U8,
@@ -1628,7 +1650,7 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn ty_to_string(&self) -> &'static str {
+    pub fn name_str(&self) -> &'static str {
         match *self {
             UintTy::Usize => "usize",
             UintTy::U8 => "u8",
@@ -1639,7 +1661,7 @@ impl UintTy {
         }
     }
 
-    pub fn to_symbol(&self) -> Symbol {
+    pub fn name(&self) -> Symbol {
         match *self {
             UintTy::Usize => sym::usize,
             UintTy::U8 => sym::u8,
@@ -1651,7 +1673,7 @@ impl UintTy {
     }
 
     pub fn val_to_string(&self, val: u128) -> String {
-        format!("{}{}", val, self.ty_to_string())
+        format!("{}{}", val, self.name_str())
     }
 
     pub fn bit_width(&self) -> Option<usize> {
@@ -1663,18 +1685,6 @@ impl UintTy {
             UintTy::U64 => 64,
             UintTy::U128 => 128,
         })
-    }
-}
-
-impl fmt::Debug for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
     }
 }
 
@@ -2358,6 +2368,27 @@ impl Item {
     }
 }
 
+/// A reference to an ABI.
+///
+/// In AST our notion of an ABI is still syntactic unlike in `rustc_target::spec::abi::Abi`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, PartialEq)]
+pub struct Abi {
+    pub symbol: Symbol,
+    pub span: Span,
+}
+
+impl Abi {
+    pub fn new(symbol: Symbol, span: Span) -> Self {
+        Self { symbol, span }
+    }
+}
+
+impl Default for Abi {
+    fn default() -> Self {
+        Self::new(sym::Rust, DUMMY_SP)
+    }
+}
+
 /// A function header.
 ///
 /// All the information between the visibility and the name of the function is
@@ -2376,7 +2407,7 @@ impl Default for FnHeader {
             unsafety: Unsafety::Normal,
             asyncness: dummy_spanned(IsAsync::NotAsync),
             constness: dummy_spanned(Constness::NotConst),
-            abi: Abi::Rust,
+            abi: Abi::default(),
         }
     }
 }

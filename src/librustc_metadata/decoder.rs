@@ -658,20 +658,22 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
     }
 
-    crate fn get_predicates(
+    crate fn get_explicit_predicates(
         &self,
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
-        self.root.per_def.predicates.get(self, item_id).unwrap().decode((self, tcx))
+        self.root.per_def.explicit_predicates.get(self, item_id).unwrap().decode((self, tcx))
     }
 
-    crate fn get_predicates_defined_on(
+    crate fn get_inferred_outlives(
         &self,
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> ty::GenericPredicates<'tcx> {
-        self.root.per_def.predicates_defined_on.get(self, item_id).unwrap().decode((self, tcx))
+    ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+        self.root.per_def.inferred_outlives.get(self, item_id).map(|predicates| {
+            predicates.decode((self, tcx))
+        }).unwrap_or_default()
     }
 
     crate fn get_super_predicates(

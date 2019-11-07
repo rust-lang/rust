@@ -12,7 +12,6 @@ use rustc::ty::{self, Const, Instance, Ty, TyCtxt};
 use rustc::{bug, hir};
 use std::fmt::Write;
 use std::iter;
-use syntax::ast;
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
@@ -39,20 +38,9 @@ impl DefPathBasedNames<'tcx> {
             ty::Char => output.push_str("char"),
             ty::Str => output.push_str("str"),
             ty::Never => output.push_str("!"),
-            ty::Int(ast::IntTy::Isize) => output.push_str("isize"),
-            ty::Int(ast::IntTy::I8) => output.push_str("i8"),
-            ty::Int(ast::IntTy::I16) => output.push_str("i16"),
-            ty::Int(ast::IntTy::I32) => output.push_str("i32"),
-            ty::Int(ast::IntTy::I64) => output.push_str("i64"),
-            ty::Int(ast::IntTy::I128) => output.push_str("i128"),
-            ty::Uint(ast::UintTy::Usize) => output.push_str("usize"),
-            ty::Uint(ast::UintTy::U8) => output.push_str("u8"),
-            ty::Uint(ast::UintTy::U16) => output.push_str("u16"),
-            ty::Uint(ast::UintTy::U32) => output.push_str("u32"),
-            ty::Uint(ast::UintTy::U64) => output.push_str("u64"),
-            ty::Uint(ast::UintTy::U128) => output.push_str("u128"),
-            ty::Float(ast::FloatTy::F32) => output.push_str("f32"),
-            ty::Float(ast::FloatTy::F64) => output.push_str("f64"),
+            ty::Int(ty) => output.push_str(ty.name_str()),
+            ty::Uint(ty) => output.push_str(ty.name_str()),
+            ty::Float(ty) => output.push_str(ty.name_str()),
             ty::Adt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
                 self.push_generic_params(substs, iter::empty(), output, debug);
@@ -80,9 +68,7 @@ impl DefPathBasedNames<'tcx> {
             }
             ty::Ref(_, inner_type, mutbl) => {
                 output.push('&');
-                if mutbl == hir::MutMutable {
-                    output.push_str("mut ");
-                }
+                output.push_str(mutbl.prefix_str());
 
                 self.push_type_name(inner_type, output, debug);
             }
@@ -114,9 +100,7 @@ impl DefPathBasedNames<'tcx> {
             ty::Foreign(did) => self.push_def_path(did, output),
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let sig = t.fn_sig(self.tcx);
-                if sig.unsafety() == hir::Unsafety::Unsafe {
-                    output.push_str("unsafe ");
-                }
+                output.push_str(sig.unsafety().prefix_str());
 
                 let abi = sig.abi();
                 if abi != ::rustc_target::spec::abi::Abi::Rust {

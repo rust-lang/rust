@@ -127,7 +127,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::source_map::{DUMMY_SP, original_sp};
-use syntax::symbol::{kw, sym};
+use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
@@ -1800,12 +1800,12 @@ fn check_specialization_validity<'tcx>(
 
 fn check_impl_items_against_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_span: Span,
+    full_impl_span: Span,
     impl_id: DefId,
     impl_trait_ref: ty::TraitRef<'tcx>,
     impl_item_refs: &[hir::ImplItemRef],
 ) {
-    let impl_span = tcx.sess.source_map().def_span(impl_span);
+    let impl_span = tcx.sess.source_map().def_span(full_impl_span);
 
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -1925,35 +1925,132 @@ fn check_impl_items_against_trait<'tcx>(
     }
 
     if !missing_items.is_empty() {
-        let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
-            "not all trait items implemented, missing: `{}`",
-            missing_items.iter()
-                .map(|trait_item| trait_item.ident.to_string())
-                .collect::<Vec<_>>().join("`, `"));
-        err.span_label(impl_span, format!("missing `{}` in implementation",
-                missing_items.iter()
-                    .map(|trait_item| trait_item.ident.to_string())
-                    .collect::<Vec<_>>().join("`, `")));
-        for trait_item in missing_items {
-            if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
-                err.span_label(span, format!("`{}` from trait", trait_item.ident));
-            } else {
-                err.note_trait_signature(trait_item.ident.to_string(),
-                                         trait_item.signature(tcx));
-            }
-        }
-        err.emit();
+        missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
     }
 
     if !invalidated_items.is_empty() {
         let invalidator = overridden_associated_type.unwrap();
-        span_err!(tcx.sess, invalidator.span, E0399,
-                  "the following trait items need to be reimplemented \
-                   as `{}` was overridden: `{}`",
-                  invalidator.ident,
-                  invalidated_items.iter()
-                                   .map(|name| name.to_string())
-                                   .collect::<Vec<_>>().join("`, `"))
+        span_err!(
+            tcx.sess,
+            invalidator.span,
+            E0399,
+            "the following trait items need to be reimplemented as `{}` was overridden: `{}`",
+            invalidator.ident,
+            invalidated_items.iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>().join("`, `")
+        )
+    }
+}
+
+fn missing_items_err(
+    tcx: TyCtxt<'_>,
+    impl_span: Span,
+    missing_items: &[ty::AssocItem],
+    full_impl_span: Span,
+) {
+    let missing_items_msg = missing_items.iter()
+        .map(|trait_item| trait_item.ident.to_string())
+        .collect::<Vec<_>>().join("`, `");
+
+    let mut err = struct_span_err!(
+        tcx.sess,
+        impl_span,
+        E0046,
+        "not all trait items implemented, missing: `{}`",
+        missing_items_msg
+    );
+    err.span_label(impl_span, format!("missing `{}` in implementation", missing_items_msg));
+
+    // `Span` before impl block closing brace.
+    let hi = full_impl_span.hi() - BytePos(1);
+    // Point at the place right before the closing brace of the relevant `impl` to suggest
+    // adding the associated item at the end of its body.
+    let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
+    // Obtain the level of indentation ending in `sugg_sp`.
+    let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
+    // Make the whitespace that will make the suggestion have the right indentation.
+    let padding: String = (0..indentation).map(|_| " ").collect();
+
+    for trait_item in missing_items {
+        let snippet = suggestion_signature(&trait_item, tcx);
+        let code = format!("{}{}\n{}", padding, snippet, padding);
+        let msg = format!("implement the missing item: `{}`", snippet);
+        let appl = Applicability::HasPlaceholders;
+        if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
+            err.span_label(span, format!("`{}` from trait", trait_item.ident));
+            err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
+        } else {
+            err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
+        }
+    }
+    err.emit();
+}
+
+/// Return placeholder code for the given function.
+fn fn_sig_suggestion(sig: &ty::FnSig<'_>, ident: Ident) -> String {
+    let args = sig.inputs()
+        .iter()
+        .map(|ty| Some(match ty.kind {
+            ty::Param(param) if param.name == kw::SelfUpper => "self".to_string(),
+            ty::Ref(reg, ref_ty, mutability) => {
+                let reg = match &format!("{}", reg)[..] {
+                    "'_" | "" => String::new(),
+                    reg => format!("{} ", reg),
+                };
+                match ref_ty.kind {
+                    ty::Param(param) if param.name == kw::SelfUpper => {
+                        format!("&{}{}self", reg, mutability.prefix_str())
+                    }
+                    _ => format!("_: {:?}", ty),
+                }
+            }
+            _ => format!("_: {:?}", ty),
+        }))
+        .chain(std::iter::once(if sig.c_variadic {
+            Some("...".to_string())
+        } else {
+            None
+        }))
+        .filter_map(|arg| arg)
+        .collect::<Vec<String>>()
+        .join(", ");
+    let output = sig.output();
+    let output = if !output.is_unit() {
+        format!(" -> {:?}", output)
+    } else {
+        String::new()
+    };
+
+    let unsafety = sig.unsafety.prefix_str();
+    // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
+    // not be present in the `fn` definition, not will we account for renamed
+    // lifetimes between the `impl` and the `trait`, but this should be good enough to
+    // fill in a significant portion of the missing code, and other subsequent
+    // suggestions can help the user fix the code.
+    format!("{}fn {}({}){} {{ unimplemented!() }}", unsafety, ident, args, output)
+}
+
+/// Return placeholder code for the given associated item.
+/// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
+/// structured suggestion.
+fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
+    match assoc.kind {
+        ty::AssocKind::Method => {
+            // We skip the binder here because the binder would deanonymize all
+            // late-bound regions, and we don't want method signatures to show up
+            // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+            // regions just fine, showing `fn(&MyType)`.
+            fn_sig_suggestion(tcx.fn_sig(assoc.def_id).skip_binder(), assoc.ident)
+        }
+        ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
+        // FIXME(type_alias_impl_trait): we should print bounds here too.
+        ty::AssocKind::OpaqueTy => format!("type {} = Type;", assoc.ident),
+        ty::AssocKind::Const => {
+            let ty = tcx.type_of(assoc.def_id);
+            let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
+            format!("const {}: {:?} = {};", assoc.ident, ty, val)
+        }
     }
 }
 
@@ -3660,8 +3757,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
             }
-            ast::LitKind::Float(_, t) => tcx.mk_mach_float(t),
-            ast::LitKind::FloatUnsuffixed(_) => {
+            ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => tcx.mk_mach_float(t),
+            ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| {
                     match ty.kind {
                         ty::Float(_) => Some(ty),

@@ -45,10 +45,7 @@ crate fn lit_to_const<'tcx>(
             trunc(n as u128)?
         },
         LitKind::Int(n, _) => trunc(n)?,
-        LitKind::Float(n, fty) => {
-            parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
-        }
-        LitKind::FloatUnsuffixed(n) => {
+        LitKind::Float(n, _) => {
             let fty = match ty.kind {
                 ty::Float(fty) => fty,
                 _ => bug!()

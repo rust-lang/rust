@@ -1492,12 +1492,13 @@ impl GenericParamDefKind {
         }
     }
 
-    pub fn get_type(&self, cx: &DocContext<'_>) -> Option<Type> {
-        match *self {
-            GenericParamDefKind::Type { did, .. } => {
-                rustc_typeck::checked_type_of(cx.tcx, did, false).map(|t| t.clean(cx))
-            }
-            GenericParamDefKind::Const { ref ty, .. } => Some(ty.clone()),
+    // FIXME(eddyb) this either returns the default of a type parameter, or the
+    // type of a `const` parameter. It seems that the intention is to *visit*
+    // any embedded types, but `get_type` seems to be the wrong name for that.
+    pub fn get_type(&self) -> Option<Type> {
+        match self {
+            GenericParamDefKind::Type { default, .. } => default.clone(),
+            GenericParamDefKind::Const { ty, .. } => Some(ty.clone()),
             GenericParamDefKind::Lifetime => None,
         }
     }
@@ -1523,8 +1524,8 @@ impl GenericParamDef {
         self.kind.is_type()
     }
 
-    pub fn get_type(&self, cx: &DocContext<'_>) -> Option<Type> {
-        self.kind.get_type(cx)
+    pub fn get_type(&self) -> Option<Type> {
+        self.kind.get_type()
     }
 
     pub fn get_bounds(&self) -> Option<&[GenericBound]> {
@@ -1892,7 +1893,7 @@ fn get_real_types(
                             if !x.is_type() {
                                 continue
                             }
-                            if let Some(ty) = x.get_type(cx) {
+                            if let Some(ty) = x.get_type() {
                                 let adds = get_real_types(generics, &ty, cx, recurse + 1);
                                 if !adds.is_empty() {
                                     res.extend(adds);

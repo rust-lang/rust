@@ -3,11 +3,9 @@ pub use Primitive::*;
 
 use crate::spec::Target;
 
-use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_index::vec::{Idx, IndexVec};
-use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::Span;
 
 pub mod call;
@@ -534,47 +532,11 @@ impl Integer {
     }
 }
 
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
-         PartialOrd, Ord)]
+         PartialOrd, Ord, Debug)]
 pub enum FloatTy {
     F32,
     F64,
-}
-
-impl fmt::Debug for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
-    }
-}
-
-impl FloatTy {
-    pub fn ty_to_string(self) -> &'static str {
-        match self {
-            FloatTy::F32 => "f32",
-            FloatTy::F64 => "f64",
-        }
-    }
-
-    pub fn to_symbol(self) -> Symbol {
-        match self {
-            FloatTy::F32 => sym::f32,
-            FloatTy::F64 => sym::f64,
-        }
-    }
-
-    pub fn bit_width(self) -> usize {
-        match self {
-            FloatTy::F32 => 32,
-            FloatTy::F64 => 64,
-        }
-    }
 }
 
 /// Fundamental unit of memory access and layout.
