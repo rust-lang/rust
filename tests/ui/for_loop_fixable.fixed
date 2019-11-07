@@ -31,7 +31,7 @@ impl Unrelated {
     clippy::cognitive_complexity,
     clippy::similar_names
 )]
-#[allow(clippy::many_single_char_names, unused_variables, clippy::into_iter_on_array)]
+#[allow(clippy::many_single_char_names, unused_variables)]
 fn main() {
     const MAX_LEN: usize = 42;
     let mut vec = vec![1, 2, 3, 4];
@@ -101,9 +101,6 @@ fn main() {
 
     let out_vec = vec![1, 2, 3];
     for _v in out_vec {}
-
-    let array = [1, 2, 3];
-    for _v in &array {}
 
     for _v in &vec {} // these are fine
     for _v in &mut vec {} // these are fine

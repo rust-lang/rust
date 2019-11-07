@@ -5,5 +5,6 @@
 #[warn(clippy::misaligned_transmute)]
 #[warn(clippy::unused_collect)]
 #[warn(clippy::invalid_ref)]
+#[warn(clippy::into_iter_on_array)]
 
 fn main() {}

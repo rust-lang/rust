@@ -1,7 +1,6 @@
 // run-rustfix
 #![allow(clippy::useless_vec)]
 #![warn(clippy::into_iter_on_ref)]
-#![deny(clippy::into_iter_on_array)]
 
 struct X;
 use std::collections::*;
@@ -10,9 +9,7 @@ fn main() {
     for _ in &[1, 2, 3] {}
     for _ in vec![X, X] {}
     for _ in &vec![X, X] {}
-    for _ in [1, 2, 3].iter() {} //~ ERROR equivalent to .iter()
 
-    let _ = [1, 2, 3].iter(); //~ ERROR equivalent to .iter()
     let _ = vec![1, 2, 3].into_iter();
     let _ = (&vec![1, 2, 3]).iter(); //~ WARN equivalent to .iter()
     let _ = vec![1, 2, 3].into_boxed_slice().iter(); //~ WARN equivalent to .iter()

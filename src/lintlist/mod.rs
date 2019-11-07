@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 332] = [
+pub const ALL_LINTS: [Lint; 331] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -811,13 +811,6 @@ pub const ALL_LINTS: [Lint; 332] = [
         desc: "integer division may cause loss of precision",
         deprecation: None,
         module: "integer_division",
-    },
-    Lint {
-        name: "into_iter_on_array",
-        group: "correctness",
-        desc: "using `.into_iter()` on an array",
-        deprecation: None,
-        module: "methods",
     },
     Lint {
         name: "into_iter_on_ref",
