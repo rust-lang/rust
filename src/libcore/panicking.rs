@@ -20,6 +20,8 @@
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
+// ignore-tidy-undocumented-unsafe
+
 #![allow(dead_code, missing_docs)]
 #![unstable(feature = "core_panic",
             reason = "internal details of the implementation of the `panic!` \

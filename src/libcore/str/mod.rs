@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+// ignore-tidy-undocumented-unsafe
 
 //! String manipulation.
 //!

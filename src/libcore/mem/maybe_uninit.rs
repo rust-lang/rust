@@ -1,6 +1,8 @@
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
 
+// ignore-tidy-undocumented-unsafe
+
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
 /// # Initialization invariant
