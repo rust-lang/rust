@@ -5,7 +5,7 @@ use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, Angle
 use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
 use crate::parse::token::{self, Token};
 use crate::source_map::{Span, BytePos};
-use crate::symbol::kw;
+use syntax_pos::symbol::{kw, sym};
 
 use std::mem;
 use log::debug;
@@ -426,7 +426,7 @@ impl<'a> Parser<'a> {
 
                 // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
                 if let AssocTyConstraintKind::Bound { .. } = kind {
-                    self.sess.gated_spans.associated_type_bounds.borrow_mut().push(span);
+                    self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                 }
 
                 constraints.push(AssocTyConstraint {

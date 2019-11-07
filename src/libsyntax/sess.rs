@@ -19,39 +19,53 @@ use std::str;
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
 #[derive(Default)]
-crate struct GatedSpans {
-    /// Spans collected for gating `let_chains`, e.g. `if a && let b = c {}`.
-    crate let_chains: Lock<Vec<Span>>,
-    /// Spans collected for gating `async_closure`, e.g. `async || ..`.
-    crate async_closure: Lock<Vec<Span>>,
-    /// Spans collected for gating `yield e?` expressions (`generators` gate).
-    crate yields: Lock<Vec<Span>>,
-    /// Spans collected for gating `or_patterns`, e.g. `Some(Foo | Bar)`.
-    crate or_patterns: Lock<Vec<Span>>,
-    /// Spans collected for gating `const_extern_fn`, e.g. `const extern fn foo`.
-    crate const_extern_fn: Lock<Vec<Span>>,
-    /// Spans collected for gating `trait_alias`, e.g. `trait Foo = Ord + Eq;`.
-    pub trait_alias: Lock<Vec<Span>>,
-    /// Spans collected for gating `associated_type_bounds`, e.g. `Iterator<Item: Ord>`.
-    pub associated_type_bounds: Lock<Vec<Span>>,
-    /// Spans collected for gating `crate_visibility_modifier`, e.g. `crate fn`.
-    pub crate_visibility_modifier: Lock<Vec<Span>>,
-    /// Spans collected for gating `const_generics`, e.g. `const N: usize`.
-    pub const_generics: Lock<Vec<Span>>,
-    /// Spans collected for gating `decl_macro`, e.g. `macro m() {}`.
-    pub decl_macro: Lock<Vec<Span>>,
-    /// Spans collected for gating `box_patterns`, e.g. `box 0`.
-    pub box_patterns: Lock<Vec<Span>>,
-    /// Spans collected for gating `exclusive_range_pattern`, e.g. `0..2`.
-    pub exclusive_range_pattern: Lock<Vec<Span>>,
-    /// Spans collected for gating `try_blocks`, e.g. `try { a? + b? }`.
-    pub try_blocks: Lock<Vec<Span>>,
-    /// Spans collected for gating `label_break_value`, e.g. `'label: { ... }`.
-    pub label_break_value: Lock<Vec<Span>>,
-    /// Spans collected for gating `box_syntax`, e.g. `box $expr`.
-    pub box_syntax: Lock<Vec<Span>>,
-    /// Spans collected for gating `type_ascription`, e.g. `42: usize`.
-    pub type_ascription: Lock<Vec<Span>>,
+pub struct GatedSpans {
+    pub spans: Lock<FxHashMap<Symbol, Vec<Span>>>,
+}
+
+impl GatedSpans {
+    /// Feature gate the given `span` under the given `feature`
+    /// which is same `Symbol` used in `active.rs`.
+    pub fn gate(&self, feature: Symbol, span: Span) {
+        self.spans
+            .borrow_mut()
+            .entry(feature)
+            .or_default()
+            .push(span);
+    }
+
+    /// Ungate the last span under the given `feature`.
+    /// Panics if the given `span` wasn't the last one.
+    ///
+    /// Using this is discouraged unless you have a really good reason to.
+    pub fn ungate_last(&self, feature: Symbol, span: Span) {
+        let removed_span = self.spans
+            .borrow_mut()
+            .entry(feature)
+            .or_default()
+            .pop()
+            .unwrap();
+        debug_assert_eq!(span, removed_span);
+    }
+
+    /// Is the provided `feature` gate ungated currently?
+    ///
+    /// Using this is discouraged unless you have a really good reason to.
+    pub fn is_ungated(&self, feature: Symbol) -> bool {
+        self.spans
+            .borrow()
+            .get(&feature)
+            .map_or(true, |spans| spans.is_empty())
+    }
+
+    /// Prepend the given set of `spans` onto the set in `self`.
+    pub fn merge(&self, mut spans: FxHashMap<Symbol, Vec<Span>>) {
+        let mut inner = self.spans.borrow_mut();
+        for (gate, mut gate_spans) in inner.drain() {
+            spans.entry(gate).or_default().append(&mut gate_spans);
+        }
+        *inner = spans;
+    }
 }
 
 /// Info about a parsing session.
@@ -72,7 +86,7 @@ pub struct ParseSess {
     /// analysis.
     pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
     pub injected_crate_name: Once<Symbol>,
-    crate gated_spans: GatedSpans,
+    pub gated_spans: GatedSpans,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
     pub reached_eof: Lock<bool>,
 }

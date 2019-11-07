@@ -3,7 +3,8 @@ use super::{Parser, PResult};
 use crate::ast::{self, WhereClause, GenericParam, GenericParamKind, GenericBounds, Attribute};
 use crate::parse::token;
 use crate::source_map::DUMMY_SP;
-use crate::symbol::kw;
+
+use syntax_pos::symbol::{kw, sym};
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -62,7 +63,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        self.sess.gated_spans.const_generics.borrow_mut().push(lo.to(self.prev_span));
+        self.sess.gated_spans.gate(sym::const_generics, lo.to(self.prev_span));
 
         Ok(GenericParam {
             ident,

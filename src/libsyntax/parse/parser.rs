@@ -1120,7 +1120,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
         if self.is_crate_vis() {
             self.bump(); // `crate`
-            self.sess.gated_spans.crate_visibility_modifier.borrow_mut().push(self.prev_span);
+            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_span);
             return Ok(respan(self.prev_span, VisibilityKind::Crate(CrateSugar::JustCrate)));
         }
 

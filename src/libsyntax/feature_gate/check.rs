@@ -870,18 +870,17 @@ pub fn check_crate(krate: &ast::Crate,
     maybe_stage_features(&parse_sess.span_diagnostic, krate, unstable);
     let mut visitor = PostExpansionVisitor { parse_sess, features };
 
+    let spans = parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
-        ($gate:ident, $msg:literal) => { gate_all!($gate, $gate, $msg); };
-        ($spans:ident, $gate:ident, $msg:literal) => {
-            for span in &*parse_sess.gated_spans.$spans.borrow() {
+        ($gate:ident, $msg:literal) => {
+            for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
                 gate_feature!(&visitor, $gate, *span, $msg);
             }
         }
     }
-
     gate_all!(let_chains, "`let` expressions in this position are experimental");
     gate_all!(async_closure, "async closures are unstable");
-    gate_all!(yields, generators, "yield syntax is experimental");
+    gate_all!(generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
 
@@ -892,7 +891,7 @@ pub fn check_crate(krate: &ast::Crate,
             // FIXME(eddyb) do something more useful than always
             // disabling these uses of early feature-gatings.
             if false {
-                for span in &*parse_sess.gated_spans.$gate.borrow() {
+                for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
                     gate_feature!(&visitor, $gate, *span, $msg);
                 }
             }
@@ -909,7 +908,6 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(try_blocks, "`try` blocks are unstable");
     gate_all!(label_break_value, "labels on blocks are unstable");
     gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
-
     // To avoid noise about type ascription in common syntax errors,
     // only emit if it is the *only* error. (Also check it last.)
     if parse_sess.span_diagnostic.err_count() == 0 {

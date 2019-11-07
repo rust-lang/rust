@@ -29,7 +29,7 @@ use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
-use std::slice;
+use std::{mem, slice};
 
 use errors::Applicability;
 use rustc_data_structures::sync::Lrc;
@@ -182,7 +182,6 @@ fn generic_extension<'cx>(
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_failure: Option<(Token, &str)> = None;
-
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -190,8 +189,18 @@ fn generic_extension<'cx>(
             _ => cx.span_bug(sp, "malformed macro lhs"),
         };
 
+        // Take a snapshot of the state of pre-expansion gating at this point.
+        // This is used so that if a matcher is not `Success(..)`ful,
+        // then the spans which became gated when parsing the unsucessful matcher
+        // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
+        let mut gated_spans_snaphot = mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+
         match parse_tt(cx, lhs_tt, arg.clone()) {
             Success(named_matches) => {
+                // The matcher was `Success(..)`ful.
+                // Merge the gated spans from parsing the matcher with the pre-existing ones.
+                cx.parse_sess.gated_spans.merge(gated_spans_snaphot);
+
                 let rhs = match rhses[i] {
                     // ignore delimiters
                     mbe::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
@@ -248,6 +257,10 @@ fn generic_extension<'cx>(
             },
             Error(err_sp, ref msg) => cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]),
         }
+
+        // The matcher was not `Success(..)`ful.
+        // Restore to the state before snapshotting and maybe try again.
+        mem::swap(&mut gated_spans_snaphot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
     }
 
     let (token, label) = best_failure.expect("ran no matchers");

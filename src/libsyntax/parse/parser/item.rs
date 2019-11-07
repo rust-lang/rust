@@ -146,9 +146,7 @@ impl<'a> Parser<'a> {
                 let unsafety = self.parse_unsafety();
 
                 if self.check_keyword(kw::Extern) {
-                    self.sess.gated_spans.const_extern_fn.borrow_mut().push(
-                        lo.to(self.token.span)
-                    );
+                    self.sess.gated_spans.gate(sym::const_extern_fn, lo.to(self.token.span));
                 }
                 let abi = self.parse_extern_abi()?;
                 self.bump(); // `fn`
@@ -831,7 +829,7 @@ impl<'a> Parser<'a> {
                     .emit();
             }
 
-            self.sess.gated_spans.trait_alias.borrow_mut().push(whole_span);
+            self.sess.gated_spans.gate(sym::trait_alias, whole_span);
 
             Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
         } else {
@@ -1711,7 +1709,7 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_span);
 
         if !def.legacy {
-            self.sess.gated_spans.decl_macro.borrow_mut().push(span);
+            self.sess.gated_spans.gate(sym::decl_macro, span);
         }
 
         Ok(Some(self.mk_item(span, ident, ItemKind::MacroDef(def), vis.clone(), attrs.to_vec())))
