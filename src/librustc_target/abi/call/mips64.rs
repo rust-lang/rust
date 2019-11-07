@@ -23,8 +23,8 @@ fn float_reg<'a, Ty, C>(cx: &C, ret: &ArgAbi<'a, Ty>, i: usize) -> Option<Reg>
 {
     match ret.layout.field(cx, i).abi {
         abi::Abi::Scalar(ref scalar) => match scalar.value {
-            abi::Float(abi::FloatTy::F32) => Some(Reg::f32()),
-            abi::Float(abi::FloatTy::F64) => Some(Reg::f64()),
+            abi::F32 => Some(Reg::f32()),
+            abi::F64 => Some(Reg::f64()),
             _ => None
         },
         _ => None
@@ -107,7 +107,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 
                 // We only care about aligned doubles
                 if let abi::Abi::Scalar(ref scalar) = field.abi {
-                    if let abi::Float(abi::FloatTy::F64) = scalar.value {
+                    if let abi::F64 = scalar.value {
                         if offset.is_aligned(dl.f64_align.abi) {
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_aligned(dl.f64_align.abi));

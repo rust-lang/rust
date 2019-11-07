@@ -18,7 +18,7 @@ use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
-use rustc_target::abi::{FloatTy, HasDataLayout};
+use rustc_target::abi::HasDataLayout;
 use syntax::ast;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
@@ -163,12 +163,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
                             }
-                            Primitive::Float(FloatTy::F64) |
+                            Primitive::F64 |
                             Primitive::Pointer => {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.
-                            Primitive::Float(FloatTy::F32) => {
+                            Primitive::F32 => {
                                 bug!("the va_arg intrinsic does not work with `f32`")
                             }
                         }

@@ -1904,8 +1904,8 @@ fn prepare_enum_metadata(
 
             let discr_type = match discr.value {
                 layout::Int(t, _) => t,
-                layout::Float(layout::FloatTy::F32) => Integer::I32,
-                layout::Float(layout::FloatTy::F64) => Integer::I64,
+                layout::F32 => Integer::I32,
+                layout::F64 => Integer::I64,
                 layout::Pointer => cx.data_layout().ptr_sized_integer(),
             }.to_ty(cx.tcx, false);
 
