@@ -546,3 +546,118 @@ impl Step for TestHelpers {
             .compile("rust_test_helpers");
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Sanitizers {
+    pub target: Interned<String>,
+}
+
+impl Step for Sanitizers {
+    type Output = Vec<SanitizerRuntime>;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/llvm-project/compiler-rt").path("src/sanitizers")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Sanitizers { target: run.target });
+    }
+
+    /// Builds sanitizer runtime libraries.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_rt_dir.exists() {
+            return Vec::new();
+        }
+
+        let out_dir = builder.native_dir(self.target).join("sanitizers");
+        let runtimes = supported_sanitizers(&out_dir, self.target);
+        if runtimes.is_empty() {
+            return runtimes;
+        }
+
+        let llvm_config = builder.ensure(Llvm { target: builder.config.build });
+        if builder.config.dry_run {
+            return runtimes;
+        }
+
+        let done_stamp = out_dir.join("sanitizers-finished-building");
+        if done_stamp.exists() {
+            builder.info(&format!(
+                "Assuming that sanitizers rebuild is not necessary. \
+                To force a rebuild, remove the file `{}`",
+                done_stamp.display()
+            ));
+            return runtimes;
+        }
+
+        builder.info(&format!("Building sanitizers for {}", self.target));
+        let _time = util::timeit(&builder);
+
+        let mut cfg = cmake::Config::new(&compiler_rt_dir);
+        cfg.target(&self.target);
+        cfg.host(&builder.config.build);
+        cfg.profile("Release");
+
+        cfg.define("CMAKE_C_COMPILER_TARGET", self.target);
+        cfg.define("COMPILER_RT_BUILD_BUILTINS", "OFF");
+        cfg.define("COMPILER_RT_BUILD_CRT", "OFF");
+        cfg.define("COMPILER_RT_BUILD_LIBFUZZER", "OFF");
+        cfg.define("COMPILER_RT_BUILD_PROFILE", "OFF");
+        cfg.define("COMPILER_RT_BUILD_SANITIZERS", "ON");
+        cfg.define("COMPILER_RT_BUILD_XRAY", "OFF");
+        cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
+        cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
+        cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+
+        t!(fs::create_dir_all(&out_dir));
+        cfg.out_dir(out_dir);
+
+        for runtime in &runtimes {
+            cfg.build_target(&runtime.cmake_target);
+            cfg.build();
+        }
+
+        t!(fs::write(&done_stamp, b""));
+
+        runtimes
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SanitizerRuntime {
+    /// CMake target used to build the runtime.
+    pub cmake_target: String,
+    /// Path to the built runtime library.
+    pub path: PathBuf,
+    /// Library filename that will be used rustc.
+    pub name: String,
+}
+
+/// Returns sanitizers available on a given target.
+fn supported_sanitizers(out_dir: &Path, target: Interned<String>) -> Vec<SanitizerRuntime> {
+    let mut result = Vec::new();
+    match &*target {
+        "x86_64-apple-darwin" => {
+            for s in &["asan", "lsan", "tsan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}_osx_dynamic", s),
+                    path: out_dir
+                        .join(&format!("build/lib/darwin/libclang_rt.{}_osx_dynamic.dylib", s)),
+                    name: format!("librustc_rt.{}.dylib", s),
+                });
+            }
+        }
+        "x86_64-unknown-linux-gnu" => {
+            for s in &["asan", "lsan", "msan", "tsan"] {
+                result.push(SanitizerRuntime {
+                    cmake_target: format!("clang_rt.{}-x86_64", s),
+                    path: out_dir.join(&format!("build/lib/linux/libclang_rt.{}-x86_64.a", s)),
+                    name: format!("librustc_rt.{}.a", s),
+                });
+            }
+        }
+        _ => {}
+    }
+    result
+}

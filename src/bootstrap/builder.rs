@@ -343,6 +343,7 @@ impl<'a> Builder<'a> {
                 tool::Rustdoc,
                 tool::Clippy,
                 native::Llvm,
+                native::Sanitizers,
                 tool::Rustfmt,
                 tool::Miri,
                 native::Lld

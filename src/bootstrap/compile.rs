@@ -87,7 +87,7 @@ impl Step for Std {
         target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
-        std_cargo(builder, &compiler, target, &mut cargo);
+        std_cargo(builder, target, &mut cargo);
 
         builder.info(&format!(
             "Building stage{} std artifacts ({} -> {})",
@@ -153,17 +153,18 @@ fn copy_third_party_objects(
         copy_and_stamp(Path::new(&src), "libunwind.a");
     }
 
+    if builder.config.sanitizers && compiler.stage != 0 {
+        // The sanitizers are only copied in stage1 or above,
+        // to avoid creating dependency on LLVM.
+        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+    }
+
     target_deps
 }
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(
-    builder: &Builder<'_>,
-    compiler: &Compiler,
-    target: Interned<String>,
-    cargo: &mut Cargo,
-) {
+pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Cargo) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -205,19 +206,6 @@ pub fn std_cargo(
     } else {
         let mut features = builder.std_features();
         features.push_str(&compiler_builtins_c_feature);
-
-        if compiler.stage != 0 && builder.config.sanitizers {
-            // This variable is used by the sanitizer runtime crates, e.g.
-            // rustc_lsan, to build the sanitizer runtime from C code
-            // When this variable is missing, those crates won't compile the C code,
-            // so we don't set this variable during stage0 where llvm-config is
-            // missing
-            // We also only build the runtimes when --enable-sanitizers (or its
-            // config.toml equivalent) is used
-            let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
-            cargo.env("LLVM_CONFIG", llvm_config);
-            cargo.env("RUSTC_BUILD_SANITIZERS", "1");
-        }
 
         cargo
             .arg("--features")
@@ -276,31 +264,43 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
-
-        if builder.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
-            // The sanitizers are only built in stage1 or above, so the dylibs will
-            // be missing in stage0 and causes panic. See the `std()` function above
-            // for reason why the sanitizers are not built in stage0.
-            copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
-        }
     }
 }
 
-fn copy_apple_sanitizer_dylibs(
+/// Copies sanitizer runtime libraries into target libdir.
+fn copy_sanitizers(
     builder: &Builder<'_>,
-    native_dir: &Path,
-    platform: &str,
-    into: &Path,
-) {
-    for &sanitizer in &["asan", "tsan"] {
-        let filename = format!("lib__rustc__clang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
-        let mut src_path = native_dir.join(sanitizer);
-        src_path.push("build");
-        src_path.push("lib");
-        src_path.push("darwin");
-        src_path.push(&filename);
-        builder.copy(&src_path, &into.join(filename));
+    compiler: &Compiler,
+    target: Interned<String>,
+) -> Vec<PathBuf> {
+    let runtimes: Vec<native::SanitizerRuntime> = builder.ensure(native::Sanitizers { target });
+
+    if builder.config.dry_run {
+        return Vec::new();
     }
+
+    let mut target_deps = Vec::new();
+    let libdir = builder.sysroot_libdir(*compiler, target);
+
+    for runtime in &runtimes {
+        let dst = libdir.join(&runtime.name);
+        builder.copy(&runtime.path, &dst);
+
+        if target == "x86_64-apple-darwin" {
+            // Update the library install name reflect the fact it has been renamed.
+            let status = Command::new("install_name_tool")
+                .arg("-id")
+                .arg(format!("@rpath/{}", runtime.name))
+                .arg(&dst)
+                .status()
+                .expect("failed to execute `install_name_tool`");
+            assert!(status.success());
+        }
+
+        target_deps.push(dst);
+    }
+
+    target_deps
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
