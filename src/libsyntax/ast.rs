@@ -1579,7 +1579,6 @@ pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(FnSig, P<Block>),
     TyAlias(P<Ty>),
-    OpaqueTy(GenericBounds),
     Macro(Mac),
 }
 
@@ -2483,10 +2482,6 @@ pub enum ItemKind {
     ///
     /// E.g., `type Foo = Bar<u8>;`.
     TyAlias(P<Ty>, Generics),
-    /// An opaque `impl Trait` type alias.
-    ///
-    /// E.g., `type Foo = impl Bar + Boo;`.
-    OpaqueTy(GenericBounds, Generics),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2540,7 +2535,6 @@ impl ItemKind {
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::TyAlias(..) => "type alias",
-            ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",

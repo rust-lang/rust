@@ -263,10 +263,6 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             visitor.visit_generics(generics)
         }
-        ItemKind::OpaqueTy(ref bounds, ref generics) => {
-            walk_list!(visitor, visit_param_bound, bounds);
-            visitor.visit_generics(generics)
-        }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
@@ -627,9 +623,6 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
         }
         ImplItemKind::TyAlias(ref ty) => {
             visitor.visit_ty(ty);
-        }
-        ImplItemKind::OpaqueTy(ref bounds) => {
-            walk_list!(visitor, visit_param_bound, bounds);
         }
         ImplItemKind::Macro(ref mac) => {
             visitor.visit_mac(mac);
