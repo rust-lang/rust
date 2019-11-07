@@ -1146,10 +1146,6 @@ fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
     );
 }
 
-fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
-    checked_type_of(tcx, def_id, true).unwrap()
-}
-
 fn infer_placeholder_type(
     tcx: TyCtxt<'_>,
     def_id: DefId,
@@ -1193,26 +1189,14 @@ fn infer_placeholder_type(
     ty
 }
 
-/// Same as [`type_of`] but returns [`Option`] instead of failing.
-///
-/// If you want to fail anyway, you can set the `fail` parameter to true, but in this case,
-/// you'd better just call [`type_of`] directly.
-pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<'_>> {
+fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     use rustc::hir::*;
 
-    let hir_id = match tcx.hir().as_local_hir_id(def_id) {
-        Some(hir_id) => hir_id,
-        None => {
-            if !fail {
-                return None;
-            }
-            bug!("invalid node");
-        }
-    };
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    Some(match tcx.hir().get(hir_id) {
+    match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Method(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1229,9 +1213,6 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             },
             TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
             TraitItemKind::Type(_, None) => {
-                if !fail {
-                    return None;
-                }
                 span_bug!(item.span, "associated type missing default");
             }
         },
@@ -1325,9 +1306,6 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 | ItemKind::GlobalAsm(..)
                 | ItemKind::ExternCrate(..)
                 | ItemKind::Use(..) => {
-                    if !fail {
-                        return None;
-                    }
                     span_bug!(
                         item.span,
                         "compute_type_of_item: unexpected item type: {:?}",
@@ -1365,7 +1343,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             ..
         }) => {
             if gen.is_some() {
-                return Some(tcx.typeck_tables_of(def_id).node_type(hir_id));
+                return tcx.typeck_tables_of(def_id).node_type(hir_id);
             }
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1440,13 +1418,9 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                     .map(|(index, _)| index)
                                     .next()
                             })
-                            .or_else(|| {
-                                if !fail {
-                                    None
-                                } else {
-                                    bug!("no arg matching AnonConst in path")
-                                }
-                            })?;
+                            .unwrap_or_else(|| {
+                                bug!("no arg matching AnonConst in path");
+                            });
 
                         // We've encountered an `AnonConst` in some path, so we need to
                         // figure out which generic parameter it corresponds to and return
@@ -1456,8 +1430,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                 tcx.generics_of(tcx.parent(def_id).unwrap())
                             }
                             Res::Def(_, def_id) => tcx.generics_of(def_id),
-                            Res::Err => return Some(tcx.types.err),
-                            _ if !fail => return None,
+                            Res::Err => return tcx.types.err,
                             res => {
                                 tcx.sess.delay_span_bug(
                                     DUMMY_SP,
@@ -1466,7 +1439,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                         res,
                                     ),
                                 );
-                                return Some(tcx.types.err);
+                                return tcx.types.err;
                             }
                         };
 
@@ -1484,9 +1457,6 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                             // probably from an extra arg where one is not needed.
                             .unwrap_or(tcx.types.err)
                     } else {
-                        if !fail {
-                            return None;
-                        }
                         tcx.sess.delay_span_bug(
                             DUMMY_SP,
                             &format!(
@@ -1494,14 +1464,11 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                 parent_node,
                             ),
                         );
-                        return Some(tcx.types.err);
+                        return tcx.types.err;
                     }
                 }
 
                 x => {
-                    if !fail {
-                        return None;
-                    }
                     tcx.sess.delay_span_bug(
                         DUMMY_SP,
                         &format!(
@@ -1551,21 +1518,13 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 }
                 ty
             }
-            x => {
-                if !fail {
-                    return None;
-                }
-                bug!("unexpected non-type Node::GenericParam: {:?}", x)
-            },
+            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
         x => {
-            if !fail {
-                return None;
-            }
             bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
         }
-    })
+    }
 }
 
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
@@ -2075,10 +2034,7 @@ fn explicit_predicates_of(
         }
     }
 
-    let hir_id = match tcx.hir().as_local_hir_id(def_id) {
-        Some(hir_id) => hir_id,
-        None => return tcx.predicates_of(def_id),
-    };
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
