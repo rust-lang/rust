@@ -361,6 +361,9 @@ impl<'a> Linker for GccLinker<'a> {
             self.cmd.arg("-dynamiclib");
             self.linker_arg("-dylib");
 
+            // some symbols may be defined in the program loading the library
+            self.linker_arg("-undefined,dynamic_lookup");
+
             // Note that the `osx_rpath_install_name` option here is a hack
             // purely to support rustbuild right now, we should get a more
             // principled solution at some point to force the compiler to pass
