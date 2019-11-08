@@ -586,6 +586,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     _ => false,
                 }
             } => {
+                // Optimized handling for arrays of integer/float type.
+
                 // bailing out for zsts is ok, since the array element type can only be int/float
                 if op.layout.is_zst() {
                     return Ok(());
@@ -605,6 +607,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
+                // This is the optimization: we just check the entire range at once.
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
                 // In run-time mode, we accept pointers in here.  This is actually more
@@ -614,7 +617,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept undef, for consistency with the slow path.
-                match self.ecx.memory.get(ptr.alloc_id)?.check_bytes(
+                match self.ecx.memory.get_raw(ptr.alloc_id)?.check_bytes(
                     self.ecx,
                     ptr,
                     size,
