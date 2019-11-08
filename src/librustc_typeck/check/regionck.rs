@@ -825,7 +825,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
-    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt_<'tcx>> {
+    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::Place<'tcx>> {
         debug!("constrain_adjustments(expr={:?})", expr);
 
         let mut cmt = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
@@ -921,7 +921,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         )
     }
 
-    fn check_safety_of_rvalue_destructor_if_necessary(&mut self, cmt: &mc::cmt_<'tcx>, span: Span) {
+    fn check_safety_of_rvalue_destructor_if_necessary(&mut self, cmt: &mc::Place<'tcx>, span: Span) {
         if let Categorization::Rvalue = cmt.cat {
             let typ = self.resolve_type(cmt.ty);
             let body_id = self.body_id;
@@ -1100,7 +1100,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_autoref(
         &self,
         expr: &hir::Expr,
-        expr_cmt: &mc::cmt_<'tcx>,
+        expr_cmt: &mc::Place<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {
         debug!(
@@ -1130,7 +1130,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         span: Span,
         id: hir::HirId,
         mutbl: hir::Mutability,
-        cmt_borrowed: &mc::cmt_<'tcx>,
+        cmt_borrowed: &mc::Place<'tcx>,
     ) {
         debug!(
             "link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={:?})",
@@ -1153,7 +1153,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         span: Span,
         borrow_region: ty::Region<'tcx>,
         borrow_kind: ty::BorrowKind,
-        borrow_cmt: &mc::cmt_<'tcx>,
+        borrow_cmt: &mc::Place<'tcx>,
     ) {
         let origin = infer::DataBorrowed(borrow_cmt.ty, span);
         self.type_must_outlive(origin, borrow_cmt.ty, borrow_region);

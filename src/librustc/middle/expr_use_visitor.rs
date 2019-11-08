@@ -25,13 +25,13 @@ use syntax_pos::Span;
 pub trait Delegate<'tcx> {
     // The value found at `cmt` is either copied or moved, depending
     // on mode.
-    fn consume(&mut self, cmt: &mc::cmt_<'tcx>, mode: ConsumeMode);
+    fn consume(&mut self, cmt: &mc::Place<'tcx>, mode: ConsumeMode);
 
     // The value found at `cmt` is being borrowed with kind `bk`.
-    fn borrow(&mut self, cmt: &mc::cmt_<'tcx>, bk: ty::BorrowKind);
+    fn borrow(&mut self, cmt: &mc::Place<'tcx>, bk: ty::BorrowKind);
 
     // The path at `cmt` is being assigned to.
-    fn mutate(&mut self, assignee_cmt: &mc::cmt_<'tcx>);
+    fn mutate(&mut self, assignee_cmt: &mc::Place<'tcx>);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -180,7 +180,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.mc.tcx
     }
 
-    fn delegate_consume(&mut self, cmt: &mc::cmt_<'tcx>) {
+    fn delegate_consume(&mut self, cmt: &mc::Place<'tcx>) {
         debug!("delegate_consume(cmt={:?})", cmt);
 
         let mode = copy_or_move(&self.mc, self.param_env, cmt);
@@ -528,7 +528,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// after all relevant autoderefs have occurred.
     fn walk_autoref(&mut self,
                     expr: &hir::Expr,
-                    cmt_base: &mc::cmt_<'tcx>,
+                    cmt_base: &mc::Place<'tcx>,
                     autoref: &adjustment::AutoBorrow<'tcx>) {
         debug!("walk_autoref(expr.hir_id={} cmt_base={:?} autoref={:?})",
                expr.hir_id,
@@ -645,7 +645,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         closure_hir_id: hir::HirId,
                         closure_span: Span,
                         var_id: hir::HirId)
-                        -> mc::McResult<mc::cmt_<'tcx>> {
+                        -> mc::McResult<mc::Place<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // perspective of the creator (parent) of the closure.
         let var_ty = self.mc.node_ty(var_id)?;
@@ -656,7 +656,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 fn copy_or_move<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    cmt: &mc::cmt_<'tcx>,
+    cmt: &mc::Place<'tcx>,
 ) -> ConsumeMode {
     if !mc.type_is_copy_modulo_regions(param_env, cmt.ty, cmt.span) {
         Move

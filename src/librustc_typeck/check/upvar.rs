@@ -312,7 +312,7 @@ struct InferBorrowKind<'a, 'tcx> {
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     fn adjust_upvar_borrow_kind_for_consume(
         &mut self,
-        cmt: &mc::cmt_<'tcx>,
+        cmt: &mc::Place<'tcx>,
         mode: euv::ConsumeMode,
     ) {
         debug!(
@@ -388,7 +388,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     /// Indicates that `cmt` is being directly mutated (e.g., assigned
     /// to). If cmt contains any by-ref upvars, this implies that
     /// those upvars must be borrowed using an `&mut` borrow.
-    fn adjust_upvar_borrow_kind_for_mut(&mut self, cmt: &mc::cmt_<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_mut(&mut self, cmt: &mc::Place<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={:?})", cmt);
 
         match cmt.cat.clone() {
@@ -421,7 +421,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn adjust_upvar_borrow_kind_for_unique(&mut self, cmt: &mc::cmt_<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_unique(&mut self, cmt: &mc::Place<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={:?})", cmt);
 
         match cmt.cat.clone() {
@@ -452,7 +452,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
     fn try_adjust_upvar_deref(
         &mut self,
-        cmt: &mc::cmt_<'tcx>,
+        cmt: &mc::Place<'tcx>,
         borrow_kind: ty::BorrowKind,
     ) -> bool {
         assert!(match borrow_kind {
@@ -586,12 +586,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn consume(&mut self, cmt: &mc::cmt_<'tcx>,mode: euv::ConsumeMode) {
+    fn consume(&mut self, cmt: &mc::Place<'tcx>,mode: euv::ConsumeMode) {
         debug!("consume(cmt={:?},mode={:?})", cmt, mode);
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
 
-    fn borrow(&mut self, cmt: &mc::cmt_<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &mc::Place<'tcx>, bk: ty::BorrowKind) {
         debug!("borrow(cmt={:?}, bk={:?})", cmt, bk);
 
         match bk {
@@ -605,7 +605,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn mutate(&mut self, assignee_cmt: &mc::cmt_<'tcx>) {
+    fn mutate(&mut self, assignee_cmt: &mc::Place<'tcx>) {
         debug!("mutate(assignee_cmt={:?})", assignee_cmt);
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_cmt);
