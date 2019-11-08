@@ -53,7 +53,7 @@ help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it
   |                                          ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:8:5
+  --> $DIR/invalid-syntax.rs:9:5
    |
 LL |   /// ```
    |  _____^
@@ -75,7 +75,7 @@ error: unknown start of token: \
   | ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:19:5
+  --> $DIR/invalid-syntax.rs:21:5
    |
 LL |   /// ```
    |  _____^
@@ -95,7 +95,7 @@ error: unknown start of token: \
   | ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:32:5
+  --> $DIR/invalid-syntax.rs:35:5
    |
 LL |   /// ```rust
    |  _____^
@@ -110,7 +110,7 @@ error: unknown start of token: \
   |     ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:41:9
+  --> $DIR/invalid-syntax.rs:45:9
    |
 LL |   ///     code with bad syntax
    |  _________^
@@ -151,7 +151,7 @@ help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it
   |   ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:55:9
+  --> $DIR/invalid-syntax.rs:60:9
    |
 LL | ///     ```
    |         ^^^
@@ -163,7 +163,7 @@ error: unknown start of token: \
   | ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:58:5
+  --> $DIR/invalid-syntax.rs:64:5
    |
 LL |   /// ```edition2018
    |  _____^
@@ -178,7 +178,7 @@ error: unknown start of token: \
   | ^
 
 warning: doc comment contains an invalid Rust code block
-  --> $DIR/invalid-syntax.rs:63:1
+  --> $DIR/invalid-syntax.rs:70:1
    |
 LL | / #[doc = "```"]
 LL | | /// \_
@@ -188,7 +188,7 @@ LL | | #[doc = "```"]
    = help: mark blocks that do not contain Rust code as text: ```text
 
 warning: Rust code block is empty
-  --> $DIR/invalid-syntax.rs:68:5
+  --> $DIR/invalid-syntax.rs:76:5
    |
 LL |   /// ```rust
    |  _____^
@@ -196,7 +196,7 @@ LL | | /// ```
    | |_______^
 
 warning: Rust code block is empty
-  --> $DIR/invalid-syntax.rs:72:5
+  --> $DIR/invalid-syntax.rs:81:5
    |
 LL |   /// ```
    |  _____^
@@ -217,7 +217,7 @@ error: unknown start of token: \
   | ^
 
 warning: could not parse code block as Rust code
-  --> $DIR/invalid-syntax.rs:82:9
+  --> $DIR/invalid-syntax.rs:92:9
    |
 LL | ///     \____/
    |         ^^^^^^
