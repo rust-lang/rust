@@ -16,6 +16,7 @@ use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
+use rustc::session::config::{PpMode, PpSourceMode};
 use rustc::session::search_paths::PathKind;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -394,8 +395,12 @@ fn configure_and_expand_inner<'a>(
 
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
-    if sess.opts.actually_rustdoc {
-        util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
+    let mut should_loop = sess.opts.actually_rustdoc;
+    if let Some((PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops), _)) = sess.opts.pretty {
+        should_loop |= true;
+    }
+    if should_loop {
+        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
 
     let has_proc_macro_decls = time(sess, "AST validation", || {

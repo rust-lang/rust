@@ -3506,6 +3506,7 @@ dependencies = [
  "rustc_mir",
  "rustc_plugin",
  "rustc_plugin_impl",
+ "rustc_resolve",
  "rustc_save_analysis",
  "rustc_target",
  "serialize",

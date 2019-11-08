@@ -1,10 +1,13 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
+// ignore-tidy-filelength
+
 use crate::lint;
 use crate::middle::cstore;
 use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
+use crate::hir::map as hir_map;
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -440,6 +443,8 @@ top_level_options!(
         // `true` if we're emitting JSON blobs about each artifact produced
         // by the compiler.
         json_artifact_notifications: bool [TRACKED],
+
+        pretty: Option<(PpMode, Option<UserIdentifiedItem>)> [UNTRACKED],
     }
 );
 
@@ -621,6 +626,7 @@ impl Default for Options {
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
+            pretty: None,
         }
     }
 }
@@ -2516,6 +2522,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let remap_path_prefix = parse_remap_path_prefix(matches, error_format);
 
+    let pretty = parse_pretty(matches, &debugging_opts, error_format);
+
     Options {
         crate_types,
         optimize: opt_level,
@@ -2546,6 +2554,73 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         remap_path_prefix,
         edition,
         json_artifact_notifications,
+        pretty,
+    }
+}
+
+fn parse_pretty(
+    matches: &getopts::Matches,
+    debugging_opts: &DebuggingOptions,
+    efmt: ErrorOutputType,
+) -> Option<(PpMode, Option<UserIdentifiedItem>)> {
+    let pretty = if debugging_opts.unstable_options {
+        matches.opt_default("pretty", "normal").map(|a| {
+            // stable pretty-print variants only
+            parse_pretty_inner(efmt, &a, false)
+        })
+    } else {
+        None
+    };
+
+    return if pretty.is_none() {
+        debugging_opts.unpretty.as_ref().map(|a| {
+            // extended with unstable pretty-print variants
+            parse_pretty_inner(efmt, &a, true)
+        })
+    } else {
+        pretty
+    };
+
+    fn parse_pretty_inner(
+        efmt: ErrorOutputType,
+        name: &str,
+        extended: bool,
+    ) -> (PpMode, Option<UserIdentifiedItem>) {
+        use PpMode::*;
+        use PpSourceMode::*;
+        let mut split = name.splitn(2, '=');
+        let first = split.next().unwrap();
+        let opt_second = split.next();
+        let first = match (first, extended) {
+            ("normal", _) => PpmSource(PpmNormal),
+            ("identified", _) => PpmSource(PpmIdentified),
+            ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
+            ("expanded", _) => PpmSource(PpmExpanded),
+            ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
+            ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
+            ("hir", true) => PpmHir(PpmNormal),
+            ("hir,identified", true) => PpmHir(PpmIdentified),
+            ("hir,typed", true) => PpmHir(PpmTyped),
+            ("hir-tree", true) => PpmHirTree(PpmNormal),
+            ("mir", true) => PpmMir,
+            ("mir-cfg", true) => PpmMirCFG,
+            _ => {
+                if extended {
+                    early_error(efmt, &format!("argument to `unpretty` must be one of `normal`, \
+                                        `expanded`, `identified`, `expanded,identified`, \
+                                        `expanded,hygiene`, `everybody_loops`, \
+                                        `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
+                                        `mir` or `mir-cfg`; got {}",
+                                        name));
+                } else {
+                    early_error(efmt, &format!("argument to `pretty` must be one of `normal`, \
+                                        `expanded`, `identified`, or `expanded,identified`; got {}",
+                                        name));
+                }
+            }
+        };
+        let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>().ok());
+        (first, opt_second)
     }
 }
 
@@ -2653,6 +2728,151 @@ impl fmt::Display for CrateType {
             CrateType::Cdylib => "cdylib".fmt(f),
             CrateType::ProcMacro => "proc-macro".fmt(f),
         }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PpSourceMode {
+    PpmNormal,
+    PpmEveryBodyLoops,
+    PpmExpanded,
+    PpmIdentified,
+    PpmExpandedIdentified,
+    PpmExpandedHygiene,
+    PpmTyped,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PpMode {
+    PpmSource(PpSourceMode),
+    PpmHir(PpSourceMode),
+    PpmHirTree(PpSourceMode),
+    PpmMir,
+    PpmMirCFG,
+}
+
+impl PpMode {
+    pub fn needs_ast_map(&self, opt_uii: &Option<UserIdentifiedItem>) -> bool {
+        use PpMode::*;
+        use PpSourceMode::*;
+        match *self {
+            PpmSource(PpmNormal) |
+            PpmSource(PpmEveryBodyLoops) |
+            PpmSource(PpmIdentified) => opt_uii.is_some(),
+
+            PpmSource(PpmExpanded) |
+            PpmSource(PpmExpandedIdentified) |
+            PpmSource(PpmExpandedHygiene) |
+            PpmHir(_) |
+            PpmHirTree(_) |
+            PpmMir |
+            PpmMirCFG => true,
+            PpmSource(PpmTyped) => panic!("invalid state"),
+        }
+    }
+
+    pub fn needs_analysis(&self) -> bool {
+        use PpMode::*;
+        match *self {
+            PpmMir | PpmMirCFG => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum UserIdentifiedItem {
+    ItemViaNode(ast::NodeId),
+    ItemViaPath(Vec<String>),
+}
+
+impl FromStr for UserIdentifiedItem {
+    type Err = ();
+    fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
+        use UserIdentifiedItem::*;
+        Ok(s.parse()
+            .map(ast::NodeId::from_u32)
+            .map(ItemViaNode)
+            .unwrap_or_else(|_| ItemViaPath(s.split("::").map(|s| s.to_string()).collect())))
+    }
+}
+
+pub enum NodesMatchingUII<'a> {
+    NodesMatchingDirect(std::option::IntoIter<ast::NodeId>),
+    NodesMatchingSuffix(Box<dyn Iterator<Item = ast::NodeId> + 'a>),
+}
+
+impl<'a> Iterator for NodesMatchingUII<'a> {
+    type Item = ast::NodeId;
+
+    fn next(&mut self) -> Option<ast::NodeId> {
+        use NodesMatchingUII::*;
+        match self {
+            &mut NodesMatchingDirect(ref mut iter) => iter.next(),
+            &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        use NodesMatchingUII::*;
+        match self {
+            &NodesMatchingDirect(ref iter) => iter.size_hint(),
+            &NodesMatchingSuffix(ref iter) => iter.size_hint(),
+        }
+    }
+}
+
+impl UserIdentifiedItem {
+    pub fn reconstructed_input(&self) -> String {
+        use UserIdentifiedItem::*;
+        match *self {
+            ItemViaNode(node_id) => node_id.to_string(),
+            ItemViaPath(ref parts) => parts.join("::"),
+        }
+    }
+
+    pub fn all_matching_node_ids<'a, 'hir>(&'a self,
+                                       map: &'a hir_map::Map<'hir>)
+                                       -> NodesMatchingUII<'a> {
+        use UserIdentifiedItem::*;
+        use NodesMatchingUII::*;
+        match *self {
+            ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
+            ItemViaPath(ref parts) => {
+                NodesMatchingSuffix(Box::new(map.nodes_matching_suffix(&parts)))
+            }
+        }
+    }
+
+    pub fn to_one_node_id(self,
+                      user_option: &str,
+                      sess: &Session,
+                      map: &hir_map::Map<'_>)
+                      -> ast::NodeId {
+        let fail_because = |is_wrong_because| -> ast::NodeId {
+            let message = format!("{} needs NodeId (int) or unique path suffix (b::c::d); got \
+                                   {}, which {}",
+                                  user_option,
+                                  self.reconstructed_input(),
+                                  is_wrong_because);
+            sess.fatal(&message)
+        };
+
+        let mut saw_node = ast::DUMMY_NODE_ID;
+        let mut seen = 0;
+        for node in self.all_matching_node_ids(map) {
+            saw_node = node;
+            seen += 1;
+            if seen > 1 {
+                fail_because("does not resolve uniquely");
+            }
+        }
+        if seen == 0 {
+            fail_because("does not resolve to any item");
+        }
+
+        assert!(seen == 1);
+        return saw_node;
     }
 }
 
