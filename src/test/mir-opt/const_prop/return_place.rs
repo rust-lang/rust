@@ -46,10 +46,7 @@ fn main() {
 // START rustc.add.PreCodegen.before.mir
 // fn add() -> u32 {
 //     let mut _0: u32;
-//     let mut _1: (u32, bool);
 //     bb0: {
-//         (_1.0: u32) = const 4u32;
-//         (_1.1: bool) = const false;
 //         _0 = const 4u32;
 //         return;
 //     }
