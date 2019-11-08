@@ -540,8 +540,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             kind, new_tag, ptr.tag, place.layout.ty, ptr.erase_tag(), size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
-        let alloc = this.memory.get(ptr.alloc_id)?;
-        let stacked_borrows = alloc.extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+        let extra = &this.memory.get_raw(ptr.alloc_id)?.extra;
+        let stacked_borrows = extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!
