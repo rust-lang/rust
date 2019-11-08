@@ -14,8 +14,8 @@ use crate::{
     attr::Attr,
     db::DefDatabase2,
     nameres::{
-        diagnostics::DefDiagnostic, mod_resolution::ModDir, per_ns::PerNs, raw, CrateDefMap,
-        ModuleData, ReachedFixedPoint, Resolution, ResolveMode,
+        diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
+        per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
     AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionId,
