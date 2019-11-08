@@ -28,6 +28,11 @@ fn host_libs() -> PathBuf {
 }
 
 #[must_use]
+fn target_libs() -> Option<PathBuf> {
+    option_env!("TARGET_LIBS").map(PathBuf::from)
+}
+
+#[must_use]
 fn rustc_test_suite() -> Option<PathBuf> {
     option_env!("RUSTC_TEST_SUITE").map(PathBuf::from)
 }
@@ -57,8 +62,14 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
     // See https://github.com/rust-lang/rust-clippy/issues/4015.
     let needs_disambiguation = ["serde", "regex", "clippy_lints"];
     // This assumes that deps are compiled (they are for Cargo integration tests).
-    let deps = std::fs::read_dir(host_libs().join("deps")).unwrap();
+    let deps = fs::read_dir(host_libs().join("deps")).unwrap();
+    let deps: Vec<_> = if let Some(target_libs) = target_libs() {
+        deps.chain(fs::read_dir(target_libs.join("deps")).unwrap()).collect()
+    } else {
+        deps.collect()
+    };
     let disambiguated = deps
+        .into_iter()
         .filter_map(|dep| {
             let path = dep.ok()?.path();
             let name = path.file_name()?.to_string_lossy();
@@ -75,8 +86,9 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
         .collect::<Vec<_>>();
 
     config.target_rustcflags = Some(format!(
-        "-L {0} -L {0}/deps -Dwarnings -Zui-testing {1}",
+        "-L {0} -L {0}/deps {1} -Dwarnings -Zui-testing {2}",
         host_libs().display(),
+        target_libs().map_or_else(String::new, |path| format!("-L {0} -L {0}/deps", path.display())),
         disambiguated.join(" ")
     ));
 
