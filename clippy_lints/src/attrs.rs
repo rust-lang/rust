@@ -355,7 +355,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
 }
 
 fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item) -> bool {
-    if let ItemKind::Fn(_, _, _, eid) = item.kind {
+    if let ItemKind::Fn(_, _, eid) = item.kind {
         is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
     } else {
         true

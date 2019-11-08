@@ -1408,7 +1408,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
-            TraitItemKind::Method(MethodSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
+            TraitItemKind::Method(FnSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
         }
@@ -2118,10 +2118,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                     );
                 }
             },
-            ItemKind::Fn(ref decl, .., ref generics, body_id) => {
+            ItemKind::Fn(ref sig, ref generics, body_id) => {
                 let body = cx.tcx.hir().body(body_id);
 
-                for ty in &decl.inputs {
+                for ty in &sig.decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
                     vis.visit_ty(ty);
 
