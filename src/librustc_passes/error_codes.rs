@@ -633,7 +633,7 @@ At the moment, `if` and `match`, as well as the looping constructs `for`,
 `while`, and `loop`, are forbidden inside a `const`, `static`, or `const fn`.
 
 ```compile_fail,E0744
-const _: {
+const _: i32 = {
     let mut x = 0;
     loop {
         x += 1;
