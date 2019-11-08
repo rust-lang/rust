@@ -28,7 +28,6 @@ install:
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     - rustup default stable
     - rustup uninstall beta
-    - rustup component remove rust-docs & exit 0
     - rustup update
     # Install "master" toolchain
     - cargo install rustup-toolchain-install-master & exit 0
