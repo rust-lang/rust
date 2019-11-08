@@ -86,7 +86,7 @@ error: expected one of `!` or `::`, found reserved identifier `_`
   --> $DIR/underscore_item_not_const.rs:28:7
    |
 LL | union _ { f: u8 }
-   |       ^ expected one of `!` or `::` here
+   |       ^ expected one of `!` or `::`
 
 error: aborting due to 15 previous errors
 

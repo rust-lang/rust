@@ -72,7 +72,7 @@ pub fn method_signature(
     id: NodeId,
     ident: ast::Ident,
     generics: &ast::Generics,
-    m: &ast::MethodSig,
+    m: &ast::FnSig,
     scx: &SaveContext<'_, '_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
@@ -376,7 +376,7 @@ impl Sig for ast::Item {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ref decl, header, ref generics, _) => {
+            ast::ItemKind::Fn(ast::FnSig { ref decl, header }, ref generics, _) => {
                 let mut text = String::new();
                 if header.constness.node == ast::Constness::Const {
                     text.push_str("const ");
@@ -932,7 +932,7 @@ fn make_method_signature(
     id: NodeId,
     ident: ast::Ident,
     generics: &ast::Generics,
-    m: &ast::MethodSig,
+    m: &ast::FnSig,
     scx: &SaveContext<'_, '_>,
 ) -> Result {
     // FIXME code dup with function signature

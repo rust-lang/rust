@@ -2,7 +2,7 @@ error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}
   --> $DIR/issue-32446.rs:4:11
    |
 LL | trait T { ... }
-   |           ^^^ expected one of 7 possible tokens here
+   |           ^^^ expected one of 7 possible tokens
 
 error: aborting due to previous error
 

@@ -3,7 +3,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens here
+   | |                    ^^^^^ expected one of 8 possible tokens
 LL | | }
    | |_- in this expansion of `pong!`
 ...
@@ -15,7 +15,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens here
+   | |                    ^^^^^ expected one of 8 possible tokens
 LL | | }
    | |_- in this expansion of `pong!`
 ...
@@ -35,7 +35,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens here
+   | |                    ^^^^^ expected one of 8 possible tokens
 LL | | }
    | |_- in this expansion of `pong!` (#5)
 ...

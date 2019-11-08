@@ -731,7 +731,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         match item.kind {
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
-            ItemKind::Fn(_, _, ref generics, _) => {
+            ItemKind::Fn(_, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes),
                                             |this| visit::walk_item(this, item));
             }
@@ -1539,25 +1539,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 if is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err {
                     partial_res
                 } else {
-                    // Add a temporary hack to smooth the transition to new struct ctor
-                    // visibility rules. See #38932 for more details.
-                    let mut res = None;
-                    if let Res::Def(DefKind::Struct, def_id) = partial_res.base_res() {
-                        if let Some((ctor_res, ctor_vis))
-                                = self.r.struct_constructors.get(&def_id).cloned() {
-                            if is_expected(ctor_res) &&
-                               self.r.is_accessible_from(ctor_vis, self.parent_scope.module) {
-                                let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
-                                self.r.lint_buffer.buffer_lint(lint, id, span,
-                                    "private struct constructors are not usable through \
-                                     re-exports in outer modules",
-                                );
-                                res = Some(PartialRes::new(ctor_res));
-                            }
-                        }
-                    }
-
-                    res.unwrap_or_else(|| report_errors(self, Some(partial_res.base_res())))
+                    report_errors(self, Some(partial_res.base_res()))
                 }
             }
             Some(partial_res) if source.defer_to_typeck() => {

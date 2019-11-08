@@ -23,7 +23,6 @@ pub(super) struct ModulePath {
 pub(super) struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
-    warn: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -57,17 +56,10 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
-                let ModulePathSuccess { path, directory_ownership, warn } =
+                let ModulePathSuccess { path, directory_ownership } =
                     self.submod_path(id, &outer_attrs, id_span)?;
-                let (module, mut attrs) =
+                let (module, attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
-                // Record that we fetched the mod from an external file.
-                if warn {
-                    let attr = attr::mk_attr_outer(
-                        attr::mk_word_item(Ident::with_dummy_span(sym::warn_directory_ownership)));
-                    attr::mark_known(&attr);
-                    attrs.push(attr);
-                }
                 Ok((id, ItemKind::Mod(module), Some(attrs)))
             } else {
                 let placeholder = ast::Mod {
@@ -138,17 +130,16 @@ impl<'a> Parser<'a> {
                     // `#[path]` included and contains a `mod foo;` declaration.
                     // If you encounter this, it's your own darn fault :P
                     Some(_) => DirectoryOwnership::Owned { relative: None },
-                    _ => DirectoryOwnership::UnownedViaMod(true),
+                    _ => DirectoryOwnership::UnownedViaMod,
                 },
                 path,
-                warn: false,
             });
         }
 
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
             DirectoryOwnership::UnownedViaBlock |
-            DirectoryOwnership::UnownedViaMod(_) => None,
+            DirectoryOwnership::UnownedViaMod => None,
         };
         let paths = Parser::default_submod_path(
                         id, relative, &self.directory.path, self.sess.source_map());
@@ -169,12 +160,7 @@ impl<'a> Parser<'a> {
                 }
                 Err(err)
             }
-            DirectoryOwnership::UnownedViaMod(warn) => {
-                if warn {
-                    if let Ok(result) = paths.result {
-                        return Ok(ModulePathSuccess { warn: true, ..result });
-                    }
-                }
+            DirectoryOwnership::UnownedViaMod => {
                 let mut err = self.diagnostic().struct_span_err(id_sp,
                     "cannot declare a new module at this location");
                 if !id_sp.is_dummy() {
@@ -252,14 +238,12 @@ impl<'a> Parser<'a> {
                 directory_ownership: DirectoryOwnership::Owned {
                     relative: Some(id),
                 },
-                warn: false,
             }),
             (false, true) => Ok(ModulePathSuccess {
                 path: secondary_path,
                 directory_ownership: DirectoryOwnership::Owned {
                     relative: None,
                 },
-                warn: false,
             }),
             (false, false) => Err(Error::FileNotFoundForModule {
                 mod_name: mod_name.clone(),

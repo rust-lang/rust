@@ -49,21 +49,21 @@ impl<'hir> Entry<'hir> {
         match self.node {
             Node::Item(ref item) => {
                 match item.kind {
-                    ItemKind::Fn(ref fn_decl, _, _, _) => Some(fn_decl),
+                    ItemKind::Fn(ref sig, _, _) => Some(&sig.decl),
                     _ => None,
                 }
             }
 
             Node::TraitItem(ref item) => {
                 match item.kind {
-                    TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    TraitItemKind::Method(ref sig, _) => Some(&sig.decl),
                     _ => None
                 }
             }
 
             Node::ImplItem(ref item) => {
                 match item.kind {
-                    ImplItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    ImplItemKind::Method(ref sig, _) => Some(&sig.decl),
                     _ => None,
                 }
             }
@@ -85,7 +85,7 @@ impl<'hir> Entry<'hir> {
                 match item.kind {
                     ItemKind::Const(_, body) |
                     ItemKind::Static(.., body) |
-                    ItemKind::Fn(_, _, _, body) => Some(body),
+                    ItemKind::Fn(.., body) => Some(body),
                     _ => None,
                 }
             }
@@ -605,7 +605,7 @@ impl<'hir> Map<'hir> {
                 Node::TraitItem(ref trait_item) => Some(&trait_item.generics),
                 Node::Item(ref item) => {
                     match item.kind {
-                        ItemKind::Fn(_, _, ref generics, _) |
+                        ItemKind::Fn(_, ref generics, _) |
                         ItemKind::TyAlias(_, ref generics) |
                         ItemKind::Enum(_, ref generics) |
                         ItemKind::Struct(_, ref generics) |
@@ -702,9 +702,9 @@ impl<'hir> Map<'hir> {
                 ..
             }) => true,
             Node::Item(&Item {
-                kind: ItemKind::Fn(_, header, ..),
+                kind: ItemKind::Fn(ref sig, ..),
                 ..
-            }) => header.constness == Constness::Const,
+            }) => sig.header.constness == Constness::Const,
             _ => false,
         }
     }

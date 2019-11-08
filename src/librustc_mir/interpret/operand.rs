@@ -248,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(ImmTy {
                     imm: scalar.into(),
@@ -266,10 +266,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
                 let b_ptr = ptr.offset(b_offset, self)?;
                 let a_val = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, a_ptr, a_size)?;
                 let b_val = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(ImmTy {
                     imm: Immediate::ScalarPair(a_val, b_val),

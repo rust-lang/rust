@@ -2,7 +2,7 @@ error: expected one of `!`, `::`, or `;`, found `(`
   --> $DIR/issue-60933.rs:2:43
    |
 LL |     let u: usize = std::mem:size_of::<u32>();
-   |                            -              ^ expected one of `!`, `::`, or `;` here
+   |                            -              ^ expected one of `!`, `::`, or `;`
    |                            |
    |                            help: maybe write a path separator here: `::`
    |

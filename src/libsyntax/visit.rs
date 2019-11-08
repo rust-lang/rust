@@ -25,7 +25,7 @@ pub enum FnKind<'a> {
     ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
 
     /// E.g., `fn foo(&self)`.
-    Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
+    Method(Ident, &'a FnSig, Option<&'a Visibility>, &'a Block),
 
     /// E.g., `|x, y| body`.
     Closure(&'a Expr),
@@ -244,12 +244,11 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemKind::Fn(ref declaration, ref header, ref generics, ref body) => {
+        ItemKind::Fn(ref sig, ref generics, ref body) => {
             visitor.visit_generics(generics);
-            visitor.visit_fn_header(header);
-            visitor.visit_fn(FnKind::ItemFn(item.ident, header,
-                                            &item.vis, body),
-                             declaration,
+            visitor.visit_fn_header(&sig.header);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, &sig.header, &item.vis, body),
+                             &sig.decl,
                              item.span,
                              item.id)
         }

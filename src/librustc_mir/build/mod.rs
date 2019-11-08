@@ -30,17 +30,22 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
         Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
-        | Node::Item(hir::Item { kind: hir::ItemKind::Fn(decl, _, _, body_id), .. })
+        | Node::Item(
+            hir::Item {
+                kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),
+                ..
+            }
+        )
         | Node::ImplItem(
             hir::ImplItem {
-                kind: hir::ImplItemKind::Method(hir::MethodSig { decl, .. }, body_id),
+                kind: hir::ImplItemKind::Method(hir::FnSig { decl, .. }, body_id),
                 ..
             }
         )
         | Node::TraitItem(
             hir::TraitItem {
                 kind: hir::TraitItemKind::Method(
-                    hir::MethodSig { decl, .. },
+                    hir::FnSig { decl, .. },
                     hir::TraitMethod::Provided(body_id),
                 ),
                 ..

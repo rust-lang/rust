@@ -2,7 +2,7 @@ error: expected one of `extern`, `fn`, or `{`, found `std`
   --> $DIR/unsafe-block-without-braces.rs:3:9
    |
 LL |     unsafe //{
-   |           - expected one of `extern`, `fn`, or `{` here
+   |           - expected one of `extern`, `fn`, or `{`
 LL |         std::mem::transmute::<f32, u32>(1.0);
    |         ^^^ unexpected token
 

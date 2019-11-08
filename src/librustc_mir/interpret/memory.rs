@@ -210,7 +210,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let new_ptr = self.allocate(new_size, new_align, kind);
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
-            None => self.get(ptr.alloc_id)?.size,
+            None => self.get_raw(ptr.alloc_id)?.size,
         };
         self.copy(
             ptr,
@@ -480,7 +480,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         ).0)
     }
 
-    pub fn get(
+    /// Gives raw access to the `Allocation`, without bounds or alignment checks.
+    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCtx` instead!
+    pub fn get_raw(
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
@@ -513,7 +515,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    pub fn get_mut(
+    /// Gives raw mutable access to the `Allocation`, without bounds or alignment checks.
+    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCtx` instead!
+    pub fn get_raw_mut(
         &mut self,
         id: AllocId,
     ) -> InterpResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
@@ -555,7 +559,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
         // # Regular allocations
-        // Don't use `self.get` here as that will
+        // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a static's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
@@ -627,7 +631,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
-        self.get_mut(id)?.mutability = Mutability::Immutable;
+        self.get_raw_mut(id)?.mutability = Mutability::Immutable;
         Ok(())
     }
 
@@ -776,7 +780,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(ptr) => ptr,
             None => return Ok(&[]), // zero-sized access
         };
-        self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
+        self.get_raw(ptr.alloc_id)?.get_bytes(self, ptr, size)
     }
 
     /// Reads a 0-terminated sequence of bytes from memory. Returns them as a slice.
@@ -784,7 +788,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// Performs appropriate bounds checks.
     pub fn read_c_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
         let ptr = self.force_ptr(ptr)?; // We need to read at least 1 byte, so we *need* a ptr.
-        self.get(ptr.alloc_id)?.read_c_str(self, ptr)
+        self.get_raw(ptr.alloc_id)?.read_c_str(self, ptr)
     }
 
     /// Writes the given stream of bytes into memory.
@@ -804,7 +808,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             None => return Ok(()), // zero-sized access
         };
         let tcx = self.tcx.tcx;
-        self.get_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
+        self.get_raw_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
     }
 
     /// Expects the caller to have checked bounds and alignment.
@@ -832,16 +836,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // since we don't want to keep any relocations at the target.
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
-        let relocations = self.get(src.alloc_id)?
+        let relocations = self.get_raw(src.alloc_id)?
             .prepare_relocation_copy(self, src, size, dest, length);
 
         let tcx = self.tcx.tcx;
 
         // This checks relocation edges on the src.
-        let src_bytes = self.get(src.alloc_id)?
+        let src_bytes = self.get_raw(src.alloc_id)?
             .get_bytes_with_undef_and_ptr(&tcx, src, size)?
             .as_ptr();
-        let dest_bytes = self.get_mut(dest.alloc_id)?
+        let dest_bytes = self.get_raw_mut(dest.alloc_id)?
             .get_bytes_mut(&tcx, dest, size * length)?
             .as_mut_ptr();
 
@@ -880,7 +884,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // copy definedness to the destination
         self.copy_undef_mask(src, dest, size, length)?;
         // copy the relocations to the destination
-        self.get_mut(dest.alloc_id)?.mark_relocation_range(relocations);
+        self.get_raw_mut(dest.alloc_id)?.mark_relocation_range(relocations);
 
         Ok(())
     }
@@ -899,11 +903,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
 
-        let src_alloc = self.get(src.alloc_id)?;
+        let src_alloc = self.get_raw(src.alloc_id)?;
         let compressed = src_alloc.compress_undef_range(src, size);
 
         // now fill in all the data
-        let dest_allocation = self.get_mut(dest.alloc_id)?;
+        let dest_allocation = self.get_raw_mut(dest.alloc_id)?;
         dest_allocation.mark_compressed_undef_range(&compressed, dest, size, repeat);
 
         Ok(())
@@ -915,7 +919,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         match scalar {
             Scalar::Ptr(ptr) => Ok(ptr),
-            _ => M::int_to_ptr(&self, scalar.to_usize(self)?)
+            _ => M::int_to_ptr(&self, scalar.to_machine_usize(self)?)
         }
     }
 

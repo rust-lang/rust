@@ -533,10 +533,10 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Fn(ref decl, header, ref param_names, body) => {
+            hir::ItemKind::Fn(ref sig, ref param_names, body) => {
                 self.head("");
-                self.print_fn(decl,
-                              header,
+                self.print_fn(&sig.decl,
+                              sig.header,
                               Some(item.ident.name),
                               param_names,
                               &item.vis,
@@ -835,7 +835,7 @@ impl<'a> State<'a> {
     }
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
-                            m: &hir::MethodSig,
+                            m: &hir::FnSig,
                             generics: &hir::Generics,
                             vis: &hir::Visibility,
                             arg_names: &[ast::Ident],

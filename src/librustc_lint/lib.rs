@@ -339,6 +339,18 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/57742");
     store.register_removed("incoherent_fundamental_impls",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
+    store.register_removed("legacy_constructor_visibility",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/39207");
+    store.register_removed("legacy_disrectory_ownership",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
+    store.register_removed("safe_extern_statics",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
+    store.register_removed("parenthesized_params_in_types_and_modules",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/42238");
+    store.register_removed("duplicate_macro_exports",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/35896");
+    store.register_removed("nested_impl_trait",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/59014");
 }
 
 fn register_internals(store: &mut lint::LintStore) {

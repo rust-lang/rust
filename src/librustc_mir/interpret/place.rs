@@ -195,7 +195,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             // We need to consult `meta` metadata
             match self.layout.ty.kind {
                 ty::Slice(..) | ty::Str =>
-                    return self.mplace.meta.unwrap().to_usize(cx),
+                    return self.mplace.meta.unwrap().to_machine_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -808,7 +808,7 @@ where
                     _ => bug!("write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                             dest.layout)
                 }
-                self.memory.get_mut(ptr.alloc_id)?.write_scalar(
+                self.memory.get_raw_mut(ptr.alloc_id)?.write_scalar(
                     tcx, ptr, scalar, dest.layout.size
                 )
             }
@@ -830,10 +830,10 @@ where
                 // fields do not match the `ScalarPair` components.
 
                 self.memory
-                    .get_mut(ptr.alloc_id)?
+                    .get_raw_mut(ptr.alloc_id)?
                     .write_scalar(tcx, ptr, a_val, a_size)?;
                 self.memory
-                    .get_mut(b_ptr.alloc_id)?
+                    .get_raw_mut(b_ptr.alloc_id)?
                     .write_scalar(tcx, b_ptr, b_val, b_size)
             }
         }

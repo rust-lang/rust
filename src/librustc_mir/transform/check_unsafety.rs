@@ -8,7 +8,7 @@ use rustc::ty::cast::CastTy;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
-use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
+use rustc::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
@@ -208,23 +208,20 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
             PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
                 if self.tcx.is_mutable_static(def_id) {
-                    self.require_unsafe("use of mutable static",
+                    self.require_unsafe(
+                        "use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing \
-                         violations or data races will cause undefined behavior",
-                         UnsafetyViolationKind::General);
+                        violations or data races will cause undefined behavior",
+                        UnsafetyViolationKind::General,
+                    );
                 } else if self.tcx.is_foreign_item(def_id) {
-                    let source_info = self.source_info;
-                    let lint_root =
-                        self.source_scope_local_data[source_info.scope].lint_root;
-                    self.register_violations(&[UnsafetyViolation {
-                        source_info,
-                        description: Symbol::intern("use of extern static"),
-                        details: Symbol::intern(
-                            "extern statics are not controlled by the Rust type system: \
-                            invalid data, aliasing violations or data races will cause \
-                            undefined behavior"),
-                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
-                    }], &[]);
+                    self.require_unsafe(
+                        "use of extern static",
+                        "extern statics are not controlled by the Rust type system: \
+                        invalid data, aliasing violations or data races will cause \
+                        undefined behavior",
+                        UnsafetyViolationKind::General,
+                    );
                 }
             }
         }
@@ -351,8 +348,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                     match violation.kind {
                         UnsafetyViolationKind::GeneralAndConstFn |
                         UnsafetyViolationKind::General => {},
-                        UnsafetyViolationKind::BorrowPacked(_) |
-                        UnsafetyViolationKind::ExternStatic(_) => if self.min_const_fn {
+                        UnsafetyViolationKind::BorrowPacked(_) => if self.min_const_fn {
                             // const fns don't need to be backwards compatible and can
                             // emit these violations as a hard error instead of a backwards
                             // compat lint
@@ -380,8 +376,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                             UnsafetyViolationKind::GeneralAndConstFn => {},
                             // these things are forbidden in const fns
                             UnsafetyViolationKind::General |
-                            UnsafetyViolationKind::BorrowPacked(_) |
-                            UnsafetyViolationKind::ExternStatic(_) => {
+                            UnsafetyViolationKind::BorrowPacked(_) => {
                                 let mut violation = violation.clone();
                                 // const fns don't need to be backwards compatible and can
                                 // emit these violations as a hard error instead of a backwards
@@ -576,10 +571,10 @@ fn is_enclosed(
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(Node::Item(&hir::Item {
-            kind: hir::ItemKind::Fn(_, header, _, _),
+            kind: hir::ItemKind::Fn(ref sig, _, _),
             ..
         })) = tcx.hir().find(parent_id) {
-            match header.unsafety {
+            match sig.header.unsafety {
                 hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
                 hir::Unsafety::Normal => None,
             }
@@ -645,14 +640,6 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                     .span_label(source_info.span, &*description.as_str())
                     .note(&details.as_str())
                     .emit();
-            }
-            UnsafetyViolationKind::ExternStatic(lint_hir_id) => {
-                tcx.lint_node_note(SAFE_EXTERN_STATICS,
-                              lint_hir_id,
-                              source_info.span,
-                              &format!("{} is unsafe and requires unsafe function or block \
-                                        (error E0133)", description),
-                              &details.as_str());
             }
             UnsafetyViolationKind::BorrowPacked(lint_hir_id) => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {

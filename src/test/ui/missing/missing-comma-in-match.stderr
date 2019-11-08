@@ -4,7 +4,7 @@ error: expected one of `,`, `.`, `?`, `}`, or an operator, found `=>`
 LL |         &None => 1
    |                   - help: missing a comma here to end this `match` arm
 LL |         &Some(2) => { 3 }
-   |                  ^^ expected one of `,`, `.`, `?`, `}`, or an operator here
+   |                  ^^ expected one of `,`, `.`, `?`, `}`, or an operator
 
 error: aborting due to previous error
 

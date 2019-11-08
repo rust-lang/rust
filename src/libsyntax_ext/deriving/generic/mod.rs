@@ -950,7 +950,7 @@ impl<'a> MethodDef<'a> {
 
         let trait_lo_sp = trait_.span.shrink_to_lo();
 
-        let sig = ast::MethodSig {
+        let sig = ast::FnSig {
             header: ast::FnHeader {
                 unsafety,
                 abi: Abi::new(abi, trait_lo_sp),

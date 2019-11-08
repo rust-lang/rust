@@ -178,16 +178,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub SAFE_EXTERN_STATICS,
-    Deny,
-    "safe access to extern statics was erroneously allowed",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #36247 <https://github.com/rust-lang/rust/issues/36247>",
-        edition: None,
-    };
-}
-
-declare_lint! {
     pub SAFE_PACKED_BORROWS,
     Warn,
     "safe borrows of fields of packed structs were was erroneously allowed",
@@ -199,31 +189,10 @@ declare_lint! {
 
 declare_lint! {
     pub PATTERNS_IN_FNS_WITHOUT_BODY,
-    Warn,
+    Deny,
     "patterns in functions without body were erroneously allowed",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
-        edition: None,
-    };
-}
-
-declare_lint! {
-    pub LEGACY_DIRECTORY_OWNERSHIP,
-    Deny,
-    "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
-     not named `mod.rs`",
-     @future_incompatible = FutureIncompatibleInfo {
-         reference: "issue #37872 <https://github.com/rust-lang/rust/issues/37872>",
-         edition: None,
-     };
-}
-
-declare_lint! {
-    pub LEGACY_CONSTRUCTOR_VISIBILITY,
-    Deny,
-    "detects use of struct constructors that would be invisible with new visibility rules",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
         edition: None,
     };
 }
@@ -234,16 +203,6 @@ declare_lint! {
     "detects missing fragment specifiers in unused `macro_rules!` patterns",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
-        edition: None,
-    };
-}
-
-declare_lint! {
-    pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-    Deny,
-    "detects parenthesized generic parameters in type and module names",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
         edition: None,
     };
 }
@@ -373,16 +332,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub DUPLICATE_MACRO_EXPORTS,
-    Deny,
-    "detects duplicate macro exports",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
-        edition: Some(Edition::Edition2018),
-    };
-}
-
-declare_lint! {
     pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
     Warn,
     "failures in resolving intra-doc link targets"
@@ -459,7 +408,7 @@ declare_lint! {
 pub mod parser {
     declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
-        Warn,
+        Deny,
         "ill-formed attribute inputs that were previously accepted and used in practice",
         @future_incompatible = super::FutureIncompatibleInfo {
             reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
@@ -493,16 +442,6 @@ declare_lint! {
     "ambiguous associated items",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #57644 <https://github.com/rust-lang/rust/issues/57644>",
-        edition: None,
-    };
-}
-
-declare_lint! {
-    pub NESTED_IMPL_TRAIT,
-    Warn,
-    "nested occurrence of `impl Trait` type",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #59014 <https://github.com/rust-lang/rust/issues/59014>",
         edition: None,
     };
 }
@@ -556,13 +495,9 @@ declare_lint_pass! {
         INVALID_TYPE_PARAM_DEFAULT,
         CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
-        SAFE_EXTERN_STATICS,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
-        LEGACY_DIRECTORY_OWNERSHIP,
-        LEGACY_CONSTRUCTOR_VISIBILITY,
         MISSING_FRAGMENT_SPECIFIER,
-        PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         DEPRECATED,
@@ -578,7 +513,6 @@ declare_lint_pass! {
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
-        DUPLICATE_MACRO_EXPORTS,
         INTRA_DOC_LINK_RESOLUTION_FAILURE,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
@@ -590,7 +524,6 @@ declare_lint_pass! {
         parser::META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
-        NESTED_IMPL_TRAIT,
         MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
@@ -604,13 +537,11 @@ pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
-    DuplicatedMacroExports(ast::Ident, Span, Span),
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
-    NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
     RedundantImport(Vec<(Span, bool)>, ast::Ident),
     DeprecatedMacro(Option<Symbol>, Span),
 }
@@ -687,10 +618,6 @@ impl BuiltinLintDiagnostics {
                 };
                 db.span_suggestion(span, "use `crate`", sugg, app);
             }
-            BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
-                db.span_label(later_span, format!("`{}` already exported", ident));
-                db.span_note(earlier_span, "previous macro export is now shadowed");
-            }
             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
                 db.span_label(span, "names from parent modules are not \
                                      accessible without an explicit import");
@@ -722,12 +649,6 @@ impl BuiltinLintDiagnostics {
                         Applicability::MachineApplicable,
                     );
                 }
-            }
-            BuiltinLintDiagnostics::NestedImplTrait {
-                outer_impl_trait_span, inner_impl_trait_span
-            } => {
-                db.span_label(outer_impl_trait_span, "outer `impl Trait`");
-                db.span_label(inner_impl_trait_span, "nested `impl Trait` here");
             }
             BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
                 for (span, is_imported) in spans {

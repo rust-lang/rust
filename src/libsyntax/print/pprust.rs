@@ -1199,11 +1199,11 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }
-            ast::ItemKind::Fn(ref decl, header, ref param_names, ref body) => {
+            ast::ItemKind::Fn(ref sig, ref param_names, ref body) => {
                 self.head("");
                 self.print_fn(
-                    decl,
-                    header,
+                    &sig.decl,
+                    sig.header,
                     Some(item.ident),
                     param_names,
                     &item.vis
@@ -1541,7 +1541,7 @@ impl<'a> State<'a> {
     crate fn print_method_sig(&mut self,
                             ident: ast::Ident,
                             generics: &ast::Generics,
-                            m: &ast::MethodSig,
+                            m: &ast::FnSig,
                             vis: &ast::Visibility)
                             {
         self.print_fn(&m.decl,

@@ -2,7 +2,7 @@ error: expected one of `,`, `::`, `as`, or `}`, found `.`
   --> $DIR/similar-tokens.rs:7:10
    |
 LL | use x::{A. B};
-   |          ^ expected one of `,`, `::`, `as`, or `}` here
+   |          ^ expected one of `,`, `::`, `as`, or `}`
 
 error: aborting due to previous error
 

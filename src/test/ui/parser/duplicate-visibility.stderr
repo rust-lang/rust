@@ -2,7 +2,7 @@ error: expected one of `(`, `fn`, `static`, or `type`, found keyword `pub`
   --> $DIR/duplicate-visibility.rs:3:9
    |
 LL |     pub pub fn foo();
-   |         ^^^ expected one of `(`, `fn`, `static`, or `type` here
+   |         ^^^ expected one of `(`, `fn`, `static`, or `type`
 
 error: aborting due to previous error
 

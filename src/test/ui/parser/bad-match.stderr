@@ -2,7 +2,7 @@ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `x`
   --> $DIR/bad-match.rs:2:13
    |
 LL |   let isize x = 5;
-   |             ^ expected one of `:`, `;`, `=`, `@`, or `|` here
+   |             ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: aborting due to previous error
 

@@ -1876,9 +1876,10 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-/// Represents a method's signature in a trait declaration or implementation.
+/// Represents a function's signature in a trait declaration,
+/// trait implementation, or a free function.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct MethodSig {
+pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
@@ -1921,7 +1922,7 @@ pub enum TraitItemKind {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(P<Ty>, Option<BodyId>),
     /// A method with an optional body.
-    Method(MethodSig, TraitMethod),
+    Method(FnSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds, Option<P<Ty>>),
@@ -1955,7 +1956,7 @@ pub enum ImplItemKind {
     /// of the expression.
     Const(P<Ty>, BodyId),
     /// A method implementation with the given signature and body.
-    Method(MethodSig, BodyId),
+    Method(FnSig, BodyId),
     /// An associated type.
     TyAlias(P<Ty>),
     /// An associated `type = impl Trait`.
@@ -2534,7 +2535,7 @@ pub enum ItemKind {
     /// A `const` item.
     Const(P<Ty>, BodyId),
     /// A function declaration.
-    Fn(P<FnDecl>, FnHeader, Generics, BodyId),
+    Fn(FnSig, Generics, BodyId),
     /// A module.
     Mod(Mod),
     /// An external module, e.g. `extern { .. }`.
@@ -2599,7 +2600,7 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Fn(_, ref generics, _) |
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |

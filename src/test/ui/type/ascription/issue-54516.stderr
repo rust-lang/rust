@@ -2,7 +2,7 @@ error: expected one of `!`, `,`, or `::`, found `(`
   --> $DIR/issue-54516.rs:4:58
    |
 LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
-   |                            -                             ^ expected one of `!`, `,`, or `::` here
+   |                            -                             ^ expected one of `!`, `,`, or `::`
    |                            |
    |                            help: maybe write a path separator here: `::`
    |

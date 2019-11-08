@@ -180,7 +180,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.kind {
-            ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
+            ast::ItemKind::Fn(ref sig, .., ref generics, _) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 filter!(self.span_utils, item.ident.span);
@@ -190,7 +190,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: make_signature(&sig.decl, generics),
                     parent: None,
                     children: vec![],
                     decl_id: None,
