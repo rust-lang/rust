@@ -1,8 +1,7 @@
-error: type parameter `E` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-60564.rs:20:49
+error: defining opaque type use does not fully define opaque type: generic parameter `I` is specified as concrete type `u8`
+  --> $DIR/issue-60564.rs:20:5
    |
-LL |       fn iter_bits(self, n: u8) -> Self::BitsIter {
-   |  _________________________________________________^
+LL | /     fn iter_bits(self, n: u8) -> Self::BitsIter {
 LL | |
 LL | |         (0u8..n)
 LL | |             .rev()
