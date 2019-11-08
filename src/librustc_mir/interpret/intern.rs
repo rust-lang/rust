@@ -228,7 +228,7 @@ for
                             ty::Array(_, n)
                                 if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
                             ty::Slice(_)
-                                if mplace.meta.unwrap().to_usize(self.ecx)? == 0 => {}
+                                if mplace.meta.unwrap().to_machine_usize(self.ecx)? == 0 => {}
                             _ => bug!("const qualif failed to prevent mutable references"),
                         }
                     },

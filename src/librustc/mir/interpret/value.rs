@@ -439,7 +439,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as u64)
     }
 
-    pub fn to_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
+    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         Ok(b as u64)
     }
@@ -465,7 +465,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as i64)
     }
 
-    pub fn to_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
+    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
         let sz = cx.data_layout().pointer_size;
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
@@ -592,8 +592,8 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        self.not_undef()?.to_usize(cx)
+    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
+        self.not_undef()?.to_machine_usize(cx)
     }
 
     #[inline(always)]
@@ -612,8 +612,8 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
-        self.not_undef()?.to_isize(cx)
+    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
+        self.not_undef()?.to_machine_isize(cx)
     }
 }
 
