@@ -1274,6 +1274,10 @@ pub(crate) mod builtin {
     }
 
     /// Inline assembly.
+    ///
+    /// Read the [unstable book] for the usage.
+    ///
+    /// [unstable book]: ../unstable-book/library-features/asm.html
     #[unstable(feature = "asm", issue = "29722",
                reason = "inline assembly is not stable enough for use and is subject to change")]
     #[rustc_builtin_macro]
