@@ -126,8 +126,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         }
         // no safety header
         match item.kind {
-            hir::ItemKind::Fn(_, ref header, ..) => {
-                if cx.access_levels.is_exported(item.hir_id) && header.unsafety == hir::Unsafety::Unsafe {
+            hir::ItemKind::Fn(ref sig, ..) => {
+                if cx.access_levels.is_exported(item.hir_id) && sig.header.unsafety == hir::Unsafety::Unsafe {
                     span_lint(
                         cx,
                         MISSING_SAFETY_DOC,

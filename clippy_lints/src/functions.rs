@@ -208,7 +208,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             match kind {
                 hir::intravisit::FnKind::Method(
                     _,
-                    &hir::MethodSig {
+                    &hir::FnSig {
                         header: hir::FnHeader { abi: Abi::Rust, .. },
                         ..
                     },
@@ -228,20 +228,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         let attr = must_use_attr(&item.attrs);
-        if let hir::ItemKind::Fn(ref decl, ref _header, ref _generics, ref body_id) = item.kind {
+        if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             if let Some(attr) = attr {
-                let fn_header_span = item.span.with_hi(decl.output.span().hi());
-                check_needless_must_use(cx, decl, item.hir_id, item.span, fn_header_span, attr);
+                let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
+                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
                 return;
             }
             if cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
                 check_must_use_candidate(
                     cx,
-                    decl,
+                    &sig.decl,
                     cx.tcx.hir().body(*body_id),
                     item.span,
                     item.hir_id,
-                    item.span.with_hi(decl.output.span().hi()),
+                    item.span.with_hi(sig.decl.output.span().hi()),
                     "this function could have a `#[must_use]` attribute",
                 );
             }
