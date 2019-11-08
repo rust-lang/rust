@@ -36,7 +36,7 @@ pub struct Opts {
     #[structopt(long = "version")]
     version: bool,
 
-    /// Specify package to format (only usable in workspaces)
+    /// Specify package to format
     #[structopt(short = "p", long = "package", value_name = "package")]
     packages: Vec<String>,
 
@@ -53,7 +53,7 @@ pub struct Opts {
     #[structopt(name = "rustfmt_options", raw(true))]
     rustfmt_options: Vec<String>,
 
-    /// Format all packages (only usable in workspaces)
+    /// Format all packages, and also their local path-based dependencies
     #[structopt(long = "all")]
     format_all: bool,
 }
