@@ -58,7 +58,6 @@ pub use self::Note::*;
 
 use self::Aliasability::*;
 
-use crate::middle::region;
 use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::Node;
 use crate::infer::InferCtxt;
@@ -212,13 +211,11 @@ impl HirNode for hir::Pat {
 
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    pub body_owner: DefId,
-    pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-    pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    infcx: Option<&'a InferCtxt<'a, 'tcx>>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_owner: DefId,
+    upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -327,81 +324,42 @@ impl MutabilityCategory {
 }
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
+    /// Creates a `MemCategorizationContext`.
     pub fn new(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        body_owner: DefId,
-        region_scope_tree: &'a region::ScopeTree,
-        tables: &'a ty::TypeckTables<'tcx>,
-    ) -> MemCategorizationContext<'a, 'tcx> {
-        MemCategorizationContext {
-            tcx,
-            body_owner,
-            upvars: tcx.upvars(body_owner),
-            region_scope_tree,
-            tables,
-            infcx: None,
-            param_env,
-        }
-    }
-}
-
-impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
-    /// Creates a `MemCategorizationContext` during type inference.
-    /// This is used during upvar analysis and a few other places.
-    /// Because the typeck tables are not yet complete, the results
-    /// from the analysis must be used with caution:
-    ///
-    /// - rvalue promotions are not known, so the lifetimes of
-    ///   temporaries may be overly conservative;
-    /// - similarly, as the results of upvar analysis are not yet
-    ///   known, the results around upvar accesses may be incorrect.
-    pub fn with_infer(
         infcx: &'a InferCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_owner: DefId,
-        region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> MemCategorizationContext<'a, 'tcx> {
-        let tcx = infcx.tcx;
-
         MemCategorizationContext {
-            tcx,
-            body_owner,
-            upvars: tcx.upvars(body_owner),
-            region_scope_tree,
             tables,
-            infcx: Some(infcx),
+            infcx,
             param_env,
+            body_owner,
+            upvars: infcx.tcx.upvars(body_owner),
         }
     }
 
-    pub fn type_is_copy_modulo_regions(
+    crate fn tcx(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    crate fn type_is_copy_modulo_regions(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
     ) -> bool {
-        self.infcx.map(|infcx| infcx.type_is_copy_modulo_regions(param_env, ty, span))
-            .or_else(|| {
-                if (param_env, ty).has_local_value() {
-                    None
-                } else {
-                    Some(ty.is_copy_modulo_regions(self.tcx, param_env, span))
-                }
-            })
-            .unwrap_or(true)
+        self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
     }
 
     fn resolve_vars_if_possible<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
-        self.infcx.map(|infcx| infcx.resolve_vars_if_possible(value))
-            .unwrap_or_else(|| value.clone())
+        self.infcx.resolve_vars_if_possible(value)
     }
 
     fn is_tainted_by_errors(&self) -> bool {
-        self.infcx.map_or(false, |infcx| infcx.is_tainted_by_errors())
+        self.infcx.is_tainted_by_errors()
     }
 
     fn resolve_type_vars_or_error(&self,
@@ -422,23 +380,20 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             None if self.is_tainted_by_errors() => Err(()),
             None => {
                 bug!("no type for node {}: {} in mem_categorization",
-                     id, self.tcx.hir().node_to_string(id));
+                     id, self.tcx().hir().node_to_string(id));
             }
         }
     }
 
-    pub fn node_ty(&self,
-                   hir_id: hir::HirId)
-                   -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(hir_id,
-                                        self.tables.node_type_opt(hir_id))
+    crate fn node_ty(&self, hir_id: hir::HirId) -> McResult<Ty<'tcx>> {
+        self.resolve_type_vars_or_error(hir_id, self.tables.node_type_opt(hir_id))
     }
 
-    pub fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
+    fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_opt(expr))
     }
 
-    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
+    crate fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_adjusted_opt(expr))
     }
 
@@ -452,7 +407,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ///   implicit deref patterns attached (e.g., it is really
     ///   `&Some(x)`). In that case, we return the "outermost" type
     ///   (e.g., `&Option<T>).
-    pub fn pat_ty_adjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
+    pub(super) fn pat_ty_adjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
@@ -542,7 +497,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = Rc::new(if let Some(deref) = overloaded {
-                    let ref_ty = self.tcx.mk_ref(deref.region, ty::TypeAndMut {
+                    let ref_ty = self.tcx().mk_ref(deref.region, ty::TypeAndMut {
                         ty: target,
                         mutbl: deref.mutbl,
                     });
@@ -582,7 +537,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                        expr.hir_id,
                        expr,
                        base_cmt);
-                let f_index = self.tcx.field_index(expr.hir_id, self.tables);
+                let f_index = self.tcx().field_index(expr.hir_id, self.tables);
                 Ok(self.cat_field(expr, base_cmt, f_index, f_ident, expr_ty))
             }
 
@@ -648,7 +603,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             Res::Def(DefKind::Static, def_id) => {
                 // `#[thread_local]` statics may not outlive the current function, but
                 // they also cannot be moved out of.
-                let is_thread_local = self.tcx.get_attrs(def_id)[..]
+                let is_thread_local = self.tcx().get_attrs(def_id)[..]
                     .iter()
                     .any(|attr| attr.check_name(sym::thread_local));
 
@@ -662,7 +617,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     hir_id,
                     span,
                     cat,
-                    mutbl: match self.tcx.static_mutability(def_id).unwrap() {
+                    mutbl: match self.tcx().static_mutability(def_id).unwrap() {
                         Mutability::Immutable => McImmutable,
                         Mutability::Mutable => McDeclared,
                     },
@@ -679,7 +634,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         hir_id,
                         span,
                         cat: Categorization::Local(var_id),
-                        mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_id),
+                        mutbl: MutabilityCategory::from_local(self.tcx(), self.tables, var_id),
                         ty: expr_ty,
                         note: NoteNone
                     })
@@ -722,25 +677,17 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // FnOnce         | copied               | upvar -> &'up bk
 
         let closure_expr_def_id = self.body_owner;
-        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(
+        let fn_hir_id = self.tcx().hir().local_def_id_to_hir_id(
             LocalDefId::from_def_id(closure_expr_def_id),
         );
         let ty = self.node_ty(fn_hir_id)?;
         let kind = match ty.kind {
             ty::Generator(..) => ty::ClosureKind::FnOnce,
             ty::Closure(closure_def_id, substs) => {
-                match self.infcx {
-                    // During upvar inference we may not know the
-                    // closure kind, just use the LATTICE_BOTTOM value.
-                    Some(infcx) =>
-                        infcx.closure_kind(
-                            closure_def_id,
-                            substs
-                        ).unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
-
-                    None =>
-                        substs.as_closure().kind(closure_def_id, self.tcx),
-                }
+                self.infcx.closure_kind(
+                    closure_def_id,
+                    substs
+                ).unwrap_or(ty::ClosureKind::LATTICE_BOTTOM)
             }
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),
         };
@@ -753,7 +700,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let var_ty = self.node_ty(var_id)?;
 
         // Mutability of original variable itself
-        let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);
+        let var_mutbl = MutabilityCategory::from_local(self.tcx(), self.tables, var_id);
 
         // Construct the upvar. This represents access to the field
         // from the environment (perhaps we should eventually desugar
@@ -818,7 +765,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                  -> Place<'tcx>
     {
         // Region of environment pointer
-        let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
+        let env_region = self.tcx().mk_region(ty::ReFree(ty::FreeRegion {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
@@ -839,7 +786,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // one.
         let cmt_result = Place {
             mutbl: McImmutable,
-            ty: self.tcx.types.err,
+            ty: self.tcx().types.err,
             ..cmt_result
         };
 
@@ -936,7 +883,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             ty::Ref(region, _, mutbl) => (region, mutbl),
             _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference")
         };
-        let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
+        let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut {
             ty: place_ty,
             mutbl,
         });
@@ -1037,8 +984,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                                              variant_did: DefId)
                                              -> cmt<'tcx> {
         // univariant enums do not need downcasts
-        let base_did = self.tcx.parent(variant_did).unwrap();
-        if self.tcx.adt_def(base_did).variants.len() != 1 {
+        let base_did = self.tcx().parent(variant_did).unwrap();
+        if self.tcx().adt_def(base_did).variants.len() != 1 {
             let base_ty = base_cmt.ty;
             let ret = Rc::new(Place {
                 hir_id: node.hir_id(),
@@ -1179,10 +1126,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         return Err(())
                     }
                     Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), variant_ctor_did) => {
-                        let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
-                        let enum_did = self.tcx.parent(variant_did).unwrap();
+                        let variant_did = self.tcx().parent(variant_ctor_did).unwrap();
+                        let enum_did = self.tcx().parent(variant_did).unwrap();
                         (self.cat_downcast_if_needed(pat, cmt, variant_did),
-                         self.tcx.adt_def(enum_did)
+                         self.tcx().adt_def(enum_did)
                              .variant_with_ctor_id(variant_ctor_did).fields.len())
                     }
                     Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
@@ -1204,7 +1151,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                             def,
                             pat.span,
                         );
-                        self.tcx.sess.delay_span_bug(pat.span, &format!(
+                        self.tcx().sess.delay_span_bug(pat.span, &format!(
                             "tuple struct pattern didn't resolve to variant or struct {:?}",
                             def,
                         ));
@@ -1230,7 +1177,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         return Err(())
                     }
                     Res::Def(DefKind::Ctor(CtorOf::Variant, _), variant_ctor_did) => {
-                        let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
+                        let variant_did = self.tcx().parent(variant_ctor_did).unwrap();
                         self.cat_downcast_if_needed(pat, cmt, variant_did)
                     }
                     Res::Def(DefKind::Variant, variant_did) => {
@@ -1241,7 +1188,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.pat)?; // see (*2)
-                    let f_index = self.tcx.field_index(fp.hir_id, self.tables);
+                    let f_index = self.tcx().field_index(fp.hir_id, self.tables);
                     let cmt_field = Rc::new(self.cat_field(pat, cmt.clone(), f_index,
                                                            fp.ident, field_ty));
                     self.cat_pattern_(cmt_field, &fp.pat, op)?;

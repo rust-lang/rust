@@ -10,7 +10,6 @@ use crate::hir::def_id::DefId;
 use crate::hir::ptr::P;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
-use crate::middle::region;
 use crate::ty::{self, TyCtxt, adjustment};
 
 use crate::hir::{self, PatKind};
@@ -85,7 +84,6 @@ impl OverloadedCallType {
 pub struct ExprUseVisitor<'a, 'tcx> {
     mc: mc::MemCategorizationContext<'a, 'tcx>,
     delegate: &'a mut dyn Delegate<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
 // If the MC results in an error, it's because the type check
@@ -112,49 +110,22 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ///
     /// - `delegate` -- who receives the callbacks
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
-    /// - `region_scope_tree` --- region scope tree for the code being analyzed
     /// - `tables` --- typeck results for the code being analyzed
-    ///
-    /// See also `with_infer`, which is used *during* typeck.
     pub fn new(
-        delegate: &'a mut (dyn Delegate<'tcx> + 'a),
-        tcx: TyCtxt<'tcx>,
-        body_owner: DefId,
-        param_env: ty::ParamEnv<'tcx>,
-        region_scope_tree: &'a region::ScopeTree,
-        tables: &'a ty::TypeckTables<'tcx>,
-    ) -> Self {
-        ExprUseVisitor {
-            mc: mc::MemCategorizationContext::new(tcx,
-                                                  param_env,
-                                                  body_owner,
-                                                  region_scope_tree,
-                                                  tables),
-            delegate,
-            param_env,
-        }
-    }
-}
-
-impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
-    pub fn with_infer(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         infcx: &'a InferCtxt<'a, 'tcx>,
         body_owner: DefId,
         param_env: ty::ParamEnv<'tcx>,
-        region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> Self {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_infer(
+            mc: mc::MemCategorizationContext::new(
                 infcx,
                 param_env,
                 body_owner,
-                region_scope_tree,
                 tables,
             ),
             delegate,
-            param_env,
         }
     }
 
@@ -177,14 +148,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.mc.tcx
+        self.mc.tcx()
     }
 
-    fn delegate_consume(&mut self, cmt: &mc::Place<'tcx>) {
-        debug!("delegate_consume(cmt={:?})", cmt);
+    fn delegate_consume(&mut self, place: &mc::Place<'tcx>) {
+        debug!("delegate_consume(place={:?})", place);
 
-        let mode = copy_or_move(&self.mc, self.param_env, cmt);
-        self.delegate.consume(cmt, mode);
+        let mode = copy_or_move(&self.mc, place);
+        self.delegate.consume(place, mode);
     }
 
     fn consume_exprs(&mut self, exprs: &[hir::Expr]) {
@@ -573,7 +544,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_pat(cmt_discr={:?}, pat={:?})", cmt_discr, pat);
 
         let tcx = self.tcx();
-        let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
+        let ExprUseVisitor { ref mc, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!(
@@ -602,7 +573,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             delegate.borrow(&cmt_pat, bk);
                         }
                         ty::BindByValue(..) => {
-                            let mode = copy_or_move(mc, param_env, &cmt_pat);
+                            let mode = copy_or_move(mc, &cmt_pat);
                             debug!("walk_pat binding consuming pat");
                             delegate.consume(&cmt_pat, mode);
                         }
@@ -630,7 +601,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                                                    var_id));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
-                        let mode = copy_or_move(&self.mc, self.param_env, &cmt_var);
+                        let mode = copy_or_move(&self.mc, &cmt_var);
                         self.delegate.consume(&cmt_var, mode);
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
@@ -655,10 +626,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
 fn copy_or_move<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    cmt: &mc::Place<'tcx>,
+    place: &mc::Place<'tcx>,
 ) -> ConsumeMode {
-    if !mc.type_is_copy_modulo_regions(param_env, cmt.ty, cmt.span) {
+    if !mc.type_is_copy_modulo_regions(place.ty, place.span) {
         Move
     } else {
         Copy

@@ -814,11 +814,10 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     where
         F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'tcx>) -> R,
     {
-        f(mc::MemCategorizationContext::with_infer(
+        f(mc::MemCategorizationContext::new(
             &self.infcx,
             self.outlives_environment.param_env,
             self.body_owner,
-            &self.region_scope_tree,
             &self.tables.borrow(),
         ))
     }

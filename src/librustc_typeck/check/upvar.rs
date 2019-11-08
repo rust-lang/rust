@@ -171,20 +171,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
         assert_eq!(body_owner_def_id, closure_def_id);
-        let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
         let mut delegate = InferBorrowKind {
             fcx: self,
-            closure_def_id: closure_def_id,
+            closure_def_id,
             current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
             current_origin: None,
             adjust_upvar_captures: ty::UpvarCaptureMap::default(),
         };
-        euv::ExprUseVisitor::with_infer(
+        euv::ExprUseVisitor::new(
             &mut delegate,
             &self.infcx,
             body_owner_def_id,
             self.param_env,
-            region_scope_tree,
             &self.tables.borrow(),
         )
         .consume_body(body);
