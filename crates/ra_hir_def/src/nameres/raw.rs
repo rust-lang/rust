@@ -125,7 +125,7 @@ impl Index<Macro> for RawItems {
 type Attrs = Option<Arc<[Attr]>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct RawItem {
+pub(super) struct RawItem {
     attrs: Attrs,
     pub(super) kind: RawItemKind,
 }
@@ -137,7 +137,7 @@ impl RawItem {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum RawItemKind {
+pub(super) enum RawItemKind {
     Module(Module),
     Import(ImportId),
     Def(Def),
@@ -145,11 +145,11 @@ pub(crate) enum RawItemKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Module(RawId);
+pub(super) struct Module(RawId);
 impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum ModuleData {
+pub(super) enum ModuleData {
     Declaration { name: Name, ast_id: FileAstId<ast::Module> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
@@ -169,17 +169,17 @@ pub struct ImportData {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Def(RawId);
+pub(super) struct Def(RawId);
 impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct DefData {
+pub(super) struct DefData {
     pub(super) name: Name,
     pub(super) kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum DefKind {
+pub(super) enum DefKind {
     Function(FileAstId<ast::FnDef>),
     Struct(FileAstId<ast::StructDef>),
     Union(FileAstId<ast::StructDef>),
@@ -191,11 +191,11 @@ pub(crate) enum DefKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Macro(RawId);
+pub(super) struct Macro(RawId);
 impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct MacroData {
+pub(super) struct MacroData {
     pub(super) ast_id: FileAstId<ast::MacroCall>,
     pub(super) path: Path,
     pub(super) name: Option<Name>,
