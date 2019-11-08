@@ -37,7 +37,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let col_out = self.force_ptr(self.mplace_field(location, 2)?.ptr)?;
 
         let layout = &self.tcx.data_layout;
-        let alloc = self.memory.get_mut(file_ptr_out.alloc_id)?;
+        // We just allocated this, so we can skip the bounds checks.
+        let alloc = self.memory.get_raw_mut(file_ptr_out.alloc_id)?;
 
         alloc.write_scalar(layout, file_ptr_out, file.into(), ptr_size)?;
         alloc.write_scalar(layout, file_len_out, file_len.into(), ptr_size)?;
