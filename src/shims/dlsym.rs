@@ -40,7 +40,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match dlsym {
             GetEntropy => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let len = this.read_scalar(args[1])?.to_usize(this)?;
+                let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 this.gen_random(ptr, len as usize)?;
                 this.write_null(dest)?;
             }

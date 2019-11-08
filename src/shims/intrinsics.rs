@@ -35,7 +35,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let intrinsic_name = &*tcx.item_name(instance.def_id()).as_str();
         match intrinsic_name {
             "arith_offset" => {
-                let offset = this.read_scalar(args[1])?.to_isize(this)?;
+                let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
 
                 let pointee_ty = substs.type_at(0);
@@ -206,7 +206,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let elem_ty = substs.type_at(0);
                 let elem_layout = this.layout_of(elem_ty)?;
                 let elem_size = elem_layout.size.bytes();
-                let count = this.read_scalar(args[2])?.to_usize(this)?;
+                let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let elem_align = elem_layout.align.abi;
 
                 let size = Size::from_bytes(count * elem_size);
@@ -371,7 +371,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "offset" => {
-                let offset = this.read_scalar(args[1])?.to_isize(this)?;
+                let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let result_ptr = this.pointer_offset_inbounds(ptr, substs.type_at(0), offset)?;
                 this.write_scalar(result_ptr, dest)?;
@@ -542,7 +542,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             let ptr = mplace.ptr.to_ptr()?;
                             // We know the return place is in-bounds
                             this.memory
-                                .get_mut(ptr.alloc_id)?
+                                .get_raw_mut(ptr.alloc_id)?
                                 .mark_definedness(ptr, dest.layout.size, false);
                         }
                     }
@@ -554,7 +554,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(args[1])?.to_u8()?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let count = this.read_scalar(args[2])?.to_usize(this)?;
+                let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let byte_count = ty_layout.size * count;
                 this.memory.write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
             }

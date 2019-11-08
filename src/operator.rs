@@ -75,7 +75,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 let ptr = self.pointer_offset_inbounds(
                     left.to_scalar()?,
                     pointee_ty,
-                    right.to_scalar()?.to_isize(self)?,
+                    right.to_scalar()?.to_machine_isize(self)?,
                 )?;
                 (ptr, false, left.layout.ty)
             }

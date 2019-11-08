@@ -154,7 +154,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("read")?;
 
-        let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
         // Reading zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
@@ -166,8 +166,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.remove_handle_and(fd, |mut handle, this| {
             // Don't use `?` to avoid returning before reinserting the handle.
             let bytes = this.force_ptr(buf_scalar).and_then(|buf| {
+                // FIXME: Don't use raw methods
                 this.memory
-                    .get_mut(buf.alloc_id)?
+                    .get_raw_mut(buf.alloc_id)?
                     .get_bytes_mut(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|buffer| handle.file.read(buffer))
             });
@@ -186,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("write")?;
 
-        let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
         // Writing zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
@@ -195,7 +196,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.force_ptr(this.read_scalar(buf_op)?.not_undef()?)?;
 
         this.remove_handle_and(fd, |mut handle, this| {
-            let bytes = this.memory.get(buf.alloc_id).and_then(|alloc| {
+            // FIXME: Don't use raw methods
+            let bytes = this.memory.get_raw(buf.alloc_id).and_then(|alloc| {
                 alloc
                     .get_bytes(&*this.tcx, buf, Size::from_bytes(count))
                     .map(|bytes| handle.file.write(bytes).map(|bytes| bytes as i64))
