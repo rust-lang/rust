@@ -1501,10 +1501,10 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-/// Represents a method's signature in a trait declaration,
-/// or in an implementation.
+/// Represents a function's signature in a trait declaration,
+/// trait implementation, or free function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct MethodSig {
+pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
@@ -1528,7 +1528,7 @@ pub struct TraitItem {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
-    Method(MethodSig, Option<P<Block>>),
+    Method(FnSig, Option<P<Block>>),
     Type(GenericBounds, Option<P<Ty>>),
     Macro(Mac),
 }
@@ -1552,7 +1552,7 @@ pub struct ImplItem {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
-    Method(MethodSig, P<Block>),
+    Method(FnSig, P<Block>),
     TyAlias(P<Ty>),
     OpaqueTy(GenericBounds),
     Macro(Mac),
@@ -2433,7 +2433,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
+    Fn(FnSig, Generics, P<Block>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.

@@ -357,7 +357,7 @@ pub fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_method_sig<T: MutVisitor>(MethodSig { header, decl }: &mut MethodSig, vis: &mut T) {
+pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl }: &mut FnSig, vis: &mut T) {
     vis.visit_fn_header(header);
     vis.visit_fn_decl(decl);
 }
@@ -878,9 +878,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             vis.visit_expr(expr);
         }
-        ItemKind::Fn(decl, header, generics, body) => {
-            vis.visit_fn_decl(decl);
-            vis.visit_fn_header(header);
+        ItemKind::Fn(sig, generics, body) => {
+            visit_fn_sig(sig, vis);
             vis.visit_generics(generics);
             vis.visit_block(body);
         }
@@ -938,7 +937,7 @@ pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
             visit_opt(default, |default| vis.visit_expr(default));
         }
         TraitItemKind::Method(sig, body) => {
-            visit_method_sig(sig, vis);
+            visit_fn_sig(sig, vis);
             visit_opt(body, |body| vis.visit_block(body));
         }
         TraitItemKind::Type(bounds, default) => {
@@ -970,7 +969,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
             visitor.visit_expr(expr);
         }
         ImplItemKind::Method(sig, body) => {
-            visit_method_sig(sig, visitor);
+            visit_fn_sig(sig, visitor);
             visitor.visit_block(body);
         }
         ImplItemKind::TyAlias(ty) => visitor.visit_ty(ty),

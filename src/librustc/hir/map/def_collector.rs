@@ -100,7 +100,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
-        let def_data = match i.kind {
+        let def_data = match &i.kind {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
@@ -109,19 +109,14 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
             ItemKind::OpaqueTy(..) | ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
             ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
-            ItemKind::Fn(
-                ref decl,
-                ref header,
-                ref generics,
-                ref body,
-            ) if header.asyncness.node.is_async() => {
+            ItemKind::Fn(sig, generics, body) if sig.header.asyncness.node.is_async() => {
                 return self.visit_async_fn(
                     i.id,
                     i.ident.name,
                     i.span,
-                    header,
+                    &sig.header,
                     generics,
-                    decl,
+                    &sig.decl,
                     body,
                 )
             }
@@ -228,7 +223,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.kind {
-            ImplItemKind::Method(MethodSig {
+            ImplItemKind::Method(FnSig {
                 ref header,
                 ref decl,
             }, ref body) if header.asyncness.node.is_async() => {

@@ -31,10 +31,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             if let Some(hir_id) = self.tcx().hir().as_local_hir_id(def_id) {
                 let fndecl = match self.tcx().hir().get(hir_id) {
                     Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Fn(ref fndecl, ..),
+                        kind: hir::ItemKind::Fn(ref m, ..),
                         ..
-                    }) => &fndecl,
-                    Node::TraitItem(&hir::TraitItem {
+                    })
+                    | Node::TraitItem(&hir::TraitItem {
                         kind: hir::TraitItemKind::Method(ref m, ..),
                         ..
                     })

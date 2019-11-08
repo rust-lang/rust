@@ -383,9 +383,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let hir = &self.tcx.hir();
         let node = hir.find(hir_id)?;
         if let hir::Node::Item(
-            hir::Item{kind: hir::ItemKind::Fn(_ ,fn_header ,_ , body_id), .. }) = &node {
+            hir::Item{kind: hir::ItemKind::Fn(sig, _, body_id), .. }) = &node {
             self.describe_generator(*body_id).or_else(||
-                Some(if let hir::FnHeader{ asyncness: hir::IsAsync::Async, .. } = fn_header {
+                Some(if let hir::FnHeader{ asyncness: hir::IsAsync::Async, .. } = sig.header {
                     "an async function"
                 } else {
                     "a function"
@@ -1081,7 +1081,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
 
                 hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, _, generics, _), ..
+                    kind: hir::ItemKind::Fn(_, generics, _), ..
                 }) |
                 hir::Node::TraitItem(hir::TraitItem {
                     generics,
@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     kind: hir::ItemKind::Impl(_, _, _, generics, ..), span, ..
                 }) |
                 hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, _, generics, _), span, ..
+                    kind: hir::ItemKind::Fn(_, generics, _), span, ..
                 }) |
                 hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::TyAlias(_, generics), span, ..
@@ -1436,12 +1436,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(decl, _, _, body_id),
+            kind: hir::ItemKind::Fn(sig, _, body_id),
             ..
         })) = node {
             let body = hir.body(*body_id);
             if let hir::ExprKind::Block(blk, _) = &body.value.kind {
-                if decl.output.span().overlaps(span) && blk.expr.is_none() &&
+                if sig.decl.output.span().overlaps(span) && blk.expr.is_none() &&
                     "()" == &trait_ref.self_ty().to_string()
                 {
                     // FIXME(estebank): When encountering a method with a trait
@@ -1493,20 +1493,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             Node::Item(&hir::Item {
                 span,
-                kind: hir::ItemKind::Fn(ref decl, ..),
+                kind: hir::ItemKind::Fn(ref sig, ..),
                 ..
             }) |
             Node::ImplItem(&hir::ImplItem {
                 span,
-                kind: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::ImplItemKind::Method(ref sig, _),
                 ..
             }) |
             Node::TraitItem(&hir::TraitItem {
                 span,
-                kind: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::TraitItemKind::Method(ref sig, _),
                 ..
             }) => {
-                (self.tcx.sess.source_map().def_span(span), decl.inputs.iter()
+                (self.tcx.sess.source_map().def_span(span), sig.decl.inputs.iter()
                         .map(|arg| match arg.clone().kind {
                     hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
@@ -2040,11 +2040,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .and_then(|parent_did| self.tcx.hir().get_if_local(parent_did));
         debug!("note_obligation_cause_for_async_await: parent_node={:?}", parent_node);
         if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(_, header, _, _),
+            kind: hir::ItemKind::Fn(sig, _, _),
             ..
         })) = parent_node {
-            debug!("note_obligation_cause_for_async_await: header={:?}", header);
-            if header.asyncness != hir::IsAsync::Async {
+            debug!("note_obligation_cause_for_async_await: header={:?}", sig.header);
+            if sig.header.asyncness != hir::IsAsync::Async {
                 return false;
             }
         }

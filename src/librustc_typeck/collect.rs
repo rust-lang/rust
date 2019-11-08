@@ -885,8 +885,8 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             _ => None,
         },
         Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(ref fn_decl, .., ref generics, _) => {
-                has_late_bound_regions(tcx, generics, fn_decl)
+            hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
+                has_late_bound_regions(tcx, generics, &sig.decl)
             }
             _ => None,
         },
@@ -1779,17 +1779,17 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(MethodSig { header, decl }, TraitMethod::Provided(_)),
+            kind: TraitItemKind::Method(sig, TraitMethod::Provided(_)),
             ..
         })
         | ImplItem(hir::ImplItem {
-            kind: ImplItemKind::Method(MethodSig { header, decl }, _),
+            kind: ImplItemKind::Method(sig, _),
             ..
         })
         | Item(hir::Item {
-            kind: ItemKind::Fn(decl, header, _, _),
+            kind: ItemKind::Fn(sig, _, _),
             ..
-        }) => match get_infer_ret_ty(&decl.output) {
+        }) => match get_infer_ret_ty(&sig.decl.output) {
             Some(ty) => {
                 let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
                 let mut diag = bad_placeholder_type(tcx, ty.span);
@@ -1805,11 +1805,11 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                 diag.emit();
                 ty::Binder::bind(fn_sig)
             },
-            None => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
+            None => AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl)
         },
 
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(MethodSig { header, decl }, _),
+            kind: TraitItemKind::Method(FnSig { header, decl }, _),
             ..
         }) => {
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
