@@ -32,8 +32,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Exit {
             if let Some(def_id) = qpath_res(cx, path, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::EXIT);
             then {
-                let mut parent = cx.tcx.hir().get_parent_item(e.hir_id);
-                if let Some(Node::Item(Item{ident, kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find(parent) {
+                let parent = cx.tcx.hir().get_parent_item(e.hir_id);
+                if let Some(Node::Item(Item{kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find(parent) {
                     // If the next item up is a function we check if it is an entry point
                     // and only then emit a linter warning
                     let def_id = cx.tcx.hir().local_def_id(parent);
