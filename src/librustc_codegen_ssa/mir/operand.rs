@@ -75,12 +75,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             return OperandRef::new_zst(bx, layout);
         }
 
-        let val = match val.val {
-            ConstValue::Unevaluated(..) => bug!("unevaluated constant in `OperandRef::from_const`"),
-            ConstValue::Param(_) => bug!("encountered a ConstValue::Param in codegen"),
-            ConstValue::Infer(_) => bug!("encountered a ConstValue::Infer in codegen"),
-            ConstValue::Bound(..) => bug!("encountered a ConstValue::Bound in codegen"),
-            ConstValue::Placeholder(_) => bug!("encountered a ConstValue::Placeholder in codegen"),
+        let val_val = match val.val {
+            ty::ConstKind::Value(val_val) => val_val,
+            _ => bug!("encountered bad ConstKind in codegen"),
+        };
+
+        let val = match val_val {
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
