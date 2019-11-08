@@ -12,9 +12,9 @@ use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
 use syntax::ast;
-use syntax::parse::token;
 use syntax::print::pprust::token_kind_to_string;
 use syntax::source_map::{CharPos, Span};
+use syntax::token;
 use syntax::util::parser::AssocOp;
 use syntax_pos::{BytePos, Pos};
 
@@ -440,7 +440,7 @@ fn associativity(op: &AssocOp) -> Associativity {
 
 /// Converts a `hir::BinOp` to the corresponding assigning binary operator.
 fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
-    use syntax::parse::token::BinOpToken::*;
+    use syntax::token::BinOpToken::*;
 
     AssocOp::AssignOp(match op.node {
         hir::BinOpKind::Add => Plus,
@@ -468,7 +468,7 @@ fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
 /// Converts an `ast::BinOp` to the corresponding assigning binary operator.
 fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
     use syntax::ast::BinOpKind::*;
-    use syntax::parse::token::BinOpToken;
+    use syntax::token::BinOpToken;
 
     AssocOp::AssignOp(match op.node {
         Add => BinOpToken::Plus,
