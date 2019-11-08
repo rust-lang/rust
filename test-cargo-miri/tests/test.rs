@@ -39,5 +39,6 @@ fn entropy_rng() {
 
 #[test]
 fn num_cpus() {
+    #[cfg(not(windows))] // FIXME: enable on Windows again once https://github.com/seanmonstar/num_cpus/pull/90 gets released.
     assert_eq!(num_cpus::get(), 1);
 }

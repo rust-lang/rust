@@ -1,3 +1,5 @@
+#![allow(invalid_value)]
+
 fn main() {
     trait T { }
     #[derive(Debug)]

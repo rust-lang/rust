@@ -30,7 +30,7 @@ fn iter_any() {
     let h = |(), (), x: &u8| { 10u8 == *x };
     h((), (), &1u8);
 
-    [1, 2, 3u8].into_iter().any(|elt| 10 == *elt);
+    [1, 2, 3u8].iter().any(|elt| 10 == *elt);
 }
 
 fn main() {
