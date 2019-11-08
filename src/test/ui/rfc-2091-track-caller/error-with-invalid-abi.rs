@@ -1,4 +1,4 @@
-#![feature(track_caller)] //~ WARN the feature `track_caller` is incomplete
+#![feature(track_caller)]
 
 #[track_caller] //~ ERROR Rust ABI is required to use `#[track_caller]`
 extern "C" fn f() {}

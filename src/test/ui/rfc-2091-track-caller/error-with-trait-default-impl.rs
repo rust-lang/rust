@@ -1,4 +1,4 @@
-#![feature(track_caller)] //~ WARN the feature `track_caller` is incomplete
+#![feature(track_caller)]
 
 trait Trait {
     #[track_caller] //~ ERROR: `#[track_caller]` may not be used on trait methods

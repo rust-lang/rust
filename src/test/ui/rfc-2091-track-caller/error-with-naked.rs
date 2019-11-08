@@ -1,4 +1,4 @@
-#![feature(naked_functions, track_caller)] //~ WARN the feature `track_caller` is incomplete
+#![feature(naked_functions, track_caller)]
 
 #[track_caller]
 #[naked]

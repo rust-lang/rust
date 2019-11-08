@@ -1,4 +1,4 @@
-#![feature(track_caller)] //~ WARN the feature `track_caller` is incomplete
+#![feature(track_caller)]
 
 #[track_caller(1)]
 fn f() {}
