@@ -731,7 +731,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         match item.kind {
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(_, ref generics) |
-            ItemKind::Fn(_, _, ref generics, _) => {
+            ItemKind::Fn(_, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes),
                                             |this| visit::walk_item(this, item));
             }

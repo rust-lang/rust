@@ -1,7 +1,7 @@
 use crate::util::check_builtin_macro_attribute;
 
 use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
-use syntax::ast::{self, Param, Attribute, Expr, FnHeader, Generics, Ident};
+use syntax::ast::{self, Param, Attribute, Expr, FnSig, FnHeader, Generics, Ident};
 use syntax::expand::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
@@ -73,15 +73,10 @@ impl AllocFnFactory<'_, '_> {
             .collect();
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
-        let kind = ItemKind::Fn(
-            self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty)),
-            FnHeader {
-                unsafety: Unsafety::Unsafe,
-                ..FnHeader::default()
-            },
-            Generics::default(),
-            self.cx.block_expr(output_expr),
-        );
+        let decl = self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty));
+        let header = FnHeader { unsafety: Unsafety::Unsafe, ..FnHeader::default() };
+        let sig = FnSig { decl, header };
+        let kind = ItemKind::Fn(sig, Generics::default(), self.cx.block_expr(output_expr));
         let item = self.cx.item(
             self.span,
             self.cx.ident_of(&self.kind.fn_name(method.name), self.span),

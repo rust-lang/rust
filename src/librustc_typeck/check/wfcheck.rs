@@ -190,7 +190,7 @@ fn check_associated_item(
     tcx: TyCtxt<'_>,
     item_id: hir::HirId,
     span: Span,
-    sig_if_method: Option<&hir::MethodSig>,
+    sig_if_method: Option<&hir::FnSig>,
 ) {
     debug!("check_associated_item: {:?}", item_id);
 
@@ -783,7 +783,7 @@ const HELP_FOR_SELF_TYPE: &str =
 
 fn check_method_receiver<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
-    method_sig: &hir::MethodSig,
+    fn_sig: &hir::FnSig,
     method: &ty::AssocItem,
     self_ty: Ty<'tcx>,
 ) {
@@ -794,7 +794,7 @@ fn check_method_receiver<'fcx, 'tcx>(
         return;
     }
 
-    let span = method_sig.decl.inputs[0].span;
+    let span = fn_sig.decl.inputs[0].span;
 
     let sig = fcx.tcx.fn_sig(method.def_id);
     let sig = fcx.normalize_associated_types_in(span, &sig);

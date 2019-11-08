@@ -158,25 +158,25 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn body(self) -> ast::BodyId {
         self.handle(|i: ItemFnParts<'a>| i.body,
-                    |_, _, _: &'a ast::MethodSig, _, body: ast::BodyId, _, _| body,
+                    |_, _, _: &'a ast::FnSig, _, body: ast::BodyId, _, _| body,
                     |c: ClosureParts<'a>| c.body)
     }
 
     pub fn decl(self) -> &'a FnDecl {
         self.handle(|i: ItemFnParts<'a>| &*i.decl,
-                    |_, _, sig: &'a ast::MethodSig, _, _, _, _| &sig.decl,
+                    |_, _, sig: &'a ast::FnSig, _, _, _, _| &sig.decl,
                     |c: ClosureParts<'a>| c.decl)
     }
 
     pub fn span(self) -> Span {
         self.handle(|i: ItemFnParts<'_>| i.span,
-                    |_, _, _: &'a ast::MethodSig, _, _, span, _| span,
+                    |_, _, _: &'a ast::FnSig, _, _, span, _| span,
                     |c: ClosureParts<'_>| c.span)
     }
 
     pub fn id(self) -> ast::HirId {
         self.handle(|i: ItemFnParts<'_>| i.id,
-                    |id, _, _: &'a ast::MethodSig, _, _, _, _| id,
+                    |id, _, _: &'a ast::FnSig, _, _, _, _| id,
                     |c: ClosureParts<'_>| c.id)
     }
 
@@ -199,7 +199,7 @@ impl<'a> FnLikeNode<'a> {
         let closure = |c: ClosureParts<'a>| {
             FnKind::Closure(c.attrs)
         };
-        let method = |_, ident: Ident, sig: &'a ast::MethodSig, vis, _, _, attrs| {
+        let method = |_, ident: Ident, sig: &'a ast::FnSig, vis, _, _, attrs| {
             FnKind::Method(ident, sig, vis, attrs)
         };
         self.handle(item, method, closure)
@@ -209,7 +209,7 @@ impl<'a> FnLikeNode<'a> {
         I: FnOnce(ItemFnParts<'a>) -> A,
         M: FnOnce(ast::HirId,
                   Ident,
-                  &'a ast::MethodSig,
+                  &'a ast::FnSig,
                   Option<&'a ast::Visibility>,
                   ast::BodyId,
                   Span,
@@ -219,16 +219,16 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             map::Node::Item(i) => match i.kind {
-                ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
+                ast::ItemKind::Fn(ref sig, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.hir_id,
                         ident: i.ident,
-                        decl: &decl,
+                        decl: &sig.decl,
                         body: block,
                         vis: &i.vis,
                         span: i.span,
                         attrs: &i.attrs,
-                        header,
+                        header: sig.header,
                         generics,
                     }),
                 _ => bug!("item FnLikeNode that is not fn-like"),
