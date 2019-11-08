@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Span;
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::SymbolStr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
 
 declare_clippy_lint! {
@@ -72,7 +72,7 @@ pub struct NonExpressiveNames {
 impl_lint_pass!(NonExpressiveNames => [SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES, JUST_UNDERSCORES_AND_DIGITS]);
 
 struct ExistingName {
-    interned: LocalInternedString,
+    interned: SymbolStr,
     span: Span,
     len: usize,
     whitelist: &'static [&'static str],

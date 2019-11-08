@@ -1,5 +1,6 @@
 // aux-build:proc_macro_derive.rs
 
+#![feature(rustc_private)]
 #![warn(clippy::all)]
 #![allow(clippy::blacklisted_name)]
 #![warn(clippy::used_underscore_binding)]

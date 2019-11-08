@@ -491,6 +491,13 @@ pub const ALL_LINTS: [Lint; 332] = [
         module: "excessive_precision",
     },
     Lint {
+        name: "exit",
+        group: "restriction",
+        desc: "`std::process::exit` is called, terminating the program",
+        deprecation: None,
+        module: "exit",
+    },
+    Lint {
         name: "expect_fun_call",
         group: "perf",
         desc: "using any `expect` method with a function call",
@@ -811,13 +818,6 @@ pub const ALL_LINTS: [Lint; 332] = [
         desc: "integer division may cause loss of precision",
         deprecation: None,
         module: "integer_division",
-    },
-    Lint {
-        name: "into_iter_on_array",
-        group: "correctness",
-        desc: "using `.into_iter()` on an array",
-        deprecation: None,
-        module: "methods",
     },
     Lint {
         name: "into_iter_on_ref",

@@ -4,7 +4,8 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::ast::*;
-use syntax::parse::{parser, token};
+use syntax::parse::parser;
+use syntax::token;
 use syntax::tokenstream::TokenStream;
 use syntax_pos::{BytePos, Span};
 

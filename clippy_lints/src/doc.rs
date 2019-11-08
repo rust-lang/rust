@@ -6,7 +6,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 use std::ops::Range;
-use syntax::ast::Attribute;
+use syntax::ast::{AttrKind, Attribute};
 use syntax::source_map::{BytePos, Span};
 use syntax_pos::Pos;
 use url::Url;
@@ -247,13 +247,11 @@ pub fn check_attrs<'a>(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String
     let mut spans = vec![];
 
     for attr in attrs {
-        if attr.is_sugared_doc {
-            if let Some(ref current) = attr.value_str() {
-                let current = current.to_string();
-                let (current, current_spans) = strip_doc_comment_decoration(&current, attr.span);
-                spans.extend_from_slice(&current_spans);
-                doc.push_str(&current);
-            }
+        if let AttrKind::DocComment(ref comment) = attr.kind {
+            let comment = comment.to_string();
+            let (comment, current_spans) = strip_doc_comment_decoration(&comment, attr.span);
+            spans.extend_from_slice(&current_spans);
+            doc.push_str(&comment);
         } else if attr.check_name(sym!(doc)) {
             // ignore mix of sugared and non-sugared doc
             return true; // don't trigger the safety check

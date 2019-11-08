@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
-use syntax_pos::symbol::LocalInternedString;
+use syntax_pos::symbol::SymbolStr;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for various things we like to keep tidy in clippy.
@@ -112,7 +112,7 @@ impl EarlyLintPass for ClippyLintsInternal {
             if let ItemKind::Mod(ref utils_mod) = utils.kind {
                 if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name.as_str() == "paths") {
                     if let ItemKind::Mod(ref paths_mod) = paths.kind {
-                        let mut last_name: Option<LocalInternedString> = None;
+                        let mut last_name: Option<SymbolStr> = None;
                         for item in &*paths_mod.items {
                             let name = item.ident.as_str();
                             if let Some(ref last_name) = last_name {
@@ -279,8 +279,8 @@ declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         let (method_names, arg_lists, spans) = method_calls(expr, 2);
-        let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
-        let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
+        let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
+        let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
         if_chain! {
             if let ["expn_data", "outer_expn"] = method_names.as_slice();
             let args = arg_lists[1];

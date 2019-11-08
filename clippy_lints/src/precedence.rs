@@ -90,7 +90,7 @@ impl EarlyLintPass for Precedence {
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.kind {
                         match lit.kind {
-                            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
+                            LitKind::Int(..) | LitKind::Float(..) => {
                                 let mut applicability = Applicability::MachineApplicable;
                                 span_lint_and_sugg(
                                     cx,

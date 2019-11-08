@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use std::f64::consts as f64;
-use syntax::ast::{FloatTy, LitKind};
+use syntax::ast::{FloatTy, LitFloatType, LitKind};
 use syntax::symbol;
 
 declare_clippy_lint! {
@@ -62,9 +62,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ApproxConstant {
 
 fn check_lit(cx: &LateContext<'_, '_>, lit: &LitKind, e: &Expr) {
     match *lit {
-        LitKind::Float(s, FloatTy::F32) => check_known_consts(cx, e, s, "f32"),
-        LitKind::Float(s, FloatTy::F64) => check_known_consts(cx, e, s, "f64"),
-        LitKind::FloatUnsuffixed(s) => check_known_consts(cx, e, s, "f{32, 64}"),
+        LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
+            FloatTy::F32 => check_known_consts(cx, e, s, "f32"),
+            FloatTy::F64 => check_known_consts(cx, e, s, "f64"),
+        },
+        LitKind::Float(s, LitFloatType::Unsuffixed) => check_known_consts(cx, e, s, "f{32, 64}"),
         _ => (),
     }
 }

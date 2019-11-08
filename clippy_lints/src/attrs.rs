@@ -15,7 +15,7 @@ use rustc::ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use semver::Version;
-use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use syntax::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use syntax::source_map::Span;
 use syntax_pos::symbol::Symbol;
 
@@ -417,11 +417,14 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
     }
 
     for attr in attrs {
-        if attr.is_sugared_doc {
-            return;
-        }
+        let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
+            attr
+        } else {
+            continue;
+        };
+
         if attr.style == AttrStyle::Outer {
-            if attr.tokens.is_empty() || !is_present_in_source(cx, attr.span) {
+            if attr_item.tokens.is_empty() || !is_present_in_source(cx, attr.span) {
                 return;
             }
 
