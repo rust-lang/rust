@@ -739,7 +739,6 @@ symbols! {
         visible_private_types,
         volatile,
         warn,
-        warn_directory_ownership,
         wasm_import_module,
         wasm_target_feature,
         while_let,

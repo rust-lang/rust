@@ -1,12 +1,13 @@
-error: private struct constructors are not usable through re-exports in outer modules
-  --> $DIR/legacy-ctor-visibility.rs:13:13
+error[E0423]: expected function, tuple struct or tuple variant, found struct `S`
+  --> $DIR/legacy-ctor-visibility.rs:9:13
    |
-LL |             S(10);
-   |             ^
-   |
-   = note: `#[deny(legacy_constructor_visibility)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #39207 <https://github.com/rust-lang/rust/issues/39207>
+LL | /         fn f() {
+LL | |             S(10);
+   | |             ^ help: a function with a similar name exists: `f`
+LL | |
+LL | |         }
+   | |_________- similarly named function `f` defined here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0423`.

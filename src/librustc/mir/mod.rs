@@ -2701,7 +2701,6 @@ pub enum UnsafetyViolationKind {
     General,
     /// Permitted both in `const fn`s and regular `fn`s.
     GeneralAndConstFn,
-    ExternStatic(hir::HirId),
     BorrowPacked(hir::HirId),
 }
 
