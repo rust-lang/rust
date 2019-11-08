@@ -1301,7 +1301,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         Some(_) => DirectoryOwnership::Owned {
                             relative: Some(item.ident),
                         },
-                        None => DirectoryOwnership::UnownedViaMod(false),
+                        None => DirectoryOwnership::UnownedViaMod,
                     };
                     path.pop();
                     module.directory = path;

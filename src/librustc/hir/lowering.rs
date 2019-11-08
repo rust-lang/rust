@@ -44,8 +44,7 @@ use crate::hir::def::{Namespace, Res, DefKind, PartialRes, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::hir::ptr::P;
 use crate::lint;
-use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-                    ELIDED_LIFETIMES_IN_PATHS};
+use crate::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::session::config::nightly_options;
@@ -298,7 +297,6 @@ enum ParamMode {
 
 enum ParenthesizedGenericArgs {
     Ok,
-    Warn,
     Err,
 }
 
@@ -1701,29 +1699,19 @@ impl<'a> LoweringContext<'a> {
                     };
                     let parenthesized_generic_args = match partial_res.base_res() {
                         // `a::b::Trait(Args)`
-                        Res::Def(DefKind::Trait, _)
-                            if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
+                        Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
+                            ParenthesizedGenericArgs::Ok
+                        }
                         // `a::b::Trait(Args)::TraitItem`
-                        Res::Def(DefKind::Method, _)
-                        | Res::Def(DefKind::AssocConst, _)
-                        | Res::Def(DefKind::AssocTy, _)
-                            if i + 2 == proj_start =>
-                        {
+                        Res::Def(DefKind::Method, _) |
+                        Res::Def(DefKind::AssocConst, _) |
+                        Res::Def(DefKind::AssocTy, _) if i + 2 == proj_start => {
                             ParenthesizedGenericArgs::Ok
                         }
                         // Avoid duplicated errors.
                         Res::Err => ParenthesizedGenericArgs::Ok,
                         // An error
-                        Res::Def(DefKind::Struct, _)
-                        | Res::Def(DefKind::Enum, _)
-                        | Res::Def(DefKind::Union, _)
-                        | Res::Def(DefKind::TyAlias, _)
-                        | Res::Def(DefKind::Variant, _) if i + 1 == proj_start =>
-                        {
-                            ParenthesizedGenericArgs::Err
-                        }
-                        // A warning for now, for compatibility reasons.
-                        _ => ParenthesizedGenericArgs::Warn,
+                        _ => ParenthesizedGenericArgs::Err,
                     };
 
                     let num_lifetimes = type_def_id.map_or(0, |def_id| {
@@ -1786,7 +1774,7 @@ impl<'a> LoweringContext<'a> {
                 segment,
                 param_mode,
                 0,
-                ParenthesizedGenericArgs::Warn,
+                ParenthesizedGenericArgs::Err,
                 itctx.reborrow(),
                 None,
             ));
@@ -1862,15 +1850,6 @@ impl<'a> LoweringContext<'a> {
                 }
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
-                    ParenthesizedGenericArgs::Warn => {
-                        self.resolver.lint_buffer().buffer_lint(
-                            PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-                            CRATE_NODE_ID,
-                            data.span,
-                            msg.into(),
-                        );
-                        (hir::GenericArgs::none(), true)
-                    }
                     ParenthesizedGenericArgs::Err => {
                         let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
