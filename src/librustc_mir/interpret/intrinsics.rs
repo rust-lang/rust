@@ -54,11 +54,11 @@ crate fn eval_nullary_intrinsic<'tcx>(
         "type_name" => {
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
             tcx.mk_const(ty::Const {
-                val: ConstValue::Slice {
+                val: ty::ConstKind::Value(ConstValue::Slice {
                     data: alloc,
                     start: 0,
                     end: alloc.len(),
-                },
+                }),
                 ty: tcx.mk_static_str(),
             })
         },

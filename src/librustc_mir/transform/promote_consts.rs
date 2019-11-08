@@ -14,7 +14,6 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::mir::*;
-use rustc::mir::interpret::ConstValue;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::{self, List, TyCtxt, TypeFoldable};
@@ -584,7 +583,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Operand::Move(place) => self.validate_place(place.as_ref()),
 
             Operand::Constant(constant) => {
-                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
+                if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
                     if self.tcx.trait_of_item(def_id).is_some() {
                         // Don't peek inside trait associated constants.
                         // (see below what we do for other consts, for now)

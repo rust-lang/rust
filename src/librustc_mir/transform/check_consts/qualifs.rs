@@ -1,7 +1,6 @@
 //! A copy of the `Qualif` trait in `qualify_consts.rs` that is suitable for the new validator.
 
 use rustc::mir::*;
-use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, Ty};
 use syntax_pos::DUMMY_SP;
 
@@ -118,7 +117,7 @@ pub trait Qualif {
             Operand::Move(ref place) => Self::in_place(cx, per_local, place.as_ref()),
 
             Operand::Constant(ref constant) => {
-                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
+                if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)
