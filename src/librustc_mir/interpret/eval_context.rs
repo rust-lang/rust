@@ -816,7 +816,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     block.terminator().source_info
                 };
                 match body.source_scope_local_data {
-                    mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
+                    // The scope may have been inlined from a different crate, in which
+                    // case we will not have crate-local data for it. If that is the case,
+                    // we just use our root lint level.
+                    mir::ClearCrossCrate::Set(ref ivs) => {
+                        ivs.get(source_info.scope).map(|d| d.lint_root)
+                    }
                     mir::ClearCrossCrate::Clear => None,
                 }
             });

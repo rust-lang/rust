@@ -105,6 +105,14 @@ pub struct Body<'tcx> {
 
     /// Crate-local information for each source scope, that can't (and
     /// needn't) be tracked across crates.
+    ///
+    /// Before optimizations run, every scope in `source_scopes` is guarnateed
+    /// to have an entry in `source_scope_local_data` (assuming it is `ClearCrossCrate::Set`).
+    ///
+    /// However, after optimizations are run, there may be some scopes with no entry
+    /// in `source_scope_local_data:`. This is due to the fact that MIR inlining can
+    /// cause scopes from a different crate to be inlined into this `Body`, which
+    /// cannot have crate-local data.
     pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
 
     /// The yield type of the function, if it is a generator.
