@@ -14,10 +14,10 @@
 //!
 //! ## Collecting RawItems
 //!
-//!  This happens in the `raw` module, which parses a single source file into a
-//!  set of top-level items. Nested imports are desugared to flat imports in
-//!  this phase. Macro calls are represented as a triple of (Path, Option<Name>,
-//!  TokenTree).
+//! This happens in the `raw` module, which parses a single source file into a
+//! set of top-level items. Nested imports are desugared to flat imports in this
+//! phase. Macro calls are represented as a triple of (Path, Option<Name>,
+//! TokenTree).
 //!
 //! ## Collecting Modules
 //!
@@ -44,10 +44,9 @@
 //! Macros from other crates (including proc-macros) can be used with
 //! `foo::bar!` syntax. We handle them similarly to imports. There's a list of
 //! unexpanded macros. On every iteration, we try to resolve each macro call
-//! path and, upon success, we run macro expansion and "collect module" phase
-//! on the result
+//! path and, upon success, we run macro expansion and "collect module" phase on
+//! the result
 
-// FIXME: review privacy of submodules
 pub mod raw;
 pub mod per_ns;
 mod collector;
