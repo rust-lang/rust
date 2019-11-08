@@ -6,7 +6,6 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -20,7 +19,6 @@ use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
-use syntax::ast::LitKind;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
@@ -71,7 +69,7 @@ impl fmt::Display for Mode {
     }
 }
 
-const QUALIF_COUNT: usize = 4;
+const QUALIF_COUNT: usize = 2;
 
 // FIXME(eddyb) once we can use const generics, replace this array with
 // something like `IndexVec` but for fixed-size arrays (`IndexArray`?).
@@ -80,20 +78,20 @@ struct PerQualif<T>([T; QUALIF_COUNT]);
 
 impl<T: Clone> PerQualif<T> {
     fn new(x: T) -> Self {
-        PerQualif([x.clone(), x.clone(), x.clone(), x])
+        PerQualif([x.clone(), x])
     }
 }
 
 impl<T> PerQualif<T> {
     fn as_mut(&mut self) -> PerQualif<&mut T> {
-        let [x0, x1, x2, x3] = &mut self.0;
-        PerQualif([x0, x1, x2, x3])
+        let [x0, x1] = &mut self.0;
+        PerQualif([x0, x1])
     }
 
     fn zip<U>(self, other: PerQualif<U>) -> PerQualif<(T, U)> {
-        let [x0, x1, x2, x3] = self.0;
-        let [y0, y1, y2, y3] = other.0;
-        PerQualif([(x0, y0), (x1, y1), (x2, y2), (x3, y3)])
+        let [x0, x1] = self.0;
+        let [y0, y1] = other.0;
+        PerQualif([(x0, y0), (x1, y1)])
     }
 }
 
@@ -429,195 +427,6 @@ impl Qualif for NeedsDrop {
     }
 }
 
-/// Not promotable at all - non-`const fn` calls, `asm!`,
-/// pointer comparisons, ptr-to-int casts, etc.
-/// Inside a const context all constness rules apply, so promotion simply has to follow the regular
-/// constant rules (modulo interior mutability or `Drop` rules which are handled `HasMutInterior`
-/// and `NeedsDrop` respectively). Basically this duplicates the checks that the const-checking
-/// visitor enforces by emitting errors when working in const context.
-struct IsNotPromotable;
-
-impl Qualif for IsNotPromotable {
-    const IDX: usize = 2;
-
-    fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
-        match static_.kind {
-            StaticKind::Promoted(_, _) => unreachable!(),
-            StaticKind::Static => {
-                // Only allow statics (not consts) to refer to other statics.
-                // FIXME(eddyb) does this matter at all for promotion?
-                let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
-
-                !allowed ||
-                    cx.tcx.get_attrs(static_.def_id).iter().any(
-                        |attr| attr.check_name(sym::thread_local)
-                    )
-            }
-        }
-    }
-
-    fn in_projection(
-        cx: &ConstCx<'_, 'tcx>,
-        place: PlaceRef<'_, 'tcx>,
-    ) -> bool {
-        if let [proj_base @ .., elem] = place.projection {
-            match elem {
-                ProjectionElem::Deref |
-                ProjectionElem::Downcast(..) => return true,
-
-                ProjectionElem::ConstantIndex {..} |
-                ProjectionElem::Subslice {..} |
-                ProjectionElem::Index(_) => {}
-
-                ProjectionElem::Field(..) => {
-                    if cx.mode == Mode::NonConstFn {
-                        let base_ty = Place::ty_from(place.base, proj_base, cx.body, cx.tcx).ty;
-                        if let Some(def) = base_ty.ty_adt_def() {
-                            // No promotion of union field accesses.
-                            if def.is_union() {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            Self::in_projection_structurally(cx, place)
-        } else {
-            bug!("This should be called if projection is not empty");
-        }
-    }
-
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
-        match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if cx.mode == Mode::NonConstFn => {
-                let operand_ty = operand.ty(cx.body, cx.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                match (cast_in, cast_out) {
-                    (CastTy::Ptr(_), CastTy::Int(_)) |
-                    (CastTy::FnPtr, CastTy::Int(_)) => {
-                        // in normal functions, mark such casts as not promotable
-                        return true;
-                    }
-                    _ => {}
-                }
-            }
-
-            Rvalue::BinaryOp(op, ref lhs, _) if cx.mode == Mode::NonConstFn => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.body, cx.tcx).kind {
-                    assert!(op == BinOp::Eq || op == BinOp::Ne ||
-                            op == BinOp::Le || op == BinOp::Lt ||
-                            op == BinOp::Ge || op == BinOp::Gt ||
-                            op == BinOp::Offset);
-
-                    // raw pointer operations are not allowed inside promoteds
-                    return true;
-                }
-            }
-
-            Rvalue::NullaryOp(NullOp::Box, _) => return true,
-
-            _ => {}
-        }
-
-        Self::in_rvalue_structurally(cx, rvalue)
-    }
-
-    fn in_call(
-        cx: &ConstCx<'_, 'tcx>,
-        callee: &Operand<'tcx>,
-        args: &[Operand<'tcx>],
-        _return_ty: Ty<'tcx>,
-    ) -> bool {
-        let fn_ty = callee.ty(cx.body, cx.tcx);
-        match fn_ty.kind {
-            ty::FnDef(def_id, _) => {
-                match cx.tcx.fn_sig(def_id).abi() {
-                    Abi::RustIntrinsic |
-                    Abi::PlatformIntrinsic => {
-                        assert!(!cx.tcx.is_const_fn(def_id));
-                        match &*cx.tcx.item_name(def_id).as_str() {
-                            | "size_of"
-                            | "min_align_of"
-                            | "needs_drop"
-                            | "type_id"
-                            | "bswap"
-                            | "bitreverse"
-                            | "ctpop"
-                            | "cttz"
-                            | "cttz_nonzero"
-                            | "ctlz"
-                            | "ctlz_nonzero"
-                            | "wrapping_add"
-                            | "wrapping_sub"
-                            | "wrapping_mul"
-                            | "unchecked_shl"
-                            | "unchecked_shr"
-                            | "rotate_left"
-                            | "rotate_right"
-                            | "add_with_overflow"
-                            | "sub_with_overflow"
-                            | "mul_with_overflow"
-                            | "saturating_add"
-                            | "saturating_sub"
-                            | "transmute"
-                            | "simd_insert"
-                            | "simd_extract"
-                            | "ptr_offset_from"
-                            => return true,
-
-                            _ => {}
-                        }
-                    }
-                    _ => {
-                        let is_const_fn =
-                            cx.tcx.is_const_fn(def_id) ||
-                            cx.tcx.is_unstable_const_fn(def_id).is_some() ||
-                            cx.is_const_panic_fn(def_id);
-                        if !is_const_fn {
-                            return true;
-                        }
-                    }
-                }
-            }
-            _ => return true,
-        }
-
-        Self::in_operand(cx, callee) || args.iter().any(|arg| Self::in_operand(cx, arg))
-    }
-}
-
-/// Refers to temporaries which cannot be promoted *implicitly*.
-/// Explicit promotion happens e.g. for constant arguments declared via `rustc_args_required_const`.
-/// Implicit promotion has almost the same rules, except that disallows `const fn` except for
-/// those marked `#[rustc_promotable]`. This is to avoid changing a legitimate run-time operation
-/// into a failing compile-time operation e.g. due to addresses being compared inside the function.
-struct IsNotImplicitlyPromotable;
-
-impl Qualif for IsNotImplicitlyPromotable {
-    const IDX: usize = 3;
-
-    fn in_call(
-        cx: &ConstCx<'_, 'tcx>,
-        callee: &Operand<'tcx>,
-        args: &[Operand<'tcx>],
-        _return_ty: Ty<'tcx>,
-    ) -> bool {
-        if cx.mode == Mode::NonConstFn {
-            if let ty::FnDef(def_id, _) = callee.ty(cx.body, cx.tcx).kind {
-                // Never promote runtime `const fn` calls of
-                // functions without `#[rustc_promotable]`.
-                if !cx.tcx.is_promotable_const_fn(def_id) {
-                    return true;
-                }
-            }
-        }
-
-        Self::in_operand(cx, callee) || args.iter().any(|arg| Self::in_operand(cx, arg))
-    }
-}
-
 // Ensure the `IDX` values are sequential (`0..QUALIF_COUNT`).
 macro_rules! static_assert_seq_qualifs {
     ($i:expr => $first:ident $(, $rest:ident)*) => {
@@ -632,7 +441,7 @@ macro_rules! static_assert_seq_qualifs {
     };
 }
 static_assert_seq_qualifs!(
-    0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
+    0 => HasMutInterior, NeedsDrop
 );
 
 impl ConstCx<'_, 'tcx> {
@@ -640,9 +449,6 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[NeedsDrop] = NeedsDrop::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotImplicitlyPromotable] =
-            IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs
     }
 
@@ -650,8 +456,6 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_local(self, local);
         qualifs[NeedsDrop] = NeedsDrop::in_local(self, local);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_local(self, local);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_local(self, local);
         qualifs
     }
 
@@ -659,8 +463,6 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_value(self, source);
         qualifs[NeedsDrop] = NeedsDrop::in_value(self, source);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_value(self, source);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_value(self, source);
         qualifs
     }
 }
@@ -678,7 +480,6 @@ struct Checker<'a, 'tcx> {
     rpo: ReversePostorder<'a, 'tcx>,
 
     temp_promotion_state: IndexVec<Local, TempState>,
-    promotion_candidates: Vec<Candidate>,
     unchecked_promotion_candidates: Vec<Candidate>,
 
     /// If `true`, do not emit errors to the user, merely collect them in `errors`.
@@ -732,14 +533,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     }
                 }
             }
-            if !temps[local].is_promotable() {
-                cx.per_local[IsNotPromotable].insert(local);
-            }
-            if let LocalKind::Var = body.local_kind(local) {
-                // Sanity check to prevent implicit and explicit promotion of
-                // named locals
-                assert!(cx.per_local[IsNotPromotable].contains(local));
-            }
         }
 
         Checker {
@@ -748,7 +541,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             def_id,
             rpo,
             temp_promotion_state: temps,
-            promotion_candidates: vec![],
             unchecked_promotion_candidates,
             errors: vec![],
             suppress_errors: false,
@@ -794,16 +586,15 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         let mut qualifs = self.qualifs_in_value(source);
 
         match source {
-            ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) => {
+            ValueSource::Rvalue(&Rvalue::Ref(_, kind, _)) => {
                 // Getting `true` from `HasMutInterior::in_rvalue` means
                 // the borrowed place is disallowed from being borrowed,
                 // due to either a mutable borrow (with some exceptions),
                 // or an shared borrow of a value with interior mutability.
-                // Then `HasMutInterior` is replaced with `IsNotPromotable`,
+                // Then `HasMutInterior` is cleared
                 // to avoid duplicate errors (e.g. from reborrowing).
                 if qualifs[HasMutInterior] {
                     qualifs[HasMutInterior] = false;
-                    qualifs[IsNotPromotable] = true;
 
                     debug!("suppress_errors: {}", self.suppress_errors);
                     if self.mode.requires_const_checking() && !self.suppress_errors {
@@ -833,57 +624,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                             }
                         }
                     }
-                } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
-                    // Don't promote BorrowKind::Shallow borrows, as they don't
-                    // reach codegen.
-                    // FIXME(eddyb) the two other kinds of borrow (`Shallow` and `Unique`)
-                    // aren't promoted here but *could* be promoted as part of a larger
-                    // value because `IsNotPromotable` isn't being set for them,
-                    // need to figure out what is the intended behavior.
-
-                    // We might have a candidate for promotion.
-                    let candidate = Candidate::Ref(location);
-                    // Start by traversing to the "base", with non-deref projections removed.
-                    let deref_proj =
-                        place.projection.iter().rev().find(|&elem| *elem == ProjectionElem::Deref);
-
-                    debug!(
-                        "qualify_consts: promotion candidate: place={:?} {:?}",
-                        place.base, deref_proj
-                    );
-                    // We can only promote interior borrows of promotable temps (non-temps
-                    // don't get promoted anyway).
-                    // (If we bailed out of the loop due to a `Deref` above, we will definitely
-                    // not enter the conditional here.)
-                    if let (PlaceBase::Local(local), None) = (&place.base, deref_proj) {
-                        if self.body.local_kind(*local) == LocalKind::Temp {
-                            debug!("qualify_consts: promotion candidate: local={:?}", local);
-                            // The borrowed place doesn't have `HasMutInterior`
-                            // (from `in_rvalue`), so we can safely ignore
-                            // `HasMutInterior` from the local's qualifications.
-                            // This allows borrowing fields which don't have
-                            // `HasMutInterior`, from a type that does, e.g.:
-                            // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            let mut local_qualifs = self.qualifs_in_local(*local);
-                            // Any qualifications, except HasMutInterior (see above), disqualify
-                            // from promotion.
-                            // This is, in particular, the "implicit promotion" version of
-                            // the check making sure that we don't run drop glue during const-eval.
-                            local_qualifs[HasMutInterior] = false;
-                            if !local_qualifs.0.iter().any(|&qualif| qualif) {
-                                debug!("qualify_consts: promotion candidate: {:?}", candidate);
-                                self.promotion_candidates.push(candidate);
-                            }
-                        }
-                    }
-                }
-            },
-            ValueSource::Rvalue(&Rvalue::Repeat(ref operand, _)) => {
-                debug!("assign: self.cx.mode={:?} self.def_id={:?} location={:?} operand={:?}",
-                       self.cx.mode, self.def_id, location, operand);
-                if self.should_promote_repeat_expression(operand) &&
-                        self.tcx.features().const_in_array_repeat_expressions {
-                    self.promotion_candidates.push(Candidate::Repeat(location));
                 }
             },
             _ => {},
@@ -937,18 +677,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         for (per_local, qualif) in &mut self.cx.per_local.as_mut().zip(qualifs).0 {
             if *qualif {
                 per_local.insert(index);
-            }
-        }
-
-        // Ensure the `IsNotPromotable` qualification is preserved.
-        // NOTE(eddyb) this is actually unnecessary right now, as
-        // we never replace the local's qualif, but we might in
-        // the future, and so it serves to catch changes that unset
-        // important bits (in which case, asserting `contains` could
-        // be replaced with calling `insert` to re-set the bit).
-        if kind == LocalKind::Temp {
-            if !self.temp_promotion_state[index].is_promotable() {
-                assert!(self.cx.per_local[IsNotPromotable].contains(index));
             }
         }
     }
@@ -1047,24 +775,25 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Collect all the temps we need to promote.
         let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
 
-        // HACK(eddyb) don't try to validate promotion candidates if any
-        // parts of the control-flow graph were skipped due to an error.
-        let promotion_candidates = if has_controlflow_error {
-            let unleash_miri = self
-                .tcx
-                .sess
-                .opts
-                .debugging_opts
-                .unleash_the_miri_inside_of_you;
-            if !unleash_miri {
-                self.tcx.sess.delay_span_bug(
-                    body.span,
-                    "check_const: expected control-flow error(s)",
-                );
-            }
-            self.promotion_candidates.clone()
+        // HACK: if parts of the control-flow graph were skipped due to an error, don't try to
+        // promote anything, since that can cause errors in a `const` if e.g. rvalue static
+        // promotion is attempted within a loop body.
+        let unleash_miri = self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
+        let promotion_candidates = if has_controlflow_error && !unleash_miri {
+            self.tcx.sess.delay_span_bug(
+                body.span,
+                "check_const: expected control-flow error(s)",
+            );
+
+            vec![]
         } else {
-            self.valid_promotion_candidates()
+            promote_consts::validate_candidates(
+                self.tcx,
+                self.body,
+                self.def_id,
+                &self.temp_promotion_state,
+                &self.unchecked_promotion_candidates,
+            )
         };
 
         debug!("qualify_const: promotion_candidates={:?}", promotion_candidates);
@@ -1086,67 +815,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        let mut qualifs = self.qualifs_in_local(RETURN_PLACE);
-
-        // Account for errors in consts by using the
-        // conservative type qualification instead.
-        if qualifs[IsNotPromotable] {
-            qualifs = self.qualifs_in_any_value_of_ty(body.return_ty());
-        }
-
+        let qualifs = self.qualifs_in_local(RETURN_PLACE);
         (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
-    }
-
-    /// Get the subset of `unchecked_promotion_candidates` that are eligible
-    /// for promotion.
-    // FIXME(eddyb) replace the old candidate gathering with this.
-    fn valid_promotion_candidates(&self) -> Vec<Candidate> {
-        // Sanity-check the promotion candidates.
-        let candidates = promote_consts::validate_candidates(
-            self.tcx,
-            self.body,
-            self.def_id,
-            &self.temp_promotion_state,
-            &self.unchecked_promotion_candidates,
-        );
-
-        if candidates != self.promotion_candidates {
-            let report = |msg, candidate| {
-                let span = match candidate {
-                    Candidate::Ref(loc) |
-                    Candidate::Repeat(loc) => self.body.source_info(loc).span,
-                    Candidate::Argument { bb, .. } => {
-                        self.body[bb].terminator().source_info.span
-                    }
-                };
-                self.tcx.sess.span_err(span, &format!("{}: {:?}", msg, candidate));
-            };
-
-            for &c in &self.promotion_candidates {
-                if !candidates.contains(&c) {
-                    report("invalidated old candidate", c);
-                }
-            }
-
-            for &c in &candidates {
-                if !self.promotion_candidates.contains(&c) {
-                    report("extra new candidate", c);
-                }
-            }
-
-            bug!("promotion candidate validation mismatches (see above)");
-        }
-
-        candidates
-    }
-
-    /// Returns `true` if the operand of a repeat expression is promotable.
-    fn should_promote_repeat_expression(&self, operand: &Operand<'tcx>) -> bool {
-        let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
-                             IsNotPromotable::in_operand(self, operand);
-        debug!("should_promote_repeat_expression: operand={:?} not_promotable={:?}",
-               operand, not_promotable);
-        !not_promotable
     }
 }
 
@@ -1459,11 +1129,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
 
             let fn_ty = func.ty(self.body, self.tcx);
-            let mut callee_def_id = None;
-            let mut is_shuffle = false;
             match fn_ty.kind {
                 ty::FnDef(def_id, _) => {
-                    callee_def_id = Some(def_id);
                     match self.tcx.fn_sig(def_id).abi() {
                         Abi::RustIntrinsic |
                         Abi::PlatformIntrinsic => {
@@ -1485,10 +1152,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                                 is gated in {}s", self.mode));
                                         }
                                     }
-                                }
-
-                                name if name.starts_with("simd_shuffle") => {
-                                    is_shuffle = true;
                                 }
 
                                 // no need to check feature gates, intrinsics are only callable
@@ -1575,36 +1238,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
                 _ => {
                     self.not_const(ops::FnCallOther);
-                }
-            }
-
-            // No need to do anything in constants and statics, as everything is "constant" anyway
-            // so promotion would be useless.
-            if self.mode != Mode::Static && self.mode != Mode::Const {
-                let constant_args = callee_def_id.and_then(|id| {
-                    args_required_const(self.tcx, id)
-                }).unwrap_or_default();
-                for (i, arg) in args.iter().enumerate() {
-                    if !(is_shuffle && i == 2 || constant_args.contains(&i)) {
-                        continue;
-                    }
-
-                    let candidate = Candidate::Argument { bb: location.block, index: i };
-                    // Since the argument is required to be constant,
-                    // we care about constness, not promotability.
-                    // If we checked for promotability, we'd miss out on
-                    // the results of function calls (which are never promoted
-                    // in runtime code).
-                    // This is not a problem, because the argument explicitly
-                    // requests constness, in contrast to regular promotion
-                    // which happens even without the user requesting it.
-                    //
-                    // `promote_consts` is responsible for emitting the error if
-                    // the argument is not promotable.
-                    if !IsNotPromotable::in_operand(self, arg) {
-                        debug!("visit_terminator_kind: candidate={:?}", candidate);
-                        self.promotion_candidates.push(candidate);
-                    }
                 }
             }
 
@@ -1711,7 +1344,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 
 // FIXME(eddyb) this is only left around for the validation logic
 // in `promote_consts`, see the comment in `validate_operand`.
-pub(super) const QUALIF_ERROR_BIT: u8 = 1 << IsNotPromotable::IDX;
+pub(super) const QUALIF_ERROR_BIT: u8 = 1 << 2;
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
@@ -1759,39 +1392,42 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
 
         debug!("run_pass: mode={:?}", mode);
         if let Mode::NonConstFn | Mode::ConstFn = mode {
-            // This is ugly because Checker holds onto mir,
-            // which can't be mutated until its scope ends.
-            let (temps, candidates) = {
-                let mut checker = Checker::new(tcx, def_id, body, mode);
-                if let Mode::ConstFn = mode {
-                    let use_min_const_fn_checks =
-                        !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
-                        tcx.is_min_const_fn(def_id);
-                    if use_min_const_fn_checks {
-                        // Enforce `min_const_fn` for stable `const fn`s.
-                        use super::qualify_min_const_fn::is_min_const_fn;
-                        if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
-                            error_min_const_fn_violation(tcx, span, err);
-                            return;
-                        }
-
-                        // `check_const` should not produce any errors, but better safe than sorry
-                        // FIXME(#53819)
-                        // NOTE(eddyb) `check_const` is actually needed for promotion inside
-                        // `min_const_fn` functions.
+            let mut checker = Checker::new(tcx, def_id, body, mode);
+            if let Mode::ConstFn = mode {
+                let use_min_const_fn_checks =
+                    !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
+                    tcx.is_min_const_fn(def_id);
+                if use_min_const_fn_checks {
+                    // Enforce `min_const_fn` for stable `const fn`s.
+                    use super::qualify_min_const_fn::is_min_const_fn;
+                    if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
+                        error_min_const_fn_violation(tcx, span, err);
+                        return;
                     }
 
-                    // Enforce a constant-like CFG for `const fn`.
-                    checker.check_const();
-                } else {
-                    while let Some((bb, data)) = checker.rpo.next() {
-                        checker.visit_basic_block_data(bb, data);
-                    }
+                    // `check_const` should not produce any errors, but better safe than sorry
+                    // FIXME(#53819)
+                    // NOTE(eddyb) `check_const` is actually needed for promotion inside
+                    // `min_const_fn` functions.
                 }
 
-                let promotion_candidates = checker.valid_promotion_candidates();
-                (checker.temp_promotion_state, promotion_candidates)
-            };
+                // Enforce a constant-like CFG for `const fn`.
+                checker.check_const();
+            } else {
+                while let Some((bb, data)) = checker.rpo.next() {
+                    checker.visit_basic_block_data(bb, data);
+                }
+            }
+
+            // Promote only the promotable candidates.
+            let temps = checker.temp_promotion_state;
+            let candidates = promote_consts::validate_candidates(
+                tcx,
+                body,
+                def_id,
+                &temps,
+                &checker.unchecked_promotion_candidates,
+            );
 
             // Do the actual promotion, now that we know what's viable.
             self.promoted.set(
@@ -1910,19 +1546,6 @@ fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId)
             infcx.report_fulfillment_errors(&err, None, false);
         }
     });
-}
-
-fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize>> {
-    let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
-    let mut ret = FxHashSet::default();
-    for meta in attr.meta_item_list()? {
-        match meta.literal()?.kind {
-            LitKind::Int(a, _) => { ret.insert(a as usize); }
-            _ => return None,
-        }
-    }
-    Some(ret)
 }
 
 fn validator_mismatch(
