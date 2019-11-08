@@ -13,7 +13,7 @@
     rustc_crate_green,
 )]
 
-#![plugin(lint_for_crate_rpass)]
+#![plugin(lint_for_crate_rpass)] //~ WARNING compiler plugins are deprecated
 #![rustc_crate_okay]
 #![rustc_crate_blue]
 #![rustc_crate_red]

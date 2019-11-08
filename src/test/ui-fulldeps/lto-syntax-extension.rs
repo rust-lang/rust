@@ -6,7 +6,7 @@
 // no-prefer-dynamic
 
 #![feature(plugin)]
-#![plugin(lto_syntax_extension_plugin)]
+#![plugin(lto_syntax_extension_plugin)] //~ WARNING compiler plugins are deprecated
 
 extern crate lto_syntax_extension_lib;
 
