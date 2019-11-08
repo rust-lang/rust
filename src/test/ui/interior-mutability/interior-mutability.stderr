@@ -1,5 +1,5 @@
 error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
-  --> $DIR/interior-mutability.rs:7:5
+  --> $DIR/interior-mutability.rs:6:5
    |
 LL |     catch_unwind(|| { x.set(23); });
    |     ^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
@@ -12,7 +12,7 @@ LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
    = help: within `std::cell::Cell<i32>`, the trait `std::panic::RefUnwindSafe` is not implemented for `std::cell::UnsafeCell<i32>`
    = note: required because it appears within the type `std::cell::Cell<i32>`
    = note: required because of the requirements on the impl of `std::panic::UnwindSafe` for `&std::cell::Cell<i32>`
-   = note: required because it appears within the type `[closure@$DIR/interior-mutability.rs:7:18: 7:35 x:&std::cell::Cell<i32>]`
+   = note: required because it appears within the type `[closure@$DIR/interior-mutability.rs:6:18: 6:35 x:&std::cell::Cell<i32>]`
 
 error: aborting due to previous error
 

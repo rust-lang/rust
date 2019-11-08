@@ -260,6 +260,43 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
+    /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
+    ///
+    /// Note: in a future Rust version this method may become unnecessary
+    /// when array literal syntax allows
+    /// [repeating const expressions](https://github.com/rust-lang/rust/issues/49147).
+    /// The example below could then use `let mut buf = [MaybeUninit::<u8>::uninit(); 32];`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_extra, maybe_uninit_slice_assume_init)]
+    ///
+    /// use std::mem::MaybeUninit;
+    ///
+    /// extern "C" {
+    ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
+    /// }
+    ///
+    /// /// Returns a (possibly smaller) slice of data that was actually read
+    /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
+    ///     unsafe {
+    ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
+    ///         MaybeUninit::slice_get_ref(&buf[..len])
+    ///     }
+    /// }
+    ///
+    /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
+    /// let data = read(&mut buf);
+    /// ```
+    #[unstable(feature = "maybe_uninit_uninit_array", issue = "0")]
+    #[inline(always)]
+    pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+        unsafe {
+            MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init()
+        }
+    }
+
     /// A promotable constant, equivalent to `uninit()`.
     #[unstable(feature = "internal_uninit_const", issue = "0",
         reason = "hack to work around promotability")]
@@ -690,6 +727,32 @@ impl<T> MaybeUninit<T> {
     pub unsafe fn get_mut(&mut self) -> &mut T {
         intrinsics::panic_if_uninhabited::<T>();
         &mut *self.value
+    }
+
+    /// Assuming all the elements are initialized, get a slice to them.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized causes undefined behavior.
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[inline(always)]
+    pub unsafe fn slice_get_ref(slice: &[Self]) -> &[T] {
+        &*(slice as *const [Self] as *const [T])
+    }
+
+    /// Assuming all the elements are initialized, get a mutable slice to them.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized causes undefined behavior.
+    #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "0")]
+    #[inline(always)]
+    pub unsafe fn slice_get_mut(slice: &mut [Self]) -> &mut [T] {
+        &mut *(slice as *mut [Self] as *mut [T])
     }
 
     /// Gets a pointer to the first element of the array.

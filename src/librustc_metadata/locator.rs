@@ -214,7 +214,7 @@
 
 use crate::cstore::MetadataBlob;
 use crate::creader::Library;
-use crate::schema::{METADATA_HEADER, rustc_version};
+use crate::rmeta::{METADATA_HEADER, rustc_version};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;

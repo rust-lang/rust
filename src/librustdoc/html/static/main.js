@@ -3,7 +3,7 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global isHidden, onEach, removeClass, updateLocalStorage */
+/* global onEach, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -161,17 +161,18 @@ function getSearchElement() {
         return window.history && typeof window.history.pushState === "function";
     }
 
-    var main = document.getElementById("main");
+    function isHidden(elem) {
+        return elem.offsetHeight === 0;
+    }
 
-    function onHashChange(ev) {
-        // If we're in mobile mode, we should hide the sidebar in any case.
-        hideSidebar();
-        var match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
-        if (match) {
-            return highlightSourceLines(match, ev);
-        }
+    var main = document.getElementById("main");
+    var savedHash = "";
+
+    function handleHashes(ev) {
         var search = getSearchElement();
         if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+            // This block occurs when clicking on an element in the navbar while
+            // in a search.
             addClass(search, "hidden");
             removeClass(main, "hidden");
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
@@ -181,6 +182,35 @@ function getSearchElement() {
             var elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
+            }
+        }
+        // This part is used in case an element is not visible.
+        if (savedHash !== window.location.hash) {
+            savedHash = window.location.hash;
+            if (savedHash.length === 0) {
+                return;
+            }
+            var elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
+            if (!elem || !isHidden(elem)) {
+                return;
+            }
+            var parent = elem.parentNode;
+            if (parent && hasClass(parent, "impl-items")) {
+                // In case this is a trait implementation item, we first need to toggle
+                // the "Show hidden undocumented items".
+                onEachLazy(parent.getElementsByClassName("collapsed"), function(e) {
+                    if (e.parentNode === parent) {
+                        // Only click on the toggle we're looking for.
+                        e.click();
+                        return true;
+                    }
+                });
+                if (isHidden(elem)) {
+                    // The whole parent is collapsed. We need to click on its toggle as well!
+                    if (hasClass(parent.lastElementChild, "collapse-toggle")) {
+                        parent.lastElementChild.click();
+                    }
+                }
             }
         }
     }
@@ -228,6 +258,16 @@ function getSearchElement() {
         }
     }
 
+    function onHashChange(ev) {
+        // If we're in mobile mode, we should hide the sidebar in any case.
+        hideSidebar();
+        var match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
+        if (match) {
+            return highlightSourceLines(match, ev);
+        }
+        handleHashes(ev);
+    }
+
     function expandSection(id) {
         var elem = document.getElementById(id);
         if (elem && isHidden(elem)) {
@@ -245,9 +285,6 @@ function getSearchElement() {
             }
         }
     }
-
-    highlightSourceLines();
-    window.onhashchange = onHashChange;
 
     // Gets the human-readable string for the virtual-key code of the
     // given KeyboardEvent, ev.
@@ -2638,6 +2675,9 @@ function getSearchElement() {
         popup.appendChild(container);
         insertAfter(popup, getSearchElement());
     }
+
+    onHashChange();
+    window.onhashchange = onHashChange;
 
     buildHelperPopup();
 }());

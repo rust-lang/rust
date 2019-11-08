@@ -2,7 +2,7 @@
 
 use crate::cstore::{self, CStore, MetadataBlob};
 use crate::locator::{self, CratePaths};
-use crate::schema::{CrateRoot, CrateDep};
+use crate::rmeta::{CrateRoot, CrateDep};
 use rustc_data_structures::sync::{Lock, Once, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;

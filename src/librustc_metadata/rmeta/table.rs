@@ -1,5 +1,4 @@
-use crate::decoder::Metadata;
-use crate::schema::*;
+use crate::rmeta::*;
 
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc_serialize::{Encodable, opaque::Encoder};
@@ -12,7 +11,7 @@ use log::debug;
 /// Used mainly for Lazy positions and lengths.
 /// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
 /// but this has no impact on safety.
-crate trait FixedSizeEncoding: Default {
+pub(super) trait FixedSizeEncoding: Default {
     const BYTE_LEN: usize;
 
     // FIXME(eddyb) convert to and from `[u8; Self::BYTE_LEN]` instead,
@@ -126,7 +125,7 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
 // FIXME(eddyb) replace `Vec` with `[_]` here, such that `Box<Table<T>>` would be used
 // when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
 // (not sure if that is possible given that the `Vec` is being resized now)
-crate struct Table<T> where Option<T>: FixedSizeEncoding {
+pub(super) struct Table<T> where Option<T>: FixedSizeEncoding {
     // FIXME(eddyb) store `[u8; <Option<T>>::BYTE_LEN]` instead of `u8` in `Vec`,
     // once that starts being allowed by the compiler (i.e. lazy normalization).
     bytes: Vec<u8>,
@@ -143,7 +142,7 @@ impl<T> Default for Table<T> where Option<T>: FixedSizeEncoding {
 }
 
 impl<T> Table<T> where Option<T>: FixedSizeEncoding {
-    crate fn set(&mut self, i: usize, value: T) {
+    fn set(&mut self, i: usize, value: T) {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
         // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
@@ -157,7 +156,7 @@ impl<T> Table<T> where Option<T>: FixedSizeEncoding {
         Some(value).write_to_bytes_at(&mut self.bytes, i);
     }
 
-    crate fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
+    fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.bytes);
         Lazy::from_position_and_meta(
@@ -178,7 +177,7 @@ impl<T> LazyMeta for Table<T> where Option<T>: FixedSizeEncoding {
 impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
-    crate fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+    fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
         &self,
         metadata: M,
         i: usize,
@@ -194,7 +193,7 @@ impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
 /// Like a `Table` but using `DefIndex` instead of `usize` as keys.
 // FIXME(eddyb) replace by making `Table` behave like `IndexVec`,
 // and by using `newtype_index!` to define `DefIndex`.
-crate struct PerDefTable<T>(Table<T>) where Option<T>: FixedSizeEncoding;
+pub(super) struct PerDefTable<T>(Table<T>) where Option<T>: FixedSizeEncoding;
 
 impl<T> Default for PerDefTable<T> where Option<T>: FixedSizeEncoding {
     fn default() -> Self {
@@ -203,12 +202,12 @@ impl<T> Default for PerDefTable<T> where Option<T>: FixedSizeEncoding {
 }
 
 impl<T> PerDefTable<T> where Option<T>: FixedSizeEncoding {
-    crate fn set(&mut self, def_id: DefId, value: T) {
+    pub(super) fn set(&mut self, def_id: DefId, value: T) {
         assert!(def_id.is_local());
         self.0.set(def_id.index.index(), value);
     }
 
-    crate fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
+    pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
         let lazy = self.0.encode(buf);
         Lazy::from_position_and_meta(lazy.position, lazy.meta)
     }
@@ -229,7 +228,7 @@ impl<T> Lazy<PerDefTable<T>> where Option<T>: FixedSizeEncoding {
 
     /// Given the metadata, extract out the value at a particular DefIndex (if any).
     #[inline(never)]
-    crate fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
         &self,
         metadata: M,
         def_index: DefIndex,

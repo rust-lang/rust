@@ -1,9 +1,8 @@
 use crate::cstore::{self, LoadedMacro};
-use crate::encoder;
 use crate::link_args;
 use crate::native_libs;
 use crate::foreign_modules;
-use crate::schema;
+use crate::rmeta::{self, encoder};
 
 use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateSource, CrateStore, DepKind, EncodedMetadata, NativeLibraryKind};
@@ -529,6 +528,6 @@ impl CrateStore for cstore::CStore {
 
     fn metadata_encoding_version(&self) -> &[u8]
     {
-        schema::METADATA_HEADER
+        rmeta::METADATA_HEADER
     }
 }

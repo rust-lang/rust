@@ -1,5 +1,5 @@
-use crate::schema::*;
-use crate::table::{FixedSizeEncoding, PerDefTable};
+use crate::rmeta::*;
+use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -1781,7 +1781,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-crate fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
