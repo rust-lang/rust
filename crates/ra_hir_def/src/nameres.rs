@@ -195,12 +195,6 @@ pub struct Resolution {
     pub import: Option<ImportId>,
 }
 
-impl Resolution {
-    fn from_macro(macro_: MacroDefId) -> Self {
-        Resolution { def: PerNs::macros(macro_), import: None }
-    }
-}
-
 #[derive(Debug, Clone)]
 struct ResolvePathResult {
     resolved_def: PerNs,
