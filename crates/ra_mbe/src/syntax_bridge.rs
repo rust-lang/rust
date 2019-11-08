@@ -22,7 +22,7 @@ pub struct TokenMap {
 
 /// Maps relative range of the expanded syntax node to `tt::TokenId`
 #[derive(Debug, PartialEq, Eq, Default)]
-pub struct ExpandedRangeMap {
+pub struct RevTokenMap {
     ranges: Vec<(TextRange, tt::TokenId)>,
 }
 
@@ -58,7 +58,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 fn fragment_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
-) -> Result<(Parse<SyntaxNode>, ExpandedRangeMap), ExpandError> {
+) -> Result<(Parse<SyntaxNode>, RevTokenMap), ExpandError> {
     let tmp;
     let tokens = match tt {
         tt::Subtree { delimiter: tt::Delimiter::None, token_trees } => token_trees.as_slice(),
@@ -79,44 +79,29 @@ fn fragment_to_syntax_node(
     Ok((parse, range_map))
 }
 
-/// Parses the token tree (result of macro expansion) to an expression
-pub fn token_tree_to_expr(
-    tt: &tt::Subtree,
-) -> Result<(Parse<ast::Expr>, ExpandedRangeMap), ExpandError> {
-    let (parse, map) = fragment_to_syntax_node(tt, Expr)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
+macro_rules! impl_token_tree_conversions {
+    ($($(#[$attr:meta])* $name:ident => ($kind:ident, $t:ty) ),*) => {
+        $(
+            $(#[$attr])*
+            pub fn $name(tt: &tt::Subtree) -> Result<(Parse<$t>, RevTokenMap), ExpandError> {
+                let (parse, map) = fragment_to_syntax_node(tt, $kind)?;
+                parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
+            }
+        )*
+    }
 }
 
-/// Parses the token tree (result of macro expansion) to a Pattern
-pub fn token_tree_to_pat(
-    tt: &tt::Subtree,
-) -> Result<(Parse<ast::Pat>, ExpandedRangeMap), ExpandError> {
-    let (parse, map) = fragment_to_syntax_node(tt, Pattern)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
-}
-
-/// Parses the token tree (result of macro expansion) to a Type
-pub fn token_tree_to_ty(
-    tt: &tt::Subtree,
-) -> Result<(Parse<ast::TypeRef>, ExpandedRangeMap), ExpandError> {
-    let (parse, map) = fragment_to_syntax_node(tt, Type)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
-}
-
-/// Parses the token tree (result of macro expansion) as a sequence of stmts
-pub fn token_tree_to_macro_stmts(
-    tt: &tt::Subtree,
-) -> Result<(Parse<ast::MacroStmts>, ExpandedRangeMap), ExpandError> {
-    let (parse, map) = fragment_to_syntax_node(tt, Statements)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
-}
-
-/// Parses the token tree (result of macro expansion) as a sequence of items
-pub fn token_tree_to_items(
-    tt: &tt::Subtree,
-) -> Result<(Parse<ast::MacroItems>, ExpandedRangeMap), ExpandError> {
-    let (parse, map) = fragment_to_syntax_node(tt, Items)?;
-    parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
+impl_token_tree_conversions! {
+    /// Parses the token tree (result of macro expansion) to an expression
+    token_tree_to_expr => (Expr, ast::Expr),
+    /// Parses the token tree (result of macro expansion) to a Pattern
+    token_tree_to_pat => (Pattern, ast::Pat),
+    /// Parses the token tree (result of macro expansion) to a Type
+    token_tree_to_ty => (Type, ast::TypeRef),
+    /// Parses the token tree (result of macro expansion) as a sequence of stmts
+    token_tree_to_macro_stmts => (Statements, ast::MacroStmts),
+    /// Parses the token tree (result of macro expansion) as a sequence of items
+    token_tree_to_items => (Items, ast::MacroItems)
 }
 
 impl TokenMap {
@@ -132,15 +117,28 @@ impl TokenMap {
     }
 }
 
-impl ExpandedRangeMap {
-    fn add(&mut self, relative_range: TextRange, token_id: &tt::TokenId) {
+impl RevTokenMap {
+    fn add(&mut self, relative_range: TextRange, token_id: tt::TokenId) {
         self.ranges.push((relative_range, token_id.clone()))
     }
 
+    /// Map a given token map to (Expanded syntax node, Input tokens) text-ranges pair
+    ///
+    /// This function do the following things:
+    ///
+    /// 1. Undo the increment of token-id `shift`:
+    ///     When we output a token from from macro argument, we increased its id
+    ///     by `shift` (so it's guaranteed to not to collide with anything from the definition)
+    ///     We undo the increment here to rollback to its original token id.
+    /// 2. Offset the input tokens (`to`) by `parent` text-range:
+    ///     We transforms the input tokens text-ranges from relative to original first token
+    ///     to parent text-range
+    /// 3. Maps expanded tokens text-ranges to parent text-ranges
+    ///
     pub fn map_ranges(
         &self,
         to: &TokenMap,
-        start: TextUnit,
+        parent: TextRange,
         shift: u32,
     ) -> Vec<(TextRange, TextRange)> {
         self.ranges
@@ -149,7 +147,7 @@ impl ExpandedRangeMap {
                 let adjusted_id = tt::TokenId(tid.0.checked_sub(shift)?);
                 let to_range = to.relative_range_of(adjusted_id)?;
 
-                Some((*r, TextRange::offset_len(to_range.start() + start, to_range.len())))
+                Some((*r, TextRange::offset_len(to_range.start() + parent.start(), to_range.len())))
             })
             .collect()
     }
@@ -301,7 +299,7 @@ struct TtTreeSink<'a> {
     cursor: Cursor<'a>,
     text_pos: TextUnit,
     inner: SyntaxTreeBuilder,
-    range_map: ExpandedRangeMap,
+    range_map: RevTokenMap,
 
     // Number of roots
     // Use for detect ill-form tree which is not single root
@@ -316,11 +314,11 @@ impl<'a> TtTreeSink<'a> {
             text_pos: 0.into(),
             inner: SyntaxTreeBuilder::default(),
             roots: smallvec::SmallVec::new(),
-            range_map: ExpandedRangeMap::default(),
+            range_map: RevTokenMap::default(),
         }
     }
 
-    fn finish(self) -> (Parse<SyntaxNode>, ExpandedRangeMap) {
+    fn finish(self) -> (Parse<SyntaxNode>, RevTokenMap) {
         (self.inner.finish(), self.range_map)
     }
 }
@@ -355,11 +353,9 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                     // Mark the range if needed
                     if let tt::Leaf::Ident(ident) = leaf {
                         if kind == IDENT {
-                            let range = TextRange::offset_len(
-                                self.text_pos + TextUnit::of_str(&self.buf),
-                                TextUnit::of_str(&ident.text),
-                            );
-                            self.range_map.add(range, &ident.id);
+                            let range =
+                                TextRange::offset_len(self.text_pos, TextUnit::of_str(&ident.text));
+                            self.range_map.add(range, ident.id);
                         }
                     }
 
