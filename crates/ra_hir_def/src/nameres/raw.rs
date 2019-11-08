@@ -88,7 +88,7 @@ impl RawItems {
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 
-    pub fn items(&self) -> &[RawItem] {
+    pub(super) fn items(&self) -> &[RawItem] {
         &self.items
     }
 }
@@ -127,17 +127,17 @@ type Attrs = Option<Arc<[Attr]>>;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct RawItem {
     attrs: Attrs,
-    pub kind: RawItemKind,
+    pub(super) kind: RawItemKind,
 }
 
 impl RawItem {
-    pub fn attrs(&self) -> &[Attr] {
+    pub(super) fn attrs(&self) -> &[Attr] {
         self.attrs.as_ref().map_or(&[], |it| &*it)
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum RawItemKind {
+pub(crate) enum RawItemKind {
     Module(Module),
     Import(ImportId),
     Def(Def),
@@ -145,11 +145,11 @@ pub enum RawItemKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Module(RawId);
+pub(crate) struct Module(RawId);
 impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ModuleData {
+pub(crate) enum ModuleData {
     Declaration { name: Name, ast_id: FileAstId<ast::Module> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
@@ -160,26 +160,26 @@ impl_arena_id!(ImportId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
-    pub path: Path,
-    pub alias: Option<Name>,
-    pub is_glob: bool,
-    pub is_prelude: bool,
-    pub is_extern_crate: bool,
-    pub is_macro_use: bool,
+    pub(super) path: Path,
+    pub(super) alias: Option<Name>,
+    pub(super) is_glob: bool,
+    pub(super) is_prelude: bool,
+    pub(super) is_extern_crate: bool,
+    pub(super) is_macro_use: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Def(RawId);
+pub(crate) struct Def(RawId);
 impl_arena_id!(Def);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct DefData {
-    pub name: Name,
-    pub kind: DefKind,
+pub(crate) struct DefData {
+    pub(super) name: Name,
+    pub(super) kind: DefKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum DefKind {
+pub(crate) enum DefKind {
     Function(FileAstId<ast::FnDef>),
     Struct(FileAstId<ast::StructDef>),
     Union(FileAstId<ast::StructDef>),
@@ -191,15 +191,15 @@ pub enum DefKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Macro(RawId);
+pub(crate) struct Macro(RawId);
 impl_arena_id!(Macro);
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct MacroData {
-    pub ast_id: FileAstId<ast::MacroCall>,
-    pub path: Path,
-    pub name: Option<Name>,
-    pub export: bool,
+pub(crate) struct MacroData {
+    pub(super) ast_id: FileAstId<ast::MacroCall>,
+    pub(super) path: Path,
+    pub(super) name: Option<Name>,
+    pub(super) export: bool,
 }
 
 struct RawItemsCollector {
