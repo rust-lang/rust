@@ -298,6 +298,12 @@ impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
+        if self.props.should_ice {
+            if self.config.mode != CompileFail &&
+                self.config.mode != Incremental {
+                self.fatal("cannot use should-ice in a test that is not cfail");
+            }
+        }
         match self.config.mode {
             CompileFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
@@ -2782,8 +2788,14 @@ impl<'test> TestCx<'test> {
         }
 
         if revision.starts_with("rpass") {
+            if revision_cx.props.should_ice {
+                revision_cx.fatal("can only use should-ice in cfail tests");
+            }
             revision_cx.run_rpass_test();
         } else if revision.starts_with("rfail") {
+            if revision_cx.props.should_ice {
+                revision_cx.fatal("can only use should-ice in cfail tests");
+            }
             revision_cx.run_rfail_test();
         } else if revision.starts_with("cfail") {
             revision_cx.run_cfail_test();
