@@ -13,7 +13,6 @@ use crate::middle::mem_categorization as mc;
 use crate::ty::{self, TyCtxt, adjustment};
 
 use crate::hir::{self, PatKind};
-use std::rc::Rc;
 use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -136,12 +135,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(&param.pat));
             debug!("consume_body: param_ty = {:?}", param_ty);
 
-            let param_cmt = Rc::new(self.mc.cat_rvalue(
-                param.hir_id,
-                param.pat.span,
-                param_ty));
+            let param_place = self.mc.cat_rvalue(param.hir_id, param.pat.span, param_ty);
 
-            self.walk_irrefutable_pat(param_cmt, &param.pat);
+            self.walk_irrefutable_pat(&param_place, &param.pat);
         }
 
         self.consume_expr(&body.value);
@@ -234,12 +230,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::Match(ref discr, ref arms, _) => {
-                let discr_cmt = Rc::new(return_if_err!(self.mc.cat_expr(&discr)));
+                let discr_cmt = return_if_err!(self.mc.cat_expr(&discr));
                 self.borrow_expr(&discr, ty::ImmBorrow);
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
-                    self.walk_arm(discr_cmt.clone(), arm);
+                    self.walk_arm(&discr_cmt, arm);
                 }
             }
 
@@ -385,8 +381,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             // "assigns", which is handled by
             // `walk_pat`:
             self.walk_expr(&expr);
-            let init_cmt = Rc::new(return_if_err!(self.mc.cat_expr(&expr)));
-            self.walk_irrefutable_pat(init_cmt, &local.pat);
+            let init_cmt = return_if_err!(self.mc.cat_expr(&expr));
+            self.walk_irrefutable_pat(&init_cmt, &local.pat);
         }
     }
 
@@ -417,11 +413,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             None => { return; }
         };
 
-        let with_cmt = Rc::new(return_if_err!(self.mc.cat_expr(&with_expr)));
+        let with_place = return_if_err!(self.mc.cat_expr(&with_expr));
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match with_cmt.ty.kind {
+        match with_place.ty.kind {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
@@ -429,14 +425,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         self.tcx().field_index(f.hir_id, self.mc.tables) == f_index
                     });
                     if !is_mentioned {
-                        let cmt_field = self.mc.cat_field(
+                        let field_place = self.mc.cat_projection(
                             &*with_expr,
-                            with_cmt.clone(),
-                            f_index,
-                            with_field.ident,
-                            with_field.ty(self.tcx(), substs)
+                            with_place.clone(),
+                            with_field.ty(self.tcx(), substs),
                         );
-                        self.delegate_consume(&cmt_field);
+                        self.delegate_consume(&field_place);
                     }
                 }
             }
@@ -522,8 +516,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm) {
-        self.walk_pat(discr_cmt.clone(), &arm.pat);
+    fn walk_arm(&mut self, discr_place: &mc::Place<'tcx>, arm: &hir::Arm) {
+        self.walk_pat(discr_place, &arm.pat);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
             self.consume_expr(e)
@@ -534,22 +528,22 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
-    fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
-        self.walk_pat(cmt_discr, pat);
+    fn walk_irrefutable_pat(&mut self, discr_place: &mc::Place<'tcx>, pat: &hir::Pat) {
+        self.walk_pat(discr_place, pat);
     }
 
 
     /// The core driver for walking a pattern
-    fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat) {
-        debug!("walk_pat(cmt_discr={:?}, pat={:?})", cmt_discr, pat);
+    fn walk_pat(&mut self, discr_place: &mc::Place<'tcx>, pat: &hir::Pat) {
+        debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, ref mut delegate } = *self;
-        return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
+        return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!(
-                    "walk_pat: binding cmt_pat={:?} pat={:?}",
-                    cmt_pat,
+                    "walk_pat: binding place={:?} pat={:?}",
+                    place,
                     pat,
                 );
                 if let Some(&bm) = mc.tables.pat_binding_modes().get(pat.hir_id) {
@@ -570,12 +564,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     match bm {
                         ty::BindByReference(m) => {
                             let bk = ty::BorrowKind::from_mutbl(m);
-                            delegate.borrow(&cmt_pat, bk);
+                            delegate.borrow(place, bk);
                         }
                         ty::BindByValue(..) => {
-                            let mode = copy_or_move(mc, &cmt_pat);
+                            let mode = copy_or_move(mc, place);
                             debug!("walk_pat binding consuming pat");
-                            delegate.consume(&cmt_pat, mode);
+                            delegate.consume(place, mode);
                         }
                     }
                 } else {

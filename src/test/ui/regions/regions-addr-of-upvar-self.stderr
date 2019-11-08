@@ -9,7 +9,7 @@ note: first, the lifetime cannot outlive the lifetime `'_` as defined on the bod
    |
 LL |         let _f = || {
    |                  ^^
-note: ...so that reference does not outlive borrowed content
+note: ...so that closure can access `self`
   --> $DIR/regions-addr-of-upvar-self.rs:10:41
    |
 LL |             let p: &'static mut usize = &mut self.food;
