@@ -18,7 +18,6 @@ use rustc::ty::{self, DefIdTree, Ty, TyCtxt, Const, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{self, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
-use rustc::mir::interpret::ConstValue;
 use rustc_target::spec::abi;
 use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
@@ -2226,7 +2225,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let def_id = tcx.hir().local_def_id(ast_const.hir_id);
 
         let mut const_ = ty::Const {
-            val: ConstValue::Unevaluated(
+            val: ty::ConstKind::Unevaluated(
                 def_id,
                 InternalSubsts::identity_for_item(tcx, def_id),
             ),
@@ -2243,7 +2242,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let generics = tcx.generics_of(item_def_id);
             let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
             let name = tcx.hir().name(hir_id);
-            const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
+            const_.val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
         }
 
         tcx.mk_const(const_)
