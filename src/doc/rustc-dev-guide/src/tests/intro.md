@@ -103,27 +103,27 @@ including:
 
 ## Testing infrastructure
 
-When a Pull Request is opened on Github, [Travis] will automatically launch a
-build that will run all tests on a single configuration (x86-64 linux). In
-essence, it runs `./x.py test` after building.
+When a Pull Request is opened on Github, [Azure Pipelines] will automatically
+launch a build that will run all tests on some configurations
+(x86_64-gnu-llvm-6.0 linux. x86_64-gnu-tools linux, mingw-check linux). In
+essence, it runs `./x.py test` after building for each of them.
 
 The integration bot [bors] is used for coordinating merges to the master
 branch. When a PR is approved, it goes into a [queue] where merges are tested
-one at a time on a wide set of platforms using Travis and [Appveyor]
-(currently over 50 different configurations).  Most platforms only run the
-build steps, some run a restricted set of tests, only a subset run the full
-suite of tests (see Rust's [platform tiers]).
+one at a time on a wide set of platforms using Azure Pipelines (currently over
+50 different configurations). Most platforms only run the build steps, some run
+a restricted set of tests, only a subset run the full suite of tests (see
+Rust's [platform tiers]).
 
-[Travis]: https://travis-ci.org/rust-lang/rust
+[Azure Pipelines]: https://dev.azure.com/rust-lang/rust/
 [bors]: https://github.com/servo/homu
 [queue]: https://buildbot2.rust-lang.org/homu/queue/rust
-[Appveyor]: https://ci.appveyor.com/project/rust-lang/rust
 [platform tiers]: https://forge.rust-lang.org/platform-support.html
 
 ## Testing with Docker images
 
 The Rust tree includes [Docker] image definitions for the platforms used on
-Travis in [src/ci/docker].  The script [src/ci/docker/run.sh] is used to build
+Azure Pipelines in [src/ci/docker].  The script [src/ci/docker/run.sh] is used to build
 the Docker image, run it, build Rust within the image, and run the tests.
 
 > TODO: What is a typical workflow for testing/debugging on a platform that
