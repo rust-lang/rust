@@ -86,8 +86,9 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
         .collect::<Vec<_>>();
 
     config.target_rustcflags = Some(format!(
-        "-L {0} -L {0}/deps -Dwarnings -Zui-testing {1}",
+        "-L {0} -L {0}/deps {1} -Dwarnings -Zui-testing {2}",
         host_libs().display(),
+        target_libs().map_or_else(String::new, |path| format!("-L {0} -L {0}/deps", path.display())),
         disambiguated.join(" ")
     ));
 
