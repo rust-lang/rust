@@ -2,7 +2,7 @@
 // aux-build:use_crate_2.rs
 // build-aux-docs
 // edition:2018
-// compile-flags:--extern use_crate --extern use_crate_2 -Z unstable-options
+// compile-flags:--extern use_crate --extern use_crate_2
 
 // During the buildup to Rust 2018, rustdoc would eagerly inline `pub use some_crate;` as if it
 // were a module, so we changed it to make `pub use`ing crate roots remain as a `pub use` statement

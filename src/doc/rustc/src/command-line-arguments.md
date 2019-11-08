@@ -21,8 +21,7 @@ to `#[cfg(verbose)]` and `#[cfg(feature = "serde")]` respectively.
 <a id="option-l-search-path"></a>
 ## `-L`: add a directory to the library search path
 
-When looking for external crates or libraries, a directory passed to this flag
-will be searched.
+The `-L` flag adds a path to search for external crates and libraries.
 
 The kind of search path can optionally be specified with the form `-L
 KIND=PATH` where `KIND` may be one of:
@@ -262,9 +261,30 @@ This flag, when combined with other flags, makes them produce extra output.
 <a id="option-extern"></a>
 ## `--extern`: specify where an external library is located
 
-This flag allows you to pass the name and location of an external crate that
-will be linked into the crate you are building. This flag may be specified
-multiple times. The format of the value should be `CRATENAME=PATH`.
+This flag allows you to pass the name and location for an external crate of a
+direct dependency. Indirect dependencies (dependencies of dependencies) are
+located using the [`-L` flag](#option-l-search-path). The given crate name is
+added to the [extern prelude], which is the same as specifying `extern crate`
+within the root module. The given crate name does not need to match the name
+the library was built with.
+
+This flag may be specified multiple times. This flag takes an argument with
+either of the following formats:
+
+* `CRATENAME=PATH` — Indicates the given crate is found at the given path.
+* `CRATENAME` — Indicates the given crate may be found in the search path,
+  such as within the sysroot or via the `-L` flag.
+
+The same crate name may be specified multiple times for different crate types.
+If both an `rlib` and `dylib` are found, an internal algorithm is used to
+decide which to use for linking. The [`-C prefer-dynamic`
+flag][prefer-dynamic] may be used to influence which is used.
+
+If the same crate name is specified with and without a path, the one with the
+path is used and the pathless flag has no effect.
+
+[extern prelude]: ../reference/items/extern-crates.html#extern-prelude
+[prefer-dynamic]: codegen-options/index.md#prefer-dynamic
 
 <a id="option-sysroot"></a>
 ## `--sysroot`: Override the system root

@@ -1800,7 +1800,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "extern",
             "Specify where an external rust library is located",
-            "NAME=PATH",
+            "NAME[=PATH]",
         ),
         opt::multi_s(
             "",
@@ -2164,7 +2164,6 @@ fn collect_print_requests(
     cg: &mut CodegenOptions,
     dopts: &mut DebuggingOptions,
     matches: &getopts::Matches,
-    is_unstable_enabled: bool,
     error_format: ErrorOutputType,
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
@@ -2206,7 +2205,7 @@ fn collect_print_requests(
         "tls-models" => PrintRequest::TlsModels,
         "native-static-libs" => PrintRequest::NativeStaticLibs,
         "target-spec-json" => {
-            if is_unstable_enabled {
+            if dopts.unstable_options {
                 PrintRequest::TargetSpec
             } else {
                 early_error(
@@ -2370,7 +2369,6 @@ fn parse_externs(
     matches: &getopts::Matches,
     debugging_opts: &DebuggingOptions,
     error_format: ErrorOutputType,
-    is_unstable_enabled: bool,
 ) -> Externs {
     if matches.opt_present("extern-private") && !debugging_opts.unstable_options {
         early_error(
@@ -2392,13 +2390,6 @@ fn parse_externs(
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
         let location = parts.next().map(|s| s.to_string());
-        if location.is_none() && !is_unstable_enabled {
-            early_error(
-                error_format,
-                "the `-Z unstable-options` flag must also be passed to \
-                 enable `--extern crate_name` without `=path`",
-            );
-        };
 
         let entry = externs
             .entry(name.to_owned())
@@ -2483,12 +2474,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    let is_unstable_enabled = nightly_options::is_unstable_enabled(matches);
     let prints = collect_print_requests(
         &mut cg,
         &mut debugging_opts,
         matches,
-        is_unstable_enabled,
         error_format,
     );
 
@@ -2521,7 +2510,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    let externs = parse_externs(matches, &debugging_opts, error_format, is_unstable_enabled);
+    let externs = parse_externs(matches, &debugging_opts, error_format);
 
     let crate_name = matches.opt_str("crate-name");
 
