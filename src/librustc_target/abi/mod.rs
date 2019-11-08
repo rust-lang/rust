@@ -532,13 +532,6 @@ impl Integer {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
-         PartialOrd, Ord, Debug)]
-pub enum FloatTy {
-    F32,
-    F64,
-}
-
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Primitive {
@@ -550,7 +543,8 @@ pub enum Primitive {
     /// a negative integer passed by zero-extension will appear positive in
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
-    Float(FloatTy),
+    F32,
+    F64,
     Pointer
 }
 
@@ -560,8 +554,8 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.size(),
-            Float(FloatTy::F32) => Size::from_bits(32),
-            Float(FloatTy::F64) => Size::from_bits(64),
+            F32 => Size::from_bits(32),
+            F64 => Size::from_bits(64),
             Pointer => dl.pointer_size
         }
     }
@@ -571,15 +565,15 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.align(dl),
-            Float(FloatTy::F32) => dl.f32_align,
-            Float(FloatTy::F64) => dl.f64_align,
+            F32 => dl.f32_align,
+            F64 => dl.f64_align,
             Pointer => dl.pointer_align
         }
     }
 
     pub fn is_float(self) -> bool {
         match self {
-            Float(_) => true,
+            F32 | F64 => true,
             _ => false
         }
     }
