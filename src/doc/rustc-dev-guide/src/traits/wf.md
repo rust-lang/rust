@@ -13,12 +13,12 @@ say that the construct is well-formed. If not, we report an error to the user.
 
 Well-formedness checking happens in the [`chalk/chalk-solve/src/wf.rs`][wf]
 module in chalk. After you have read this chapter, you may find useful to see
-an extended set of examples in the [`chalk/src/test/wf.rs`][wf_test] submodule.
+an extended set of examples in the [`chalk/tests/test/wf_lowering.rs`][wf_test] submodule.
 
 The new-style WF checking has not been implemented in rustc yet.
 
 [wf]: https://github.com/rust-lang/chalk/blob/master/chalk-solve/src/wf.rs
-[wf_test]: https://github.com/rust-lang/chalk/blob/master/src/test/wf_lowering.rs
+[wf_test]: https://github.com/rust-lang/chalk/blob/master/tests/test/wf_lowering.rs
 
 We give here a complete reference of the generated goals for each Rust
 declaration.

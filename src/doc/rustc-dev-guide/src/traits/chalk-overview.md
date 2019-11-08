@@ -230,7 +230,7 @@ Likewise, lowering tests use the [`lowering_success!` and
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
 
 [`ProgramClause`]: https://rust-lang.github.io/chalk/chalk_ir/enum.ProgramClause.html
-[`ProgramEnvironment`]: https://rust-lang.github.io/chalk/chalk/program_environment/struct.ProgramEnvironment.html
+[`ProgramEnvironment`]: https://rust-lang.github.io/chalk/chalk_integration/program_environment/struct.ProgramEnvironment.html
 [chalk_engine]: https://rust-lang.github.io/chalk/chalk_engine
 [chalk_ir]: https://rust-lang.github.io/chalk/chalk_ir/index.html
 [chalk_parse]: https://rust-lang.github.io/chalk/chalk_parse/index.html
@@ -238,7 +238,7 @@ Likewise, lowering tests use the [`lowering_success!` and
 [chalk_rust_ir]: https://rust-lang.github.io/chalk/chalk_rust_ir/index.html
 [doc-chalk]: https://rust-lang.github.io/chalk/chalk/index.html
 [engine-context]: https://rust-lang.github.io/chalk/chalk_engine/context/index.html
-[chalk-program]: https://rust-lang.github.io/chalk/chalk/program/struct.Program.html
+[chalk-program]: https://rust-lang.github.io/chalk/chalk_integration/program/struct.Program.html
 
 [binders-struct]: https://rust-lang.github.io/chalk/chalk_ir/struct.Binders.html
 [chalk-ast]: https://rust-lang.github.io/chalk/chalk_parse/ast/index.html
@@ -246,7 +246,7 @@ Likewise, lowering tests use the [`lowering_success!` and
 [chalk-test-lowering-example]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rust_ir/lowering/test.rs#L8-L31
 [chalk-test-lowering]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rust_ir/lowering/test.rs
 [chalk-test-wf]: https://github.com/rust-lang/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules/wf/test.rs#L1
-[chalki]: https://rust-lang.github.io/chalk/chalki/index.html
+[chalki]: https://github.com/rust-lang/chalk/blob/master/src/main.rs
 [clause]: https://github.com/rust-lang/chalk/blob/master/GLOSSARY.md#clause
 [coherence-src]: https://rust-lang.github.io/chalk/chalk_solve/coherence/index.html
 [ir-code]: https://rust-lang.github.io/chalk/chalk_rust_ir/
