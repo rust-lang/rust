@@ -263,8 +263,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
                 if a.is_bits() && b.is_bits() {
-                    let a = a.to_usize(self)?;
-                    let b = b.to_usize(self)?;
+                    let a = a.to_machine_usize(self)?;
+                    let b = b.to_machine_usize(self)?;
                     if a == b && a != 0 {
                         self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
                         return Ok(true);
