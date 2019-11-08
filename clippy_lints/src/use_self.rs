@@ -223,30 +223,32 @@ struct UseSelfVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if path.segments.len() >= 2 {
-            let last_but_one = &path.segments[path.segments.len() - 2];
-            if last_but_one.ident.name != kw::SelfUpper {
-                let enum_def_id = match path.res {
-                    Res::Def(DefKind::Variant, variant_def_id) => self.cx.tcx.parent(variant_def_id),
-                    Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), ctor_def_id) => {
-                        let variant_def_id = self.cx.tcx.parent(ctor_def_id);
-                        variant_def_id.and_then(|def_id| self.cx.tcx.parent(def_id))
-                    },
-                    _ => None,
-                };
+        if !path.segments.iter().any(|p| p.ident.span.is_dummy()) {
+            if path.segments.len() >= 2 {
+                let last_but_one = &path.segments[path.segments.len() - 2];
+                if last_but_one.ident.name != kw::SelfUpper {
+                    let enum_def_id = match path.res {
+                        Res::Def(DefKind::Variant, variant_def_id) => self.cx.tcx.parent(variant_def_id),
+                        Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), ctor_def_id) => {
+                            let variant_def_id = self.cx.tcx.parent(ctor_def_id);
+                            variant_def_id.and_then(|def_id| self.cx.tcx.parent(def_id))
+                        },
+                        _ => None,
+                    };
 
-                if self.item_path.res.opt_def_id() == enum_def_id {
-                    span_use_self_lint(self.cx, path, Some(last_but_one));
+                    if self.item_path.res.opt_def_id() == enum_def_id {
+                        span_use_self_lint(self.cx, path, Some(last_but_one));
+                    }
                 }
             }
-        }
 
-        if path.segments.last().expect(SEGMENTS_MSG).ident.name != kw::SelfUpper {
-            if self.item_path.res == path.res {
-                span_use_self_lint(self.cx, path, None);
-            } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, _), ctor_def_id) = path.res {
-                if self.item_path.res.opt_def_id() == self.cx.tcx.parent(ctor_def_id) {
+            if path.segments.last().expect(SEGMENTS_MSG).ident.name != kw::SelfUpper {
+                if self.item_path.res == path.res {
                     span_use_self_lint(self.cx, path, None);
+                } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, _), ctor_def_id) = path.res {
+                    if self.item_path.res.opt_def_id() == self.cx.tcx.parent(ctor_def_id) {
+                        span_use_self_lint(self.cx, path, None);
+                    }
                 }
             }
         }

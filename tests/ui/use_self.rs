@@ -1,4 +1,5 @@
 // run-rustfix
+// compile-flags: --edition 2018
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
@@ -329,6 +330,35 @@ mod issue3567 {
     impl Test for TestStruct {
         fn test() -> TestStruct {
             TestStruct::from_something()
+        }
+    }
+}
+
+mod paths_created_by_lowering {
+    use std::ops::Range;
+
+    struct S {}
+
+    impl S {
+        const A: usize = 0;
+        const B: usize = 1;
+
+        async fn g() -> S {
+            S {}
+        }
+
+        fn f<'a>(&self, p: &'a [u8]) -> &'a [u8] {
+            &p[S::A..S::B]
+        }
+    }
+
+    trait T {
+        fn f<'a>(&self, p: &'a [u8]) -> &'a [u8];
+    }
+
+    impl T for Range<u8> {
+        fn f<'a>(&self, p: &'a [u8]) -> &'a [u8] {
+            &p[0..1]
         }
     }
 }
