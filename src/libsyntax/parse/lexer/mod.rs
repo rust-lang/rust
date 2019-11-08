@@ -1,17 +1,17 @@
-use crate::token::{self, Token, TokenKind};
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
+use crate::token::{self, Token, TokenKind};
 use crate::util::comments;
 
-use errors::{FatalError, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span};
+use errors::{DiagnosticBuilder, FatalError};
 use rustc_lexer::Base;
-use rustc_lexer::unescape;
+use syntax_pos::{BytePos, Pos, Span};
 
+use log::debug;
+use rustc_data_structures::sync::Lrc;
 use std::char;
 use std::convert::TryInto;
-use rustc_data_structures::sync::Lrc;
-use log::debug;
+
 use unescape_error_reporting::push_escaped_char;
 
 #[cfg(test)]
@@ -45,12 +45,14 @@ pub struct StringReader<'a> {
 }
 
 impl<'a> StringReader<'a> {
-    pub fn new(sess: &'a ParseSess,
-               source_file: Lrc<syntax_pos::SourceFile>,
-               override_span: Option<Span>) -> Self {
+    pub fn new(
+        sess: &'a ParseSess,
+        source_file: Lrc<syntax_pos::SourceFile>,
+        override_span: Option<Span>,
+    ) -> Self {
         if source_file.src.is_none() {
-            sess.span_diagnostic.bug(&format!("cannot lex `source_file` without source: {}",
-                                              source_file.name));
+            sess.span_diagnostic
+                .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
         }
 
         let src = (*source_file.src.as_ref().unwrap()).clone();
@@ -81,7 +83,6 @@ impl<'a> StringReader<'a> {
 
         sr
     }
-
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
         self.override_span.unwrap_or_else(|| Span::with_root_ctxt(lo, hi))
@@ -141,7 +142,6 @@ impl<'a> StringReader<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m).emit();
     }
 
-
     /// Report a fatal error spanning [`from_pos`, `to_pos`).
     fn fatal_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) -> FatalError {
         self.fatal_span(self.mk_sp(from_pos, to_pos), m)
@@ -152,15 +152,22 @@ impl<'a> StringReader<'a> {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
     }
 
-    fn struct_span_fatal(&self, from_pos: BytePos, to_pos: BytePos, m: &str)
-        -> DiagnosticBuilder<'a>
-    {
+    fn struct_span_fatal(
+        &self,
+        from_pos: BytePos,
+        to_pos: BytePos,
+        m: &str,
+    ) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
     }
 
-    fn struct_fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char)
-        -> DiagnosticBuilder<'a>
-    {
+    fn struct_fatal_span_char(
+        &self,
+        from_pos: BytePos,
+        to_pos: BytePos,
+        m: &str,
+        c: char,
+    ) -> DiagnosticBuilder<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         push_escaped_char(&mut m, c);
@@ -171,11 +178,7 @@ impl<'a> StringReader<'a> {
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
     /// `libsyntax::TokenKind`. This turns strings into interned
     /// symbols and runs additional validation.
-    fn cook_lexer_token(
-        &self,
-        token: rustc_lexer::TokenKind,
-        start: BytePos,
-    ) -> TokenKind {
+    fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
         match token {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
@@ -240,14 +243,21 @@ impl<'a> StringReader<'a> {
                 let suffix = if suffix_start < self.pos {
                     let string = self.str_from(suffix_start);
                     if string == "_" {
-                        self.sess.span_diagnostic
-                            .struct_span_warn(self.mk_sp(suffix_start, self.pos),
-                                              "underscore literal suffix is not allowed")
-                            .warn("this was previously accepted by the compiler but is \
-                                   being phased out; it will become a hard error in \
-                                   a future release!")
-                            .note("for more information, see issue #42326 \
-                                   <https://github.com/rust-lang/rust/issues/42326>")
+                        self.sess
+                            .span_diagnostic
+                            .struct_span_warn(
+                                self.mk_sp(suffix_start, self.pos),
+                                "underscore literal suffix is not allowed",
+                            )
+                            .warn(
+                                "this was previously accepted by the compiler but is \
+                                 being phased out; it will become a hard error in \
+                                 a future release!",
+                            )
+                            .note(
+                                "for more information, see issue #42326 \
+                                 <https://github.com/rust-lang/rust/issues/42326>",
+                            )
                             .emit();
                         None
                     } else {
@@ -264,11 +274,7 @@ impl<'a> StringReader<'a> {
                 // this is necessary.
                 let lifetime_name = self.str_from(start);
                 if starts_with_number {
-                    self.err_span_(
-                        start,
-                        self.pos,
-                        "lifetimes cannot start with a number",
-                    );
+                    self.err_span_(start, self.pos, "lifetimes cannot start with a number");
                 }
                 let ident = Symbol::intern(lifetime_name);
                 token::Lifetime(ident)
@@ -303,10 +309,8 @@ impl<'a> StringReader<'a> {
 
             rustc_lexer::TokenKind::Unknown => {
                 let c = self.str_from(start).chars().next().unwrap();
-                let mut err = self.struct_fatal_span_char(start,
-                                                          self.pos,
-                                                          "unknown start of token",
-                                                          c);
+                let mut err =
+                    self.struct_fatal_span_char(start, self.pos, "unknown start of token", c);
                 // FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs,
                 // instead of keeping a table in `check_for_substitution`into the token. Ideally,
                 // this should be inside `rustc_lexer`. However, we should first remove compound
@@ -324,13 +328,12 @@ impl<'a> StringReader<'a> {
         &self,
         start: BytePos,
         suffix_start: BytePos,
-        kind: rustc_lexer::LiteralKind
+        kind: rustc_lexer::LiteralKind,
     ) -> (token::LitKind, Symbol) {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start,
-                                     "unterminated character literal".into())
+                    self.fatal_span_(start, suffix_start, "unterminated character literal".into())
                         .raise()
                 }
                 let content_start = start + BytePos(1);
@@ -338,23 +341,25 @@ impl<'a> StringReader<'a> {
                 self.validate_char_escape(content_start, content_end);
                 let id = self.symbol_from_to(content_start, content_end);
                 (token::Char, id)
-            },
+            }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start + BytePos(1), suffix_start,
-                                     "unterminated byte constant".into())
-                        .raise()
+                    self.fatal_span_(
+                        start + BytePos(1),
+                        suffix_start,
+                        "unterminated byte constant".into(),
+                    )
+                    .raise()
                 }
                 let content_start = start + BytePos(2);
                 let content_end = suffix_start - BytePos(1);
                 self.validate_byte_escape(content_start, content_end);
                 let id = self.symbol_from_to(content_start, content_end);
                 (token::Byte, id)
-            },
+            }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start,
-                                     "unterminated double quote string".into())
+                    self.fatal_span_(start, suffix_start, "unterminated double quote string".into())
                         .raise()
                 }
                 let content_start = start + BytePos(1);
@@ -365,9 +370,12 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start + BytePos(1), suffix_start,
-                                     "unterminated double quote byte string".into())
-                        .raise()
+                    self.fatal_span_(
+                        start + BytePos(1),
+                        suffix_start,
+                        "unterminated double quote byte string".into(),
+                    )
+                    .raise()
                 }
                 let content_start = start + BytePos(2);
                 let content_end = suffix_start - BytePos(1);
@@ -413,35 +421,35 @@ impl<'a> StringReader<'a> {
                     self.validate_int_literal(base, start, suffix_start);
                     (token::Integer, self.symbol_from_to(start, suffix_start))
                 }
-            },
+            }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {
                     let mut err = self.struct_span_fatal(
-                        start, self.pos,
-                        "expected at least one digit in exponent"
+                        start,
+                        self.pos,
+                        "expected at least one digit in exponent",
                     );
                     err.emit();
                 }
 
                 match base {
-                    Base::Hexadecimal => {
-                        self.err_span_(start, suffix_start,
-                                       "hexadecimal float literal is not supported")
-                    }
+                    Base::Hexadecimal => self.err_span_(
+                        start,
+                        suffix_start,
+                        "hexadecimal float literal is not supported",
+                    ),
                     Base::Octal => {
-                        self.err_span_(start, suffix_start,
-                                       "octal float literal is not supported")
+                        self.err_span_(start, suffix_start, "octal float literal is not supported")
                     }
                     Base::Binary => {
-                        self.err_span_(start, suffix_start,
-                                       "binary float literal is not supported")
+                        self.err_span_(start, suffix_start, "binary float literal is not supported")
                     }
-                    _ => ()
+                    _ => (),
                 }
 
                 let id = self.symbol_from_to(start, suffix_start);
                 (token::Float, id)
-            },
+            }
         }
     }
 
@@ -452,8 +460,7 @@ impl<'a> StringReader<'a> {
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
     /// meaning the slice does not include the character `self.ch`.
-    fn str_from(&self, start: BytePos) -> &str
-    {
+    fn str_from(&self, start: BytePos) -> &str {
         self.str_from_to(start, self.pos)
     }
 
@@ -470,8 +477,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Slice of the source text spanning from `start` up to but excluding `end`.
-    fn str_from_to(&self, start: BytePos, end: BytePos) -> &str
-    {
+    fn str_from_to(&self, start: BytePos, end: BytePos) -> &str {
         &self.src[self.src_index(start)..self.src_index(end)]
     }
 
@@ -490,31 +496,26 @@ impl<'a> StringReader<'a> {
 
     fn report_non_started_raw_string(&self, start: BytePos) -> ! {
         let bad_char = self.str_from(start).chars().last().unwrap();
-        self
-            .struct_fatal_span_char(
-                start,
-                self.pos,
-                "found invalid character; only `#` is allowed \
-                 in raw string delimitation",
-                bad_char,
-            )
-            .emit();
+        self.struct_fatal_span_char(
+            start,
+            self.pos,
+            "found invalid character; only `#` is allowed \
+             in raw string delimitation",
+            bad_char,
+        )
+        .emit();
         FatalError.raise()
     }
 
     fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
-        let mut err = self.struct_span_fatal(
-            start, start,
-            "unterminated raw string",
-        );
-        err.span_label(
-            self.mk_sp(start, start),
-            "unterminated raw string",
-        );
+        let mut err = self.struct_span_fatal(start, start, "unterminated raw string");
+        err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {
-            err.note(&format!("this raw string should be terminated with `\"{}`",
-                                "#".repeat(n_hashes as usize)));
+            err.note(&format!(
+                "this raw string should be terminated with `\"{}`",
+                "#".repeat(n_hashes as usize)
+            ));
         }
 
         err.emit();
