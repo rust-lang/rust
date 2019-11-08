@@ -479,3 +479,18 @@ impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
         }
     }
 }
+
+impl<'a> AddAssign<char> for Cow<'a, str> {
+    fn add_assign(&mut self, rhs: char) {
+        if self.is_empty() {
+            *self = rhs.to_string()
+        } else {
+            if let Cow::Borrowed(lhs) = *self {
+                let mut s = String::with_capacity(lhs.len() + rhs.len_utf8());
+                s.push_str(lhs);
+                *self = Cow::Owned(s);
+            }
+            self.to_mut().push(rhs);
+        }
+    }
+}
