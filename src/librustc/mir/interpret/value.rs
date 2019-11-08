@@ -54,16 +54,6 @@ impl<'tcx> ConstValue<'tcx> {
             ConstValue::Scalar(val) => Some(val),
         }
     }
-//
-//    #[inline]
-//    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-//        self.try_to_scalar()?.to_bits(size).ok()
-//    }
-//
-//    #[inline]
-//    pub fn try_to_ptr(&self) -> Option<Pointer> {
-//        self.try_to_scalar()?.to_ptr().ok()
-//    }
 }
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a

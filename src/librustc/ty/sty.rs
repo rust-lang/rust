@@ -2404,11 +2404,6 @@ impl<'tcx> ConstKind<'tcx> {
     pub fn try_to_bits(&self, size: ty::layout::Size) -> Option<u128> {
         self.try_to_scalar()?.to_bits(size).ok()
     }
-
-    //#[inline]
-    //pub fn try_to_ptr(&self) -> Option<mir::interpret::Pointer> {
-    //    self.try_to_scalar()?.to_ptr().ok()
-    //}
 }
 
 /// An inference variable for a const, for use in const generics.
