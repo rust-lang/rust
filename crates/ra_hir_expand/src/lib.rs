@@ -20,7 +20,6 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
-use std::sync::Arc;
 
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
@@ -69,19 +68,29 @@ impl HirFileId {
     }
 
     /// Return expansion information if it is a macro-expansion file
-    pub fn parent_expansion(
-        self,
-        db: &dyn db::AstDatabase,
-    ) -> Option<((HirFileId, HirFileId), Arc<ExpansionInfo>)> {
+    pub fn parent_expansion(self, db: &dyn db::AstDatabase) -> Option<ExpansionInfo> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
 
-                let def_file = loc.def.ast_id.file_id;
-                let arg_file = loc.ast_id.file_id;
+                let arg_range = loc.ast_id.to_node(db).token_tree()?.syntax().text_range();
+                let def_range = loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range();
 
-                db.macro_expansion_info(macro_file).map(|ex| ((arg_file, def_file), ex))
+                let macro_def = db.macro_def(loc.def)?;
+                let shift = macro_def.0.shift();
+                let rev_map = db.parse_macro(macro_file)?.1;
+
+                let arg_token_map = db.macro_arg(macro_file.macro_call_id)?.1;
+                let def_token_map = macro_def.1;
+
+                let arg_map = rev_map.map_ranges(&arg_token_map, arg_range, shift);
+                let def_map = rev_map.map_ranges(&def_token_map, def_range, 0);
+
+                let arg_file = loc.ast_id.file_id;
+                let def_file = loc.def.ast_id.file_id;
+
+                Some(ExpansionInfo { arg_file, def_file, arg_map, def_map })
             }
         }
     }
@@ -134,25 +143,24 @@ impl MacroCallId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro
 pub struct ExpansionInfo {
-    pub arg_map: Vec<(TextRange, TextRange)>,
-    pub def_map: Vec<(TextRange, TextRange)>,
+    pub(crate) arg_file: HirFileId,
+    pub(crate) def_file: HirFileId,
+
+    pub(crate) arg_map: Vec<(TextRange, TextRange)>,
+    pub(crate) def_map: Vec<(TextRange, TextRange)>,
 }
 
 impl ExpansionInfo {
-    pub fn find_range(
-        &self,
-        from: TextRange,
-        (arg_file_id, def_file_id): (HirFileId, HirFileId),
-    ) -> Option<(HirFileId, TextRange)> {
+    pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
         for (src, dest) in &self.arg_map {
             if src.is_subrange(&from) {
-                return Some((arg_file_id, *dest));
+                return Some((self.arg_file, *dest));
             }
         }
 
         for (src, dest) in &self.def_map {
             if src.is_subrange(&from) {
-                return Some((def_file_id, *dest));
+                return Some((self.def_file, *dest));
             }
         }
 

@@ -8,21 +8,9 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, ExpansionInfo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc,
-    MacroDefId, MacroFile, MacroFileKind,
+    ast_id_map::AstIdMap, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc, MacroDefId,
+    MacroFile, MacroFileKind,
 };
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ParseMacroWithInfo {
-    pub parsed: Parse<SyntaxNode>,
-    pub expansion_info: Arc<ExpansionInfo>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct MacroExpandInfo {
-    pub arg_map: Arc<mbe::TokenMap>,
-    pub def_map: Arc<mbe::TokenMap>,
-}
 
 // FIXME: rename to ExpandDatabase
 #[salsa::query_group(AstDatabaseStorage)]
@@ -36,14 +24,11 @@ pub trait AstDatabase: SourceDatabase {
     fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
     fn macro_arg(&self, id: MacroCallId) -> Option<(Arc<tt::Subtree>, Arc<mbe::TokenMap>)>;
     fn macro_def(&self, id: MacroDefId) -> Option<(Arc<mbe::MacroRules>, Arc<mbe::TokenMap>)>;
-    fn parse_macro(&self, macro_file: MacroFile) -> Option<Parse<SyntaxNode>>;
-    fn parse_macro_with_info(&self, macro_file: MacroFile) -> Option<ParseMacroWithInfo>;
-    fn macro_expand(
+    fn parse_macro(
         &self,
-        macro_call: MacroCallId,
-    ) -> Result<(Arc<tt::Subtree>, MacroExpandInfo), String>;
-
-    fn macro_expansion_info(&self, macro_file: MacroFile) -> Option<Arc<ExpansionInfo>>;
+        macro_file: MacroFile,
+    ) -> Option<(Parse<SyntaxNode>, Arc<mbe::RevTokenMap>)>;
+    fn macro_expand(&self, macro_call: MacroCallId) -> Result<Arc<tt::Subtree>, String>;
 }
 
 pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
@@ -83,7 +68,7 @@ pub(crate) fn macro_arg(
 pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
-) -> Result<(Arc<tt::Subtree>, MacroExpandInfo), String> {
+) -> Result<Arc<tt::Subtree>, String> {
     let loc = db.lookup_intern_macro(id);
     let macro_arg = db.macro_arg(id).ok_or("Fail to args in to tt::TokenTree")?;
 
@@ -94,18 +79,14 @@ pub(crate) fn macro_expand(
     if count > 65536 {
         return Err(format!("Total tokens count exceed limit : count = {}", count));
     }
-
-    Ok((
-        Arc::new(tt),
-        MacroExpandInfo { arg_map: macro_arg.1.clone(), def_map: macro_rules.1.clone() },
-    ))
+    Ok(Arc::new(tt))
 }
 
 pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro(macro_file).map(|it| it.syntax_node())
+            db.parse_macro(macro_file).map(|(it, _)| it.syntax_node())
         }
     }
 }
@@ -113,15 +94,9 @@ pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Optio
 pub(crate) fn parse_macro(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
-) -> Option<Parse<SyntaxNode>> {
+) -> Option<(Parse<SyntaxNode>, Arc<mbe::RevTokenMap>)> {
     let _p = profile("parse_macro_query");
-    db.parse_macro_with_info(macro_file).map(|r| r.parsed)
-}
 
-pub(crate) fn parse_macro_with_info(
-    db: &dyn AstDatabase,
-    macro_file: MacroFile,
-) -> Option<ParseMacroWithInfo> {
     let macro_call_id = macro_file.macro_call_id;
     let tt = db
         .macro_expand(macro_call_id)
@@ -133,39 +108,12 @@ pub(crate) fn parse_macro_with_info(
         })
         .ok()?;
 
-    let (parsed, exp_map) = match macro_file.macro_file_kind {
+    match macro_file.macro_file_kind {
         MacroFileKind::Items => {
-            mbe::token_tree_to_items(&tt.0).map(|(p, map)| (p.to_syntax(), map)).ok()?
+            mbe::token_tree_to_items(&tt).ok().map(|(p, map)| (p.to_syntax(), Arc::new(map)))
         }
         MacroFileKind::Expr => {
-            mbe::token_tree_to_expr(&tt.0).map(|(p, map)| (p.to_syntax(), map)).ok()?
+            mbe::token_tree_to_expr(&tt).ok().map(|(p, map)| (p.to_syntax(), Arc::new(map)))
         }
-    };
-
-    let expand_info = tt.1;
-    let loc: MacroCallLoc = db.lookup_intern_macro(macro_call_id);
-
-    let arg_tt = loc.ast_id.to_node(db).token_tree();
-    let def_tt = loc.def.ast_id.to_node(db).token_tree();
-
-    let arg_range = arg_tt.map(|t| t.syntax().text_range());
-    let def_range = def_tt.map(|t| t.syntax().text_range());
-
-    let shift = db.macro_def(loc.def)?.0.shift();
-
-    let arg_map =
-        arg_range.map(|it| exp_map.map_ranges(&expand_info.arg_map, it, shift)).unwrap_or_default();
-    let def_map =
-        def_range.map(|it| exp_map.map_ranges(&expand_info.def_map, it, 0)).unwrap_or_default();
-
-    let info = ExpansionInfo { arg_map, def_map };
-
-    Some(ParseMacroWithInfo { parsed, expansion_info: Arc::new(info) })
-}
-
-pub(crate) fn macro_expansion_info(
-    db: &dyn AstDatabase,
-    macro_file: MacroFile,
-) -> Option<Arc<ExpansionInfo>> {
-    db.parse_macro_with_info(macro_file).map(|res| res.expansion_info.clone())
+    }
 }

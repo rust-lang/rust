@@ -37,7 +37,7 @@ fn find_range_from_node(
     let text_range = node.text_range();
     let (file_id, text_range) = src
         .parent_expansion(db)
-        .and_then(|(files, expansion_info)| expansion_info.find_range(text_range, files))
+        .and_then(|expansion_info| expansion_info.find_range(text_range))
         .unwrap_or((src, text_range));
 
     // FIXME: handle recursive macro generated macro
@@ -139,7 +139,6 @@ impl NavigationTarget {
     pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let src = module.definition_source(db);
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-
         match src.ast {
             ModuleSource::SourceFile(node) => {
                 let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
@@ -324,9 +323,7 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
-
         let focus_range = node.name().map(|it| find_range_from_node(db, file_id, it.syntax()).1);
-
         let (file_id, full_range) = find_range_from_node(db, file_id, node.syntax());
 
         NavigationTarget::from_syntax(
