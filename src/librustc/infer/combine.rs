@@ -33,7 +33,6 @@ use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use super::unify_key::replace_if_possible;
 
 use crate::hir::def_id::DefId;
-use crate::mir::interpret::ConstValue;
 use crate::ty::{IntType, UintType};
 use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::ty::error::TypeError;
@@ -137,8 +136,8 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         let a_is_expected = relation.a_is_expected();
 
         match (a.val, b.val) {
-            (ConstValue::Infer(InferConst::Var(a_vid)),
-                ConstValue::Infer(InferConst::Var(b_vid))) => {
+            (ty::ConstKind::Infer(InferConst::Var(a_vid)),
+                ty::ConstKind::Infer(InferConst::Var(b_vid))) => {
                 self.const_unification_table
                     .borrow_mut()
                     .unify_var_var(a_vid, b_vid)
@@ -147,16 +146,16 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             }
 
             // All other cases of inference with other variables are errors.
-            (ConstValue::Infer(InferConst::Var(_)), ConstValue::Infer(_)) |
-            (ConstValue::Infer(_), ConstValue::Infer(InferConst::Var(_))) => {
-                bug!("tried to combine ConstValue::Infer/ConstValue::Infer(InferConst::Var)")
+            (ty::ConstKind::Infer(InferConst::Var(_)), ty::ConstKind::Infer(_)) |
+            (ty::ConstKind::Infer(_), ty::ConstKind::Infer(InferConst::Var(_))) => {
+                bug!("tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var)")
             }
 
-            (ConstValue::Infer(InferConst::Var(vid)), _) => {
+            (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
                 return self.unify_const_variable(a_is_expected, vid, b);
             }
 
-            (_, ConstValue::Infer(InferConst::Var(vid))) => {
+            (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(!a_is_expected, vid, a);
             }
 
@@ -603,7 +602,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
         match c.val {
-            ConstValue::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val {

@@ -31,7 +31,6 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::fold::TypeFolder;
 use crate::util::nodemap::FxHashMap;
@@ -227,7 +226,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match ct.val {
-            ConstValue::Infer(ty::InferConst::Var(v)) => {
+            ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self.infcx.const_unification_table
                     .borrow_mut()
                     .probe_value(v)
@@ -240,7 +239,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     ct.ty,
                 );
             }
-            ConstValue::Infer(ty::InferConst::Fresh(i)) => {
+            ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
                     bug!(
                         "Encountered a freshend const with id {} \
@@ -252,16 +251,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 return ct;
             }
 
-            ConstValue::Bound(..) |
-            ConstValue::Placeholder(_) => {
+            ty::ConstKind::Bound(..) |
+            ty::ConstKind::Placeholder(_) => {
                 bug!("unexpected const {:?}", ct)
             }
 
-            ConstValue::Param(_) |
-            ConstValue::Scalar(_) |
-            ConstValue::Slice { .. } |
-            ConstValue::ByRef { .. } |
-            ConstValue::Unevaluated(..) => {}
+            ty::ConstKind::Param(_) |
+            ty::ConstKind::Value(_) |
+            ty::ConstKind::Unevaluated(..) => {}
         }
 
         ct.super_fold_with(self)

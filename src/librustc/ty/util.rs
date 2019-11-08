@@ -12,7 +12,6 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, GenericArgKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
-use crate::mir::interpret::ConstValue;
 use crate::util::common::ErrorReported;
 use crate::middle::lang_items;
 
@@ -566,7 +565,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
                     GenericArgKind::Const(&ty::Const {
-                        val: ConstValue::Param(ref pc),
+                        val: ty::ConstKind::Param(ref pc),
                         ..
                     }) => {
                         !impl_generics.const_param(pc, self).pure_wrt_drop

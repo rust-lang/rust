@@ -10,7 +10,6 @@ use crate::infer::canonical::{
     OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
-use crate::mir::interpret::ConstValue;
 use std::sync::atomic::Ordering;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::GenericArg;
@@ -441,7 +440,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match ct.val {
-            ConstValue::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 debug!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.unwrap().probe_const_var(vid) {
                     Ok(c) => {
@@ -465,17 +464,17 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     }
                 }
             }
-            ConstValue::Infer(InferConst::Fresh(_)) => {
+            ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                 bug!("encountered a fresh const during canonicalization")
             }
-            ConstValue::Bound(debruijn, _) => {
+            ty::ConstKind::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
                     bug!("escaping bound type during canonicalization")
                 } else {
                     return ct;
                 }
             }
-            ConstValue::Placeholder(placeholder) => {
+            ty::ConstKind::Placeholder(placeholder) => {
                 return self.canonicalize_const_var(
                     CanonicalVarInfo {
                         kind: CanonicalVarKind::PlaceholderConst(placeholder),
@@ -700,7 +699,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             let var = self.canonical_var(info, const_var.into());
             self.tcx().mk_const(
                 ty::Const {
-                    val: ConstValue::Bound(self.binder_index, var.into()),
+                    val: ty::ConstKind::Bound(self.binder_index, var.into()),
                     ty: self.fold_ty(const_var.ty),
                 }
             )

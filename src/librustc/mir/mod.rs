@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
-use crate::mir::interpret::{ConstValue, PanicInfo, Scalar};
+use crate::mir::interpret::{PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -1506,10 +1506,11 @@ impl<'tcx> TerminatorKind<'tcx> {
                 values
                     .iter()
                     .map(|&u| {
-                        tcx.mk_const(ty::Const {
-                            val: ConstValue::Scalar(Scalar::from_uint(u, size).into()),
-                            ty: switch_ty,
-                        })
+                        ty::Const::from_scalar(
+                            tcx,
+                            Scalar::from_uint(u, size).into(),
+                            switch_ty,
+                        )
                         .to_string()
                         .into()
                     })

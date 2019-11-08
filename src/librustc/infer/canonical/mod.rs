@@ -24,7 +24,6 @@
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::region_constraints::MemberConstraint;
-use crate::mir::interpret::ConstValue;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_serialize::UseSpecializedDecodable;
@@ -447,7 +446,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 };
                 self.tcx.mk_const(
                     ty::Const {
-                        val: ConstValue::Placeholder(placeholder_mapped),
+                        val: ty::ConstKind::Placeholder(placeholder_mapped),
                         ty: self.tcx.types.err, // FIXME(const_generics)
                     }
                 ).into()
@@ -510,7 +509,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Const(ct) => {
                         tcx.mk_const(ty::Const {
                             ty: ct.ty,
-                            val: ConstValue::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
+                            val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
                         }).into()
                     }
                 })

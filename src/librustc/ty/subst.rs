@@ -4,7 +4,6 @@ use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
 use crate::ty::{self, Lift, List, Ty, TyCtxt, ParamConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::mir::interpret::ConstValue;
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
 
 use rustc_serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -234,7 +233,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 
                 ty::GenericParamDefKind::Const => {
                     tcx.mk_const(ty::Const {
-                        val: ConstValue::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
+                        val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                         ty: tcx.type_of(def_id),
                     }).into()
                 }
@@ -578,7 +577,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
             return c;
         }
 
-        if let ConstValue::Param(p) = c.val {
+        if let ty::ConstKind::Param(p) = c.val {
             self.const_for_param(p, c)
         } else {
             c.super_fold_with(self)
