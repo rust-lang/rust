@@ -89,8 +89,8 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
         Node::Item(&Item {
             kind: ItemKind::Fn(ref sig, ..),
             ..
-        }) => sig.header.constness == Constness::Const,
-        Node::ImplItem(&ImplItem {
+        })
+        | Node::ImplItem(&ImplItem {
             kind: ImplItemKind::Method(ref sig, _),
             ..
         }) => sig.header.constness == Constness::Const,
