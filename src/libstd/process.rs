@@ -1661,7 +1661,7 @@ mod tests {
     // FIXME(#10380) these tests should not all be ignored on android.
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn smoke() {
         let p = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 0"]).spawn()
@@ -1683,7 +1683,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn exit_reported_right() {
         let p = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).spawn()
@@ -1698,7 +1698,7 @@ mod tests {
 
     #[test]
     #[cfg(unix)]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn signal_reported_right() {
         use crate::os::unix::process::ExitStatusExt;
 
@@ -1726,7 +1726,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn stdout_works() {
         if cfg!(target_os = "windows") {
             let mut cmd = Command::new("cmd");
@@ -1740,7 +1740,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(any(windows, target_os = "android"), ignore)]
+    #[cfg_attr(any(windows, target_os = "android", target_os = "vxworks"), ignore)]
     fn set_current_dir_works() {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
@@ -1750,7 +1750,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(any(windows, target_os = "android"), ignore)]
+    #[cfg_attr(any(windows, target_os = "android", target_os = "vxworks"), ignore)]
     fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
@@ -1766,7 +1766,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn test_process_status() {
         let mut status = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
@@ -1792,7 +1792,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
              = if cfg!(target_os = "windows") {
@@ -1808,7 +1808,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn test_process_output_error() {
         let Output {status, stdout, stderr}
              = if cfg!(target_os = "windows") {
@@ -1823,7 +1823,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn test_finish_once() {
         let mut prog = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
@@ -1834,7 +1834,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn test_finish_twice() {
         let mut prog = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
@@ -1846,7 +1846,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
     fn test_wait_with_output_once() {
         let prog = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
@@ -1881,6 +1881,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "vxworks", ignore)]
     fn test_override_env() {
         use crate::env;
 
@@ -1901,6 +1902,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "vxworks", ignore)]
     fn test_add_to_env() {
         let result = env_cmd().env("RUN_TEST_NEW_ENV", "123").output().unwrap();
         let output = String::from_utf8_lossy(&result.stdout).to_string();
@@ -1910,6 +1912,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "vxworks", ignore)]
     fn test_capture_env_at_spawn() {
         use crate::env;
 
@@ -1965,6 +1968,7 @@ mod tests {
 
     // Regression tests for #30862.
     #[test]
+    #[cfg_attr(target_os = "vxworks", ignore)]
     fn test_interior_nul_in_env_key_is_error() {
         match env_cmd().env("has-some-\0\0s-inside", "value").spawn() {
             Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
@@ -1973,6 +1977,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_os = "vxworks", ignore)]
     fn test_interior_nul_in_env_value_is_error() {
         match env_cmd().env("key", "has-some-\0\0s-inside").spawn() {
             Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
