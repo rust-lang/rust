@@ -2,7 +2,7 @@ error: expected one of `,` or `>`, found `&&`
   --> $DIR/disallowed-positions.rs:242:14
    |
 LL |         true && let 1 = 1
-   |              ^^ expected one of `,` or `>` here
+   |              ^^ expected one of `,` or `>`
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:32:9

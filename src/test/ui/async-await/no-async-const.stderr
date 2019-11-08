@@ -2,7 +2,7 @@ error: expected one of `fn` or `unsafe`, found keyword `const`
   --> $DIR/no-async-const.rs:5:11
    |
 LL | pub async const fn x() {}
-   |           ^^^^^ expected one of `fn` or `unsafe` here
+   |           ^^^^^ expected one of `fn` or `unsafe`
 
 error: aborting due to previous error
 

@@ -13,7 +13,7 @@ error: expected one of `,` or `}`, found `{`
   --> $DIR/issue-62973.rs:6:25
    |
 LL | fn p() { match s { v, E { [) {) }
-   |        -       -       -^ expected one of `,` or `}` here
+   |        -       -       -^ expected one of `,` or `}`
    |        |       |       |
    |        |       |       help: `}` may belong here
    |        |       while parsing this struct
@@ -42,7 +42,7 @@ LL | fn p() { match s { v, E { [) {) }
    |          ----- while parsing this match expression
 LL | 
 LL | 
-   |  ^ expected one of `.`, `?`, `{`, or an operator here
+   |  ^ expected one of `.`, `?`, `{`, or an operator
 
 error: incorrect close delimiter: `)`
   --> $DIR/issue-62973.rs:6:28

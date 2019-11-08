@@ -16,7 +16,7 @@ LL |
 LL | fn foo(&self) {}
    |                 -
    |                 |
-   |                 expected one of 10 possible tokens here
+   |                 expected one of 10 possible tokens
    |                 help: `}` may belong here
 LL | 
 LL | trait T {

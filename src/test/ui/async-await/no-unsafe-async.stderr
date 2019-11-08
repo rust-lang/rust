@@ -2,13 +2,13 @@ error: expected one of `extern` or `fn`, found keyword `async`
   --> $DIR/no-unsafe-async.rs:7:12
    |
 LL |     unsafe async fn g() {}
-   |            ^^^^^ expected one of `extern` or `fn` here
+   |            ^^^^^ expected one of `extern` or `fn`
 
 error: expected one of `extern`, `fn`, or `{`, found keyword `async`
   --> $DIR/no-unsafe-async.rs:11:8
    |
 LL | unsafe async fn f() {}
-   |        ^^^^^ expected one of `extern`, `fn`, or `{` here
+   |        ^^^^^ expected one of `extern`, `fn`, or `{`
 
 error: aborting due to 2 previous errors
 

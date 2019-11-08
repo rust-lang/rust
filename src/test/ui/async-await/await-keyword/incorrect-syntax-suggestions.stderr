@@ -130,7 +130,7 @@ error: expected one of `.`, `?`, `{`, or an operator, found `}`
   --> $DIR/incorrect-syntax-suggestions.rs:134:1
    |
 LL |     match await { await => () }
-   |     -----                      - expected one of `.`, `?`, `{`, or an operator here
+   |     -----                      - expected one of `.`, `?`, `{`, or an operator
    |     |
    |     while parsing this match expression
 ...

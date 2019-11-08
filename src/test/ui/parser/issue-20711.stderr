@@ -2,7 +2,7 @@ error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pu
   --> $DIR/issue-20711.rs:5:1
    |
 LL |     #[stable(feature = "rust1", since = "1.0.0")]
-   |                                                  - expected one of 9 possible tokens here
+   |                                                  - expected one of 9 possible tokens
 LL | }
    | ^ unexpected token
 

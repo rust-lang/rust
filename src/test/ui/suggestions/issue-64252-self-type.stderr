@@ -2,7 +2,7 @@ error: expected one of `:`, `@`, or `|`, found `<`
   --> $DIR/issue-64252-self-type.rs:4:15
    |
 LL | pub fn foo(Box<Self>) { }
-   |               ^ expected one of `:`, `@`, or `|` here
+   |               ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a type, explicitly ignore the parameter name
@@ -14,7 +14,7 @@ error: expected one of `:`, `@`, or `|`, found `<`
   --> $DIR/issue-64252-self-type.rs:10:15
    |
 LL |     fn bar(Box<Self>) { }
-   |               ^ expected one of `:`, `@`, or `|` here
+   |               ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a `self` type, give it a parameter name

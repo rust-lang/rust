@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
             };
             (format!("expected one of {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
-                format!("expected one of {} here", short_expect)))
+                format!("expected one of {}", short_expect)))
         } else if expected.is_empty() {
             (format!("unexpected token: {}", actual),
                 (self.prev_span, "unexpected token after this".to_string()))
