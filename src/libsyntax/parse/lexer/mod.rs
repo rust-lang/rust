@@ -12,14 +12,15 @@ use std::char;
 use std::convert::TryInto;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
+use unescape_error_reporting::push_escaped_char;
 
 #[cfg(test)]
 mod tests;
 
+mod literal_validation;
 mod tokentrees;
-mod unicode_chars;
 mod unescape_error_reporting;
-use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
+mod unicode_chars;
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
@@ -524,121 +525,13 @@ impl<'a> StringReader<'a> {
         match n_hashes.try_into() {
             Ok(n_hashes) => n_hashes,
             Err(_) => {
-                self.fatal_span_(start,
-                                 self.pos,
-                                 "too many `#` symbols: raw strings may be \
-                                  delimited by up to 65535 `#` symbols").raise();
-            }
-        }
-    }
-
-    fn validate_char_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        if let Err((off, err)) = unescape::unescape_char(lit) {
-            emit_unescape_error(
-                &self.sess.span_diagnostic,
-                lit,
-                self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                unescape::Mode::Char,
-                0..off,
-                err,
-            )
-        }
-    }
-
-    fn validate_byte_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        if let Err((off, err)) = unescape::unescape_byte(lit) {
-            emit_unescape_error(
-                &self.sess.span_diagnostic,
-                lit,
-                self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                unescape::Mode::Byte,
-                0..off,
-                err,
-            )
-        }
-    }
-
-    fn validate_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::Str,
-                    range,
-                    err,
+                self.fatal_span_(
+                    start,
+                    self.pos,
+                    "too many `#` symbols: raw strings may be \
+                     delimited by up to 65535 `#` symbols",
                 )
-            }
-        })
-    }
-
-    fn validate_raw_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_raw_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::Str,
-                    range,
-                    err,
-                )
-            }
-        })
-    }
-
-    fn validate_raw_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_raw_byte_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::ByteStr,
-                    range,
-                    err,
-                )
-            }
-        })
-    }
-
-    fn validate_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_byte_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::ByteStr,
-                    range,
-                    err,
-                )
-            }
-        })
-    }
-
-    fn validate_int_literal(&self, base: Base, content_start: BytePos, content_end: BytePos) {
-        let base = match base {
-            Base::Binary => 2,
-            Base::Octal => 8,
-            _ => return,
-        };
-        let s = self.str_from_to(content_start + BytePos(2), content_end);
-        for (idx, c) in s.char_indices() {
-            let idx = idx as u32;
-            if c != '_' && c.to_digit(base).is_none() {
-                let lo = content_start + BytePos(2 + idx);
-                let hi = content_start + BytePos(2 + idx + c.len_utf8() as u32);
-                self.err_span_(lo, hi,
-                               &format!("invalid digit for a base {} literal", base));
-
+                .raise();
             }
         }
     }
