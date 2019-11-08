@@ -28,10 +28,9 @@ install:
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     - rustup default stable
     - rustup uninstall beta
-    - rustup component remove rust-docs & exit 0
     - rustup update
     # Install "master" toolchain
-    - cargo install rustup-toolchain-install-master -f
+    - cargo install rustup-toolchain-install-master & exit 0
     # We need to install cargo here as well or else the DLL search path inside `cargo run`
     # will be for the wrong toolchain. (On Unix, `./miri` takes care of this, but not here.)
     - rustup-toolchain-install-master -f -n master %RUSTC_HASH% -c rust-src -c rustc-dev -c cargo

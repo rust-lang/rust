@@ -35,10 +35,9 @@ before_script:
 - export PATH=$HOME/.cargo/bin:$PATH
 - rustup default stable
 - rustup uninstall beta
-- rustup component remove rust-docs || echo "rust-docs already gone"
 - rustup update
 # Install "master" toolchain
-- cargo install rustup-toolchain-install-master -f
+- cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
 - travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src -c rustc-dev
 - rustup default master
 - rustc --version
