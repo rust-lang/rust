@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
         */
 
         let unsafety = self.parse_unsafety();
-        let abi = self.parse_extern_abi()?;
+        let ext = self.parse_extern()?;
         self.expect_keyword(kw::Fn)?;
         let cfg = ParamCfg {
             is_self_allowed: false,
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
         };
         let decl = self.parse_fn_decl(cfg, false)?;
         Ok(TyKind::BareFn(P(BareFnTy {
-            abi,
+            ext,
             unsafety,
             generic_params,
             decl,

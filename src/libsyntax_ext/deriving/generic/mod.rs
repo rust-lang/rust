@@ -182,7 +182,7 @@ use std::iter;
 use std::vec;
 
 use rustc_data_structures::thin_vec::ThinVec;
-use syntax::ast::{self, Abi, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::source_map::respan;
@@ -737,7 +737,6 @@ impl<'a> TraitDef<'a> {
                                          self,
                                          type_ident,
                                          generics,
-                                         sym::Rust,
                                          explicit_self,
                                          tys,
                                          body)
@@ -792,7 +791,6 @@ impl<'a> TraitDef<'a> {
                                          self,
                                          type_ident,
                                          generics,
-                                         sym::Rust,
                                          explicit_self,
                                          tys,
                                          body)
@@ -918,7 +916,6 @@ impl<'a> MethodDef<'a> {
                      trait_: &TraitDef<'_>,
                      type_ident: Ident,
                      generics: &Generics,
-                     abi: Symbol,
                      explicit_self: Option<ast::ExplicitSelf>,
                      arg_types: Vec<(Ident, P<ast::Ty>)>,
                      body: P<Expr>)
@@ -953,7 +950,7 @@ impl<'a> MethodDef<'a> {
         let sig = ast::FnSig {
             header: ast::FnHeader {
                 unsafety,
-                abi: Abi::new(abi, trait_lo_sp),
+                ext: ast::Extern::None,
                 ..ast::FnHeader::default()
             },
             decl: fn_decl,

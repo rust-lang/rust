@@ -1745,7 +1745,7 @@ pub struct Ty {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct BareFnTy {
     pub unsafety: Unsafety,
-    pub abi: Abi,
+    pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
 }
@@ -2128,7 +2128,7 @@ pub struct Mod {
 /// E.g., `extern { .. }` or `extern C { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignMod {
-    pub abi: Abi,
+    pub abi: Option<Abi>,
     pub items: Vec<ForeignItem>,
 }
 
@@ -2420,15 +2420,20 @@ pub struct Abi {
     pub span: Span,
 }
 
-impl Abi {
-    pub fn new(symbol: Symbol, span: Span) -> Self {
-        Self { symbol, span }
-    }
+/// `extern` qualifier on a function item or function type.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum Extern {
+    None,
+    Implicit,
+    Explicit(Abi),
 }
 
-impl Default for Abi {
-    fn default() -> Self {
-        Self::new(sym::Rust, DUMMY_SP)
+impl Extern {
+    pub fn from_abi(abi: Option<Abi>) -> Extern {
+        match abi {
+            Some(abi) => Extern::Explicit(abi),
+            None => Extern::Implicit,
+        }
     }
 }
 
@@ -2441,7 +2446,7 @@ pub struct FnHeader {
     pub unsafety: Unsafety,
     pub asyncness: Spanned<IsAsync>,
     pub constness: Spanned<Constness>,
-    pub abi: Abi,
+    pub ext: Extern,
 }
 
 impl Default for FnHeader {
@@ -2450,7 +2455,7 @@ impl Default for FnHeader {
             unsafety: Unsafety::Normal,
             asyncness: dummy_spanned(IsAsync::NotAsync),
             constness: dummy_spanned(Constness::NotConst),
-            abi: Abi::default(),
+            ext: Extern::None,
         }
     }
 }
