@@ -133,8 +133,6 @@
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`i32`]: ../../std/primitive.i32.html
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
@@ -298,6 +296,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
+        // SAFETY: data already pinned
         unsafe {
             Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x))
         }
@@ -309,6 +308,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
+        // SAFETY: data already pinned
         unsafe {
             Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
         }
@@ -845,6 +845,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
+            // SAFETY: *self is always Some(F)
             None => unsafe { hint::unreachable_unchecked() },
         }
     }

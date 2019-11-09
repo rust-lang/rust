@@ -2,8 +2,6 @@
 
 //! Hints to compiler that affects how code should be emitted or optimized.
 
-// ignore-tidy-undocumented-unsafe
-
 use crate::intrinsics;
 
 /// Informs the compiler that this point in the code is not reachable, enabling
@@ -71,10 +69,12 @@ pub fn spin_loop() {
         )
     )] {
         #[cfg(target_arch = "x86")] {
+            // SAFETY: technically does nothing
             unsafe { crate::arch::x86::_mm_pause() };
         }
 
         #[cfg(target_arch = "x86_64")] {
+            // SAFETY: technically does nothing
             unsafe { crate::arch::x86_64::_mm_pause() };
         }
     }
@@ -86,9 +86,11 @@ pub fn spin_loop() {
         )
     )] {
         #[cfg(target_arch = "aarch64")] {
+            // SAFETY: hardware hint
             unsafe { crate::arch::aarch64::__yield() };
         }
         #[cfg(target_arch = "arm")] {
+            // SAFETY: hardware hint
             unsafe { crate::arch::arm::__yield() };
         }
     }
@@ -116,6 +118,7 @@ pub fn black_box<T>(dummy: T) -> T {
     // this. LLVM's intepretation of inline assembly is that it's, well, a black
     // box. This isn't the greatest implementation since it probably deoptimizes
     // more than we want, but it's so far good enough.
+    // SAFETY: compiler hint
     unsafe {
         asm!("" : : "r"(&dummy));
         return dummy;

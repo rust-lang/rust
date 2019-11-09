@@ -20,8 +20,6 @@
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
-// ignore-tidy-undocumented-unsafe
-
 #![allow(dead_code, missing_docs)]
 #![unstable(feature = "core_panic",
             reason = "internal details of the implementation of the `panic!` \
@@ -39,6 +37,7 @@ use crate::panic::{Location, PanicInfo};
 #[lang = "panic"]
 pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: ends the program
         unsafe { super::intrinsics::abort() }
     }
 
@@ -60,6 +59,7 @@ pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
 #[lang = "panic"]
 pub fn panic(expr: &str, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: ends the program
         unsafe { super::intrinsics::abort() }
     }
 
@@ -79,6 +79,7 @@ pub fn panic(expr: &str, location: &Location<'_>) -> ! {
 fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
                      index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: ends the program
         unsafe { super::intrinsics::abort() }
     }
 
@@ -92,6 +93,7 @@ fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
 #[lang = "panic_bounds_check"]
 fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: ends the program
         unsafe { super::intrinsics::abort() }
     }
 
@@ -107,6 +109,7 @@ fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
 #[cfg_attr(    feature="panic_immediate_abort" ,inline)]
 pub fn panic_fmt(fmt: fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u32)) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: ends the program
         unsafe { super::intrinsics::abort() }
     }
 
@@ -119,6 +122,7 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u3
     let (file, line, col) = *file_line_col;
     let location = Location::internal_constructor(file, line, col);
     let pi = PanicInfo::internal_constructor(Some(&fmt), &location);
+    // SAFETY: psuedo-FFI call to end the program
     unsafe { panic_impl(&pi) }
 }
 
@@ -128,6 +132,7 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u3
 #[cfg_attr(    feature="panic_immediate_abort" ,inline)]
 pub fn panic_fmt(fmt: fmt::Arguments<'_>, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: ends the program
         unsafe { super::intrinsics::abort() }
     }
 
@@ -138,5 +143,6 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, location: &Location<'_>) -> ! {
     }
 
     let pi = PanicInfo::internal_constructor(Some(&fmt), location);
+    // SAFETY: psuedo-FFI call to end the program
     unsafe { panic_impl(&pi) }
 }
