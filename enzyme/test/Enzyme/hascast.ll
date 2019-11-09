@@ -137,15 +137,15 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { {}, double*, double* } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = extractvalue { {}, double*, double* } %tapeArg, 2
-; CHECK-NEXT:   %1 = load double, double* %0
-; CHECK-NEXT:   store double 0.000000e+00, double* %0
-; CHECK-NEXT:   %2 = call {} @diffecast(double* %x, double* %"x'", {} undef)
-; CHECK-NEXT:   %m0diffez = fmul fast double %1, %y
-; CHECK-NEXT:   %m1diffey = fmul fast double %1, %z
-; CHECK-NEXT:   %3 = insertvalue { double, double } undef, double %m1diffey, 0
-; CHECK-NEXT:   %4 = insertvalue { double, double } %3, double %m0diffez, 1
-; CHECK-NEXT:   ret { double, double } %4
+; CHECK-NEXT:   %[[callp:.+]] = extractvalue { {}, double*, double* } %tapeArg, 2
+; CHECK-NEXT:   %[[loadcallp:.+]] = load double, double* %[[callp]]
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[callp]]
+; CHECK-NEXT:   %[[dcast:.+]] = call {} @diffecast(double* %x, double* %"x'", {} undef)
+; CHECK-NEXT:   %m0diffez = fmul fast double %[[loadcallp]], %y
+; CHECK-NEXT:   %m1diffey = fmul fast double %[[loadcallp]], %z
+; CHECK-NEXT:   %[[toret0:.+]] = insertvalue { double, double } undef, double %m1diffey, 0
+; CHECK-NEXT:   %[[toret:.+]] = insertvalue { double, double } %[[toret0]], double %m0diffez, 1
+; CHECK-NEXT:   ret { double, double } %[[toret]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffecast(double* readnone %x, double* %"x'", {} %tapeArg)

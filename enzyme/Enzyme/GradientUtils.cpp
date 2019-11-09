@@ -352,7 +352,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto fn = dyn_cast<Function>(val)) {
       //! Todo allow tape propagation
       std::set<unsigned> uncacheable_args;
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*topLevel*/false, /*additionalArg*/nullptr, uncacheable_args);
+      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/nullptr, uncacheable_args);
       return BuilderM.CreatePointerCast(newf, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");

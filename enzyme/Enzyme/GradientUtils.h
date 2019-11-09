@@ -712,7 +712,7 @@ public:
 
             IRBuilder<> BuilderZ(getNextNonDebugInstruction(op));
             BuilderZ.setFastMathFlags(getFast());
-            this->invertedPointers[op] = BuilderZ.CreatePHI(op->getType(), 1);
+            this->invertedPointers[op] = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
 
 			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
 				this->invertedPointers[op]->setName(op->getName()+"'mi");

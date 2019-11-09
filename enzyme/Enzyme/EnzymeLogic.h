@@ -36,6 +36,6 @@ extern llvm::cl::opt<bool> enzyme_print;
 //! return structtype if recursive function
 std::pair<llvm::Function*,llvm::StructType*> CreateAugmentedPrimal(llvm::Function* todiff, llvm::AAResults &AA, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, bool differentialReturn);
 
-llvm::Function* CreatePrimalAndGradient(llvm::Function* todiff, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, llvm::AAResults &AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> volatile_args);
+llvm::Function* CreatePrimalAndGradient(llvm::Function* todiff, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, llvm::AAResults &AA, bool returnValue, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> volatile_args);
 
 #endif

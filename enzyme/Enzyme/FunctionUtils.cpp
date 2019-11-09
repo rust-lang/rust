@@ -165,12 +165,10 @@ PHINode* canonicalizeIVs(fake::SCEVExpander &e, Type *Ty, Loop *L, DominatorTree
 Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI) {
  static std::map<Function*,Function*> cache;
  static std::map<Function*, BasicAAResult*> cache_AA;
- llvm::errs() << "Before cache lookup for " << F->getName() << "\n";
  if (cache.find(F) != cache.end()) {
    AA.addAAResult(*(cache_AA[F]));
    return cache[F];
  }
- llvm::errs() << "Did not do cache lookup for " << F->getName() << "\n";
  Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(), "preprocess_" + F->getName(), F->getParent());
 
  ValueToValueMapTy VMap;
@@ -498,7 +496,9 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
  F = preprocessForClone(F, AA, TLI);
  diffeReturnArg &= differentialReturn;
  std::vector<Type*> RetTypes;
- if (returnValue == ReturnType::ArgsWithReturn)
+ if (returnValue == ReturnType::ArgsWithReturn || returnValue == ReturnType::ArgsWithTwoReturns)
+   RetTypes.push_back(F->getReturnType());
+ if (returnValue == ReturnType::ArgsWithTwoReturns)
    RetTypes.push_back(F->getReturnType());
  std::vector<Type*> ArgTypes;
 

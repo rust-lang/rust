@@ -420,7 +420,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   }
   assert(!todiff->empty());
   AAResults AA(TLI);
-  GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnValue*/returnUsed ? ReturnType::TapeAndReturns : ReturnType::Tape, /*differentialReturn*/differentialReturn);
+  GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnValue*/returnUsed ?  ReturnType::TapeAndReturns : ReturnType::Tape , /*differentialReturn*/differentialReturn);
   cachedfunctions[tup] = std::pair<Function*,StructType*>(gutils->newFunc, nullptr);
   cachedfinished[tup] = false;
 
@@ -1053,7 +1053,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   return std::pair<Function*,StructType*>(NewF, recursive ? tapeType : nullptr);
 }
 
-void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, AllocaInst* retAlloca, unsigned extraArgs) {
+void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, AllocaInst* retAlloca, AllocaInst* dretAlloca, unsigned extraArgs) {
     LoopContext loopContext;
     bool inLoop = gutils->getContext(BB, loopContext);
     BasicBlock* BB2 = gutils->reverseBlocks[BB];
@@ -1072,6 +1072,13 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         if (retAlloca) {
           auto result = Builder.CreateLoad(retAlloca, "retreload");
           result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(retAlloca->getContext(), {}));
+          assert(gutils->isConstantInstruction(result));
+          retargs.push_back(result);
+        }
+        
+        if (dretAlloca) {
+          auto result = Builder.CreateLoad(dretAlloca, "dretreload");
+          result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(dretAlloca->getContext(), {}));
           assert(gutils->isConstantInstruction(result));
           retargs.push_back(result);
         }
@@ -1245,8 +1252,7 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, AAResults & global_AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, std::set<unsigned> uncacheable_args) {
-  llvm::errs() << "HandleGradientCall " << *op << "\n";
+void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, AAResults & global_AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::set<unsigned> uncacheable_args) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -1456,8 +1462,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
         ModRefInfo mri = ModRefInfo::NoModRef;
         if (iter->mayReadOrWriteMemory()) {
-          llvm::errs() << "Iter is at " << *iter << "\n";
-          llvm::errs() << "origop is at " << *origop << "\n";
           mri = AA.getModRefInfo(&*iter, origop);
         }
 
@@ -1477,7 +1481,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
            }
            if (AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(li), ModRefInfo::Mod)) {
             modref = true;
-            llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
           }
         }
 
@@ -1557,6 +1560,14 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       if (gutils->originalInstructions.find(cast<Instruction>(user)) == gutils->originalInstructions.end()) {
         outsideuse = true;
       }
+    }
+
+    if (op->getNumUses() != 0 && isa<PointerType>(op->getType())) {
+      if (called)
+        llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << called->getName() << "\n";
+      else
+        llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << *op->getCalledValue() << "\n";
+      outsideuse = true;
     }
 
     if (!outsideuse) {
@@ -1659,9 +1670,10 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   Value* newcalled = nullptr;
 
   bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
+  bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
   llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
-    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/retUsed, /*subdiffereturn*/subdiffereturn, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args);//, LI, DT);
+    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/retUsed, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args);//, LI, DT);
   } else {
     newcalled = gutils->invertPointerM(op->getCalledValue(), Builder2);
     auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
@@ -1684,6 +1696,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   diffes->setDebugLoc(op->getDebugLoc());
 
   unsigned structidx = retUsed ? 1 : 0;
+  if (subdretptr) structidx++;
 
   for(unsigned i=0;i<op->getNumArgOperands(); i++) {
     if (argsInverted[i] == DIFFE_TYPE::OUT_DIFF) {
@@ -1703,6 +1716,20 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     gutils->nonconstant_values.insert(diffes);
 
   if (replaceFunction) {
+
+    //if a function is replaced for joint forward/reverse, handle inverted pointers
+    if (subdretptr) {
+        op->getParent()->getParent()->dump();
+        dumpMap(gutils->invertedPointers);
+        auto dretval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        if (I != E && placeholder == &*I) I++;
+        /* todo handle this case later */
+        assert(placeholder->getNumUses() == 0);
+        gutils->invertedPointers[op] = dretval;
+        gutils->erase(placeholder);
+    }
+
     ValueToValueMapTy mapp;
     if (op->getNumUses() != 0) {
       auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
@@ -1713,14 +1740,17 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       op->replaceAllUsesWith(retval);
       mapp[op] = retval;
     }
+
     for (auto &a : *op->getParent()) {
       if (&a != op) {
         mapp[&a] = &a;
       }
     }
+
     for (auto &a : *gutils->reverseBlocks[op->getParent()]) {
       mapp[&a] = &a;
     }
+
     std::reverse(postCreate.begin(), postCreate.end());
     for(auto a : postCreate) {
       for(unsigned i=0; i<a->getNumOperands(); i++) {
@@ -1728,7 +1758,9 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       }
       a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());
     }
+    
     gutils->erase(op);
+
     return;
   }
 
@@ -1771,7 +1803,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 }
 
-Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &global_AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> _uncacheable_args) {
+Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &global_AA, bool returnValue, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> _uncacheable_args) {
   if (differentialReturn) {
       if(!todiff->getReturnType()->isFPOrFPVectorTy()) {
          llvm::errs() << *todiff << "\n";
@@ -1783,8 +1815,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       llvm::errs() << "addl arg: " << *additionalArg << "\n";
   }
   if (additionalArg) assert(additionalArg->isStructTy());
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*topLevel*/, llvm::Type*>, Function*> cachedfunctions;
-  auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::set<unsigned>(_uncacheable_args.begin(), _uncacheable_args.end()), returnValue, differentialReturn, topLevel, additionalArg);
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*>, Function*> cachedfunctions;
+  auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::set<unsigned>(_uncacheable_args.begin(), _uncacheable_args.end()), returnValue, differentialReturn, dretPtr, topLevel, additionalArg);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
   }
@@ -1877,7 +1909,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   auto& Context = M->getContext();
   AAResults AA(TLI);
-  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ReturnType::ArgsWithReturn : ReturnType::Args, differentialReturn, additionalArg);
+  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
 
   std::map<CallInst*, std::set<unsigned> > uncacheable_args_map =
@@ -1941,8 +1973,13 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   //   processessing instructions
   std::map<ReturnInst*,StoreInst*> replacedReturns;
   llvm::AllocaInst* retAlloca = nullptr;
+  llvm::AllocaInst* dretAlloca = nullptr;
   if (returnValue) {
     retAlloca = IRBuilder<>(&gutils->newFunc->getEntryBlock().front()).CreateAlloca(todiff->getReturnType(), nullptr, "toreturn");
+    if (dretPtr && (isa<PointerType>(todiff->getReturnType()) || isa<IntegerType>(todiff->getReturnType()))) {
+        dretAlloca = IRBuilder<>(&gutils->newFunc->getEntryBlock().front()).CreateAlloca(todiff->getReturnType(), nullptr, "dtoreturn");
+    }
+
   }
 
   for(BasicBlock* BB: gutils->originalBlocks) {
@@ -1954,6 +1991,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (retAlloca) {
         StoreInst* si = rb.CreateStore(retval, retAlloca);
         replacedReturns[cast<ReturnInst>(gutils->getOriginal(op))] = si;
+        
+        if (dretAlloca) {
+            rb.CreateStore(gutils->invertPointerM(retval, rb), dretAlloca);
+        }
       } else {
         /*
          TODO should do DCE ideally
@@ -1967,13 +2008,26 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         }
         */
       }
+      
+      if (retval != nullptr) {
 
-      if (differentialReturn && !gutils->isConstantValue(retval)) {
-        IRBuilder <>reverseB(gutils->reverseBlocks[BB]);
-        gutils->setDiffe(retval, differetval, reverseB);
+          //differential float return
+          if (differentialReturn && !gutils->isConstantValue(retval)) {
+            IRBuilder <>reverseB(gutils->reverseBlocks[BB]);
+            gutils->setDiffe(retval, differetval, reverseB);
+
+          //differential pointer return
+          } else if (!gutils->isConstantValue(retval) && (isa<PointerType>(retval->getType()) || isa<IntegerType>(retval->getType())) && returnValue) {
+          
+          //no differential return, should not have a returnallocation
+          } else {
+            assert (retAlloca == nullptr);
+          }
+      //returns void, should not have a return allocation
       } else {
         assert (retAlloca == nullptr);
       }
+
       rb.CreateBr(gutils->reverseBlocks[BB]);
       gutils->erase(op);
     }
@@ -2311,7 +2365,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif0) addToDiffe(op->getOperand(0), dif0);
       if (dif1) addToDiffe(op->getOperand(1), dif1);
     } else if(auto op = dyn_cast_or_null<CallInst>(inst)) {
-      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, global_AA, topLevel, replacedReturns, uncacheable_args_map[op]);
+      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map[op]);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
@@ -2488,7 +2542,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     }
   }
 
-    createInvertedTerminator(gutils, BB, retAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn ? 1 : 0));
+    createInvertedTerminator(gutils, BB, retAlloca, dretAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn ? 1 : 0));
 
   }
 

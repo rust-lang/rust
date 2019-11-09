@@ -31,11 +31,19 @@
 
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/ValueMap.h"
 
 static inline llvm::FastMathFlags getFast() {
     llvm::FastMathFlags f;
     f.set();
     return f;
+}
+
+template<typename T, typename N>
+static inline void dumpMap(const llvm::ValueMap<T, N> &o) {
+    llvm::errs() << "<begin dump>\n";
+    for(auto a : o) llvm::errs() << "key=" << *a.first << " val=" << *a.second << "\n";
+    llvm::errs() << "</end dump>\n";
 }
 
 template<typename T>
@@ -62,6 +70,7 @@ static inline bool hasMetadata(const llvm::GlobalObject* O, llvm::StringRef kind
 
 enum class ReturnType {
     ArgsWithReturn,
+    ArgsWithTwoReturns,
     Args,
     TapeAndReturns,
     Tape,
