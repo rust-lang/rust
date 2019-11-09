@@ -1903,29 +1903,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
 
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<InitKind> {
-            const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
-            const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
             // `transmute` is inside an anonymous module (the `extern` block?);
             // `Invalid` represents the empty string and matches that.
+            // FIXME(#66075): use diagnostic items.  Somehow, that does not seem to work
+            // on intrinsics right now.
             const TRANSMUTE_PATH: &[Symbol] =
                 &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
-            const MU_ZEROED_PATH: &[Symbol] =
-                &[sym::core, sym::mem, sym::maybe_uninit, sym::MaybeUninit, sym::zeroed];
-            const MU_UNINIT_PATH: &[Symbol] =
-                &[sym::core, sym::mem, sym::maybe_uninit, sym::MaybeUninit, sym::uninit];
 
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                     let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
-                    if cx.match_def_path(def_id, ZEROED_PATH) {
+                    if cx.tcx.is_diagnostic_item(sym::mem_zeroed, def_id) {
                         return Some(InitKind::Zeroed);
-                    }
-                    if cx.match_def_path(def_id, UININIT_PATH) {
+                    } else if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, def_id) {
                         return Some(InitKind::Uninit);
-                    }
-                    if cx.match_def_path(def_id, TRANSMUTE_PATH) {
+                    } else if cx.match_def_path(def_id, TRANSMUTE_PATH) {
                         if is_zero(&args[0]) {
                             return Some(InitKind::Zeroed);
                         }
@@ -1940,9 +1934,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
                         if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                             let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
-                            if cx.match_def_path(def_id, MU_ZEROED_PATH) {
+
+                            if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
                                 return Some(InitKind::Zeroed);
-                            } else if cx.match_def_path(def_id, MU_UNINIT_PATH) {
+                            } else if cx.tcx.is_diagnostic_item(sym::maybe_uninit_uninit, def_id) {
                                 return Some(InitKind::Uninit);
                             }
                         }
