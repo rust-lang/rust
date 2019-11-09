@@ -1283,6 +1283,10 @@ impl<'tcx> IntRange<'tcx> {
         self.range.start() == self.range.end()
     }
 
+    fn boundaries(&self) -> (u128, u128) {
+        (*self.range.start(), *self.range.end())
+    }
+
     fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching`
         // feature is enabled.
@@ -1395,11 +1399,11 @@ impl<'tcx> IntRange<'tcx> {
 
     /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
     /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
-    fn subtract_from(self, ranges: Vec<IntRange<'tcx>>) -> Vec<IntRange<'tcx>> {
+    fn subtract_from(&self, ranges: Vec<IntRange<'tcx>>) -> Vec<IntRange<'tcx>> {
         let mut remaining_ranges = vec![];
         let ty = self.ty;
         let span = self.span;
-        let (lo, hi) = self.range.into_inner();
+        let (lo, hi) = self.boundaries();
         for subrange in ranges {
             let (subrange_lo, subrange_hi) = subrange.range.into_inner();
             if lo > subrange_hi || subrange_lo > hi {
@@ -1424,8 +1428,8 @@ impl<'tcx> IntRange<'tcx> {
 
     fn intersection(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Option<Self> {
         let ty = self.ty;
-        let (lo, hi) = (*self.range.start(), *self.range.end());
-        let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
+        let (lo, hi) = self.boundaries();
+        let (other_lo, other_hi) = other.boundaries();
         if Self::should_treat_range_exhaustively(tcx, ty) {
             if lo <= other_hi && other_lo <= hi {
                 let span = other.span;
@@ -1451,13 +1455,13 @@ impl<'tcx> IntRange<'tcx> {
         // `true` in the following cases:
         // 1 -------          // 1       -------
         // 2       --------   // 2 -------
-        let (lo, hi) = (*self.range.start(), *self.range.end());
-        let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
+        let (lo, hi) = self.boundaries();
+        let (other_lo, other_hi) = other.boundaries();
         (lo == other_hi || hi == other_lo)
     }
 
     fn to_pat(&self, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
-        let (lo, hi) = (self.range.start(), self.range.end());
+        let (lo, hi) = self.boundaries();
 
         let bias = IntRange::signed_bias(tcx, self.ty);
         let (lo, hi) = (lo ^ bias, hi ^ bias);
@@ -2309,8 +2313,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                     (Some(ctor), Some(pat)) => ctor.intersection(cx.tcx, &pat).map(|_| {
                         // Constructor splitting should ensure that all intersections we encounter
                         // are actually inclusions.
-                        let (pat_lo, pat_hi) = pat.range.into_inner();
-                        let (ctor_lo, ctor_hi) = ctor.range.into_inner();
+                        let (pat_lo, pat_hi) = pat.boundaries();
+                        let (ctor_lo, ctor_hi) = ctor.boundaries();
                         assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
                         PatStack::default()
                     }),
