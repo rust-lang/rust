@@ -611,13 +611,6 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    fn is_integral_range(&self) -> bool {
-        match self {
-            IntRange(_) => return true,
-            _ => return false,
-        };
-    }
-
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -639,12 +632,8 @@ impl<'tcx> Constructor<'tcx> {
     fn subtract_ctors(&self, other_ctors: &Vec<Constructor<'tcx>>) -> Vec<Constructor<'tcx>> {
         match self {
             // Those constructors can only match themselves.
-            Single | Variant(_) => {
-                if other_ctors.iter().any(|c| c == self) {
-                    vec![]
-                } else {
-                    vec![self.clone()]
-                }
+            Single | Variant(_) | ConstantValue(..) | ConstantRange(..) => {
+                if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
             &FixedLenSlice(self_len) => {
                 let overlaps = |c: &Constructor<'_>| match *c {
@@ -740,17 +729,6 @@ impl<'tcx> Constructor<'tcx> {
 
                 // Convert the ranges back into constructors
                 remaining_ranges.into_iter().map(IntRange).collect()
-            }
-            ConstantRange(..) | ConstantValue(..) => {
-                if other_ctors.iter().any(|c| {
-                    c == self
-                        // FIXME(Nadrieril): This condition looks fishy
-                        || c.is_integral_range()
-                }) {
-                    vec![]
-                } else {
-                    vec![self.clone()]
-                }
             }
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
