@@ -1379,20 +1379,19 @@ rustc_index::newtype_index! {
     pub struct BoundVar { .. }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct BoundTy {
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub enum BoundTyKind {
     Anon,
     Param(Symbol),
 }
-
-impl_stable_hash_for!(struct BoundTy { var, kind });
-impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
 impl From<BoundVar> for BoundTy {
     fn from(var: BoundVar) -> Self {

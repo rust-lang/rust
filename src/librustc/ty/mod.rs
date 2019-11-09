@@ -2081,20 +2081,14 @@ impl_stable_hash_for!(struct ReprFlags {
 });
 
 /// Represents the repr options provided by the user,
-#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable,
+         Default, HashStable)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
 }
-
-impl_stable_hash_for!(struct ReprOptions {
-    align,
-    pack,
-    int,
-    flags
-});
 
 impl ReprOptions {
     pub fn new(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
@@ -3439,16 +3433,12 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.
     pub name: Symbol
 }
-
-impl_stable_hash_for!(struct self::SymbolName {
-    name
-});
 
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {
