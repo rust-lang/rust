@@ -659,12 +659,7 @@ impl<'tcx> Constructor<'tcx> {
 
     // Returns the set of constructors covered by `self` but not by
     // anything in `other_ctors`.
-    fn subtract_ctors(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        other_ctors: &Vec<Constructor<'tcx>>,
-    ) -> Vec<Constructor<'tcx>> {
+    fn subtract_ctors(&self, other_ctors: &Vec<Constructor<'tcx>>) -> Vec<Constructor<'tcx>> {
         match self {
             // Those constructors can only match themselves.
             Single | Variant(_) => {
@@ -747,22 +742,22 @@ impl<'tcx> Constructor<'tcx> {
             }
             IntRange(self_range) => {
                 let mut remaining_ranges = vec![self_range.clone()];
-                let other_ranges =
-                    other_ctors.into_iter().filter_map(|c| IntRange::from_ctor(tcx, param_env, c));
-                for other_range in other_ranges {
-                    if other_range == *self_range {
-                        // If the `self` range appears directly in a `match` arm, we can
-                        // eliminate it straight away.
-                        remaining_ranges = vec![];
-                    } else {
-                        // Otherwise explicitely compute the remaining ranges.
-                        remaining_ranges = other_range.subtract_from(remaining_ranges);
-                    }
+                for other_ctor in other_ctors {
+                    if let IntRange(other_range) = other_ctor {
+                        if other_range == self_range {
+                            // If the `self` range appears directly in a `match` arm, we can
+                            // eliminate it straight away.
+                            remaining_ranges = vec![];
+                        } else {
+                            // Otherwise explicitely compute the remaining ranges.
+                            remaining_ranges = other_range.subtract_from(remaining_ranges);
+                        }
 
-                    // If the ranges that have been considered so far already cover the entire
-                    // range of values, we can return early.
-                    if remaining_ranges.is_empty() {
-                        break;
+                        // If the ranges that have been considered so far already cover the entire
+                        // range of values, we can return early.
+                        if remaining_ranges.is_empty() {
+                            break;
+                        }
                     }
                 }
 
@@ -773,7 +768,7 @@ impl<'tcx> Constructor<'tcx> {
                 if other_ctors.iter().any(|c| {
                     c == self
                         // FIXME(Nadrieril): This condition looks fishy
-                        || IntRange::from_ctor(tcx, param_env, c).is_some()
+                        || c.is_integral_range()
                 }) {
                     vec![]
                 } else {
@@ -1364,26 +1359,15 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn from_ctor(
-        _tcx: TyCtxt<'tcx>,
-        _param_env: ty::ParamEnv<'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> Option<IntRange<'tcx>> {
-        // Floating-point ranges are permitted and we don't want
-        // to consider them when constructing integer ranges.
-        match ctor {
-            IntRange(range) => Some(range.clone()),
-            _ => None,
-        }
-    }
-
     fn from_pat(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         pat: &Pat<'tcx>,
     ) -> Option<IntRange<'tcx>> {
-        let ctor = pat_constructor(tcx, param_env, pat)?;
-        IntRange::from_ctor(tcx, param_env, &ctor)
+        match pat_constructor(tcx, param_env, pat)? {
+            IntRange(range) => Some(range),
+            _ => None,
+        }
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
@@ -1490,20 +1474,13 @@ impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
 
 // A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
 struct MissingConstructors<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     all_ctors: Vec<Constructor<'tcx>>,
     used_ctors: Vec<Constructor<'tcx>>,
 }
 
 impl<'tcx> MissingConstructors<'tcx> {
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        all_ctors: Vec<Constructor<'tcx>>,
-        used_ctors: Vec<Constructor<'tcx>>,
-    ) -> Self {
-        MissingConstructors { tcx, param_env, all_ctors, used_ctors }
+    fn new(all_ctors: Vec<Constructor<'tcx>>, used_ctors: Vec<Constructor<'tcx>>) -> Self {
+        MissingConstructors { all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -1521,9 +1498,7 @@ impl<'tcx> MissingConstructors<'tcx> {
 
     /// Iterate over all_ctors \ used_ctors
     fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
-        self.all_ctors.iter().flat_map(move |req_ctor| {
-            req_ctor.subtract_ctors(self.tcx, self.param_env, &self.used_ctors)
-        })
+        self.all_ctors.iter().flat_map(move |req_ctor| req_ctor.subtract_ctors(&self.used_ctors))
     }
 }
 
@@ -1649,7 +1624,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // Missing constructors are those that are not matched by any non-wildcard patterns in the
         // current column. We only fully construct them on-demand, because they're rarely used and
         // can be big.
-        let missing_ctors = MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, used_ctors);
+        let missing_ctors = MissingConstructors::new(all_ctors, used_ctors);
 
         debug!("missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
@@ -2305,12 +2280,9 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             // If the constructor is a:
             // - Single value: add a row if the pattern contains the constructor.
             // - Range: add a row if the constructor intersects the pattern.
-            if constructor.is_integral_range() {
-                match (
-                    IntRange::from_ctor(cx.tcx, cx.param_env, constructor),
-                    IntRange::from_pat(cx.tcx, cx.param_env, pat),
-                ) {
-                    (Some(ctor), Some(pat)) => ctor.intersection(cx.tcx, &pat).map(|_| {
+            if let IntRange(ctor) = constructor {
+                match IntRange::from_pat(cx.tcx, cx.param_env, pat) {
+                    Some(pat) => ctor.intersection(cx.tcx, &pat).map(|_| {
                         // Constructor splitting should ensure that all intersections we encounter
                         // are actually inclusions.
                         let (pat_lo, pat_hi) = pat.boundaries();
