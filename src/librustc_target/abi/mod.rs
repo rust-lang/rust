@@ -1051,17 +1051,20 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     where
         Self: Copy,
         Ty: TyLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>>
+        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>> + HasDataLayout
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
-            let range = &s.valid_range;
             if zero {
+                let range = &s.valid_range;
                 // The range must contain 0.
                 range.contains(&0) ||
                 (*range.start() > *range.end()) // wrap-around allows 0
             } else {
-                // The range must include all values.
-                *range.start() == range.end().wrapping_add(1)
+                // The range must include all values. `valid_range_exclusive` handles
+                // the wrap-around using target arithmetic; with wrap-around then the full
+                // range is one where `start == end`.
+                let range = s.valid_range_exclusive(cx);
+                range.start == range.end
             }
         };
 
