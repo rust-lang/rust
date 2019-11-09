@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/impl-foreign-for-fundamental[foreign].rs:12:1
+  --> $DIR/impl-foreign-for-fundamental[foreign].rs:10:1
    |
 LL | impl Remote for Box<i32> {
    | ^^^^^^^^^^^^^^^^--------
@@ -10,7 +10,7 @@ LL | impl Remote for Box<i32> {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/impl-foreign-for-fundamental[foreign].rs:16:1
+  --> $DIR/impl-foreign-for-fundamental[foreign].rs:14:1
    |
 LL | impl<T> Remote for Box<Rc<T>> {
    | ^^^^^^^^^^^^^^^^^^^----------

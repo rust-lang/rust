@@ -205,11 +205,12 @@ pub trait AsMut<T: ?Sized> {
 /// A value-to-value conversion that consumes the input value. The
 /// opposite of [`From`].
 ///
-/// One should only implement [`Into`] if a conversion to a type outside the current crate is
-/// required. Otherwise one should always prefer implementing [`From`] over [`Into`] because
-/// implementing [`From`] automatically provides one with a implementation of [`Into`] thanks to
-/// the blanket implementation in the standard library. [`From`] cannot do these type of
-/// conversions because of Rust's orphaning rules.
+/// One should avoid implementing [`Into`] and implement [`From`] instead.
+/// Implementing [`From`] automatically provides one with an implementation of [`Into`]
+/// thanks to the blanket implementation in the standard library.
+///
+/// Prefer using [`Into`] over [`From`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement [`Into`] can be used as well.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use [`TryInto`].
 ///
@@ -218,13 +219,13 @@ pub trait AsMut<T: ?Sized> {
 /// - [`From`]`<T> for U` implies `Into<U> for T`
 /// - [`Into`] is reflexive, which means that `Into<T> for T` is implemented
 ///
-/// # Implementing [`Into`] for conversions to external types
+/// # Implementing [`Into`] for conversions to external types in old versions of Rust
 ///
-/// If the destination type is not part of the current crate
-/// then you can't implement [`From`] directly.
+/// Prior to Rust 1.40, if the destination type was not part of the current crate
+/// then you couldn't implement [`From`] directly.
 /// For example, take this code:
 ///
-/// ```compile_fail
+/// ```
 /// struct Wrapper<T>(Vec<T>);
 /// impl<T> From<Wrapper<T>> for Vec<T> {
 ///     fn from(w: Wrapper<T>) -> Vec<T> {
@@ -232,9 +233,8 @@ pub trait AsMut<T: ?Sized> {
 ///     }
 /// }
 /// ```
-/// This will fail to compile because we cannot implement a trait for a type
-/// if both the trait and the type are not defined by the current crate.
-/// This is due to Rust's orphaning rules. To bypass this, you can implement [`Into`] directly:
+/// This will fail to compile in older versions of the language because Rust's orphaning rules
+/// used to be a little bit more strict. To bypass this, you could implement [`Into`] directly:
 ///
 /// ```
 /// struct Wrapper<T>(Vec<T>);
@@ -248,9 +248,6 @@ pub trait AsMut<T: ?Sized> {
 /// It is important to understand that [`Into`] does not provide a [`From`] implementation
 /// (as [`From`] does with [`Into`]). Therefore, you should always try to implement [`From`]
 /// and then fall back to [`Into`] if [`From`] can't be implemented.
-///
-/// Prefer using [`Into`] over [`From`] when specifying trait bounds on a generic function
-/// to ensure that types that only implement [`Into`] can be used as well.
 ///
 /// # Examples
 ///

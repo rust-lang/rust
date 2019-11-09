@@ -466,10 +466,6 @@ declare_features! (
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.
     (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
-    /// Allows relaxing the coherence rules such that
-    /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
-    (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
-
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 

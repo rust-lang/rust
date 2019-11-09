@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/impl-foreign-for-foreign[foreign].rs:12:1
+  --> $DIR/impl-foreign-for-foreign[foreign].rs:10:1
    |
 LL | impl Remote1<Rc<i32>> for i32 {
    | ^^^^^----------------^^^^^---
@@ -11,7 +11,7 @@ LL | impl Remote1<Rc<i32>> for i32 {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/impl-foreign-for-foreign[foreign].rs:16:1
+  --> $DIR/impl-foreign-for-foreign[foreign].rs:14:1
    |
 LL | impl Remote1<Rc<Local>> for f64 {
    | ^^^^^------------------^^^^^---
@@ -23,7 +23,7 @@ LL | impl Remote1<Rc<Local>> for f64 {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/impl-foreign-for-foreign[foreign].rs:20:1
+  --> $DIR/impl-foreign-for-foreign[foreign].rs:18:1
    |
 LL | impl<T> Remote1<Rc<T>> for f32 {
    | ^^^^^^^^--------------^^^^^---
