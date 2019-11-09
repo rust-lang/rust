@@ -87,7 +87,7 @@
 use crate::cell::Cell;
 use crate::fmt;
 use crate::marker;
-use crate::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::thread::{self, Thread};
 
 /// A synchronization primitive which can be used to run a one-time global
@@ -149,7 +149,7 @@ pub struct OnceState {
 #[rustc_deprecated(
     since = "1.38.0",
     reason = "the `new` function is now preferred",
-    suggestion = "Once::new()",
+    suggestion = "Once::new()"
 )]
 pub const ONCE_INIT: Once = Once::new();
 
@@ -185,15 +185,11 @@ struct WaiterQueue<'a> {
     set_state_on_drop_to: usize,
 }
 
-
 impl Once {
     /// Creates a new `Once` value.
     #[stable(feature = "once_new", since = "1.2.0")]
     pub const fn new() -> Once {
-        Once {
-            state_and_queue: AtomicUsize::new(INCOMPLETE),
-            _marker: marker::PhantomData,
-        }
+        Once { state_and_queue: AtomicUsize::new(INCOMPLETE), _marker: marker::PhantomData }
     }
 
     /// Performs an initialization routine once and only once. The given closure
@@ -254,7 +250,10 @@ impl Once {
     ///
     /// [poison]: struct.Mutex.html#poisoning
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn call_once<F>(&self, f: F) where F: FnOnce() {
+    pub fn call_once<F>(&self, f: F)
+    where
+        F: FnOnce(),
+    {
         // Fast path check
         if self.is_completed() {
             return;
@@ -311,16 +310,17 @@ impl Once {
     /// INIT.call_once(|| {});
     /// ```
     #[unstable(feature = "once_poison", issue = "33577")]
-    pub fn call_once_force<F>(&self, f: F) where F: FnOnce(&OnceState) {
+    pub fn call_once_force<F>(&self, f: F)
+    where
+        F: FnOnce(&OnceState),
+    {
         // Fast path check
         if self.is_completed() {
             return;
         }
 
         let mut f = Some(f);
-        self.call_inner(true, &mut |p| {
-            f.take().unwrap()(&OnceState { poisoned: p })
-        });
+        self.call_inner(true, &mut |p| f.take().unwrap()(&OnceState { poisoned: p }));
     }
 
     /// Returns `true` if some `call_once` call has completed
@@ -385,10 +385,7 @@ impl Once {
     // currently no way to take an `FnOnce` and call it via virtual dispatch
     // without some allocation overhead.
     #[cold]
-    fn call_inner(&self,
-                  ignore_poisoning: bool,
-                  init: &mut dyn FnMut(bool))
-    {
+    fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(bool)) {
         let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
         loop {
             match state_and_queue {
@@ -397,15 +394,16 @@ impl Once {
                     // Panic to propagate the poison.
                     panic!("Once instance has previously been poisoned");
                 }
-                POISONED |
-                INCOMPLETE => {
+                POISONED | INCOMPLETE => {
                     // Try to register this thread as the one RUNNING.
-                    let old = self.state_and_queue.compare_and_swap(state_and_queue,
-                                                                    RUNNING,
-                                                                    Ordering::Acquire);
+                    let old = self.state_and_queue.compare_and_swap(
+                        state_and_queue,
+                        RUNNING,
+                        Ordering::Acquire,
+                    );
                     if old != state_and_queue {
                         state_and_queue = old;
-                        continue
+                        continue;
                     }
                     // `waiter_queue` will manage other waiting threads, and
                     // wake them up on drop.
@@ -417,7 +415,7 @@ impl Once {
                     // poisoned or not.
                     init(state_and_queue == POISONED);
                     waiter_queue.set_state_on_drop_to = COMPLETE;
-                    break
+                    break;
                 }
                 _ => {
                     // All other values must be RUNNING with possibly a
@@ -451,9 +449,7 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
 
         // Try to slide in the node at the head of the linked list, making sure
         // that another thread didn't just replace the head of the linked list.
-        let old = state_and_queue.compare_and_swap(current_state,
-                                                   me | RUNNING,
-                                                   Ordering::Release);
+        let old = state_and_queue.compare_and_swap(current_state, me | RUNNING, Ordering::Release);
         if old != current_state {
             current_state = old;
             continue;
@@ -485,8 +481,8 @@ impl fmt::Debug for Once {
 impl Drop for WaiterQueue<'_> {
     fn drop(&mut self) {
         // Swap out our state with however we finished.
-        let state_and_queue = self.state_and_queue.swap(self.set_state_on_drop_to,
-                                                        Ordering::AcqRel);
+        let state_and_queue =
+            self.state_and_queue.swap(self.set_state_on_drop_to, Ordering::AcqRel);
 
         // We should only ever see an old state which was RUNNING.
         assert_eq!(state_and_queue & STATE_MASK, RUNNING);
@@ -562,10 +558,10 @@ impl OnceState {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
+    use super::Once;
     use crate::panic;
     use crate::sync::mpsc::channel;
     use crate::thread;
-    use super::Once;
 
     #[test]
     fn smoke_once() {
@@ -585,8 +581,10 @@ mod tests {
         let (tx, rx) = channel();
         for _ in 0..10 {
             let tx = tx.clone();
-            thread::spawn(move|| {
-                for _ in 0..4 { thread::yield_now() }
+            thread::spawn(move || {
+                for _ in 0..4 {
+                    thread::yield_now()
+                }
                 unsafe {
                     O.call_once(|| {
                         assert!(!RUN);
@@ -675,6 +673,5 @@ mod tests {
 
         assert!(t1.join().is_ok());
         assert!(t2.join().is_ok());
-
     }
 }
