@@ -224,9 +224,10 @@ impl Layout {
         // > must not overflow (i.e., the rounded value must be less than
         // > `usize::MAX`)
         let new_size = self.size() + pad;
-        debug_assert!(new_size > self.size());
 
-        Layout::from_size_align(new_size, self.align())
+        // SAFETY: This necessarily respectes the from_size_align
+        // prerequisites per the above.
+        unsafe { Layout::from_size_align_unchecked(new_size, self.align()) }
     }
 
     /// Creates a layout describing the record for `n` instances of
