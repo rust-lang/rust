@@ -27,6 +27,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> 
     let crate_graph = db.crate_graph();
 
     // populate external prelude
+    let mut prelude_is_core = false;
     for dep in crate_graph.dependencies(def_map.krate) {
         let dep_def_map = db.crate_def_map(dep.crate_id);
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
@@ -36,10 +37,13 @@ pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> 
         );
 
         // look for the prelude
-        if def_map.prelude.is_none() {
+        // If the prelude is the "core" prelude, try to replace it with a higher
+        // level prelude (e.g. "std") if available.
+        if def_map.prelude.is_none() || prelude_is_core {
             let map = db.crate_def_map(dep.crate_id);
             if map.prelude.is_some() {
                 def_map.prelude = map.prelude;
+                prelude_is_core = dep.name == "core";
             }
         }
     }
