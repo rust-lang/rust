@@ -449,7 +449,7 @@ impl LoweringContext<'_> {
                     .map(|item| self.lower_trait_item_ref(item))
                     .collect();
                 hir::ItemKind::Trait(
-                    self.lower_is_auto(is_auto),
+                    is_auto,
                     unsafety,
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                     bounds,
@@ -1273,13 +1273,6 @@ impl LoweringContext<'_> {
             ),
         );
         (generics, hir::FnSig { header, decl })
-    }
-
-    fn lower_is_auto(&mut self, a: IsAuto) -> hir::IsAuto {
-        match a {
-            IsAuto::Yes => hir::IsAuto::Yes,
-            IsAuto::No => hir::IsAuto::No,
-        }
     }
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {

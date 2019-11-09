@@ -170,6 +170,7 @@ impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
 impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
 impl_stable_hash_for!(enum ::syntax::ast::Movability { Static, Movable });
 impl_stable_hash_for!(enum ::syntax::ast::CaptureBy { Value, Ref });
+impl_stable_hash_for!(enum ::syntax::ast::IsAuto { Yes, No });
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

@@ -21,7 +21,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy, IsAuto};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -2120,13 +2120,6 @@ impl ImplicitSelfKind {
             _ => true,
         }
     }
-}
-
-/// Is the trait definition an auto trait?
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum IsAuto {
-    Yes,
-    No
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, HashStable,
