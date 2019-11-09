@@ -22,7 +22,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness};
+pub use syntax::ast::{Mutability, Constness, Unsafety};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -2154,22 +2154,6 @@ pub enum IsAsync {
     NotAsync,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
-}
-
-impl Unsafety {
-    pub fn prefix_str(&self) -> &'static str {
-        match self {
-            Unsafety::Unsafe => "unsafe ",
-            Unsafety::Normal => "",
-        }
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum Defaultness {
     Default { has_value: bool },
@@ -2193,15 +2177,6 @@ impl Defaultness {
             Defaultness::Default { .. } => true,
             _ => false,
         }
-    }
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Unsafety::Normal => "normal",
-            Unsafety::Unsafe => "unsafe",
-        })
     }
 }
 

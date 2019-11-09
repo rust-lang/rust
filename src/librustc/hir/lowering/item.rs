@@ -433,7 +433,7 @@ impl LoweringContext<'_> {
                 );
 
                 hir::ItemKind::Impl(
-                    self.lower_unsafety(unsafety),
+                    unsafety,
                     self.lower_impl_polarity(polarity),
                     self.lower_defaultness(defaultness, true /* [1] */),
                     generics,
@@ -450,7 +450,7 @@ impl LoweringContext<'_> {
                     .collect();
                 hir::ItemKind::Trait(
                     self.lower_is_auto(is_auto),
-                    self.lower_unsafety(unsafety),
+                    unsafety,
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                     bounds,
                     items,
@@ -1284,7 +1284,7 @@ impl LoweringContext<'_> {
 
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: self.lower_unsafety(h.unsafety),
+            unsafety: h.unsafety,
             asyncness: self.lower_asyncness(h.asyncness.node),
             constness: h.constness.node,
             abi: self.lower_abi(h.abi),
@@ -1309,13 +1309,6 @@ impl LoweringContext<'_> {
         .span_label(abi.span, "invalid ABI")
         .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
         .emit();
-    }
-
-    pub(super) fn lower_unsafety(&mut self, u: Unsafety) -> hir::Unsafety {
-        match u {
-            Unsafety::Unsafe => hir::Unsafety::Unsafe,
-            Unsafety::Normal => hir::Unsafety::Normal,
-        }
     }
 
     fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {

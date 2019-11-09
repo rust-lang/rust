@@ -1213,7 +1213,7 @@ impl<'a> LoweringContext<'a> {
                                     &NodeMap::default(),
                                     ImplTraitContext::disallowed(),
                                 ),
-                                unsafety: this.lower_unsafety(f.unsafety),
+                                unsafety: f.unsafety,
                                 abi: this.lower_abi(f.abi),
                                 decl: this.lower_fn_decl(&f.decl, None, false, None),
                                 param_names: this.lower_fn_params_to_names(&f.decl),
