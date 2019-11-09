@@ -594,7 +594,7 @@ enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
     /// Ranges of non-integer literal values (`2.0..=5.2`).
-    ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
+    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, Ty<'tcx>, RangeEnd, Span),
     /// Array patterns of length `n`.
     FixedLenSlice(u64),
     /// Slice patterns. Captures any array constructor of `length >= i + j`.
@@ -939,11 +939,7 @@ impl<'tcx> Constructor<'tcx> {
                 PatKind::Slice { prefix, slice: Some(wild), suffix }
             }
             &ConstantValue(value, _) => PatKind::Constant { value },
-            &ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
-                lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
-                hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
-                end,
-            }),
+            &ConstantRange(lo, hi, _, end, _) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => {
                 return range.to_pat(cx.tcx);
             }
@@ -1730,9 +1726,14 @@ fn pat_constructor<'tcx>(
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
             let ty = lo.ty;
-            let lo = lo.eval_bits(tcx, param_env, lo.ty);
-            let hi = hi.eval_bits(tcx, param_env, hi.ty);
-            if let Some(int_range) = IntRange::from_range(tcx, lo, hi, ty, &end, pat.span) {
+            if let Some(int_range) = IntRange::from_range(
+                tcx,
+                lo.eval_bits(tcx, param_env, lo.ty),
+                hi.eval_bits(tcx, param_env, hi.ty),
+                ty,
+                &end,
+                pat.span,
+            ) {
                 Some(IntRange(int_range))
             } else {
                 Some(ConstantRange(lo, hi, ty, end, pat.span))
@@ -2132,10 +2133,9 @@ fn constructor_covered_by_range<'tcx>(
         PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
-    let from_bits = |bits| ty::Const::from_bits(tcx, bits, ty::ParamEnv::empty().and(ty));
     let (ctor_from, ctor_to, ctor_end) = match *ctor {
         ConstantValue(value, _) => (value, value, RangeEnd::Included),
-        ConstantRange(from, to, _, ctor_end, _) => (from_bits(from), from_bits(to), ctor_end),
+        ConstantRange(from, to, _, ctor_end, _) => (from, to, ctor_end),
         _ => bug!("`constructor_covered_by_range` called with {:?}", ctor),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, pat_from, pat_to, ty);
