@@ -151,19 +151,21 @@ pub struct ExpansionInfo {
 
 impl ExpansionInfo {
     pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
-        fn look_in_rev_map(exp_map: &mbe::RevTokenMap, from: TextRange) -> Option<tt::TokenId> {
-            exp_map.ranges.iter().find(|&it| it.0.is_subrange(&from)).map(|it| it.1)
-        }
-
         let token_id = look_in_rev_map(&self.exp_map, from)?;
-        let (token_map, file_offset, token_id) = if token_id.0 >= self.shift {
+
+        let (token_map, (file_id, start_offset), token_id) = if token_id.0 >= self.shift {
             (&self.macro_arg.1, self.arg_start, tt::TokenId(token_id.0 - self.shift).into())
         } else {
             (&self.macro_def.1, self.def_start, token_id)
         };
 
         let range = token_map.relative_range_of(token_id)?;
-        Some((file_offset.0, TextRange::offset_len(range.start() + file_offset.1, range.len())))
+
+        return Some((file_id, range + start_offset));
+
+        fn look_in_rev_map(exp_map: &mbe::RevTokenMap, from: TextRange) -> Option<tt::TokenId> {
+            exp_map.ranges.iter().find(|&it| it.0.is_subrange(&from)).map(|it| it.1)
+        }
     }
 }
 

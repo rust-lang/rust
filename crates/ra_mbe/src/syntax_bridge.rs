@@ -1,9 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_parser::{
-    FragmentKind::{self, *},
-    ParseError, TreeSink,
-};
+use ra_parser::{FragmentKind, ParseError, TreeSink};
 use ra_syntax::{
     ast, AstNode, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
     SyntaxTreeBuilder, TextRange, TextUnit, T,
@@ -55,7 +52,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 // * ImplItems(SmallVec<[ast::ImplItem; 1]>)
 // * ForeignItems(SmallVec<[ast::ForeignItem; 1]>
 
-fn fragment_to_syntax_node(
+pub fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
 ) -> Result<(Parse<SyntaxNode>, RevTokenMap), ExpandError> {
@@ -77,31 +74,6 @@ fn fragment_to_syntax_node(
     //FIXME: would be cool to report errors
     let (parse, range_map) = tree_sink.finish();
     Ok((parse, range_map))
-}
-
-macro_rules! impl_token_tree_conversions {
-    ($($(#[$attr:meta])* $name:ident => ($kind:ident, $t:ty) ),*) => {
-        $(
-            $(#[$attr])*
-            pub fn $name(tt: &tt::Subtree) -> Result<(Parse<$t>, RevTokenMap), ExpandError> {
-                let (parse, map) = fragment_to_syntax_node(tt, $kind)?;
-                parse.cast().ok_or_else(|| crate::ExpandError::ConversionError).map(|p| (p, map))
-            }
-        )*
-    }
-}
-
-impl_token_tree_conversions! {
-    /// Parses the token tree (result of macro expansion) to an expression
-    token_tree_to_expr => (Expr, ast::Expr),
-    /// Parses the token tree (result of macro expansion) to a Pattern
-    token_tree_to_pat => (Pattern, ast::Pat),
-    /// Parses the token tree (result of macro expansion) to a Type
-    token_tree_to_ty => (Type, ast::TypeRef),
-    /// Parses the token tree (result of macro expansion) as a sequence of stmts
-    token_tree_to_macro_stmts => (Statements, ast::MacroStmts),
-    /// Parses the token tree (result of macro expansion) as a sequence of items
-    token_tree_to_items => (Items, ast::MacroItems)
 }
 
 impl TokenMap {
@@ -446,6 +418,6 @@ mod tests {
             "#,
         );
         let expansion = expand(&rules, "stmts!();");
-        assert!(token_tree_to_expr(&expansion).is_err());
+        assert!(token_tree_to_syntax_node(&expansion, FragmentKind::Expr).is_err());
     }
 }
