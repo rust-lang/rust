@@ -763,31 +763,46 @@ impl<'tcx> Constructor<'tcx> {
                 remaining_ctors
             }
             ConstantRange(..) | ConstantValue(..) => {
-                let mut remaining_ctors = vec![self.clone()];
-                for other_ctor in other_ctors {
-                    if other_ctor == self {
-                        // If a constructor appears in a `match` arm, we can
-                        // eliminate it straight away.
-                        remaining_ctors = vec![]
-                    } else if let Some(interval) = IntRange::from_ctor(tcx, param_env, other_ctor) {
-                        // Refine the required constructors for the type by subtracting
-                        // the range defined by the current constructor pattern.
-                        remaining_ctors = interval.subtract_from(tcx, param_env, remaining_ctors);
+                if let Some(_self_range) = IntRange::from_ctor(tcx, param_env, self) {
+                    let mut remaining_ctors = vec![self.clone()];
+                    for other_ctor in other_ctors {
+                        if other_ctor == self {
+                            // If a constructor appears in a `match` arm, we can
+                            // eliminate it straight away.
+                            remaining_ctors = vec![]
+                        } else if let Some(interval) =
+                            IntRange::from_ctor(tcx, param_env, other_ctor)
+                        {
+                            // Refine the required constructors for the type by subtracting
+                            // the range defined by the current constructor pattern.
+                            remaining_ctors =
+                                interval.subtract_from(tcx, param_env, remaining_ctors);
+                        }
+
+                        // If the constructor patterns that have been considered so far
+                        // already cover the entire range of values, then we know the
+                        // constructor is not missing, and we can move on to the next one.
+                        if remaining_ctors.is_empty() {
+                            break;
+                        }
                     }
 
-                    // If the constructor patterns that have been considered so far
-                    // already cover the entire range of values, then we know the
-                    // constructor is not missing, and we can move on to the next one.
-                    if remaining_ctors.is_empty() {
-                        break;
+                    // If a constructor has not been matched, then it is missing.
+                    // We add `remaining_ctors` instead of `self`, because then we can
+                    // provide more detailed error information about precisely which
+                    // ranges have been omitted.
+                    remaining_ctors
+                } else {
+                    if other_ctors.iter().any(|c| {
+                        c == self
+                             // FIXME(Nadrieril): This condition looks fishy
+                             || IntRange::from_ctor(tcx, param_env, c).is_some()
+                    }) {
+                        vec![]
+                    } else {
+                        vec![self.clone()]
                     }
                 }
-
-                // If a constructor has not been matched, then it is missing.
-                // We add `remaining_ctors` instead of `self`, because then we can
-                // provide more detailed error information about precisely which
-                // ranges have been omitted.
-                remaining_ctors
             }
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
