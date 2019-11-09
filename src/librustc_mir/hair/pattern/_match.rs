@@ -582,7 +582,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g., struct patterns and fixed-length arrays.
@@ -590,40 +590,17 @@ enum Constructor<'tcx> {
     /// Enum variants.
     Variant(DefId),
     /// Literal values.
-    ConstantValue(&'tcx ty::Const<'tcx>, Span),
+    ConstantValue(&'tcx ty::Const<'tcx>),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
     /// Ranges of non-integer literal values (`2.0..=5.2`).
-    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, Ty<'tcx>, RangeEnd, Span),
+    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Array patterns of length `n`.
     FixedLenSlice(u64),
     /// Slice patterns. Captures any array constructor of `length >= i + j`.
     VarLenSlice(u64, u64),
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
-}
-
-// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
-impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Constructor::Single, Constructor::Single) => true,
-            (Constructor::NonExhaustive, Constructor::NonExhaustive) => true,
-            (Constructor::Variant(a), Constructor::Variant(b)) => a == b,
-            (Constructor::ConstantValue(a, _), Constructor::ConstantValue(b, _)) => a == b,
-            (
-                Constructor::ConstantRange(a_start, a_end, a_ty, a_range_end, _),
-                Constructor::ConstantRange(b_start, b_end, b_ty, b_range_end, _),
-            ) => a_start == b_start && a_end == b_end && a_ty == b_ty && a_range_end == b_range_end,
-            (Constructor::IntRange(a), Constructor::IntRange(b)) => a == b,
-            (Constructor::FixedLenSlice(a), Constructor::FixedLenSlice(b)) => a == b,
-            (
-                Constructor::VarLenSlice(a_prefix, a_suffix),
-                Constructor::VarLenSlice(b_prefix, b_suffix),
-            ) => a_prefix == b_prefix && a_suffix == b_suffix,
-            _ => false,
-        }
-    }
 }
 
 impl<'tcx> Constructor<'tcx> {
@@ -652,7 +629,7 @@ impl<'tcx> Constructor<'tcx> {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            ConstantValue(c, _) => crate::const_eval::const_variant_index(cx.tcx, cx.param_env, c),
+            ConstantValue(c) => crate::const_eval::const_variant_index(cx.tcx, cx.param_env, c),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
@@ -938,8 +915,8 @@ impl<'tcx> Constructor<'tcx> {
                 let wild = Pat::wildcard_from_ty(ty);
                 PatKind::Slice { prefix, slice: Some(wild), suffix }
             }
-            &ConstantValue(value, _) => PatKind::Constant { value },
-            &ConstantRange(lo, hi, _, end, _) => PatKind::Range(PatRange { lo, hi, end }),
+            &ConstantValue(value) => PatKind::Constant { value },
+            &ConstantRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => {
                 return range.to_pat(cx.tcx);
             }
@@ -1148,10 +1125,9 @@ fn all_constructors<'a, 'tcx>(
         )
     };
     match pcx.ty.kind {
-        ty::Bool => [true, false]
-            .iter()
-            .map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b), pcx.span))
-            .collect(),
+        ty::Bool => {
+            [true, false].iter().map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b))).collect()
+        }
         ty::Array(ref sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
             let len = len.eval_usize(cx.tcx, cx.param_env);
             if len != 0 && cx.is_uninhabited(sub_ty) { vec![] } else { vec![FixedLenSlice(len)] }
@@ -1721,7 +1697,7 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantValue(value, pat.span))
+                Some(ConstantValue(value))
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
@@ -1736,7 +1712,7 @@ fn pat_constructor<'tcx>(
             ) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantRange(lo, hi, ty, end, pat.span))
+                Some(ConstantRange(lo, hi, end))
             }
         }
         PatKind::Array { .. } => match pat.ty.kind {
@@ -2134,8 +2110,8 @@ fn constructor_covered_by_range<'tcx>(
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     let (ctor_from, ctor_to, ctor_end) = match *ctor {
-        ConstantValue(value, _) => (value, value, RangeEnd::Included),
-        ConstantRange(from, to, _, ctor_end, _) => (from, to, ctor_end),
+        ConstantValue(value) => (value, value, RangeEnd::Included),
+        ConstantRange(from, to, ctor_end) => (from, to, ctor_end),
         _ => bug!("`constructor_covered_by_range` called with {:?}", ctor),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, pat_from, pat_to, ty);
@@ -2331,7 +2307,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                     None
                 }
             }
-            ConstantValue(cv, _) => {
+            ConstantValue(cv) => {
                 match slice_pat_covered_by_const(
                     cx.tcx,
                     pat.span,
