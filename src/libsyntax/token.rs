@@ -53,7 +53,7 @@ impl DelimToken {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -68,7 +68,7 @@ pub enum LitKind {
 }
 
 /// A literal token.
-#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,

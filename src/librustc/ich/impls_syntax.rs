@@ -137,25 +137,6 @@ for tokenstream::TokenStream {
     }
 }
 
-impl_stable_hash_for!(enum token::LitKind {
-    Bool,
-    Byte,
-    Char,
-    Integer,
-    Float,
-    Str,
-    ByteStr,
-    StrRaw(n),
-    ByteStrRaw(n),
-    Err
-});
-
-impl_stable_hash_for!(struct token::Lit {
-    kind,
-    symbol,
-    suffix
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
