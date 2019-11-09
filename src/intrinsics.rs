@@ -338,6 +338,7 @@ pub fn codegen_intrinsic_call<'tcx>(
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
+    span: Span,
 ) {
     let def_id = instance.def_id();
     let substs = instance.substs;
@@ -832,6 +833,21 @@ pub fn codegen_intrinsic_call<'tcx>(
             let const_val = fx.tcx.const_eval(ParamEnv::reveal_all().and(gid)).unwrap();
             let val = crate::constant::trans_const_value(fx, const_val);
             ret.write_cvalue(fx, val);
+        };
+
+        ptr_offset_from, <T> (v ptr, v base) {
+            let isize_layout = fx.layout_of(fx.tcx.types.isize);
+
+            let pointee_size: u64 = fx.layout_of(T).size.bytes();
+            let diff = fx.bcx.ins().isub(ptr, base);
+            // FIXME this can be an exact division.
+            let val = CValue::by_val(fx.bcx.ins().udiv_imm(diff, pointee_size as i64), isize_layout);
+            ret.write_cvalue(fx, val);
+        };
+
+        caller_location, () {
+            let caller_location = fx.get_caller_location(span);
+            ret.write_cvalue(fx, caller_location);
         };
 
         _ if intrinsic.starts_with("atomic_fence"), () {};

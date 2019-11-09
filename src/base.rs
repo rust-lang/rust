@@ -208,7 +208,13 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 cleanup: _,
                 from_hir_call: _,
             } => {
-                crate::abi::codegen_terminator_call(fx, func, args, destination);
+                crate::abi::codegen_terminator_call(
+                    fx,
+                    func,
+                    args,
+                    destination,
+                    bb_data.terminator().source_info.span,
+                );
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
                 trap_unreachable(fx, "[corruption] Unwinding bb reached.");

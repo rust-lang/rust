@@ -351,6 +351,7 @@ pub fn codegen_terminator_call<'tcx>(
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
+    span: Span,
 ) {
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
     let sig = fx
@@ -378,7 +379,7 @@ pub fn codegen_terminator_call<'tcx>(
 
         match instance.def {
             InstanceDef::Intrinsic(_) => {
-                crate::intrinsics::codegen_intrinsic_call(fx, instance, args, destination);
+                crate::intrinsics::codegen_intrinsic_call(fx, instance, args, destination, span);
                 return;
             }
             InstanceDef::DropGlue(_, None) => {

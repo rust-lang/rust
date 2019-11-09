@@ -172,7 +172,7 @@ fn trans_const_place<'tcx>(
         ecx.copy_op(op, ptr.into())?;
         let alloc = ecx
             .memory
-            .get(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
+            .get_raw(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };
     let alloc = result().expect("unable to convert ConstValue to Allocation");
@@ -274,7 +274,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
         let (data_id, alloc) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 //println!("alloc_id {}", alloc_id);
-                let alloc = memory.get(alloc_id).unwrap();
+                let alloc = memory.get_raw(alloc_id).unwrap();
                 let data_id = data_id_for_alloc_id(module, alloc_id, alloc.align);
                 (data_id, alloc)
             }

@@ -71,6 +71,8 @@ fn main() {
 
     let _a = 1u32 << 2u8;
 
+    println!("{:?}", unsafe { std::intrinsics::caller_location() });
+
     unsafe {
         test_simd();
     }

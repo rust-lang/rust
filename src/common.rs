@@ -1,4 +1,4 @@
-use rustc::ty::layout::{FloatTy, Integer, Primitive};
+use rustc::ty::layout::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift::codegen::ir::{InstructionData, Opcode, ValueDef};
@@ -27,10 +27,8 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
             Integer::I64 => types::I64,
             Integer::I128 => types::I128,
         },
-        Primitive::Float(flt) => match flt {
-            FloatTy::F32 => types::F32,
-            FloatTy::F64 => types::F64,
-        },
+        Primitive::F32 => types::F32,
+        Primitive::F64 => types::F64,
         Primitive::Pointer => pointer_ty(tcx),
     }
 }
@@ -369,5 +367,16 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     pub fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
         let (index, _) = self.source_info_set.insert_full((source_info.span, source_info.scope));
         self.bcx.set_srcloc(SourceLoc::new(index as u32));
+    }
+
+    pub fn get_caller_location(&mut self, span: Span) -> CValue<'tcx> {
+        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+        let const_loc = self.tcx.const_caller_location((
+            syntax::symbol::Symbol::intern(&caller.file.name.to_string()),
+            caller.line as u32,
+            caller.col_display as u32 + 1,
+        ));
+        crate::constant::trans_const_value(self, const_loc)
     }
 }
