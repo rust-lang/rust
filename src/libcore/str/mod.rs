@@ -1,5 +1,4 @@
 // ignore-tidy-filelength
-// ignore-tidy-undocumented-unsafe
 
 //! String manipulation.
 //!
@@ -337,6 +336,7 @@ impl Utf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     run_utf8_validation(v)?;
+    // SAFETY: just ran validation
     Ok(unsafe { from_utf8_unchecked(v) })
 }
 
@@ -375,6 +375,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     run_utf8_validation(v)?;
+    // SAFETY: just ran validation
     Ok(unsafe { from_utf8_unchecked_mut(v) })
 }
 
@@ -567,7 +568,7 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         next_code_point(&mut self.iter).map(|ch| {
-            // str invariant says `ch` is a valid Unicode Scalar Value
+            // SAFETY: str invariant says `ch` is a valid Unicode Scalar Value
             unsafe {
                 char::from_u32_unchecked(ch)
             }
@@ -616,7 +617,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         next_code_point_reverse(&mut self.iter).map(|ch| {
-            // str invariant says `ch` is a valid Unicode Scalar Value
+            // SAFETY: str invariant says `ch` is a valid Unicode Scalar Value
             unsafe {
                 char::from_u32_unchecked(ch)
             }
@@ -648,6 +649,7 @@ impl<'a> Chars<'a> {
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     #[inline]
     pub fn as_str(&self) -> &'a str {
+        // SAFETY: Chars is only made from a str, which guarantees the iter is valid utf8
         unsafe { from_utf8_unchecked(self.iter.as_slice()) }
     }
 }
@@ -1080,6 +1082,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     fn get_end(&mut self) -> Option<&'a str> {
         if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
             self.finished = true;
+            // SAFETY: self.start and self.end always lie on unicode boudaries
             unsafe {
                 let string = self.matcher.haystack().get_unchecked(self.start..self.end);
                 Some(string)
@@ -1095,6 +1098,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
 
         let haystack = self.matcher.haystack();
         match self.matcher.next_match() {
+            // SAFETY: Searcher guarantees that a and b lie on unicode boundaries
             Some((a, b)) => unsafe {
                 let elt = haystack.get_unchecked(self.start..a);
                 self.start = b;
@@ -1120,11 +1124,13 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
 
         let haystack = self.matcher.haystack();
         match self.matcher.next_match_back() {
+            // SAFETY: Searcher guarantees that a and b lie on unicode boundaries
             Some((a, b)) => unsafe {
                 let elt = haystack.get_unchecked(b..self.end);
                 self.end = a;
                 Some(elt)
             },
+            // SAFETY: self.start and self.end always lie on unicode boudaries
             None => unsafe {
                 self.finished = true;
                 Some(haystack.get_unchecked(self.start..self.end))
@@ -1253,6 +1259,7 @@ where
 impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<(usize, &'a str)> {
+        // SAFETY: Searcher guarantees that start and end lie on unicode boundaries
         self.0.next_match().map(|(start, end)| unsafe {
             (start, self.0.haystack().get_unchecked(start..end))
         })
@@ -1262,6 +1269,7 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     fn next_back(&mut self) -> Option<(usize, &'a str)>
         where P::Searcher: ReverseSearcher<'a>
     {
+        // SAFETY: Searcher guarantees that start and end lie on unicode boundaries
         self.0.next_match_back().map(|(start, end)| unsafe {
             (start, self.0.haystack().get_unchecked(start..end))
         })
@@ -1307,6 +1315,7 @@ where
 impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
+        // SAFETY: Searcher guarantees that start and end lie on unicode boundaries
         self.0.next_match().map(|(a, b)| unsafe {
             // Indices are known to be on utf8 boundaries
             self.0.haystack().get_unchecked(a..b)
@@ -1317,6 +1326,7 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
     fn next_back(&mut self) -> Option<&'a str>
         where P::Searcher: ReverseSearcher<'a>
     {
+        // SAFETY: Searcher guarantees that start and end lie on unicode boundaries
         self.0.next_match_back().map(|(a, b)| unsafe {
             // Indices are known to be on utf8 boundaries
             self.0.haystack().get_unchecked(a..b)
@@ -1538,6 +1548,9 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             if align != usize::max_value() && align.wrapping_sub(index) % usize_bytes == 0 {
                 let ptr = v.as_ptr();
                 while index < blocks_end {
+                    // SAFETY: since align - index and ascii_block_size are multiples of
+                    // usize_bytes, ptr.add(index) is always aligned with a usize so we may cast
+                    // directly to a const pointer.
                     unsafe {
                         let block = ptr.add(index) as *const usize;
                         // break if there is a nonascii byte
@@ -1760,6 +1773,7 @@ mod traits {
             if self.start <= self.end &&
                slice.is_char_boundary(self.start) &&
                slice.is_char_boundary(self.end) {
+                // SAFETY: just checked that start and end are on a char boundary
                 Some(unsafe { self.get_unchecked(slice) })
             } else {
                 None
@@ -1770,6 +1784,7 @@ mod traits {
             if self.start <= self.end &&
                slice.is_char_boundary(self.start) &&
                slice.is_char_boundary(self.end) {
+                // SAFETY: just checked that start and end are on a char boundary
                 Some(unsafe { self.get_unchecked_mut(slice) })
             } else {
                 None
@@ -1799,6 +1814,7 @@ mod traits {
             if self.start <= self.end &&
                slice.is_char_boundary(self.start) &&
                slice.is_char_boundary(self.end) {
+                // SAFETY: just checked that start and end are on a char boundary
                 unsafe { self.get_unchecked_mut(slice) }
             } else {
                 super::slice_error_fail(slice, self.start, self.end)
@@ -1827,6 +1843,7 @@ mod traits {
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
             if slice.is_char_boundary(self.end) {
+                // SAFETY: just checked that end is on a char boundary
                 Some(unsafe { self.get_unchecked(slice) })
             } else {
                 None
@@ -1835,6 +1852,7 @@ mod traits {
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
             if slice.is_char_boundary(self.end) {
+                // SAFETY: just checked that end is on a char boundary
                 Some(unsafe { self.get_unchecked_mut(slice) })
             } else {
                 None
@@ -1857,8 +1875,8 @@ mod traits {
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            // is_char_boundary checks that the index is in [0, .len()]
             if slice.is_char_boundary(self.end) {
+                // SAFETY: just checked that end is on a char boundary
                 unsafe { self.get_unchecked_mut(slice) }
             } else {
                 super::slice_error_fail(slice, 0, self.end)
@@ -1888,6 +1906,7 @@ mod traits {
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
             if slice.is_char_boundary(self.start) {
+                // SAFETY: just checked that start is on a char boundary
                 Some(unsafe { self.get_unchecked(slice) })
             } else {
                 None
@@ -1896,6 +1915,7 @@ mod traits {
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
             if slice.is_char_boundary(self.start) {
+                // SAFETY: just checked that start is on a char boundary
                 Some(unsafe { self.get_unchecked_mut(slice) })
             } else {
                 None
@@ -1920,8 +1940,8 @@ mod traits {
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            // is_char_boundary checks that the index is in [0, .len()]
             if slice.is_char_boundary(self.start) {
+                // SAFETY: just checked that start is on a char boundary
                 unsafe { self.get_unchecked_mut(slice) }
             } else {
                 super::slice_error_fail(slice, self.start, slice.len())
@@ -2167,7 +2187,6 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
-    // SAFETY: const sound because we transmute two types with the same layout
     #[allow(unused_attributes)]
     #[allow_internal_unstable(const_fn_union)]
     pub const fn as_bytes(&self) -> &[u8] {
@@ -2176,6 +2195,7 @@ impl str {
             str: &'a str,
             slice: &'a [u8],
         }
+        // SAFETY: const sound because we transmute two types with the same layout
         unsafe { Slices { str: self }.slice }
     }
 
@@ -2501,6 +2521,7 @@ impl str {
     pub fn split_at(&self, mid: usize) -> (&str, &str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
+            // SAFETY: just checked that mid is on a char boundary
             unsafe {
                 (self.get_unchecked(0..mid),
                  self.get_unchecked(mid..self.len()))
@@ -2548,6 +2569,7 @@ impl str {
         if self.is_char_boundary(mid) {
             let len = self.len();
             let ptr = self.as_mut_ptr();
+            // SAFETY: just checked that mid is on a char boundary
             unsafe {
                 (from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, mid)),
                  from_utf8_unchecked_mut(slice::from_raw_parts_mut(
@@ -3746,8 +3768,8 @@ impl str {
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
         }
+        // SAFETY: Searcher is known to return valid indices
         unsafe {
-            // Searcher is known to return valid indices
             self.get_unchecked(i..j)
         }
     }
@@ -3785,8 +3807,8 @@ impl str {
         if let Some((a, _)) = matcher.next_reject() {
             i = a;
         }
+        // SAFETY: Searcher is known to return valid indices
         unsafe {
-            // Searcher is known to return valid indices
             self.get_unchecked(i..self.len())
         }
     }
@@ -3833,8 +3855,8 @@ impl str {
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
         }
+        // SAFETY: Searcher is known to return valid indices
         unsafe {
-            // Searcher is known to return valid indices
             self.get_unchecked(0..j)
         }
     }
@@ -4029,6 +4051,7 @@ impl str {
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_uppercase(&mut self) {
+        // SAFETY: safe because we transmute two types with the same layout
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
     }
@@ -4054,6 +4077,7 @@ impl str {
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_lowercase(&mut self) {
+        // SAFETY: safe because we transmute two types with the same layout
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
@@ -4216,6 +4240,7 @@ impl Default for &str {
 #[stable(feature = "default_mut_str", since = "1.28.0")]
 impl Default for &mut str {
     /// Creates an empty mutable str
+    // SAFETY: str is guranteed to be utf8
     fn default() -> Self { unsafe { from_utf8_unchecked_mut(&mut []) } }
 }
 
@@ -4270,6 +4295,7 @@ impl_fn_for_zst! {
 
     #[derive(Clone)]
     struct UnsafeBytesToStr impl<'a> Fn = |bytes: &'a [u8]| -> &'a str {
+        // SAFETY: not safe
         unsafe { from_utf8_unchecked(bytes) }
     };
 }
