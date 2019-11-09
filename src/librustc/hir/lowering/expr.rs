@@ -64,7 +64,6 @@ impl LoweringContext<'_> {
                 hir::ExprKind::Type(expr, self.lower_ty(ty, ImplTraitContext::disallowed()))
             }
             ExprKind::AddrOf(m, ref ohs) => {
-                let m = self.lower_mutability(m);
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::AddrOf(m, ohs)
             }
@@ -1350,7 +1349,7 @@ impl LoweringContext<'_> {
     }
 
     fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
-        self.expr(span, hir::ExprKind::AddrOf(hir::MutMutable, e), ThinVec::new())
+        self.expr(span, hir::ExprKind::AddrOf(hir::Mutability::Mutable, e), ThinVec::new())
     }
 
     fn expr_unit(&mut self, sp: Span) -> hir::Expr {

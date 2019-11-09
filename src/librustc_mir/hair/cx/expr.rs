@@ -860,8 +860,8 @@ impl ToBorrowKind for AutoBorrowMutability {
 impl ToBorrowKind for hir::Mutability {
     fn to_borrow_kind(&self) -> BorrowKind {
         match *self {
-            hir::MutMutable => BorrowKind::Mut { allow_two_phase_borrow: false },
-            hir::MutImmutable => BorrowKind::Shared,
+            hir::Mutability::Mutable => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir::Mutability::Immutable => BorrowKind::Shared,
         }
     }
 }
@@ -1013,7 +1013,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::MutImmutable,
+                                                               mutbl: hir::Mutability::Immutable,
                                                            });
                         Expr {
                             ty: closure_ty,
@@ -1034,7 +1034,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::MutMutable,
+                                                               mutbl: hir::Mutability::Mutable,
                                                            });
                         Expr {
                             ty: closure_ty,

@@ -5,7 +5,6 @@
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
 pub use self::FunctionRetTy::*;
-pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
@@ -23,6 +22,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
+pub use syntax::ast::Mutability;
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -1051,37 +1051,6 @@ pub enum PatKind {
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`.
     Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Mutability {
-    MutMutable,
-    MutImmutable,
-}
-
-impl Mutability {
-    /// Returns `MutMutable` only if both `self` and `other` are mutable.
-    pub fn and(self, other: Self) -> Self {
-        match self {
-            MutMutable => other,
-            MutImmutable => MutImmutable,
-        }
-    }
-
-    pub fn invert(self) -> Self {
-        match self {
-            MutMutable => MutImmutable,
-            MutImmutable => MutMutable,
-        }
-    }
-
-    pub fn prefix_str(&self) -> &'static str {
-        match self {
-            MutMutable => "mut ",
-            MutImmutable => "",
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]

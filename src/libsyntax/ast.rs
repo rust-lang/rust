@@ -733,6 +733,30 @@ pub enum Mutability {
     Immutable,
 }
 
+impl Mutability {
+    /// Returns `MutMutable` only if both `self` and `other` are mutable.
+    pub fn and(self, other: Self) -> Self {
+        match self {
+            Mutability::Mutable => other,
+            Mutability::Immutable => Mutability::Immutable,
+        }
+    }
+
+    pub fn invert(self) -> Self {
+        match self {
+            Mutability::Mutable => Mutability::Immutable,
+            Mutability::Immutable => Mutability::Mutable,
+        }
+    }
+
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Mutability::Mutable => "mut ",
+            Mutability::Immutable => "",
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BinOpKind {
     /// The `+` operator (addition)

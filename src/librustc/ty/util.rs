@@ -184,7 +184,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 // Now libcore provides that impl.
                 ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
                 ty::Char | ty::RawPtr(..) | ty::Never |
-                ty::Ref(_, _, hir::MutImmutable) => return Ok(()),
+                ty::Ref(_, _, hir::Mutability::Immutable) => return Ok(()),
 
                 ty::Adt(adt, substs) => (adt, substs),
 
@@ -680,7 +680,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
     pub fn is_mutable_static(&self, def_id: DefId) -> bool {
-        self.static_mutability(def_id) == Some(hir::MutMutable)
+        self.static_mutability(def_id) == Some(hir::Mutability::Mutable)
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.

@@ -289,7 +289,7 @@ impl LoweringContext<'_> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
                     ),
-                    self.lower_mutability(m),
+                    m,
                     self.lower_const_body(e),
                 )
             }
@@ -719,7 +719,7 @@ impl LoweringContext<'_> {
                 }
                 ForeignItemKind::Static(ref t, m) => {
                     hir::ForeignItemKind::Static(
-                        self.lower_ty(t, ImplTraitContext::disallowed()), self.lower_mutability(m))
+                        self.lower_ty(t, ImplTraitContext::disallowed()), m)
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),

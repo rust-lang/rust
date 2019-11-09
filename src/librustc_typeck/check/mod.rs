@@ -387,8 +387,8 @@ pub enum Needs {
 impl Needs {
     fn maybe_mut_place(m: hir::Mutability) -> Self {
         match m {
-            hir::MutMutable => Needs::MutPlace,
-            hir::MutImmutable => Needs::None,
+            hir::Mutability::Mutable => Needs::MutPlace,
+            hir::Mutability::Immutable => Needs::None,
         }
     }
 }
@@ -1281,7 +1281,7 @@ fn check_fn<'a, 'tcx>(
                         ty::Ref(region, ty, mutbl) => match ty.kind {
                             ty::Adt(ref adt, _) => {
                                 adt.did == panic_info_did &&
-                                    mutbl == hir::Mutability::MutImmutable &&
+                                    mutbl == hir::Mutability::Immutable &&
                                     *region != RegionKind::ReStatic
                             },
                             _ => false,
@@ -3197,8 +3197,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut adjustments = autoderef.adjust_steps(self, needs);
                 if let ty::Ref(region, _, r_mutbl) = method.sig.inputs()[0].kind {
                     let mutbl = match r_mutbl {
-                        hir::MutImmutable => AutoBorrowMutability::Immutable,
-                        hir::MutMutable => AutoBorrowMutability::Mutable {
+                        hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+                        hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                             // Indexing can be desugared to a method call,
                             // so maybe we could use two-phase here.
                             // See the documentation of AllowTwoPhase for why that's

@@ -2221,12 +2221,12 @@ where
                 let tcx = cx.tcx();
                 let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SP);
                 let kind = match mt {
-                    hir::MutImmutable => if is_freeze {
+                    hir::Mutability::Immutable => if is_freeze {
                         PointerKind::Frozen
                     } else {
                         PointerKind::Shared
                     },
-                    hir::MutMutable => {
+                    hir::Mutability::Mutable => {
                         // Previously we would only emit noalias annotations for LLVM >= 6 or in
                         // panic=abort mode. That was deemed right, as prior versions had many bugs
                         // in conjunction with unwinding, but later versions didn’t seem to have

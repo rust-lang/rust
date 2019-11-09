@@ -82,8 +82,8 @@ impl ConstKind {
 
             HirKind::Const => ConstKind::Const,
 
-            HirKind::Static(hir::MutImmutable) => ConstKind::Static,
-            HirKind::Static(hir::MutMutable) => ConstKind::StaticMut,
+            HirKind::Static(hir::Mutability::Immutable) => ConstKind::Static,
+            HirKind::Static(hir::Mutability::Mutable) => ConstKind::StaticMut,
         };
 
         Some(mode)

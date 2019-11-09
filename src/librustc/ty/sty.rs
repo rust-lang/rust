@@ -1839,8 +1839,8 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_mutable_ptr(&self) -> bool {
         match self.kind {
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
-            Ref(_, _, hir::Mutability::MutMutable) => true,
+            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mutable, .. }) |
+            Ref(_, _, hir::Mutability::Mutable) => true,
             _ => false
         }
     }
@@ -2030,7 +2030,7 @@ impl<'tcx> TyS<'tcx> {
             Adt(def, _) if def.is_box() => {
                 Some(TypeAndMut {
                     ty: self.boxed_ty(),
-                    mutbl: hir::MutImmutable,
+                    mutbl: hir::Mutability::Immutable,
                 })
             },
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl }),

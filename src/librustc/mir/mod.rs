@@ -491,8 +491,8 @@ pub enum Mutability {
 impl From<Mutability> for hir::Mutability {
     fn from(m: Mutability) -> Self {
         match m {
-            Mutability::Mut => hir::MutMutable,
-            Mutability::Not => hir::MutImmutable,
+            Mutability::Mut => hir::Mutability::Mutable,
+            Mutability::Not => hir::Mutability::Immutable,
         }
     }
 }

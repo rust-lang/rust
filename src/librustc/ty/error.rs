@@ -211,7 +211,7 @@ impl<'tcx> ty::TyS<'tcx> {
                    region.to_string() != "'_"     //... or a complex type
                 {
                     format!("{}reference", match mutbl {
-                        hir::Mutability::MutMutable => "mutable ",
+                        hir::Mutability::Mutable => "mutable ",
                         _ => ""
                     }).into()
                 } else {

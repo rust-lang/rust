@@ -454,12 +454,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                mt: &ty::TypeAndMut<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         match mt.mutbl {
-            hir::MutMutable => {
+            hir::Mutability::Mutable => {
                 let invar = self.invariant(variance);
                 self.add_constraints_from_ty(current, mt.ty, invar);
             }
 
-            hir::MutImmutable => {
+            hir::Mutability::Immutable => {
                 self.add_constraints_from_ty(current, mt.ty, variance);
             }
         }

@@ -606,11 +606,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let lang_def_id = lang_items.slice_u8_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Immutable }) => {
                 let lang_def_id = lang_items.const_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mutable }) => {
                 let lang_def_id = lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -1045,8 +1045,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
                 self.pick_by_value_method(step, self_ty).or_else(|| {
-                self.pick_autorefd_method(step, self_ty, hir::MutImmutable).or_else(|| {
-                self.pick_autorefd_method(step, self_ty, hir::MutMutable)
+                self.pick_autorefd_method(step, self_ty, hir::Mutability::Immutable).or_else(|| {
+                self.pick_autorefd_method(step, self_ty, hir::Mutability::Mutable)
             })})})
             .next()
     }

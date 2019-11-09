@@ -1385,8 +1385,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
                 let trait_type = match mutability {
-                    hir::Mutability::MutMutable => self.tcx.mk_imm_ref(region, t_type),
-                    hir::Mutability::MutImmutable => self.tcx.mk_mut_ref(region, t_type),
+                    hir::Mutability::Mutable => self.tcx.mk_imm_ref(region, t_type),
+                    hir::Mutability::Immutable => self.tcx.mk_mut_ref(region, t_type),
                 };
 
                 let substs = self.tcx.mk_substs_trait(&trait_type, &[]);
@@ -1403,7 +1403,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let sp = self.tcx.sess.source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg &&
-                        mutability == hir::Mutability::MutImmutable &&
+                        mutability == hir::Mutability::Immutable &&
                         refs_number > 0
                     {
                         err.span_suggestion(

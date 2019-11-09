@@ -2077,13 +2077,6 @@ impl<'a> LoweringContext<'a> {
         }, ids)
     }
 
-    fn lower_mutability(&mut self, m: Mutability) -> hir::Mutability {
-        match m {
-            Mutability::Mutable => hir::MutMutable,
-            Mutability::Immutable => hir::MutImmutable,
-        }
-    }
-
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
@@ -2653,7 +2646,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext<'_>) -> hir::MutTy {
         hir::MutTy {
             ty: self.lower_ty(&mt.ty, itctx),
-            mutbl: self.lower_mutability(mt.mutbl),
+            mutbl: mt.mutbl,
         }
     }
 
@@ -2754,7 +2747,7 @@ impl<'a> LoweringContext<'a> {
             }
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
             PatKind::Ref(ref inner, mutbl) => {
-                hir::PatKind::Ref(self.lower_pat(inner), self.lower_mutability(mutbl))
+                hir::PatKind::Ref(self.lower_pat(inner), mutbl)
             }
             PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => hir::PatKind::Range(
                 P(self.lower_expr(e1)),
