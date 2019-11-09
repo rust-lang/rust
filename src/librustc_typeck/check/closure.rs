@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_closure(
         &self,
         expr: &hir::Expr,
-        _capture: hir::CaptureClause,
+        _capture: hir::CaptureBy,
         decl: &'tcx hir::FnDecl,
         body_id: hir::BodyId,
         gen: Option<hir::Movability>,

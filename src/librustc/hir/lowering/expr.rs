@@ -473,7 +473,6 @@ impl LoweringContext<'_> {
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
-        let capture_clause = self.lower_capture_clause(capture_clause);
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(ty),
             None => FunctionRetTy::Default(span),
@@ -700,7 +699,6 @@ impl LoweringContext<'_> {
                 generator_kind,
                 movability,
             );
-            let capture_clause = this.lower_capture_clause(capture_clause);
             this.current_item = prev;
             hir::ExprKind::Closure(
                 capture_clause,
@@ -710,13 +708,6 @@ impl LoweringContext<'_> {
                 generator_option,
             )
         })
-    }
-
-    fn lower_capture_clause(&mut self, c: CaptureBy) -> hir::CaptureClause {
-        match c {
-            CaptureBy::Value => hir::CaptureByValue,
-            CaptureBy::Ref => hir::CaptureByRef,
-        }
     }
 
     fn generator_movability_for_fn(
@@ -807,7 +798,7 @@ impl LoweringContext<'_> {
                 this.expr(fn_decl_span, async_body, ThinVec::new())
             });
             hir::ExprKind::Closure(
-                this.lower_capture_clause(capture_clause),
+                capture_clause,
                 fn_decl,
                 body_id,
                 fn_decl_span,

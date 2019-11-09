@@ -3,7 +3,6 @@
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
 pub use self::BlockCheckMode::*;
-pub use self::CaptureClause::*;
 pub use self::FunctionRetTy::*;
 pub use self::PrimTy::*;
 pub use self::UnOp::*;
@@ -22,7 +21,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness, Unsafety, Movability};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -1629,7 +1628,7 @@ pub enum ExprKind {
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<Movability>`.
-    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<Movability>),
+    Closure(CaptureBy, P<FnDecl>, BodyId, Span, Option<Movability>),
     /// A block (e.g., `'label: { ... }`).
     Block(P<Block>, Option<Label>),
 
@@ -1818,12 +1817,6 @@ impl fmt::Display for YieldSource {
             YieldSource::Yield => "`yield`",
         })
     }
-}
-
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum CaptureClause {
-    CaptureByValue,
-    CaptureByRef,
 }
 
 // N.B., if you change this, you'll probably want to change the corresponding
@@ -2620,7 +2613,7 @@ pub struct Upvar {
     pub span: Span
 }
 
-pub type CaptureModeMap = NodeMap<CaptureClause>;
+pub type CaptureModeMap = NodeMap<CaptureBy>;
 
  // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
  // has length > 0 if the trait is found through an chain of imports, starting with the

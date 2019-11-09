@@ -1909,10 +1909,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureClause) {
+    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
-            hir::CaptureByValue => self.word_space("move"),
-            hir::CaptureByRef => {},
+            hir::CaptureBy::Value => self.word_space("move"),
+            hir::CaptureBy::Ref => {},
         }
     }
 
