@@ -22,7 +22,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::Mutability;
+pub use syntax::ast::{Mutability, Constness};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -2168,12 +2168,6 @@ impl Unsafety {
             Unsafety::Normal => "",
         }
     }
-}
-
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum Constness {
-    Const,
-    NotConst,
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]

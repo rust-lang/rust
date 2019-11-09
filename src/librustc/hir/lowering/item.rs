@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast::*;
 use syntax::visit::{self, Visitor};
-use syntax::source_map::{respan, DesugaringKind, Spanned};
+use syntax::source_map::{respan, DesugaringKind};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
@@ -1286,7 +1286,7 @@ impl LoweringContext<'_> {
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
             asyncness: self.lower_asyncness(h.asyncness.node),
-            constness: self.lower_constness(h.constness),
+            constness: h.constness.node,
             abi: self.lower_abi(h.abi),
         }
     }
@@ -1315,13 +1315,6 @@ impl LoweringContext<'_> {
         match u {
             Unsafety::Unsafe => hir::Unsafety::Unsafe,
             Unsafety::Normal => hir::Unsafety::Normal,
-        }
-    }
-
-    fn lower_constness(&mut self, c: Spanned<Constness>) -> hir::Constness {
-        match c.node {
-            Constness::Const => hir::Constness::Const,
-            Constness::NotConst => hir::Constness::NotConst,
         }
     }
 
