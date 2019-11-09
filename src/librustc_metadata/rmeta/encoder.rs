@@ -1571,8 +1571,10 @@ impl EncodeContext<'tcx> {
                 };
                 EntryKind::ForeignFn(self.lazy(data))
             }
-            hir::ForeignItemKind::Static(_, hir::Mutability::Mutable) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemKind::Static(_, hir::Mutability::Immutable) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Static(_, hir::Mutability::Mutable) =>
+                EntryKind::ForeignMutStatic,
+            hir::ForeignItemKind::Static(_, hir::Mutability::Immutable) =>
+                EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         });
         record!(self.per_def.visibility[def_id] <-
