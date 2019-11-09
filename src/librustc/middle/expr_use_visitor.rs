@@ -21,15 +21,15 @@ use syntax_pos::Span;
 /// This trait defines the callbacks you can expect to receive when
 /// employing the ExprUseVisitor.
 pub trait Delegate<'tcx> {
-    // The value found at `cmt` is either copied or moved, depending
+    // The value found at `place` is either copied or moved, depending
     // on mode.
-    fn consume(&mut self, cmt: &mc::Place<'tcx>, mode: ConsumeMode);
+    fn consume(&mut self, place: &mc::Place<'tcx>, mode: ConsumeMode);
 
-    // The value found at `cmt` is being borrowed with kind `bk`.
-    fn borrow(&mut self, cmt: &mc::Place<'tcx>, bk: ty::BorrowKind);
+    // The value found at `place` is being borrowed with kind `bk`.
+    fn borrow(&mut self, place: &mc::Place<'tcx>, bk: ty::BorrowKind);
 
-    // The path at `cmt` is being assigned to.
-    fn mutate(&mut self, assignee_cmt: &mc::Place<'tcx>);
+    // The path at `place` is being assigned to.
+    fn mutate(&mut self, assignee_place: &mc::Place<'tcx>);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -163,22 +163,22 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn consume_expr(&mut self, expr: &hir::Expr) {
         debug!("consume_expr(expr={:?})", expr);
 
-        let cmt = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate_consume(&cmt);
+        let place = return_if_err!(self.mc.cat_expr(expr));
+        self.delegate_consume(&place);
         self.walk_expr(expr);
     }
 
     fn mutate_expr(&mut self, expr: &hir::Expr) {
-        let cmt = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.mutate(&cmt);
+        let place = return_if_err!(self.mc.cat_expr(expr));
+        self.delegate.mutate(&place);
         self.walk_expr(expr);
     }
 
     fn borrow_expr(&mut self, expr: &hir::Expr, bk: ty::BorrowKind) {
         debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
 
-        let cmt = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.borrow(&cmt, bk);
+        let place = return_if_err!(self.mc.cat_expr(expr));
+        self.delegate.borrow(&place, bk);
 
         self.walk_expr(expr)
     }
@@ -230,12 +230,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::Match(ref discr, ref arms, _) => {
-                let discr_cmt = return_if_err!(self.mc.cat_expr(&discr));
+                let discr_place = return_if_err!(self.mc.cat_expr(&discr));
                 self.borrow_expr(&discr, ty::ImmBorrow);
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
-                    self.walk_arm(&discr_cmt, arm);
+                    self.walk_arm(&discr_place, arm);
                 }
             }
 
@@ -381,8 +381,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             // "assigns", which is handled by
             // `walk_pat`:
             self.walk_expr(&expr);
-            let init_cmt = return_if_err!(self.mc.cat_expr(&expr));
-            self.walk_irrefutable_pat(&init_cmt, &local.pat);
+            let init_place = return_if_err!(self.mc.cat_expr(&expr));
+            self.walk_irrefutable_pat(&init_place, &local.pat);
         }
     }
 
@@ -457,7 +457,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     // process.
     fn walk_adjustment(&mut self, expr: &hir::Expr) {
         let adjustments = self.mc.tables.expr_adjustments(expr);
-        let mut cmt = return_if_err!(self.mc.cat_expr_unadjusted(expr));
+        let mut place = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
@@ -465,7 +465,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 adjustment::Adjust::Pointer(_)  => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
-                    self.delegate_consume(&cmt);
+                    self.delegate_consume(&place);
                 }
 
                 adjustment::Adjust::Deref(None) => {}
@@ -477,41 +477,41 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // this is an autoref of `x`.
                 adjustment::Adjust::Deref(Some(ref deref)) => {
                     let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
-                    self.delegate.borrow(&cmt, bk);
+                    self.delegate.borrow(&place, bk);
                 }
 
                 adjustment::Adjust::Borrow(ref autoref) => {
-                    self.walk_autoref(expr, &cmt, autoref);
+                    self.walk_autoref(expr, &place, autoref);
                 }
             }
-            cmt = return_if_err!(self.mc.cat_expr_adjusted(expr, cmt, &adjustment));
+            place = return_if_err!(self.mc.cat_expr_adjusted(expr, place, &adjustment));
         }
     }
 
     /// Walks the autoref `autoref` applied to the autoderef'd
-    /// `expr`. `cmt_base` is the mem-categorized form of `expr`
+    /// `expr`. `base_place` is the mem-categorized form of `expr`
     /// after all relevant autoderefs have occurred.
     fn walk_autoref(&mut self,
                     expr: &hir::Expr,
-                    cmt_base: &mc::Place<'tcx>,
+                    base_place: &mc::Place<'tcx>,
                     autoref: &adjustment::AutoBorrow<'tcx>) {
-        debug!("walk_autoref(expr.hir_id={} cmt_base={:?} autoref={:?})",
+        debug!("walk_autoref(expr.hir_id={} base_place={:?} autoref={:?})",
                expr.hir_id,
-               cmt_base,
+               base_place,
                autoref);
 
         match *autoref {
             adjustment::AutoBorrow::Ref(_, m) => {
-                self.delegate.borrow(cmt_base, ty::BorrowKind::from_mutbl(m.into()));
+                self.delegate.borrow(base_place, ty::BorrowKind::from_mutbl(m.into()));
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
-                debug!("walk_autoref: expr.hir_id={} cmt_base={:?}",
+                debug!("walk_autoref: expr.hir_id={} base_place={:?}",
                        expr.hir_id,
-                       cmt_base);
+                       base_place);
 
 
-                self.delegate.borrow(cmt_base, ty::BorrowKind::from_mutbl(m));
+                self.delegate.borrow(base_place, ty::BorrowKind::from_mutbl(m));
             }
         }
     }
@@ -556,8 +556,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     // Each match binding is effectively an assignment to the
                     // binding being produced.
                     let def = Res::Local(canonical_id);
-                    if let Ok(ref binding_cmt) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
-                        delegate.mutate(binding_cmt);
+                    if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
+                        delegate.mutate(binding_place);
                     }
 
                     // It is also a borrow or copy/move of the value being matched.
@@ -590,16 +590,18 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
-                let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,
-                                                                   fn_decl_span,
-                                                                   var_id));
+                let captured_place = return_if_err!(self.cat_captured_var(
+                    closure_expr.hir_id,
+                    fn_decl_span,
+                    var_id,
+                ));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
-                        let mode = copy_or_move(&self.mc, &cmt_var);
-                        self.delegate.consume(&cmt_var, mode);
+                        let mode = copy_or_move(&self.mc, &captured_place);
+                        self.delegate.consume(&captured_place, mode);
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
-                        self.delegate.borrow(&cmt_var, upvar_borrow.kind);
+                        self.delegate.borrow(&captured_place, upvar_borrow.kind);
                     }
                 }
             }
@@ -611,7 +613,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         closure_span: Span,
                         var_id: hir::HirId)
                         -> mc::McResult<mc::Place<'tcx>> {
-        // Create the cmt for the variable being borrowed, from the
+        // Create the place for the variable being borrowed, from the
         // perspective of the creator (parent) of the closure.
         let var_ty = self.mc.node_ty(var_id)?;
         self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))

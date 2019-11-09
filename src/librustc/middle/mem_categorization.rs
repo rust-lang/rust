@@ -529,8 +529,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             mutbl,
         });
 
-        let base_cmt = self.cat_rvalue(expr.hir_id, expr.span, ref_ty);
-        self.cat_deref(expr, base_cmt)
+        let base = self.cat_rvalue(expr.hir_id, expr.span, ref_ty);
+        self.cat_deref(expr, base)
     }
 
     fn cat_deref(
@@ -538,7 +538,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         node: &impl HirNode,
         base_place: Place<'tcx>,
     ) -> McResult<Place<'tcx>> {
-        debug!("cat_deref: base_cmt={:?}", base_place);
+        debug!("cat_deref: base_place={:?}", base_place);
 
         let base_ty = base_place.ty;
         let deref_ty = match base_ty.builtin_deref(true) {
@@ -598,7 +598,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // `&&Some(x,)` `place_foo`
         //  `&Some(x,)` `deref { place_foo}`
         //   `Some(x,)` `deref { deref { place_foo }}`
-        //        (x,)` `field0 { deref { deref { place_foo }}}` <- resulting cmt
+        //        (x,)` `field0 { deref { deref { place_foo }}}` <- resulting place
         //
         // The above example has no adjustments. If the code were instead the (after adjustments,
         // equivalent) version
@@ -625,14 +625,14 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place = place; // lose mutability
         debug!("cat_pattern: applied adjustment derefs to get place={:?}", place);
 
-        // Invoke the callback, but only now, after the `cmt` has adjusted.
+        // Invoke the callback, but only now, after the `place` has adjusted.
         //
         // To see that this makes sense, consider `match &Some(3) { Some(x) => { ... }}`. In that
-        // case, the initial `cmt` will be that for `&Some(3)` and the pattern is `Some(x)`. We
+        // case, the initial `place` will be that for `&Some(3)` and the pattern is `Some(x)`. We
         // don't want to call `op` with these incompatible values. As written, what happens instead
-        // is that `op` is called with the adjusted cmt (that for `*&Some(3)`) and the pattern
+        // is that `op` is called with the adjusted place (that for `*&Some(3)`) and the pattern
         // `Some(x)` (which matches). Recursing once more, `*&Some(3)` and the pattern `Some(x)`
-        // result in the cmt `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with
+        // result in the place `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with
         // that (where the `ref` on `x` is implied).
         op(&place, pat);
 
@@ -651,8 +651,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 // S { f1: p1, ..., fN: pN }
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.pat)?;
-                    let cmt_field = self.cat_projection(pat, place.clone(), field_ty);
-                    self.cat_pattern_(cmt_field, &fp.pat, op)?;
+                    let field_place = self.cat_projection(pat, place.clone(), field_ty);
+                    self.cat_pattern_(field_place, &fp.pat, op)?;
                 }
             }
 

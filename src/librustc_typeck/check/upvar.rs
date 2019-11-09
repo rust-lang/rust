@@ -341,7 +341,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         self.adjust_upvar_captures.insert(upvar_id, ty::UpvarCapture::ByValue);
     }
 
-    /// Indicates that `cmt` is being directly mutated (e.g., assigned
+    /// Indicates that `place` is being directly mutated (e.g., assigned
     /// to). If the place is based on a by-ref upvar, this implies that
     /// the upvar must be borrowed using an `&mut` borrow.
     fn adjust_upvar_borrow_kind_for_mut(&mut self, place: &mc::Place<'tcx>) {
