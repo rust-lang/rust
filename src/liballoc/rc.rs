@@ -897,7 +897,7 @@ impl<T: ?Sized> Rc<T> {
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>()
             .extend(value_layout).unwrap().0
-            .pad_to_align().unwrap();
+            .pad_to_align();
 
         // Allocate for the layout.
         let mem = Global.alloc(layout)
