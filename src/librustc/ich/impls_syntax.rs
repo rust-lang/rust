@@ -17,29 +17,6 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
-    Cdecl,
-    Stdcall,
-    Fastcall,
-    Vectorcall,
-    Thiscall,
-    Aapcs,
-    Win64,
-    SysV64,
-    PtxKernel,
-    Msp430Interrupt,
-    X86Interrupt,
-    AmdGpuKernel,
-    EfiApi,
-    Rust,
-    C,
-    System,
-    RustIntrinsic,
-    RustCall,
-    PlatformIntrinsic,
-    Unadjusted
-});
-
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     kind,
     token,
