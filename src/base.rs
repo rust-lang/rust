@@ -17,7 +17,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut debug_context = cx
         .debug_context
         .as_mut()
-        .map(|debug_context| FunctionDebugContext::new(tcx, debug_context, mir, func_id, &name, &sig));
+        .map(|debug_context| FunctionDebugContext::new(debug_context, mir, func_id, &name, &sig));
 
     // Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);

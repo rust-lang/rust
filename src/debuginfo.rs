@@ -70,13 +70,15 @@ pub enum DebugRelocName {
 }
 
 pub struct DebugContext<'tcx> {
+    tcx: TyCtxt<'tcx>,
+
     endian: RunTimeEndian,
     symbols: indexmap::IndexMap<FuncId, String>,
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
 
-    _dummy: PhantomData<&'tcx ()>,
+    types: HashMap<Ty<'tcx>, UnitEntryId>,
 }
 
 impl<'tcx> DebugContext<'tcx> {
@@ -132,18 +134,20 @@ impl<'tcx> DebugContext<'tcx> {
         }
 
         DebugContext {
+            tcx,
+
             endian: target_endian(tcx),
             symbols: indexmap::IndexMap::new(),
 
             dwarf,
             unit_range_list: RangeList(Vec::new()),
 
-            _dummy: PhantomData,
+            types: HashMap::new(),
         }
     }
 
-    fn emit_location(&mut self, tcx: TyCtxt<'tcx>, entry_id: UnitEntryId, span: Span) {
-        let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
+    fn emit_location(&mut self, entry_id: UnitEntryId, span: Span) {
+        let loc = self.tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let file_id = line_program_add_file(
             &mut self.dwarf.unit.line_program,
@@ -166,6 +170,58 @@ impl<'tcx> DebugContext<'tcx> {
             gimli::DW_AT_decl_column,
             AttributeValue::Udata(loc.col.to_usize() as u64),
         );
+    }
+
+    fn dwarf_ty(&mut self, ty: Ty<'tcx>) -> UnitEntryId {
+        if let Some(type_id) = self.types.get(ty) {
+            return *type_id;
+        }
+
+        let new_entry = |dwarf: &mut DwarfUnit, tag| {
+            dwarf.unit.add(dwarf.unit.root(), tag)
+        };
+
+        let primtive = |dwarf: &mut DwarfUnit, ate| {
+            let type_id = new_entry(dwarf, gimli::DW_TAG_base_type);
+            let type_entry = dwarf.unit.get_mut(type_id);
+            type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(ate));
+            type_id
+        };
+
+        let type_id = match ty.kind {
+            ty::Bool => primtive(&mut self.dwarf, gimli::DW_ATE_boolean),
+            ty::Char => primtive(&mut self.dwarf, gimli::DW_ATE_UTF),
+            ty::Uint(_) => primtive(&mut self.dwarf, gimli::DW_ATE_unsigned),
+            ty::Int(_) => primtive(&mut self.dwarf, gimli::DW_ATE_signed),
+            ty::Float(_) => primtive(&mut self.dwarf, gimli::DW_ATE_float),
+            ty::Ref(_, pointee_ty, mutbl) | ty::RawPtr(ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
+                let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_pointer_type);
+
+                // Ensure that type is inserted before recursing to avoid duplicates
+                self.types.insert(ty, type_id);
+
+                let pointee = self.dwarf_ty(pointee_ty);
+
+                let type_entry = self.dwarf.unit.get_mut(type_id);
+
+                //type_entry.set(gimli::DW_AT_mutable, AttributeValue::Flag(mutbl == rustc::hir::Mutability::MutMutable));
+                type_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(pointee));
+
+                type_id
+            }
+            _ => new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type),
+        };
+        let name = format!("{}", ty);
+        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+
+        let type_entry = self.dwarf.unit.get_mut(type_id);
+
+        type_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
+        type_entry.set(gimli::DW_AT_byte_size, AttributeValue::Udata(layout.size.bytes()));
+
+        self.types.insert(ty, type_id);
+
+        type_id
     }
 
     pub fn emit<P: WriteDebugInfo>(&mut self, product: &mut P) {
@@ -205,13 +261,13 @@ pub struct FunctionDebugContext<'a, 'tcx> {
     entry_id: UnitEntryId,
     symbol: usize,
     mir_span: Span,
+    local_decls: rustc_index::vec::IndexVec<mir::Local, mir::LocalDecl<'tcx>>,
 }
 
 impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         debug_context: &'a mut DebugContext<'tcx>,
-        mir: &Body,
+        mir: &'tcx Body,
         func_id: FuncId,
         name: &str,
         _sig: &Signature,
@@ -237,13 +293,14 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
         );
 
-        debug_context.emit_location(tcx, entry_id, mir.span);
+        debug_context.emit_location(entry_id, mir.span);
 
         FunctionDebugContext {
             debug_context,
             entry_id,
             symbol,
             mir_span: mir.span,
+            local_decls: mir.local_decls.clone(),
         }
     }
 
@@ -329,6 +386,8 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 );
                 let live_ranges_id = self.debug_context.dwarf.unit.ranges.add(live_ranges);
 
+                let local_type = self.debug_context.dwarf_ty(self.local_decls[mir::Local::from_u32(value_label.as_u32())].ty);
+
                 let var_id = self
                     .debug_context
                     .dwarf
@@ -343,6 +402,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 var_entry.set(
                     gimli::DW_AT_name,
                     AttributeValue::String(format!("{:?}", value_label).into_bytes()),
+                );
+                var_entry.set(
+                    gimli::DW_AT_type,
+                    AttributeValue::ThisUnitEntryRef(local_type),
                 );
             }
         }
