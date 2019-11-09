@@ -42,6 +42,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use crate::spec::abi::{Abi, lookup as lookup_abi};
 
+use rustc_macros::HashStable_Generic;
+
 pub mod abi;
 mod android_base;
 mod apple_base;
@@ -153,7 +155,7 @@ flavor_mappings! {
     ((LinkerFlavor::Lld(LldFlavor::Link)), "lld-link"),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum PanicStrategy {
     Unwind,
     Abort,

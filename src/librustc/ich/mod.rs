@@ -10,7 +10,6 @@ mod caching_source_map_view;
 mod hcx;
 
 mod impls_hir;
-mod impls_misc;
 mod impls_ty;
 mod impls_syntax;
 
