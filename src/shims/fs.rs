@@ -1,7 +1,7 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Write};
-use std::convert::TryFrom;
 
 use rustc::ty::layout::Size;
 
@@ -166,7 +166,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("read")?;
 
-        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
+        let ptr_size = this.pointer_size().bits();
+
+        let count = this
+            .read_scalar(count_op)?
+            .to_machine_usize(&*this.tcx)?
+            .min(1 << (ptr_size - 1));
         // Reading zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
@@ -175,22 +180,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.read_scalar(buf_op)?.not_undef()?;
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
-            let count = isize::try_from(count)
-                .map_err(|_| err_unsup_format!("Program tries to read into buffer too big for this host platform"))?;
+            let count = isize::try_from(count).unwrap();
             // We want to read at most `count` bytes. We are sure that `count` is not negative
             // because it was a target's `usize`. Also we are sure that its smaller than
             // `usize::max_value()` because it is a host's `isize`.
             let mut bytes = vec![0; count as usize];
-            let result = handle.file.read(&mut bytes);
+            let result = handle
+                .file
+                .read(&mut bytes)
+                .map(|c| i64::try_from(c).unwrap());
 
             match result {
-                Ok(c) => {
-                    let read_bytes = i64::try_from(c)
-                        .map_err(|_| err_unsup_format!("Number of read bytes {} cannot be transformed to i64", c))?;
+                Ok(read_bytes) => {
                     // If reading to `bytes` did not fail, we write those bytes to the buffer.
                     this.memory.write_bytes(buf, bytes)?;
                     Ok(read_bytes)
-                },
+                }
                 Err(e) => {
                     this.set_last_error_from_io_error(e)?;
                     Ok(-1)
@@ -211,7 +216,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("write")?;
 
-        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
+        let ptr_size = this.pointer_size().bits();
+
+        let count = this
+            .read_scalar(count_op)?
+            .to_machine_usize(&*this.tcx)?
+            .min(1 << (ptr_size - 1));
         // Writing zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
@@ -221,16 +231,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
-            let result = handle.file.write(&bytes);
-
-            match result {
-                Ok(c) => i64::try_from(c)
-                    .map_err(|_| err_unsup_format!("Number of written bytes {} cannot be transformed to i64", c).into()),
-                Err(e) => {
-                    this.set_last_error_from_io_error(e)?;
-                    Ok(-1)
-                }
-            }
+            let result = handle.file.write(&bytes).map(|c| i64::try_from(c).unwrap());
+            this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
         }
