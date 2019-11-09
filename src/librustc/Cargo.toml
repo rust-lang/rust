@@ -10,10 +10,6 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-# Prevent cc from upgrading all the way to 1.0.46,
-# which fails the build (see e.g. #65445.)
-cc = "=1.0.37"
-
 arena = { path = "../libarena" }
 bitflags = "1.2.1"
 fmt_macros = { path = "../libfmt_macros" }
