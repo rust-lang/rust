@@ -723,8 +723,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
-                    self.not_const(ops::Loop);
-                    validator.check_op(ops::Loop);
+                    if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                        self.tcx.sess.delay_span_bug(
+                            self.span,
+                            "complex control flow is forbidden in a const context",
+                        );
+                    }
                     break;
                 }
             }
@@ -1253,7 +1257,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                self.not_const(ops::IfOrMatch);
+                if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                    self.tcx.sess.delay_span_bug(
+                        self.span,
+                        "complex control flow is forbidden in a const context",
+                    );
+                }
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |

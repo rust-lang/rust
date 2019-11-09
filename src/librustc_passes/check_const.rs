@@ -60,10 +60,6 @@ impl fmt::Display for ConstKind {
 }
 
 fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-        return;
-    }
-
     let mut vis = CheckConstVisitor::new(tcx);
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
 }
@@ -93,6 +89,11 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
     /// Emits an error when an unsupported expression is found in a const context.
     fn const_check_violated(&self, bad_op: &str, span: Span) {
+        if self.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            self.sess.span_warn(span, "skipping const checks");
+            return;
+        }
+
         let const_kind = self.const_kind
             .expect("`const_check_violated` may only be called inside a const context");
 
