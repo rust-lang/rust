@@ -11,16 +11,11 @@ use crate::ty::subst::SubstsRef;
 /// kind of crate, including cdylibs which export very few things.
 /// `Rust` will only be exported if the crate produced is a Rust
 /// dylib.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum SymbolExportLevel {
     C,
     Rust,
 }
-
-impl_stable_hash_for!(enum self::SymbolExportLevel {
-    C,
-    Rust
-});
 
 impl SymbolExportLevel {
     pub fn is_below_threshold(self, threshold: SymbolExportLevel) -> bool {

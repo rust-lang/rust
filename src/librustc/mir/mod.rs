@@ -70,7 +70,8 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// The various "big phases" that MIR goes through.
 ///
 /// Warning: ordering of variants is significant.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, HashStable,
+         Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MirPhase {
     Build = 0,
     Const = 1,
@@ -86,7 +87,7 @@ impl MirPhase {
 }
 
 /// The lowered representation of a single function.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, TypeFoldable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable, TypeFoldable)]
 pub struct Body<'tcx> {
     /// A list of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -412,24 +413,6 @@ pub enum Safety {
     ExplicitUnsafe(hir::HirId),
 }
 
-impl_stable_hash_for!(struct Body<'tcx> {
-    phase,
-    basic_blocks,
-    source_scopes,
-    source_scope_local_data,
-    yield_ty,
-    generator_drop,
-    generator_layout,
-    local_decls,
-    user_type_annotations,
-    arg_count,
-    __upvar_debuginfo_codegen_only_do_not_use,
-    spread_arg,
-    control_flow_destroyed,
-    span,
-    cache
-});
-
 impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
@@ -609,7 +592,7 @@ pub enum LocalKind {
     ReturnPointer,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct VarBindingForm<'tcx> {
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
@@ -642,7 +625,7 @@ pub enum BindingForm<'tcx> {
 }
 
 /// Represents what type of implicit self a function has, if any.
-#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ImplicitSelfKind {
     /// Represents a `fn x(self);`.
     Imm,
@@ -658,28 +641,6 @@ pub enum ImplicitSelfKind {
 }
 
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
-
-impl_stable_hash_for!(struct self::VarBindingForm<'tcx> {
-    binding_mode,
-    opt_ty_info,
-    opt_match_place,
-    pat_span
-});
-
-impl_stable_hash_for!(enum self::ImplicitSelfKind {
-    Imm,
-    Mut,
-    ImmRef,
-    MutRef,
-    None
-});
-
-impl_stable_hash_for!(enum self::MirPhase {
-    Build,
-    Const,
-    Validated,
-    Optimized,
-});
 
 mod binding_form_impl {
     use crate::ich::StableHashingContext;
@@ -707,7 +668,7 @@ mod binding_form_impl {
 /// involved in borrow_check errors, e.g., explanations of where the
 /// temporaries come from, when their destructors are run, and/or how
 /// one might revise the code to satisfy the borrow checker's rules.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct BlockTailInfo {
     /// If `true`, then the value resulting from evaluating this tail
     /// expression is ignored by the block's expression context.
@@ -716,8 +677,6 @@ pub struct BlockTailInfo {
     /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
 }
-
-impl_stable_hash_for!(struct BlockTailInfo { tail_result_is_ignored });
 
 /// A MIR local.
 ///
@@ -1746,7 +1705,8 @@ pub enum PlaceBase<'tcx> {
 }
 
 /// We store the normalized type to avoid requiring normalization when reading MIR
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: StaticKind<'tcx>,
@@ -1767,12 +1727,6 @@ pub enum StaticKind<'tcx> {
     Promoted(Promoted, SubstsRef<'tcx>),
     Static,
 }
-
-impl_stable_hash_for!(struct Static<'tcx> {
-    ty,
-    kind,
-    def_id
-});
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(RustcEncodable, RustcDecodable, HashStable)]

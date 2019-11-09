@@ -52,7 +52,7 @@ enum AnnotationKind {
 }
 
 /// An entry in the `depr_map`.
-#[derive(Clone)]
+#[derive(Clone, HashStable)]
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
@@ -60,11 +60,6 @@ pub struct DeprecationEntry {
     /// `DefId`'s.
     origin: Option<HirId>,
 }
-
-impl_stable_hash_for!(struct self::DeprecationEntry {
-    attr,
-    origin
-});
 
 impl DeprecationEntry {
     fn local(attr: Deprecation, id: HirId) -> DeprecationEntry {
@@ -90,6 +85,7 @@ impl DeprecationEntry {
 }
 
 /// A stability index, giving the stability level for items and methods.
+#[derive(HashStable)]
 pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
@@ -102,13 +98,6 @@ pub struct Index<'tcx> {
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
 }
-
-impl_stable_hash_for!(struct self::Index<'tcx> {
-    stab_map,
-    depr_map,
-    staged_api,
-    active_features
-});
 
 // A private tree-walker for producing an Index.
 struct Annotator<'a, 'tcx> {

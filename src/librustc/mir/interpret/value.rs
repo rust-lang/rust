@@ -458,7 +458,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
@@ -582,11 +582,6 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
         self.not_undef()?.to_machine_isize(cx)
     }
 }
-
-impl_stable_hash_for!(enum crate::mir::interpret::ScalarMaybeUndef {
-    Scalar(v),
-    Undef
-});
 
 /// Gets the bytes of a constant slice value.
 pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {

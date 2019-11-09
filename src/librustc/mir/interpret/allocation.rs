@@ -4,7 +4,6 @@ use super::{
     Pointer, InterpResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
 };
 
-use crate::mir;
 use crate::ty::layout::{Size, Align};
 
 use rustc_data_structures::sorted_map::SortedMap;
@@ -787,13 +786,12 @@ type Block = u64;
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is defined. If it is `false` the byte is undefined.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct UndefMask {
     blocks: Vec<Block>,
     len: Size,
 }
-
-impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
 
 impl UndefMask {
     pub const BLOCK_SIZE: u64 = 64;

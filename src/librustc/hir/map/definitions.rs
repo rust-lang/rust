@@ -313,10 +313,8 @@ pub enum DefPathData {
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
-         RustcEncodable, RustcDecodable)]
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct DefPathHash(pub Fingerprint);
-
-impl_stable_hash_for!(tuple_struct DefPathHash { fingerprint });
 
 impl Borrow<Fingerprint> for DefPathHash {
     #[inline]

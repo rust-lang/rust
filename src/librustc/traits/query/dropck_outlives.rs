@@ -79,7 +79,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug, Default, TypeFoldable, Lift)]
+#[derive(Clone, Debug, Default, HashStable, TypeFoldable, Lift)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
@@ -114,7 +114,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 
 /// A set of constraints that need to be satisfied in order for
 /// a type to be valid for destruction.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, HashStable)]
 pub struct DtorckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
@@ -152,15 +152,6 @@ impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
         result
     }
 }
-impl_stable_hash_for!(struct DropckOutlivesResult<'tcx> {
-    kinds, overflows
-});
-
-impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
-    outlives,
-    dtorck_types,
-    overflows
-});
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to

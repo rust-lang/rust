@@ -207,19 +207,13 @@ struct NamedRegionMap {
 }
 
 /// See [`NamedRegionMap`].
-#[derive(Default)]
+#[derive(Default, HashStable)]
 pub struct ResolveLifetimes {
     defs: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Region>>,
     late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
     object_lifetime_defaults:
         FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>>,
 }
-
-impl_stable_hash_for!(struct crate::middle::resolve_lifetime::ResolveLifetimes {
-    defs,
-    late_bound,
-    object_lifetime_defaults
-});
 
 struct LifetimeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
