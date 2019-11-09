@@ -722,9 +722,8 @@ pub enum PatKind {
     Mac(Mac),
 }
 
-#[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy,
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -2334,7 +2333,7 @@ impl PolyTraitRef {
     }
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum CrateSugar {
     /// Source is `pub(crate)`.
     PubCrate,
