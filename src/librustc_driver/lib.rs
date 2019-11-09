@@ -1044,12 +1044,6 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
-    // Late check to see if @file was used without unstable options enabled
-    if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
-        early_error(ErrorOutputType::default(),
-            "@path is unstable - use -Z unstable-options to enable its use");
-    }
-
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
