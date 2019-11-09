@@ -305,6 +305,48 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(end as u64));
 
+        {
+            let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
+
+            for (value_label, value_loc_ranges) in value_labels_ranges.iter() {
+                let live_ranges = RangeList(
+                    Some(Range::BaseAddress {
+                        address: Address::Symbol {
+                            symbol: self.symbol,
+                            addend: 0,
+                        },
+                    })
+                    .into_iter()
+                    .chain(
+                        value_loc_ranges
+                            .iter()
+                            .map(|val_loc_range| Range::OffsetPair {
+                                begin: u64::from(val_loc_range.start),
+                                end: u64::from(val_loc_range.end),
+                            }),
+                    )
+                    .collect(),
+                );
+                let live_ranges_id = self.debug_context.dwarf.unit.ranges.add(live_ranges);
+
+                let var_id = self
+                    .debug_context
+                    .dwarf
+                    .unit
+                    .add(self.entry_id, gimli::DW_TAG_variable);
+                let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
+
+                var_entry.set(
+                    gimli::DW_AT_ranges,
+                    AttributeValue::RangeListRef(live_ranges_id),
+                );
+                var_entry.set(
+                    gimli::DW_AT_name,
+                    AttributeValue::String(format!("{:?}", value_label).into_bytes()),
+                );
+            }
+        }
+
         self.debug_context
             .unit_range_list
             .0
