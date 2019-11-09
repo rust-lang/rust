@@ -141,7 +141,8 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 }
 
 /// Represents the #[stable], #[unstable], #[rustc_{deprecated,const_unstable}] attributes.
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug,
+         PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -157,7 +158,8 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd,
+         Copy, Clone, Debug, Eq, Hash, HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
@@ -181,7 +183,8 @@ impl StabilityLevel {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd,
+         Copy, Clone, Debug, Eq, Hash, HashStable_Generic)]
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
@@ -636,7 +639,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(RustcEncodable, RustcDecodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     pub note: Option<Symbol>,

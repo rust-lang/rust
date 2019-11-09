@@ -1474,7 +1474,7 @@ pub enum LitFloatType {
 ///
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
 // Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),

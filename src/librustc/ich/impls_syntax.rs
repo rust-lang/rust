@@ -17,13 +17,6 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::MacroKind {
-    Bang,
-    Attr,
-    Derive,
-});
-
-
 impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     Cdecl,
     Stdcall,
@@ -47,55 +40,15 @@ impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     Unadjusted
 });
 
-impl_stable_hash_for!(struct ::syntax::attr::Deprecation { since, note });
-impl_stable_hash_for!(struct ::syntax::attr::Stability {
-    level,
-    feature,
-    rustc_depr,
-    promotable,
-    allow_const_fn_ptr,
-    const_stability
-});
-
 impl_stable_hash_for!(enum ::syntax::edition::Edition {
     Edition2015,
     Edition2018,
 });
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for ::syntax::attr::StabilityLevel {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue, ref is_soft } => {
-                reason.hash_stable(hcx, hasher);
-                issue.hash_stable(hcx, hasher);
-                is_soft.hash_stable(hcx, hasher);
-            }
-            ::syntax::attr::StabilityLevel::Stable { ref since } => {
-                since.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason, suggestion });
-
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     kind,
     token,
     span
-});
-
-impl_stable_hash_for!(enum ::syntax::ast::LitKind {
-    Str(value, style),
-    ByteStr(value),
-    Byte(value),
-    Char(value),
-    Int(value, lit_int_type),
-    Float(value, lit_float_type),
-    Bool(value),
-    Err(value)
 });
 
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);

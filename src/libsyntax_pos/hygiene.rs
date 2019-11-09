@@ -30,6 +30,7 @@ use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 
+use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -707,7 +708,8 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable,
+         Hash, Debug, HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,
