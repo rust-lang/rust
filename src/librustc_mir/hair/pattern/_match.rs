@@ -956,8 +956,7 @@ impl<'tcx> Constructor<'tcx> {
                 end,
             }),
             IntRange(range) => {
-                // TODO: do it more directly
-                return range.clone().into_ctor(cx.tcx).apply(cx, ty, None.into_iter());
+                return range.to_pat(cx.tcx);
             }
             NonExhaustive => PatKind::Wild,
         };
@@ -1398,19 +1397,6 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    /// Converts an `IntRange` to a `ConstantValue` or inclusive `ConstantRange`.
-    /// TODO: Deprecated
-    fn into_ctor(self, tcx: TyCtxt<'tcx>) -> Constructor<'tcx> {
-        let bias = IntRange::signed_bias(tcx, self.ty);
-        let (lo, hi) = self.range.into_inner();
-        if lo == hi {
-            let ty = ty::ParamEnv::empty().and(self.ty);
-            ConstantValue(ty::Const::from_bits(tcx, lo ^ bias, ty), self.span)
-        } else {
-            ConstantRange(lo ^ bias, hi ^ bias, self.ty, RangeEnd::Included, self.span)
-        }
-    }
-
     /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
     /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
     fn subtract_from(self, ranges: Vec<IntRange<'tcx>>) -> Vec<IntRange<'tcx>> {
@@ -1474,7 +1460,7 @@ impl<'tcx> IntRange<'tcx> {
         (lo == other_hi || hi == other_lo)
     }
 
-    fn display(&self, tcx: TyCtxt<'tcx>) -> String {
+    fn to_pat(&self, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = (self.range.start(), self.range.end());
 
         let bias = IntRange::signed_bias(tcx, self.ty);
@@ -1484,11 +1470,14 @@ impl<'tcx> IntRange<'tcx> {
         let lo_const = ty::Const::from_bits(tcx, lo, ty);
         let hi_const = ty::Const::from_bits(tcx, hi, ty);
 
-        if lo == hi {
-            format!("{}", lo_const)
+        let kind = if lo == hi {
+            PatKind::Constant { value: lo_const }
         } else {
-            format!("{}{}{}", lo_const, RangeEnd::Included, hi_const)
-        }
+            PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
+        };
+
+        // This is a brand new pattern, so we don't reuse `self.span`.
+        Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(kind) }
     }
 }
 
@@ -2137,7 +2126,7 @@ fn lint_overlapping_patterns(
                 int_range.span,
                 &format!(
                     "this range overlaps on `{}`",
-                    IntRange { range: int_range.range, ty, span: DUMMY_SP }.display(tcx),
+                    IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
                 ),
             );
         }
