@@ -19,6 +19,8 @@
 
 #![recursion_limit="256"]
 
+#[macro_use] extern crate rustc_macros;
+
 pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;

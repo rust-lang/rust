@@ -763,7 +763,7 @@ pub enum ReprAttr {
     ReprAlign(u32),
 }
 
-#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone, HashStable_Generic)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)
