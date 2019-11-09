@@ -1100,7 +1100,7 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_mod(
         &mut self,
         lo: Span,
-        abi: Option<Abi>,
+        abi: Option<StrLit>,
         visibility: Visibility,
         mut attrs: Vec<Attribute>,
         extern_sp: Span,
@@ -1778,7 +1778,7 @@ impl<'a> Parser<'a> {
         let is_c_abi = match header.ext {
             ast::Extern::None => false,
             ast::Extern::Implicit => true,
-            ast::Extern::Explicit(abi) => abi.symbol == sym::C,
+            ast::Extern::Explicit(abi) => abi.symbol_unescaped == sym::C,
         };
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,

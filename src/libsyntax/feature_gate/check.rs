@@ -191,10 +191,10 @@ macro_rules! gate_feature_post {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    fn check_abi(&self, abi: ast::Abi) {
-        let ast::Abi { symbol, span } = abi;
+    fn check_abi(&self, abi: ast::StrLit) {
+        let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
-        match &*symbol.as_str() {
+        match &*symbol_unescaped.as_str() {
             // Stable
             "Rust" |
             "C" |

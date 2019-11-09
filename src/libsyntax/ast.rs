@@ -1422,6 +1422,33 @@ pub struct Lit {
     pub span: Span,
 }
 
+/// Same as `Lit`, but restricted to string literals.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub struct StrLit {
+    /// The original literal token as written in source code.
+    pub style: StrStyle,
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+    pub span: Span,
+    /// The unescaped "semantic" representation of the literal lowered from the original token.
+    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
+    pub symbol_unescaped: Symbol,
+}
+
+impl StrLit {
+    crate fn as_lit(&self) -> Lit {
+        let token_kind = match self.style {
+            StrStyle::Cooked => token::Str,
+            StrStyle::Raw(n) => token::StrRaw(n),
+        };
+        Lit {
+            token: token::Lit::new(token_kind, self.symbol, self.suffix),
+            span: self.span,
+            kind: LitKind::Str(self.symbol_unescaped, self.style),
+        }
+    }
+}
+
 // Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
@@ -2128,7 +2155,7 @@ pub struct Mod {
 /// E.g., `extern { .. }` or `extern C { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignMod {
-    pub abi: Option<Abi>,
+    pub abi: Option<StrLit>,
     pub items: Vec<ForeignItem>,
 }
 
@@ -2411,25 +2438,16 @@ impl Item {
     }
 }
 
-/// A reference to an ABI.
-///
-/// In AST our notion of an ABI is still syntactic unlike in `rustc_target::spec::abi::Abi`.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, PartialEq)]
-pub struct Abi {
-    pub symbol: Symbol,
-    pub span: Span,
-}
-
 /// `extern` qualifier on a function item or function type.
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub enum Extern {
     None,
     Implicit,
-    Explicit(Abi),
+    Explicit(StrLit),
 }
 
 impl Extern {
-    pub fn from_abi(abi: Option<Abi>) -> Extern {
+    pub fn from_abi(abi: Option<StrLit>) -> Extern {
         match abi {
             Some(abi) => Extern::Explicit(abi),
             None => Extern::Implicit,

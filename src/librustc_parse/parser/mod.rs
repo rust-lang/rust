@@ -15,7 +15,7 @@ use crate::{Directory, DirectoryOwnership};
 use crate::lexer::UnmatchedBrace;
 
 use syntax::ast::{
-    self, Abi, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident,
+    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
 
@@ -1221,11 +1221,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a string literal as an ABI spec.
-    fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
+    fn parse_opt_abi(&mut self) -> PResult<'a, Option<StrLit>> {
         if self.token.can_begin_literal_or_bool() {
-            let ast::Lit { span, kind, .. } = self.parse_lit()?;
+            let ast::Lit { token: token::Lit { symbol, suffix, .. }, span, kind }
+                = self.parse_lit()?;
             match kind {
-                ast::LitKind::Str(symbol, _) => return Ok(Some(Abi { symbol, span })),
+                ast::LitKind::Str(symbol_unescaped, style) => return Ok(Some(StrLit {
+                    style, symbol, suffix, span, symbol_unescaped,
+                })),
                 ast::LitKind::Err(_) => {}
                 _ => {
                     self.struct_span_err(span, "non-string ABI literal")

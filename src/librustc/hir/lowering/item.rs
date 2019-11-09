@@ -1287,8 +1287,8 @@ impl LoweringContext<'_> {
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi: Abi) -> abi::Abi {
-        abi::lookup(&abi.symbol.as_str()).unwrap_or_else(|| {
+    pub(super) fn lower_abi(&mut self, abi: StrLit) -> abi::Abi {
+        abi::lookup(&abi.symbol_unescaped.as_str()).unwrap_or_else(|| {
             self.error_on_invalid_abi(abi);
             abi::Abi::Rust
         })
@@ -1302,7 +1302,7 @@ impl LoweringContext<'_> {
         }
     }
 
-    fn error_on_invalid_abi(&self, abi: Abi) {
+    fn error_on_invalid_abi(&self, abi: StrLit) {
         struct_span_err!(
             self.sess,
             abi.span,
