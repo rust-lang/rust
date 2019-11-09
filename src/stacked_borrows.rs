@@ -241,7 +241,7 @@ impl<'tcx> Stack {
 
     /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
-    fn find_first_write_incompaible(&self, granting: usize) -> usize {
+    fn find_first_write_incompatible(&self, granting: usize) -> usize {
         let perm = self.borrows[granting].perm;
         match perm {
             Permission::SharedReadOnly =>
@@ -309,7 +309,7 @@ impl<'tcx> Stack {
         if access == AccessKind::Write {
             // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
             // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
-            let first_incompatible_idx = self.find_first_write_incompaible(granting_idx);
+            let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
                 Stack::check_protector(&item, Some(tag), global)?;
@@ -391,7 +391,7 @@ impl<'tcx> Stack {
             // access.  Instead of popping the stack, we insert the item at the place the stack would
             // be popped to (i.e., we insert it above all the write-compatible items).
             // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
-            self.find_first_write_incompaible(granting_idx)
+            self.find_first_write_incompatible(granting_idx)
         } else {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access.
@@ -540,8 +540,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             kind, new_tag, ptr.tag, place.layout.ty, ptr.erase_tag(), size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
-        let alloc = this.memory.get(ptr.alloc_id)?;
-        let stacked_borrows = alloc.extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+        let extra = &this.memory.get_raw(ptr.alloc_id)?.extra;
+        let stacked_borrows = extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!

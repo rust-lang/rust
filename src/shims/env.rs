@@ -124,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("getcwd")?;
 
         let buf = this.read_scalar(buf_op)?.not_undef()?;
-        let size = this.read_scalar(size_op)?.to_usize(&*this.tcx)?;
+        let size = this.read_scalar(size_op)?.to_machine_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {

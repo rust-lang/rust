@@ -5,6 +5,7 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
     self,
+    List,
     layout::{self, LayoutOf, Size, TyLayout},
 };
 
@@ -75,7 +76,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Get the `Place` for a local
     fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
-        let place = mir::Place { base: mir::PlaceBase::Local(local), projection: Box::new([]) };
+        let place = mir::Place { base: mir::PlaceBase::Local(local), projection: List::empty() };
         this.eval_place(&place)
     }
 

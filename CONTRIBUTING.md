@@ -31,8 +31,10 @@ Miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
 things (like adding support for a new intrinsic or a shim for an external
 function being called) can be done by working just on the Miri side.
 
-To prepare, make sure you are using a nightly Rust compiler.  Then you should be
-able to just `cargo build` Miri.
+To prepare, make sure you are using a nightly Rust compiler.  You also need to
+have the `rust-src` and `rustc-dev` components installed, which you can add via
+`rustup component add rust-src rustc-dev`.  Then you should be able to just
+`cargo build` Miri.
 
 In case this fails, your nightly might be incompatible with Miri master.  The
 `rust-version` file contains the commit hash of rustc that Miri is currently
@@ -41,7 +43,7 @@ to wait for the next nightly to get released. You can also use
 [`rustup-toolchain-install-master`](https://github.com/kennytm/rustup-toolchain-install-master)
 to install that exact version of rustc as a toolchain:
 ```
-rustup-toolchain-install-master $(cat rust-version) -c rust-src
+rustup-toolchain-install-master $(cat rust-version) -c rust-src -c rustc-dev
 ```
 
 Another common problem is outdated dependencies: Miri does not come with a

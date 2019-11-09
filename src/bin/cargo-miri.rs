@@ -6,6 +6,8 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::ops::Not;
 
+const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 17);
+
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
 Usage:
@@ -258,7 +260,7 @@ fn setup(ask_user: bool) {
     }
 
     // First, we need xargo.
-    if xargo_version().map_or(true, |v| v < (0, 3, 16)) {
+    if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
         if std::env::var("XARGO").is_ok() {
             // The user manually gave us a xargo binary; don't do anything automatically.
             show_error(format!("Your xargo is too old; please upgrade to the latest version"))

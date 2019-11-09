@@ -166,7 +166,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("read")?;
 
-        let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
         // Reading zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
@@ -211,7 +211,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("write")?;
 
-        let count = this.read_scalar(count_op)?.to_usize(&*this.tcx)?;
+        let count = this.read_scalar(count_op)?.to_machine_usize(&*this.tcx)?;
         // Writing zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);

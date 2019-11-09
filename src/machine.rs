@@ -14,8 +14,7 @@ use rustc::ty::{
     layout::{LayoutOf, Size},
     Ty, TyCtxt,
 };
-use syntax::attr;
-use syntax::symbol::sym;
+use syntax::{attr, source_map::Span, symbol::sym};
 
 use crate::*;
 
@@ -87,9 +86,9 @@ pub struct Evaluator<'tcx> {
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
     /// We also need the full command line as one string because of Windows.
-    pub(crate) argc: Option<Pointer<Tag>>,
-    pub(crate) argv: Option<Pointer<Tag>>,
-    pub(crate) cmd_line: Option<Pointer<Tag>>,
+    pub(crate) argc: Option<Scalar<Tag>>,
+    pub(crate) argv: Option<Scalar<Tag>>,
+    pub(crate) cmd_line: Option<Scalar<Tag>>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
     pub(crate) last_error: Option<MPlaceTy<'tcx, Tag>>,
@@ -192,11 +191,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn call_intrinsic(
         ecx: &mut rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
+        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        ecx.call_intrinsic(instance, args, dest)
+        ecx.call_intrinsic(span, instance, args, dest)
     }
 
     #[inline(always)]
