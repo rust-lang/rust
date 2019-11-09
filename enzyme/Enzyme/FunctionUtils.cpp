@@ -466,12 +466,17 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  AssumptionCache* AC = new AssumptionCache(*NewF);
  TargetLibraryInfo* TLI = new TargetLibraryInfo(AM.getResult<TargetLibraryAnalysis>(*NewF));
  auto baa = new BasicAAResult(NewF->getParent()->getDataLayout(),
+#if LLVM_VERSION_MAJOR > 6
                         *NewF,
+#endif
                         *TLI,
                         *AC,
                         &AM.getResult<DominatorTreeAnalysis>(*NewF),
-                        AM.getCachedResult<LoopAnalysis>(*NewF),
-                        AM.getCachedResult<PhiValuesAnalysis>(*NewF));
+                        AM.getCachedResult<LoopAnalysis>(*NewF)
+#if LLVM_VERSION_MAJOR > 6
+                        ,AM.getCachedResult<PhiValuesAnalysis>(*NewF)
+#endif
+                        );
  cache_AA[F] = baa;
  AA.addAAResult(*baa);
  //ScopedNoAliasAA sa;

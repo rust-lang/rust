@@ -55,6 +55,9 @@ cl::opt<bool> cache_reads_never(
             "enzyme_never_cache_reads", cl::init(false), cl::Hidden,
             cl::desc("Force never caching of all reads"));
 
+cl::opt<bool> nonmarkedglobals_inactiveloads(
+            "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
+            cl::desc("Consider loads of nonmarked globals to be inactive"));
 
 
 // Computes a map of LoadInst -> boolean for a function indicating whether that load is "uncacheable".
@@ -200,7 +203,7 @@ std::set<unsigned> compute_uncacheable_args_for_one_callsite(Instruction* callsi
       //   "inst" happens before "callsite_inst". If "inst" modifies an argument of the call,
       //   then that call needs to consider the argument uncacheable.
       // To correctly handle case where inst == callsite_inst, we need to look at next instruction after callsite_inst.
-      if (!gutils->DT.dominates(inst, callsite_inst->getNextNonDebugInstruction())) {
+      if (!gutils->DT.dominates(inst, callsite_inst->getNextNode())) {
         //llvm::errs() << "Instruction " << *inst << " DOES NOT dominates " << *callsite_inst << "\n";
         // Consider Store Instructions.
         if (auto op = dyn_cast<StoreInst>(inst)) {
@@ -2386,6 +2389,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
       auto op_operand = op->getPointerOperand();
       auto op_type = op->getType();
+      
 
       if (can_modref_map[inst]) {
         IRBuilder<> BuilderZ(op->getNextNode());
@@ -2400,19 +2404,23 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         }
       }
 
-      // TODO IF OP IS POINTER
+      if (nonmarkedglobals_inactiveloads) {
+          //Assume that non enzyme_shadow globals are inactive
+          //  If we ever store to a global variable, we will error if it doesn't have a shadow
+          //  This allows functions who only read global memory to have their derivative computed
+          //  Note that this is too aggressive for general programs as if the global aliases with an argument something that is written to, then we will have a logical error
+          if (auto arg = dyn_cast<GlobalVariable>(op_operand)) {
+           if (!hasMetadata(arg, "enzyme_shadow")) {
+             continue;
+           }
+          }
+      }
+
       if (!op_type->isPointerTy()) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
         gutils->addToPtrDiffe(op_operand, prediff, Builder2);
-      } else {
-        //Builder2.CreateStore(diffe(inst), invertPointer(op->getOperand(0)));//, op->getName()+"'psweird");
-        //addToNPtrDiffe(op->getOperand(0), diffe(inst));
-        //assert(0 && "cannot handle non const pointer load inversion");
-        //assert(op);
-        //llvm::errs() << "ignoring load bc pointer of " << *op << "\n";
       }
-
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;
 

@@ -336,12 +336,14 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     if (auto arg = dyn_cast<GlobalVariable>(val)) {
       if (!hasMetadata(arg, "enzyme_shadow")) {
           llvm::errs() << *arg << "\n";
+          assert(0 && "cannot compute with global variable that doesn't have marked shadow global");
           report_fatal_error("cannot compute with global variable that doesn't have marked shadow global");
       }
       auto md = arg->getMetadata("enzyme_shadow");
       if (!isa<MDTuple>(md)) {
           llvm::errs() << *arg << "\n";
           llvm::errs() << *md << "\n";
+          assert(0 && "cannot compute with global variable that doesn't have marked shadow global");
           report_fatal_error("cannot compute with global variable that doesn't have marked shadow global (metadata incorrect type)");
       }
       auto md2 = cast<MDTuple>(md);

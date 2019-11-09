@@ -985,7 +985,6 @@ endCheck:
         IRBuilder<> entryBuilder(inversionAllocs);
         entryBuilder.setFastMathFlags(getFast());
         AllocaInst* alloc = entryBuilder.CreateAlloca(types.back(), nullptr, name+"_cache");
-        llvm::errs() << "alloc: "<< *alloc << "\n";
                 
         Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
         auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));
@@ -1027,8 +1026,6 @@ endCheck:
                 //cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
                 //mallocs.push_back(firstallocation);
             } else {
-                llvm::errs() << "storeInto: " << *storeInto << "\n";
-                llvm::errs() << "myType: " << *myType << "\n";
                 allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
 
                 IRBuilder <> build(containedloops.back().first.header->getFirstNonPHI());
@@ -1112,7 +1109,6 @@ endCheck:
                 indices.push_back(idx.var);
                 available[idx.var] = idx.var;
               }
-              llvm::errs() << "W sl idx=" << i << " " << *idx.var << " header=" << idx.header->getName() << "\n";
 
               Value* lim = unwrapM(riter->second, BuilderM, available, /*lookupIfAble*/true);
               assert(lim);
@@ -1124,10 +1120,8 @@ endCheck:
             }
 
             if (indices.size() > 0) {
-                llvm::errs() << "sl idx=" << i << " " << *indices[0] << "\n";
                 Value* idx = indices[0];
                 for(unsigned ind=1; ind<indices.size(); ind++) {
-                  llvm::errs() << "sl idx=" << i << " " << *indices[ind] << "\n";
                   idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[ind], limits[ind-1]));
                 }
                 next = BuilderM.CreateGEP(next, {idx});
