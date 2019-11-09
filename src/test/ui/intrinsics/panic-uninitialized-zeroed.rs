@@ -6,8 +6,11 @@
 #![feature(never_type)]
 #![allow(deprecated, invalid_value)]
 
-use std::{mem, panic};
-use std::ptr::NonNull;
+use std::{
+    mem::{self, MaybeUninit},
+    panic,
+    ptr::NonNull,
+};
 
 #[allow(dead_code)]
 struct Foo {
@@ -40,7 +43,7 @@ fn main() {
             "attempted to instantiate uninhabited type `!`"
         );
         test_panic_msg(
-            || mem::MaybeUninit::<!>::uninit().assume_init(),
+            || MaybeUninit::<!>::uninit().assume_init(),
             "attempted to instantiate uninhabited type `!`"
         );
 
@@ -53,7 +56,7 @@ fn main() {
             "attempted to instantiate uninhabited type `Foo`"
         );
         test_panic_msg(
-            || mem::MaybeUninit::<Foo>::uninit().assume_init(),
+            || MaybeUninit::<Foo>::uninit().assume_init(),
             "attempted to instantiate uninhabited type `Foo`"
         );
 
@@ -66,7 +69,7 @@ fn main() {
             "attempted to instantiate uninhabited type `Bar`"
         );
         test_panic_msg(
-            || mem::MaybeUninit::<Bar>::uninit().assume_init(),
+            || MaybeUninit::<Bar>::uninit().assume_init(),
             "attempted to instantiate uninhabited type `Bar`"
         );
 
@@ -109,5 +112,11 @@ fn main() {
         let _val = mem::zeroed::<bool>();
         let _val = mem::zeroed::<OneVariant>();
         let _val = mem::zeroed::<Option<&'static i32>>();
+        let _val = mem::zeroed::<MaybeUninit<NonNull<u32>>>();
+        let _val = mem::uninitialized::<MaybeUninit<bool>>();
+
+        // We don't panic for these just to be conservative. They are UB as of now (2019-11-09).
+        let _val = mem::uninitialized::<i32>();
+        let _val = mem::uninitialized::<*const ()>();
     }
 }
