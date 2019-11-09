@@ -4,10 +4,9 @@
 //! Note that the reference search is possible for not all of the classified items.
 
 use hir::{
-    db::AstDatabase, Adt, AssocItem, DefWithBody, FromSource, HasSource, HirFileId, MacroDef,
-    Module, ModuleDef, StructField, Ty, VariantDef,
+    Adt, AssocItem, HasSource, Local, MacroDef, Module, ModuleDef, StructField, Ty, VariantDef,
 };
-use ra_syntax::{ast, ast::VisibilityOwner, match_ast, AstNode, AstPtr};
+use ra_syntax::{ast, ast::VisibilityOwner};
 
 use crate::db::RootDatabase;
 
@@ -18,8 +17,7 @@ pub enum NameKind {
     AssocItem(AssocItem),
     Def(ModuleDef),
     SelfType(Ty),
-    Pat((DefWithBody, AstPtr<ast::BindPat>)),
-    SelfParam(AstPtr<ast::SelfParam>),
+    Local(Local),
     GenericParam(u32),
 }
 
@@ -28,36 +26,6 @@ pub(crate) struct NameDefinition {
     pub visibility: Option<ast::Visibility>,
     pub container: Module,
     pub kind: NameKind,
-}
-
-pub(super) fn from_pat(
-    db: &RootDatabase,
-    file_id: HirFileId,
-    pat: AstPtr<ast::BindPat>,
-) -> Option<NameDefinition> {
-    let root = db.parse_or_expand(file_id)?;
-    let def = pat.to_node(&root).syntax().ancestors().find_map(|node| {
-        match_ast! {
-            match node {
-                ast::FnDef(it) => {
-                    let src = hir::Source { file_id, ast: it };
-                    Some(hir::Function::from_source(db, src)?.into())
-                },
-                ast::ConstDef(it) => {
-                    let src = hir::Source { file_id, ast: it };
-                    Some(hir::Const::from_source(db, src)?.into())
-                },
-                ast::StaticDef(it) => {
-                    let src = hir::Source { file_id, ast: it };
-                    Some(hir::Static::from_source(db, src)?.into())
-                },
-                _ => None,
-            }
-        }
-    })?;
-    let kind = NameKind::Pat((def, pat));
-    let container = def.module(db);
-    Some(NameDefinition { kind, container, visibility: None })
 }
 
 pub(super) fn from_assoc_item(db: &RootDatabase, item: AssocItem) -> NameDefinition {

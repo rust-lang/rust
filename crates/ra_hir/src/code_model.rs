@@ -22,7 +22,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
-    expr::{validation::ExprValidator, Body, BodySourceMap},
+    expr::{validation::ExprValidator, BindingAnnotation, Body, BodySourceMap, Pat, PatId},
     generics::HasGenericParams,
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
@@ -32,7 +32,7 @@ use crate::{
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
     ty::{InferenceResult, Namespace, TraitRef},
-    Either, HasSource, ImportId, Name, ScopeDef, Ty,
+    Either, HasSource, ImportId, Name, ScopeDef, Source, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -1068,5 +1068,56 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.container(db),
         }
         .expect("AssocItem without container")
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Local {
+    pub(crate) parent: DefWithBody,
+    pub(crate) pat_id: PatId,
+}
+
+impl Local {
+    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+        let body = db.body_hir(self.parent);
+        match &body[self.pat_id] {
+            Pat::Bind { name, .. } => Some(name.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn is_self(self, db: &impl HirDatabase) -> bool {
+        self.name(db) == Some(name::SELF_PARAM)
+    }
+
+    pub fn is_mut(self, db: &impl HirDatabase) -> bool {
+        let body = db.body_hir(self.parent);
+        match &body[self.pat_id] {
+            Pat::Bind { mode, .. } => match mode {
+                BindingAnnotation::Mutable | BindingAnnotation::RefMut => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn parent(self, _db: &impl HirDatabase) -> DefWithBody {
+        self.parent
+    }
+
+    pub fn module(self, db: &impl HirDatabase) -> Module {
+        self.parent.module(db)
+    }
+
+    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+        let infer = db.infer(self.parent);
+        infer[self.pat_id].clone()
+    }
+
+    pub fn source(self, db: &impl HirDatabase) -> Source<Either<ast::BindPat, ast::SelfParam>> {
+        let (_body, source_map) = db.body_with_source_map(self.parent);
+        let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
+        let root = src.file_syntax(db);
+        src.map(|ast| ast.map(|it| it.cast().unwrap().to_node(&root), |it| it.to_node(&root)))
     }
 }

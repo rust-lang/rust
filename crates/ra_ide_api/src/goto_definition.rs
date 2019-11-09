@@ -68,8 +68,7 @@ pub(crate) fn reference_definition(
                 return Exact(adt.to_nav(db));
             }
         }
-        Some(Pat((_, pat))) => return Exact(NavigationTarget::from_pat(db, file_id, pat)),
-        Some(SelfParam(par)) => return Exact(NavigationTarget::from_self_param(file_id, par)),
+        Some(Local(local)) => return Exact(local.to_nav(db)),
         Some(GenericParam(_)) => {
             // FIXME: go to the generic param def
         }

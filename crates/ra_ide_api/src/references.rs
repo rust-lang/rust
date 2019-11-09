@@ -86,8 +86,7 @@ pub(crate) fn find_all_refs(
             Some((adt, _)) => adt.to_nav(db),
             None => return None,
         },
-        NameKind::Pat((_, pat)) => NavigationTarget::from_pat(db, position.file_id, pat),
-        NameKind::SelfParam(par) => NavigationTarget::from_self_param(position.file_id, par),
+        NameKind::Local(local) => local.to_nav(db),
         NameKind::GenericParam(_) => return None,
     };
 

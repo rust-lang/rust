@@ -1,13 +1,13 @@
 //! Functions that are used to classify an element from its definition or reference.
 
-use hir::{Either, FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
+use hir::{FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
 use ra_db::FileId;
 use ra_prof::profile;
-use ra_syntax::{ast, match_ast, AstNode, AstPtr};
+use ra_syntax::{ast, match_ast, AstNode};
 use test_utils::tested_by;
 
 use super::{
-    name_definition::{from_assoc_item, from_module_def, from_pat, from_struct_field},
+    name_definition::{from_assoc_item, from_module_def, from_struct_field},
     NameDefinition, NameKind,
 };
 use crate::db::RootDatabase;
@@ -25,7 +25,13 @@ pub(crate) fn classify_name(
     match_ast! {
         match parent {
             ast::BindPat(it) => {
-                from_pat(db, file_id, AstPtr::new(&it))
+                let src = hir::Source { file_id, ast: it };
+                let local = hir::Local::from_source(db, src)?;
+                Some(NameDefinition {
+                    visibility: None,
+                    container: local.module(db),
+                    kind: NameKind::Local(local),
+                })
             },
             ast::RecordFieldDef(it) => {
                 let ast = hir::FieldSource::Named(it);
@@ -159,10 +165,10 @@ pub(crate) fn classify_name_ref(
     match resolved {
         Def(def) => Some(from_module_def(db, def, Some(container))),
         AssocItem(item) => Some(from_assoc_item(db, item)),
-        LocalBinding(Either::A(pat)) => from_pat(db, file_id, pat),
-        LocalBinding(Either::B(par)) => {
-            let kind = NameKind::SelfParam(par);
-            Some(NameDefinition { kind, container, visibility })
+        Local(local) => {
+            let container = local.module(db);
+            let kind = NameKind::Local(local);
+            Some(NameDefinition { kind, container, visibility: None })
         }
         GenericParam(par) => {
             // FIXME: get generic param def

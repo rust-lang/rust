@@ -65,7 +65,7 @@ pub use crate::{
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
         Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
-        EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef,
+        EnumVariant, FieldSource, FnData, Function, HasBody, Local, MacroDef, Module, ModuleDef,
         ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
     },
     expr::ExprScopes,
