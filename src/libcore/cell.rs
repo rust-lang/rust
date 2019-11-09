@@ -1548,6 +1548,36 @@ impl<T: ?Sized> UnsafeCell<T> {
         // #[repr(transparent)]
         self as *const UnsafeCell<T> as *const T as *mut T
     }
+
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// This can be cast to a pointer of any kind.
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+    /// or mutable aliases going on when casting to `&T`
+    ///
+    /// # Examples
+    ///
+    /// Gradual initialization of an `UnsafeCell`:
+    ///
+    /// ```
+    /// #![feature(unsafe_cell_raw_get)]
+    /// use std::cell::UnsafeCell;
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let m = MaybeUninit::<UnsafeCell<i32>>::uninit();
+    /// unsafe { m.as_ptr().raw_get().write(5); }
+    /// let uc = unsafe { m.assume_init() };
+    ///
+    /// assert_eq!(uc.into_inner(), 5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unsafe_cell_raw_get", issue = "0")]
+    pub const fn raw_get(self: *const Self) -> *mut T {
+        // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
+        // #[repr(transparent)]
+        self as *const T as *mut T
+    }
 }
 
 #[stable(feature = "unsafe_cell_default", since = "1.10.0")]
