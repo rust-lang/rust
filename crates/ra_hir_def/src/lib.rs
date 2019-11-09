@@ -205,26 +205,30 @@ impl AstItemDef<ast::FnDef> for FunctionId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructId(salsa::InternId);
-impl_intern_key!(StructId);
-impl AstItemDef<ast::StructDef> for StructId {
+pub struct StructOrUnionId(salsa::InternId);
+impl_intern_key!(StructOrUnionId);
+impl AstItemDef<ast::StructDef> for StructOrUnionId {
     fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
-        db.intern_struct(loc)
+        db.intern_struct_or_union(loc)
     }
     fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StructDef> {
-        db.lookup_intern_struct(self)
+        db.lookup_intern_struct_or_union(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnionId(salsa::InternId);
-impl_intern_key!(UnionId);
-impl AstItemDef<ast::StructDef> for UnionId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
-        db.intern_union(loc)
+pub struct StructId(pub StructOrUnionId);
+impl From<StructId> for StructOrUnionId {
+    fn from(id: StructId) -> StructOrUnionId {
+        id.0
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StructDef> {
-        db.lookup_intern_union(self)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct UnionId(pub StructOrUnionId);
+impl From<UnionId> for StructOrUnionId {
+    fn from(id: UnionId) -> StructOrUnionId {
+        id.0
     }
 }
 
