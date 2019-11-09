@@ -46,14 +46,14 @@ export class Config {
 
     public userConfigChanged() {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
-        
+
         Server.highlighter.removeHighlights();
 
         if (config.has('highlightingOn')) {
             this.highlightingOn = config.get('highlightingOn') as boolean;
             if (this.highlightingOn) {
                 scopes.load();
-                scopesMapper.load();    
+                scopesMapper.load();
             }
         }
 
@@ -62,7 +62,6 @@ export class Config {
                 'rainbowHighlightingOn'
             ) as boolean;
         }
-
 
         if (config.has('enableEnhancedTyping')) {
             this.enableEnhancedTyping = config.get(

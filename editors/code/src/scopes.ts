@@ -2,8 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-
-
 export interface TextMateRule {
     scope: string | string[];
     settings: TextMateRuleSettings;
@@ -27,7 +25,9 @@ export function load() {
     // Remove any previous theme
     rules.clear();
     // Find out current color theme
-    const themeName = vscode.workspace.getConfiguration('workbench').get('colorTheme');
+    const themeName = vscode.workspace
+        .getConfiguration('workbench')
+        .get('colorTheme');
 
     if (typeof themeName !== 'string') {
         // console.warn('workbench.colorTheme is', themeName)
@@ -42,37 +42,42 @@ export function load() {
 }
 
 function filterThemeExtensions(extension: vscode.Extension<any>): boolean {
-    return extension.extensionKind === vscode.ExtensionKind.UI &&
+    return (
+        extension.extensionKind === vscode.ExtensionKind.UI &&
         extension.packageJSON.contributes &&
-        extension.packageJSON.contributes.themes;
+        extension.packageJSON.contributes.themes
+    );
 }
-
-
 
 // Find current theme on disk
 function loadThemeNamed(themeName: string) {
-
     const themePaths = vscode.extensions.all
         .filter(filterThemeExtensions)
         .reduce((list, extension) => {
             return extension.packageJSON.contributes.themes
-                .filter((element: any) => (element.id || element.label) === themeName)
-                .map((element: any) => path.join(extension.extensionPath, element.path))
-                .concat(list)
+                .filter(
+                    (element: any) =>
+                        (element.id || element.label) === themeName
+                )
+                .map((element: any) =>
+                    path.join(extension.extensionPath, element.path)
+                )
+                .concat(list);
         }, Array<string>());
-
 
     themePaths.forEach(loadThemeFile);
 
-    const tokenColorCustomizations: [any] = [vscode.workspace.getConfiguration('editor').get('tokenColorCustomizations')]
+    const tokenColorCustomizations: [any] = [
+        vscode.workspace
+            .getConfiguration('editor')
+            .get('tokenColorCustomizations')
+    ];
 
     tokenColorCustomizations
         .filter(custom => custom && custom.textMateRules)
         .map(custom => custom.textMateRules)
         .forEach(loadColors);
-
 }
-
 
 function loadThemeFile(themePath: string) {
     const themeContent = [themePath]
@@ -92,18 +97,26 @@ function loadThemeFile(themePath: string) {
         .forEach(loadThemeFile);
 }
 
-function mergeRuleSettings(defaultSetting: TextMateRuleSettings | undefined, override: TextMateRuleSettings): TextMateRuleSettings {
-    if (defaultSetting === undefined) { return override; }
+function mergeRuleSettings(
+    defaultSetting: TextMateRuleSettings | undefined,
+    override: TextMateRuleSettings
+): TextMateRuleSettings {
+    if (defaultSetting === undefined) {
+        return override;
+    }
     const mergedRule = defaultSetting;
 
     mergedRule.background = override.background || defaultSetting.background;
     mergedRule.foreground = override.foreground || defaultSetting.foreground;
     mergedRule.fontStyle = override.fontStyle || defaultSetting.foreground;
 
-    return mergedRule
+    return mergedRule;
 }
 
-function updateRules(scope: string, updatedSettings: TextMateRuleSettings): void {
+function updateRules(
+    scope: string,
+    updatedSettings: TextMateRuleSettings
+): void {
     [rules.get(scope)]
         .map(settings => mergeRuleSettings(settings, updatedSettings))
         .forEach(settings => rules.set(scope, settings));
@@ -113,11 +126,10 @@ function loadColors(textMateRules: TextMateRule[]): void {
     textMateRules.forEach(rule => {
         if (typeof rule.scope === 'string') {
             updateRules(rule.scope, rule.settings);
-        }
-        else if (rule.scope instanceof Array) {
+        } else if (rule.scope instanceof Array) {
             rule.scope.forEach(scope => updateRules(scope, rule.settings));
         }
-    })
+    });
 }
 
 function isFile(filePath: string): boolean {
@@ -128,7 +140,7 @@ function readFileText(filePath: string): string {
     return fs.readFileSync(filePath, 'utf8');
 }
 
-// Might need to replace with JSONC if a theme contains comments. 
+// Might need to replace with JSONC if a theme contains comments.
 function parseJSON(content: string): any {
     return JSON.parse(content);
 }

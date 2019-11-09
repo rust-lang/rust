@@ -25,35 +25,15 @@ function fancify(seed: string, shade: 'light' | 'dark') {
     return `hsl(${h},${s}%,${l}%)`;
 }
 
-
-function createDecorationFromTextmate(themeStyle: scopes.TextMateRuleSettings): vscode.TextEditorDecorationType {
-    const options: vscode.DecorationRenderOptions = {};
-    options.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
-    if (themeStyle.foreground) {
-        options.color = themeStyle.foreground;
-    }
-    if (themeStyle.background) {
-        options.backgroundColor = themeStyle.background;
-    }
-    if (themeStyle.fontStyle) {
-        const parts: string[] = themeStyle.fontStyle.split(' ');
-        parts.forEach((part) => {
-            switch (part) {
-                case 'italic':
-                    options.fontStyle = 'italic';
-                    break;
-                case 'bold':
-                    options.fontWeight = 'bold';
-                    break;
-                case 'underline':
-                    options.textDecoration = 'underline';
-                    break;
-                default:
-                    break;
-            }
-        })
-    }
-    return vscode.window.createTextEditorDecorationType(options);
+function createDecorationFromTextmate(
+    themeStyle: scopes.TextMateRuleSettings
+): vscode.TextEditorDecorationType {
+    const decorationOptions: vscode.DecorationRenderOptions = {};
+    decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
+    decorationOptions.color = themeStyle.foreground;
+    decorationOptions.backgroundColor = themeStyle.background;
+    decorationOptions.fontStyle = themeStyle.fontStyle;
+    return vscode.window.createTextEditorDecorationType(decorationOptions);
 }
 
 export class Highlighter {
@@ -65,14 +45,12 @@ export class Highlighter {
             tag: string,
             textDecoration?: string
         ): [string, vscode.TextEditorDecorationType] => {
-
             const rule = scopesMapper.toRule(tag, scopes.find);
 
             if (rule) {
                 const decor = createDecorationFromTextmate(rule);
                 return [tag, decor];
-            }
-            else {
+            } else {
                 const fallBackTag = 'ralsp.' + tag;
                 // console.log(' ');
                 // console.log('Missing theme for: <"' + tag + '"> for following mapped scopes:');
@@ -91,25 +69,25 @@ export class Highlighter {
         const decorations: Iterable<
             [string, vscode.TextEditorDecorationType]
         > = [
-                decoration('comment'),
-                decoration('string'),
-                decoration('keyword'),
-                decoration('keyword.control'),
-                decoration('keyword.unsafe'),
-                decoration('function'),
-                decoration('parameter'),
-                decoration('constant'),
-                decoration('type'),
-                decoration('builtin'),
-                decoration('text'),
-                decoration('attribute'),
-                decoration('literal'),
-                decoration('macro'),
-                decoration('variable'),
-                decoration('variable.mut', 'underline'),
-                decoration('field'),
-                decoration('module')
-            ];
+            decoration('comment'),
+            decoration('string'),
+            decoration('keyword'),
+            decoration('keyword.control'),
+            decoration('keyword.unsafe'),
+            decoration('function'),
+            decoration('parameter'),
+            decoration('constant'),
+            decoration('type'),
+            decoration('builtin'),
+            decoration('text'),
+            decoration('attribute'),
+            decoration('literal'),
+            decoration('macro'),
+            decoration('variable'),
+            decoration('variable.mut', 'underline'),
+            decoration('field'),
+            decoration('module')
+        ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);
     }
@@ -137,7 +115,6 @@ export class Highlighter {
         //
         // Note: decoration objects need to be kept around so we can dispose them
         // if the user disables syntax highlighting
-
 
         if (this.decorations == null) {
             this.decorations = Highlighter.initDecorations();
