@@ -6,6 +6,8 @@ use crate::spec::Target;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable_Generic;
 use syntax_pos::Span;
 
 pub mod call;
@@ -246,6 +248,12 @@ pub struct Size {
     raw: u64
 }
 
+impl<CTX> HashStable<CTX> for Size {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.bytes().hash_stable(hcx, hasher);
+    }
+}
+
 impl Size {
     pub const ZERO: Size = Self::from_bytes(0);
 
@@ -369,6 +377,12 @@ pub struct Align {
     pow2: u8,
 }
 
+impl<CTX> HashStable<CTX> for Align {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.bytes().hash_stable(hcx, hasher);
+    }
+}
+
 impl Align {
     pub fn from_bits(bits: u64) -> Result<Align, String> {
         Align::from_bytes(Size::from_bits(bits).bytes())
@@ -422,7 +436,8 @@ impl Align {
 }
 
 /// A pair of aligments, ABI-mandated and preferred.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -452,7 +467,7 @@ impl AbiAndPrefAlign {
 }
 
 /// Integers, also used for enum discriminants.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
 pub enum Integer {
     I8,
     I16,
@@ -533,7 +548,7 @@ impl Integer {
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
     ///
@@ -608,6 +623,15 @@ pub struct Scalar {
     pub valid_range: RangeInclusive<u128>,
 }
 
+impl<CTX> HashStable<CTX> for Scalar {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        let Scalar { value, ref valid_range } = *self;
+        value.hash_stable(hcx, hasher);
+        valid_range.start().hash_stable(hcx, hasher);
+        valid_range.end().hash_stable(hcx, hasher);
+    }
+}
+
 impl Scalar {
     pub fn is_bool(&self) -> bool {
         if let Int(I8, _) = self.value {
@@ -636,7 +660,7 @@ impl Scalar {
 }
 
 /// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum FieldPlacement {
     /// All fields start at no offset. The `usize` is the field count.
     ///
@@ -752,7 +776,7 @@ impl FieldPlacement {
 
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -803,7 +827,13 @@ rustc_index::newtype_index! {
     pub struct VariantIdx { .. }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+impl<CTX> HashStable<CTX> for VariantIdx {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_u32().hash_stable(hcx, hasher)
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single {
@@ -842,7 +872,28 @@ pub enum DiscriminantKind {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+impl<CTX> HashStable<CTX> for DiscriminantKind {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        use DiscriminantKind::*;
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Tag => {}
+            Niche {
+                dataful_variant,
+                ref niche_variants,
+                niche_start,
+            } => {
+                dataful_variant.hash_stable(hcx, hasher);
+                niche_variants.start().hash_stable(hcx, hasher);
+                niche_variants.end().hash_stable(hcx, hasher);
+                niche_start.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
     pub scalar: Scalar,
@@ -906,7 +957,7 @@ impl Niche {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
