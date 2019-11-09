@@ -14,8 +14,8 @@ use crate::{
     attr::Attr,
     db::DefDatabase2,
     nameres::{
-        diagnostics::DefDiagnostic, mod_resolution::ModDir, per_ns::PerNs, raw, CrateDefMap,
-        ModuleData, ReachedFixedPoint, Resolution, ResolveMode,
+        diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
+        per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
     AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionId,
@@ -182,7 +182,11 @@ where
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
-            self.update(self.def_map.root, None, &[(name, Resolution::from_macro(macro_))]);
+            self.update(
+                self.def_map.root,
+                None,
+                &[(name, Resolution { def: PerNs::macros(macro_), import: None })],
+            );
         }
     }
 
