@@ -6,7 +6,7 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::mir::interpret::{PanicInfo::BoundsCheck};
 use rustc::mir::*;
-use rustc::ty::{CanonicalUserTypeAnnotation, Ty, Variance};
+use rustc::ty::{CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 
 use rustc_index::vec::Idx;
 
@@ -23,10 +23,10 @@ struct PlaceBuilder<'tcx> {
 }
 
 impl PlaceBuilder<'tcx> {
-    fn into_place(self) -> Place<'tcx> {
+    fn into_place(self, tcx: TyCtxt<'tcx>) -> Place<'tcx> {
         Place {
             base: self.base,
-            projection: self.projection.into_boxed_slice(),
+            projection: tcx.intern_place_elems(&self.projection),
         }
     }
 
@@ -73,7 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place())
+        block.and(place_builder.into_place(self.hir.tcx()))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -96,7 +96,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place())
+        block.and(place_builder.into_place(self.hir.tcx()))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -165,7 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Mutability::Not,
                 ));
 
-                let slice = place_builder.clone().into_place();
+                let slice = place_builder.clone().into_place(this.hir.tcx());
                 // bounds check:
                 let (len, lt) = (
                     this.temp(usize_ty.clone(), expr_span),
@@ -225,7 +225,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     );
 
-                    let place = place_builder.clone().into_place();
+                    let place = place_builder.clone().into_place(this.hir.tcx());
                     this.cfg.push(
                         block,
                         Statement {

@@ -15,7 +15,7 @@ use crate::traits::query::{
 };
 
 use std::borrow::Cow;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -93,7 +93,7 @@ rustc_queries! {
         /// Maps DefId's that have an associated `mir::Body` to the result
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
-        query mir_const_qualif(key: DefId) -> (u8, &'tcx BitSet<mir::Local>) {
+        query mir_const_qualif(key: DefId) -> u8 {
             desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
@@ -191,7 +191,7 @@ rustc_queries! {
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-        query inferred_outlives_of(_: DefId) -> &'tcx [ty::Predicate<'tcx>] {}
+        query inferred_outlives_of(_: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {}
 
         /// Maps from the `DefId` of a trait to the list of
         /// super-predicates. This is a subset of the full list of
@@ -226,12 +226,6 @@ rustc_queries! {
             _: DefId
         ) -> AdtSizedConstraint<'tcx> {
             cycle_delay_bug
-        }
-
-        query trivial_dropck_outlives(ty: Ty<'tcx>) -> bool {
-            anon
-            no_force
-            desc { "checking if `{:?}` has trivial dropck", ty }
         }
 
         query adt_dtorck_constraint(
@@ -462,9 +456,13 @@ rustc_queries! {
         query const_field(
             key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
         ) -> &'tcx ty::Const<'tcx> {
-            eval_always
             no_force
             desc { "extract field of const" }
+        }
+
+        query const_caller_location(key: (syntax_pos::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
+            no_force
+            desc { "get a &core::panic::Location referring to a span" }
         }
     }
 
@@ -750,6 +748,10 @@ rustc_queries! {
             eval_always
             desc { "looking up the hash a crate" }
         }
+        query crate_host_hash(_: CrateNum) -> Option<Svh> {
+            eval_always
+            desc { "looking up the hash of a host version of a crate" }
+        }
         query original_crate_name(_: CrateNum) -> Symbol {
             eval_always
             desc { "looking up the original name a crate" }
@@ -924,7 +926,7 @@ rustc_queries! {
             desc { "collect_and_partition_mono_items" }
         }
         query is_codegened_item(_: DefId) -> bool {}
-        query codegen_unit(_: InternedString) -> Arc<CodegenUnit<'tcx>> {
+        query codegen_unit(_: Symbol) -> Arc<CodegenUnit<'tcx>> {
             no_force
             desc { "codegen_unit" }
         }

@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use crate::util::nodemap::FxHashMap;
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use rustc::hir::{self, PatKind, Pat, HirId};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -613,9 +613,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
-            let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              res.descr(),
-                              hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
+            let msg = format!(
+                "expected tuple struct or tuple variant, found {} `{}`",
+                res.descr(),
+                hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)),
+            );
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
             match (res, &pat.kind) {
                 (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {
@@ -701,8 +703,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[ty::FieldDef],
         expected: Ty<'tcx>
     ) {
-        let subpats_ending = pluralise!(subpats.len());
-        let fields_ending = pluralise!(fields.len());
+        let subpats_ending = pluralize!(subpats.len());
+        let fields_ending = pluralize!(fields.len());
         let res_span = self.tcx.def_span(res.def_id());
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -976,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     // we don't want to throw `E0027` in case we have thrown `E0026` for them
-                    unmentioned_fields.retain(|&x| x.as_str() != suggested_name.as_str());
+                    unmentioned_fields.retain(|&x| x.name != suggested_name);
                 }
             }
         }
@@ -1172,10 +1174,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0527,
             "pattern requires {} element{} but array has {}",
             min_len,
-            pluralise!(min_len),
+            pluralize!(min_len),
             size,
         )
-        .span_label(span, format!("expected {} element{}", size, pluralise!(size)))
+        .span_label(span, format!("expected {} element{}", size, pluralize!(size)))
         .emit();
     }
 
@@ -1186,14 +1188,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0528,
             "pattern requires at least {} element{} but array has {}",
             min_len,
-            pluralise!(min_len),
+            pluralize!(min_len),
             size,
         ).span_label(
             span,
             format!(
                 "pattern cannot match array of {} element{}",
                 size,
-                pluralise!(size),
+                pluralize!(size),
             ),
         ).emit();
     }

@@ -1,17 +1,16 @@
-use super::{Parser, PResult, PathStyle};
+use super::{Parser, PathStyle};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
 use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
 use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
 use crate::mut_visit::{noop_visit_pat, noop_visit_mac, MutVisitor};
-use crate::parse::token::{self};
+use crate::token;
 use crate::print::pprust;
 use crate::source_map::{respan, Span, Spanned};
-use crate::symbol::kw;
 use crate::ThinVec;
-
-use errors::{Applicability, DiagnosticBuilder};
+use syntax_pos::symbol::{kw, sym};
+use errors::{PResult, Applicability, DiagnosticBuilder};
 
 type Expected = Option<&'static str>;
 
@@ -52,11 +51,8 @@ impl<'a> Parser<'a> {
         // and no other gated or-pattern has been parsed thus far,
         // then we should really gate the leading `|`.
         // This complicated procedure is done purely for diagnostics UX.
-        if gated_leading_vert {
-            let mut or_pattern_spans = self.sess.gated_spans.or_patterns.borrow_mut();
-            if or_pattern_spans.is_empty() {
-                or_pattern_spans.push(leading_vert_span);
-            }
+        if gated_leading_vert && self.sess.gated_spans.is_ungated(sym::or_patterns) {
+            self.sess.gated_spans.gate(sym::or_patterns, leading_vert_span);
         }
 
         Ok(pat)
@@ -117,7 +113,7 @@ impl<'a> Parser<'a> {
 
         // Feature gate the or-pattern if instructed:
         if gate_or == GateOr::Yes {
-            self.sess.gated_spans.or_patterns.borrow_mut().push(or_pattern_span);
+            self.sess.gated_spans.gate(sym::or_patterns, or_pattern_span);
         }
 
         Ok(self.mk_pat(or_pattern_span, PatKind::Or(pats)))
@@ -324,7 +320,9 @@ impl<'a> Parser<'a> {
                 self.parse_pat_ident(BindingMode::ByRef(mutbl))?
             } else if self.eat_keyword(kw::Box) {
                 // Parse `box pat`
-                PatKind::Box(self.parse_pat_with_range_pat(false, None)?)
+                let pat = self.parse_pat_with_range_pat(false, None)?;
+                self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_span));
+                PatKind::Box(pat)
             } else if self.can_be_ident_pat() {
                 // Parse `ident @ pat`
                 // This can give false positives and parse nullary enums,
@@ -609,6 +607,11 @@ impl<'a> Parser<'a> {
         Ok(PatKind::Mac(mac))
     }
 
+    fn excluded_range_end(&self, span: Span) -> RangeEnd {
+        self.sess.gated_spans.gate(sym::exclusive_range_pattern, span);
+        RangeEnd::Excluded
+    }
+
     /// Parse a range pattern `$path $form $end?` where `$form = ".." | "..." | "..=" ;`.
     /// The `$path` has already been parsed and the next token is the `$form`.
     fn parse_pat_range_starting_with_path(
@@ -618,7 +621,7 @@ impl<'a> Parser<'a> {
         path: Path
     ) -> PResult<'a, PatKind> {
         let (end_kind, form) = match self.token.kind {
-            token::DotDot => (RangeEnd::Excluded, ".."),
+            token::DotDot => (self.excluded_range_end(self.token.span), ".."),
             token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
             token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
             _ => panic!("can only parse `..`/`...`/`..=` for ranges (checked above)"),
@@ -641,7 +644,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::DotDotEq) {
             (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
         } else if self.eat(&token::DotDot) {
-            (RangeEnd::Excluded, "..")
+            (self.excluded_range_end(op_span), "..")
         } else {
             panic!("impossible case: we already matched on a range-operator token")
         };

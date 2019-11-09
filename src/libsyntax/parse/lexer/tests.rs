@@ -2,7 +2,8 @@ use super::*;
 
 use crate::symbol::Symbol;
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::parse::token;
+use crate::token;
+use crate::util::comments::is_doc_comment;
 use crate::with_default_globals;
 
 use errors::{Handler, emitter::EmitterWriter};

@@ -26,7 +26,7 @@
 use crate::Resolver;
 use crate::resolve_imports::ImportDirectiveSubclass;
 
-use errors::pluralise;
+use errors::pluralize;
 
 use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
@@ -232,7 +232,7 @@ impl Resolver<'_> {
                     directive.span.is_dummy() => {
                     if let ImportDirectiveSubclass::MacroUse = directive.subclass {
                         if !directive.span.is_dummy() {
-                            self.session.buffer_lint(
+                            self.lint_buffer.buffer_lint(
                                 lint::builtin::MACRO_USE_EXTERN_CRATE,
                                 directive.id,
                                 directive.span,
@@ -250,7 +250,7 @@ impl Resolver<'_> {
                 ImportDirectiveSubclass::MacroUse => {
                     let lint = lint::builtin::UNUSED_IMPORTS;
                     let msg = "unused `#[macro_use]` import";
-                    self.session.buffer_lint(lint, directive.id, directive.span, msg);
+                    self.lint_buffer.buffer_lint(lint, directive.id, directive.span, msg);
                 }
                 _ => {}
             }
@@ -297,7 +297,7 @@ impl Resolver<'_> {
                 }).collect::<Vec<String>>();
             span_snippets.sort();
             let msg = format!("unused import{}{}",
-                            pluralise!(len),
+                            pluralize!(len),
                             if !span_snippets.is_empty() {
                                 format!(": {}", span_snippets.join(", "))
                             } else {
@@ -312,7 +312,7 @@ impl Resolver<'_> {
                 "remove the unused import"
             };
 
-            visitor.r.session.buffer_lint_with_diagnostic(
+            visitor.r.lint_buffer.buffer_lint_with_diagnostic(
                 lint::builtin::UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,

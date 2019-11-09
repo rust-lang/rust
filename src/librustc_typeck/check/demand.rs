@@ -172,10 +172,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }).peekable();
 
             if compatible_variants.peek().is_some() {
-                let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
+                let expr_text = self.tcx.sess
+                    .source_map()
+                    .span_to_snippet(expr.span)
+                    .unwrap_or_else(|_| {
+                        print::to_string(print::NO_ANN, |s| s.print_expr(expr))
+                    });
                 let suggestions = compatible_variants
                     .map(|v| format!("{}({})", v, expr_text));
-                let msg = "try using a variant of the expected type";
+                let msg = "try using a variant of the expected enum";
                 err.span_suggestions(expr.span, msg, suggestions, Applicability::MaybeIncorrect);
             }
         }
@@ -303,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }) = parent {
                 if let Ok(src) = cm.span_to_snippet(sp) {
                     for field in fields {
-                        if field.ident.as_str() == src.as_str() && field.is_shorthand {
+                        if field.ident.as_str() == src && field.is_shorthand {
                             return true;
                         }
                     }
@@ -404,13 +409,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut sugg_sp = sp;
                     if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.kind {
                         let clone_trait = self.tcx.lang_items().clone_trait().unwrap();
-                        if let ([arg], Some(true), "clone") = (
+                        if let ([arg], Some(true), sym::clone) = (
                             &args[..],
                             self.tables.borrow().type_dependent_def_id(expr.hir_id).map(|did| {
                                 let ai = self.tcx.associated_item(did);
                                 ai.container == ty::TraitContainer(clone_trait)
                             }),
-                            &segment.ident.as_str()[..],
+                            segment.ident.name,
                         ) {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unecessary.
@@ -548,7 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_for_cast(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,

@@ -1,10 +1,11 @@
 use crate::base::ExtCtxt;
 
 use syntax::ast;
-use syntax::parse::{self, token};
-use syntax::parse::lexer::comments;
+use syntax::parse;
+use syntax::util::comments;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
+use syntax::token;
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 
 use errors::Diagnostic;
@@ -52,7 +53,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
 {
     fn from_internal(((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>))
                     -> Self {
-        use syntax::parse::token::*;
+        use syntax::token::*;
 
         let joint = is_joint == Joint;
         let Token { kind, span } = match tree {
@@ -193,7 +194,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
 
 impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
-        use syntax::parse::token::*;
+        use syntax::token::*;
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),

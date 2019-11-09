@@ -160,7 +160,7 @@ mod job {
     }
 }
 
-#[cfg(any(target_os = "haiku", not(any(unix, windows))))]
+#[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
 mod job {
     pub unsafe fn setup(_build: &mut crate::Build) {
     }
@@ -1080,6 +1080,10 @@ impl Build {
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
         if let Some(ref path) = self.config.save_toolstates {
+            if let Some(parent) = path.parent() {
+                // Ensure the parent directory always exists
+                t!(std::fs::create_dir_all(parent));
+            }
             let mut file = t!(fs::OpenOptions::new()
                 .create(true)
                 .read(true)
@@ -1137,6 +1141,7 @@ impl Build {
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run { return; }
         self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
+        if src == dst { return; }
         let _ = fs::remove_file(&dst);
         let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {

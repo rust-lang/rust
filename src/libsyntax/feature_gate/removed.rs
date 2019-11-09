@@ -99,6 +99,9 @@ declare_features! (
     /// + `__register_diagnostic`
     /// +`__build_diagnostic_array`
     (removed, rustc_diagnostic_macros, "1.38.0", None, None, None),
+    /// Allows using `#[on_unimplemented(..)]` on traits.
+    /// (Moved to `rustc_attrs`.)
+    (removed, on_unimplemented, "1.40.0", None, None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

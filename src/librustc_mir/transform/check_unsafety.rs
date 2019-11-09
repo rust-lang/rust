@@ -8,11 +8,11 @@ use rustc::ty::cast::CastTy;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
-use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
+use rustc::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
-use syntax::symbol::{InternedString, sym};
+use syntax::symbol::{Symbol, sym};
 
 use std::ops::Bound;
 
@@ -167,9 +167,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         self.register_violations(&[UnsafetyViolation {
                             source_info: self.source_info,
-                            description: InternedString::intern("cast of pointer to int"),
-                            details: InternedString::intern(
-                                "casting pointers to integers in constants"),
+                            description: Symbol::intern("cast of pointer to int"),
+                            details: Symbol::intern("casting pointers to integers in constants"),
                             kind: UnsafetyViolationKind::General,
                         }], &[]);
                     },
@@ -185,8 +184,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     self.register_violations(&[UnsafetyViolation {
                         source_info: self.source_info,
-                        description: InternedString::intern("pointer operation"),
-                        details: InternedString::intern("operations on pointers in constants"),
+                        description: Symbol::intern("pointer operation"),
+                        details: Symbol::intern("operations on pointers in constants"),
                         kind: UnsafetyViolationKind::General,
                     }], &[]);
                 }
@@ -209,23 +208,20 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
             PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
                 if self.tcx.is_mutable_static(def_id) {
-                    self.require_unsafe("use of mutable static",
+                    self.require_unsafe(
+                        "use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing \
-                         violations or data races will cause undefined behavior",
-                         UnsafetyViolationKind::General);
+                        violations or data races will cause undefined behavior",
+                        UnsafetyViolationKind::General,
+                    );
                 } else if self.tcx.is_foreign_item(def_id) {
-                    let source_info = self.source_info;
-                    let lint_root =
-                        self.source_scope_local_data[source_info.scope].lint_root;
-                    self.register_violations(&[UnsafetyViolation {
-                        source_info,
-                        description: InternedString::intern("use of extern static"),
-                        details: InternedString::intern(
-                            "extern statics are not controlled by the Rust type system: \
-                            invalid data, aliasing violations or data races will cause \
-                            undefined behavior"),
-                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
-                    }], &[]);
+                    self.require_unsafe(
+                        "use of extern static",
+                        "extern statics are not controlled by the Rust type system: \
+                        invalid data, aliasing violations or data races will cause \
+                        undefined behavior",
+                        UnsafetyViolationKind::General,
+                    );
                 }
             }
         }
@@ -240,8 +236,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: InternedString::intern("borrow of packed field"),
-                        details: InternedString::intern(
+                        description: Symbol::intern("borrow of packed field"),
+                        details: Symbol::intern(
                             "fields of packed structs might be misaligned: dereferencing a \
                             misaligned pointer or even just creating a misaligned reference \
                             is undefined behavior"),
@@ -334,8 +330,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
             source_info,
-            description: InternedString::intern(description),
-            details: InternedString::intern(details),
+            description: Symbol::intern(description),
+            details: Symbol::intern(details),
             kind,
         }], &[]);
     }
@@ -352,8 +348,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                     match violation.kind {
                         UnsafetyViolationKind::GeneralAndConstFn |
                         UnsafetyViolationKind::General => {},
-                        UnsafetyViolationKind::BorrowPacked(_) |
-                        UnsafetyViolationKind::ExternStatic(_) => if self.min_const_fn {
+                        UnsafetyViolationKind::BorrowPacked(_) => if self.min_const_fn {
                             // const fns don't need to be backwards compatible and can
                             // emit these violations as a hard error instead of a backwards
                             // compat lint
@@ -381,8 +376,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                             UnsafetyViolationKind::GeneralAndConstFn => {},
                             // these things are forbidden in const fns
                             UnsafetyViolationKind::General |
-                            UnsafetyViolationKind::BorrowPacked(_) |
-                            UnsafetyViolationKind::ExternStatic(_) => {
+                            UnsafetyViolationKind::BorrowPacked(_) => {
                                 let mut violation = violation.clone();
                                 // const fns don't need to be backwards compatible and can
                                 // emit these violations as a hard error instead of a backwards
@@ -407,8 +401,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         place: &Place<'tcx>,
         is_mut_use: bool,
     ) {
-        let mut cursor = &*place.projection;
-        while let [proj_base @ .., elem] = cursor {
+        let mut cursor = place.projection.as_ref();
+        while let &[ref proj_base @ .., elem] = cursor {
             cursor = proj_base;
 
             match elem {
@@ -438,8 +432,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 let source_info = self.source_info;
                                 self.register_violations(&[UnsafetyViolation {
                                     source_info,
-                                    description: InternedString::intern(description),
-                                    details: InternedString::intern(details),
+                                    description: Symbol::intern(description),
+                                    details: Symbol::intern(details),
                                     kind: UnsafetyViolationKind::GeneralAndConstFn,
                                 }], &[]);
                             }
@@ -577,10 +571,10 @@ fn is_enclosed(
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(Node::Item(&hir::Item {
-            kind: hir::ItemKind::Fn(_, header, _, _),
+            kind: hir::ItemKind::Fn(ref sig, _, _),
             ..
         })) = tcx.hir().find(parent_id) {
-            match header.unsafety {
+            match sig.header.unsafety {
                 hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
                 hir::Unsafety::Normal => None,
             }
@@ -643,17 +637,9 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 struct_span_err!(
                     tcx.sess, source_info.span, E0133,
                     "{} is unsafe and requires unsafe function or block", description)
-                    .span_label(source_info.span, &description.as_str()[..])
-                    .note(&details.as_str()[..])
+                    .span_label(source_info.span, &*description.as_str())
+                    .note(&details.as_str())
                     .emit();
-            }
-            UnsafetyViolationKind::ExternStatic(lint_hir_id) => {
-                tcx.lint_node_note(SAFE_EXTERN_STATICS,
-                              lint_hir_id,
-                              source_info.span,
-                              &format!("{} is unsafe and requires unsafe function or block \
-                                        (error E0133)", &description.as_str()[..]),
-                              &details.as_str()[..]);
             }
             UnsafetyViolationKind::BorrowPacked(lint_hir_id) => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
@@ -663,8 +649,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                                   lint_hir_id,
                                   source_info.span,
                                   &format!("{} is unsafe and requires unsafe function or block \
-                                            (error E0133)", &description.as_str()[..]),
-                                  &details.as_str()[..]);
+                                            (error E0133)", description),
+                                  &details.as_str());
                 }
             }
         }

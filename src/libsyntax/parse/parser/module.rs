@@ -1,13 +1,15 @@
-use super::{Parser, PResult};
+use super::Parser;
 use super::item::ItemInfo;
 use super::diagnostics::Error;
 
 use crate::attr;
 use crate::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
 use crate::parse::{new_sub_parser_from_file, DirectoryOwnership};
-use crate::parse::token::{self, TokenKind};
+use crate::token::{self, TokenKind};
 use crate::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 use crate::symbol::sym;
+
+use errors::PResult;
 
 use std::path::{self, Path, PathBuf};
 
@@ -21,7 +23,6 @@ pub(super) struct ModulePath {
 pub(super) struct ModulePathSuccess {
     pub path: PathBuf,
     pub directory_ownership: DirectoryOwnership,
-    warn: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -55,17 +56,10 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
-                let ModulePathSuccess { path, directory_ownership, warn } =
+                let ModulePathSuccess { path, directory_ownership } =
                     self.submod_path(id, &outer_attrs, id_span)?;
-                let (module, mut attrs) =
+                let (module, attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
-                // Record that we fetched the mod from an external file.
-                if warn {
-                    let attr = attr::mk_attr_outer(
-                        attr::mk_word_item(Ident::with_dummy_span(sym::warn_directory_ownership)));
-                    attr::mark_known(&attr);
-                    attrs.push(attr);
-                }
                 Ok((id, ItemKind::Mod(module), Some(attrs)))
             } else {
                 let placeholder = ast::Mod {
@@ -136,17 +130,16 @@ impl<'a> Parser<'a> {
                     // `#[path]` included and contains a `mod foo;` declaration.
                     // If you encounter this, it's your own darn fault :P
                     Some(_) => DirectoryOwnership::Owned { relative: None },
-                    _ => DirectoryOwnership::UnownedViaMod(true),
+                    _ => DirectoryOwnership::UnownedViaMod,
                 },
                 path,
-                warn: false,
             });
         }
 
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
             DirectoryOwnership::UnownedViaBlock |
-            DirectoryOwnership::UnownedViaMod(_) => None,
+            DirectoryOwnership::UnownedViaMod => None,
         };
         let paths = Parser::default_submod_path(
                         id, relative, &self.directory.path, self.sess.source_map());
@@ -167,12 +160,7 @@ impl<'a> Parser<'a> {
                 }
                 Err(err)
             }
-            DirectoryOwnership::UnownedViaMod(warn) => {
-                if warn {
-                    if let Ok(result) = paths.result {
-                        return Ok(ModulePathSuccess { warn: true, ..result });
-                    }
-                }
+            DirectoryOwnership::UnownedViaMod => {
                 let mut err = self.diagnostic().struct_span_err(id_sp,
                     "cannot declare a new module at this location");
                 if !id_sp.is_dummy() {
@@ -210,7 +198,7 @@ impl<'a> Parser<'a> {
             // `/` to `\`.
             #[cfg(windows)]
             let s = s.replace("/", "\\");
-            Some(dir_path.join(s))
+            Some(dir_path.join(&*s))
         } else {
             None
         }
@@ -229,7 +217,7 @@ impl<'a> Parser<'a> {
         // `./<id>.rs` and `./<id>/mod.rs`.
         let relative_prefix_string;
         let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident.as_str(), path::MAIN_SEPARATOR);
+            relative_prefix_string = format!("{}{}", ident, path::MAIN_SEPARATOR);
             &relative_prefix_string
         } else {
             ""
@@ -250,14 +238,12 @@ impl<'a> Parser<'a> {
                 directory_ownership: DirectoryOwnership::Owned {
                     relative: Some(id),
                 },
-                warn: false,
             }),
             (false, true) => Ok(ModulePathSuccess {
                 path: secondary_path,
                 directory_ownership: DirectoryOwnership::Owned {
                     relative: None,
                 },
-                warn: false,
             }),
             (false, false) => Err(Error::FileNotFoundForModule {
                 mod_name: mod_name.clone(),
@@ -314,7 +300,7 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
-            self.directory.path.to_mut().push(&path.as_str());
+            self.directory.path.to_mut().push(&*path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
             // We have to push on the current module name in the case of relative
@@ -325,10 +311,10 @@ impl<'a> Parser<'a> {
             // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
                 if let Some(ident) = relative.take() { // remove the relative offset
-                    self.directory.path.to_mut().push(ident.as_str());
+                    self.directory.path.to_mut().push(&*ident.as_str());
                 }
             }
-            self.directory.path.to_mut().push(&id.as_str());
+            self.directory.path.to_mut().push(&*id.as_str());
         }
     }
 }

@@ -3,7 +3,7 @@
 set -eu
 
 X_PY="$1"
-TOOLSTATE_FILE="$(realpath $2)"
+TOOLSTATE_FILE="$(realpath -m $2)"
 OS="$3"
 COMMIT="$(git rev-parse HEAD)"
 CHANGED_FILES="$(git diff --name-status HEAD HEAD^)"
@@ -13,6 +13,7 @@ SIX_WEEK_CYCLE="$(( ($(date +%s) / 86400 - 20) % 42 ))"
 #   The Wednesday after this has value 0.
 #   We track this value to prevent regressing tools in the last week of the 6-week cycle.
 
+mkdir -p "$(dirname $TOOLSTATE_FILE)"
 touch "$TOOLSTATE_FILE"
 
 # Try to test all the tools and store the build/test success in the TOOLSTATE_FILE

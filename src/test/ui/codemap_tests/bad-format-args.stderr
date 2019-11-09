@@ -16,7 +16,7 @@ error: expected one of `,`, `.`, `?`, or an operator, found `1`
   --> $DIR/bad-format-args.rs:4:19
    |
 LL |     format!("", 1 1);
-   |                   ^ expected one of `,`, `.`, `?`, or an operator here
+   |                   ^ expected one of `,`, `.`, `?`, or an operator
 
 error: aborting due to 3 previous errors
 

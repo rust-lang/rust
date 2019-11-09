@@ -3,6 +3,7 @@ error[E0425]: cannot find function `f` in this scope
    |
 LL |         f();
    |         ^ not found in this scope
+   |
 help: possible candidates are found in other modules, you can import them into scope
    |
 LL | use foo::f;
@@ -24,6 +25,7 @@ LL | |         g();
 LL | |         f();
 LL | |     }
    | |_____- in this macro invocation
+   |
 help: possible candidates are found in other modules, you can import them into scope
    |
 LL | use bar::g;

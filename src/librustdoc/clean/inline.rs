@@ -3,8 +3,8 @@
 use std::iter::once;
 
 use syntax::ast;
-use syntax_expand::base::MacroKind;
 use syntax::symbol::sym;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -479,8 +479,8 @@ fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static
 
 fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemEnum {
     let imported_from = cx.tcx.original_crate_name(did.krate);
-    match cx.cstore.load_macro_untracked(did, cx.sess()) {
-        LoadedMacro::MacroDef(def) => {
+    match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
+        LoadedMacro::MacroDef(def, _) => {
             let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
                 let tts: Vec<_> = def.stream().into_trees().collect();
                 tts.chunks(4).map(|arm| arm[0].span()).collect()

@@ -19,7 +19,7 @@ use super::{
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 
-/// A `Value` represents a single immediate self-contained Rust value.
+/// An `Immediate` represents a single immediate self-contained Rust value.
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
@@ -81,26 +81,6 @@ impl<'tcx, Tag> Immediate<Tag> {
             Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
             Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
         }
-    }
-
-    /// Converts the immediate into a pointer (or a pointer-sized integer).
-    /// Throws away the second half of a ScalarPair!
-    #[inline]
-    pub fn to_scalar_ptr(self) -> InterpResult<'tcx, Scalar<Tag>> {
-        match self {
-            Immediate::Scalar(ptr) |
-            Immediate::ScalarPair(ptr, _) => ptr.not_undef(),
-        }
-    }
-
-    /// Converts the value into its metadata.
-    /// Throws away the first half of a ScalarPair!
-    #[inline]
-    pub fn to_meta(self) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
-        Ok(match self {
-            Immediate::Scalar(_) => None,
-            Immediate::ScalarPair(_, meta) => Some(meta.not_undef()?),
-        })
     }
 }
 
@@ -268,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(ImmTy {
                     imm: scalar.into(),
@@ -286,10 +266,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
                 let b_ptr = ptr.offset(b_offset, self)?;
                 let a_val = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, a_ptr, a_size)?;
                 let b_val = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(ImmTy {
                     imm: Immediate::ScalarPair(a_val, b_val),

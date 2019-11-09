@@ -51,9 +51,7 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::mem;
 use core::raw;
-
-use crate::windows as c;
-use libc::{c_int, c_uint};
+use libc::{c_int, c_uint, c_void};
 
 // First up, a whole bunch of type definitions. There's a few platform-specific
 // oddities here, and a lot that's just blatantly copied from LLVM. The purpose
@@ -76,18 +74,19 @@ use libc::{c_int, c_uint};
 // sort of operation. For example, if you compile this C++ code on MSVC and emit
 // the LLVM IR:
 //
-//      #include <stdin.h>
+//      #include <stdint.h>
+//
+//      struct rust_panic {
+//          uint64_t x[2];
+//      }
 //
 //      void foo() {
-//          uint64_t a[2] = {0, 1};
+//          rust_panic a = {0, 1};
 //          throw a;
 //      }
 //
 // That's essentially what we're trying to emulate. Most of the constant values
-// below were just copied from LLVM, I'm at least not 100% sure what's going on
-// everywhere. For example the `.PA_K\0` and `.PEA_K\0` strings below (stuck in
-// the names of a few of these) I'm not actually sure what they do, but it seems
-// to mirror what LLVM does!
+// below were just copied from LLVM,
 //
 // In any case, these structures are all constructed in a similar manner, and
 // it's just somewhat verbose for us.
@@ -98,10 +97,9 @@ use libc::{c_int, c_uint};
 #[macro_use]
 mod imp {
     pub type ptr_t = *mut u8;
-    pub const OFFSET: i32 = 4;
 
+    #[cfg(bootstrap)]
     pub const NAME1: [u8; 7] = [b'.', b'P', b'A', b'_', b'K', 0, 0];
-    pub const NAME2: [u8; 7] = [b'.', b'P', b'A', b'X', 0, 0, 0];
 
     macro_rules! ptr {
         (0) => (core::ptr::null_mut());
@@ -113,10 +111,9 @@ mod imp {
 #[macro_use]
 mod imp {
     pub type ptr_t = u32;
-    pub const OFFSET: i32 = 8;
 
+    #[cfg(bootstrap)]
     pub const NAME1: [u8; 7] = [b'.', b'P', b'E', b'A', b'_', b'K', 0];
-    pub const NAME2: [u8; 7] = [b'.', b'P', b'E', b'A', b'X', 0, 0];
 
     extern "C" {
         pub static __ImageBase: u8;
@@ -141,7 +138,7 @@ pub struct _ThrowInfo {
 #[repr(C)]
 pub struct _CatchableTypeArray {
     pub nCatchableTypes: c_int,
-    pub arrayOfCatchableTypes: [imp::ptr_t; 2],
+    pub arrayOfCatchableTypes: [imp::ptr_t; 1],
 }
 
 #[repr(C)]
@@ -164,8 +161,18 @@ pub struct _PMD {
 pub struct _TypeDescriptor {
     pub pVFTable: *const u8,
     pub spare: *mut u8,
+    #[cfg(bootstrap)]
     pub name: [u8; 7],
+    #[cfg(not(bootstrap))]
+    pub name: [u8; 11],
 }
+
+// Note that we intentionally ignore name mangling rules here: we don't want C++
+// to be able to catch Rust panics by simply declaring a `struct rust_panic`.
+#[cfg(bootstrap)]
+use imp::NAME1 as TYPE_NAME;
+#[cfg(not(bootstrap))]
+const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
     attributes: 0,
@@ -175,31 +182,22 @@ static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
 };
 
 static mut CATCHABLE_TYPE_ARRAY: _CatchableTypeArray = _CatchableTypeArray {
-    nCatchableTypes: 2,
-    arrayOfCatchableTypes: [ptr!(0), ptr!(0)],
+    nCatchableTypes: 1,
+    arrayOfCatchableTypes: [ptr!(0)],
 };
 
-static mut CATCHABLE_TYPE1: _CatchableType = _CatchableType {
-    properties: 1,
+static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
+    properties: 0,
     pType: ptr!(0),
     thisDisplacement: _PMD {
         mdisp: 0,
         pdisp: -1,
         vdisp: 0,
     },
-    sizeOrOffset: imp::OFFSET,
-    copy_function: ptr!(0),
-};
-
-static mut CATCHABLE_TYPE2: _CatchableType = _CatchableType {
-    properties: 1,
-    pType: ptr!(0),
-    thisDisplacement: _PMD {
-        mdisp: 0,
-        pdisp: -1,
-        vdisp: 0,
-    },
-    sizeOrOffset: imp::OFFSET,
+    #[cfg(bootstrap)]
+    sizeOrOffset: mem::size_of::<*mut u64>() as c_int,
+    #[cfg(not(bootstrap))]
+    sizeOrOffset: mem::size_of::<[u64; 2]>() as c_int,
     copy_function: ptr!(0),
 };
 
@@ -215,22 +213,17 @@ extern "C" {
     static TYPE_INFO_VTABLE: *const u8;
 }
 
-// We use #[lang = "msvc_try_filter"] here as this is the type descriptor which
+// We use #[lang = "eh_catch_typeinfo"] here as this is the type descriptor which
 // we'll use in LLVM's `catchpad` instruction which ends up also being passed as
 // an argument to the C++ personality function.
 //
 // Again, I'm not entirely sure what this is describing, it just seems to work.
-#[cfg_attr(not(test), lang = "msvc_try_filter")]
-static mut TYPE_DESCRIPTOR1: _TypeDescriptor = _TypeDescriptor {
+#[cfg_attr(bootstrap, lang = "msvc_try_filter")]
+#[cfg_attr(not(any(test, bootstrap)), lang = "eh_catch_typeinfo")]
+static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),
-    name: imp::NAME1,
-};
-
-static mut TYPE_DESCRIPTOR2: _TypeDescriptor = _TypeDescriptor {
-    pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
-    spare: core::ptr::null_mut(),
-    name: imp::NAME2,
+    name: TYPE_NAME,
 };
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
@@ -246,6 +239,11 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let ptrs = mem::transmute::<_, raw::TraitObject>(data);
     let mut ptrs = [ptrs.data as u64, ptrs.vtable as u64];
     let mut ptrs_ptr = ptrs.as_mut_ptr();
+    let throw_ptr = if cfg!(bootstrap) {
+        &mut ptrs_ptr as *mut _ as *mut _
+    } else {
+        ptrs_ptr as *mut _
+    };
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,
@@ -270,17 +268,17 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     atomic_store(&mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
                  ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32);
     atomic_store(&mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0] as *mut _ as *mut u32,
-                 ptr!(&CATCHABLE_TYPE1 as *const _) as u32);
-    atomic_store(&mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[1] as *mut _ as *mut u32,
-                 ptr!(&CATCHABLE_TYPE2 as *const _) as u32);
-    atomic_store(&mut CATCHABLE_TYPE1.pType as *mut _ as *mut u32,
-                 ptr!(&TYPE_DESCRIPTOR1 as *const _) as u32);
-    atomic_store(&mut CATCHABLE_TYPE2.pType as *mut _ as *mut u32,
-                 ptr!(&TYPE_DESCRIPTOR2 as *const _) as u32);
+                 ptr!(&CATCHABLE_TYPE as *const _) as u32);
+    atomic_store(&mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
+                 ptr!(&TYPE_DESCRIPTOR as *const _) as u32);
 
-    c::_CxxThrowException(&mut ptrs_ptr as *mut _ as *mut _,
-                          &mut THROW_INFO as *mut _ as *mut _);
-    u32::max_value()
+    extern "system" {
+        #[unwind(allowed)]
+        pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
+    }
+
+    _CxxThrowException(throw_ptr,
+                       &mut THROW_INFO as *mut _ as *mut _);
 }
 
 pub fn payload() -> [u64; 2] {

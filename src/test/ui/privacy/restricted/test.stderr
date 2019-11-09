@@ -4,7 +4,7 @@ error[E0433]: failed to resolve: maybe a missing crate `bad`?
 LL |     pub(in bad::path) mod m1 {}
    |            ^^^ maybe a missing crate `bad`?
 
-error: visibilities can only be restricted to ancestor modules
+error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/test.rs:51:12
    |
 LL |     pub(in foo) mod m2 {}
@@ -78,5 +78,5 @@ LL |     u.h();
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0364, E0433, E0603, E0616, E0624.
+Some errors have detailed explanations: E0364, E0433, E0603, E0616, E0624, E0742.
 For more information about an error, try `rustc --explain E0364`.

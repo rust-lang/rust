@@ -11,6 +11,7 @@ LL | |     }
 ...
 LL |       format_args!(hang!());
    |                    ------- in this macro invocation
+   |
 help: you might be missing a string literal to format with
    |
 LL |     format_args!("{}", hang!());

@@ -6,7 +6,7 @@ fn foo<Foo, Bar>(x: Foo) -> Bar {
 //~^ ERROR mismatched types
 //~| expected type `Bar`
 //~| found type `Foo`
-//~| expected type parameter, found a different type parameter
+//~| expected type parameter `Bar`, found type parameter `Foo`
 }
 
 fn main() {}

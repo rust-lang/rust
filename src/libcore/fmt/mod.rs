@@ -1,5 +1,7 @@
 //! Utilities for formatting and printing strings.
 
+// ignore-tidy-undocumented-unsafe
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
@@ -2025,7 +2027,7 @@ impl<T: ?Sized> Pointer for *const T {
         if f.alternate() {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
-            if let None = f.width {
+            if f.width.is_none() {
                 f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
             }
         }

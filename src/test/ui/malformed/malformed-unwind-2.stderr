@@ -3,6 +3,7 @@ error[E0633]: malformed `unwind` attribute input
    |
 LL | #[unwind(allowed, aborts)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid argument
+   |
 help: the allowed arguments are `allowed` and `aborts`
    |
 LL | #[unwind(allowed)]
@@ -15,6 +16,7 @@ error[E0633]: malformed `unwind` attribute input
    |
 LL | #[unwind(unsupported)]
    | ^^^^^^^^^^^^^^^^^^^^^^ invalid argument
+   |
 help: the allowed arguments are `allowed` and `aborts`
    |
 LL | #[unwind(allowed)]

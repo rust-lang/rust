@@ -1,4 +1,4 @@
-use crate::parse::token::{self, Token, BinOpToken};
+use crate::token::{self, Token, BinOpToken};
 use crate::symbol::kw;
 use crate::ast::{self, BinOpKind};
 

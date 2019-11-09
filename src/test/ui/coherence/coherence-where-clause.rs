@@ -1,7 +1,4 @@
 // run-pass
-// revisions: old re
-
-#![cfg_attr(re, feature(re_rebalance_coherence))]
 
 use std::fmt::Debug;
 use std::default::Default;

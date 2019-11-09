@@ -4,9 +4,9 @@ error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `met
 LL | impl m1::X for X {
    | ^^^^^^^^^^^^^^^^ missing `CONSTANT`, `Type`, `method` in implementation
    |
-   = note: `CONSTANT` from trait: `const CONSTANT: u32;`
-   = note: `Type` from trait: `type Type;`
-   = note: `method` from trait: `fn(&Self, std::string::String) -> <Self as m1::X>::Type`
+   = help: implement the missing item: `const CONSTANT: u32 = 42;`
+   = help: implement the missing item: `type Type = Type;`
+   = help: implement the missing item: `fn method(&self, _: std::string::String) -> <Self as m1::X>::Type { unimplemented!() }`
 
 error: aborting due to previous error
 

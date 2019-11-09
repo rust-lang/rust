@@ -3,6 +3,7 @@ use std::mem;
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
+use syntax::expand::is_proc_macro_attr;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
@@ -10,7 +11,6 @@ use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax_expand::base::{ExtCtxt, Resolver};
 use syntax_expand::expand::{AstFragment, ExpansionConfig};
-use syntax_expand::proc_macro::is_proc_macro_attr;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::AstPass;
 
@@ -249,9 +249,11 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let path_str = pprust::path_to_string(&attr.path);
-                    let msg = if attr.path.segments[0].ident.name ==
-                                 prev_attr.path.segments[0].ident.name {
+                    let prev_item = prev_attr.get_normal_item();
+                    let item = attr.get_normal_item();
+                    let path_str = pprust::path_to_string(&item.path);
+                    let msg = if item.path.segments[0].ident.name ==
+                                 prev_item.path.segments[0].ident.name {
                         format!(
                             "only one `#[{}]` attribute is allowed on any given function",
                             path_str,
@@ -261,7 +263,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                             "`#[{}]` and `#[{}]` attributes cannot both be applied
                             to the same function",
                             path_str,
-                            pprust::path_to_string(&prev_attr.path),
+                            pprust::path_to_string(&prev_item.path),
                         )
                     };
 
@@ -290,7 +292,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         if !is_fn {
             let msg = format!(
                 "the `#[{}]` attribute may only be used on bare functions",
-                pprust::path_to_string(&attr.path),
+                pprust::path_to_string(&attr.get_normal_item().path),
             );
 
             self.handler.span_err(attr.span, &msg);
@@ -304,7 +306,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         if !self.is_proc_macro_crate {
             let msg = format!(
                 "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
-                pprust::path_to_string(&attr.path),
+                pprust::path_to_string(&attr.get_normal_item().path),
             );
 
             self.handler.span_err(attr.span, &msg);
@@ -337,6 +339,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          use proc_macro::bridge::client::ProcMacro;
 //
 //          #[rustc_proc_macro_decls]
+//          #[allow(deprecated)]
 //          static DECLS: &[ProcMacro] = &[
 //              ProcMacro::custom_derive($name_trait1, &[], ::$name1);
 //              ProcMacro::custom_derive($name_trait2, &["attribute_name"], ::$name2);
@@ -416,6 +419,16 @@ fn mk_decls(
     ).map(|mut i| {
         let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
         i.attrs.push(cx.attribute(attr));
+
+        let deprecated_attr = attr::mk_nested_word_item(
+            Ident::new(sym::deprecated, span)
+        );
+        let allow_deprecated_attr = attr::mk_list_item(
+            Ident::new(sym::allow, span),
+            vec![deprecated_attr]
+        );
+        i.attrs.push(cx.attribute(allow_deprecated_attr));
+
         i
     });
 

@@ -228,7 +228,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             sym::stable,
             sym::rustc_promotable,
             sym::rustc_allow_const_fn_ptr,
-        ].iter().any(|&s| attr.path == s) {
+        ].iter().any(|&s| attr.has_name(s)) {
             continue // not a stability level
         }
 
@@ -236,10 +236,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
         let meta = attr.meta();
 
-        if attr.path == sym::rustc_promotable {
+        if attr.has_name(sym::rustc_promotable) {
             promotable = true;
         }
-        if attr.path == sym::rustc_allow_const_fn_ptr {
+        if attr.has_name(sym::rustc_allow_const_fn_ptr) {
             allow_const_fn_ptr = true;
         }
         // attributes with data
@@ -778,7 +778,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
 
     let mut acc = Vec::new();
     let diagnostic = &sess.span_diagnostic;
-    if attr.path == sym::repr {
+    if attr.has_name(sym::repr) {
         if let Some(items) = attr.meta_item_list() {
             mark_used(attr);
             for item in items {

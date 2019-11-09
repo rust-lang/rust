@@ -4,8 +4,9 @@ use crate::proc_macro_server;
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::errors::{Applicability, FatalError};
-use syntax::parse::{self, token};
+use syntax::parse;
 use syntax::symbol::sym;
+use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
 
@@ -178,15 +179,10 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_mac(&mut self, _mac: &Mac) {}
 }
 
-pub fn is_proc_macro_attr(attr: &Attribute) -> bool {
-    [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-        .iter().any(|kind| attr.check_name(*kind))
-}
-
 crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
-        if attr.path != sym::derive {
+        if !attr.has_name(sym::derive) {
             return true;
         }
         if !attr.is_meta_item_list() {
@@ -200,7 +196,14 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             return false;
         }
 
-        match attr.parse_derive_paths(cx.parse_sess) {
+        let parse_derive_paths = |attr: &ast::Attribute| {
+            if attr.get_normal_item().tokens.is_empty() {
+                return Ok(Vec::new());
+            }
+            parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())
+        };
+
+        match parse_derive_paths(attr) {
             Ok(traits) => {
                 result.extend(traits);
                 true

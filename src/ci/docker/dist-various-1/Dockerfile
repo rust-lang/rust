@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-arm-linux-gnueabi \
   g++-arm-linux-gnueabihf \
   g++-aarch64-linux-gnu \
+  g++-mips64-linux-gnuabi64 \
+  g++-mips64el-linux-gnuabi64 \
   gcc-sparc64-linux-gnu \
   libc6-dev-sparc64-cross \
   bzip2 \
@@ -77,6 +79,14 @@ RUN env \
     CC=mipsel-openwrt-linux-gcc \
     CXX=mipsel-openwrt-linux-g++ \
     bash musl.sh mipsel && \
+    env \
+    CC=mips64-linux-gnuabi64-gcc \
+    CXX=mips64-linux-gnuabi64-g++ \
+    bash musl.sh mips64 && \
+    env \
+    CC=mips64el-linux-gnuabi64-gcc \
+    CXX=mips64el-linux-gnuabi64-g++ \
+    bash musl.sh mips64el && \
     rm -rf /build/*
 
 # FIXME(mozilla/sccache#235) this shouldn't be necessary but is currently
@@ -97,6 +107,8 @@ ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
 ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
 ENV TARGETS=$TARGETS,mips-unknown-linux-musl
 ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
+ENV TARGETS=$TARGETS,mips64-unknown-linux-muslabi64
+ENV TARGETS=$TARGETS,mips64el-unknown-linux-muslabi64
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
@@ -125,6 +137,8 @@ ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
+    CC_mips64el_unknown_linux_muslabi64=mips64el-linux-gnuabi64-gcc \
+    CC_mips64_unknown_linux_muslabi64=mips64-linux-gnuabi64-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
@@ -139,6 +153,8 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
+      --musl-root-mips64=/musl-mips64 \
+      --musl-root-mips64el=/musl-mips64el \
       --disable-docs
 
 ENV SCRIPT \

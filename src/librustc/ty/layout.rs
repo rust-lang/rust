@@ -23,7 +23,7 @@ use rustc_index::vec::{IndexVec, Idx};
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
 use rustc_target::abi::call::{
-    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, PassMode, Reg, RegKind
+    ArgAttribute, ArgAttributes, ArgAbi, Conv, FnAbi, PassMode, Reg, RegKind
 };
 
 pub trait IntegerExt {
@@ -132,8 +132,8 @@ impl PrimitiveExt for Primitive {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            Float(FloatTy::F32) => tcx.types.f32,
-            Float(FloatTy::F64) => tcx.types.f64,
+            F32 => tcx.types.f32,
+            F64 => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
         }
     }
@@ -144,7 +144,7 @@ impl PrimitiveExt for Primitive {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             Pointer => tcx.types.usize,
-            Float(..) => bug!("floats do not have an int type"),
+            F32 | F64 => bug!("floats do not have an int type"),
         }
     }
 }
@@ -538,7 +538,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Uint(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
-            ty::Float(fty) => scalar(Float(fty)),
+            ty::Float(fty) => scalar(match fty {
+                ast::FloatTy::F32 => F32,
+                ast::FloatTy::F64 => F64,
+            }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range = 1..=*ptr.valid_range.end();
@@ -2454,7 +2457,8 @@ impl_stable_hash_for!(enum crate::ty::layout::Integer {
 
 impl_stable_hash_for!(enum crate::ty::layout::Primitive {
     Int(integer, signed),
-    Float(fty),
+    F32,
+    F64,
     Pointer
 });
 
@@ -2487,7 +2491,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
     }
 }
 
-pub trait FnTypeExt<'tcx, C>
+pub trait FnAbiExt<'tcx, C>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
         + HasDataLayout
@@ -2502,12 +2506,12 @@ where
         cx: &C,
         sig: ty::FnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
-        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
     ) -> Self;
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
-impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>>
+impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
         + HasDataLayout
@@ -2520,15 +2524,15 @@ where
         let sig = cx
             .tcx()
             .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        call::FnType::new(cx, sig, &[])
+        call::FnAbi::new(cx, sig, &[])
     }
 
     fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        call::FnType::new_internal(cx, sig, extra_args, |ty, _| ArgType::new(cx.layout_of(ty)))
+        call::FnAbi::new_internal(cx, sig, extra_args, |ty, _| ArgAbi::new(cx.layout_of(ty)))
     }
 
     fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        FnTypeExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+        FnAbiExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -2578,7 +2582,7 @@ where
                 layout = cx.layout_of(unit_pointer_ty);
                 layout.ty = fat_pointer_ty;
             }
-            ArgType::new(layout)
+            ArgAbi::new(layout)
         })
     }
 
@@ -2586,9 +2590,9 @@ where
         cx: &C,
         sig: ty::FnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
-        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
     ) -> Self {
-        debug!("FnType::new_internal({:?}, {:?})", sig, extra_args);
+        debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
         use rustc_target::spec::abi::Abi::*;
         let conv = match cx.tcx().sess.target.target.adjust_abi(sig.abi) {
@@ -2596,6 +2600,7 @@ where
 
             // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),
+            EfiApi => bug!("eficall abi should be selected elsewhere"),
 
             Stdcall => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,
@@ -2740,7 +2745,7 @@ where
             arg
         };
 
-        let mut fn_ty = FnType {
+        let mut fn_abi = FnAbi {
             ret: arg_of(sig.output(), None),
             args: inputs
                 .iter()
@@ -2752,8 +2757,8 @@ where
             c_variadic: sig.c_variadic,
             conv,
         };
-        fn_ty.adjust_for_abi(cx, sig.abi);
-        fn_ty
+        fn_abi.adjust_for_abi(cx, sig.abi);
+        fn_abi
     }
 
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) {
@@ -2766,7 +2771,7 @@ where
             || abi == SpecAbi::RustIntrinsic
             || abi == SpecAbi::PlatformIntrinsic
         {
-            let fixup = |arg: &mut ArgType<'tcx, Ty<'tcx>>| {
+            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
                 if arg.is_ignore() {
                     return;
                 }

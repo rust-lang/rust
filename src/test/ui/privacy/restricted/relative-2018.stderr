@@ -1,4 +1,4 @@
-error: visibilities can only be restricted to ancestor modules
+error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/relative-2018.rs:7:12
    |
 LL |     pub(in ::core) struct S4;
@@ -14,3 +14,4 @@ LL |     pub(in a::b) struct S5;
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0742`.

@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // edition:2018
 
 #![feature(arbitrary_self_types)]

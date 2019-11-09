@@ -3,6 +3,7 @@ error: crate name using dashes are not valid in `extern crate` statements
    |
 LL | extern crate krate-name-here;
    |              ^^^^^^^^^^^^^^^ dash-separated idents are not valid
+   |
 help: if the original crate name uses dashes you need to use underscores in the code
    |
 LL | extern crate krate_name_here;

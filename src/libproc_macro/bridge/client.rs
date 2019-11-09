@@ -15,8 +15,9 @@ macro_rules! define_handles {
         }
 
         impl HandleCounters {
-            // FIXME(#53451) public to work around `Cannot create local mono-item` ICE.
-            pub extern "C" fn get() -> &'static Self {
+            // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+            // a wrapper `fn` pointer, once `const fn` can reference `static`s.
+            extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
                     $($oty: AtomicUsize::new(1),)*
                     $($ity: AtomicUsize::new(1),)*
@@ -333,16 +334,19 @@ impl Bridge<'_> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Client<F> {
+    // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+    // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
     pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
     pub(super) f: F,
 }
 
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
-// affecting not only the function itself, but also the `BridgeState` `thread_local!`.
-pub extern "C" fn __run_expand1(
+/// Client-side helper for handling client panics, entering the bridge,
+/// deserializing input and serializing output.
+// FIXME(eddyb) maybe replace `Bridge::enter` with this?
+fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     mut bridge: Bridge<'_>,
-    f: fn(crate::TokenStream) -> crate::TokenStream,
+    f: impl FnOnce(A) -> R,
 ) -> Buffer<u8> {
     // The initial `cached_buffer` contains the input.
     let mut b = bridge.cached_buffer.take();
@@ -350,12 +354,12 @@ pub extern "C" fn __run_expand1(
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         bridge.enter(|| {
             let reader = &mut &b[..];
-            let input = TokenStream::decode(reader, &mut ());
+            let input = A::decode(reader, &mut ());
 
             // Put the `cached_buffer` back in the `Bridge`, for requests.
             Bridge::with(|bridge| bridge.cached_buffer = b.take());
 
-            let output = f(crate::TokenStream(input)).0;
+            let output = f(input);
 
             // Take the `cached_buffer` back out, for the output value.
             b = Bridge::with(|bridge| bridge.cached_buffer.take());
@@ -383,65 +387,35 @@ pub extern "C" fn __run_expand1(
 
 impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
+        extern "C" fn run(
+            bridge: Bridge<'_>,
+            f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
+        ) -> Buffer<u8> {
+            run_client(bridge, |input| f(crate::TokenStream(input)).0)
+        }
         Client {
             get_handle_counters: HandleCounters::get,
-            run: __run_expand1,
+            run,
             f,
         }
     }
-}
-
-// FIXME(#53451) public to work around `Cannot create local mono-item` ICE,
-// affecting not only the function itself, but also the `BridgeState` `thread_local!`.
-pub extern "C" fn __run_expand2(
-    mut bridge: Bridge<'_>,
-    f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
-) -> Buffer<u8> {
-    // The initial `cached_buffer` contains the input.
-    let mut b = bridge.cached_buffer.take();
-
-    panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        bridge.enter(|| {
-            let reader = &mut &b[..];
-            let input = TokenStream::decode(reader, &mut ());
-            let input2 = TokenStream::decode(reader, &mut ());
-
-            // Put the `cached_buffer` back in the `Bridge`, for requests.
-            Bridge::with(|bridge| bridge.cached_buffer = b.take());
-
-            let output = f(crate::TokenStream(input), crate::TokenStream(input2)).0;
-
-            // Take the `cached_buffer` back out, for the output value.
-            b = Bridge::with(|bridge| bridge.cached_buffer.take());
-
-            // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-            // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-            // having handles outside the `bridge.enter(|| ...)` scope, and
-            // to catch panics that could happen while encoding the success.
-            //
-            // Note that panics should be impossible beyond this point, but
-            // this is defensively trying to avoid any accidental panicking
-            // reaching the `extern "C"` (which should `abort` but may not
-            // at the moment, so this is also potentially preventing UB).
-            b.clear();
-            Ok::<_, ()>(output).encode(&mut b, &mut ());
-        })
-    }))
-    .map_err(PanicMessage::from)
-    .unwrap_or_else(|e| {
-        b.clear();
-        Err::<(), _>(e).encode(&mut b, &mut ());
-    });
-    b
 }
 
 impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
     pub const fn expand2(
         f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream
     ) -> Self {
+        extern "C" fn run(
+            bridge: Bridge<'_>,
+            f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
+        ) -> Buffer<u8> {
+            run_client(bridge, |(input, input2)| {
+                f(crate::TokenStream(input), crate::TokenStream(input2)).0
+            })
+        }
         Client {
             get_handle_counters: HandleCounters::get,
-            run: __run_expand2,
+            run,
             f,
         }
     }

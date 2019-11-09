@@ -1,16 +1,15 @@
-use super::{Parser, PResult, PathStyle, SemiColonMode, BlockMode};
-use super::diagnostics::{Error, dummy_arg};
+use super::{Parser, PathStyle};
+use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 use crate::ptr::P;
-use crate::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrStyle, AnonConst, Item, ItemKind};
-use crate::ast::{ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
+use crate::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
+use crate::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use crate::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
 use crate::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
-use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, MethodSig, SelfKind, Param};
+use crate::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
 use crate::parse::token;
-use crate::parse::parser::maybe_append;
 use crate::tokenstream::{TokenTree, TokenStream};
 use crate::symbol::{kw, sym};
 use crate::source_map::{self, respan, Span};
@@ -18,8 +17,8 @@ use crate::ThinVec;
 
 use log::debug;
 use std::mem;
-use rustc_target::spec::abi::Abi;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
+use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
+use syntax_pos::BytePos;
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
@@ -98,7 +97,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::Use) {
             // USE ITEM
             let item_ = ItemKind::Use(P(self.parse_use_tree()?));
-            self.expect(&token::Semi)?;
+            self.expect_semi()?;
 
             let span = lo.to(self.prev_span);
             let item = self.mk_item(span, Ident::invalid(), item_, vis, attrs);
@@ -111,7 +110,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
 
-            let opt_abi = self.parse_opt_abi()?;
+            let abi = self.parse_opt_abi()?;
 
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM
@@ -120,12 +119,12 @@ impl<'a> Parser<'a> {
                     unsafety: Unsafety::Normal,
                     asyncness: respan(fn_span, IsAsync::NotAsync),
                     constness: respan(fn_span, Constness::NotConst),
-                    abi: opt_abi.unwrap_or(Abi::C),
+                    abi,
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             } else if self.check(&token::OpenDelim(token::Brace)) {
                 return Ok(Some(
-                    self.parse_item_foreign_mod(lo, opt_abi, vis, attrs, extern_sp)?,
+                    self.parse_item_foreign_mod(lo, abi, vis, attrs, extern_sp)?,
                 ));
             }
 
@@ -147,9 +146,7 @@ impl<'a> Parser<'a> {
                 let unsafety = self.parse_unsafety();
 
                 if self.check_keyword(kw::Extern) {
-                    self.sess.gated_spans.const_extern_fn.borrow_mut().push(
-                        lo.to(self.token.span)
-                    );
+                    self.sess.gated_spans.gate(sym::const_extern_fn, lo.to(self.token.span));
                 }
                 let abi = self.parse_extern_abi()?;
                 self.bump(); // `fn`
@@ -201,7 +198,7 @@ impl<'a> Parser<'a> {
                     unsafety,
                     asyncness,
                     constness: respan(fn_span, Constness::NotConst),
-                    abi: Abi::Rust,
+                    abi: Abi::new(sym::Rust, fn_span),
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             }
@@ -212,7 +209,7 @@ impl<'a> Parser<'a> {
         {
             // UNSAFE TRAIT ITEM
             self.bump(); // `unsafe`
-            let info = self.parse_item_trait(Unsafety::Unsafe)?;
+            let info = self.parse_item_trait(lo, Unsafety::Unsafe)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -238,7 +235,7 @@ impl<'a> Parser<'a> {
                 unsafety: Unsafety::Normal,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
-                abi: Abi::Rust,
+                abi: Abi::new(sym::Rust, fn_span),
             };
             return self.parse_item_fn(lo, vis, attrs, header);
         }
@@ -290,7 +287,7 @@ impl<'a> Parser<'a> {
                 && self.is_keyword_ahead(1, &[kw::Trait]))
         {
             // TRAIT ITEM
-            let info = self.parse_item_trait(Unsafety::Normal)?;
+            let info = self.parse_item_trait(lo, Unsafety::Normal)?;
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
@@ -339,7 +336,7 @@ impl<'a> Parser<'a> {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
                 let kw_name = self.recover_first_param();
-                self.consume_block(token::Paren);
+                self.consume_block(token::Paren, ConsumeClosingDelim::Yes);
                 let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
                     self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
                     self.bump();  // `{`
@@ -357,7 +354,7 @@ impl<'a> Parser<'a> {
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);
                 if !ambiguous {
-                    self.consume_block(token::Brace);
+                    self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
                     let suggestion = format!("add `{}` here to parse `{}` as a public {}",
                                              kw,
                                              ident,
@@ -416,8 +413,15 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<P<Item>>> {
         let (ident, item, extra_attrs) = info;
         let span = lo.to(self.prev_span);
-        let attrs = maybe_append(attrs, extra_attrs);
+        let attrs = Self::maybe_append(attrs, extra_attrs);
         Ok(Some(self.mk_item(span, ident, item, vis, attrs)))
+    }
+
+    fn maybe_append<T>(mut lhs: Vec<T>, mut rhs: Option<Vec<T>>) -> Vec<T> {
+        if let Some(ref mut rhs) = rhs {
+            lhs.append(rhs);
+        }
+        lhs
     }
 
     /// This is the fall-through for parsing items.
@@ -476,12 +480,14 @@ impl<'a> Parser<'a> {
     /// Emits an expected-item-after-attributes error.
     fn expected_item_err(&mut self, attrs: &[Attribute]) -> PResult<'a,  ()> {
         let message = match attrs.last() {
-            Some(&Attribute { is_sugared_doc: true, .. }) => "expected item after doc comment",
-            _ => "expected item after attributes",
+            Some(&Attribute { kind: AttrKind::DocComment(_), .. }) =>
+                "expected item after doc comment",
+            _ =>
+                "expected item after attributes",
         };
 
         let mut err = self.diagnostic().struct_span_err(self.prev_span, message);
-        if attrs.last().unwrap().is_sugared_doc {
+        if attrs.last().unwrap().is_doc_comment() {
             err.span_label(self.prev_span, "this doc comment doesn't document anything");
         }
         Err(err)
@@ -519,7 +525,7 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
             if delim != MacDelimiter::Brace {
-                self.expect(&token::Semi)?;
+                self.expect_semi()?;
             }
 
             Ok(Some(Mac {
@@ -665,7 +671,8 @@ impl<'a> Parser<'a> {
                 Err(mut err) => {
                     err.emit();
                     if !at_end {
-                        self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                        self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                        break;
                     }
                 }
             }
@@ -769,12 +776,12 @@ impl<'a> Parser<'a> {
         let typ = self.parse_ty()?;
         self.expect(&token::Eq)?;
         let expr = self.parse_expr()?;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok((name, ImplItemKind::Const(typ, expr), Generics::default()))
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
-    fn parse_item_trait(&mut self, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
+    fn parse_item_trait(&mut self, lo: Span, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) {
             IsAuto::Yes
@@ -787,29 +794,43 @@ impl<'a> Parser<'a> {
         let mut tps = self.parse_generics()?;
 
         // Parse optional colon and supertrait bounds.
-        let bounds = if self.eat(&token::Colon) {
+        let had_colon = self.eat(&token::Colon);
+        let span_at_colon = self.prev_span;
+        let bounds = if had_colon {
             self.parse_generic_bounds(Some(self.prev_span))?
         } else {
             Vec::new()
         };
 
+        let span_before_eq = self.prev_span;
         if self.eat(&token::Eq) {
             // It's a trait alias.
+            if had_colon {
+                let span = span_at_colon.to(span_before_eq);
+                self.struct_span_err(span, "bounds are not allowed on trait aliases")
+                    .emit();
+            }
+
             let bounds = self.parse_generic_bounds(None)?;
             tps.where_clause = self.parse_where_clause()?;
-            self.expect(&token::Semi)?;
+            self.expect_semi()?;
+
+            let whole_span = lo.to(self.prev_span);
             if is_auto == IsAuto::Yes {
                 let msg = "trait aliases cannot be `auto`";
-                self.struct_span_err(self.prev_span, msg)
-                    .span_label(self.prev_span, msg)
+                self.struct_span_err(whole_span, msg)
+                    .span_label(whole_span, msg)
                     .emit();
             }
             if unsafety != Unsafety::Normal {
                 let msg = "trait aliases cannot be `unsafe`";
-                self.struct_span_err(self.prev_span, msg)
-                    .span_label(self.prev_span, msg)
+                self.struct_span_err(whole_span, msg)
+                    .span_label(whole_span, msg)
                     .emit();
             }
+
+            self.sess.gated_spans.gate(sym::trait_alias, whole_span);
+
             Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
         } else {
             // It's a normal trait.
@@ -840,7 +861,8 @@ impl<'a> Parser<'a> {
                     Err(mut e) => {
                         e.emit();
                         if !at_end {
-                            self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                            self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
+                            break;
                         }
                     }
                 }
@@ -906,7 +928,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok((ident, TraitItemKind::Const(ty, default), Generics::default()))
     }
 
@@ -930,7 +952,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
 
         Ok((ident, TraitItemKind::Type(bounds, default), generics))
     }
@@ -1033,7 +1055,7 @@ impl<'a> Parser<'a> {
         } else {
             (orig_name, None)
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
 
         let span = lo.to(self.prev_span);
         Ok(self.mk_item(span, item_name, ItemKind::ExternCrate(orig_name), visibility, attrs))
@@ -1090,14 +1112,12 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_mod(
         &mut self,
         lo: Span,
-        opt_abi: Option<Abi>,
+        abi: Abi,
         visibility: Visibility,
         mut attrs: Vec<Attribute>,
         extern_sp: Span,
     ) -> PResult<'a, P<Item>> {
         self.expect(&token::OpenDelim(token::Brace))?;
-
-        let abi = opt_abi.unwrap_or(Abi::C);
 
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -1196,7 +1216,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
         let hi = self.token.span;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok(ForeignItem {
             ident,
             attrs,
@@ -1214,7 +1234,7 @@ impl<'a> Parser<'a> {
 
         let ident = self.parse_ident()?;
         let hi = self.token.span;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok(ast::ForeignItem {
             ident,
             attrs,
@@ -1261,7 +1281,7 @@ impl<'a> Parser<'a> {
 
         self.expect(&token::Eq)?;
         let e = self.parse_expr()?;
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         let item = match m {
             Some(m) => ItemKind::Static(ty, m, e),
             None => ItemKind::Const(ty, e),
@@ -1323,7 +1343,7 @@ impl<'a> Parser<'a> {
             let ty = self.parse_ty()?;
             AliasKind::Weak(ty)
         };
-        self.expect(&token::Semi)?;
+        self.expect_semi()?;
         Ok((ident, alias, tps))
     }
 
@@ -1447,7 +1467,7 @@ impl<'a> Parser<'a> {
         } else if self.token == token::OpenDelim(token::Paren) {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
             generics.where_clause = self.parse_where_clause()?;
-            self.expect(&token::Semi)?;
+            self.expect_semi()?;
             body
         } else {
             let token_str = self.this_token_descr();
@@ -1499,7 +1519,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
                 let field = self.parse_struct_decl_field().map_err(|e| {
-                    self.recover_stmt();
+                    self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
                     e
                 });
@@ -1507,6 +1527,7 @@ impl<'a> Parser<'a> {
                     Ok(field) => fields.push(field),
                     Err(mut err) => {
                         err.emit();
+                        break;
                     }
                 }
             }
@@ -1686,6 +1707,11 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_span);
+
+        if !def.legacy {
+            self.sess.gated_spans.gate(sym::decl_macro, span);
+        }
+
         Ok(Some(self.mk_item(span, ident, ItemKind::MacroDef(def), vis.clone(), attrs.to_vec())))
     }
 
@@ -1712,6 +1738,25 @@ impl<'a> Parser<'a> {
                 err.emit();
             }
         }
+    }
+
+    fn report_invalid_macro_expansion_item(&self) {
+        self.struct_span_err(
+            self.prev_span,
+            "macros that expand to items must be delimited with braces or followed by a semicolon",
+        ).multipart_suggestion(
+            "change the delimiters to curly braces",
+            vec![
+                (self.prev_span.with_hi(self.prev_span.lo() + BytePos(1)), String::from(" {")),
+                (self.prev_span.with_lo(self.prev_span.hi() - BytePos(1)), '}'.to_string()),
+            ],
+            Applicability::MaybeIncorrect,
+        ).span_suggestion(
+            self.sess.source_map().next_point(self.prev_span),
+            "add a semicolon",
+            ';'.to_string(),
+            Applicability::MaybeIncorrect,
+        ).emit();
     }
 
     fn mk_item(&self, span: Span, ident: Ident, kind: ItemKind, vis: Visibility,
@@ -1751,11 +1796,11 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<P<Item>>> {
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: header.abi == Abi::C && header.unsafety == Unsafety::Unsafe,
+            allow_c_variadic: header.abi.symbol == sym::C && header.unsafety == Unsafety::Unsafe,
             is_name_required: |_| true,
         })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        let kind = ItemKind::Fn(decl, header, generics, body);
+        let kind = ItemKind::Fn(FnSig { decl, header }, generics, body);
         self.mk_item_with_info(attrs, lo, vis, (ident, kind, Some(inner_attrs)))
     }
 
@@ -1852,14 +1897,14 @@ impl<'a> Parser<'a> {
     fn parse_method_sig(
         &mut self,
         is_name_required: fn(&token::Token) -> bool,
-    ) -> PResult<'a, (Ident, MethodSig, Generics)> {
+    ) -> PResult<'a, (Ident, FnSig, Generics)> {
         let header = self.parse_fn_front_matter()?;
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: true,
             allow_c_variadic: false,
             is_name_required,
         })?;
-        Ok((ident, MethodSig { header, decl }, generics))
+        Ok((ident, FnSig { header, decl }, generics))
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
@@ -1880,7 +1925,7 @@ impl<'a> Parser<'a> {
         let asyncness = respan(self.prev_span, asyncness);
         let unsafety = self.parse_unsafety();
         let (constness, unsafety, abi) = if is_const_fn {
-            (respan(const_span, Constness::Const), unsafety, Abi::Rust)
+            (respan(const_span, Constness::Const), unsafety, Abi::default())
         } else {
             let abi = self.parse_extern_abi()?;
             (respan(self.prev_span, Constness::NotConst), unsafety, abi)

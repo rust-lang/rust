@@ -1,5 +1,6 @@
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::{Drain, PeekMut};
+use std::iter::TrustedLen;
 
 #[test]
 fn test_iterator() {
@@ -14,7 +15,7 @@ fn test_iterator() {
 }
 
 #[test]
-fn test_iterator_reverse() {
+fn test_iter_rev_cloned_collect() {
     let data = vec![5, 9, 3];
     let iterout = vec![3, 5, 9];
     let pq = BinaryHeap::from(data);
@@ -24,7 +25,7 @@ fn test_iterator_reverse() {
 }
 
 #[test]
-fn test_move_iter() {
+fn test_into_iter_collect() {
     let data = vec![5, 9, 3];
     let iterout = vec![9, 5, 3];
     let pq = BinaryHeap::from(data);
@@ -34,7 +35,7 @@ fn test_move_iter() {
 }
 
 #[test]
-fn test_move_iter_size_hint() {
+fn test_into_iter_size_hint() {
     let data = vec![5, 9];
     let pq = BinaryHeap::from(data);
 
@@ -51,13 +52,72 @@ fn test_move_iter_size_hint() {
 }
 
 #[test]
-fn test_move_iter_reverse() {
+fn test_into_iter_rev_collect() {
     let data = vec![5, 9, 3];
     let iterout = vec![3, 5, 9];
     let pq = BinaryHeap::from(data);
 
     let v: Vec<_> = pq.into_iter().rev().collect();
     assert_eq!(v, iterout);
+}
+
+#[test]
+fn test_into_iter_sorted_collect() {
+    let heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
+    let it = heap.into_iter_sorted();
+    let sorted = it.collect::<Vec<_>>();
+    assert_eq!(sorted, vec![10, 9, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 0]);
+}
+
+#[test]
+fn test_drain_sorted_collect() {
+    let mut heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
+    let it = heap.drain_sorted();
+    let sorted = it.collect::<Vec<_>>();
+    assert_eq!(sorted, vec![10, 9, 8, 7, 6, 5, 4, 3, 2, 2, 1, 1, 0]);
+}
+
+fn check_exact_size_iterator<I: ExactSizeIterator>(len: usize, it: I) {
+    let mut it = it;
+
+    for i in 0..it.len() {
+        let (lower, upper) = it.size_hint();
+        assert_eq!(Some(lower), upper);
+        assert_eq!(lower, len - i);
+        assert_eq!(it.len(), len - i);
+        it.next();
+    }
+    assert_eq!(it.len(), 0);
+    assert!(it.is_empty());
+}
+
+#[test]
+fn test_exact_size_iterator() {
+    let heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
+    check_exact_size_iterator(heap.len(), heap.iter());
+    check_exact_size_iterator(heap.len(), heap.clone().into_iter());
+    check_exact_size_iterator(heap.len(), heap.clone().into_iter_sorted());
+    check_exact_size_iterator(heap.len(), heap.clone().drain());
+    check_exact_size_iterator(heap.len(), heap.clone().drain_sorted());
+}
+
+fn check_trusted_len<I: TrustedLen>(len: usize, it: I) {
+    let mut it = it;
+    for i in 0..len {
+        let (lower, upper) = it.size_hint();
+        if upper.is_some() {
+            assert_eq!(Some(lower), upper);
+            assert_eq!(lower, len - i);
+        }
+        it.next();
+    }
+}
+
+#[test]
+fn test_trusted_len() {
+    let heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
+    check_trusted_len(heap.len(), heap.clone().into_iter_sorted());
+    check_trusted_len(heap.len(), heap.clone().drain_sorted());
 }
 
 #[test]
@@ -202,6 +262,15 @@ fn test_drain() {
     let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
 
     assert_eq!(q.drain().take(5).count(), 5);
+
+    assert!(q.is_empty());
+}
+
+#[test]
+fn test_drain_sorted() {
+    let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
+
+    assert_eq!(q.drain_sorted().take(5).collect::<Vec<_>>(), vec![9, 8, 7, 6, 5]);
 
     assert!(q.is_empty());
 }

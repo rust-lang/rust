@@ -1,10 +1,10 @@
-error: suffixes on an ABI spec are invalid
+error: suffixes on a string literal are invalid
   --> $DIR/bad-lit-suffixes.rs:2:5
    |
 LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on an ABI spec are invalid
+error: suffixes on a string literal are invalid
   --> $DIR/bad-lit-suffixes.rs:6:5
    |
 LL |     "C"suffix

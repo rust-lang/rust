@@ -13,14 +13,24 @@ LL |     Dlona!();
 error: cannot find macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:50:5
    |
-LL |     attr_proc_macra!();
-   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `attr_proc_mac`
+LL | / macro_rules! attr_proc_mac {
+LL | |     () => {}
+LL | | }
+   | |_- similarly named macro `attr_proc_mac` defined here
+...
+LL |       attr_proc_macra!();
+   |       ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `attr_proc_mac`
 
 error: cannot find macro `FooWithLongNama` in this scope
   --> $DIR/resolve-error.rs:47:5
    |
-LL |     FooWithLongNama!();
-   |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `FooWithLongNam`
+LL | / macro_rules! FooWithLongNam {
+LL | |     () => {}
+LL | | }
+   | |_- similarly named macro `FooWithLongNam` defined here
+...
+LL |       FooWithLongNama!();
+   |       ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `FooWithLongNam`
 
 error: cannot find derive macro `attr_proc_macra` in this scope
   --> $DIR/resolve-error.rs:42:10

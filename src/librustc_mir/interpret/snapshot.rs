@@ -392,7 +392,7 @@ impl<'b, 'mir, 'tcx> SnapshotContext<'b>
     for Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>
 {
     fn resolve(&'b self, id: &AllocId) -> Option<&'b Allocation> {
-        self.get(*id).ok()
+        self.get_raw(*id).ok()
     }
 }
 

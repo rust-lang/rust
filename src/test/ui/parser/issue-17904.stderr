@@ -2,7 +2,7 @@ error: expected one of `:`, `==`, or `=`, found `;`
   --> $DIR/issue-17904.rs:4:33
    |
 LL | struct Foo<T> where T: Copy, (T);
-   |                                 ^ expected one of `:`, `==`, or `=` here
+   |                                 ^ expected one of `:`, `==`, or `=`
 
 error: aborting due to previous error
 

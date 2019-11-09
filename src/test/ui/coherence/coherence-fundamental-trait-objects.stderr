@@ -1,0 +1,14 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-fundamental-trait-objects.rs:12:1
+   |
+LL | impl Misc for dyn Fundamental<Local> {}
+   | ^^^^^^^^^^^^^^----------------------
+   | |             |
+   | |             `dyn coherence_fundamental_trait_lib::Fundamental<Local>` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0117`.

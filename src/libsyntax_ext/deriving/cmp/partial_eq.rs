@@ -3,9 +3,9 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{BinOpKind, Expr, MetaItem};
-use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
 use syntax::symbol::sym;
+use syntax_expand::base::{Annotatable, ExtCtxt};
 use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
@@ -13,8 +13,6 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   mitem: &MetaItem,
                                   item: &Annotatable,
                                   push: &mut dyn FnMut(Annotatable)) {
-    cx.resolver.add_derives(cx.current_expansion.id.expn_data().parent, SpecialDerives::PARTIAL_EQ);
-
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_op(cx: &mut ExtCtxt<'_>,
@@ -80,6 +78,11 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
             }
         } }
     }
+
+    super::inject_impl_of_structural_trait(
+        cx, span, item,
+        path_std!(cx, marker::StructuralPartialEq),
+        push);
 
     // avoid defining `ne` if we can
     // c-like enums, enums without any fields and structs without fields

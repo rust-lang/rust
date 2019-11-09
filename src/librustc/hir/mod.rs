@@ -19,7 +19,7 @@ use crate::ty::query::Providers;
 use crate::util::nodemap::{NodeMap, FxHashSet};
 
 use errors::FatalError;
-use syntax_pos::{Span, DUMMY_SP, symbol::InternedString, MultiSpan};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
@@ -628,9 +628,9 @@ impl Generics {
         own_counts
     }
 
-    pub fn get_named(&self, name: InternedString) -> Option<&GenericParam> {
+    pub fn get_named(&self, name: Symbol) -> Option<&GenericParam> {
         for param in &self.params {
-            if name == param.name.ident().as_interned_str() {
+            if name == param.name.ident().name {
                 return Some(param);
             }
         }
@@ -1073,6 +1073,13 @@ impl Mutability {
         match self {
             MutMutable => MutImmutable,
             MutImmutable => MutMutable,
+        }
+    }
+
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            MutMutable => "mut ",
+            MutImmutable => "",
         }
     }
 }
@@ -1616,6 +1623,11 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    ///
+    /// To resolve the called method to a `DefId`, call [`type_dependent_def_id`] with
+    /// the `hir_id` of the `MethodCall` node itself.
+    ///
+    /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
     MethodCall(P<PathSegment>, Span, HirVec<Expr>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(HirVec<Expr>),
@@ -1698,6 +1710,10 @@ pub enum ExprKind {
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
+///
+/// To resolve the path to a `DefId`, call [`qpath_res`].
+///
+/// [`qpath_res`]: ../ty/struct.TypeckTables.html#method.qpath_res
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum QPath {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
@@ -1860,9 +1876,10 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-/// Represents a method's signature in a trait declaration or implementation.
+/// Represents a function's signature in a trait declaration,
+/// trait implementation, or a free function.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct MethodSig {
+pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
@@ -1905,7 +1922,7 @@ pub enum TraitItemKind {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(P<Ty>, Option<BodyId>),
     /// A method with an optional body.
-    Method(MethodSig, TraitMethod),
+    Method(FnSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds, Option<P<Ty>>),
@@ -1939,7 +1956,7 @@ pub enum ImplItemKind {
     /// of the expression.
     Const(P<Ty>, BodyId),
     /// A method implementation with the given signature and body.
-    Method(MethodSig, BodyId),
+    Method(FnSig, BodyId),
     /// An associated type.
     TyAlias(P<Ty>),
     /// An associated `type = impl Trait`.
@@ -2173,6 +2190,15 @@ pub enum IsAsync {
 pub enum Unsafety {
     Unsafe,
     Normal,
+}
+
+impl Unsafety {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Unsafety::Unsafe => "unsafe ",
+            Unsafety::Normal => "",
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2509,10 +2535,10 @@ pub enum ItemKind {
     /// A `const` item.
     Const(P<Ty>, BodyId),
     /// A function declaration.
-    Fn(P<FnDecl>, FnHeader, Generics, BodyId),
+    Fn(FnSig, Generics, BodyId),
     /// A module.
     Mod(Mod),
-    /// An external module.
+    /// An external module, e.g. `extern { .. }`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(P<GlobalAsm>),
@@ -2574,7 +2600,7 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Fn(_, ref generics, _) |
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |
@@ -2756,10 +2782,10 @@ bitflags! {
         /// `#[used]`: indicates that LLVM can't eliminate this function (but the
         /// linker can!).
         const USED                      = 1 << 9;
-        /// #[ffi_returns_twice], indicates that an extern function can return
+        /// `#[ffi_returns_twice]`, indicates that an extern function can return
         /// multiple times
         const FFI_RETURNS_TWICE         = 1 << 10;
-        /// #[track_caller]: allow access to the caller location
+        /// `#[track_caller]`: allow access to the caller location
         const TRACK_CALLER              = 1 << 11;
     }
 }

@@ -194,7 +194,7 @@ a guard.
 ```compile_fail,E0029
 let string = "salutations !";
 
-// The ordering relation for strings can't be evaluated at compile time,
+// The ordering relation for strings cannot be evaluated at compile time,
 // so this doesn't work:
 match string {
     "hello" ..= "world" => {}
@@ -348,7 +348,7 @@ fn main() {
 "##,
 
 E0044: r##"
-You can't use type or const parameters on foreign items.
+You cannot use type or const parameters on foreign items.
 Example of erroneous code:
 
 ```compile_fail,E0044
@@ -788,7 +788,7 @@ fn some_other_func() {}
 fn some_function() {
     SOME_CONST = 14; // error : a constant value cannot be changed!
     1 = 3; // error : 1 isn't a valid place!
-    some_other_func() = 4; // error : we can't assign value to a function!
+    some_other_func() = 4; // error : we cannot assign value to a function!
     SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
                        // like a variable!
 }
@@ -3891,6 +3891,52 @@ details.
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
 "##,
 
+E0587: r##"
+A type has both `packed` and `align` representation hints.
+
+Erroneous code example:
+
+```compile_fail,E0587
+#[repr(packed, align(8))] // error!
+struct Umbrella(i32);
+```
+
+You cannot use `packed` and `align` hints on a same type. If you want to pack a
+type to a given size, you should provide a size to packed:
+
+```
+#[repr(packed)] // ok!
+struct Umbrella(i32);
+```
+"##,
+
+E0588: r##"
+A type with `packed` representation hint has a field with `align`
+representation hint.
+
+Erroneous code example:
+
+```compile_fail,E0588
+#[repr(align(16))]
+struct Aligned(i32);
+
+#[repr(packed)] // error!
+struct Packed(Aligned);
+```
+
+Just like you cannot have both `align` and `packed` representation hints on a
+same type, a `packed` type cannot contain another type with the `align`
+representation hint. However, you can do the opposite:
+
+```
+#[repr(packed)]
+struct Packed(i32);
+
+#[repr(align(16))] // ok!
+struct Aligned(Packed);
+```
+"##,
+
 E0592: r##"
 This error occurs when you defined methods or associated functions with same
 name.
@@ -4299,7 +4345,7 @@ extern {
 
 unsafe {
     printf(::std::ptr::null(), 0f32);
-    // error: can't pass an `f32` to variadic function, cast to `c_double`
+    // error: cannot pass an `f32` to variadic function, cast to `c_double`
 }
 ```
 
@@ -4319,11 +4365,12 @@ enum X {
     Entry,
 }
 
-X::Entry(); // error: expected function, found `X::Entry`
+X::Entry(); // error: expected function, tuple struct or tuple variant,
+            // found `X::Entry`
 
 // Or even simpler:
 let x = 0i32;
-x(); // error: expected function, found `i32`
+x(); // error: expected function, tuple struct or tuple variant, found `i32`
 ```
 
 Only functions and methods can be called using `()`. Example:
@@ -4911,7 +4958,7 @@ and the pin is required to keep it in the same place in memory.
 "##,
 
 E0737: r##"
-#[track_caller] requires functions to have the "Rust" ABI for implicitly
+`#[track_caller]` requires functions to have the `"Rust"` ABI for implicitly
 receiving caller location. See [RFC 2091] for details on this and other
 restrictions.
 
@@ -4927,55 +4974,28 @@ extern "C" fn foo() {}
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
 
-E0738: r##"
-#[track_caller] cannot be used in traits yet.  This is due to limitations in the
-compiler which are likely to be temporary. See [RFC 2091] for details on this
-and other restrictions.
+E0741: r##"
+Only `structural_match` types (that is, types that derive `PartialEq` and `Eq`)
+may be used as the types of const generic parameters.
 
-Erroneous example with a trait method implementation:
+```compile_fail,E0741
+#![feature(const_generics)]
 
-```compile_fail,E0738
-#![feature(track_caller)]
+struct A;
 
-trait Foo {
-    fn bar(&self);
-}
-
-impl Foo for u64 {
-    #[track_caller]
-    fn bar(&self) {}
-}
+struct B<const X: A>; // error!
 ```
 
-Erroneous example with a blanket trait method implementation:
+To fix this example, we derive `PartialEq` and `Eq`.
 
-```compile_fail,E0738
-#![feature(track_caller)]
-
-trait Foo {
-    #[track_caller]
-    fn bar(&self) {}
-    fn baz(&self);
-}
 ```
+#![feature(const_generics)]
 
-Erroneous example with a trait method declaration:
+#[derive(PartialEq, Eq)]
+struct A;
 
-```compile_fail,E0738
-#![feature(track_caller)]
-
-trait Foo {
-    fn bar(&self) {}
-
-    #[track_caller]
-    fn baz(&self);
-}
+struct B<const X: A>; // ok!
 ```
-
-Note that while the compiler may be able to support the attribute in traits in
-the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
-
-[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
 
 ;
@@ -5000,7 +5020,7 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 //  E0174,
 //  E0182, // merged into E0229
     E0183,
-//  E0187, // can't infer the kind of the closure
+//  E0187, // cannot infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
@@ -5046,8 +5066,6 @@ the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
 //  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
-    E0587, // type has conflicting packed and align representation hints
-    E0588, // packed type cannot transitively contain a `[repr(align)]` type
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)

@@ -11,10 +11,11 @@ use serde::Serialize;
 
 use std::collections::BTreeMap;
 use std::env;
-use std::fs;
+use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
+use std::collections::HashMap;
 
 static HOSTS: &[&str] = &[
     "aarch64-unknown-linux-gnu",
@@ -52,6 +53,7 @@ static TARGETS: &[&str] = &[
     "aarch64-linux-android",
     "aarch64-pc-windows-msvc",
     "aarch64-unknown-cloudabi",
+    "aarch64-unknown-hermit",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
     "aarch64-unknown-redox",
@@ -90,7 +92,9 @@ static TARGETS: &[&str] = &[
     "mips-unknown-linux-gnu",
     "mips-unknown-linux-musl",
     "mips64-unknown-linux-gnuabi64",
+    "mips64-unknown-linux-muslabi64",
     "mips64el-unknown-linux-gnuabi64",
+    "mips64el-unknown-linux-muslabi64",
     "mipsisa32r6-unknown-linux-gnu",
     "mipsisa32r6el-unknown-linux-gnu",
     "mipsisa64r6-unknown-linux-gnuabi64",
@@ -136,6 +140,7 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
     "x86_64-unknown-redox",
+    "x86_64-unknown-hermit",
 ];
 
 static DOCS_TARGETS: &[&str] = &[
@@ -362,12 +367,32 @@ impl Builder {
         self.lldb_git_commit_hash = self.git_commit_hash("lldb", "x86_64-unknown-linux-gnu");
         self.miri_git_commit_hash = self.git_commit_hash("miri", "x86_64-unknown-linux-gnu");
 
+        self.check_toolstate();
         self.digest_and_sign();
         let manifest = self.build_manifest();
         self.write_channel_files(&self.rust_release, &manifest);
 
         if self.rust_release != "beta" && self.rust_release != "nightly" {
             self.write_channel_files("stable", &manifest);
+        }
+    }
+
+    /// If a tool does not pass its tests, don't ship it.
+    /// Right now, we do this only for Miri.
+    fn check_toolstate(&mut self) {
+        let toolstates: Option<HashMap<String, String>> =
+            File::open(self.input.join("toolstates-linux.json")).ok()
+                .and_then(|f| serde_json::from_reader(&f).ok());
+        let toolstates = toolstates.unwrap_or_else(|| {
+            println!("WARNING: `toolstates-linux.json` missing/malformed; \
+                assuming all tools failed");
+            HashMap::default() // Use empty map if anything went wrong.
+        });
+        // Mark some tools as missing based on toolstate.
+        if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
+            println!("Miri tests are not passing, removing component");
+            self.miri_version = None;
+            self.miri_git_commit_hash = None;
         }
     }
 
@@ -399,6 +424,7 @@ impl Builder {
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
+        package("rustc-dev", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
         package("rust-std", TARGETS);
@@ -426,6 +452,13 @@ impl Builder {
             "rls-preview", "rust-src", "llvm-tools-preview",
             "lldb-preview", "rust-analysis", "miri-preview"
         ]);
+
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users.
+        if self.rust_release == "nightly" {
+            self.extend_profile("default", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+        }
     }
 
     fn add_renames_to(&self, manifest: &mut Manifest) {
@@ -481,6 +514,15 @@ impl Builder {
             components.push(host_component("rust-mingw"));
         }
 
+        // The compiler libraries are not stable for end users, but `rustc-dev` was only recently
+        // split out of `rust-std`. We'll include it by default as a transition for nightly users,
+        // but ship it as an optional component on the beta and stable channels.
+        if self.rust_release == "nightly" {
+            components.push(host_component("rustc-dev"));
+        } else {
+            extensions.push(host_component("rustc-dev"));
+        }
+
         // Tools are always present in the manifest,
         // but might be marked as unavailable if they weren't built.
         extensions.extend(vec![
@@ -497,6 +539,11 @@ impl Builder {
             TARGETS.iter()
                 .filter(|&&target| target != host)
                 .map(|target| Component::from_str("rust-std", target))
+        );
+        extensions.extend(
+            HOSTS.iter()
+                .filter(|&&target| target != host)
+                .map(|target| Component::from_str("rustc-dev", target))
         );
         extensions.push(Component::from_str("rust-src", "*"));
 
@@ -532,6 +579,14 @@ impl Builder {
                dst: &mut BTreeMap<String, Vec<String>>,
                pkgs: &[&str]) {
         dst.insert(profile_name.to_owned(), pkgs.iter().map(|s| (*s).to_owned()).collect());
+    }
+
+    fn extend_profile(&mut self,
+               profile_name: &str,
+               dst: &mut BTreeMap<String, Vec<String>>,
+               pkgs: &[&str]) {
+        dst.get_mut(profile_name).expect("existing profile")
+            .extend(pkgs.iter().map(|s| (*s).to_owned()));
     }
 
     fn package(&mut self,

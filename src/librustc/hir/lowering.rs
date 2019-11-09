@@ -43,8 +43,8 @@ use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::def::{Namespace, Res, DefKind, PartialRes, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::hir::ptr::P;
-use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-                    ELIDED_LIFETIMES_IN_PATHS};
+use crate::lint;
+use crate::lint::builtin::{self, ELIDED_LIFETIMES_IN_PATHS};
 use crate::middle::cstore::CrateStore;
 use crate::session::Session;
 use crate::session::config::nightly_options;
@@ -64,9 +64,8 @@ use syntax::ast;
 use syntax::ptr::P as AstP;
 use syntax::ast::*;
 use syntax::errors;
-use syntax_expand::base::SpecialDerives;
 use syntax::print::pprust;
-use syntax::parse::token::{self, Nonterminal, Token};
+use syntax::token::{self, Nonterminal, Token};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::sess::ParseSess;
 use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
@@ -82,8 +81,6 @@ pub struct LoweringContext<'a> {
 
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
-
-    cstore: &'a dyn CrateStore,
 
     resolver: &'a mut dyn Resolver,
 
@@ -160,6 +157,8 @@ pub struct LoweringContext<'a> {
 }
 
 pub trait Resolver {
+    fn cstore(&self) -> &dyn CrateStore;
+
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
 
@@ -183,7 +182,7 @@ pub trait Resolver {
         ns: Namespace,
     ) -> (ast::Path, Res<NodeId>);
 
-    fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool;
+    fn lint_buffer(&mut self) -> &mut lint::LintBuffer;
 }
 
 type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
@@ -240,7 +239,6 @@ impl<'a> ImplTraitContext<'a> {
 
 pub fn lower_crate(
     sess: &Session,
-    cstore: &dyn CrateStore,
     dep_graph: &DepGraph,
     krate: &Crate,
     resolver: &mut dyn Resolver,
@@ -256,7 +254,6 @@ pub fn lower_crate(
     LoweringContext {
         crate_root: sess.parse_sess.injected_crate_name.try_get().copied(),
         sess,
-        cstore,
         resolver,
         nt_to_tokenstream,
         items: BTreeMap::new(),
@@ -300,7 +297,6 @@ enum ParamMode {
 
 enum ParenthesizedGenericArgs {
     Ok,
-    Warn,
     Err,
 }
 
@@ -792,15 +788,15 @@ impl<'a> LoweringContext<'a> {
         // really show up for end-user.
         let (str_name, kind) = match hir_name {
             ParamName::Plain(ident) => (
-                ident.as_interned_str(),
+                ident.name,
                 hir::LifetimeParamKind::InBand,
             ),
             ParamName::Fresh(_) => (
-                kw::UnderscoreLifetime.as_interned_str(),
+                kw::UnderscoreLifetime,
                 hir::LifetimeParamKind::Elided,
             ),
             ParamName::Error => (
-                kw::UnderscoreLifetime.as_interned_str(),
+                kw::UnderscoreLifetime,
                 hir::LifetimeParamKind::Error,
             ),
         };
@@ -980,7 +976,7 @@ impl<'a> LoweringContext<'a> {
         if id.is_local() {
             self.resolver.definitions().def_key(id.index)
         } else {
-            self.cstore.def_key(id)
+            self.resolver.cstore().def_key(id)
         }
     }
 
@@ -999,14 +995,20 @@ impl<'a> LoweringContext<'a> {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
+        let kind = match attr.kind {
+            AttrKind::Normal(ref item) => {
+                AttrKind::Normal(AttrItem {
+                    path: item.path.clone(),
+                    tokens: self.lower_token_stream(item.tokens.clone()),
+                })
+            }
+            AttrKind::DocComment(comment) => AttrKind::DocComment(comment)
+        };
+
         Attribute {
-            item: AttrItem {
-                path: attr.path.clone(),
-                tokens: self.lower_token_stream(attr.tokens.clone()),
-            },
+            kind,
             id: attr.id,
             style: attr.style,
-            is_sugared_doc: attr.is_sugared_doc,
             span: attr.span,
         }
     }
@@ -1212,7 +1214,7 @@ impl<'a> LoweringContext<'a> {
                                     ImplTraitContext::disallowed(),
                                 ),
                                 unsafety: this.lower_unsafety(f.unsafety),
-                                abi: f.abi,
+                                abi: this.lower_abi(f.abi),
                                 decl: this.lower_fn_decl(&f.decl, None, false, None),
                                 param_names: this.lower_fn_params_to_names(&f.decl),
                             }))
@@ -1590,7 +1592,7 @@ impl<'a> LoweringContext<'a> {
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
-                        DefPathData::LifetimeNs(name.ident().as_interned_str()),
+                        DefPathData::LifetimeNs(name.ident().name),
                         ExpnId::root(),
                         lifetime.span);
 
@@ -1697,29 +1699,19 @@ impl<'a> LoweringContext<'a> {
                     };
                     let parenthesized_generic_args = match partial_res.base_res() {
                         // `a::b::Trait(Args)`
-                        Res::Def(DefKind::Trait, _)
-                            if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
+                        Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
+                            ParenthesizedGenericArgs::Ok
+                        }
                         // `a::b::Trait(Args)::TraitItem`
-                        Res::Def(DefKind::Method, _)
-                        | Res::Def(DefKind::AssocConst, _)
-                        | Res::Def(DefKind::AssocTy, _)
-                            if i + 2 == proj_start =>
-                        {
+                        Res::Def(DefKind::Method, _) |
+                        Res::Def(DefKind::AssocConst, _) |
+                        Res::Def(DefKind::AssocTy, _) if i + 2 == proj_start => {
                             ParenthesizedGenericArgs::Ok
                         }
                         // Avoid duplicated errors.
                         Res::Err => ParenthesizedGenericArgs::Ok,
                         // An error
-                        Res::Def(DefKind::Struct, _)
-                        | Res::Def(DefKind::Enum, _)
-                        | Res::Def(DefKind::Union, _)
-                        | Res::Def(DefKind::TyAlias, _)
-                        | Res::Def(DefKind::Variant, _) if i + 1 == proj_start =>
-                        {
-                            ParenthesizedGenericArgs::Err
-                        }
-                        // A warning for now, for compatibility reasons.
-                        _ => ParenthesizedGenericArgs::Warn,
+                        _ => ParenthesizedGenericArgs::Err,
                     };
 
                     let num_lifetimes = type_def_id.map_or(0, |def_id| {
@@ -1727,8 +1719,8 @@ impl<'a> LoweringContext<'a> {
                             return n;
                         }
                         assert!(!def_id.is_local());
-                        let item_generics =
-                            self.cstore.item_generics_cloned_untracked(def_id, self.sess);
+                        let item_generics = self.resolver.cstore()
+                            .item_generics_cloned_untracked(def_id, self.sess);
                         let n = item_generics.own_counts().lifetimes;
                         self.type_def_lifetime_params.insert(def_id, n);
                         n
@@ -1782,7 +1774,7 @@ impl<'a> LoweringContext<'a> {
                 segment,
                 param_mode,
                 0,
-                ParenthesizedGenericArgs::Warn,
+                ParenthesizedGenericArgs::Err,
                 itctx.reborrow(),
                 None,
             ));
@@ -1858,15 +1850,6 @@ impl<'a> LoweringContext<'a> {
                 }
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
-                    ParenthesizedGenericArgs::Warn => {
-                        self.sess.buffer_lint(
-                            PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-                            CRATE_NODE_ID,
-                            data.span,
-                            msg.into(),
-                        );
-                        (hir::GenericArgs::none(), true)
-                    }
                     ParenthesizedGenericArgs::Err => {
                         let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
@@ -1955,7 +1938,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     AnonymousLifetimeMode::PassThrough |
                     AnonymousLifetimeMode::ReportError => {
-                        self.sess.buffer_lint_with_diagnostic(
+                        self.resolver.lint_buffer().buffer_lint_with_diagnostic(
                             ELIDED_LIFETIMES_IN_PATHS,
                             CRATE_NODE_ID,
                             path_span,
@@ -3348,7 +3331,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
+    fn maybe_lint_bare_trait(&mut self, span: Span, id: NodeId, is_global: bool) {
         // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
         // call site which do not have a macro backtrace. See #61963.
         let is_macro_callsite = self.sess.source_map()
@@ -3356,7 +3339,7 @@ impl<'a> LoweringContext<'a> {
             .map(|snippet| snippet.starts_with("#["))
             .unwrap_or(true);
         if !is_macro_callsite {
-            self.sess.buffer_lint_with_diagnostic(
+            self.resolver.lint_buffer().buffer_lint_with_diagnostic(
                 builtin::BARE_TRAIT_OBJECTS,
                 id,
                 span,
@@ -3384,7 +3367,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
     // either in std or core, i.e. has either a `::std::ops::Range` or
     // `::core::ops::Range` prefix.
     fn is_range_path(path: &Path) -> bool {
-        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.as_str().to_string()).collect();
+        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.to_string()).collect();
         let segs: Vec<_> = segs.iter().map(|seg| &**seg).collect();
 
         // "{{root}}" is the equivalent of `::` prefix in `Path`.
@@ -3425,7 +3408,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
         ExprKind::Call(ref func, _) => {
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
                 if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
-                    let new_call = segment.ident.as_str() == "new";
+                    let new_call = segment.ident.name == sym::new;
                     return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;
                 }
             }

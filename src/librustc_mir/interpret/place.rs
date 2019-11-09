@@ -195,7 +195,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             // We need to consult `meta` metadata
             match self.layout.ty.kind {
                 ty::Slice(..) | ty::Str =>
-                    return self.mplace.meta.unwrap().to_usize(cx),
+                    return self.mplace.meta.unwrap().to_machine_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -287,17 +287,23 @@ where
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
+        let pointee_type = val.layout.ty.builtin_deref(true)
+            .expect("`ref_to_mplace` called on non-ptr type")
+            .ty;
         let layout = self.layout_of(pointee_type)?;
+        let (ptr, meta) = match *val {
+            Immediate::Scalar(ptr) => (ptr.not_undef()?, None),
+            Immediate::ScalarPair(ptr, meta) => (ptr.not_undef()?, Some(meta.not_undef()?)),
+        };
 
         let mplace = MemPlace {
-            ptr: val.to_scalar_ptr()?,
+            ptr,
             // We could use the run-time alignment here. For now, we do not, because
             // the point of tracking the alignment here is to make sure that the *static*
             // alignment information emitted with the loads is correct. The run-time
             // alignment can only be more restrictive.
             align: layout.align.abi,
-            meta: val.to_meta()?,
+            meta,
         };
         Ok(MPlaceTy { mplace, layout })
     }
@@ -802,7 +808,7 @@ where
                     _ => bug!("write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                             dest.layout)
                 }
-                self.memory.get_mut(ptr.alloc_id)?.write_scalar(
+                self.memory.get_raw_mut(ptr.alloc_id)?.write_scalar(
                     tcx, ptr, scalar, dest.layout.size
                 )
             }
@@ -824,10 +830,10 @@ where
                 // fields do not match the `ScalarPair` components.
 
                 self.memory
-                    .get_mut(ptr.alloc_id)?
+                    .get_raw_mut(ptr.alloc_id)?
                     .write_scalar(tcx, ptr, a_val, a_size)?;
                 self.memory
-                    .get_mut(b_ptr.alloc_id)?
+                    .get_raw_mut(b_ptr.alloc_id)?
                     .write_scalar(tcx, b_ptr, b_val, b_size)
             }
         }

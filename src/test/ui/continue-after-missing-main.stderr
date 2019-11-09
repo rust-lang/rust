@@ -3,15 +3,15 @@ error[E0601]: `main` function not found in crate `continue_after_missing_main`
    |
 LL | / #![allow(dead_code)]
 LL | |
-LL | | // error-pattern:`main` function not found in crate
-LL | |
+LL | | struct Tableau<'a, MP> {
+LL | |     provider: &'a MP,
 ...  |
 LL | |
 LL | | }
    | |_^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
 
 error[E0623]: lifetime mismatch
-  --> $DIR/continue-after-missing-main.rs:30:56
+  --> $DIR/continue-after-missing-main.rs:28:56
    |
 LL |     tableau: Tableau<'data_provider, AdaptedMatrixProvider<'original_data, MP>>,
    |              ------------------------------------------------------------------ these two types are declared with different lifetimes...

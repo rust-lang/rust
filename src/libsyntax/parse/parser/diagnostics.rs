@@ -1,18 +1,16 @@
-use super::{
-    BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType,
-    SeqSep, PResult, Parser
-};
+use super::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType, SeqSep, Parser};
 use crate::ast::{
     self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
-use crate::parse::token::{self, TokenKind};
+use crate::token::{self, TokenKind, token_can_begin_expr};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId, pluralise};
+
+use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
@@ -171,6 +169,12 @@ impl RecoverQPath for Expr {
     }
 }
 
+/// Control whether the closing delimiter should be consumed when calling `Parser::consume_block`.
+crate enum ConsumeClosingDelim {
+    Yes,
+    No,
+}
+
 impl<'a> Parser<'a> {
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.span_fatal(self.token.span, m)
@@ -274,23 +278,23 @@ impl<'a> Parser<'a> {
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
         let expect = tokens_to_string(&expected[..]);
-        let actual = self.this_token_to_string();
+        let actual = self.this_token_descr();
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
             let short_expect = if expected.len() > 6 {
                 format!("{} possible tokens", expected.len())
             } else {
                 expect.clone()
             };
-            (format!("expected one of {}, found `{}`", expect, actual),
+            (format!("expected one of {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
-                format!("expected one of {} here", short_expect)))
+                format!("expected one of {}", short_expect)))
         } else if expected.is_empty() {
-            (format!("unexpected token: `{}`", actual),
+            (format!("unexpected token: {}", actual),
                 (self.prev_span, "unexpected token after this".to_string()))
         } else {
-            (format!("expected {}, found `{}`", expect, actual),
+            (format!("expected {}, found {}", expect, actual),
                 (self.sess.source_map().next_point(self.prev_span),
-                format!("expected {} here", expect)))
+                format!("expected {}", expect)))
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.fatal(&msg_exp);
@@ -326,69 +330,39 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let is_semi_suggestable = expected.iter().any(|t| match t {
-            TokenType::Token(token::Semi) => true, // We expect a `;` here.
-            _ => false,
-        }) && ( // A `;` would be expected before the current keyword.
-            self.token.is_keyword(kw::Break) ||
-            self.token.is_keyword(kw::Continue) ||
-            self.token.is_keyword(kw::For) ||
-            self.token.is_keyword(kw::If) ||
-            self.token.is_keyword(kw::Let) ||
-            self.token.is_keyword(kw::Loop) ||
-            self.token.is_keyword(kw::Match) ||
-            self.token.is_keyword(kw::Return) ||
-            self.token.is_keyword(kw::While)
-        );
         let sm = self.sess.source_map();
-        match (sm.lookup_line(self.token.span.lo()), sm.lookup_line(sp.lo())) {
-            (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
-                // The spans are in different lines, expected `;` and found `let` or `return`.
-                // High likelihood that it is only a missing `;`.
-                err.span_suggestion_short(
-                    label_sp,
-                    "a semicolon may be missing here",
-                    ";".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-                err.emit();
-                return Ok(true);
-            }
-            (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                // When the spans are in the same line, it means that the only content between
-                // them is whitespace, point at the found token in that case:
-                //
-                // X |     () => { syntax error };
-                //   |                    ^^^^^ expected one of 8 possible tokens here
-                //
-                // instead of having:
-                //
-                // X |     () => { syntax error };
-                //   |                   -^^^^^ unexpected token
-                //   |                   |
-                //   |                   expected one of 8 possible tokens here
-                err.span_label(self.token.span, label_exp);
-            }
-            _ if self.prev_span == syntax_pos::DUMMY_SP => {
-                // Account for macro context where the previous span might not be
-                // available to avoid incorrect output (#54841).
-                err.span_label(self.token.span, "unexpected token");
-            }
-            _ => {
-                err.span_label(sp, label_exp);
-                err.span_label(self.token.span, "unexpected token");
-            }
+        if self.prev_span == DUMMY_SP {
+            // Account for macro context where the previous span might not be
+            // available to avoid incorrect output (#54841).
+            err.span_label(self.token.span, label_exp);
+        } else if !sm.is_multiline(self.token.span.shrink_to_hi().until(sp.shrink_to_lo())) {
+            // When the spans are in the same line, it means that the only content between
+            // them is whitespace, point at the found token in that case:
+            //
+            // X |     () => { syntax error };
+            //   |                    ^^^^^ expected one of 8 possible tokens here
+            //
+            // instead of having:
+            //
+            // X |     () => { syntax error };
+            //   |                   -^^^^^ unexpected token
+            //   |                   |
+            //   |                   expected one of 8 possible tokens here
+            err.span_label(self.token.span, label_exp);
+        } else {
+            err.span_label(sp, label_exp);
+            err.span_label(self.token.span, "unexpected token");
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
     }
 
     pub fn maybe_annotate_with_ascription(
-        &self,
+        &mut self,
         err: &mut DiagnosticBuilder<'_>,
         maybe_expected_semicolon: bool,
     ) {
-        if let Some((sp, likely_path)) = self.last_type_ascription {
+        if let Some((sp, likely_path)) = self.last_type_ascription.take() {
             let sm = self.sess.source_map();
             let next_pos = sm.lookup_char_pos(self.token.span.lo());
             let op_pos = sm.lookup_char_pos(sp.hi());
@@ -539,11 +513,11 @@ impl<'a> Parser<'a> {
             self.diagnostic()
                 .struct_span_err(
                     span,
-                    &format!("unmatched angle bracket{}", pluralise!(total_num_of_gt)),
+                    &format!("unmatched angle bracket{}", pluralize!(total_num_of_gt)),
                 )
                 .span_suggestion(
                     span,
-                    &format!("remove extra angle bracket{}", pluralise!(total_num_of_gt)),
+                    &format!("remove extra angle bracket{}", pluralize!(total_num_of_gt)),
                     String::new(),
                     Applicability::MachineApplicable,
                 )
@@ -902,18 +876,62 @@ impl<'a> Parser<'a> {
             }
         }
         let sm = self.sess.source_map();
-        match (sm.lookup_line(prev_sp.lo()), sm.lookup_line(sp.lo())) {
-            (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                // When the spans are in the same line, it means that the only content
-                // between them is whitespace, point only at the found token.
-                err.span_label(sp, label_exp);
-            }
-            _ => {
-                err.span_label(prev_sp, label_exp);
-                err.span_label(sp, "unexpected token");
-            }
+        if !sm.is_multiline(prev_sp.until(sp)) {
+            // When the spans are in the same line, it means that the only content
+            // between them is whitespace, point only at the found token.
+            err.span_label(sp, label_exp);
+        } else {
+            err.span_label(prev_sp, label_exp);
+            err.span_label(sp, "unexpected token");
         }
         Err(err)
+    }
+
+    pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {
+        if self.eat(&token::Semi) {
+            return Ok(());
+        }
+        let sm = self.sess.source_map();
+        let msg = format!("expected `;`, found `{}`", self.this_token_descr());
+        let appl = Applicability::MachineApplicable;
+        if self.token.span == DUMMY_SP || self.prev_span == DUMMY_SP {
+            // Likely inside a macro, can't provide meaninful suggestions.
+            return self.expect(&token::Semi).map(|_| ());
+        } else if !sm.is_multiline(self.prev_span.until(self.token.span)) {
+            // The current token is in the same line as the prior token, not recoverable.
+        } else if self.look_ahead(1, |t| t == &token::CloseDelim(token::Brace)
+            || token_can_begin_expr(t) && t.kind != token::Colon
+        ) && [token::Comma, token::Colon].contains(&self.token.kind) {
+            // Likely typo: `,` → `;` or `:` → `;`. This is triggered if the current token is
+            // either `,` or `:`, and the next token could either start a new statement or is a
+            // block close. For example:
+            //
+            //   let x = 32:
+            //   let y = 42;
+            self.bump();
+            let sp = self.prev_span;
+            self.struct_span_err(sp, &msg)
+                .span_suggestion(sp, "change this to `;`", ";".to_string(), appl)
+                .emit();
+            return Ok(())
+        } else if self.look_ahead(0, |t| t == &token::CloseDelim(token::Brace) || (
+                token_can_begin_expr(t)
+                && t != &token::Semi
+                && t != &token::Pound // Avoid triggering with too many trailing `#` in raw string.
+        )) {
+            // Missing semicolon typo. This is triggered if the next token could either start a
+            // new statement or is a block close. For example:
+            //
+            //   let x = 32
+            //   let y = 42;
+            let sp = self.prev_span.shrink_to_hi();
+            self.struct_span_err(sp, &msg)
+                .span_label(self.token.span, "unexpected token")
+                .span_suggestion_short(sp, "add `;` here", ";".to_string(), appl)
+                .emit();
+            return Ok(())
+        }
+        self.expect(&token::Semi).map(|_| ()) // Error unconditionally
     }
 
     pub(super) fn parse_semi_or_incorrect_foreign_fn_body(
@@ -943,7 +961,7 @@ impl<'a> Parser<'a> {
                 Err(mut err) => {
                     err.cancel();
                     mem::replace(self, parser_snapshot);
-                    self.expect(&token::Semi)?;
+                    self.expect_semi()?;
                 }
             }
         } else {
@@ -1068,8 +1086,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
-        self.token.is_ident() &&
-            if let ast::ExprKind::Path(..) = node { true } else { false } &&
+        (self.token == token::Lt && // `foo:<bar`, likely a typoed turbofish.
+            self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+        ) ||
+            self.token.is_ident() &&
+            match node {
+                // `foo::` → `foo:` or `foo.bar::` → `foo.bar:`
+                ast::ExprKind::Path(..) | ast::ExprKind::Field(..) => true,
+                _ => false,
+            } &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
             self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren)) ||
             self.look_ahead(1, |t| t == &token::Lt) &&     // `foo:bar<baz`
@@ -1091,8 +1116,8 @@ impl<'a> Parser<'a> {
             Ok(x) => x,
             Err(mut err) => {
                 err.emit();
-                // Recover from parse error.
-                self.consume_block(delim);
+                // Recover from parse error, callers expect the closing delim to be consumed.
+                self.consume_block(delim, ConsumeClosingDelim::Yes);
                 self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
             }
         }
@@ -1121,6 +1146,11 @@ impl<'a> Parser<'a> {
                  // Don't attempt to recover from this unclosed delimiter more than once.
                 let unmatched = self.unclosed_delims.remove(pos);
                 let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
+                if unmatched.found_delim.is_none() {
+                    // We encountered `Eof`, set this fact here to avoid complaining about missing
+                    // `fn main()` when we found place to suggest the closing brace.
+                    *self.sess.reached_eof.borrow_mut() = true;
+                }
 
                 // We want to suggest the inclusion of the closing delimiter where it makes
                 // the most sense, which is immediately after the last token:
@@ -1140,9 +1170,16 @@ impl<'a> Parser<'a> {
                     delim.to_string(),
                     Applicability::MaybeIncorrect,
                 );
-                err.emit();
-                self.expected_tokens.clear();  // reduce errors
-                Ok(true)
+                if unmatched.found_delim.is_none() {
+                    // Encountered `Eof` when lexing blocks. Do not recover here to avoid knockdown
+                    // errors which would be emitted elsewhere in the parser and let other error
+                    // recovery consume the rest of the file.
+                    Err(err)
+                } else {
+                    err.emit();
+                    self.expected_tokens.clear();  // Reduce the number of errors.
+                    Ok(true)
+                }
             }
             _ => Err(err),
         }
@@ -1150,7 +1187,12 @@ impl<'a> Parser<'a> {
 
     /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
     pub(super) fn eat_bad_pub(&mut self) {
-        if self.token.is_keyword(kw::Pub) {
+        // When `unclosed_delims` is populated, it means that the code being parsed is already
+        // quite malformed, which might mean that, for example, a pub struct definition could be
+        // parsed as being a trait item, which is invalid and this error would trigger
+        // unconditionally, resulting in misleading diagnostics. Because of this, we only attempt
+        // this nice to have recovery for code that is otherwise well formed.
+        if self.token.is_keyword(kw::Pub) && self.unclosed_delims.is_empty() {
             match self.parse_visibility(false) {
                 Ok(vis) => {
                     self.diagnostic()
@@ -1408,15 +1450,26 @@ impl<'a> Parser<'a> {
         Ok(param)
     }
 
-    pub(super) fn consume_block(&mut self, delim: token::DelimToken) {
+    pub(super) fn consume_block(
+        &mut self,
+        delim: token::DelimToken,
+        consume_close: ConsumeClosingDelim,
+    ) {
         let mut brace_depth = 0;
         loop {
             if self.eat(&token::OpenDelim(delim)) {
                 brace_depth += 1;
-            } else if self.eat(&token::CloseDelim(delim)) {
+            } else if self.check(&token::CloseDelim(delim)) {
                 if brace_depth == 0 {
+                    if let ConsumeClosingDelim::Yes = consume_close {
+                        // Some of the callers of this method expect to be able to parse the
+                        // closing delimiter themselves, so we leave it alone. Otherwise we advance
+                        // the parser.
+                        self.bump();
+                    }
                     return;
                 } else {
+                    self.bump();
                     brace_depth -= 1;
                     continue;
                 }

@@ -13,13 +13,12 @@
 //! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
 //! ownership of the original.
 
-use crate::parse::token::{self, DelimToken, Token, TokenKind};
+use crate::token::{self, DelimToken, Token, TokenKind};
 
-use syntax_pos::{BytePos, Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
 
 use std::{iter, mem};
@@ -111,23 +110,13 @@ impl TokenTree {
     }
 
     /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(span: Span, delim: DelimToken) -> TokenTree {
-        let open_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_hi(span.lo() + BytePos(delim.len() as u32))
-        };
-        TokenTree::token(token::OpenDelim(delim), open_span)
+    pub fn open_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
+        TokenTree::token(token::OpenDelim(delim), span.open)
     }
 
     /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(span: Span, delim: DelimToken) -> TokenTree {
-        let close_span = if span.is_dummy() {
-            span
-        } else {
-            span.with_lo(span.hi() - BytePos(delim.len() as u32))
-        };
-        TokenTree::token(token::CloseDelim(delim), close_span)
+    pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
+        TokenTree::token(token::CloseDelim(delim), span.close)
     }
 }
 
@@ -136,7 +125,7 @@ impl TokenTree {
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, RustcEncodable, RustcDecodable)]
 pub struct TokenStream(pub Lrc<Vec<TreeAndJoint>>);
 
 pub type TreeAndJoint = (TokenTree, IsJoint);
@@ -145,7 +134,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TokenStream, 8);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum IsJoint {
     Joint,
     NonJoint
@@ -254,7 +243,7 @@ impl TokenStream {
 
                 // Get the first stream. If it's `None`, create an empty
                 // stream.
-                let mut iter = streams.drain();
+                let mut iter = streams.drain(..);
                 let mut first_stream_lrc = iter.next().unwrap().0;
 
                 // Append the elements to the first stream, after reserving
@@ -457,18 +446,6 @@ impl Cursor {
 
     pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
         self.stream.0[self.index ..].get(n).map(|(tree, _)| tree.clone())
-    }
-}
-
-impl Encodable for TokenStream {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
-        self.trees().collect::<Vec<_>>().encode(encoder)
-    }
-}
-
-impl Decodable for TokenStream {
-    fn decode<D: Decoder>(decoder: &mut D) -> Result<TokenStream, D::Error> {
-        Vec::<TokenTree>::decode(decoder).map(|vec| vec.into_iter().collect())
     }
 }
 

@@ -26,12 +26,12 @@ use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use syntax::ast::{self, AttrStyle, Ident};
+use syntax::ast::{self, Attribute, AttrStyle, AttrKind, Ident};
 use syntax::attr;
-use syntax_expand::base::MacroKind;
+use syntax::util::comments;
 use syntax::source_map::DUMMY_SP;
-use syntax::symbol::{Symbol, kw, sym};
-use syntax::symbol::InternedString;
+use syntax_pos::symbol::{Symbol, kw, sym};
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{self, Pos, FileName};
 
 use std::collections::hash_map::Entry;
@@ -859,8 +859,32 @@ impl Attributes {
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
+        /// If `attr` is a doc comment, strips the leading and (if present)
+        /// trailing comments symbols, e.g. `///`, `/**`, and `*/`. Otherwise,
+        /// returns `attr` unchanged.
+        pub fn with_doc_comment_markers_stripped<T>(
+            attr: &Attribute,
+            f: impl FnOnce(&Attribute) -> T
+        ) -> T {
+            match attr.kind {
+                AttrKind::Normal(_) => {
+                    f(attr)
+                }
+                AttrKind::DocComment(comment) => {
+                    let comment =
+                        Symbol::intern(&comments::strip_doc_comment_decoration(&comment.as_str()));
+                    f(&Attribute {
+                        kind: AttrKind::DocComment(comment),
+                        id: attr.id,
+                        style: attr.style,
+                        span: attr.span,
+                    })
+                }
+            }
+        }
+
         let other_attrs = attrs.iter().filter_map(|attr| {
-            attr.with_desugared_doc(|attr| {
+            with_doc_comment_markers_stripped(attr, |attr| {
                 if attr.check_name(sym::doc) {
                     if let Some(mi) = attr.meta() {
                         if let Some(value) = mi.value_str() {
@@ -869,7 +893,7 @@ impl Attributes {
                             let line = doc_line;
                             doc_line += value.lines().count();
 
-                            if attr.is_sugared_doc {
+                            if attr.is_doc_comment() {
                                 doc_strings.push(DocFragment::SugaredDoc(line, attr.span, value));
                             } else {
                                 doc_strings.push(DocFragment::RawDoc(line, attr.span, value));
@@ -1144,7 +1168,7 @@ fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, ha
         global: false,
         res: Res::Err,
         segments: vec![PathSegment {
-            name: name.as_str().to_string(),
+            name: name.to_string(),
             args: external_generic_args(cx, trait_did, has_self, bindings, substs)
         }],
     }
@@ -1468,12 +1492,13 @@ impl GenericParamDefKind {
         }
     }
 
-    pub fn get_type(&self, cx: &DocContext<'_>) -> Option<Type> {
-        match *self {
-            GenericParamDefKind::Type { did, .. } => {
-                rustc_typeck::checked_type_of(cx.tcx, did, false).map(|t| t.clean(cx))
-            }
-            GenericParamDefKind::Const { ref ty, .. } => Some(ty.clone()),
+    // FIXME(eddyb) this either returns the default of a type parameter, or the
+    // type of a `const` parameter. It seems that the intention is to *visit*
+    // any embedded types, but `get_type` seems to be the wrong name for that.
+    pub fn get_type(&self) -> Option<Type> {
+        match self {
+            GenericParamDefKind::Type { default, .. } => default.clone(),
+            GenericParamDefKind::Const { ty, .. } => Some(ty.clone()),
             GenericParamDefKind::Lifetime => None,
         }
     }
@@ -1499,8 +1524,8 @@ impl GenericParamDef {
         self.kind.is_type()
     }
 
-    pub fn get_type(&self, cx: &DocContext<'_>) -> Option<Type> {
-        self.kind.get_type(cx)
+    pub fn get_type(&self) -> Option<Type> {
+        self.kind.get_type()
     }
 
     pub fn get_bounds(&self) -> Option<&[GenericBound]> {
@@ -1682,7 +1707,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .filter_map(|param| match param.kind {
                 ty::GenericParamDefKind::Lifetime => None,
                 ty::GenericParamDefKind::Type { synthetic, .. } => {
-                    if param.name.as_symbol() == kw::SelfUpper {
+                    if param.name == kw::SelfUpper {
                         assert_eq!(param.index, 0);
                         return None;
                     }
@@ -1868,7 +1893,7 @@ fn get_real_types(
                             if !x.is_type() {
                                 continue
                             }
-                            if let Some(ty) = x.get_type(cx) {
+                            if let Some(ty) = x.get_type() {
                                 let adds = get_real_types(generics, &ty, cx, recurse + 1);
                                 if !adds.is_empty() {
                                     res.extend(adds);
@@ -1959,7 +1984,7 @@ pub struct Method {
     pub ret_types: Vec<Type>,
 }
 
-impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId,
+impl<'a> Clean<Method> for (&'a hir::FnSig, &'a hir::Generics, hir::BodyId,
                             Option<hir::Defaultness>) {
     fn clean(&self, cx: &DocContext<'_>) -> Method {
         let (generics, decl) = enter_impl_trait(cx, || {
@@ -3681,7 +3706,7 @@ fn qpath_to_string(p: &hir::QPath) -> String {
             s.push_str("::");
         }
         if seg.ident.name != kw::PathRoot {
-            s.push_str(&*seg.ident.as_str());
+            s.push_str(&seg.ident.as_str());
         }
     }
     s
@@ -3695,13 +3720,6 @@ impl Clean<String> for Ident {
 }
 
 impl Clean<String> for ast::Name {
-    #[inline]
-    fn clean(&self, _: &DocContext<'_>) -> String {
-        self.to_string()
-    }
-}
-
-impl Clean<String> for InternedString {
     #[inline]
     fn clean(&self, _: &DocContext<'_>) -> String {
         self.to_string()

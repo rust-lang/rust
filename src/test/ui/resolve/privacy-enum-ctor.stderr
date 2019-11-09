@@ -3,6 +3,7 @@ error[E0423]: expected value, found enum `n::Z`
    |
 LL |         n::Z;
    |         ^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |         m::Z::Fn;
@@ -15,8 +16,16 @@ LL |         m::Z::Unit;
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
-LL |         Z;
-   |         ^
+LL | /     fn f() {
+LL | |         n::Z;
+LL | |
+LL | |         Z;
+   | |         ^
+...  |
+LL | |         // This is ok, it is equivalent to not having braces
+LL | |     }
+   | |_____- similarly named function `f` defined here
+   |
 help: a function with a similar name exists
    |
 LL |         f;
@@ -44,8 +53,18 @@ LL |           let _: Z = Z::Struct;
 error[E0423]: expected value, found enum `m::E`
   --> $DIR/privacy-enum-ctor.rs:41:16
    |
-LL |     let _: E = m::E;
-   |                ^^^^
+LL | /     fn f() {
+LL | |         n::Z;
+LL | |
+LL | |         Z;
+...  |
+LL | |         // This is ok, it is equivalent to not having braces
+LL | |     }
+   | |_____- similarly named function `f` defined here
+...
+LL |       let _: E = m::E;
+   |                  ^^^^
+   |
 help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
@@ -81,6 +100,7 @@ error[E0423]: expected value, found enum `E`
    |
 LL |     let _: E = E;
    |                ^
+   |
 help: try using one of the enum's variants
    |
 LL |     let _: E = E::Fn;
@@ -110,8 +130,18 @@ LL |       let _: E = E::Struct;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:57:12
    |
-LL |     let _: Z = m::n::Z;
-   |            ^
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____- similarly named enum `E` defined here
+...
+LL |       let _: Z = m::n::Z;
+   |              ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z;
@@ -126,6 +156,7 @@ error[E0423]: expected value, found enum `m::n::Z`
    |
 LL |     let _: Z = m::n::Z;
    |                ^^^^^^^
+   |
 help: try using one of the enum's variants
    |
 LL |     let _: Z = m::Z::Fn;
@@ -138,8 +169,18 @@ LL |     let _: Z = m::Z::Unit;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
    |
-LL |     let _: Z = m::n::Z::Fn;
-   |            ^
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____- similarly named enum `E` defined here
+...
+LL |       let _: Z = m::n::Z::Fn;
+   |              ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Fn;
@@ -152,8 +193,18 @@ LL | use m::n::Z;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
    |
-LL |     let _: Z = m::n::Z::Struct;
-   |            ^
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____- similarly named enum `E` defined here
+...
+LL |       let _: Z = m::n::Z::Struct;
+   |              ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Struct;
@@ -177,8 +228,18 @@ LL |       let _: Z = m::n::Z::Struct;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12
    |
-LL |     let _: Z = m::n::Z::Unit {};
-   |            ^
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____- similarly named enum `E` defined here
+...
+LL |       let _: Z = m::n::Z::Unit {};
+   |              ^
+   |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Unit {};
@@ -237,6 +298,7 @@ LL |         let _ = Z::Unit();
    |                 ^^^^^^^--
    |                 |
    |                 call expression requires function
+   |
 help: `Z::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |         let _ = Z::Unit;
@@ -267,6 +329,7 @@ LL |     let _: E = m::E::Unit();
    |                ^^^^^^^^^^--
    |                |
    |                call expression requires function
+   |
 help: `m::E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = m::E::Unit;
@@ -297,6 +360,7 @@ LL |     let _: E = E::Unit();
    |                ^^^^^^^--
    |                |
    |                call expression requires function
+   |
 help: `E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = E::Unit;

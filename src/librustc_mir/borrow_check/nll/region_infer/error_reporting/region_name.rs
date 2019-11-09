@@ -18,14 +18,14 @@ use rustc::ty::print::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
 use syntax::symbol::kw;
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::{Span, symbol::InternedString};
+use syntax_pos::{Span, symbol::Symbol};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
 #[derive(Debug, Clone)]
 crate struct RegionName {
     /// The name of the region (interned).
-    crate name: InternedString,
+    crate name: Symbol,
     /// Where the region comes from.
     crate source: RegionNameSource,
 }
@@ -109,7 +109,7 @@ impl RegionName {
     }
 
     #[allow(dead_code)]
-    crate fn name(&self) -> InternedString {
+    crate fn name(&self) -> Symbol {
         self.name
     }
 
@@ -273,7 +273,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             ty::ReStatic => Some(RegionName {
-                name: kw::StaticLifetime.as_interned_str(),
+                name: kw::StaticLifetime,
                 source: RegionNameSource::Static
             }),
 
@@ -360,7 +360,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         error_region: &RegionKind,
-        name: InternedString,
+        name: Symbol,
     ) -> Span {
         let scope = error_region.free_region_binding_scope(tcx);
         let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
@@ -837,10 +837,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Creates a synthetic region named `'1`, incrementing the counter.
-    fn synthesize_region_name(&self, renctx: &mut RegionErrorNamingCtx) -> InternedString {
+    fn synthesize_region_name(&self, renctx: &mut RegionErrorNamingCtx) -> Symbol {
         let c = renctx.counter;
         renctx.counter += 1;
 
-        InternedString::intern(&format!("'{:?}", c))
+        Symbol::intern(&format!("'{:?}", c))
     }
 }

@@ -25,6 +25,9 @@ use std::sync::{Arc, Mutex};
 
 use rustc_serialize::json::{as_json, as_pretty_json};
 
+#[cfg(test)]
+mod tests;
+
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
@@ -336,8 +339,8 @@ impl DiagnosticSpan {
 
         DiagnosticSpan {
             file_name: start.file.name.to_string(),
-            byte_start: span.lo().0 - start.file.start_pos.0,
-            byte_end: span.hi().0 - start.file.start_pos.0,
+            byte_start: start.file.original_relative_byte_pos(span.lo()).0,
+            byte_end: start.file.original_relative_byte_pos(span.hi()).0,
             line_start: start.line,
             line_end: end.line,
             column_start: start.col.0 + 1,

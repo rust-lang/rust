@@ -33,7 +33,7 @@ use crate::ty::subst::Subst;
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
@@ -195,8 +195,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         error: &MismatchedProjectionTypes<'tcx>,
     ) {
-        let predicate =
-            self.resolve_vars_if_possible(&obligation.predicate);
+        let predicate = self.resolve_vars_if_possible(&obligation.predicate);
 
         if predicate.references_error() {
             return
@@ -227,25 +226,45 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     0,
                     &mut obligations
                 );
+
+                debug!("report_projection_error obligation.cause={:?} obligation.param_env={:?}",
+                       obligation.cause, obligation.param_env);
+
+                debug!("report_projection_error normalized_ty={:?} data.ty={:?}",
+                       normalized_ty, data.ty);
+
+                let is_normalized_ty_expected = match &obligation.cause.code {
+                    ObligationCauseCode::ItemObligation(_) |
+                    ObligationCauseCode::BindingObligation(_, _) |
+                    ObligationCauseCode::ObjectCastObligation(_) => false,
+                    _ => true,
+                };
+
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env)
-                                        .eq(normalized_ty, data.ty) {
-                    values = Some(infer::ValuePairs::Types(ExpectedFound {
-                        expected: normalized_ty,
-                        found: data.ty,
-                    }));
+                    .eq_exp(is_normalized_ty_expected, normalized_ty, data.ty)
+                {
+                    values = Some(infer::ValuePairs::Types(
+                        ExpectedFound::new(is_normalized_ty_expected, normalized_ty, data.ty)));
+
                     err_buf = error;
                     err = &err_buf;
                 }
             }
 
             let msg = format!("type mismatch resolving `{}`", predicate);
-            let error_id = (DiagnosticMessageId::ErrorId(271),
-                            Some(obligation.cause.span), msg);
+            let error_id = (
+                DiagnosticMessageId::ErrorId(271),
+                Some(obligation.cause.span),
+                msg,
+            );
             let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
             if fresh {
                 let mut diag = struct_span_err!(
-                    self.tcx.sess, obligation.cause.span, E0271,
-                    "type mismatch resolving `{}`", predicate
+                    self.tcx.sess,
+                    obligation.cause.span,
+                    E0271,
+                    "type mismatch resolving `{}`",
+                    predicate
                 );
                 self.note_type_err(&mut diag, &obligation.cause, None, values, err);
                 self.note_obligation_cause(&mut diag, obligation);
@@ -347,6 +366,52 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str> {
+        self.tcx.hir().body(body_id).generator_kind.map(|gen_kind| {
+            match gen_kind {
+                hir::GeneratorKind::Gen => "a generator",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "an async block",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "an async function",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "an async closure",
+            }
+        })
+    }
+
+    /// Used to set on_unimplemented's `ItemContext`
+    /// to be the enclosing (async) block/function/closure
+    fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str> {
+        let hir = &self.tcx.hir();
+        let node = hir.find(hir_id)?;
+        if let hir::Node::Item(
+            hir::Item{kind: hir::ItemKind::Fn(sig, _, body_id), .. }) = &node {
+            self.describe_generator(*body_id).or_else(||
+                Some(if let hir::FnHeader{ asyncness: hir::IsAsync::Async, .. } = sig.header {
+                    "an async function"
+                } else {
+                    "a function"
+                })
+            )
+        } else if let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(_is_move, _, body_id, _, gen_movability), .. }) = &node {
+            self.describe_generator(*body_id).or_else(||
+                Some(if gen_movability.is_some() {
+                    "an async closure"
+                } else {
+                    "a closure"
+                })
+            )
+        } else if let hir::Node::Expr(hir::Expr { .. }) = &node {
+            let parent_hid = hir.get_parent_node(hir_id);
+            if parent_hid != hir_id {
+                return self.describe_enclosure(parent_hid);
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     fn on_unimplemented_note(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -357,6 +422,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let trait_ref = *trait_ref.skip_binder();
 
         let mut flags = vec![];
+        flags.push((sym::item_context,
+            self.describe_enclosure(obligation.cause.body_id).map(|s|s.to_owned())));
+
         match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..) |
             ObligationCauseCode::ImplDerivedObligation(..) => {}
@@ -406,7 +474,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 },
                 GenericParamDefKind::Lifetime => continue,
             };
-            let name = param.name.as_symbol();
+            let name = param.name;
             flags.push((name, Some(value)));
         }
 
@@ -532,23 +600,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// whose result could not be truly determined and thus we can't say
     /// if the program type checks or not -- and they are unusual
     /// occurrences in any case.
-    pub fn report_overflow_error<T>(&self,
-                                    obligation: &Obligation<'tcx, T>,
-                                    suggest_increasing_limit: bool) -> !
+    pub fn report_overflow_error<T>(
+        &self,
+        obligation: &Obligation<'tcx, T>,
+        suggest_increasing_limit: bool,
+    ) -> !
         where T: fmt::Display + TypeFoldable<'tcx>
     {
         let predicate =
             self.resolve_vars_if_possible(&obligation.predicate);
-        let mut err = struct_span_err!(self.tcx.sess, obligation.cause.span, E0275,
-                                       "overflow evaluating the requirement `{}`",
-                                       predicate);
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            obligation.cause.span,
+            E0275,
+            "overflow evaluating the requirement `{}`",
+            predicate
+        );
 
         if suggest_increasing_limit {
             self.suggest_new_overflow_limit(&mut err);
         }
 
-        self.note_obligation_cause_code(&mut err, &obligation.predicate, &obligation.cause.code,
-                                        &mut vec![]);
+        self.note_obligation_cause_code(
+            &mut err,
+            &obligation.predicate,
+            &obligation.cause.code,
+            &mut vec![],
+        );
 
         err.emit();
         self.tcx.sess.abort_if_errors();
@@ -793,15 +871,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.object_safety_violations(trait_def_id);
-                        if let Some(err) = self.tcx.report_object_safety_error(
+                        self.tcx.report_object_safety_error(
                             span,
                             trait_def_id,
                             violations,
-                        ) {
-                            err
-                        } else {
-                            return;
-                        }
+                        )
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
@@ -937,11 +1011,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
-                if let Some(err) = self.tcx.report_object_safety_error(span, did, violations) {
-                    err
-                } else {
-                    return;
-                }
+                self.tcx.report_object_safety_error(span, did, violations)
             }
 
             // already reported in the query
@@ -1011,7 +1081,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
 
                 hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, _, generics, _), ..
+                    kind: hir::ItemKind::Fn(_, generics, _), ..
                 }) |
                 hir::Node::TraitItem(hir::TraitItem {
                     generics,
@@ -1042,7 +1112,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     kind: hir::ItemKind::Impl(_, _, _, generics, ..), span, ..
                 }) |
                 hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, _, generics, _), span, ..
+                    kind: hir::ItemKind::Fn(_, generics, _), span, ..
                 }) |
                 hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::TyAlias(_, generics), span, ..
@@ -1060,7 +1130,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let restrict_msg = "consider further restricting this bound";
                     let param_name = self_ty.to_string();
                     for param in generics.params.iter().filter(|p| {
-                        &param_name == std::convert::AsRef::<str>::as_ref(&p.name.ident().as_str())
+                        p.name.ident().as_str() == param_name
                     }) {
                         if param_name.starts_with("impl ") {
                             // `impl Trait` in argument:
@@ -1161,7 +1231,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn suggest_fn_call(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {
@@ -1366,12 +1436,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(decl, _, _, body_id),
+            kind: hir::ItemKind::Fn(sig, _, body_id),
             ..
         })) = node {
             let body = hir.body(*body_id);
             if let hir::ExprKind::Block(blk, _) = &body.value.kind {
-                if decl.output.span().overlaps(span) && blk.expr.is_none() &&
+                if sig.decl.output.span().overlaps(span) && blk.expr.is_none() &&
                     "()" == &trait_ref.self_ty().to_string()
                 {
                     // FIXME(estebank): When encountering a method with a trait
@@ -1423,20 +1493,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             Node::Item(&hir::Item {
                 span,
-                kind: hir::ItemKind::Fn(ref decl, ..),
+                kind: hir::ItemKind::Fn(ref sig, ..),
                 ..
             }) |
             Node::ImplItem(&hir::ImplItem {
                 span,
-                kind: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::ImplItemKind::Method(ref sig, _),
                 ..
             }) |
             Node::TraitItem(&hir::TraitItem {
                 span,
-                kind: hir::TraitItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                kind: hir::TraitItemKind::Method(ref sig, _),
                 ..
             }) => {
-                (self.tcx.sess.source_map().def_span(span), decl.inputs.iter()
+                (self.tcx.sess.source_map().def_span(span), sig.decl.inputs.iter()
                         .map(|arg| match arg.clone().kind {
                     hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
@@ -1483,7 +1553,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 _ => format!("{} {}argument{}",
                              arg_length,
                              if distinct && arg_length > 1 { "distinct " } else { "" },
-                             pluralise!(arg_length))
+                             pluralize!(arg_length))
             }
         };
 
@@ -1665,11 +1735,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         trait_def_id: DefId,
         violations: Vec<ObjectSafetyViolation>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
-        if self.sess.trait_methods_not_found.borrow().contains(&span) {
-            // Avoid emitting error caused by non-existing method (#58734)
-            return None;
-        }
+    ) -> DiagnosticBuilder<'tcx> {
         let trait_str = self.def_path_str(trait_def_id);
         let span = self.sess.source_map().def_span(span);
         let mut err = struct_span_err!(
@@ -1687,7 +1753,13 @@ impl<'tcx> TyCtxt<'tcx> {
                 };
             }
         }
-        Some(err)
+
+        if self.sess.trait_methods_not_found.borrow().contains(&span) {
+            // Avoid emitting error caused by non-existing method (#58734)
+            err.cancel();
+        }
+
+        err
     }
 }
 
@@ -1968,11 +2040,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .and_then(|parent_did| self.tcx.hir().get_if_local(parent_did));
         debug!("note_obligation_cause_for_async_await: parent_node={:?}", parent_node);
         if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(_, header, _, _),
+            kind: hir::ItemKind::Fn(sig, _, _),
             ..
         })) = parent_node {
-            debug!("note_obligation_cause_for_async_await: header={:?}", header);
-            if header.asyncness != hir::IsAsync::Async {
+            debug!("note_obligation_cause_for_async_await: header={:?}", sig.header);
+            if sig.header.asyncness != hir::IsAsync::Async {
                 return false;
             }
         }
@@ -2098,9 +2170,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.note(&format!("required for the cast to the object type `{}`",
                                   self.ty_to_string(object_ty)));
             }
-            ObligationCauseCode::RepeatVec => {
+            ObligationCauseCode::Coercion { source: _, target } => {
+                err.note(&format!("required by cast to type `{}`",
+                                  self.ty_to_string(target)));
+            }
+            ObligationCauseCode::RepeatVec(suggest_const_in_array_repeat_expression) => {
                 err.note("the `Copy` trait is required because the \
                           repeated element will be copied");
+                if suggest_const_in_array_repeat_expression {
+                    err.note("this array initializer can be evaluated at compile-time, for more \
+                              information, see issue \
+                              https://github.com/rust-lang/rust/issues/49147");
+                    if tcx.sess.opts.unstable_features.is_nightly_build() {
+                        err.help("add `#![feature(const_in_array_repeat_expression)]` to the \
+                                  crate attributes to enable");
+                    }
+                }
             }
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
@@ -2153,6 +2238,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ConstSized => {
                 err.note("constant expressions must have a statically known size");
             }
+            ObligationCauseCode::ConstPatternStructural => {
+                err.note("constants used for pattern-matching must derive `PartialEq` and `Eq`");
+            }
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
             }
@@ -2197,6 +2285,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     err.help("add `#![feature(trivial_bounds)]` to the \
                               crate attributes to enable",
                     );
+                }
+            }
+            ObligationCauseCode::AssocTypeBound(ref data) => {
+                err.span_label(data.original, "associated type defined here");
+                if let Some(sp) = data.impl_span {
+                    err.span_label(sp, "in this `impl` item");
+                }
+                for sp in &data.bounds {
+                    err.span_label(*sp, "restricted in this bound");
                 }
             }
         }

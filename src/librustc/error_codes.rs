@@ -335,7 +335,7 @@ This works because `Box` is a pointer, so its size is well-known.
 "##,
 
 E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
+This error indicates that the compiler was unable to sensibly evaluate a
 constant expression that had to be evaluated. Attempting to divide by 0
 or causing integer overflow are two ways to induce this error. For example:
 
@@ -607,7 +607,7 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 fn foo<T: Index<u8>>(x: T){}
 
@@ -639,7 +639,7 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 fn foo<T: Index<u8>>(x: T){}
 
@@ -669,7 +669,7 @@ position that needs that trait. For example, when the following code is
 compiled:
 
 ```compile_fail
-#![feature(on_unimplemented)]
+#![feature(rustc_attrs)]
 
 fn foo<T: Index<u8>>(x: T){}
 
@@ -2045,8 +2045,8 @@ so that a generator can then be constructed:
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  bar::<String>().await;
-  //   ^^^^^^^^ specify type explicitly
+    bar::<String>().await;
+    //   ^^^^^^^^ specify type explicitly
 }
 ```
 "##,
@@ -2105,8 +2105,6 @@ on something other than a struct or enum.
 Examples of erroneous code:
 
 ```compile_fail,E0701
-# #![feature(non_exhaustive)]
-
 #[non_exhaustive]
 trait Foo { }
 ```
@@ -2126,6 +2124,84 @@ static X: u32 = 42;
 ```
 "##,
 
+E0728: r##"
+[`await`] has been used outside [`async`] function or block.
+
+Erroneous code examples:
+
+```edition2018,compile_fail,E0728
+# use std::pin::Pin;
+# use std::future::Future;
+# use std::task::{Context, Poll};
+#
+# struct WakeOnceThenComplete(bool);
+#
+# fn wake_and_yield_once() -> WakeOnceThenComplete {
+#     WakeOnceThenComplete(false)
+# }
+#
+# impl Future for WakeOnceThenComplete {
+#     type Output = ();
+#     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+#         if self.0 {
+#             Poll::Ready(())
+#         } else {
+#             cx.waker().wake_by_ref();
+#             self.0 = true;
+#             Poll::Pending
+#         }
+#     }
+# }
+#
+fn foo() {
+    wake_and_yield_once().await // `await` is used outside `async` context
+}
+```
+
+[`await`] is used to suspend the current computation until the given
+future is ready to produce a value. So it is legal only within
+an [`async`] context, like an `async fn` or an `async` block.
+
+```edition2018
+# use std::pin::Pin;
+# use std::future::Future;
+# use std::task::{Context, Poll};
+#
+# struct WakeOnceThenComplete(bool);
+#
+# fn wake_and_yield_once() -> WakeOnceThenComplete {
+#     WakeOnceThenComplete(false)
+# }
+#
+# impl Future for WakeOnceThenComplete {
+#     type Output = ();
+#     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+#         if self.0 {
+#             Poll::Ready(())
+#         } else {
+#             cx.waker().wake_by_ref();
+#             self.0 = true;
+#             Poll::Pending
+#         }
+#     }
+# }
+#
+async fn foo() {
+    wake_and_yield_once().await // `await` is used within `async` function
+}
+
+fn bar(x: u8) -> impl Future<Output = u8> {
+    async move {
+        wake_and_yield_once().await; // `await` is used within `async` block
+        x
+    }
+}
+```
+
+[`async`]: https://doc.rust-lang.org/std/keyword.async.html
+[`await`]: https://doc.rust-lang.org/std/keyword.await.html
+"##,
+
 E0734: r##"
 A stability attribute has been used outside of the standard library.
 
@@ -2143,7 +2219,7 @@ rejected in your own crates.
 "##,
 
 E0736: r##"
-#[track_caller] and #[naked] cannot be applied to the same function.
+`#[track_caller]` and `#[naked]` cannot both be applied to the same function.
 
 Erroneous code example:
 
@@ -2157,6 +2233,57 @@ fn foo() {}
 
 This is primarily due to ABI incompatibilities between the two attributes.
 See [RFC 2091] for details on this and other limitations.
+
+[RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
+"##,
+
+E0738: r##"
+`#[track_caller]` cannot be used in traits yet. This is due to limitations in
+the compiler which are likely to be temporary. See [RFC 2091] for details on
+this and other restrictions.
+
+Erroneous example with a trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self);
+}
+
+impl Foo for u64 {
+    #[track_caller]
+    fn bar(&self) {}
+}
+```
+
+Erroneous example with a blanket trait method implementation:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    #[track_caller]
+    fn bar(&self) {}
+    fn baz(&self);
+}
+```
+
+Erroneous example with a trait method declaration:
+
+```compile_fail,E0738
+#![feature(track_caller)]
+
+trait Foo {
+    fn bar(&self) {}
+
+    #[track_caller]
+    fn baz(&self);
+}
+```
+
+Note that while the compiler may be able to support the attribute in traits in
+the future, [RFC 2091] prohibits their implementation without a follow-up RFC.
 
 [RFC 2091]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md
 "##,
@@ -2209,6 +2336,7 @@ See [RFC 2091] for details on this and other limitations.
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
+    E0703, // invalid ABI
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported
@@ -2218,6 +2346,5 @@ See [RFC 2091] for details on this and other limitations.
 //  E0702, // replaced with a generic attribute input check
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
     E0727, // `async` generators are not yet supported
-    E0728, // `await` must be in an `async` function or block
     E0739, // invalid track_caller application/syntax
 }

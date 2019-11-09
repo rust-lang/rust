@@ -12,17 +12,18 @@ use syntax::configure;
 use syntax::config::StripUnconfigured;
 use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use syntax::mut_visit::*;
-use syntax::parse::{DirectoryOwnership, PResult};
-use syntax::parse::token;
+use syntax::parse::DirectoryOwnership;
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
+use syntax::sess::ParseSess;
 use syntax::symbol::{sym, Symbol};
+use syntax::token;
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::visit::Visitor;
+use syntax::visit::{self, Visitor};
 use syntax::util::map_in_place::MapInPlace;
 
-use errors::{Applicability, FatalError};
+use errors::{PResult, Applicability, FatalError};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, DUMMY_SP, FileName};
 
@@ -418,7 +419,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
 
                     let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
+                    item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
                     let mut helper_attrs = Vec::new();
                     let mut has_copy = false;
                     for ext in exts {
@@ -431,7 +432,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     // can be in scope for all code produced by that container's expansion.
                     item.visit_with(&mut MarkAttrs(&helper_attrs));
                     if has_copy {
-                        self.cx.resolver.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
+                        self.cx.resolver.add_derive_copy(invoc.expansion_data.id);
                     }
 
                     let mut derive_placeholders = Vec::with_capacity(derives.len());
@@ -615,6 +616,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             InvocationKind::Attr { attr, mut item, .. } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
+                    self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
                     let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
                         Annotatable::Item(item) => token::NtItem(item),
@@ -632,9 +634,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         | Annotatable::Variant(..)
                             => panic!("unexpected annotatable"),
                     })), DUMMY_SP).into();
-                    let input = self.extract_proc_macro_attr_input(attr.item.tokens, span);
+                    let item = attr.unwrap_normal_item();
+                    let input = self.extract_proc_macro_attr_input(item.tokens, span);
                     let tok_result = expander.expand(self.cx, span, input, item_tok);
-                    self.parse_ast_fragment(tok_result, fragment_kind, &attr.item.path, span)
+                    self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match attr.parse_meta(self.cx.parse_sess) {
@@ -664,6 +667,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if !item.derive_allowed() {
                         return fragment_kind.dummy(span);
                     }
+                    if let SyntaxExtensionKind::Derive(..) = ext {
+                        self.gate_proc_macro_input(&item);
+                    }
                     let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
                     let items = expander.expand(self.cx, span, &meta, item);
                     fragment_kind.expect_from_annotatables(items)
@@ -692,21 +698,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
-        let (kind, gate) = match *item {
-            Annotatable::Item(ref item) => {
-                match item.kind {
-                    ItemKind::Mod(_) if self.cx.ecfg.proc_macro_hygiene() => return,
-                    ItemKind::Mod(_) => ("modules", sym::proc_macro_hygiene),
-                    _ => return,
-                }
+        let kind = match item {
+            Annotatable::Item(item) => match &item.kind {
+                ItemKind::Mod(m) if m.inline => "modules",
+                _ => return,
             }
-            Annotatable::TraitItem(_) => return,
-            Annotatable::ImplItem(_) => return,
-            Annotatable::ForeignItem(_) => return,
-            Annotatable::Stmt(_) |
-            Annotatable::Expr(_) if self.cx.ecfg.proc_macro_hygiene() => return,
-            Annotatable::Stmt(_) => ("statements", sym::proc_macro_hygiene),
-            Annotatable::Expr(_) => ("expressions", sym::proc_macro_hygiene),
+            Annotatable::TraitItem(_)
+            | Annotatable::ImplItem(_)
+            | Annotatable::ForeignItem(_) => return,
+            Annotatable::Stmt(_) => "statements",
+            Annotatable::Expr(_) => "expressions",
             Annotatable::Arm(..)
             | Annotatable::Field(..)
             | Annotatable::FieldPat(..)
@@ -716,13 +717,47 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::Variant(..)
             => panic!("unexpected annotatable"),
         };
+        if self.cx.ecfg.proc_macro_hygiene() {
+            return
+        }
         emit_feature_err(
             self.cx.parse_sess,
-            gate,
+            sym::proc_macro_hygiene,
             span,
             GateIssue::Language,
             &format!("custom attributes cannot be applied to {}", kind),
         );
+    }
+
+    fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
+        struct GateProcMacroInput<'a> {
+            parse_sess: &'a ParseSess,
+        }
+
+        impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
+            fn visit_item(&mut self, item: &'ast ast::Item) {
+                match &item.kind {
+                    ast::ItemKind::Mod(module) if !module.inline => {
+                        emit_feature_err(
+                            self.parse_sess,
+                            sym::proc_macro_hygiene,
+                            item.span,
+                            GateIssue::Language,
+                            "non-inline modules in proc macro input are unstable",
+                        );
+                    }
+                    _ => {}
+                }
+
+                visit::walk_item(self, item);
+            }
+
+            fn visit_mac(&mut self, _: &'ast ast::Mac) {}
+        }
+
+        if !self.cx.ecfg.proc_macro_hygiene() {
+            annotatable.visit_with(&mut GateProcMacroInput { parse_sess: self.cx.parse_sess });
+        }
     }
 
     fn gate_proc_macro_expansion_kind(&self, span: Span, kind: AstFragmentKind) {
@@ -940,7 +975,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                        -> Option<ast::Attribute> {
         let attr = attrs.iter()
                         .position(|a| {
-                            if a.path == sym::derive {
+                            if a.has_name(sym::derive) {
                                 *after_derive = true;
                             }
                             !attr::is_known(a) && !is_builtin_attr(a)
@@ -948,7 +983,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
             if !self.cx.ecfg.custom_inner_attributes() &&
-               attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
+               attr.style == ast::AttrStyle::Inner && !attr.has_name(sym::test) {
                 emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
                                  "non-builtin inner attributes are unstable");
@@ -998,7 +1033,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             feature_gate::check_attribute(attr, self.cx.parse_sess, features);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
-            if attr.path == sym::derive {
+            if attr.has_name(sym::derive) {
                 self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
@@ -1266,7 +1301,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         Some(_) => DirectoryOwnership::Owned {
                             relative: Some(item.ident),
                         },
-                        None => DirectoryOwnership::UnownedViaMod(false),
+                        None => DirectoryOwnership::UnownedViaMod,
                     };
                     path.pop();
                     module.directory = path;
@@ -1513,11 +1548,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
-                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                kind: ast::AttrKind::Normal(
+                    AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                ),
                 span: at.span,
                 id: at.id,
                 style: at.style,
-                is_sugared_doc: false,
             };
         } else {
             noop_visit_attribute(at, self)

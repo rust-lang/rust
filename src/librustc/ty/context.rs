@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Type context book-keeping.
 
 use crate::arena::Arena;
@@ -21,7 +22,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, interpret, ProjectionKind, Promoted};
+use crate::mir::{Body, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -72,7 +73,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::feature_gate;
-use syntax::symbol::{Symbol, InternedString, kw, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 
 pub struct AllArenas {
@@ -106,6 +107,7 @@ pub struct CtxtInterners<'tcx> {
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
+    place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
 }
 
@@ -124,6 +126,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             goal: Default::default(),
             goal_list: Default::default(),
             projs: Default::default(),
+            place_elems: Default::default(),
             const_: Default::default(),
         }
     }
@@ -949,7 +952,7 @@ impl<'tcx> CommonTypes<'tcx> {
             f64: mk(Float(ast::FloatTy::F64)),
             self_param: mk(ty::Param(ty::ParamTy {
                 index: 0,
-                name: kw::SelfUpper.as_interned_str(),
+                name: kw::SelfUpper,
             })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
@@ -1027,9 +1030,11 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
-    cstore: &'tcx CrateStoreDyn,
+    cstore: Box<CrateStoreDyn>,
 
     pub sess: &'tcx Session,
+
+    pub lint_store: Lrc<lint::LintStore>,
 
     pub dep_graph: DepGraph,
 
@@ -1192,11 +1197,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_global_ctxt(
         s: &'tcx Session,
-        cstore: &'tcx CrateStoreDyn,
+        lint_store: Lrc<lint::LintStore>,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
-        resolutions: ty::Resolutions,
+        resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
         crate_name: &str,
@@ -1210,34 +1215,28 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
         let dep_graph = hir.dep_graph.clone();
-        let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let cstore = resolutions.cstore;
+        let crates = cstore.crates_untracked();
+        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
-            let upstream_def_path_tables: Vec<(CrateNum, Lrc<_>)> = cstore
-                .crates_untracked()
+            let def_path_tables = crates
                 .iter()
                 .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
-                .collect();
-
-            let def_path_tables = || {
-                upstream_def_path_tables
-                    .iter()
-                    .map(|&(cnum, ref rc)| (cnum, &**rc))
-                    .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())))
-            };
+                .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())));
 
             // Precompute the capacity of the hashmap so we don't have to
             // re-allocate when populating it.
-            let capacity = def_path_tables().map(|(_, t)| t.size()).sum::<usize>();
+            let capacity = def_path_tables.clone().map(|(_, t)| t.size()).sum::<usize>();
 
             let mut map: FxHashMap<_, _> = FxHashMap::with_capacity_and_hasher(
                 capacity,
                 ::std::default::Default::default()
             );
 
-            for (cnum, def_path_table) in def_path_tables() {
+            for (cnum, def_path_table) in def_path_tables {
                 def_path_table.add_def_path_hashes_to(cnum, &mut map);
             }
 
@@ -1255,6 +1254,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         GlobalCtxt {
             sess: s,
+            lint_store,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
             interners,
@@ -1408,13 +1408,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn encode_metadata(self)-> EncodedMetadata {
+        let _prof_timer = self.prof.generic_activity("generate_crate_metadata");
         self.cstore.encode_metadata(self)
     }
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Lrc<dyn Any> {
-        self.cstore.crate_data_as_rc_any(cnum)
+    pub fn crate_data_as_any(self, cnum: CrateNum) -> &'tcx dyn Any {
+        self.cstore.crate_data_as_any(cnum)
     }
 
     #[inline(always)]
@@ -1424,7 +1425,7 @@ impl<'tcx> TyCtxt<'tcx> {
         StableHashingContext::new(self.sess,
                                   krate,
                                   self.hir().definitions(),
-                                  self.cstore)
+                                  &*self.cstore)
     }
 
     // This method makes sure that we have a DepNode and a Fingerprint for
@@ -1513,8 +1514,14 @@ impl<'tcx> TyCtxt<'tcx> {
                 CrateType::Executable |
                 CrateType::Staticlib  |
                 CrateType::ProcMacro  |
-                CrateType::Dylib      |
                 CrateType::Cdylib     => false,
+
+                // FIXME rust-lang/rust#64319, rust-lang/rust#64872:
+                // We want to block export of generics from dylibs,
+                // but we must fix rust-lang/rust#65890 before we can
+                // do that robustly.
+                CrateType::Dylib      => true,
+
                 CrateType::Rlib       => true,
             }
         })
@@ -2145,6 +2152,13 @@ impl<'tcx> Borrow<[ProjectionKind]>
     }
 }
 
+impl<'tcx> Borrow<[PlaceElem<'tcx>]>
+    for Interned<'tcx, List<PlaceElem<'tcx>>> {
+    fn borrow(&self) -> &[PlaceElem<'tcx>] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     fn borrow(&self) -> &RegionKind {
         &self.0
@@ -2245,7 +2259,8 @@ slice_interners!(
     predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
-    projs: _intern_projs(ProjectionKind)
+    projs: _intern_projs(ProjectionKind),
+    place_elems: _intern_place_elems(PlaceElem<'tcx>)
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2552,7 +2567,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_ty_param(self, index: u32, name: InternedString) -> Ty<'tcx> {
+    pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { index, name: name }))
     }
 
@@ -2560,7 +2575,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_const_param(
         self,
         index: u32,
-        name: InternedString,
+        name: Symbol,
         ty: Ty<'tcx>
     ) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {
@@ -2585,6 +2600,48 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
+    }
+
+    pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Field(f, ty))
+    }
+
+    pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Deref)
+    }
+
+    pub fn mk_place_downcast(
+        self,
+        place: Place<'tcx>,
+        adt_def: &'tcx AdtDef,
+        variant_index: VariantIdx,
+    ) -> Place<'tcx> {
+        self.mk_place_elem(
+            place,
+            PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index),
+        )
+    }
+
+    pub fn mk_place_downcast_unnamed(
+        self,
+        place: Place<'tcx>,
+        variant_index: VariantIdx,
+    ) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Downcast(None, variant_index))
+    }
+
+    pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {
+        self.mk_place_elem(place, PlaceElem::Index(index))
+    }
+
+    /// This method copies `Place`'s projection, add an element and reintern it. Should not be used
+    /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
+    /// flight.
+    pub fn mk_place_elem(self, place: Place<'tcx>, elem: PlaceElem<'tcx>) -> Place<'tcx> {
+        let mut projection = place.projection.to_vec();
+        projection.push(elem);
+
+        Place { base: place.base, projection: self.intern_place_elems(&projection) }
     }
 
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
@@ -2628,6 +2685,14 @@ impl<'tcx> TyCtxt<'tcx> {
             List::empty()
         } else {
             self._intern_projs(ps)
+        }
+    }
+
+    pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
+        if ts.len() == 0 {
+            List::empty()
+        } else {
+            self._intern_place_elems(ts)
         }
     }
 
@@ -2691,6 +2756,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_substs<I: InternAs<[GenericArg<'tcx>],
                      &'tcx List<GenericArg<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
+    }
+
+    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>],
+                          &'tcx List<PlaceElem<'tcx>>>>(self, iter: I) -> I::Output {
+        iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
     pub fn mk_substs_trait(self,
@@ -2867,14 +2937,18 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
         // lower bounds from `size_hint` agree they are correct.
         Ok(match iter.size_hint() {
             (1, Some(1)) => {
-                f(&[iter.next().unwrap()?])
+                let t0 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0])
             }
             (2, Some(2)) => {
                 let t0 = iter.next().unwrap()?;
                 let t1 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
                 f(&[t0, t1])
             }
             (0, Some(0)) => {
+                assert!(iter.next().is_none());
                 f(&[])
             }
             _ => {
@@ -2947,6 +3021,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
     };
+    providers.crate_host_hash = |tcx, cnum| {
+        assert_ne!(cnum, LOCAL_CRATE);
+        tcx.cstore.crate_host_hash_untracked(cnum)
+    };
     providers.postorder_cnums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.postorder_cnums_untracked())
@@ -2966,5 +3044,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
+    };
+    providers.has_panic_handler = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        // We want to check if the panic handler was defined in this crate
+        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
     };
 }

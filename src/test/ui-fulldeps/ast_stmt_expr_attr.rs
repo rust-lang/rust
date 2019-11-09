@@ -6,17 +6,18 @@
 #![feature(rustc_private)]
 
 extern crate syntax;
+extern crate rustc_errors;
 
+use rustc_errors::PResult;
 use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
 use syntax::sess::ParseSess;
 use syntax::source_map::{FilePathMapping, FileName};
 use syntax::parse;
-use syntax::parse::PResult;
 use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
-use syntax::parse::token;
+use syntax::token;
 use syntax::ptr::P;
 use syntax::parse::parser::attr::*;
 use syntax::print::pprust;

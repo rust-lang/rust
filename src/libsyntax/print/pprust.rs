@@ -2,19 +2,18 @@ use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
 use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
+use crate::util::comments;
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use crate::parse::lexer::comments;
-use crate::parse;
+use crate::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
 use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
+use crate::util::classify;
 use crate::sess::ParseSess;
 use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
-use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{self, BytePos};
 use syntax_pos::{FileName, Span};
 
@@ -622,16 +621,19 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.hardbreak_if_not_bol();
         }
         self.maybe_print_comment(attr.span.lo());
-        if attr.is_sugared_doc {
-            self.word(attr.value_str().unwrap().as_str().to_string());
-            self.hardbreak()
-        } else {
-            match attr.style {
-                ast::AttrStyle::Inner => self.word("#!["),
-                ast::AttrStyle::Outer => self.word("#["),
+        match attr.kind {
+            ast::AttrKind::Normal(ref item) => {
+                match attr.style {
+                    ast::AttrStyle::Inner => self.word("#!["),
+                    ast::AttrStyle::Outer => self.word("#["),
+                }
+                self.print_attr_item(&item, attr.span);
+                self.word("]");
             }
-            self.print_attr_item(&attr.item, attr.span);
-            self.word("]");
+            ast::AttrKind::DocComment(comment) => {
+                self.word(comment.to_string());
+                self.hardbreak()
+            }
         }
     }
 
@@ -1197,11 +1199,11 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }
-            ast::ItemKind::Fn(ref decl, header, ref param_names, ref body) => {
+            ast::ItemKind::Fn(ref sig, ref param_names, ref body) => {
                 self.head("");
                 self.print_fn(
-                    decl,
-                    header,
+                    &sig.decl,
+                    sig.header,
                     Some(item.ident),
                     param_names,
                     &item.vis
@@ -1227,14 +1229,14 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
                 self.head("extern");
-                self.word_nbsp(nmod.abi.to_string());
+                self.print_abi(nmod.abi);
                 self.bopen();
                 self.print_foreign_mod(nmod, &item.attrs);
                 self.bclose(item.span);
             }
             ast::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
-                self.s.word(ga.asm.as_str().to_string());
+                self.s.word(ga.asm.to_string());
                 self.end();
             }
             ast::ItemKind::TyAlias(ref ty, ref generics) => {
@@ -1539,7 +1541,7 @@ impl<'a> State<'a> {
     crate fn print_method_sig(&mut self,
                             ident: ast::Ident,
                             generics: &ast::Generics,
-                            m: &ast::MethodSig,
+                            m: &ast::FnSig,
                             vis: &ast::Visibility)
                             {
         self.print_fn(&m.decl,
@@ -1657,7 +1659,7 @@ impl<'a> State<'a> {
             ast::StmtKind::Expr(ref expr) => {
                 self.space_if_not_bol();
                 self.print_expr_outer_attr_style(expr, false);
-                if parse::classify::expr_requires_semi_to_be_stmt(expr) {
+                if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.s.word(";");
                 }
             }
@@ -2335,7 +2337,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_name(&mut self, name: ast::Name) {
-        self.s.word(name.as_str().to_string());
+        self.s.word(name.to_string());
         self.ann.post(self, AnnNode::Name(&name))
     }
 
@@ -2820,7 +2822,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_ty_fn(&mut self,
-                       abi: abi::Abi,
+                       abi: ast::Abi,
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
@@ -2881,12 +2883,16 @@ impl<'a> State<'a> {
         self.print_asyncness(header.asyncness.node);
         self.print_unsafety(header.unsafety);
 
-        if header.abi != Abi::Rust {
+        if header.abi.symbol != sym::Rust {
             self.word_nbsp("extern");
-            self.word_nbsp(header.abi.to_string());
+            self.print_abi(header.abi);
         }
 
         self.s.word("fn")
+    }
+
+    fn print_abi(&mut self, abi: ast::Abi) {
+        self.word_nbsp(format!("\"{}\"", abi.symbol));
     }
 
     crate fn print_unsafety(&mut self, s: ast::Unsafety) {

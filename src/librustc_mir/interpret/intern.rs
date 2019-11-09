@@ -6,7 +6,6 @@
 use rustc::ty::{Ty, self};
 use rustc::mir::interpret::{InterpResult, ErrorHandled};
 use rustc::hir;
-use rustc::hir::def_id::DefId;
 use super::validity::RefTracking;
 use rustc_data_structures::fx::FxHashSet;
 
@@ -193,20 +192,18 @@ for
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, mutability) = ty.kind {
             let value = self.ecx.read_immediate(mplace.into())?;
+            let mplace = self.ecx.ref_to_mplace(value)?;
             // Handle trait object vtables
-            if let Ok(meta) = value.to_meta() {
-                if let ty::Dynamic(..) =
-                    self.ecx.tcx.struct_tail_erasing_lifetimes(
-                        referenced_ty, self.ecx.param_env).kind
-                {
-                    if let Ok(vtable) = meta.unwrap().to_ptr() {
-                        // explitly choose `Immutable` here, since vtables are immutable, even
-                        // if the reference of the fat pointer is mutable
-                        self.intern_shallow(vtable.alloc_id, Mutability::Immutable, None)?;
-                    }
+            if let ty::Dynamic(..) =
+                self.ecx.tcx.struct_tail_erasing_lifetimes(
+                    referenced_ty, self.ecx.param_env).kind
+            {
+                if let Ok(vtable) = mplace.meta.unwrap().to_ptr() {
+                    // explitly choose `Immutable` here, since vtables are immutable, even
+                    // if the reference of the fat pointer is mutable
+                    self.intern_shallow(vtable.alloc_id, Mutability::Immutable, None)?;
                 }
             }
-            let mplace = self.ecx.ref_to_mplace(value)?;
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
             if let Scalar::Ptr(ptr) = mplace.ptr {
@@ -231,7 +228,7 @@ for
                             ty::Array(_, n)
                                 if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
                             ty::Slice(_)
-                                if value.to_meta().unwrap().unwrap().to_usize(self.ecx)? == 0 => {}
+                                if mplace.meta.unwrap().to_machine_usize(self.ecx)? == 0 => {}
                             _ => bug!("const qualif failed to prevent mutable references"),
                         }
                     },
@@ -270,12 +267,12 @@ for
 
 pub fn intern_const_alloc_recursive(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
-    def_id: DefId,
+    // The `mutability` of the place, ignoring the type.
+    place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
-    // this `mutability` is the mutability of the place, ignoring the type
-    let (base_mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
+    let (base_mutability, base_intern_mode) = match place_mut {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
         Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),

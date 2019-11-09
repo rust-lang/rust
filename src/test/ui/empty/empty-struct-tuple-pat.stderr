@@ -16,7 +16,7 @@ LL | use empty_struct::*;
 LL |         XEmpty6 => ()
    |         ^^^^^^^ cannot be named the same as a tuple struct
 
-error[E0532]: expected unit struct/variant or constant, found tuple variant `E::Empty4`
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E::Empty4`
   --> $DIR/empty-struct-tuple-pat.rs:29:9
    |
 LL |     Empty4()
@@ -25,7 +25,7 @@ LL |     Empty4()
 LL |         E::Empty4 => ()
    |         ^^^^^^^^^ did you mean `E::Empty4( /* fields */ )`?
 
-error[E0532]: expected unit struct/variant or constant, found tuple variant `XE::XEmpty5`
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `XE::XEmpty5`
   --> $DIR/empty-struct-tuple-pat.rs:33:9
    |
 LL |         XE::XEmpty5 => (),

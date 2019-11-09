@@ -11,7 +11,7 @@ error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pu
   --> $DIR/issue-58856-2.rs:11:1
    |
 LL |     }
-   |      - expected one of 10 possible tokens here
+   |      - expected one of 10 possible tokens
 LL | }
    | ^ unexpected token
 

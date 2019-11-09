@@ -6,7 +6,6 @@ use crate::hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
@@ -14,7 +13,7 @@ use crate::util::common::{duration_to_secs_str, ErrorReported};
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
-    self, Lrc, Lock, OneThread, Once, RwLock, AtomicU64, AtomicUsize, Ordering,
+    self, Lrc, Lock, OneThread, Once, AtomicU64, AtomicUsize, Ordering,
     Ordering::SeqCst,
 };
 
@@ -24,7 +23,7 @@ use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
-use syntax_expand::allocator::AllocatorKind;
+use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
@@ -76,11 +75,6 @@ pub struct Session {
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
-
-    // FIXME: `lint_store` and `buffered_lints` are not thread-safe,
-    // but are only used in a single thread.
-    pub lint_store: RwLock<lint::LintStore>,
-    pub buffered_lints: Lock<Option<lint::LintBuffer>>,
 
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
@@ -153,9 +147,6 @@ pub struct Session {
 
     /// Metadata about the allocators for the current crate being compiled.
     pub has_global_allocator: Once<bool>,
-
-    /// Metadata about the panic handlers for the current crate being compiled.
-    pub has_panic_handler: Once<bool>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -310,6 +301,9 @@ impl Session {
     pub fn has_errors(&self) -> bool {
         self.diagnostic().has_errors()
     }
+    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.diagnostic().has_errors_or_delayed_span_bugs()
+    }
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
@@ -359,35 +353,6 @@ impl Session {
     }
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
-    }
-
-    pub fn buffer_lint<S: Into<MultiSpan>>(
-        &self,
-        lint: &'static lint::Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-    ) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => {
-                buffer.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
-            }
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
-    }
-
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
-        &self,
-        lint: &'static lint::Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg, diagnostic),
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
     }
 
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
@@ -1213,8 +1178,6 @@ fn build_session_(
         sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: RwLock::new(lint::LintStore::new()),
-        buffered_lints: Lock::new(Some(Default::default())),
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: Lock::new(Vec::new()),
@@ -1245,7 +1208,6 @@ fn build_session_(
         print_fuel,
         jobserver: jobserver::client(),
         has_global_allocator: Once::new(),
-        has_panic_handler: Once::new(),
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),

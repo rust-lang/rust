@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 fn fibs(n: u32) -> impl Iterator<Item=u128> {
     (0 .. n)

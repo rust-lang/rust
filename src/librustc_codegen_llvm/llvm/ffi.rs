@@ -1684,6 +1684,7 @@ extern "C" {
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
+                                       Abi: *const c_char,
                                        Model: CodeModel,
                                        Reloc: RelocMode,
                                        Level: CodeGenOptLevel,
@@ -1729,6 +1730,7 @@ extern "C" {
                                ) -> LLVMRustResult;
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
+    pub fn LLVMRustGetInstructionCount(M: &Module) -> u32;
     pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: &PassManagerBuilder, AddLifetimes: bool);
     pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
@@ -1805,6 +1807,7 @@ extern "C" {
 
     pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: &Value);
+    pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
     pub fn LLVMRustModuleBufferCreate(M: &Module) -> &'static mut ModuleBuffer;
     pub fn LLVMRustModuleBufferPtr(p: &ModuleBuffer) -> *const u8;

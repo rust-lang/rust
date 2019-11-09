@@ -492,18 +492,20 @@ impl<T> Once<T> {
         assert!(self.try_set(value).is_none());
     }
 
-    /// Tries to initialize the inner value by calling the closure while ensuring that no-one else
-    /// can access the value in the mean time by holding a lock for the duration of the closure.
-    /// If the value was already initialized the closure is not called and `false` is returned,
-    /// otherwise if the value from the closure initializes the inner value, `true` is returned
+    /// Initializes the inner value if it wasn't already done by calling the provided closure. It
+    /// ensures that no-one else can access the value in the mean time by holding a lock for the
+    /// duration of the closure.
+    /// A reference to the inner value is returned.
     #[inline]
-    pub fn init_locking<F: FnOnce() -> T>(&self, f: F) -> bool {
-        let mut lock = self.0.lock();
-        if lock.is_some() {
-            return false;
+    pub fn init_locking<F: FnOnce() -> T>(&self, f: F) -> &T {
+        {
+            let mut lock = self.0.lock();
+            if lock.is_none() {
+                *lock = Some(f());
+            }
         }
-        *lock = Some(f());
-        true
+
+        self.borrow()
     }
 
     /// Tries to initialize the inner value by calling the closure without ensuring that no-one

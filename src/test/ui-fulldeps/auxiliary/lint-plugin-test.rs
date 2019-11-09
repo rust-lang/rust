@@ -10,8 +10,7 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_driver;
 
-use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
-                  EarlyLintPassObject, LintArray};
+use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass, LintArray};
 use rustc_driver::plugin::Registry;
 use syntax::ast;
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
@@ -28,5 +27,6 @@ impl EarlyLintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_early_lint_pass(box Pass as EarlyLintPassObject);
+    reg.lint_store.register_lints(&[&TEST_LINT]);
+    reg.lint_store.register_early_pass(|| box Pass);
 }

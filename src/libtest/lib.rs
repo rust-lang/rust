@@ -34,8 +34,10 @@
 pub use self::ColorConfig::*;
 pub use self::types::*;
 pub use self::types::TestName::*;
-pub use self::options::{Options, ShouldPanic};
+pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};
 pub use self::bench::{Bencher, black_box};
+pub use self::console::run_tests_console;
+pub use cli::TestOpts;
 
 // Module to be used by rustc to compile tests in libtest
 pub mod test {
@@ -84,9 +86,8 @@ mod tests;
 
 use test_result::*;
 use time::TestExecTime;
-use options::{RunStrategy, Concurrent, RunIgnored, ColorConfig};
+use options::{RunStrategy, Concurrent};
 use event::{CompletedTest, TestEvent};
-use cli::TestOpts;
 use helpers::sink::Sink;
 use helpers::concurrency::get_concurrency;
 use helpers::exit_code::get_exit_code;
@@ -440,9 +441,9 @@ pub fn run_test(
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
-    // FIXME: Re-enable emscripten once it can catch panics again
+    // Emscripten can catch panics but other wasm targets cannot
     let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
-        && (cfg!(target_arch = "wasm32") || cfg!(target_os = "emscripten"));
+        && cfg!(target_arch = "wasm32") && !cfg!(target_os = "emscripten");
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
         let message = CompletedTest::new(desc, TrIgnored, None, Vec::new());

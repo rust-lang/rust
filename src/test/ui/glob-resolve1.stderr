@@ -3,6 +3,7 @@ error[E0425]: cannot find function `fpriv` in this scope
    |
 LL |     fpriv();
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::fpriv;
@@ -13,6 +14,7 @@ error[E0425]: cannot find function `epriv` in this scope
    |
 LL |     epriv();
    |     ^^^^^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::epriv;
@@ -29,6 +31,7 @@ error[E0425]: cannot find value `C` in this scope
    |
 LL |     C;
    |     ^ not found in this scope
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use bar::C;
@@ -43,8 +46,12 @@ LL |     import();
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:28:11
    |
+LL |     pub enum B { B1 }
+   |     ----------------- similarly named enum `B` defined here
+...
 LL |     foo::<A>();
    |           ^
+   |
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
@@ -57,8 +64,12 @@ LL | use bar::A;
 error[E0412]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:29:11
    |
+LL |     pub enum B { B1 }
+   |     ----------------- similarly named enum `B` defined here
+...
 LL |     foo::<C>();
    |           ^
+   |
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
@@ -71,8 +82,12 @@ LL | use bar::C;
 error[E0412]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:30:11
    |
+LL |     pub enum B { B1 }
+   |     ----------------- similarly named enum `B` defined here
+...
 LL |     foo::<D>();
    |           ^
+   |
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();

@@ -105,7 +105,7 @@ contributions to the compiler and the standard library. It also lists some
 really useful commands to the build system (`./x.py`), which could save you a
 lot of time.
 
-[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/how-to-build-and-run.html
+[rustcguidebuild]: https://rust-lang.github.io/rustc-guide/building/how-to-build-and-run.html
 
 ## Pull Requests
 [pull-requests]: #pull-requests
@@ -127,6 +127,14 @@ E.g. always use rebase when bringing the latest changes from
 the master branch to your feature branch.
 Also, please make sure that fixup commits are squashed into other related
 commits with meaningful commit messages.
+
+GitHub allows [closing issues using keywords][closing-keywords]. This feature
+should be used to keep the issue tracker tidy. However, it is generally preferred
+to put the "closes #123" text in the PR description rather than the issue commit;
+particularly during rebasing, citing the issue number in the commit can "spam"
+the issue in question.
+
+[closing-keywords]: https://help.github.com/en/articles/closing-issues-using-keywords
 
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running

@@ -1,4 +1,4 @@
-use super::{Parser, PResult, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
+use super::{Parser, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
 use super::expr::LhsExpr;
 use super::path::PathStyle;
 use super::pat::GateOr;
@@ -8,13 +8,14 @@ use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
 use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
-use crate::parse::{classify, DirectoryOwnership};
-use crate::parse::token;
+use crate::parse::DirectoryOwnership;
+use crate::util::classify;
+use crate::token;
 use crate::source_map::{respan, Span};
 use crate::symbol::{kw, sym};
 
 use std::mem;
-use errors::Applicability;
+use errors::{PResult, Applicability};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
@@ -239,7 +240,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short(
                     colon_sp,
                     "use `=` if you meant to assign",
-                    "=".to_string(),
+                    " =".to_string(),
                     Applicability::MachineApplicable
                 );
                 err.emit();
@@ -397,6 +398,7 @@ impl<'a> Parser<'a> {
             }
             let stmt = match self.parse_full_stmt(false) {
                 Err(mut err) => {
+                    self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(Stmt {
@@ -432,6 +434,7 @@ impl<'a> Parser<'a> {
             None => return Ok(None),
         };
 
+        let mut eat_semi = true;
         match stmt.kind {
             StmtKind::Expr(ref expr) if self.token != token::Eof => {
                 // expression without semicolon
@@ -453,13 +456,14 @@ impl<'a> Parser<'a> {
                 if macro_legacy_warnings && self.token != token::Semi {
                     self.warn_missing_semicolon();
                 } else {
-                    self.expect_one_of(&[], &[token::Semi])?;
+                    self.expect_semi()?;
+                    eat_semi = false;
                 }
             }
             _ => {}
         }
 
-        if self.eat(&token::Semi) {
+        if eat_semi && self.eat(&token::Semi) {
             stmt = stmt.add_trailing_semicolon();
         }
         stmt.span = stmt.span.to(self.prev_span);

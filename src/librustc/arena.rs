@@ -304,7 +304,7 @@ impl DropArena {
         // Move the content to the arena by copying it and then forgetting
         // the content of the SmallVec
         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-        mem::forget(vec.drain());
+        mem::forget(vec.drain(..));
 
         // Record the destructors after doing the allocation as that may panic
         // and would cause `object`'s destuctor to run twice if it was recorded before

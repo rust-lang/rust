@@ -22,13 +22,13 @@ fn main() {
     }
     match e3 {
         E::Empty3 => ()
-        //~^ ERROR expected unit struct/variant or constant, found struct variant `E::Empty3`
+        //~^ ERROR expected unit struct, unit variant or constant, found struct variant `E::Empty3`
     }
     match xe1 {
         XEmpty1 => () // Not an error, `XEmpty1` is interpreted as a new binding
     }
     match xe3 {
         XE::XEmpty3 => ()
-        //~^ ERROR expected unit struct/variant or constant, found struct variant `XE::XEmpty3`
+    //~^ ERROR expected unit struct, unit variant or constant, found struct variant `XE::XEmpty3`
     }
 }

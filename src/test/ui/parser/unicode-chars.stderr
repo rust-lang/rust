@@ -3,6 +3,7 @@ error: unknown start of token: \u{37e}
    |
 LL |     let y = 0;
    |              ^
+   |
 help: Unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it is not
    |
 LL |     let y = 0;

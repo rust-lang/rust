@@ -1,5 +1,7 @@
 //! Memory allocation APIs
 
+// ignore-tidy-undocumented-unsafe
+
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use crate::cmp;

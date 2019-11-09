@@ -272,5 +272,5 @@ LL |     type Out = impl Debug;
 
 error: aborting due to 43 previous errors
 
-Some errors have detailed explanations: E0282, E0562, E0658.
+Some errors have detailed explanations: E0282, E0562, E0658, E0666.
 For more information about an error, try `rustc --explain E0282`.

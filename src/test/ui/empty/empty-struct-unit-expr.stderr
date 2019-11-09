@@ -19,6 +19,7 @@ LL |     let e4 = E::Empty4();
    |              ^^^^^^^^^--
    |              |
    |              call expression requires function
+   |
 help: `E::Empty4` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let e4 = E::Empty4;
@@ -39,6 +40,7 @@ LL |     let xe4 = XE::XEmpty4();
    |               ^^^^^^^^^^^--
    |               |
    |               call expression requires function
+   |
 help: `XE::XEmpty4` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let xe4 = XE::XEmpty4;

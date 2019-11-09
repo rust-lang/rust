@@ -315,10 +315,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         //    TEMP = &foo
         //
         // so extract `temp`.
-        let temp = if let &mir::Place {
-            base: mir::PlaceBase::Local(temp),
-            projection: box [],
-        } = assigned_place {
+        let temp = if let Some(temp) = assigned_place.as_local() {
             temp
         } else {
             span_bug!(

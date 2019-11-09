@@ -21,31 +21,31 @@ use Determinacy::*;
 
 use rustc::hir::map::Definitions;
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
-use rustc::middle::cstore::CrateStore;
+use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::{TraitMap, GlobMap};
-use rustc::ty::{self, DefIdTree};
+use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::span_bug;
 
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
-use syntax_expand::hygiene::{ExpnId, Transparency, SyntaxContext};
-use syntax_expand::base::{SyntaxExtension, MacroKind, SpecialDerives};
 use syntax::{struct_span_err, unwrap_or};
-use syntax::attr;
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
-use syntax::ast::{ItemKind, Path, CRATE_NODE_ID, Crate};
+use syntax::ast::{CRATE_NODE_ID, Crate};
+use syntax::ast::{ItemKind, Path};
+use syntax::attr;
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 use syntax::source_map::Spanned;
 use syntax::visit::{self, Visitor};
-
+use syntax_expand::base::SyntaxExtension;
+use syntax_pos::hygiene::{MacroKind, ExpnId, Transparency, SyntaxContext};
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{Applicability, DiagnosticBuilder};
 
@@ -215,8 +215,6 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
-    /// Error E0671: const parameter cannot depend on type parameter.
-    ConstParamDependentOnTypeParam,
 }
 
 // A minimal representation of a path segment. We use this in resolve because
@@ -829,14 +827,13 @@ pub struct ExternPreludeEntry<'a> {
 /// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
-    cstore: &'a CStore,
 
-    pub definitions: Definitions,
+    definitions: Definitions,
 
-    pub graph_root: Module<'a>,
+    graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
-    pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
+    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -869,9 +866,9 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    pub extern_crate_map: NodeMap<CrateNum>,
-    pub export_map: ExportMap<NodeId>,
-    pub trait_map: TraitMap,
+    extern_crate_map: NodeMap<CrateNum>,
+    export_map: ExportMap<NodeId>,
+    trait_map: TraitMap,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -898,11 +895,11 @@ pub struct Resolver<'a> {
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    pub glob_map: GlobMap,
+    glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
-    pub maybe_unused_trait_imports: NodeSet,
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_trait_imports: NodeSet,
+    maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -916,11 +913,11 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: &'a CrateLoader<'a>,
+    crate_loader: CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
-    pub all_macros: FxHashMap<Name, Res>,
+    all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
@@ -936,12 +933,10 @@ pub struct Resolver<'a> {
     multi_segment_macro_resolutions: Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>,
                                           Option<Res>)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
-    /// Some built-in derives mark items they are applied to so they are treated specially later.
+    /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    /// FIXME: Find a way for `PartialEq` and `Eq` to emulate `#[structural_match]`
-    /// by marking the produced impls rather than the original items.
-    special_derives: FxHashMap<ExpnId, SpecialDerives>,
+    containers_deriving_copy: FxHashSet<ExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
@@ -964,6 +959,8 @@ pub struct Resolver<'a> {
     /// Stores enum visibilities to properly build a reduced graph
     /// when visiting the correspondent variants.
     variant_vis: DefIdMap<ty::Visibility>,
+
+    lint_buffer: lint::LintBuffer,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1015,7 +1012,7 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
-            _ => self.cstore.def_key(id).parent,
+            _ => self.cstore().def_key(id).parent,
         }.map(|index| DefId { index, ..id })
     }
 }
@@ -1023,6 +1020,10 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
+    fn cstore(&self) -> &dyn CrateStore {
+        self.cstore()
+    }
+
     fn resolve_str_path(
         &mut self,
         span: Span,
@@ -1074,19 +1075,16 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         &mut self.definitions
     }
 
-    fn has_derives(&self, node_id: NodeId, derives: SpecialDerives) -> bool {
-        let def_id = self.definitions.local_def_id(node_id);
-        let expn_id = self.definitions.expansion_that_defined(def_id.index);
-        self.has_derives(expn_id, derives)
+    fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
+        &mut self.lint_buffer
     }
 }
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
-               cstore: &'a CStore,
                krate: &Crate,
                crate_name: &str,
-               crate_loader: &'a CrateLoader<'a>,
+               metadata_loader: &'a MetadataLoaderDyn,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
@@ -1147,8 +1145,6 @@ impl<'a> Resolver<'a> {
         Resolver {
             session,
 
-            cstore,
-
             definitions,
 
             // The outermost module has def ID 0; this is not reflected in the
@@ -1202,7 +1198,7 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
 
-            crate_loader,
+            crate_loader: CrateLoader::new(session, metadata_loader, crate_name),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             macro_use_prelude: FxHashMap::default(),
@@ -1223,17 +1219,58 @@ impl<'a> Resolver<'a> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
-            special_derives: Default::default(),
+            containers_deriving_copy: Default::default(),
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                     .collect(),
-            variant_vis: Default::default()
+            variant_vis: Default::default(),
+            lint_buffer: lint::LintBuffer::default(),
         }
+    }
+
+    pub fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
+        &mut self.lint_buffer
     }
 
     pub fn arenas() -> ResolverArenas<'a> {
         Default::default()
+    }
+
+    pub fn into_outputs(self) -> ResolverOutputs {
+        ResolverOutputs {
+            definitions: self.definitions,
+            cstore: Box::new(self.crate_loader.into_cstore()),
+            extern_crate_map: self.extern_crate_map,
+            export_map: self.export_map,
+            trait_map: self.trait_map,
+            glob_map: self.glob_map,
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates,
+            extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
+        }
+    }
+
+    pub fn clone_outputs(&self) -> ResolverOutputs {
+        ResolverOutputs {
+            definitions: self.definitions.clone(),
+            cstore: Box::new(self.cstore().clone()),
+            extern_crate_map: self.extern_crate_map.clone(),
+            export_map: self.export_map.clone(),
+            trait_map: self.trait_map.clone(),
+            glob_map: self.glob_map.clone(),
+            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
+            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
+            extern_prelude: self.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
+        }
+    }
+
+    pub fn cstore(&self) -> &CStore {
+        self.crate_loader.cstore()
     }
 
     fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
@@ -1266,10 +1303,6 @@ impl<'a> Resolver<'a> {
                 None => ctxt.remove_mark(),
             };
         }
-    }
-
-    fn has_derives(&self, expn_id: ExpnId, markers: SpecialDerives) -> bool {
-        self.special_derives.get(&expn_id).map_or(false, |m| m.contains(markers))
     }
 
     /// Entry point to crate resolution.
@@ -1618,7 +1651,7 @@ impl<'a> Resolver<'a> {
             match result {
                 Ok(binding) => {
                     if let Some(node_id) = poisoned {
-                        self.session.buffer_lint_with_diagnostic(
+                        self.lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                             node_id, ident.span,
                             &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
@@ -2083,7 +2116,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn lint_if_path_starts_with_module(
-        &self,
+        &mut self,
         crate_lint: CrateLint,
         path: &[Segment],
         path_span: Span,
@@ -2134,7 +2167,7 @@ impl<'a> Resolver<'a> {
 
         let diag = lint::builtin::BuiltinLintDiagnostics
             ::AbsPathWithModule(diag_span);
-        self.session.buffer_lint_with_diagnostic(
+        self.lint_buffer.buffer_lint_with_diagnostic(
             lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             diag_id, diag_span,
             "absolute paths must start with `self`, `super`, \
@@ -2169,15 +2202,6 @@ impl<'a> Resolver<'a> {
             return Res::Err;
         }
 
-        // An invalid use of a type parameter as the type of a const parameter.
-        if let TyParamAsConstParamTy = all_ribs[rib_index].kind {
-            if record_used {
-                self.report_error(span, ResolutionError::ConstParamDependentOnTypeParam);
-            }
-            assert_eq!(res, Res::Err);
-            return Res::Err;
-        }
-
         match res {
             Res::Local(_) => {
                 use ResolutionError::*;
@@ -2186,7 +2210,7 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
-                        ForwardTyParamBanRibKind | TyParamAsConstParamTy => {
+                        ForwardTyParamBanRibKind => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
@@ -2220,7 +2244,7 @@ impl<'a> Resolver<'a> {
                     let has_generic_params = match rib.kind {
                         NormalRibKind | AssocItemRibKind |
                         ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
-                        ConstantItemRibKind | TyParamAsConstParamTy => {
+                        ConstantItemRibKind => {
                             // Nothing to do. Continue.
                             continue;
                         }
@@ -2393,7 +2417,7 @@ impl<'a> Resolver<'a> {
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
             let msg = "macro-expanded `macro_export` macros from the current crate \
                        cannot be referred to by absolute paths";
-            self.session.buffer_lint_with_diagnostic(
+            self.lint_buffer.buffer_lint_with_diagnostic(
                 lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID, span_use, msg,
                 lint::builtin::BuiltinLintDiagnostics::
@@ -2807,6 +2831,16 @@ impl<'a> Resolver<'a> {
         let mut seg = ast::PathSegment::from_ident(ident);
         seg.id = self.session.next_node_id();
         seg
+    }
+
+    // For rustdoc.
+    pub fn graph_root(&self) -> Module<'a> {
+        self.graph_root
+    }
+
+    // For rustdoc.
+    pub fn all_macros(&self) -> &FxHashMap<Name, Res> {
+        &self.all_macros
     }
 }
 

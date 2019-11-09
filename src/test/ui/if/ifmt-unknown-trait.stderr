@@ -1,8 +1,8 @@
 error: unknown format trait `notimplemented`
-  --> $DIR/ifmt-unknown-trait.rs:2:34
+  --> $DIR/ifmt-unknown-trait.rs:2:16
    |
 LL |     format!("{:notimplemented}", "3");
-   |                                  ^^^
+   |                ^^^^^^^^^^^^^^
    |
    = note: the only appropriate formatting traits are:
            - ``, which uses the `Display` trait

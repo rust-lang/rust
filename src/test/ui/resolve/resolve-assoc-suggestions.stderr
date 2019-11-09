@@ -4,7 +4,7 @@ error[E0412]: cannot find type `field` in this scope
 LL |         let _: field;
    |                ^^^^^ not found in this scope
 
-error[E0531]: cannot find tuple struct/variant `field` in this scope
+error[E0531]: cannot find tuple struct or tuple variant `field` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:18:13
    |
 LL |         let field(..);
@@ -22,7 +22,7 @@ error[E0412]: cannot find type `Type` in this scope
 LL |         let _: Type;
    |                ^^^^ help: try: `Self::Type`
 
-error[E0531]: cannot find tuple struct/variant `Type` in this scope
+error[E0531]: cannot find tuple struct or tuple variant `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:25:13
    |
 LL |         let Type(..);
@@ -40,7 +40,7 @@ error[E0412]: cannot find type `method` in this scope
 LL |         let _: method;
    |                ^^^^^^ not found in this scope
 
-error[E0531]: cannot find tuple struct/variant `method` in this scope
+error[E0531]: cannot find tuple struct or tuple variant `method` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:32:13
    |
 LL |         let method(..);

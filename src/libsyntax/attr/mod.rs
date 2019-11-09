@@ -9,21 +9,21 @@ pub use StabilityLevel::*;
 pub use crate::ast::Attribute;
 
 use crate::ast;
-use crate::ast::{AttrItem, AttrId, AttrStyle, Name, Ident, Path, PathSegment};
+use crate::ast::{AttrItem, AttrId, AttrKind, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
-use crate::source_map::{BytePos, Spanned, DUMMY_SP};
-use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use crate::parse::parser::Parser;
-use crate::parse::PResult;
-use crate::parse::token::{self, Token};
+use crate::source_map::{BytePos, Spanned};
+use crate::parse;
+use crate::token::{self, Token};
 use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
+
+use errors::PResult;
 
 use log::debug;
 use syntax_pos::Span;
@@ -145,12 +145,17 @@ impl NestedMetaItem {
 }
 
 impl Attribute {
+    pub fn has_name(&self, name: Symbol) -> bool {
+        match self.kind {
+            AttrKind::Normal(ref item) => item.path == name,
+            AttrKind::DocComment(_) => name == sym::doc,
+        }
+    }
+
     /// Returns `true` if the attribute's path matches the argument. If it matches, then the
     /// attribute is marked as used.
-    ///
-    /// To check the attribute name without marking it used, use the `path` field directly.
     pub fn check_name(&self, name: Symbol) -> bool {
-        let matches = self.path == name;
+        let matches = self.has_name(name);
         if matches {
             mark_used(self);
         }
@@ -159,10 +164,15 @@ impl Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if self.path.segments.len() == 1 {
-            Some(self.path.segments[0].ident)
-        } else {
-            None
+        match self.kind {
+            AttrKind::Normal(ref item) => {
+                if item.path.segments.len() == 1 {
+                    Some(item.path.segments[0].ident)
+                } else {
+                    None
+                }
+            }
+            AttrKind::DocComment(_) => Some(Ident::new(sym::doc, self.span)),
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
@@ -170,18 +180,32 @@ impl Attribute {
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        self.meta().and_then(|meta| meta.value_str())
+        match self.kind {
+            AttrKind::Normal(ref item) => {
+                item.meta(self.span).and_then(|meta| meta.value_str())
+            }
+            AttrKind::DocComment(comment) => Some(comment),
+        }
     }
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
-        match self.meta() {
-            Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
-            _ => None
+        match self.kind {
+            AttrKind::Normal(ref item) => {
+                match item.meta(self.span) {
+                    Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
+                    _ => None
+                }
+            }
+            AttrKind::DocComment(_) => None,
         }
     }
 
     pub fn is_word(&self) -> bool {
-        self.tokens.is_empty()
+        if let AttrKind::Normal(item) = &self.kind {
+            item.tokens.is_empty()
+        } else {
+            false
+        }
     }
 
     pub fn is_meta_item_list(&self) -> bool {
@@ -275,66 +299,48 @@ impl AttrItem {
 }
 
 impl Attribute {
+    pub fn is_doc_comment(&self) -> bool {
+        match self.kind {
+            AttrKind::Normal(_) => false,
+            AttrKind::DocComment(_) => true,
+        }
+    }
+
+    pub fn get_normal_item(&self) -> &AttrItem {
+        match self.kind {
+            AttrKind::Normal(ref item) => item,
+            AttrKind::DocComment(_) => panic!("unexpected sugared doc"),
+        }
+    }
+
+    pub fn unwrap_normal_item(self) -> AttrItem {
+        match self.kind {
+            AttrKind::Normal(item) => item,
+            AttrKind::DocComment(_) => panic!("unexpected sugared doc"),
+        }
+    }
+
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
-        self.item.meta(self.span)
-    }
-
-    crate fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    {
-        let mut parser = Parser::new(
-            sess,
-            self.tokens.clone(),
-            None,
-            false,
-            false,
-            Some("attribute"),
-        );
-        let result = f(&mut parser)?;
-        if parser.token != token::Eof {
-            parser.unexpected()?;
+        match self.kind {
+            AttrKind::Normal(ref item) => item.meta(self.span),
+            AttrKind::DocComment(comment) =>
+                Some(mk_name_value_item_str(Ident::new(sym::doc, self.span), comment, self.span)),
         }
-        Ok(result)
-    }
-
-    pub fn parse_derive_paths<'a>(&self, sess: &'a ParseSess) -> PResult<'a, Vec<Path>> {
-        if self.tokens.is_empty() {
-            return Ok(Vec::new());
-        }
-        self.parse(sess, |p| p.parse_derive_paths())
     }
 
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
-        Ok(MetaItem {
-            path: self.path.clone(),
-            kind: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
-            span: self.span,
-        })
-    }
-
-    /// Converts `self` to a normal `#[doc="foo"]` comment, if it is a
-    /// comment like `///` or `/** */`. (Returns `self` unchanged for
-    /// non-sugared doc attributes.)
-    pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
-        F: FnOnce(&Attribute) -> T,
-    {
-        if self.is_sugared_doc {
-            let comment = self.value_str().unwrap();
-            let meta = mk_name_value_item_str(
-                Ident::with_dummy_span(sym::doc),
-                Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())),
-                DUMMY_SP,
-            );
-            f(&Attribute {
-                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
-                id: self.id,
-                style: self.style,
-                is_sugared_doc: true,
-                span: self.span,
-            })
-        } else {
-            f(self)
+        match self.kind {
+            AttrKind::Normal(ref item) => {
+                Ok(MetaItem {
+                    path: item.path.clone(),
+                    kind: parse::parse_in_attr(sess, self, |parser| parser.parse_meta_item_kind())?,
+                    span: self.span,
+                })
+            }
+            AttrKind::DocComment(comment) => {
+                Ok(mk_name_value_item_str(Ident::new(sym::doc, self.span), comment, self.span))
+            }
         }
     }
 }
@@ -377,10 +383,9 @@ crate fn mk_attr_id() -> AttrId {
 
 pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
     Attribute {
-        item: AttrItem { path, tokens },
+        kind: AttrKind::Normal(AttrItem { path, tokens }),
         id: mk_attr_id(),
         style,
-        is_sugared_doc: false,
         span,
     }
 }
@@ -395,18 +400,11 @@ pub fn mk_attr_outer(item: MetaItem) -> Attribute {
     mk_attr(AttrStyle::Outer, item.path, item.kind.tokens(item.span), item.span)
 }
 
-pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
-    let style = doc_comment_style(&text.as_str());
-    let lit_kind = LitKind::Str(text, ast::StrStyle::Cooked);
-    let lit = Lit::from_lit_kind(lit_kind, span);
+pub fn mk_doc_comment(style: AttrStyle, comment: Symbol, span: Span) -> Attribute {
     Attribute {
-        item: AttrItem {
-            path: Path::from_ident(Ident::with_dummy_span(sym::doc).with_span_pos(span)),
-            tokens: MetaItemKind::NameValue(lit).tokens(span),
-        },
+        kind: AttrKind::DocComment(comment),
         id: mk_attr_id(),
         style,
-        is_sugared_doc: true,
         span,
     }
 }

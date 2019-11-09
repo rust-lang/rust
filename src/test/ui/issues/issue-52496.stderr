@@ -8,7 +8,7 @@ error: expected one of `,` or `}`, found `.`
   --> $DIR/issue-52496.rs:8:22
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
-   |             ---      ^ expected one of `,` or `}` here
+   |             ---      ^ expected one of `,` or `}`
    |             |
    |             while parsing this struct
 

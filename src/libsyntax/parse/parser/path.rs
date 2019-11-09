@@ -1,15 +1,15 @@
-use super::{Parser, PResult, TokenType};
+use super::{Parser, TokenType};
 
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
 use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::source_map::{Span, BytePos};
-use crate::symbol::kw;
+use syntax_pos::symbol::{kw, sym};
 
 use std::mem;
 use log::debug;
-use errors::{Applicability, pluralise};
+use errors::{PResult, Applicability, pluralize};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a list of paths inside `#[derive(path_0, ..., path_n)]`.
-    crate fn parse_derive_paths(&mut self) -> PResult<'a, Vec<Path>> {
+    pub fn parse_derive_paths(&mut self) -> PResult<'a, Vec<Path>> {
         self.expect(&token::OpenDelim(token::Paren))?;
         let mut list = Vec::new();
         while !self.eat(&token::CloseDelim(token::Paren)) {
@@ -368,14 +368,14 @@ impl<'a> Parser<'a> {
                         span,
                         &format!(
                             "unmatched angle bracket{}",
-                            pluralise!(snapshot.unmatched_angle_bracket_count)
+                            pluralize!(snapshot.unmatched_angle_bracket_count)
                         ),
                     )
                     .span_suggestion(
                         span,
                         &format!(
                             "remove extra angle bracket{}",
-                            pluralise!(snapshot.unmatched_angle_bracket_count)
+                            pluralize!(snapshot.unmatched_angle_bracket_count)
                         ),
                         String::new(),
                         Applicability::MachineApplicable,
@@ -404,8 +404,9 @@ impl<'a> Parser<'a> {
                 // Parse lifetime argument.
                 args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
-            } else if self.check_ident() && self.look_ahead(1,
-                    |t| t == &token::Eq || t == &token::Colon) {
+            } else if self.check_ident()
+                && self.look_ahead(1, |t| t == &token::Eq || t == &token::Colon)
+            {
                 // Parse associated type constraint.
                 let lo = self.token.span;
                 let ident = self.parse_ident()?;
@@ -420,7 +421,14 @@ impl<'a> Parser<'a> {
                 } else {
                     unreachable!();
                 };
+
                 let span = lo.to(self.prev_span);
+
+                // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
+                if let AssocTyConstraintKind::Bound { .. } = kind {
+                    self.sess.gated_spans.gate(sym::associated_type_bounds, span);
+                }
+
                 constraints.push(AssocTyConstraint {
                     id: ast::DUMMY_NODE_ID,
                     ident,

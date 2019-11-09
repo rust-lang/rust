@@ -2,7 +2,7 @@ error: expected one of `->`, `where`, or `{`, found `:`
   --> $DIR/not-a-pred.rs:3:26
    |
 LL | fn f(a: isize, b: isize) : lt(a, b) { }
-   |                          ^ expected one of `->`, `where`, or `{` here
+   |                          ^ expected one of `->`, `where`, or `{`
 
 error: aborting due to previous error
 

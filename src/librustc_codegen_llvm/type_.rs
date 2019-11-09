@@ -8,11 +8,11 @@ use rustc_codegen_ssa::traits::*;
 
 use crate::common;
 use crate::type_of::LayoutLlvmExt;
-use crate::abi::{LlvmType, FnTypeLlvmExt};
+use crate::abi::{LlvmType, FnAbiLlvmExt};
 use syntax::ast;
 use rustc::ty::Ty;
 use rustc::ty::layout::{self, Align, Size, TyLayout};
-use rustc_target::abi::call::{CastTarget, FnType, Reg};
+use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::common::TypeKind;
 
@@ -243,7 +243,7 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn type_ptr_to(&self, ty: &'ll Type) -> &'ll Type {
         assert_ne!(self.type_kind(ty), TypeKind::Function,
-                   "don't call ptr_to on function types, use ptr_to_llvm_type on FnType instead");
+                   "don't call ptr_to on function types, use ptr_to_llvm_type on FnAbi instead");
         ty.ptr_to()
     }
 
@@ -336,8 +336,8 @@ impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn cast_backend_type(&self, ty: &CastTarget) -> &'ll Type {
         ty.llvm_type(self)
     }
-    fn fn_ptr_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Type {
-        ty.ptr_to_llvm_type(self)
+    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
+        fn_abi.ptr_to_llvm_type(self)
     }
     fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {
         ty.llvm_type(self)

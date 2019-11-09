@@ -34,8 +34,8 @@ impl IndexMut<usize> for Indexable {
 }
 
 
-//~ MONO_ITEM fn overloaded_operators::{{impl}}[4]::eq[0]
-//~ MONO_ITEM fn overloaded_operators::{{impl}}[4]::ne[0]
+//~ MONO_ITEM fn overloaded_operators::{{impl}}[5]::eq[0]
+//~ MONO_ITEM fn overloaded_operators::{{impl}}[5]::ne[0]
 #[derive(PartialEq)]
 pub struct Equatable(u32);
 

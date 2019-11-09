@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 // Issue 33903:
 // Built-in indexing should be used even when the index is not

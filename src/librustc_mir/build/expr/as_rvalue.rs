@@ -139,7 +139,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // initialize the box contents:
                 unpack!(
                     block = this.into(
-                        &Place::from(result).deref(),
+                        &this.hir.tcx().mk_place_deref(Place::from(result)),
                         block, value
                     )
                 );
@@ -296,8 +296,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .zip(field_types.into_iter())
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
-                            None => this.consume_by_copy_or_move(base.clone().field(n, ty)),
-                        }).collect()
+                            None => this.consume_by_copy_or_move(this.hir.tcx().mk_place_field(
+                                base.clone(),
+                                n,
+                                ty,
+                            )),
+                        })
+                        .collect()
                 } else {
                     field_names
                         .iter()
@@ -397,8 +402,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
 
-            let val = result_value.clone().field(val_fld, ty);
-            let of = result_value.field(of_fld, bool_ty);
+            let tcx = self.hir.tcx();
+            let val = tcx.mk_place_field(result_value.clone(), val_fld, ty);
+            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
             let err = PanicInfo::Overflow(op);
 
@@ -496,14 +502,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let arg_place = unpack!(block = this.as_place(block, arg));
 
-        let mutability = match arg_place {
-            Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
+        let mutability = match arg_place.as_ref() {
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: &[],
             } => this.local_decls[local].mutability,
-            Place {
-                base: PlaceBase::Local(local),
-                projection: box [ProjectionElem::Deref],
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: &[ProjectionElem::Deref],
             } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
@@ -511,13 +517,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 this.local_decls[local].mutability
             }
-            Place {
+            PlaceRef {
                 ref base,
-                projection: box [ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
+                projection: &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             }
-            | Place {
+            | PlaceRef {
                 ref base,
-                projection: box [
+                projection: &[
                     ref proj_base @ ..,
                     ProjectionElem::Field(upvar_index, _),
                     ProjectionElem::Deref

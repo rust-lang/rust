@@ -37,9 +37,9 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Char => output.push_str("char"),
         ty::Str => output.push_str("str"),
         ty::Never => output.push_str("!"),
-        ty::Int(int_ty) => output.push_str(int_ty.ty_to_string()),
-        ty::Uint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
-        ty::Float(float_ty) => output.push_str(float_ty.ty_to_string()),
+        ty::Int(int_ty) => output.push_str(int_ty.name_str()),
+        ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
+        ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
             push_item_name(tcx, def.did, qualified, output);
@@ -76,9 +76,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             if !cpp_like_names {
                 output.push('&');
             }
-            if mutbl == hir::MutMutable {
-                output.push_str("mut ");
-            }
+            output.push_str(mutbl.prefix_str());
 
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
@@ -140,9 +138,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 
 
             let sig = t.fn_sig(tcx);
-            if sig.unsafety() == hir::Unsafety::Unsafe {
-                output.push_str("unsafe ");
-            }
+            output.push_str(sig.unsafety().prefix_str());
 
             let abi = sig.abi();
             if abi != rustc_target::spec::abi::Abi::Rust {
@@ -221,7 +217,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {
                 output.push_str("::");
-                output.push_str(&path_element.data.as_interned_str().as_str());
+                output.push_str(&path_element.data.as_symbol().as_str());
             }
         } else {
             output.push_str(&tcx.item_name(def_id).as_str());

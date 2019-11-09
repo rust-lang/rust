@@ -7,8 +7,13 @@ LL |         Self { inner: 1.5f32 };
 error[E0308]: mismatched types
   --> $DIR/struct-path-self-type-mismatch.rs:15:20
    |
+LL | impl<T> Foo<T> {
+   |      - expected type parameter
+LL |     fn new<U>(u: U) -> Foo<U> {
+   |            - found type parameter
+...
 LL |             inner: u
-   |                    ^ expected type parameter, found a different type parameter
+   |                    ^ expected type parameter `T`, found type parameter `U`
    |
    = note: expected type `T`
               found type `U`
@@ -18,14 +23,18 @@ LL |             inner: u
 error[E0308]: mismatched types
   --> $DIR/struct-path-self-type-mismatch.rs:13:9
    |
+LL |   impl<T> Foo<T> {
+   |        - found type parameter
 LL |       fn new<U>(u: U) -> Foo<U> {
-   |                          ------ expected `Foo<U>` because of return type
+   |              -           ------ expected `Foo<U>` because of return type
+   |              |
+   |              expected type parameter
 LL | /         Self {
 LL | |
 LL | |             inner: u
 LL | |
 LL | |         }
-   | |_________^ expected type parameter, found a different type parameter
+   | |_________^ expected type parameter `U`, found type parameter `T`
    |
    = note: expected type `Foo<U>`
               found type `Foo<T>`

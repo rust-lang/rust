@@ -552,6 +552,7 @@ impl<P: Deref> Pin<P> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn as_ref(&self) -> Pin<&P::Target> {
+        // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 
@@ -610,6 +611,7 @@ impl<P: DerefMut> Pin<P> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn as_mut(&mut self) -> Pin<&mut P::Target> {
+        // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
 

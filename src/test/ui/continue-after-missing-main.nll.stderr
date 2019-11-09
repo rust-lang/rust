@@ -3,8 +3,8 @@ error[E0601]: `main` function not found in crate `continue_after_missing_main`
    |
 LL | / #![allow(dead_code)]
 LL | |
-LL | | // error-pattern:`main` function not found in crate
-LL | |
+LL | | struct Tableau<'a, MP> {
+LL | |     provider: &'a MP,
 ...  |
 LL | |
 LL | | }

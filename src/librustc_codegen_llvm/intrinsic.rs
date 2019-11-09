@@ -1,7 +1,7 @@
 use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;
-use crate::abi::{Abi, FnType, LlvmType, PassMode};
+use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -18,7 +18,8 @@ use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
-use syntax::ast::{self, FloatTy};
+use rustc_target::abi::HasDataLayout;
+use syntax::ast;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
@@ -83,7 +84,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        fn_ty: &FnType<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
@@ -103,7 +104,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let name = &*tcx.item_name(def_id).as_str();
 
         let llret_ty = self.layout_of(ret_ty).llvm_type(self);
-        let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout);
+        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
         let llval = match name {
@@ -146,7 +147,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None)
             }
             "va_arg" => {
-                match fn_ty.ret.layout.abi {
+                match fn_abi.ret.layout.abi {
                     layout::Abi::Scalar(ref scalar) => {
                         match scalar.value {
                             Primitive::Int(..) => {
@@ -162,12 +163,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
                             }
-                            Primitive::Float(FloatTy::F64) |
+                            Primitive::F64 |
                             Primitive::Pointer => {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.
-                            Primitive::Float(FloatTy::F32) => {
+                            Primitive::F32 => {
                                 bug!("the va_arg intrinsic does not work with `f32`")
                             }
                         }
@@ -275,7 +276,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "volatile_load" | "unaligned_volatile_load" => {
                 let tp_ty = substs.type_at(0);
                 let mut ptr = args[0].immediate();
-                if let PassMode::Cast(ty) = fn_ty.ret.mode {
+                if let PassMode::Cast(ty) = fn_abi.ret.mode {
                     ptr = self.pointercast(ptr, self.type_ptr_to(ty.llvm_type(self)));
                 }
                 let load = self.volatile_load(ptr);
@@ -694,11 +695,28 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
 
+            "ptr_offset_from" => {
+                let ty = substs.type_at(0);
+                let pointee_size = self.size_of(ty);
+
+                // This is the same sequence that Clang emits for pointer subtraction.
+                // It can be neither `nsw` nor `nuw` because the input is treated as
+                // unsigned but then the output is treated as signed, so neither works.
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                let a = self.ptrtoint(a, self.type_isize());
+                let b = self.ptrtoint(b, self.type_isize());
+                let d = self.sub(a, b);
+                let pointee_size = self.const_usize(pointee_size.bytes());
+                // this is where the signed magic happens (notice the `s` in `exactsdiv`)
+                self.exactsdiv(d, pointee_size)
+            }
+
             _ => bug!("unknown intrinsic '{}'", name),
         };
 
-        if !fn_ty.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_ty.ret.mode {
+        if !fn_abi.ret.is_ignore() {
+            if let PassMode::Cast(ty) = fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.llvm_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
@@ -831,7 +849,7 @@ fn codegen_msvc_try(
         // We're generating an IR snippet that looks like:
         //
         //   declare i32 @rust_try(%func, %data, %ptr) {
-        //      %slot = alloca i64*
+        //      %slot = alloca [2 x i64]
         //      invoke %func(%data) to label %normal unwind label %catchswitch
         //
         //   normal:
@@ -855,21 +873,25 @@ fn codegen_msvc_try(
         //
         //      #include <stdint.h>
         //
+        //      struct rust_panic {
+        //          uint64_t x[2];
+        //      }
+        //
         //      int bar(void (*foo)(void), uint64_t *ret) {
         //          try {
         //              foo();
         //              return 0;
-        //          } catch(uint64_t a[2]) {
-        //              ret[0] = a[0];
-        //              ret[1] = a[1];
+        //          } catch(rust_panic a) {
+        //              ret[0] = a.x[0];
+        //              ret[1] = a.x[1];
         //              return 1;
         //          }
         //      }
         //
         // More information can be found in libstd's seh.rs implementation.
-        let i64p = bx.type_ptr_to(bx.type_i64());
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(i64p, ptr_align);
+        let i64_2 = bx.type_array(bx.type_i64(), 2);
+        let i64_align = bx.tcx().data_layout.i64_align.abi;
+        let slot = bx.alloca(i64_2, i64_align);
         bx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(), None);
 
         normal.ret(bx.const_i32(0));
@@ -877,22 +899,15 @@ fn codegen_msvc_try(
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
-        let tydesc = match bx.tcx().lang_items().msvc_try_filter() {
+        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
             Some(did) => bx.get_static(did),
-            None => bug!("msvc_try_filter not defined"),
+            None => bug!("eh_catch_typeinfo not defined, but needed for SEH unwinding"),
         };
         let funclet = catchpad.catch_pad(cs, &[tydesc, bx.const_i32(0), slot]);
-        let addr = catchpad.load(slot, ptr_align);
 
-        let i64_align = bx.tcx().data_layout.i64_align.abi;
-        let arg1 = catchpad.load(addr, i64_align);
-        let val1 = bx.const_i32(1);
-        let gep1 = catchpad.inbounds_gep(addr, &[val1]);
-        let arg2 = catchpad.load(gep1, i64_align);
-        let local_ptr = catchpad.bitcast(local_ptr, i64p);
-        let gep2 = catchpad.inbounds_gep(local_ptr, &[val1]);
-        catchpad.store(arg1, local_ptr, i64_align);
-        catchpad.store(arg2, gep2, i64_align);
+        let payload = catchpad.load(slot, i64_align);
+        let local_ptr = catchpad.bitcast(local_ptr, bx.type_ptr_to(i64_2));
+        catchpad.store(payload, local_ptr, i64_align);
         catchpad.catch_ret(&funclet, caught.llbb());
 
         caught.ret(bx.const_i32(1));
@@ -960,7 +975,14 @@ fn codegen_gnu_try(
         // rust_try ignores the selector.
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
-        catch.add_clause(vals, bx.const_null(bx.type_i8p()));
+        let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
+            Some(tydesc) => {
+                let tydesc = bx.get_static(tydesc);
+                bx.bitcast(tydesc, bx.type_i8p())
+            }
+            None => bx.const_null(bx.type_i8p()),
+        };
+        catch.add_clause(vals, tydesc);
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let bitcast = catch.bitcast(local_ptr, bx.type_ptr_to(bx.type_i8p()));
@@ -1224,7 +1246,6 @@ fn generic_simd_intrinsic(
         // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
         // vector mask and returns an unsigned integer containing the most
         // significant bit (MSB) of each lane.
-        use rustc_target::abi::HasDataLayout;
 
         // If the vector has less than 8 lanes, an u8 is returned with zeroed
         // trailing bits.
@@ -1314,7 +1335,7 @@ fn generic_simd_intrinsic(
             },
             ty::Float(f) => {
                 return_error!("unsupported element type `{}` of floating-point vector `{}`",
-                              f, in_ty);
+                              f.name_str(), in_ty);
             },
             _ => {
                 return_error!("`{}` is not a floating-point type", in_ty);

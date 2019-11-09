@@ -269,7 +269,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
 fn test_error_on_exceed() {
     let types = [TestType::UnitTest, TestType::IntegrationTest, TestType::DocTest];
 
-    for test_type in types.into_iter() {
+    for test_type in types.iter() {
         let result = time_test_failure_template(*test_type);
 
         assert_eq!(result, TestResult::TrTimedFail);
@@ -320,7 +320,7 @@ fn test_time_options_threshold() {
         (TestType::DocTest, doc.critical.as_millis(), true, true),
     ];
 
-    for (test_type, time, expected_warn, expected_critical) in test_vector.into_iter() {
+    for (test_type, time, expected_warn, expected_critical) in test_vector.iter() {
         let test_desc = typed_test_desc(*test_type);
         let exec_time = test_exec_time(*time as u64);
 

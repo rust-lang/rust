@@ -13,6 +13,11 @@ clap = "2.25.0"
 failure = "0.1"
 mdbook-linkcheck = { version = "0.3.0", optional = true }
 
+# A noop dependency that changes in the Rust repository, it's a bit of a hack.
+# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
+# for more information.
+rustc-workspace-hack = "1.0.0"
+
 [dependencies.mdbook]
 version = "0.3.0"
 default-features = false

@@ -66,4 +66,5 @@ LL | | }
 
 error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0566`.
+Some errors have detailed explanations: E0566, E0587.
+For more information about an error, try `rustc --explain E0566`.

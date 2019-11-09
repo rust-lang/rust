@@ -1,0 +1,37 @@
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-lint.rs:9:11
+   |
+LL |     small.into_iter();
+   |           ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = note: `#[warn(array_into_iter)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-lint.rs:12:12
+   |
+LL |     [1, 2].into_iter();
+   |            ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+
+warning: this method call currently resolves to `<&[T] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-lint.rs:15:9
+   |
+LL |     big.into_iter();
+   |         ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+
+warning: this method call currently resolves to `<&[T] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-lint.rs:18:15
+   |
+LL |     [0u8; 33].into_iter();
+   |               ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+

@@ -406,6 +406,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
+        // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
+        // depending on whether the target needs `argc` and `argv` to be passed in.
         let llfty = if cx.sess().target.target.options.main_needs_argc_argv {
             cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
         } else {
@@ -440,19 +442,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
-        let (arg_argc, arg_argv) = if cx.sess().target.target.options.main_needs_argc_argv {
-            // Params from native main() used as args for rust start function
-            let param_argc = bx.get_param(0);
-            let param_argv = bx.get_param(1);
-            let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
-            let arg_argv = param_argv;
-            (arg_argc, arg_argv)
-        } else {
-            // The Rust start function doesn't need argc and argv, so just pass zeros.
-            let arg_argc = bx.const_int(cx.type_int(), 0);
-            let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
-            (arg_argc, arg_argv)
-        };
+        let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(StartFnLangItem, None);
@@ -474,6 +464,27 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         let result = bx.call(start_fn, &args, None);
         let cast = bx.intcast(result, cx.type_int(), true);
         bx.ret(cast);
+    }
+}
+
+/// Obtain the `argc` and `argv` values to pass to the rust start function.
+fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    cx: &'a Bx::CodegenCx,
+    bx: &mut Bx
+) -> (Bx::Value, Bx::Value)
+{
+    if cx.sess().target.target.options.main_needs_argc_argv {
+        // Params from native `main()` used as args for rust start function
+        let param_argc = bx.get_param(0);
+        let param_argv = bx.get_param(1);
+        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+        let arg_argv = param_argv;
+        (arg_argc, arg_argv)
+    } else {
+        // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
+        let arg_argc = bx.const_int(cx.type_int(), 0);
+        let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
+        (arg_argc, arg_argv)
     }
 }
 
@@ -515,7 +526,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // unnecessarily.
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in &codegen_units {
-            tcx.codegen_unit(cgu.name().clone());
+            tcx.codegen_unit(cgu.name());
         }
     }
 
@@ -541,8 +552,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
         let llmod_id = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                        &["crate"],
-                                                       Some("allocator")).as_str()
-                                                                         .to_string();
+                                                       Some("allocator")).to_string();
         let mut modules = backend.new_metadata(tcx, &llmod_id);
         time(tcx.sess, "write allocator module", || {
             backend.codegen_allocator(tcx, &mut modules, kind)
@@ -563,12 +573,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     if need_metadata_module {
         // Codegen the encoded metadata.
-        let _prof_timer = tcx.prof.generic_activity("codegen_crate_metadata");
-
         let metadata_cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                                 &["crate"],
-                                                                Some("metadata")).as_str()
-                                                                                 .to_string();
+                                                                Some("metadata")).to_string();
         let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
         time(tcx.sess, "write compressed metadata", || {
             backend.write_compressed_metadata(tcx, &ongoing_codegen.metadata,
@@ -603,7 +610,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         match cgu_reuse {
             CguReuse::No => {
                 let start_time = Instant::now();
-                backend.compile_codegen_unit(tcx, *cgu.name(), &ongoing_codegen.coordinator_send);
+                backend.compile_codegen_unit(tcx, cgu.name(), &ongoing_codegen.coordinator_send);
                 total_codegen_time += start_time.elapsed();
                 false
             }

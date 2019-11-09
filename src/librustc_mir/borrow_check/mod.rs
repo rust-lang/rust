@@ -1133,15 +1133,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Special case: you can assign a immutable local variable
         // (e.g., `x = ...`) so long as it has never been initialized
         // before (at this point in the flow).
-        if let Place {
-            base: PlaceBase::Local(local),
-            projection: box [],
-        } = place_span.0 {
-            if let Mutability::Not = self.body.local_decls[*local].mutability {
+        if let Some(local) = place_span.0.as_local() {
+            if let Mutability::Not = self.body.local_decls[local].mutability {
                 // check for reassignments to immutable local variables
                 self.check_if_reassignment_to_immutable_state(
                     location,
-                    *local,
+                    local,
                     place_span,
                     flow_state,
                 );
@@ -1288,59 +1285,57 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // captures of a closure are copied/moved directly
         // when generating MIR.
         match *operand {
-            Operand::Move(Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
-            }) |
-            Operand::Copy(Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
-            }) if self.body.local_decls[local].is_user_variable.is_none() => {
-                if self.body.local_decls[local].ty.is_mutable_ptr() {
-                    // The variable will be marked as mutable by the borrow.
-                    return;
+            Operand::Move(ref place) | Operand::Copy(ref place) => {
+                match place.as_local() {
+                    Some(local) if self.body.local_decls[local].is_user_variable.is_none() => {
+                        if self.body.local_decls[local].ty.is_mutable_ptr() {
+                            // The variable will be marked as mutable by the borrow.
+                            return;
+                        }
+                        // This is an edge case where we have a `move` closure
+                        // inside a non-move closure, and the inner closure
+                        // contains a mutation:
+                        //
+                        // let mut i = 0;
+                        // || { move || { i += 1; }; };
+                        //
+                        // In this case our usual strategy of assuming that the
+                        // variable will be captured by mutable reference is
+                        // wrong, since `i` can be copied into the inner
+                        // closure from a shared reference.
+                        //
+                        // As such we have to search for the local that this
+                        // capture comes from and mark it as being used as mut.
+
+                        let temp_mpi = self.move_data.rev_lookup.find_local(local);
+                        let init = if let [init_index] = *self.move_data.init_path_map[temp_mpi] {
+                            &self.move_data.inits[init_index]
+                        } else {
+                            bug!("temporary should be initialized exactly once")
+                        };
+
+                        let loc = match init.location {
+                            InitLocation::Statement(stmt) => stmt,
+                            _ => bug!("temporary initialized in arguments"),
+                        };
+
+                        let bbd = &self.body[loc.block];
+                        let stmt = &bbd.statements[loc.statement_index];
+                        debug!("temporary assigned in: stmt={:?}", stmt);
+
+                        if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, ref source))) =
+                            stmt.kind
+                        {
+                            propagate_closure_used_mut_place(self, source);
+                        } else {
+                            bug!(
+                                "closures should only capture user variables \
+                                 or references to user variables"
+                            );
+                        }
+                    }
+                    _ => propagate_closure_used_mut_place(self, place),
                 }
-                // This is an edge case where we have a `move` closure
-                // inside a non-move closure, and the inner closure
-                // contains a mutation:
-                //
-                // let mut i = 0;
-                // || { move || { i += 1; }; };
-                //
-                // In this case our usual strategy of assuming that the
-                // variable will be captured by mutable reference is
-                // wrong, since `i` can be copied into the inner
-                // closure from a shared reference.
-                //
-                // As such we have to search for the local that this
-                // capture comes from and mark it as being used as mut.
-
-                let temp_mpi = self.move_data.rev_lookup.find_local(local);
-                let init = if let [init_index] = *self.move_data.init_path_map[temp_mpi] {
-                    &self.move_data.inits[init_index]
-                } else {
-                    bug!("temporary should be initialized exactly once")
-                };
-
-                let loc = match init.location {
-                    InitLocation::Statement(stmt) => stmt,
-                    _ => bug!("temporary initialized in arguments"),
-                };
-
-                let bbd = &self.body[loc.block];
-                let stmt = &bbd.statements[loc.statement_index];
-                debug!("temporary assigned in: stmt={:?}", stmt);
-
-                if let StatementKind::Assign(box(_, Rvalue::Ref(_, _, ref source))) = stmt.kind {
-                    propagate_closure_used_mut_place(self, source);
-                } else {
-                    bug!("closures should only capture user variables \
-                        or references to user variables");
-                }
-            }
-            Operand::Move(ref place)
-            | Operand::Copy(ref place) => {
-                propagate_closure_used_mut_place(self, place);
             }
             Operand::Constant(..) => {}
         }
@@ -1702,7 +1697,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("check_if_assigned_path_is_moved place: {:?}", place);
 
         // None case => assigning to `x` does not require `x` be initialized.
-        let mut cursor = &*place.projection;
+        let mut cursor = &*place.projection.as_ref();
         while let [proj_base @ .., elem] = cursor {
             cursor = proj_base;
 

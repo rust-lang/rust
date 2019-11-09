@@ -7,8 +7,6 @@
 // revisions: old re
 // build-pass (FIXME(62277): could be check-pass?)
 
-#![cfg_attr(re, feature(re_rebalance_coherence))]
-
 trait TheTrait {
     fn foo(&self) { }
 }

@@ -2,7 +2,7 @@
 // types are required. This test now just compiles fine, since the
 // relevant rules that triggered the overflow were removed.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 
 use std::marker::PhantomData;

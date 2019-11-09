@@ -134,9 +134,6 @@ declare_features! (
     /// Allows using `rustc_*` attributes (RFC 572).
     (active, rustc_attrs, "1.0.0", Some(29642), None),
 
-    /// Allows using `#[on_unimplemented(..)]` on traits.
-    (active, on_unimplemented, "1.0.0", Some(29628), None),
-
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
 
@@ -330,8 +327,13 @@ declare_features! (
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
 
-    /// Allows untagged unions `union U { ... }`.
-    (active, untagged_unions, "1.13.0", Some(32836), None),
+    /// Allows `union`s to implement `Drop`. Moreover, `union`s may now include fields
+    /// that don't implement `Copy` as long as they don't have any drop glue.
+    /// This is checked recursively. On encountering type variable where no progress can be made,
+    /// `T: Copy` is used as a substitute for "no drop glue".
+    ///
+    /// NOTE: A limited form of `union U { ... }` was accepted in 1.19.0.
+    (active, untagged_unions, "1.13.0", Some(55149), None),
 
     /// Allows `#[link(..., cfg(..))]`.
     (active, link_cfg, "1.14.0", Some(37406), None),
@@ -377,9 +379,6 @@ declare_features! (
 
     /// Allows `#[doc(include = "some-file")]`.
     (active, external_doc, "1.22.0", Some(44732), None),
-
-    /// Allows future-proofing enums/structs with the `#[non_exhaustive]` attribute (RFC 2008).
-    (active, non_exhaustive, "1.22.0", Some(44109), None),
 
     /// Allows using `crate` as visibility modifier, synonymous with `pub(crate)`.
     (active, crate_visibility_modifier, "1.23.0", Some(53120), None),
@@ -467,10 +466,6 @@ declare_features! (
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.
     (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
-    /// Allows relaxing the coherence rules such that
-    /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
-    (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
-
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 
@@ -485,9 +480,6 @@ declare_features! (
 
     /// Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
-
-    /// Allows calling constructor functions in `const fn`.
-    (active, const_constructor, "1.37.0", Some(61456), None),
 
     /// Allows `if/while p && let q = r && ...` chains.
     (active, let_chains, "1.37.0", Some(53667), None),
@@ -507,9 +499,6 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 
-    /// Allows the use of `#[cfg(doctest)]`; set when rustdoc is collecting doctests.
-    (active, cfg_doctest, "1.37.0", Some(62210), None),
-
     /// Allows `[x; N]` where `x` is a constant (RFC 2203).
     (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
 
@@ -522,11 +511,20 @@ declare_features! (
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
 
-    // Allows the use of raw-dylibs (RFC 2627).
+    /// Allows the use of raw-dylibs (RFC 2627).
     (active, raw_dylib, "1.40.0", Some(58713), None),
 
-    /// Enable accurate caller location reporting during panic (RFC 2091).
+    /// Allows `#[track_caller]` to be used which provides
+    /// accurate caller location reporting during panic (RFC 2091).
     (active, track_caller, "1.40.0", Some(47809), None),
+
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
+    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
+    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    (active, object_safe_for_dispatch, "1.40.0", Some(43561), None),
+
+    /// Allows using the `efiapi` ABI.
+    (active, abi_efiapi, "1.40.0", Some(65815), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

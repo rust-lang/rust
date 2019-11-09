@@ -4,7 +4,7 @@ error: expected one of `:`, `@`, or `|`, found `bar`
 LL |     fn foo(&self, &str bar) {}
    |                   -----^^^
    |                   |    |
-   |                   |    expected one of `:`, `@`, or `|` here
+   |                   |    expected one of `:`, `@`, or `|`
    |                   help: declare the type after the parameter binding: `<identifier>: <type>`
 
 error: expected one of `:`, `@`, or `|`, found `quux`
@@ -13,26 +13,26 @@ error: expected one of `:`, `@`, or `|`, found `quux`
 LL | fn baz(S quux, xyzzy: i32) {}
    |        --^^^^
    |        | |
-   |        | expected one of `:`, `@`, or `|` here
+   |        | expected one of `:`, `@`, or `|`
    |        help: declare the type after the parameter binding: `<identifier>: <type>`
 
 error: expected one of `:`, `@`, or `|`, found `a`
   --> $DIR/inverted-parameters.rs:15:12
    |
 LL | fn one(i32 a b) {}
-   |            ^ expected one of `:`, `@`, or `|` here
+   |            ^ expected one of `:`, `@`, or `|`
 
 error: expected one of `:` or `|`, found `(`
   --> $DIR/inverted-parameters.rs:18:23
    |
 LL | fn pattern((i32, i32) (a, b)) {}
-   |                       ^ expected one of `:` or `|` here
+   |                       ^ expected one of `:` or `|`
 
 error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/inverted-parameters.rs:21:12
    |
 LL | fn fizz(i32) {}
-   |            ^ expected one of `:`, `@`, or `|` here
+   |            ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this was a parameter name, give it a type
@@ -50,7 +50,7 @@ error: expected one of `:`, `@`, or `|`, found `S`
 LL | fn missing_colon(quux S) {}
    |                  -----^
    |                  |    |
-   |                  |    expected one of `:`, `@`, or `|` here
+   |                  |    expected one of `:`, `@`, or `|`
    |                  help: declare the type after the parameter binding: `<identifier>: <type>`
 
 error: aborting due to 6 previous errors

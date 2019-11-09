@@ -8,8 +8,7 @@ use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, Symbol};
 
-use super::Item;
-use super::validation::Mode;
+use super::{ConstKind, Item};
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
@@ -36,7 +35,7 @@ pub trait NonConstOp: std::fmt::Debug {
             span,
             E0019,
             "{} contains unimplemented expression type",
-            item.mode
+            item.const_kind()
         );
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note("A function call isn't allowed in the const's initialization expression \
@@ -76,7 +75,7 @@ impl NonConstOp for FnCallNonConst {
             E0015,
             "calls in {}s are limited to constant functions, \
              tuple structs and tuple variants",
-            item.mode,
+            item.const_kind(),
         );
         err.emit();
     }
@@ -121,8 +120,8 @@ impl NonConstOp for HeapAllocation {
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         let mut err = struct_span_err!(item.tcx.sess, span, E0010,
-                                       "allocations are not allowed in {}s", item.mode);
-        err.span_label(span, format!("allocation not allowed in {}s", item.mode));
+                                       "allocations are not allowed in {}s", item.const_kind());
+        err.span_label(span, format!("allocation not allowed in {}s", item.const_kind()));
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "The value of statics and constants must be known at compile time, \
@@ -146,7 +145,7 @@ impl NonConstOp for LiveDrop {
         struct_span_err!(item.tcx.sess, span, E0493,
                          "destructors cannot be evaluated at compile-time")
             .span_label(span, format!("{}s cannot evaluate destructors",
-                                      item.mode))
+                                      item.const_kind()))
             .emit();
     }
 }
@@ -163,9 +162,9 @@ impl NonConstOp for MutBorrow {
         if let BorrowKind::Mut { .. } = kind {
             let mut err = struct_span_err!(item.tcx.sess, span, E0017,
                                            "references in {}s may only refer \
-                                            to immutable values", item.mode);
+                                            to immutable values", item.const_kind());
             err.span_label(span, format!("{}s require immutable values",
-                                                item.mode));
+                                                item.const_kind()));
             if item.tcx.sess.teach(&err.get_code().unwrap()) {
                 err.note("References in statics and constants may only refer \
                           to immutable values.\n\n\
@@ -202,7 +201,7 @@ impl NonConstOp for Panic {
             sym::const_panic,
             span,
             GateIssue::Language,
-            &format!("panicking in {}s is unstable", item.mode),
+            &format!("panicking in {}s is unstable", item.const_kind()),
         );
     }
 }
@@ -220,7 +219,7 @@ impl NonConstOp for RawPtrComparison {
             sym::const_compare_raw_pointers,
             span,
             GateIssue::Language,
-            &format!("comparing raw pointers inside {}", item.mode),
+            &format!("comparing raw pointers inside {}", item.const_kind()),
         );
     }
 }
@@ -238,7 +237,7 @@ impl NonConstOp for RawPtrDeref {
             span, GateIssue::Language,
             &format!(
                 "dereferencing raw pointers in {}s is unstable",
-                item.mode,
+                item.const_kind(),
             ),
         );
     }
@@ -257,7 +256,7 @@ impl NonConstOp for RawPtrToIntCast {
             span, GateIssue::Language,
             &format!(
                 "casting pointers to integers in {}s is unstable",
-                item.mode,
+                item.const_kind(),
             ),
         );
     }
@@ -268,13 +267,13 @@ impl NonConstOp for RawPtrToIntCast {
 pub struct StaticAccess;
 impl NonConstOp for StaticAccess {
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
-        item.mode.is_static()
+        item.const_kind().is_static()
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         let mut err = struct_span_err!(item.tcx.sess, span, E0013,
                                         "{}s cannot refer to statics, use \
-                                        a constant instead", item.mode);
+                                        a constant instead", item.const_kind());
         if item.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "Static and const variables can refer to other const variables. \
@@ -313,7 +312,7 @@ impl NonConstOp for Transmute {
             &item.tcx.sess.parse_sess, sym::const_transmute,
             span, GateIssue::Language,
             &format!("The use of std::mem::transmute() \
-            is gated in {}s", item.mode));
+            is gated in {}s", item.const_kind()));
     }
 }
 
@@ -322,7 +321,7 @@ pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
         // Union accesses are stable in all contexts except `const fn`.
-        item.mode != Mode::ConstFn || Self::feature_gate(item.tcx).unwrap()
+        item.const_kind() != ConstKind::ConstFn || Self::feature_gate(item.tcx).unwrap()
     }
 
     fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {

@@ -64,7 +64,7 @@ serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value"] }
 smallvec = { version = "0.6", features = ['union', 'may_dangle'] }
 url = { version = "2.0", features = ['serde'] }
-
+syn = { version = "0.15", features = ['full'] }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.12", optional = true }

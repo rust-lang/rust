@@ -1,7 +1,8 @@
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Constant, Location, Place, PlaceBase, Body, Operand, ProjectionElem, Rvalue,
-    Local};
+use rustc::mir::{
+    Constant, Location, Place, PlaceBase, PlaceRef, Body, Operand, ProjectionElem, Rvalue, Local
+};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -28,32 +29,33 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         };
 
         // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations }, body);
+        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
     }
 }
 
 pub struct InstCombineVisitor<'tcx> {
     optimizations: OptimizationList<'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
             debug!("replacing `&*`: {:?}", rvalue);
-            let new_place = match *rvalue {
-                Rvalue::Ref(_, _, Place {
-                    ref mut base,
-                    projection: ref mut projection @ box [.., _],
-                }) => {
-                    if let box [proj_l @ .., proj_r] = projection {
-                        let place = Place {
-                            // Replace with dummy
-                            base: mem::replace(base, PlaceBase::Local(Local::new(0))),
-                            projection: proj_l.to_vec().into_boxed_slice(),
-                        };
-                        *projection = vec![proj_r.clone()].into_boxed_slice();
+            let new_place = match rvalue {
+                Rvalue::Ref(_, _, place) => {
+                    if let &[ref proj_l @ .., proj_r] = place.projection.as_ref() {
+                        place.projection = self.tcx().intern_place_elems(&vec![proj_r.clone()]);
 
-                        place
+                        Place {
+                            // Replace with dummy
+                            base: mem::replace(&mut place.base, PlaceBase::Local(Local::new(0))),
+                            projection: self.tcx().intern_place_elems(proj_l),
+                        }
                     } else {
                         unreachable!();
                     }
@@ -91,12 +93,14 @@ impl OptimizationFinder<'b, 'tcx> {
 
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, Place {
-            base,
-            projection: box [proj_base @ .., ProjectionElem::Deref],
-        }) = rvalue {
-            if Place::ty_from(base, proj_base, self.body, self.tcx).ty.is_region_ptr() {
-                self.optimizations.and_stars.insert(location);
+        if let Rvalue::Ref(_, _, place) = rvalue {
+            if let PlaceRef {
+                base,
+                projection: &[ref proj_base @ .., ProjectionElem::Deref],
+            } = place.as_ref() {
+                if Place::ty_from(base, proj_base, self.body, self.tcx).ty.is_region_ptr() {
+                    self.optimizations.and_stars.insert(location);
+                }
             }
         }
 

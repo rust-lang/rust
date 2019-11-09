@@ -1,6 +1,4 @@
 // aux-build:parent-source-spans.rs
-
-
 #![feature(decl_macro, proc_macro_hygiene)]
 
 extern crate parent_source_spans;

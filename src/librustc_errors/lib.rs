@@ -15,7 +15,8 @@ use Level::*;
 
 use emitter::{Emitter, EmitterWriter, is_case_difference};
 use registry::Registry;
-
+#[cfg(target_arch = "x86_64")]
+use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::{self, Lrc, Lock};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -47,6 +48,13 @@ use syntax_pos::{
     Span,
     SpanSnippetError,
 };
+
+pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
+
+// `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
+// (See also the comment on `DiagnosticBuilderInner`.)
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PResult<'_, bool>, 16);
 
 /// Indicates the confidence in the correctness of a suggestion.
 ///
@@ -704,6 +712,9 @@ impl Handler {
     pub fn has_errors(&self) -> bool {
         self.inner.borrow().has_errors()
     }
+    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.inner.borrow().has_errors_or_delayed_span_bugs()
+    }
 
     pub fn print_error_count(&self, registry: &Registry) {
         self.inner.borrow_mut().print_error_count(registry)
@@ -861,6 +872,9 @@ impl HandlerInner {
 
     fn has_errors(&self) -> bool {
         self.err_count() > 0
+    }
+    fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.has_errors() || !self.delayed_span_bugs.is_empty()
     }
 
     fn abort_if_errors_and_should_abort(&mut self) {
@@ -1021,7 +1035,7 @@ impl Level {
 }
 
 #[macro_export]
-macro_rules! pluralise {
+macro_rules! pluralize {
     ($x:expr) => {
         if $x != 1 { "s" } else { "" }
     };

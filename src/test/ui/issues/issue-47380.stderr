@@ -6,6 +6,7 @@ LL |     println!("🦀🦀🦀🦀🦀"); let _a = b + ", World!";
    |                                      | |
    |                                      | `+` cannot be used to concatenate two `&str` strings
    |                                      &str
+   |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     println!("🦀🦀🦀🦀🦀"); let _a = b.to_owned() + ", World!";

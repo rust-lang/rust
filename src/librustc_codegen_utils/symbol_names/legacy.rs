@@ -121,9 +121,10 @@ fn get_symbol_hash<'tcx>(
         substs.hash_stable(&mut hcx, &mut hasher);
 
         if let Some(instantiating_crate) = instantiating_crate {
-            (&tcx.original_crate_name(instantiating_crate).as_str()[..])
+            tcx.original_crate_name(instantiating_crate).as_str()
                 .hash_stable(&mut hcx, &mut hasher);
-            (&tcx.crate_disambiguator(instantiating_crate)).hash_stable(&mut hcx, &mut hasher);
+            tcx.crate_disambiguator(instantiating_crate)
+                .hash_stable(&mut hcx, &mut hasher);
         }
 
         // We want to avoid accidental collision between different types of instances.
@@ -335,7 +336,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
             self.path.finalize_pending_component();
         }
 
-        self.write_str(&disambiguated_data.data.as_interned_str().as_str())?;
+        self.write_str(&disambiguated_data.data.as_symbol().as_str())?;
         Ok(self)
     }
     fn path_generic_args(

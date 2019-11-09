@@ -1,6 +1,7 @@
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
+use rustc::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc::ty::{self, Ty};
 use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
@@ -9,7 +10,7 @@ use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use syntax::ast;
 use syntax::attr;
-use syntax::errors::{Applicability, pluralise};
+use syntax::errors::{Applicability, pluralize};
 use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
@@ -25,7 +26,7 @@ declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
     "unused result of a type flagged as `#[must_use]`",
-    report_in_external_macro: true
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -143,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 return true;
             }
 
-            let plural_suffix = pluralise!(plural_len);
+            let plural_suffix = pluralize!(plural_len);
 
             match ty.kind {
                 ty::Adt(..) if ty.is_box() => {
@@ -277,12 +278,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     }
 }
 
-declare_lint! {
-    pub UNUSED_ATTRIBUTES,
-    Warn,
-    "detects attributes that were not used by the compiler"
-}
-
 #[derive(Copy, Clone)]
 pub struct UnusedAttributes {
     builtin_attributes: &'static FxHashMap<Symbol, &'static BuiltinAttribute>,
@@ -314,7 +309,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             }
         }
 
-        let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
+        let plugin_attributes = cx.sess().plugin_attributes.borrow();
         for &(name, ty) in plugin_attributes.iter() {
             if ty == AttributeType::Whitelisted && attr.check_name(name) {
                 debug!("{:?} (plugin attr) is whitelisted with ty {:?}", name, ty);
@@ -602,6 +597,25 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
         self.check_unused_parens_pat(cx, &arm.pat, false, false);
+    }
+
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let &ast::TyKind::Paren(ref r) = &ty.kind {
+            match &r.kind {
+                &ast::TyKind::TraitObject(..) => {}
+                &ast::TyKind::ImplTrait(_, ref bounds) if bounds.len() > 1 => {}
+                _ => {
+                    let pattern_text = if let Ok(snippet) = cx.sess().source_map()
+                        .span_to_snippet(ty.span) {
+                            snippet
+                        } else {
+                            pprust::ty_to_string(ty)
+                        };
+
+                    Self::remove_outer_parens(cx, ty.span, &pattern_text, "type", (false, false));
+                }
+            }
+        }
     }
 }
 

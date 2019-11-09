@@ -14,20 +14,20 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
-use syntax_expand::base::{self, InvocationRes, Indeterminate, SpecialDerives};
-use syntax_expand::base::{MacroKind, SyntaxExtension};
-use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
-use syntax_expand::hygiene::{self, ExpnId, ExpnData, ExpnKind};
-use syntax_expand::compile_declarative_macro;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, kw, sym};
+use syntax_expand::base::{self, InvocationRes, Indeterminate};
+use syntax_expand::base::SyntaxExtension;
+use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
+use syntax_expand::compile_declarative_macro;
+use syntax_pos::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::hygiene::AstPass;
+use syntax_pos::hygiene::{MacroKind, AstPass};
 
 type Res = def::Res<NodeId>;
 
@@ -179,7 +179,10 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         let (path, kind, derives, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
-                (&attr.path, MacroKind::Attr, self.arenas.alloc_ast_paths(derives), after_derive),
+                (&attr.get_normal_item().path,
+                 MacroKind::Attr,
+                 self.arenas.alloc_ast_paths(derives),
+                 after_derive),
             InvocationKind::Bang { ref mac, .. } =>
                 (&mac.path, MacroKind::Bang, &[][..], false),
             InvocationKind::Derive { ref path, .. } =>
@@ -246,20 +249,20 @@ impl<'a> base::Resolver for Resolver<'a> {
         Ok(InvocationRes::Single(ext))
     }
 
-    fn check_unused_macros(&self) {
+    fn check_unused_macros(&mut self) {
         for (&node_id, &span) in self.unused_macros.iter() {
-            self.session.buffer_lint(
+            self.lint_buffer.buffer_lint(
                 lint::builtin::UNUSED_MACROS, node_id, span, "unused macro definition"
             );
         }
     }
 
-    fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool {
-        self.has_derives(expn_id, derives)
+    fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
+        self.containers_deriving_copy.contains(&expn_id)
     }
 
-    fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives) {
-        *self.special_derives.entry(expn_id).or_default() |= derives;
+    fn add_derive_copy(&mut self, expn_id: ExpnId) {
+        self.containers_deriving_copy.insert(expn_id);
     }
 }
 
@@ -788,15 +791,17 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &ast::Path) {
+    fn check_stability_and_deprecation(&mut self, ext: &SyntaxExtension, path: &ast::Path) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
                     let node_id = ast::CRATE_NODE_ID;
-                    let soft_handler =
-                        |lint, span, msg: &_| self.session.buffer_lint(lint, node_id, span, msg);
+                    let lint_buffer = &mut self.lint_buffer;
+                    let soft_handler = |lint, span, msg: &_| {
+                        lint_buffer.buffer_lint(lint, node_id, span, msg)
+                    };
                     stability::report_unstable(
                         self.session, feature, reason, issue, is_soft, span, soft_handler
                     );
@@ -806,14 +811,14 @@ impl<'a> Resolver<'a> {
                 let path = pprust::path_to_string(path);
                 let (message, lint) = stability::rustc_deprecation_message(depr, &path);
                 stability::early_report_deprecation(
-                    self.session, &message, depr.suggestion, lint, span
+                    &mut self.lint_buffer, &message, depr.suggestion, lint, span
                 );
             }
         }
         if let Some(depr) = &ext.deprecation {
             let path = pprust::path_to_string(&path);
             let (message, lint) = stability::deprecation_message(depr, &path);
-            stability::early_report_deprecation(self.session, &message, None, lint, span);
+            stability::early_report_deprecation(&mut self.lint_buffer, &message, None, lint, span);
         }
     }
 

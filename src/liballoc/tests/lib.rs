@@ -3,12 +3,13 @@
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(new_uninit)]
-#![feature(option_flattening)]
 #![feature(pattern)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(associated_type_bounds)]
+#![feature(binary_heap_into_iter_sorted)]
+#![feature(binary_heap_drain_sorted)]
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

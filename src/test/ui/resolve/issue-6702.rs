@@ -4,5 +4,6 @@ struct Monster {
 
 
 fn main() {
-    let _m = Monster(); //~ ERROR expected function, found struct `Monster`
+    let _m = Monster();
+    //~^ ERROR expected function, tuple struct or tuple variant, found struct `Monster`
 }

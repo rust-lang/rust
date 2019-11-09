@@ -10,6 +10,7 @@ use crate::attr;
 use crate::ast;
 use crate::edition::Edition;
 use crate::mut_visit::*;
+use crate::parse;
 use crate::ptr::P;
 use crate::sess::ParseSess;
 use crate::symbol::sym;
@@ -92,10 +93,10 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
-        if attr.path != sym::cfg_attr {
+        if !attr.has_name(sym::cfg_attr) {
             return vec![attr];
         }
-        if attr.tokens.is_empty() {
+        if attr.get_normal_item().tokens.is_empty() {
             self.sess.span_diagnostic
                 .struct_span_err(
                     attr.span,
@@ -112,7 +113,8 @@ impl<'a> StripUnconfigured<'a> {
             return vec![];
         }
 
-        let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |p| p.parse_cfg_attr()) {
+        let res = parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
+        let (cfg_predicate, expanded_attrs) = match res {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();
@@ -134,10 +136,9 @@ impl<'a> StripUnconfigured<'a> {
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
             .flat_map(|(item, span)| self.process_cfg_attr(ast::Attribute {
-                item,
+                kind: ast::AttrKind::Normal(item),
                 id: attr::mk_attr_id(),
                 style: attr.style,
-                is_sugared_doc: false,
                 span,
             }))
             .collect()
@@ -210,7 +211,7 @@ impl<'a> StripUnconfigured<'a> {
                                       GateIssue::Language,
                                       EXPLAIN_STMT_ATTR_SYNTAX);
 
-            if attr.is_sugared_doc {
+            if attr.is_doc_comment() {
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
 

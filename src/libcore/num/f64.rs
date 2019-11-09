@@ -427,6 +427,7 @@ impl f64 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u64 {
+        // SAFETY: `u64` is a plain old datatype so we can always transmute to it
         unsafe { mem::transmute(self) }
     }
 
@@ -469,6 +470,7 @@ impl f64 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(v: u64) -> Self {
+        // SAFETY: `u64` is a plain old datatype so we can always transmute from it
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
     }
@@ -479,11 +481,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let bytes = 12.5f64.to_be_bytes();
     /// assert_eq!(bytes, [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn to_be_bytes(self) -> [u8; 8] {
         self.to_bits().to_be_bytes()
@@ -495,11 +496,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let bytes = 12.5f64.to_le_bytes();
     /// assert_eq!(bytes, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn to_le_bytes(self) -> [u8; 8] {
         self.to_bits().to_le_bytes()
@@ -517,7 +517,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let bytes = 12.5f64.to_ne_bytes();
     /// assert_eq!(
     ///     bytes,
@@ -528,7 +527,7 @@ impl f64 {
     ///     }
     /// );
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn to_ne_bytes(self) -> [u8; 8] {
         self.to_bits().to_ne_bytes()
@@ -539,11 +538,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let value = f64::from_be_bytes([0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     /// assert_eq!(value, 12.5);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn from_be_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_be_bytes(bytes))
@@ -554,11 +552,10 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let value = f64::from_le_bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]);
     /// assert_eq!(value, 12.5);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn from_le_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_le_bytes(bytes))
@@ -576,7 +573,6 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_to_from_bytes)]
     /// let value = f64::from_ne_bytes(if cfg!(target_endian = "big") {
     ///     [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     /// } else {
@@ -584,7 +580,7 @@ impl f64 {
     /// });
     /// assert_eq!(value, 12.5);
     /// ```
-    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
     #[inline]
     pub fn from_ne_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_ne_bytes(bytes))

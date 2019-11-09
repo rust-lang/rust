@@ -3,7 +3,6 @@
 //! Code that is useful in various codegen modules.
 
 use crate::llvm::{self, True, False, Bool, BasicBlock, OperandBundleDef, ConstantInt};
-use crate::abi;
 use crate::consts;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -96,16 +95,6 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
 }
 
 impl CodegenCx<'ll, 'tcx> {
-    pub fn const_fat_ptr(
-        &self,
-        ptr: &'ll Value,
-        meta: &'ll Value
-    ) -> &'ll Value {
-        assert_eq!(abi::FAT_PTR_ADDR, 0);
-        assert_eq!(abi::FAT_PTR_EXTRA, 1);
-        self.const_struct(&[ptr, meta], false)
-    }
-
     pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
         unsafe {
             return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
@@ -148,13 +137,6 @@ impl CodegenCx<'ll, 'tcx> {
             self.const_cstr_cache.borrow_mut().insert(s, g);
             g
         }
-    }
-
-    pub fn const_str_slice(&self, s: Symbol) -> &'ll Value {
-        let len = s.as_str().len();
-        let cs = consts::ptrcast(self.const_cstr(s, false),
-            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)));
-        self.const_fat_ptr(cs, self.const_usize(len as u64))
     }
 
     pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
@@ -235,6 +217,13 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn const_real(&self, t: &'ll Type, val: f64) -> &'ll Value {
         unsafe { llvm::LLVMConstReal(t, val) }
+    }
+
+    fn const_str(&self, s: Symbol) -> (&'ll Value, &'ll Value) {
+        let len = s.as_str().len();
+        let cs = consts::ptrcast(self.const_cstr(s, false),
+            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)));
+        (cs, self.const_usize(len as u64))
     }
 
     fn const_struct(

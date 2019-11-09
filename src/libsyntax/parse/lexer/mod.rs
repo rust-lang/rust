@@ -1,7 +1,7 @@
-use crate::parse::token::{self, Token, TokenKind};
+use crate::token::{self, Token, TokenKind};
 use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
-use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
+use crate::util::comments;
 
 use errors::{FatalError, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span};
@@ -16,14 +16,15 @@ use log::debug;
 #[cfg(test)]
 mod tests;
 
-pub mod comments;
 mod tokentrees;
 mod unicode_chars;
+mod unescape_error_reporting;
+use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
     pub expected_delim: token::DelimToken,
-    pub found_delim: token::DelimToken,
+    pub found_delim: Option<token::DelimToken>,
     pub found_span: Span,
     pub unclosed_span: Option<Span>,
     pub candidate_span: Option<Span>,
@@ -68,7 +69,7 @@ impl<'a> StringReader<'a> {
         let end = sess.source_map().lookup_byte_offset(span.hi());
 
         // Make the range zero-length if the span is invalid.
-        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
+        if begin.sf.start_pos != end.sf.start_pos {
             span = span.shrink_to_lo();
         }
 
@@ -178,7 +179,7 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
-                let tok = if is_doc_comment(string) {
+                let tok = if comments::is_line_doc_comment(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
@@ -191,7 +192,7 @@ impl<'a> StringReader<'a> {
                 let string = self.str_from(start);
                 // block comments starting with "/**" or "/*!" are doc-comments
                 // but comments with only "*"s between two "/"s are not
-                let is_doc_comment = is_block_doc_comment(string);
+                let is_doc_comment = comments::is_block_doc_comment(string);
 
                 if !terminated {
                     let msg = if is_doc_comment {
@@ -641,19 +642,4 @@ impl<'a> StringReader<'a> {
             }
         }
     }
-}
-
-fn is_doc_comment(s: &str) -> bool {
-    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/') ||
-              s.starts_with("//!");
-    debug!("is {:?} a doc comment? {}", s, res);
-    res
-}
-
-fn is_block_doc_comment(s: &str) -> bool {
-    // Prevent `/**/` from being parsed as a doc comment
-    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*') ||
-               s.starts_with("/*!")) && s.len() >= 5;
-    debug!("is {:?} a doc comment? {}", s, res);
-    res
 }

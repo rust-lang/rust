@@ -4,9 +4,6 @@
 // aux-build:coherence_copy_like_lib.rs
 // build-pass (FIXME(62277): could be check-pass?)
 // skip-codgen
-// revisions: old re
-
-#![cfg_attr(re, feature(re_rebalance_coherence))]
 #![allow(dead_code)]
 
 extern crate coherence_copy_like_lib as lib;

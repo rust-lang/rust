@@ -9,7 +9,9 @@ use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind};
-use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::{
+    METADATA_FILENAME, RLIB_BYTECODE_EXTENSION, looks_like_rust_object_file
+};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, find_library};
 use rustc::session::Session;
 use syntax::symbol::Symbol;
@@ -141,7 +143,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             }
 
             // Don't include Rust objects if LTO is enabled
-            if lto && fname.starts_with(&obj_start) && fname.ends_with(".o") {
+            if lto && looks_like_rust_object_file(fname) {
                 return true
             }
 

@@ -3,6 +3,7 @@ error: chained comparison operators require parentheses
    |
 LL |     (0..13).collect<Vec<i32>>();
    |                    ^^^^^
+   |
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     (0..13).collect::<Vec<i32>>();
@@ -13,6 +14,7 @@ error: chained comparison operators require parentheses
    |
 LL |     Vec<i32>::new();
    |        ^^^^^
+   |
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     Vec::<i32>::new();
@@ -23,6 +25,7 @@ error: chained comparison operators require parentheses
    |
 LL |     (0..13).collect<Vec<i32>();
    |                    ^^^^^
+   |
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     (0..13).collect::<Vec<i32>();

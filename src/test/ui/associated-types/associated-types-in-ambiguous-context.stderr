@@ -5,7 +5,13 @@ LL | fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
    |                                    ^^^^^^^^^^ help: use fully-qualified syntax: `<Type as Get>::Value`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:15:10
+  --> $DIR/associated-types-in-ambiguous-context.rs:20:17
+   |
+LL | trait Foo where Foo::Assoc: Bar {
+   |                 ^^^^^^^^^^ help: use fully-qualified syntax: `<Self as Foo>::Assoc`
+
+error[E0223]: ambiguous associated type
+  --> $DIR/associated-types-in-ambiguous-context.rs:25:10
    |
 LL | type X = std::ops::Deref::Target;
    |          ^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<Type as std::ops::Deref>::Target`
@@ -14,8 +20,14 @@ error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:11:23
    |
 LL |     fn grab(&self) -> Grab::Value;
-   |                       ^^^^^^^^^^^ help: use fully-qualified syntax: `<Type as Grab>::Value`
+   |                       ^^^^^^^^^^^ help: use fully-qualified syntax: `<Self as Grab>::Value`
 
-error: aborting due to 3 previous errors
+error[E0223]: ambiguous associated type
+  --> $DIR/associated-types-in-ambiguous-context.rs:14:22
+   |
+LL |     fn get(&self) -> Get::Value;
+   |                      ^^^^^^^^^^ help: use fully-qualified syntax: `<Type as Get>::Value`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0223`.

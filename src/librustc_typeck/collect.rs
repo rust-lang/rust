@@ -36,7 +36,7 @@ use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
 use syntax::feature_gate;
-use syntax::symbol::{InternedString, kw, Symbol, sym};
+use syntax::symbol::{kw, Symbol, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::def::{CtorKind, Res, DefKind};
@@ -182,6 +182,10 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx
     }
 
+    fn item_def_id(&self) -> Option<DefId> {
+        Some(self.item_def_id)
+    }
+
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         self.tcx
             .at(span)
@@ -265,7 +269,7 @@ fn type_param_predicates(
     let param_owner_def_id = tcx.hir().local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.param_def_id_to_index[&def_id];
-    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id).as_interned_str());
+    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner_def_id {
@@ -881,8 +885,8 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             _ => None,
         },
         Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(ref fn_decl, .., ref generics, _) => {
-                has_late_bound_regions(tcx, generics, fn_decl)
+            hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
+                has_late_bound_regions(tcx, generics, &sig.decl)
             }
             _ => None,
         },
@@ -961,7 +965,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
-                        name: kw::SelfUpper.as_interned_str(),
+                        name: kw::SelfUpper,
                         def_id: tcx.hir().local_def_id(param_id),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
@@ -1006,7 +1010,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
         early_lifetimes
             .enumerate()
             .map(|(i, param)| ty::GenericParamDef {
-                name: param.name.ident().as_interned_str(),
+                name: param.name.ident().name,
                 index: own_start + i as u32,
                 def_id: tcx.hir().local_def_id(param.hir_id),
                 pure_wrt_drop: param.pure_wrt_drop,
@@ -1060,7 +1064,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
                 let param_def = ty::GenericParamDef {
                     index: type_start + i as u32,
-                    name: param.name.ident().as_interned_str(),
+                    name: param.name.ident().name,
                     def_id: tcx.hir().local_def_id(param.hir_id),
                     pure_wrt_drop: param.pure_wrt_drop,
                     kind,
@@ -1090,7 +1094,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                 .enumerate()
                 .map(|(i, &arg)| ty::GenericParamDef {
                     index: type_start + i as u32,
-                    name: InternedString::intern(arg),
+                    name: Symbol::intern(arg),
                     def_id,
                     pure_wrt_drop: false,
                     kind: ty::GenericParamDefKind::Type {
@@ -1105,7 +1109,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             params.extend(upvars.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
                 ty::GenericParamDef {
                     index: type_start + i,
-                    name: InternedString::intern("<upvar>"),
+                    name: Symbol::intern("<upvar>"),
                     def_id,
                     pure_wrt_drop: false,
                     kind: ty::GenericParamDefKind::Type {
@@ -1140,10 +1144,6 @@ fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
         E0202,
         "associated types are not yet supported in inherent impls (see #8995)"
     );
-}
-
-fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
-    checked_type_of(tcx, def_id, true).unwrap()
 }
 
 fn infer_placeholder_type(
@@ -1189,26 +1189,14 @@ fn infer_placeholder_type(
     ty
 }
 
-/// Same as [`type_of`] but returns [`Option`] instead of failing.
-///
-/// If you want to fail anyway, you can set the `fail` parameter to true, but in this case,
-/// you'd better just call [`type_of`] directly.
-pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<'_>> {
+fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     use rustc::hir::*;
 
-    let hir_id = match tcx.hir().as_local_hir_id(def_id) {
-        Some(hir_id) => hir_id,
-        None => {
-            if !fail {
-                return None;
-            }
-            bug!("invalid node");
-        }
-    };
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    Some(match tcx.hir().get(hir_id) {
+    match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Method(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1225,9 +1213,6 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             },
             TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
             TraitItemKind::Type(_, None) => {
-                if !fail {
-                    return None;
-                }
                 span_bug!(item.span, "associated type missing default");
             }
         },
@@ -1321,9 +1306,6 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                 | ItemKind::GlobalAsm(..)
                 | ItemKind::ExternCrate(..)
                 | ItemKind::Use(..) => {
-                    if !fail {
-                        return None;
-                    }
                     span_bug!(
                         item.span,
                         "compute_type_of_item: unexpected item type: {:?}",
@@ -1361,7 +1343,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             ..
         }) => {
             if gen.is_some() {
-                return Some(tcx.typeck_tables_of(def_id).node_type(hir_id));
+                return tcx.typeck_tables_of(def_id).node_type(hir_id);
             }
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1436,13 +1418,9 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                     .map(|(index, _)| index)
                                     .next()
                             })
-                            .or_else(|| {
-                                if !fail {
-                                    None
-                                } else {
-                                    bug!("no arg matching AnonConst in path")
-                                }
-                            })?;
+                            .unwrap_or_else(|| {
+                                bug!("no arg matching AnonConst in path");
+                            });
 
                         // We've encountered an `AnonConst` in some path, so we need to
                         // figure out which generic parameter it corresponds to and return
@@ -1452,8 +1430,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                 tcx.generics_of(tcx.parent(def_id).unwrap())
                             }
                             Res::Def(_, def_id) => tcx.generics_of(def_id),
-                            Res::Err => return Some(tcx.types.err),
-                            _ if !fail => return None,
+                            Res::Err => return tcx.types.err,
                             res => {
                                 tcx.sess.delay_span_bug(
                                     DUMMY_SP,
@@ -1462,7 +1439,7 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                         res,
                                     ),
                                 );
-                                return Some(tcx.types.err);
+                                return tcx.types.err;
                             }
                         };
 
@@ -1480,9 +1457,6 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                             // probably from an extra arg where one is not needed.
                             .unwrap_or(tcx.types.err)
                     } else {
-                        if !fail {
-                            return None;
-                        }
                         tcx.sess.delay_span_bug(
                             DUMMY_SP,
                             &format!(
@@ -1490,14 +1464,11 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                                 parent_node,
                             ),
                         );
-                        return Some(tcx.types.err);
+                        return tcx.types.err;
                     }
                 }
 
                 x => {
-                    if !fail {
-                        return None;
-                    }
                     tcx.sess.delay_span_bug(
                         DUMMY_SP,
                         &format!(
@@ -1532,23 +1503,28 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                         );
                     };
                 }
+                if ty::search_for_structural_match_violation(
+                    param.hir_id, param.span, tcx, ty).is_some()
+                {
+                    struct_span_err!(
+                        tcx.sess,
+                        hir_ty.span,
+                        E0741,
+                        "the types of const generic parameters must derive `PartialEq` and `Eq`",
+                    ).span_label(
+                        hir_ty.span,
+                        format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
+                    ).emit();
+                }
                 ty
             }
-            x => {
-                if !fail {
-                    return None;
-                }
-                bug!("unexpected non-type Node::GenericParam: {:?}", x)
-            },
+            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
         x => {
-            if !fail {
-                return None;
-            }
             bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
         }
-    })
+    }
 }
 
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
@@ -1803,17 +1779,17 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(MethodSig { header, decl }, TraitMethod::Provided(_)),
+            kind: TraitItemKind::Method(sig, TraitMethod::Provided(_)),
             ..
         })
         | ImplItem(hir::ImplItem {
-            kind: ImplItemKind::Method(MethodSig { header, decl }, _),
+            kind: ImplItemKind::Method(sig, _),
             ..
         })
         | Item(hir::Item {
-            kind: ItemKind::Fn(decl, header, _, _),
+            kind: ItemKind::Fn(sig, _, _),
             ..
-        }) => match get_infer_ret_ty(&decl.output) {
+        }) => match get_infer_ret_ty(&sig.decl.output) {
             Some(ty) => {
                 let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
                 let mut diag = bad_placeholder_type(tcx, ty.span);
@@ -1829,11 +1805,11 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                 diag.emit();
                 ty::Binder::bind(fn_sig)
             },
-            None => AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
+            None => AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl)
         },
 
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(MethodSig { header, decl }, _),
+            kind: TraitItemKind::Method(FnSig { header, decl }, _),
             ..
         }) => {
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
@@ -1970,19 +1946,18 @@ fn predicates_defined_on(
     );
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
-        let span = tcx.def_span(def_id);
         debug!(
             "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
             def_id,
             inferred_outlives,
         );
-        result.predicates = tcx.arena.alloc_from_iter(
-            result.predicates.iter().copied().chain(
-                // FIXME(eddyb) use better spans - maybe add `Span`s
-                // to `inferred_outlives_of` predicates as well?
-                inferred_outlives.iter().map(|&p| (p, span)),
-            ),
-        );
+        if result.predicates.is_empty() {
+            result.predicates = inferred_outlives;
+        } else {
+            result.predicates = tcx.arena.alloc_from_iter(
+                result.predicates.iter().chain(inferred_outlives).copied(),
+            );
+        }
     }
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
@@ -2059,10 +2034,7 @@ fn explicit_predicates_of(
         }
     }
 
-    let hir_id = match tcx.hir().as_local_hir_id(def_id) {
-        Some(hir_id) => hir_id,
-        None => return tcx.predicates_of(def_id),
-    };
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
@@ -2198,7 +2170,7 @@ fn explicit_predicates_of(
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: tcx.hir().local_def_id(param.hir_id),
             index,
-            name: param.name.ident().as_interned_str(),
+            name: param.name.ident().name,
         }));
         index += 1;
 
@@ -2221,7 +2193,7 @@ fn explicit_predicates_of(
     // type parameter (e.g., `<T: Foo>`).
     for param in &ast_generics.params {
         if let GenericParamKind::Type { .. } = param.kind {
-            let name = param.name.ident().as_interned_str();
+            let name = param.name.ident().name;
             let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
             index += 1;
 
@@ -2392,7 +2364,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
-        intrinsic_operation_unsafety(&*tcx.item_name(def_id).as_str())
+        intrinsic_operation_unsafety(&tcx.item_name(def_id).as_str())
     } else {
         hir::Unsafety::Unsafe
     };
@@ -2629,7 +2601,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     tcx.sess,
                     attr.span,
                     E0737,
-                    "rust ABI is required to use `#[track_caller]`"
+                    "Rust ABI is required to use `#[track_caller]`"
                 ).emit();
             }
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
@@ -2690,7 +2662,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.path != sym::inline {
+        if !attr.has_name(sym::inline) {
             return ia;
         }
         match attr.meta().map(|i| i.kind) {
@@ -2730,7 +2702,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     });
 
     codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
-        if attr.path != sym::optimize {
+        if !attr.has_name(sym::optimize) {
             return ia;
         }
         let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);

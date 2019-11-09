@@ -974,7 +974,7 @@ function:
 struct Foo { a: bool };
 
 let f = Foo();
-// error: expected function, found `Foo`
+// error: expected function, tuple struct or tuple variant, found `Foo`
 // `Foo` is a struct name, but this expression uses it like a function name
 ```
 
@@ -992,7 +992,8 @@ yield this error:
 
 ```compile_fail,E0423
 println("");
-// error: expected function, found macro `println`
+// error: expected function, tuple struct or tuple variant,
+// found macro `println`
 // did you mean `println!(...)`? (notice the trailing `!`)
 ```
 
@@ -1592,7 +1593,7 @@ enum State {
 
 fn print_on_failure(state: &State) {
     match *state {
-        // error: expected unit struct/variant or constant, found tuple
+        // error: expected unit struct, unit variant or constant, found tuple
         //        variant `State::Failed`
         State::Failed => println!("Failed"),
         _ => ()
@@ -1797,6 +1798,86 @@ let _: <u8 as Age>::Empire; // ok!
 ```
 "##,
 
+E0576: r##"
+An associated item wasn't found in the given type.
+
+Erroneous code example:
+
+```compile_fail,E0576
+trait Hello {
+    type Who;
+
+    fn hello() -> <Self as Hello>::You; // error!
+}
+```
+
+In this example, we tried to use the non-existent associated type `You` of the
+`Hello` trait. To fix this error, use an existing associated type:
+
+```
+trait Hello {
+    type Who;
+
+    fn hello() -> <Self as Hello>::Who; // ok!
+}
+```
+"##,
+
+E0577: r##"
+Something other than a module was found in visibility scope.
+
+Erroneous code example:
+
+```compile_fail,E0577,edition2018
+pub struct Sea;
+
+pub (in crate::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+`Sea` is not a module, therefore it is invalid to use it in a visibility path.
+To fix this error we need to ensure `Sea` is a module.
+
+Please note that the visibility scope can only be applied on ancestors!
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark; // ok!
+}
+
+fn main() {}
+```
+"##,
+
+E0578: r##"
+A module cannot be found and therefore, the visibility cannot be determined.
+
+Erroneous code example:
+
+```compile_fail,E0578,edition2018
+foo!();
+
+pub (in ::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+Because of the call to the `foo` macro, the compiler guesses that the missing
+module could be inside it and fails because the macro definition cannot be
+found.
+
+To fix this error, please be sure that the module is in scope:
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark;
+}
+
+fn main() {}
+```
+"##,
+
 E0603: r##"
 A private item was used outside its scope.
 
@@ -1831,7 +1912,7 @@ An item usage is ambiguous.
 
 Erroneous code example:
 
-```compile_fail,E0659
+```compile_fail,edition2018,E0659
 pub mod moon {
     pub fn foo() {}
 }
@@ -1841,12 +1922,12 @@ pub mod earth {
 }
 
 mod collider {
-    pub use moon::*;
-    pub use earth::*;
+    pub use crate::moon::*;
+    pub use crate::earth::*;
 }
 
 fn main() {
-    collider::foo(); // ERROR: `foo` is ambiguous
+    crate::collider::foo(); // ERROR: `foo` is ambiguous
 }
 ```
 
@@ -1858,7 +1939,7 @@ functions collide.
 To solve this error, the best solution is generally to keep the path before the
 item when using it. Example:
 
-```
+```edition2018
 pub mod moon {
     pub fn foo() {}
 }
@@ -1868,25 +1949,27 @@ pub mod earth {
 }
 
 mod collider {
-    pub use moon;
-    pub use earth;
+    pub use crate::moon;
+    pub use crate::earth;
 }
 
 fn main() {
-    collider::moon::foo(); // ok!
-    collider::earth::foo(); // ok!
+    crate::collider::moon::foo(); // ok!
+    crate::collider::earth::foo(); // ok!
 }
 ```
 "##,
 
 E0671: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Const parameters cannot depend on type parameters.
 The following is therefore invalid:
-```compile_fail,E0671
+
+```compile_fail,E0741
 #![feature(const_generics)]
 
-fn const_id<T, const N: T>() -> T { // error: const parameter
-                                    // depends on type parameter
+fn const_id<T, const N: T>() -> T { // error
     N
 }
 ```
@@ -1903,6 +1986,44 @@ struct Foo<X = Box<Self>> {
     field2: Option<X>,
 }
 // error: type parameters cannot use `Self` in their defaults.
+```
+"##,
+
+E0742: r##"
+Visibility is restricted to a module which isn't an ancestor of the current
+item.
+
+Erroneous code example:
+
+```compile_fail,E0742,edition2018
+pub mod Sea {}
+
+pub (in crate::Sea) struct Shark; // error!
+
+fn main() {}
+```
+
+To fix this error, we need to move the `Shark` struct inside the `Sea` module:
+
+```edition2018
+pub mod Sea {
+    pub (in crate::Sea) struct Shark; // ok!
+}
+
+fn main() {}
+```
+
+Of course, you can do it as long as the module you're referring to is an
+ancestor:
+
+```edition2018
+pub mod Earth {
+    pub mod Sea {
+        pub (in crate::Earth) struct Shark; // ok!
+    }
+}
+
+fn main() {}
 ```
 "##,
 
@@ -1924,7 +2045,4 @@ struct Foo<X = Box<Self>> {
 //  E0427, merged into 530
 //  E0467, removed
 //  E0470, removed
-    E0576,
-    E0577,
-    E0578,
 }

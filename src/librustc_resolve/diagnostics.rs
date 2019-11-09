@@ -10,12 +10,12 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Ident, Path};
-use syntax_expand::base::MacroKind;
 use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
@@ -56,21 +56,6 @@ fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = cm.span_until_char(impl_span, '<');
     let impl_span = cm.span_until_whitespace(impl_span);
     impl_span
-}
-
-crate fn add_typo_suggestion(
-    err: &mut DiagnosticBuilder<'_>, suggestion: Option<TypoSuggestion>, span: Span
-) -> bool {
-    if let Some(suggestion) = suggestion {
-        let msg = format!(
-            "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
-        );
-        err.span_suggestion(
-            span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
-        );
-        return true;
-    }
-    false
 }
 
 impl<'a> Resolver<'a> {
@@ -367,16 +352,6 @@ impl<'a> Resolver<'a> {
                     span, "`Self` in type parameter default".to_string());
                 err
             }
-            ResolutionError::ConstParamDependentOnTypeParam => {
-                let mut err = struct_span_err!(
-                    self.session,
-                    span,
-                    E0671,
-                    "const parameters cannot depend on type parameters"
-                );
-                err.span_label(span, format!("const parameter depends on type parameter"));
-                err
-            }
         }
     }
 
@@ -651,7 +626,7 @@ impl<'a> Resolver<'a> {
         let suggestion = self.early_lookup_typo_candidate(
             ScopeSet::Macro(macro_kind), parent_scope, ident, is_expected
         );
-        add_typo_suggestion(err, suggestion, ident.span);
+        self.add_typo_suggestion(err, suggestion, ident.span);
 
         if macro_kind == MacroKind::Derive &&
            (ident.as_str() == "Send" || ident.as_str() == "Sync") {
@@ -661,6 +636,33 @@ impl<'a> Resolver<'a> {
         if self.macro_names.contains(&ident.modern()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
+    }
+
+    crate fn add_typo_suggestion(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        suggestion: Option<TypoSuggestion>,
+        span: Span,
+    ) -> bool {
+        if let Some(suggestion) = suggestion {
+            let msg = format!(
+                "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
+            );
+            err.span_suggestion(
+                span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
+            );
+            let def_span = suggestion.res.opt_def_id()
+                .and_then(|def_id| self.definitions.opt_span(def_id));
+            if let Some(span) = def_span {
+                err.span_label(span, &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
+                ));
+            }
+            return true;
+        }
+        false
     }
 }
 

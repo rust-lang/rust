@@ -1,9 +1,7 @@
-use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
+use super::{Parser, Restrictions, PrevTokenKind, TokenType, PathStyle, BlockMode};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
 use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
-
-use crate::parse::literal::LitError;
 
 use crate::ast::{
     self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
@@ -11,15 +9,16 @@ use crate::ast::{
     FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use crate::parse::classify;
-use crate::parse::token::{self, Token, TokenKind};
+use crate::token::{self, Token, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{self, Span};
-use crate::symbol::{kw, sym};
+use crate::util::classify;
+use crate::util::literal::LitError;
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
-use errors::Applicability;
+use errors::{PResult, Applicability};
+use syntax_pos::symbol::{kw, sym};
 use syntax_pos::Symbol;
 use std::mem;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -252,6 +251,7 @@ impl<'a> Parser<'a> {
                 self.last_type_ascription = Some((self.prev_span, maybe_path));
 
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
+                self.sess.gated_spans.gate(sym::type_ascription, lhs.span);
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
@@ -453,7 +453,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (lo.to(span), ExprKind::Box(e))
+                let span = lo.to(span);
+                self.sess.gated_spans.gate(sym::box_syntax, span);
+                (span, ExprKind::Box(e))
             }
             token::Ident(..) if self.token.is_ident_named(sym::not) => {
                 // `not` is just an ordinary identifier in Rust-the-language,
@@ -1042,7 +1044,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let span = lo.to(hi);
-                    self.sess.gated_spans.yields.borrow_mut().push(span);
+                    self.sess.gated_spans.gate(sym::generators, span);
                 } else if self.eat_keyword(kw::Let) {
                     return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
@@ -1113,7 +1115,11 @@ impl<'a> Parser<'a> {
                 Err(self.span_fatal(token.span, &msg))
             }
             Err(err) => {
-                let (lit, span) = (token.expect_lit(), token.span);
+                let span = token.span;
+                let lit = match token.kind {
+                    token::Literal(lit) => lit,
+                    _ => unreachable!(),
+                };
                 self.bump();
                 self.error_literal_from_token(err, lit, span);
                 // Pack possible quotes and prefixes from the original literal into
@@ -1260,6 +1266,10 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         outer_attrs: ThinVec<Attribute>,
     ) -> PResult<'a, P<Expr>> {
+        if let Some(label) = opt_label {
+            self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
+        }
+
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let mut attrs = outer_attrs;
@@ -1286,7 +1296,7 @@ impl<'a> Parser<'a> {
         };
         if asyncness.is_async() {
             // Feature-gate `async ||` closures.
-            self.sess.gated_spans.async_closure.borrow_mut().push(self.prev_span);
+            self.sess.gated_spans.gate(sym::async_closure, self.prev_span);
         }
 
         let capture_clause = self.parse_capture_clause();
@@ -1408,8 +1418,7 @@ impl<'a> Parser<'a> {
 
         if let ExprKind::Let(..) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
-            let last = self.sess.gated_spans.let_chains.borrow_mut().pop();
-            debug_assert_eq!(cond.span, last.unwrap());
+            self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
         }
 
         Ok(cond)
@@ -1426,7 +1435,7 @@ impl<'a> Parser<'a> {
             |this| this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         )?;
         let span = lo.to(expr.span);
-        self.sess.gated_spans.let_chains.borrow_mut().push(span);
+        self.sess.gated_spans.gate(sym::let_chains, span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr), attrs))
     }
 
@@ -1646,7 +1655,9 @@ impl<'a> Parser<'a> {
             error.emit();
             Err(error)
         } else {
-            Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
+            let span = span_lo.to(body.span);
+            self.sess.gated_spans.gate(sym::try_blocks, span);
+            Ok(self.mk_expr(span, ExprKind::TryBlock(body), attrs))
         }
     }
 

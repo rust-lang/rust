@@ -211,7 +211,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// Derive macro generating an impl of the trait `PartialEq`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, structural_match)]
 pub macro PartialEq($item:item) { /* compiler built-in */ }
 
 /// Trait for equality comparisons which are [equivalence relations](
@@ -273,7 +273,7 @@ pub trait Eq: PartialEq<Self> {
 /// Derive macro generating an impl of the trait `Eq`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq)]
+#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
 pub macro Eq($item:item) { /* compiler built-in */ }
 
 // FIXME: this struct is used solely by #[derive] to

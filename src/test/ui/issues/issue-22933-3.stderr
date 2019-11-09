@@ -3,6 +3,7 @@ error[E0599]: no associated item named `MIN` found for type `u8` in the current 
    |
 LL | const FOO: [u32; u8::MIN as usize] = [];
    |                      ^^^ associated item not found in `u8`
+   |
 help: you are looking for the module in `std`, not the primitive type
    |
 LL | const FOO: [u32; std::u8::MIN as usize] = [];

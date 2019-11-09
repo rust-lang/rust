@@ -10,7 +10,7 @@ const BAR: [fn(&mut u32); 5] = [
     |v: &mut u32| *v += 3,
     |v: &mut u32| *v += 4,
 ];
-fn func_specific() -> (fn() -> u32) {
+fn func_specific() -> fn() -> u32 {
     || return 42
 }
 

@@ -6,7 +6,7 @@ trait Get {
 }
 
 impl Get for i32 {
-    fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
+    fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR `impl` item signature doesn't match
         x //~ ERROR lifetime mismatch
     }
 }

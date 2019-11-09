@@ -3,6 +3,7 @@ error: expected identifier, found reserved keyword `try`
    |
 LL |     let try = "foo";
    |         ^^^ expected identifier, found reserved keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let r#try = "foo";

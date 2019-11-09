@@ -15,18 +15,18 @@ fn main() {
 
     match e3 {
         E::Empty3() => ()
-        //~^ ERROR expected tuple struct/variant, found struct variant `E::Empty3`
+        //~^ ERROR expected tuple struct or tuple variant, found struct variant `E::Empty3`
     }
     match xe3 {
         XE::XEmpty3() => ()
-        //~^ ERROR expected tuple struct/variant, found struct variant `XE::XEmpty3`
+        //~^ ERROR expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
     }
     match e3 {
         E::Empty3(..) => ()
-        //~^ ERROR expected tuple struct/variant, found struct variant `E::Empty3`
+        //~^ ERROR expected tuple struct or tuple variant, found struct variant `E::Empty3`
     }
     match xe3 {
         XE::XEmpty3(..) => ()
-        //~^ ERROR expected tuple struct/variant, found struct variant `XE::XEmpty3
+        //~^ ERROR expected tuple struct or tuple variant, found struct variant `XE::XEmpty3
     }
 }

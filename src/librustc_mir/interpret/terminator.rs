@@ -255,7 +255,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Some(dest) => dest,
                     None => throw_ub!(Unreachable)
                 };
-                M::call_intrinsic(self, instance, args, dest)?;
+                M::call_intrinsic(self, span, instance, args, dest)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
                 self.goto_block(ret)?;
@@ -445,7 +445,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ptr_size,
                     self.tcx.data_layout.pointer_align.abi,
                 )?.expect("cannot be a ZST");
-                let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
+                let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
                     .read_ptr_sized(self, vtable_slot)?.not_undef()?;
                 let drop_fn = self.memory.get_fn(fn_ptr)?;
 

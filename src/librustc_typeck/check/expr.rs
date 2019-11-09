@@ -17,7 +17,7 @@ use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use crate::astconv::AstConv as _;
 
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::symbol::{Symbol, kw, sym};
@@ -566,33 +566,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the `enclosing_loops` field and let's coerce the
             // type of `expr_opt` into what is expected.
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-            let ctxt = enclosing_breakables.find_breakable(target_id);
+            let ctxt = match enclosing_breakables.opt_find_breakable(target_id) {
+                Some(ctxt) => ctxt,
+                None => { // Avoid ICE when `break` is inside a closure (#65383).
+                    self.tcx.sess.delay_span_bug(
+                        expr.span,
+                        "break was outside loop, but no error was emitted",
+                    );
+                    return tcx.types.err;
+                }
+            };
+
             if let Some(ref mut coerce) = ctxt.coerce {
                 if let Some(ref e) = expr_opt {
                     coerce.coerce(self, &cause, e, e_ty);
                 } else {
                     assert!(e_ty.is_unit());
                     let ty = coerce.expected_ty();
-                    coerce.coerce_forced_unit(self, &cause, &mut |err| {
-                        let val = match ty.kind {
-                            ty::Bool => "true",
-                            ty::Char => "'a'",
-                            ty::Int(_) | ty::Uint(_) => "42",
-                            ty::Float(_) => "3.14159",
-                            ty::Error | ty::Never => return,
-                            _ => "value",
-                        };
-                        let msg = "give it a value of the expected type";
-                        let label = destination.label
-                            .map(|l| format!(" {}", l.ident))
-                            .unwrap_or_else(String::new);
-                        let sugg = format!("break{} {}", label, val);
-                        err.span_suggestion(expr.span, msg, sugg, Applicability::HasPlaceholders);
+                    coerce.coerce_forced_unit(self, &cause, &mut |mut err| {
+                        self.suggest_mismatched_types_on_tail(
+                            &mut err,
+                            expr,
+                            ty,
+                            e_ty,
+                            cause.span,
+                            target_id,
+                        );
+                        if let Some(val) = ty_kind_suggestion(ty) {
+                            let label = destination.label
+                                .map(|l| format!(" {}", l.ident))
+                                .unwrap_or_else(String::new);
+                            err.span_suggestion(
+                                expr.span,
+                                "give it a value of the expected type",
+                                format!("break{} {}", label, val),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
                     }, false);
                 }
             } else {
                 // If `ctxt.coerce` is `None`, we can just ignore
-                // the type of the expresison.  This is because
+                // the type of the expression.  This is because
                 // either this was a break *without* a value, in
                 // which case it is always a legal type (`()`), or
                 // else an error would have been flagged by the
@@ -1200,7 +1215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             struct_span_err!(tcx.sess, span, E0063,
                              "missing field{} {}{} in initializer of `{}`",
-                             pluralise!(remaining_fields.len()),
+                             pluralize!(remaining_fields.len()),
                              remaining_fields_names,
                              truncated_fields_error,
                              adt_ty)
@@ -1706,4 +1721,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.tcx.mk_unit()
     }
+}
+
+pub(super) fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
+    Some(match ty.kind {
+        ty::Bool => "true",
+        ty::Char => "'a'",
+        ty::Int(_) | ty::Uint(_) => "42",
+        ty::Float(_) => "3.14159",
+        ty::Error | ty::Never => return None,
+        _ => "value",
+    })
 }

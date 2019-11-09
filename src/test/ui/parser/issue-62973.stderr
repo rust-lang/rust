@@ -13,9 +13,11 @@ error: expected one of `,` or `}`, found `{`
   --> $DIR/issue-62973.rs:6:25
    |
 LL | fn p() { match s { v, E { [) {) }
-   |                -        ^ expected one of `,` or `}` here
-   |                |
-   |                while parsing this struct
+   |        -       -       -^ expected one of `,` or `}`
+   |        |       |       |
+   |        |       |       help: `}` may belong here
+   |        |       while parsing this struct
+   |        unclosed delimiter
 
 error: struct literals are not allowed here
   --> $DIR/issue-62973.rs:6:16
@@ -25,6 +27,7 @@ LL |   fn p() { match s { v, E { [) {) }
 LL | |
 LL | |
    | |_^
+   |
 help: surround the struct literal with parentheses
    |
 LL | fn p() { match (s { v, E { [) {) }
@@ -33,13 +36,13 @@ LL | )
    |
 
 error: expected one of `.`, `?`, `{`, or an operator, found `}`
-  --> $DIR/issue-62973.rs:8:1
+  --> $DIR/issue-62973.rs:8:2
    |
 LL | fn p() { match s { v, E { [) {) }
    |          ----- while parsing this match expression
 LL | 
 LL | 
-   | ^ expected one of `.`, `?`, `{`, or an operator here
+   |  ^ expected one of `.`, `?`, `{`, or an operator
 
 error: incorrect close delimiter: `)`
   --> $DIR/issue-62973.rs:6:28

@@ -31,7 +31,6 @@ impl Condvar {
               target_os = "ios",
               target_os = "l4re",
               target_os = "android",
-              target_os = "hermit",
               target_os = "redox"))]
     pub unsafe fn init(&mut self) {}
 
@@ -39,7 +38,6 @@ impl Condvar {
                   target_os = "ios",
                   target_os = "l4re",
                   target_os = "android",
-                  target_os = "hermit",
                   target_os = "redox")))]
     pub unsafe fn init(&mut self) {
         use crate::mem::MaybeUninit;
@@ -78,8 +76,7 @@ impl Condvar {
     // from changes made to the system time.
     #[cfg(not(any(target_os = "macos",
                   target_os = "ios",
-                  target_os = "android",
-                  target_os = "hermit")))]
+                  target_os = "android")))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::mem;
 
@@ -109,7 +106,7 @@ impl Condvar {
     // This implementation is modeled after libcxx's condition_variable
     // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
     // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "hermit"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
         use crate::ptr;
         use crate::time::Instant;

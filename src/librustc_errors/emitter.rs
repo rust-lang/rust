@@ -12,7 +12,7 @@ use Destination::*;
 use syntax_pos::{SourceFile, Span, MultiSpan};
 
 use crate::{
-    Level, CodeSuggestion, Diagnostic, SubDiagnostic, pluralise,
+    Level, CodeSuggestion, Diagnostic, SubDiagnostic, pluralize,
     SuggestionStyle, SourceMapper, SourceMapperDyn, DiagnosticId,
 };
 use crate::Level::Error;
@@ -422,6 +422,14 @@ impl Emitter for EmitterWriter {
     fn should_show_explain(&self) -> bool {
         !self.short_message
     }
+}
+
+/// An emitter that does nothing when emitting a diagnostic.
+pub struct SilentEmitter;
+
+impl Emitter for SilentEmitter {
+    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> { None }
+    fn emit_diagnostic(&mut self, _: &Diagnostic) {}
 }
 
 /// maximum number of lines we will print for each error; arbitrary.
@@ -1573,7 +1581,7 @@ impl EmitterWriter {
         }
         if suggestions.len() > MAX_SUGGESTIONS {
             let others = suggestions.len() - MAX_SUGGESTIONS;
-            let msg = format!("and {} other candidate{}", others, pluralise!(others));
+            let msg = format!("and {} other candidate{}", others, pluralize!(others));
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         } else if notice_capitalization {
             let msg = "notice the capitalization difference";
@@ -1583,27 +1591,26 @@ impl EmitterWriter {
         Ok(())
     }
 
-    fn emit_messages_default(&mut self,
-                             level: &Level,
-                             message: &[(String, Style)],
-                             code: &Option<DiagnosticId>,
-                             span: &MultiSpan,
-                             children: &[SubDiagnostic],
-                             suggestions: &[CodeSuggestion]) {
+    fn emit_messages_default(
+        &mut self,
+        level: &Level,
+        message: &[(String, Style)],
+        code: &Option<DiagnosticId>,
+        span: &MultiSpan,
+        children: &[SubDiagnostic],
+        suggestions: &[CodeSuggestion],
+    ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
             self.get_max_line_num(span, children).to_string().len()
         };
 
-        match self.emit_message_default(span,
-                                        message,
-                                        code,
-                                        level,
-                                        max_line_num_len,
-                                        false) {
+        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
             Ok(()) => {
-                if !children.is_empty() {
+                if !children.is_empty() || suggestions.iter().any(|s| {
+                    s.style != SuggestionStyle::CompletelyHidden
+                }) {
                     let mut buffer = StyledBuffer::new();
                     if !self.short_message {
                         draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
@@ -1817,10 +1824,9 @@ impl FileWithAnnotatedLines {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
                     add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
                 }
-                if middle < ann.line_end - 1 {
-                    for line in ann.line_end - 1..ann.line_end {
-                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                    }
+                let line_end = ann.line_end - 1;
+                if middle < line_end {
+                    add_annotation_to_file(&mut output, file.clone(), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;

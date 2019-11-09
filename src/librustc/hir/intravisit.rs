@@ -45,7 +45,7 @@ pub enum FnKind<'a> {
     ItemFn(Ident, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
 
     /// `fn foo(&self)`
-    Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a [Attribute]),
+    Method(Ident, &'a FnSig, Option<&'a Visibility>, &'a [Attribute]),
 
     /// `|x, y| {}`
     Closure(&'a [Attribute]),
@@ -203,7 +203,7 @@ pub trait Visitor<'v>: Sized {
 
     /// Invoked to visit the body of a function, method or closure. Like
     /// visit_nested_item, does nothing by default unless you override
-    /// `nested_visit_map` to return other htan `None`, in which case it will walk
+    /// `nested_visit_map` to return other than `None`, in which case it will walk
     /// the body.
     fn visit_nested_body(&mut self, id: BodyId) {
         let opt_body = self.nested_visit_map().intra().map(|map| map.body(id));
@@ -481,13 +481,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             visitor.visit_nested_body(body);
         }
-        ItemKind::Fn(ref declaration, header, ref generics, body_id) => {
+        ItemKind::Fn(ref sig, ref generics, body_id) => {
             visitor.visit_fn(FnKind::ItemFn(item.ident,
                                             generics,
-                                            header,
+                                            sig.header,
                                             &item.vis,
                                             &item.attrs),
-                             declaration,
+                             &sig.decl,
                              body_id,
                              item.span,
                              item.hir_id)

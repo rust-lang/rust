@@ -3,6 +3,7 @@ error: lifetime may not live long enough
    |
 LL | fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
    |        -- lifetime `'a` defined here                   ^^^^^^^^^ opaque type requires that `'a` must outlive `'static`
+   |
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a constraint
    |
 LL | type E<'a, 'b> = impl Sized; + 'a

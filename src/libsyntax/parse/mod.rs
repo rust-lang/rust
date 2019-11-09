@@ -1,15 +1,13 @@
 //! The main parser interface.
 
 use crate::ast;
-use crate::parse::parser::{Parser, emit_unclosed_delims};
-use crate::parse::token::Nonterminal;
+use crate::parse::parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
+use crate::token::{self, Nonterminal};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
-use errors::{FatalError, Level, Diagnostic, DiagnosticBuilder};
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
+use errors::{PResult, FatalError, Level, Diagnostic};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, SourceFile, FileName};
 
@@ -25,18 +23,6 @@ mod tests;
 #[macro_use]
 pub mod parser;
 pub mod lexer;
-pub mod token;
-
-crate mod classify;
-crate mod literal;
-crate mod unescape_error_reporting;
-
-pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
-
-// `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-// (See also the comment on `DiagnosticBuilderInner`.)
-#[cfg(target_arch = "x86_64")]
-static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Clone)]
 pub struct Directory<'a> {
@@ -51,13 +37,30 @@ pub enum DirectoryOwnership {
         relative: Option<ast::Ident>,
     },
     UnownedViaBlock,
-    UnownedViaMod(bool /* legacy warnings? */),
+    UnownedViaMod,
 }
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
+
+/// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+macro_rules! panictry_buffer {
+    ($handler:expr, $e:expr) => ({
+        use std::result::Result::{Ok, Err};
+        use errors::FatalError;
+        match $e {
+            Ok(e) => e,
+            Err(errs) => {
+                for e in errs {
+                    $handler.emit_diagnostic(&e);
+                }
+                FatalError.raise()
+            }
+        }
+    })
+}
 
 pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
     let mut parser = new_parser_from_file(sess, input);
@@ -91,7 +94,7 @@ pub fn parse_stream_from_source_str(
         sess.source_map().new_source_file(name, source),
         override_span,
     );
-    emit_unclosed_delims(&mut errors, &sess.span_diagnostic);
+    emit_unclosed_delims(&mut errors, &sess);
     stream
 }
 
@@ -225,18 +228,9 @@ pub fn maybe_file_to_stream(
             err.buffer(&mut buffer);
             // Not using `emit_unclosed_delims` to use `db.buffer`
             for unmatched in unmatched_braces {
-                let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
-                    "incorrect close delimiter: `{}`",
-                    pprust::token_kind_to_string(&token::CloseDelim(unmatched.found_delim)),
-                ));
-                db.span_label(unmatched.found_span, "incorrect close delimiter");
-                if let Some(sp) = unmatched.candidate_span {
-                    db.span_label(sp, "close delimiter possibly meant for this");
+                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
+                    err.buffer(&mut buffer);
                 }
-                if let Some(sp) = unmatched.unclosed_span {
-                    db.span_label(sp, "un-closed delimiter");
-                }
-                db.buffer(&mut buffer);
             }
             Err(buffer)
         }
@@ -269,6 +263,27 @@ pub fn stream_to_parser_with_base_dir<'a>(
     base_dir: Directory<'a>,
 ) -> Parser<'a> {
     Parser::new(sess, stream, Some(base_dir), true, false, None)
+}
+
+/// Runs the given subparser `f` on the tokens of the given `attr`'s item.
+pub fn parse_in_attr<'a, T>(
+    sess: &'a ParseSess,
+    attr: &ast::Attribute,
+    mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+) -> PResult<'a, T> {
+    let mut parser = Parser::new(
+        sess,
+        attr.get_normal_item().tokens.clone(),
+        None,
+        false,
+        false,
+        Some("attribute"),
+    );
+    let result = f(&mut parser)?;
+    if parser.token != token::Eof {
+        parser.unexpected()?;
+    }
+    Ok(result)
 }
 
 // NOTE(Centril): The following probably shouldn't be here but it acknowledges the
@@ -364,18 +379,22 @@ fn prepend_attrs(
 
         let source = pprust::attribute_to_string(attr);
         let macro_filename = FileName::macro_expansion_source_code(&source);
-        if attr.is_sugared_doc {
-            let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
-            builder.push(stream);
-            continue
-        }
+
+        let item = match attr.kind {
+            ast::AttrKind::Normal(ref item) => item,
+            ast::AttrKind::DocComment(_) => {
+                let stream = parse_stream_from_source_str(macro_filename, source, sess, Some(span));
+                builder.push(stream);
+                continue
+            }
+        };
 
         // synthesize # [ $path $tokens ] manually here
         let mut brackets = tokenstream::TokenStreamBuilder::new();
 
         // For simple paths, push the identifier directly
-        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
-            let ident = attr.path.segments[0].ident;
+        if item.path.segments.len() == 1 && item.path.segments[0].args.is_none() {
+            let ident = item.path.segments[0].ident;
             let token = token::Ident(ident.name, ident.as_str().starts_with("r#"));
             brackets.push(tokenstream::TokenTree::token(token, ident.span));
 
@@ -386,7 +405,7 @@ fn prepend_attrs(
             brackets.push(stream);
         }
 
-        brackets.push(attr.tokens.clone());
+        brackets.push(item.tokens.clone());
 
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good

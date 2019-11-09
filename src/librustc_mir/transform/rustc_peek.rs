@@ -155,8 +155,8 @@ fn value_assigned_to_local<'a, 'tcx>(
     local: Local,
 ) -> Option<&'a mir::Rvalue<'tcx>> {
     if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
-        if let mir::Place { base: mir::PlaceBase::Local(l), projection: box [] } = place {
-            if local == *l {
+        if let Some(l) = place.as_local() {
+            if local == l {
                 return Some(&*rvalue);
             }
         }
@@ -192,7 +192,7 @@ impl PeekCall {
         tcx: TyCtxt<'tcx>,
         terminator: &mir::Terminator<'tcx>,
     ) -> Option<Self> {
-        use mir::{Operand, Place, PlaceBase};
+        use mir::Operand;
 
         let span = terminator.source_info.span;
         if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
@@ -207,14 +207,23 @@ impl PeekCall {
 
                 assert_eq!(args.len(), 1);
                 let kind = PeekCallKind::from_arg_ty(substs.type_at(0));
-                let arg = match args[0] {
-                    | Operand::Copy(Place { base: PlaceBase::Local(local), projection: box [] })
-                    | Operand::Move(Place { base: PlaceBase::Local(local), projection: box [] })
-                    => local,
-
+                let arg = match &args[0] {
+                    Operand::Copy(place) | Operand::Move(place) => {
+                        if let Some(local) = place.as_local() {
+                            local
+                        } else {
+                            tcx.sess.diagnostic().span_err(
+                                span,
+                                "dataflow::sanity_check cannot feed a non-temp to rustc_peek.",
+                            );
+                            return None;
+                        }
+                    }
                     _ => {
                         tcx.sess.diagnostic().span_err(
-                            span, "dataflow::sanity_check cannot feed a non-temp to rustc_peek.");
+                            span,
+                            "dataflow::sanity_check cannot feed a non-temp to rustc_peek.",
+                        );
                         return None;
                     }
                 };
@@ -277,12 +286,11 @@ impl<'tcx> RustcPeekAt<'tcx> for IndirectlyMutableLocals<'_, 'tcx> {
         call: PeekCall,
     ) {
         warn!("peek_at: place={:?}", place);
-        let local = match place {
-            mir::Place { base: mir::PlaceBase::Local(l), projection: box [] } => *l,
-            _ => {
-                tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
-                return;
-            }
+        let local = if let Some(l) = place.as_local() {
+            l
+        } else {
+            tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
+            return;
         };
 
         if !flow_state.contains(local) {

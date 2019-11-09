@@ -517,8 +517,18 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
         // overflow handling
         loop {
             let mul = n.checked_mul(step);
-            if unsafe { intrinsics::likely(mul.is_some()) } {
-                return self.iter.nth(mul.unwrap() - 1);
+            #[cfg(bootstrap)]
+            {
+                // SAFETY: going away soon
+                if unsafe { intrinsics::likely(mul.is_some()) } {
+                    return self.iter.nth(mul.unwrap() - 1);
+                }
+            }
+            #[cfg(not(bootstrap))]
+            {
+                if intrinsics::likely(mul.is_some()) {
+                    return self.iter.nth(mul.unwrap() - 1);
+                }
             }
             let div_n = usize::MAX / n;
             let div_step = usize::MAX / step;

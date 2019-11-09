@@ -33,6 +33,7 @@ LL |         &mut [_a,
    |               |
    |               data moved here
    |               move occurs because `_a` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |
 help: consider removing the `&mut`
    |
 LL |         [_a,
@@ -64,6 +65,7 @@ LL |          _b] => {}
    |          |
    |          data moved here
    |          move occurs because `_b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |
 help: consider removing the `&mut`
    |
 LL |         [

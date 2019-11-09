@@ -2246,7 +2246,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     if let Some(principal) = data.principal() {
-                        principal.with_self_ty(self.tcx(), self_ty)
+                        if !self.infcx.tcx.features().object_safe_for_dispatch {
+                            principal.with_self_ty(self.tcx(), self_ty)
+                        } else if self.tcx().is_object_safe(principal.def_id()) {
+                            principal.with_self_ty(self.tcx(), self_ty)
+                        } else {
+                            return;
+                        }
                     } else {
                         // Only auto-trait bounds exist.
                         return;

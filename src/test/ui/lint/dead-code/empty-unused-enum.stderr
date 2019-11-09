@@ -1,0 +1,15 @@
+error: enum is never used: `E`
+  --> $DIR/empty-unused-enum.rs:3:6
+   |
+LL | enum E {}
+   |      ^
+   |
+note: lint level defined here
+  --> $DIR/empty-unused-enum.rs:1:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
+
+error: aborting due to previous error
+

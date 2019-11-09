@@ -71,6 +71,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
+                        // SAFETY: we just checked that there's no `0`
                         Some(unsafe { $Ty(n) })
                     } else {
                         None
@@ -703,6 +704,7 @@ $EndFeature, "
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
+                    // SAFETY: div by zero and by INT_MIN have been checked above
                     Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
             }
@@ -759,6 +761,7 @@ $EndFeature, "
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
+                    // SAFETY: div by zero and by INT_MIN have been checked above
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
                 }
             }
@@ -1329,6 +1332,8 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
+                // SAFETY: the masking by the bitsize of the type ensures that we do not shift
+                // out of bounds
                 unsafe {
                     intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
                 }
@@ -1358,6 +1363,8 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
+                // SAFETY: the masking by the bitsize of the type ensures that we do not shift
+                // out of bounds
                 unsafe {
                     intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
                 }
@@ -2113,6 +2120,8 @@ assert_eq!(
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
+                // SAFETY: integers are plain old datatypes so we can always transmute them to
+                // arrays of bytes
                 unsafe { mem::transmute(self) }
             }
         }
@@ -2221,6 +2230,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                // SAFETY: integers are plain old datatypes so we can always transmute to them
                 unsafe { mem::transmute(bytes) }
             }
         }
@@ -2748,6 +2758,8 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
             pub fn checked_div(self, rhs: Self) -> Option<Self> {
                 match rhs {
                     0 => None,
+                    // SAFETY: div by zero has been checked above and unsigned types have no other
+                    // failure modes for division
                     rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
                 }
             }
@@ -2799,6 +2811,8 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                 if rhs == 0 {
                     None
                 } else {
+                    // SAFETY: div by zero has been checked above and unsigned types have no other
+                    // failure modes for division
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
                 }
             }
@@ -3248,6 +3262,8 @@ assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
+                // SAFETY: the masking by the bitsize of the type ensures that we do not shift
+                // out of bounds
                 unsafe {
                     intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
                 }
@@ -3279,6 +3295,8 @@ assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
+                // SAFETY: the masking by the bitsize of the type ensures that we do not shift
+                // out of bounds
                 unsafe {
                     intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
                 }
@@ -3775,11 +3793,11 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
         fn one_less_than_next_power_of_two(self) -> Self {
             if self <= 1 { return 0; }
 
-            // Because `p > 0`, it cannot consist entirely of leading zeros.
+            let p = self - 1;
+            // SAFETY: Because `p > 0`, it cannot consist entirely of leading zeros.
             // That means the shift is always in-bounds, and some processors
             // (such as intel pre-haswell) have more efficient ctlz
             // intrinsics when the argument is non-zero.
-            let p = self - 1;
             let z = unsafe { intrinsics::ctlz_nonzero(p) };
             <$SelfT>::max_value() >> z
         }
@@ -3925,6 +3943,8 @@ assert_eq!(
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
+                // SAFETY: integers are plain old datatypes so we can always transmute them to
+                // arrays of bytes
                 unsafe { mem::transmute(self) }
             }
         }
@@ -4033,6 +4053,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
             pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                // SAFETY: integers are plain old datatypes so we can always transmute to them
                 unsafe { mem::transmute(bytes) }
             }
         }

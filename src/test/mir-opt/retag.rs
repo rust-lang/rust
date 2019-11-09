@@ -1,4 +1,4 @@
-// ignore-emscripten compiled with panic=abort by default
+// ignore-wasm32-bare compiled with panic=abort by default
 // ignore-tidy-linelength
 // compile-flags: -Z mir-emit-retag -Z mir-opt-level=0 -Z span_free_formats
 
@@ -100,7 +100,7 @@ fn main() {
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(22), local_id: 72 }], _2: &i32) -> &i32 {
+// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(13), local_id: 72 }], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
 //         Retag([fn entry] _1);

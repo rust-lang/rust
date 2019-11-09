@@ -196,20 +196,21 @@ use crate::vec::Vec;
 ///
 /// let story = String::from("Once upon a time...");
 ///
-/// let ptr = story.as_ptr();
+// FIXME Update this when vec_into_raw_parts is stabilized
+/// // Prevent automatically dropping the String's data
+/// let mut story = mem::ManuallyDrop::new(story);
+///
+/// let ptr = story.as_mut_ptr();
 /// let len = story.len();
 /// let capacity = story.capacity();
 ///
 /// // story has nineteen bytes
 /// assert_eq!(19, len);
 ///
-/// // Now that we have our parts, we throw the story away.
-/// mem::forget(story);
-///
 /// // We can re-build a String out of ptr, len, and capacity. This is all
 /// // unsafe because we are responsible for making sure the components are
 /// // valid:
-/// let s = unsafe { String::from_raw_parts(ptr as *mut _, len, capacity) } ;
+/// let s = unsafe { String::from_raw_parts(ptr, len, capacity) } ;
 ///
 /// assert_eq!(String::from("Once upon a time..."), s);
 /// ```
@@ -647,6 +648,37 @@ impl String {
         decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
     }
 
+    /// Decomposes a `String` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the string (in bytes), and the allocated capacity of the data
+    /// (in bytes). These are the same arguments in the same order as
+    /// the arguments to [`from_raw_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `String`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `String` with the [`from_raw_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts`]: #method.from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// let s = String::from("hello");
+    ///
+    /// let (ptr, len, cap) = s.into_raw_parts();
+    ///
+    /// let rebuilt = unsafe { String::from_raw_parts(ptr, len, cap) };
+    /// assert_eq!(rebuilt, "hello");
+    /// ```
+    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
+        self.vec.into_raw_parts()
+    }
+
     /// Creates a new `String` from a length, capacity, and pointer.
     ///
     /// # Safety
@@ -655,7 +687,7 @@ impl String {
     /// checked:
     ///
     /// * The memory at `ptr` needs to have been previously allocated by the
-    ///   same allocator the standard library uses.
+    ///   same allocator the standard library uses, with a required alignment of exactly 1.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the correct value.
     ///
@@ -677,13 +709,16 @@ impl String {
     ///
     /// unsafe {
     ///     let s = String::from("hello");
-    ///     let ptr = s.as_ptr();
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    ///     // Prevent automatically dropping the String's data
+    ///     let mut s = mem::ManuallyDrop::new(s);
+    ///
+    ///     let ptr = s.as_mut_ptr();
     ///     let len = s.len();
     ///     let capacity = s.capacity();
     ///
-    ///     mem::forget(s);
-    ///
-    ///     let s = String::from_raw_parts(ptr as *mut _, len, capacity);
+    ///     let s = String::from_raw_parts(ptr, len, capacity);
     ///
     ///     assert_eq!(String::from("hello"), s);
     /// }
@@ -1367,7 +1402,9 @@ impl String {
         &mut self.vec
     }
 
-    /// Returns the length of this `String`, in bytes.
+    /// Returns the length of this `String`, in bytes, not [`char`]s or
+    /// graphemes. In other words, it may not be what a human considers the
+    /// length of the string.
     ///
     /// # Examples
     ///
@@ -1375,8 +1412,11 @@ impl String {
     ///
     /// ```
     /// let a = String::from("foo");
-    ///
     /// assert_eq!(a.len(), 3);
+    ///
+    /// let fancy_f = String::from("ƒoo");
+    /// assert_eq!(fancy_f.len(), 4);
+    /// assert_eq!(fancy_f.chars().count(), 3);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

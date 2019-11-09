@@ -117,7 +117,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
 
     run_passes(tcx, &mut result, instance, None, MirPhase::Const, &[
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
-        &no_landing_pads::NoLandingPads,
+        &no_landing_pads::NoLandingPads::new(tcx),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("make_shim"),
         &add_call_guards::CriticalCallEdges,
@@ -231,7 +231,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 tcx,
                 param_env
             };
-            let dropee = dropee_ptr.deref();
+            let dropee = tcx.mk_place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
@@ -312,7 +312,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env, builder.span);
 
     let dest = Place::return_place();
-    let src = Place::from(Local::new(1+0)).deref();
+    let src = tcx.mk_place_deref(Place::from(Local::new(1+0)));
 
     match self_ty.kind {
         _ if is_copy => builder.copy_shim(),
@@ -415,7 +415,7 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn copy_shim(&mut self) {
-        let rcvr = Place::from(Local::new(1+0)).deref();
+        let rcvr = self.tcx.mk_place_deref(Place::from(Local::new(1+0)));
         let ret_statement = self.make_statement(
             StatementKind::Assign(
                 box(
@@ -561,8 +561,8 @@ impl CloneShimBuilder<'tcx> {
         // BB #2
         // `dest[i] = Clone::clone(src[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
-        let dest_field = dest.clone().index(beg);
-        let src_field = src.index(beg);
+        let dest_field = self.tcx.mk_place_index(dest.clone(), beg);
+        let src_field = self.tcx.mk_place_index(src, beg);
         self.make_clone_call(dest_field, src_field, ty, BasicBlock::new(3),
                              BasicBlock::new(5));
 
@@ -616,7 +616,7 @@ impl CloneShimBuilder<'tcx> {
         // BB #7 (cleanup)
         // `drop(dest[beg])`;
         self.block(vec![], TerminatorKind::Drop {
-            location: dest.index(beg),
+            location: self.tcx.mk_place_index(dest, beg),
             target: BasicBlock::new(8),
             unwind: None,
         }, true);
@@ -648,9 +648,9 @@ impl CloneShimBuilder<'tcx> {
         let mut previous_field = None;
         for (i, ity) in tys.enumerate() {
             let field = Field::new(i);
-            let src_field = src.clone().field(field, ity);
+            let src_field = self.tcx.mk_place_field(src.clone(), field, ity);
 
-            let dest_field = dest.clone().field(field, ity);
+            let dest_field = self.tcx.mk_place_field(dest.clone(), field, ity);
 
             // #(2i + 1) is the cleanup block for the previous clone operation
             let cleanup_block = self.block_index_offset(1);
@@ -721,14 +721,14 @@ fn build_call_shim<'tcx>(
 
     let rcvr = match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_l),
-        Adjustment::Deref => Operand::Copy(rcvr_l.deref()),
+        Adjustment::Deref => Operand::Copy(tcx.mk_place_deref(rcvr_l)),
         Adjustment::DerefMove => {
             // fn(Self, ...) -> fn(*mut Self, ...)
             let arg_ty = local_decls[rcvr_arg].ty;
             debug_assert!(tcx.generics_of(def_id).has_self && arg_ty == tcx.types.self_param);
             local_decls[rcvr_arg].ty = tcx.mk_mut_ptr(arg_ty);
 
-            Operand::Move(rcvr_l.deref())
+            Operand::Move(tcx.mk_place_deref(rcvr_l))
         }
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
@@ -772,7 +772,7 @@ fn build_call_shim<'tcx>(
     if let Some(untuple_args) = untuple_args {
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
             let arg_place = Place::from(Local::new(1+1));
-            Operand::Move(arg_place.field(Field::new(i), *ity))
+            Operand::Move(tcx.mk_place_field(arg_place, Field::new(i), *ity))
         }));
     } else {
         args.extend((1..sig.inputs().len()).map(|i| {
@@ -901,6 +901,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
             )),
         AggregateKind::Adt(adt_def, variant_index, substs, None, None),
         source_info,
+        tcx,
     ).collect();
 
     let start_block = BasicBlockData {

@@ -3,6 +3,7 @@ error[E0573]: expected type, found variant `NoResult`
    |
 LL |     fn new() -> NoResult<MyEnum, String> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: try using the variant's enum
    |
 LL |     fn new() -> foo::MyEnum {
@@ -17,6 +18,7 @@ error[E0573]: expected type, found variant `Result`
    |
 LL |     fn new() -> Result<foo::MyEnum, String> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL |     use std::fmt::Result;
@@ -34,6 +36,7 @@ error[E0573]: expected type, found variant `Result`
    |
 LL | fn new() -> Result<foo::MyEnum, String> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+   |
 help: possible better candidates are found in other modules, you can import them into scope
    |
 LL | use std::fmt::Result;
@@ -51,6 +54,7 @@ error[E0573]: expected type, found variant `NoResult`
    |
 LL | fn newer() -> NoResult<foo::MyEnum, String> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 help: try using the variant's enum
    |
 LL | fn newer() -> foo::MyEnum {

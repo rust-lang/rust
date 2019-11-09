@@ -1,5 +1,3 @@
-#![feature(non_exhaustive)]
-
 #[non_exhaustive]
 #[repr(C)]
 pub enum NonExhaustiveEnum {
