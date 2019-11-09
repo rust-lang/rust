@@ -352,7 +352,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
-        // 1. self.finger and self.old_finger are kept on unicode boundaries (this is invariant)
+        // 1. self.finger and self.finger_back are kept on unicode boundaries (this is invariant)
         // 2. self.finger >= 0 since it starts at 0 and only increases
         // 3. self.finger < self.finger_back because otherwise the char iter would return
         //    SearchStep::Done
