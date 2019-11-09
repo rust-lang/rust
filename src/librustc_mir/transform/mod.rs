@@ -36,6 +36,7 @@ pub mod const_prop;
 pub mod generator;
 pub mod inline;
 pub mod uniform_array_move_out;
+pub mod uninhabited_enum_branching;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::qualify_consts::provide(providers);
@@ -258,6 +259,8 @@ fn run_optimization_passes<'tcx>(
 
 
         // Optimizations begin.
+        &uninhabited_enum_branching::UninhabitedEnumBranching,
+        &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
         &uniform_array_move_out::RestoreSubsliceArrayMoveOut::new(tcx),
         &inline::Inline,
 
