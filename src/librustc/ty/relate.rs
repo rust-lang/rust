@@ -605,10 +605,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 _ =>  Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
             };
 
-            match new_val {
-                Ok(val) => Ok(ty::ConstKind::Value(val)),
-                Err(err) => Err(err),
-            }
+            new_val.map(ty::ConstKind::Value)
         },
 
         // FIXME(const_generics): this is wrong, as it is a projection
