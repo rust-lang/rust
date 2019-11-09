@@ -1118,8 +1118,7 @@ fn all_constructors<'a, 'tcx>(
     debug!("all_constructors({:?})", pcx.ty);
     let make_range = |start, end| {
         IntRange(
-            // `unwrap()` is ok because we know the type is an integer and the range is
-            // well-formed.
+            // `unwrap()` is ok because we know the type is an integer.
             IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included, pcx.span)
                 .unwrap(),
         )
@@ -1318,13 +1317,12 @@ impl<'tcx> IntRange<'tcx> {
             // which makes the interval arithmetic simpler.
             let bias = IntRange::signed_bias(tcx, ty);
             let (lo, hi) = (lo ^ bias, hi ^ bias);
-            // Make sure the interval is well-formed.
-            if lo > hi || lo == hi && *end == RangeEnd::Excluded {
-                None
-            } else {
-                let offset = (*end == RangeEnd::Excluded) as u128;
-                Some(IntRange { range: lo..=(hi - offset), ty, span })
+            let offset = (*end == RangeEnd::Excluded) as u128;
+            if lo > hi || (lo == hi && *end == RangeEnd::Excluded) {
+                // This hould have been caught earlier by E0030
+                bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
+            Some(IntRange { range: lo..=(hi - offset), ty, span })
         } else {
             None
         }
