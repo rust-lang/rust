@@ -2124,10 +2124,11 @@ where `P1, ..., Pm` are the type parameters of the `impl` and `T0, ..., Tn`
 are types. One of the types `T0, ..., Tn` must be a local type (this is another
 orphan rule, see the explanation for E0117).
 
-Both of the folowing must be true:
-1. At least one of the types T0..=Tn must be a local type.
-Let Ti be the first such type.
-2. No uncovered type parameters P1..=Pm may appear in T0..Ti (excluding Ti).
+Both of the following must be true:
+1. At least one of the types `T0..=Tn` must be a local type.
+Let `Ti` be the first such type.
+2. No uncovered type parameters `P1..=Pm` may appear in `T0..Ti`
+(excluding `Ti`).
 
 For information on the design of the orphan rules,
 see [RFC 2451] and [RFC 1023].
