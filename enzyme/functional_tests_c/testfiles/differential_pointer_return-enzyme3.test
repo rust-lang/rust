@@ -1,0 +1,6 @@
+; RUN: cd %desired_wd
+; RUN: make clean-differential_pointer_return-enzyme3 ENZYME_PLUGIN=%loadEnzyme
+; RUN: make build/differential_pointer_return-enzyme3 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
+; RUN: build/differential_pointer_return-enzyme3
+; RUN: make clean-differential_pointer_return-enzyme3 ENZYME_PLUGIN=%loadEnzyme
+

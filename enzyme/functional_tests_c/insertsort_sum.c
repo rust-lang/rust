@@ -3,6 +3,8 @@
 #include <math.h>
 #include <assert.h>
 
+#include "test_utils.h"
+
 #define __builtin_autodiff __enzyme_autodiff
 
 double __enzyme_autodiff(void*, ...);
@@ -67,9 +69,9 @@ int main(int argc, char** argv) {
   for (int i = 0; i < N; i++) {
     printf("Diffe for index %d is %f\n", i, d_array[i]);
     if (i%2 == 0) {
-      assert(d_array[i] == 0.0);
+      assert(approx_fp_equality_float(d_array[i], 0.0, 1e-10));
     } else {
-      assert(d_array[i] == 1.0);
+      assert(approx_fp_equality_float(d_array[i],1.0,1e-10));
     }
   }
   return 0;
