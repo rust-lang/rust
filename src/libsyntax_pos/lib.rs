@@ -15,6 +15,7 @@
 #![feature(step_trait)]
 
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_macros::HashStable_Generic;
 
 pub mod source_map;
 
@@ -66,7 +67,8 @@ impl Globals {
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash,
+         RustcDecodable, RustcEncodable, HashStable_Generic)]
 pub enum FileName {
     Real(PathBuf),
     /// A macro. This includes the full name of the macro, so that there are no clashes.

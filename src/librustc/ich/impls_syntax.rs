@@ -40,11 +40,6 @@ impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     Unadjusted
 });
 
-impl_stable_hash_for!(enum ::syntax::edition::Edition {
-    Edition2015,
-    Edition2018,
-});
-
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     kind,
     token,
@@ -222,12 +217,6 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
-    Transparent,
-    SemiTransparent,
-    Opaque,
-});
-
 impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
     kind,
     parent -> _,
@@ -237,43 +226,6 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
     allow_internal_unsafe,
     local_inner_macros,
     edition
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
-    Root,
-    Macro(kind, descr),
-    AstPass(kind),
-    Desugaring(kind)
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::AstPass {
-    StdImports,
-    TestHarness,
-    ProcMacroHarness,
-    PluginMacroDefs,
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
-    CondTemporary,
-    Async,
-    Await,
-    QuestionMark,
-    OpaqueTy,
-    ForLoop,
-    TryBlock
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::FileName {
-    Real(pb),
-    Macros(s),
-    QuoteExpansion(s),
-    Anon(s),
-    MacroExpansion(s),
-    ProcMacroSourceCode(s),
-    CliCrateAttr(s),
-    CfgSpec(s),
-    Custom(s),
-    DocTest(pb, line),
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
