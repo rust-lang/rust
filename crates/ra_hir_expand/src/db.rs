@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use mbe::MacroRules;
 use ra_db::{salsa, SourceDatabase};
+use ra_parser::FragmentKind;
 use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxNode};
 
@@ -108,12 +109,10 @@ pub(crate) fn parse_macro(
         })
         .ok()?;
 
-    match macro_file.macro_file_kind {
-        MacroFileKind::Items => {
-            mbe::token_tree_to_items(&tt).ok().map(|(p, map)| (p.to_syntax(), Arc::new(map)))
-        }
-        MacroFileKind::Expr => {
-            mbe::token_tree_to_expr(&tt).ok().map(|(p, map)| (p.to_syntax(), Arc::new(map)))
-        }
-    }
+    let fragment_kind = match macro_file.macro_file_kind {
+        MacroFileKind::Items => FragmentKind::Items,
+        MacroFileKind::Expr => FragmentKind::Expr,
+    };
+    let (parse, rev_token_map) = mbe::token_tree_to_syntax_node(&tt, fragment_kind).ok()?;
+    Some((parse, Arc::new(rev_token_map)))
 }

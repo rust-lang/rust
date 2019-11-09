@@ -31,8 +31,7 @@ pub enum ExpandError {
 }
 
 pub use crate::syntax_bridge::{
-    ast_to_token_tree, syntax_node_to_token_tree, token_tree_to_expr, token_tree_to_items,
-    token_tree_to_macro_stmts, token_tree_to_pat, token_tree_to_ty, RevTokenMap, TokenMap,
+    ast_to_token_tree, syntax_node_to_token_tree, token_tree_to_syntax_node, RevTokenMap, TokenMap,
 };
 
 /// This struct contains AST for a single `macro_rules` definition. What might

@@ -1,3 +1,4 @@
+use ra_parser::FragmentKind;
 use ra_syntax::{ast, AstNode, NodeOrToken, WalkEvent};
 use test_utils::assert_eq_text;
 
@@ -126,9 +127,9 @@ fn test_expr_order() {
 "#,
     );
     let expanded = expand(&rules, "foo! { 1 + 1}");
-    let tree = token_tree_to_items(&expanded).unwrap().0.tree();
+    let tree = token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap().0.syntax_node();
 
-    let dump = format!("{:#?}", tree.syntax());
+    let dump = format!("{:#?}", tree);
     assert_eq_text!(
         dump.trim(),
         r#"MACRO_ITEMS@[0; 15)
@@ -383,9 +384,9 @@ fn test_expand_to_item_list() {
             ",
     );
     let expansion = expand(&rules, "structs!(Foo, Bar);");
-    let tree = token_tree_to_items(&expansion).unwrap().0.tree();
+    let tree = token_tree_to_syntax_node(&expansion, FragmentKind::Items).unwrap().0.syntax_node();
     assert_eq!(
-        format!("{:#?}", tree.syntax()).trim(),
+        format!("{:#?}", tree).trim(),
         r#"
 MACRO_ITEMS@[0; 40)
   STRUCT_DEF@[0; 20)
@@ -501,10 +502,11 @@ fn test_tt_to_stmts() {
     );
 
     let expanded = expand(&rules, "foo!{}");
-    let stmts = token_tree_to_macro_stmts(&expanded).unwrap().0.tree();
+    let stmts =
+        token_tree_to_syntax_node(&expanded, FragmentKind::Statements).unwrap().0.syntax_node();
 
     assert_eq!(
-        format!("{:#?}", stmts.syntax()).trim(),
+        format!("{:#?}", stmts).trim(),
         r#"MACRO_STMTS@[0; 15)
   LET_STMT@[0; 7)
     LET_KW@[0; 3) "let"
@@ -754,7 +756,10 @@ fn test_all_items() {
         }
 "#,
     );
-    assert_expansion(MacroKind::Items, &rules, r#"
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"
         foo! {
             extern crate a;
             mod b;
@@ -770,7 +775,9 @@ fn test_all_items() {
             extern {}
             type T = u8;
         }
-"#, r#"extern crate a ; mod b ; mod c {} use d ; const E : i32 = 0 ; static F : i32 = 0 ; impl G {} struct H ; enum I {Foo} trait J {} fn h () {} extern {} type T = u8 ;"#);
+"#,
+        r#"extern crate a ; mod b ; mod c {} use d ; const E : i32 = 0 ; static F : i32 = 0 ; impl G {} struct H ; enum I {Foo} trait J {} fn h () {} extern {} type T = u8 ;"#,
+    );
 }
 
 #[test]
@@ -946,10 +953,10 @@ fn test_vec() {
     );
 
     let expansion = expand(&rules, r#"vec![1u32,2];"#);
-    let tree = token_tree_to_expr(&expansion).unwrap().0.tree();
+    let tree = token_tree_to_syntax_node(&expansion, FragmentKind::Expr).unwrap().0.syntax_node();
 
     assert_eq!(
-        format!("{:#?}", tree.syntax()).trim(),
+        format!("{:#?}", tree).trim(),
         r#"BLOCK_EXPR@[0; 45)
   BLOCK@[0; 45)
     L_CURLY@[0; 1) "{"
@@ -1088,8 +1095,12 @@ macro_rules! generate_pattern_iterators {
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str );"#,
-        "fn foo () {}");
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str );"#,
+        "fn foo () {}",
+    );
 }
 
 #[test]
@@ -1171,8 +1182,12 @@ fn test_impl_nonzero_fmt() {
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"impl_nonzero_fmt! { # [stable(feature= "nonzero",since="1.28.0")] (Debug,Display,Binary,Octal,LowerHex,UpperHex) for NonZeroU8}"#,
-        "fn foo () {}");
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"impl_nonzero_fmt! { # [stable(feature= "nonzero",since="1.28.0")] (Debug,Display,Binary,Octal,LowerHex,UpperHex) for NonZeroU8}"#,
+        "fn foo () {}",
+    );
 }
 
 #[test]
@@ -1189,8 +1204,12 @@ fn test_cfg_if_items() {
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,
-        "__cfg_if_items ! {(rustdoc ,) ;}");
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,
+        "__cfg_if_items ! {(rustdoc ,) ;}",
+    );
 }
 
 #[test]
@@ -1233,10 +1252,13 @@ cfg_if !   {
 "#,
         "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
 
-    assert_expansion(MacroKind::Items, &rules, r#"
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"
 cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" , target_os = "illumos" ) ) ) ) ) ) , }
 "#,
-        ""
+        "",
     );
 }
 
@@ -1291,10 +1313,13 @@ macro_rules! RIDL {
 }"#,
     );
 
-    let expanded = expand(&rules, r#"
+    let expanded = expand(
+        &rules,
+        r#"
 RIDL!{interface ID3D11Asynchronous(ID3D11AsynchronousVtbl): ID3D11DeviceChild(ID3D11DeviceChildVtbl) {
     fn GetDataSize(&mut self) -> UINT
-}}"#);
+}}"#,
+    );
     assert_eq!(expanded.to_string(), "impl ID3D11Asynchronous {pub unsafe fn GetDataSize (& mut self) -> UINT {((* self . lpVtbl) .GetDataSize) (self)}}");
 }
 
@@ -1340,7 +1365,8 @@ quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
 
 #[test]
 fn test_empty_repeat_vars_in_empty_repeat_vars() {
-    let rules = create_rules(r#"
+    let rules = create_rules(
+        r#"
 macro_rules! delegate_impl {
     ([$self_type:ident, $self_wrap:ty, $self_map:ident]
      pub trait $name:ident $(: $sup:ident)* $(+ $more_sup:ident)* {
@@ -1385,9 +1411,15 @@ macro_rules! delegate_impl {
         }
     }
 }
-"#);
+"#,
+    );
 
-    assert_expansion(MacroKind::Items, &rules, r#"delegate_impl ! {[G , & 'a mut G , deref] pub trait Data : GraphBase {@ section type type NodeWeight ;}}"#, "impl <> Data for & \'a mut G where G : Data {}");
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"delegate_impl ! {[G , & 'a mut G , deref] pub trait Data : GraphBase {@ section type type NodeWeight ;}}"#,
+        "impl <> Data for & \'a mut G where G : Data {}",
+    );
 }
 
 pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
@@ -1436,22 +1468,30 @@ pub(crate) fn assert_expansion(
     };
     let (expanded_tree, expected_tree) = match kind {
         MacroKind::Items => {
-            let expanded_tree = token_tree_to_items(&expanded).unwrap().0.tree();
-            let expected_tree = token_tree_to_items(&expected).unwrap().0.tree();
+            let expanded_tree =
+                token_tree_to_syntax_node(&expanded, FragmentKind::Items).unwrap().0.syntax_node();
+            let expected_tree =
+                token_tree_to_syntax_node(&expected, FragmentKind::Items).unwrap().0.syntax_node();
 
             (
-                debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),
-                debug_dump_ignore_spaces(expected_tree.syntax()).trim().to_string(),
+                debug_dump_ignore_spaces(&expanded_tree).trim().to_string(),
+                debug_dump_ignore_spaces(&expected_tree).trim().to_string(),
             )
         }
 
         MacroKind::Stmts => {
-            let expanded_tree = token_tree_to_macro_stmts(&expanded).unwrap().0.tree();
-            let expected_tree = token_tree_to_macro_stmts(&expected).unwrap().0.tree();
+            let expanded_tree = token_tree_to_syntax_node(&expanded, FragmentKind::Statements)
+                .unwrap()
+                .0
+                .syntax_node();
+            let expected_tree = token_tree_to_syntax_node(&expected, FragmentKind::Statements)
+                .unwrap()
+                .0
+                .syntax_node();
 
             (
-                debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),
-                debug_dump_ignore_spaces(expected_tree.syntax()).trim().to_string(),
+                debug_dump_ignore_spaces(&expanded_tree).trim().to_string(),
+                debug_dump_ignore_spaces(&expected_tree).trim().to_string(),
             )
         }
     };
