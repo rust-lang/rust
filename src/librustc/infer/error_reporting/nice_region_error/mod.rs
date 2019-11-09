@@ -77,7 +77,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
     }
 
-    pub fn get_regions(&self) -> (Span, ty::Region<'tcx>, ty::Region<'tcx>) {
+    pub fn regions(&self) -> (Span, ty::Region<'tcx>, ty::Region<'tcx>) {
         match (&self.error, self.regions) {
             (Some(ConcreteFailure(origin, sub, sup)), None) => (origin.span(), sub, sup),
             (Some(SubSupConflict(_, _, origin, sub, _, sup)), None) => (origin.span(), sub, sup),

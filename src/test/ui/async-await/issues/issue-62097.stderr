@@ -1,0 +1,16 @@
+error: cannot infer an appropriate lifetime
+  --> $DIR/issue-62097.rs:12:31
+   |
+LL |     pub async fn run_dummy_fn(&self) {
+   |                               ^^^^^ ...but this borrow...
+LL |         foo(|| self.bar()).await;
+   |         --- this return type evaluates to the `'static` lifetime...
+   |
+note: ...can't outlive the lifetime `'_` as defined on the method body at 12:31
+  --> $DIR/issue-62097.rs:12:31
+   |
+LL |     pub async fn run_dummy_fn(&self) {
+   |                               ^
+
+error: aborting due to previous error
+
