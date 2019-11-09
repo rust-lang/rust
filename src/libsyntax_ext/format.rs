@@ -21,7 +21,7 @@ use std::collections::hash_map::Entry;
 
 #[derive(PartialEq)]
 enum ArgumentType {
-    Placeholder(String),
+    Placeholder(&'static str),
     Count,
 }
 
@@ -244,7 +244,57 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::ArgumentNamed(s) => Named(s),
                 };
 
-                let ty = Placeholder(arg.format.ty.to_string());
+                let ty = Placeholder(match &arg.format.ty[..] {
+                    "" => "Display",
+                    "?" => "Debug",
+                    "e" => "LowerExp",
+                    "E" => "UpperExp",
+                    "o" => "Octal",
+                    "p" => "Pointer",
+                    "b" => "Binary",
+                    "x" => "LowerHex",
+                    "X" => "UpperHex",
+                    _ => {
+                        let fmtsp = self.fmtsp;
+                        let sp = arg.format.ty_span.map(|sp| fmtsp.from_inner(sp));
+                        let mut err = self.ecx.struct_span_err(
+                            sp.unwrap_or(fmtsp),
+                            &format!("unknown format trait `{}`", arg.format.ty),
+                        );
+                        err.note("the only appropriate formatting traits are:\n\
+                                - ``, which uses the `Display` trait\n\
+                                - `?`, which uses the `Debug` trait\n\
+                                - `e`, which uses the `LowerExp` trait\n\
+                                - `E`, which uses the `UpperExp` trait\n\
+                                - `o`, which uses the `Octal` trait\n\
+                                - `p`, which uses the `Pointer` trait\n\
+                                - `b`, which uses the `Binary` trait\n\
+                                - `x`, which uses the `LowerHex` trait\n\
+                                - `X`, which uses the `UpperHex` trait");
+                        if let Some(sp) = sp {
+                            for (fmt, name) in &[
+                                ("", "Display"),
+                                ("?", "Debug"),
+                                ("e", "LowerExp"),
+                                ("E", "UpperExp"),
+                                ("o", "Octal"),
+                                ("p", "Pointer"),
+                                ("b", "Binary"),
+                                ("x", "LowerHex"),
+                                ("X", "UpperHex"),
+                            ] {
+                                err.tool_only_span_suggestion(
+                                    sp,
+                                    &format!("use the `{}` trait", name),
+                                    fmt.to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                        err.emit();
+                        "<invalid>"
+                    }
+                });
                 self.verify_arg_type(pos, ty);
                 self.curpiece += 1;
             }
@@ -590,6 +640,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         width: parse::CountImplied,
                         width_span: None,
                         ty: arg.format.ty,
+                        ty_span: arg.format.ty_span,
                     },
                 };
 
@@ -761,37 +812,8 @@ impl<'a, 'b> Context<'a, 'b> {
         sp = ecx.with_def_site_ctxt(sp);
         let arg = ecx.expr_ident(sp, arg);
         let trait_ = match *ty {
-            Placeholder(ref tyname) => {
-                match &tyname[..] {
-                    "" => "Display",
-                    "?" => "Debug",
-                    "e" => "LowerExp",
-                    "E" => "UpperExp",
-                    "o" => "Octal",
-                    "p" => "Pointer",
-                    "b" => "Binary",
-                    "x" => "LowerHex",
-                    "X" => "UpperHex",
-                    _ => {
-                        let mut err = ecx.struct_span_err(
-                            sp,
-                            &format!("unknown format trait `{}`", *tyname),
-                        );
-                        err.note("the only appropriate formatting traits are:\n\
-                                  - ``, which uses the `Display` trait\n\
-                                  - `?`, which uses the `Debug` trait\n\
-                                  - `e`, which uses the `LowerExp` trait\n\
-                                  - `E`, which uses the `UpperExp` trait\n\
-                                  - `o`, which uses the `Octal` trait\n\
-                                  - `p`, which uses the `Pointer` trait\n\
-                                  - `b`, which uses the `Binary` trait\n\
-                                  - `x`, which uses the `LowerHex` trait\n\
-                                  - `X`, which uses the `UpperHex` trait");
-                        err.emit();
-                        return DummyResult::raw_expr(sp, true);
-                    }
-                }
-            }
+            Placeholder(trait_) if trait_ == "<invalid>" => return DummyResult::raw_expr(sp, true),
+            Placeholder(trait_) => trait_,
             Count => {
                 let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, sym::from_usize]);
                 return ecx.expr_call_global(macsp, path, vec![arg]);
