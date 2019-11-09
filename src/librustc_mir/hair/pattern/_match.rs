@@ -593,8 +593,7 @@ enum Constructor<'tcx> {
     ConstantValue(&'tcx ty::Const<'tcx>, Span),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
-    // TODO: non-integer
-    /// Ranges of literal values (`2.0..=5.2`).
+    /// Ranges of non-integer literal values (`2.0..=5.2`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
     /// Array patterns of length `n`.
     FixedLenSlice(u64),
@@ -636,13 +635,10 @@ impl<'tcx> Constructor<'tcx> {
     }
 
     fn is_integral_range(&self) -> bool {
-        let ty = match self {
-            ConstantValue(value, _) => value.ty,
-            ConstantRange(_, _, ty, _, _) => ty,
+        match self {
             IntRange(_) => return true,
             _ => return false,
         };
-        IntRange::is_integral(ty)
     }
 
     fn variant_index_for_adt<'a>(
@@ -669,7 +665,7 @@ impl<'tcx> Constructor<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         other_ctors: &Vec<Constructor<'tcx>>,
     ) -> Vec<Constructor<'tcx>> {
-        match *self {
+        match self {
             // Those constructors can only match themselves.
             Single | Variant(_) => {
                 if other_ctors.iter().any(|c| c == self) {
@@ -678,7 +674,7 @@ impl<'tcx> Constructor<'tcx> {
                     vec![self.clone()]
                 }
             }
-            FixedLenSlice(self_len) => {
+            &FixedLenSlice(self_len) => {
                 let overlaps = |c: &Constructor<'_>| match *c {
                     FixedLenSlice(other_len) => other_len == self_len,
                     VarLenSlice(prefix, suffix) => prefix + suffix <= self_len,
@@ -749,41 +745,39 @@ impl<'tcx> Constructor<'tcx> {
 
                 remaining_ctors
             }
-            IntRange(..) | ConstantRange(..) | ConstantValue(..) => {
-                if let Some(self_range) = IntRange::from_ctor(tcx, param_env, self) {
-                    let mut remaining_ranges = vec![self_range.clone()];
-                    let other_ranges = other_ctors
-                        .into_iter()
-                        .filter_map(|c| IntRange::from_ctor(tcx, param_env, c));
-                    for other_range in other_ranges {
-                        if other_range == self_range {
-                            // If the `self` range appears directly in a `match` arm, we can
-                            // eliminate it straight away.
-                            remaining_ranges = vec![];
-                        } else {
-                            // Otherwise explicitely compute the remaining ranges.
-                            remaining_ranges = other_range.subtract_from(remaining_ranges);
-                        }
-
-                        // If the ranges that have been considered so far already cover the entire
-                        // range of values, we can return early.
-                        if remaining_ranges.is_empty() {
-                            break;
-                        }
-                    }
-
-                    // Convert the ranges back into constructors
-                    remaining_ranges.into_iter().map(IntRange).collect()
-                } else {
-                    if other_ctors.iter().any(|c| {
-                        c == self
-                             // FIXME(Nadrieril): This condition looks fishy
-                             || IntRange::from_ctor(tcx, param_env, c).is_some()
-                    }) {
-                        vec![]
+            IntRange(self_range) => {
+                let mut remaining_ranges = vec![self_range.clone()];
+                let other_ranges =
+                    other_ctors.into_iter().filter_map(|c| IntRange::from_ctor(tcx, param_env, c));
+                for other_range in other_ranges {
+                    if other_range == *self_range {
+                        // If the `self` range appears directly in a `match` arm, we can
+                        // eliminate it straight away.
+                        remaining_ranges = vec![];
                     } else {
-                        vec![self.clone()]
+                        // Otherwise explicitely compute the remaining ranges.
+                        remaining_ranges = other_range.subtract_from(remaining_ranges);
                     }
+
+                    // If the ranges that have been considered so far already cover the entire
+                    // range of values, we can return early.
+                    if remaining_ranges.is_empty() {
+                        break;
+                    }
+                }
+
+                // Convert the ranges back into constructors
+                remaining_ranges.into_iter().map(IntRange).collect()
+            }
+            ConstantRange(..) | ConstantValue(..) => {
+                if other_ctors.iter().any(|c| {
+                    c == self
+                        // FIXME(Nadrieril): This condition looks fishy
+                        || IntRange::from_ctor(tcx, param_env, c).is_some()
+                }) {
+                    vec![]
+                } else {
+                    vec![self.clone()]
                 }
             }
             // This constructor is never covered by anything else
@@ -1285,6 +1279,10 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
+    fn is_singleton(&self) -> bool {
+        self.range.start() == self.range.end()
+    }
+
     fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching`
         // feature is enabled.
@@ -1363,15 +1361,13 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     fn from_ctor(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        _tcx: TyCtxt<'tcx>,
+        _param_env: ty::ParamEnv<'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Option<IntRange<'tcx>> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
         match ctor {
-            ConstantRange(lo, hi, ty, end, span) => Self::from_range(tcx, *lo, *hi, ty, end, *span),
-            ConstantValue(val, span) => Self::from_const(tcx, param_env, val, *span),
             IntRange(range) => Some(range.clone()),
             _ => None,
         }
@@ -1747,14 +1743,23 @@ fn pat_constructor<'tcx>(
         PatKind::Variant { adt_def, variant_index, .. } => {
             Some(Variant(adt_def.variants[variant_index].def_id))
         }
-        PatKind::Constant { value } => Some(ConstantValue(value, pat.span)),
-        PatKind::Range(PatRange { lo, hi, end }) => Some(ConstantRange(
-            lo.eval_bits(tcx, param_env, lo.ty),
-            hi.eval_bits(tcx, param_env, hi.ty),
-            lo.ty,
-            end,
-            pat.span,
-        )),
+        PatKind::Constant { value } => {
+            if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
+                Some(IntRange(int_range))
+            } else {
+                Some(ConstantValue(value, pat.span))
+            }
+        }
+        PatKind::Range(PatRange { lo, hi, end }) => {
+            let ty = lo.ty;
+            let lo = lo.eval_bits(tcx, param_env, lo.ty);
+            let hi = hi.eval_bits(tcx, param_env, hi.ty);
+            if let Some(int_range) = IntRange::from_range(tcx, lo, hi, ty, &end, pat.span) {
+                Some(IntRange(int_range))
+            } else {
+                Some(ConstantRange(lo, hi, ty, end, pat.span))
+            }
+        }
         PatKind::Array { .. } => match pat.ty.kind {
             ty::Array(_, length) => Some(FixedLenSlice(length.eval_usize(tcx, param_env))),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pat.ty),
@@ -1897,13 +1902,13 @@ fn split_grouped_constructors<'p, 'tcx>(
 
     for ctor in ctors.into_iter() {
         match ctor {
-            IntRange(..) | ConstantRange(..)
-                if IntRange::should_treat_range_exhaustively(tcx, ty) =>
-            {
-                // We only care about finding all the subranges within the range of the constructor
-                // range. Anything else is irrelevant, because it is guaranteed to result in
-                // `NotUseful`, which is the default case anyway, and can be ignored.
-                let ctor_range = IntRange::from_ctor(tcx, param_env, &ctor).unwrap();
+            IntRange(ctor_range) if IntRange::should_treat_range_exhaustively(tcx, ty) => {
+                // Fast-track if the range is trivial. In particular, don't do the overlapping
+                // ranges check.
+                if ctor_range.is_singleton() {
+                    split_ctors.push(IntRange(ctor_range));
+                    continue;
+                }
 
                 /// Represents a border between 2 integers. Because the intervals spanning borders
                 /// must be able to cover every integer, we need to be able to represent
