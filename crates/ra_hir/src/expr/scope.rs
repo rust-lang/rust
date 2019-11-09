@@ -67,10 +67,7 @@ impl ExprScopes {
         &self.scopes[scope].entries
     }
 
-    pub(crate) fn scope_chain<'a>(
-        &'a self,
-        scope: Option<ScopeId>,
-    ) -> impl Iterator<Item = ScopeId> + 'a {
+    pub(crate) fn scope_chain(&self, scope: Option<ScopeId>) -> impl Iterator<Item = ScopeId> + '_ {
         std::iter::successors(scope, move |&scope| self.scopes[scope].parent)
     }
 

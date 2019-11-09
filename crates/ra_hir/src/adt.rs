@@ -12,7 +12,7 @@ use crate::{
 
 impl Struct {
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
-        db.struct_data(self.id).variant_data.clone()
+        db.struct_data(self.id.into()).variant_data.clone()
     }
 }
 
