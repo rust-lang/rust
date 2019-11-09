@@ -162,7 +162,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.

@@ -1090,7 +1090,7 @@ struct GeneratorTypes<'tcx> {
     interior: Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable).
-    movability: hir::GeneratorMovability,
+    movability: hir::Movability,
 }
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
@@ -1106,7 +1106,7 @@ fn check_fn<'a, 'tcx>(
     decl: &'tcx hir::FnDecl,
     fn_id: hir::HirId,
     body: &'tcx hir::Body,
-    can_be_generator: Option<hir::GeneratorMovability>,
+    can_be_generator: Option<hir::Movability>,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     let mut fn_sig = fn_sig.clone();
 

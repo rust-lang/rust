@@ -22,7 +22,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness, Unsafety};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -1628,8 +1628,8 @@ pub enum ExprKind {
     /// The `Span` is the argument block `|...|`.
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
-    /// `Option<GeneratorMovability>`.
-    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
+    /// `Option<Movability>`.
+    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<Movability>),
     /// A block (e.g., `'label: { ... }`).
     Block(P<Block>, Option<Label>),
 
@@ -1800,17 +1800,6 @@ pub struct Destination {
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
     pub target_id: Result<HirId, LoopIdError>,
-}
-
-/// Whether a generator contains self-references, causing it to be `!Unpin`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GeneratorMovability {
-    /// May contain self-references, `!Unpin`.
-    Static,
-
-    /// Must not contain self-references, `Unpin`.
-    Movable,
 }
 
 /// The yield kind that caused an `ExprKind::Yield`.

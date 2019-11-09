@@ -494,7 +494,7 @@ impl LoweringContext<'_> {
             decl,
             body_id,
             span,
-            Some(hir::GeneratorMovability::Static)
+            Some(hir::Movability::Static)
         );
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
@@ -725,7 +725,7 @@ impl LoweringContext<'_> {
         fn_decl_span: Span,
         generator_kind: Option<hir::GeneratorKind>,
         movability: Movability,
-    ) -> Option<hir::GeneratorMovability> {
+    ) -> Option<hir::Movability> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) =>  {
                 if !decl.inputs.is_empty() {
@@ -736,10 +736,7 @@ impl LoweringContext<'_> {
                         "generators cannot have explicit parameters"
                     );
                 }
-                Some(match movability {
-                    Movability::Movable => hir::GeneratorMovability::Movable,
-                    Movability::Static => hir::GeneratorMovability::Static,
-                })
+                Some(movability)
             },
             Some(hir::GeneratorKind::Async(_)) => {
                 bug!("non-`async` closure body turned `async` during lowering");

@@ -2161,7 +2161,7 @@ pub enum AggregateKind<'tcx> {
     Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
     Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]

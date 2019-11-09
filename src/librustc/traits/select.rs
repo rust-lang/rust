@@ -2195,11 +2195,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
                     match movability {
-                        hir::GeneratorMovability::Static => {
+                        hir::Movability::Static => {
                             // Immovable generators are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
                         }
-                        hir::GeneratorMovability::Movable => {
+                        hir::Movability::Movable => {
                             // Movable generators are always `Unpin`, so add an
                             // unconditional builtin candidate.
                             candidates.vec.push(BuiltinCandidate {

@@ -1339,10 +1339,14 @@ pub enum CaptureBy {
     Ref,
 }
 
-/// The movability of a generator / closure literal.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+/// The movability of a generator / closure literal:
+/// whether a generator contains self-references, causing it to be `!Unpin`.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum Movability {
+    /// May contain self-references, `!Unpin`.
     Static,
+    /// Must not contain self-references, `Unpin`.
     Movable,
 }
 

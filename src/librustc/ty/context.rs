@@ -2516,7 +2516,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_generator(self,
                         id: DefId,
                         generator_substs: SubstsRef<'tcx>,
-                        movability: hir::GeneratorMovability)
+                        movability: hir::Movability)
                         -> Ty<'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))
     }

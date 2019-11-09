@@ -1192,7 +1192,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
                  substs.discr_ty(tcx),
-                 movability == hir::GeneratorMovability::Movable)
+                 movability == hir::Movability::Movable)
             }
             _ => bug!(),
         };
