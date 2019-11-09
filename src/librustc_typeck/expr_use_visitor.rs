@@ -5,14 +5,17 @@
 pub use self::ConsumeMode::*;
 use self::OverloadedCallType::*;
 
-use crate::hir::def::Res;
-use crate::hir::def_id::DefId;
-use crate::hir::ptr::P;
-use crate::infer::InferCtxt;
-use crate::middle::mem_categorization as mc;
-use crate::ty::{self, TyCtxt, adjustment};
+// Export these here so that Clippy can use them.
+pub use mc::{PlaceBase, Place, Projection};
 
-use crate::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
+use rustc::hir::def::Res;
+use rustc::hir::def_id::DefId;
+use rustc::hir::ptr::P;
+use rustc::infer::InferCtxt;
+use rustc::ty::{self, TyCtxt, adjustment};
+
+use crate::mem_categorization as mc;
 use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -147,7 +150,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.mc.tcx()
     }
 
-    fn delegate_consume(&mut self, place: &mc::Place<'tcx>) {
+    fn delegate_consume(&mut self, place: &Place<'tcx>) {
         debug!("delegate_consume(place={:?})", place);
 
         let mode = copy_or_move(&self.mc, place);
@@ -516,7 +519,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_arm(&mut self, discr_place: &mc::Place<'tcx>, arm: &hir::Arm) {
+    fn walk_arm(&mut self, discr_place: &Place<'tcx>, arm: &hir::Arm) {
         self.walk_pat(discr_place, &arm.pat);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
@@ -528,13 +531,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
-    fn walk_irrefutable_pat(&mut self, discr_place: &mc::Place<'tcx>, pat: &hir::Pat) {
+    fn walk_irrefutable_pat(&mut self, discr_place: &Place<'tcx>, pat: &hir::Pat) {
         self.walk_pat(discr_place, pat);
     }
 
 
     /// The core driver for walking a pattern
-    fn walk_pat(&mut self, discr_place: &mc::Place<'tcx>, pat: &hir::Pat) {
+    fn walk_pat(&mut self, discr_place: &Place<'tcx>, pat: &hir::Pat) {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
         let tcx = self.tcx();
@@ -622,7 +625,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
 fn copy_or_move<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
-    place: &mc::Place<'tcx>,
+    place: &Place<'tcx>,
 ) -> ConsumeMode {
     if !mc.type_is_copy_modulo_regions(place.ty, place.span) {
         Move

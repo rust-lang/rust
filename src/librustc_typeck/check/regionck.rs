@@ -74,7 +74,7 @@
 
 use crate::check::dropck;
 use crate::check::FnCtxt;
-use crate::middle::mem_categorization as mc;
+use crate::mem_categorization as mc;
 use crate::middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;

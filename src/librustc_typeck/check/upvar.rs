@@ -32,9 +32,9 @@
 
 use super::FnCtxt;
 
-use crate::middle::expr_use_visitor as euv;
-use crate::middle::mem_categorization as mc;
-use crate::middle::mem_categorization::PlaceBase;
+use crate::expr_use_visitor as euv;
+use crate::mem_categorization as mc;
+use crate::mem_categorization::PlaceBase;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def_id::LocalDefId;

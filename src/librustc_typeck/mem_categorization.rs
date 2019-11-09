@@ -48,15 +48,15 @@
 //! result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
 //! tied to `x`. The type of `x'` will be a borrowed pointer.
 
-use crate::hir::def_id::DefId;
-use crate::infer::InferCtxt;
-use crate::hir::def::{Res, DefKind};
-use crate::ty::adjustment;
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::fold::TypeFoldable;
+use rustc::hir;
+use rustc::hir::PatKind;
+use rustc::hir::def_id::DefId;
+use rustc::hir::def::{Res, DefKind};
+use rustc::infer::InferCtxt;
+use rustc::ty::adjustment;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::fold::TypeFoldable;
 
-use crate::hir::PatKind;
-use crate::hir;
 use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -105,7 +105,7 @@ impl<'tcx> Place<'tcx> {
     /// The types are in the reverse order that they are applied. So if
     /// `x: &*const u32` and the `Place` is `**x`, then the types returned are
     ///`*const u32` then `&*const u32`.
-    pub fn deref_tys(&self) -> impl Iterator<Item=Ty<'tcx>> + '_ {
+    crate fn deref_tys(&self) -> impl Iterator<Item=Ty<'tcx>> + '_ {
         self.projections.iter().rev().filter_map(|proj| if let Projection::Deref(deref_ty) = *proj {
             Some(deref_ty)
         } else {
@@ -114,7 +114,7 @@ impl<'tcx> Place<'tcx> {
     }
 }
 
-pub trait HirNode {
+crate trait HirNode {
     fn hir_id(&self) -> hir::HirId;
     fn span(&self) -> Span;
 }
@@ -130,19 +130,19 @@ impl HirNode for hir::Pat {
 }
 
 #[derive(Clone)]
-pub struct MemCategorizationContext<'a, 'tcx> {
-    pub tables: &'a ty::TypeckTables<'tcx>,
+crate struct MemCategorizationContext<'a, 'tcx> {
+    crate tables: &'a ty::TypeckTables<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_owner: DefId,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
 }
 
-pub type McResult<T> = Result<T, ()>;
+crate type McResult<T> = Result<T, ()>;
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Creates a `MemCategorizationContext`.
-    pub fn new(
+    crate fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_owner: DefId,
@@ -276,7 +276,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret_ty)
     }
 
-    pub fn cat_expr(&self, expr: &hir::Expr) -> McResult<Place<'tcx>> {
+    crate fn cat_expr(&self, expr: &hir::Expr) -> McResult<Place<'tcx>> {
         // This recursion helper avoids going through *too many*
         // adjustments, since *only* non-overloaded deref recurses.
         fn helper<'a, 'tcx>(
@@ -295,7 +295,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         helper(self, expr, self.tables.expr_adjustments(expr))
     }
 
-    pub fn cat_expr_adjusted(&self, expr: &hir::Expr,
+    crate fn cat_expr_adjusted(&self, expr: &hir::Expr,
                              previous: Place<'tcx>,
                              adjustment: &adjustment::Adjustment<'tcx>)
                              -> McResult<Place<'tcx>> {
@@ -334,7 +334,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: &hir::Expr) -> McResult<Place<'tcx>> {
+    crate fn cat_expr_unadjusted(&self, expr: &hir::Expr) -> McResult<Place<'tcx>> {
         debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
@@ -475,7 +475,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret)
     }
 
-    pub fn cat_rvalue(&self, hir_id: hir::HirId, span: Span, expr_ty: Ty<'tcx>) -> Place<'tcx> {
+    crate fn cat_rvalue(&self, hir_id: hir::HirId, span: Span, expr_ty: Ty<'tcx>) -> Place<'tcx> {
         debug!("cat_rvalue hir_id={:?}, expr_ty={:?}, span={:?}", hir_id, expr_ty, span);
         let ret = Place {
             hir_id,
@@ -562,7 +562,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret)
     }
 
-    pub fn cat_pattern<F>(&self, place: Place<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
+    crate fn cat_pattern<F>(&self, place: Place<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
         where F: FnMut(&Place<'tcx>, &hir::Pat),
     {
         self.cat_pattern_(place, pat, &mut op)

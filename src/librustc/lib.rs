@@ -96,7 +96,6 @@ pub mod infer;
 pub mod lint;
 
 pub mod middle {
-    pub mod expr_use_visitor;
     pub mod cstore;
     pub mod dependency_format;
     pub mod diagnostic_items;
@@ -104,7 +103,6 @@ pub mod middle {
     pub mod free_region;
     pub mod lib_features;
     pub mod lang_items;
-    pub mod mem_categorization;
     pub mod privacy;
     pub mod reachable;
     pub mod region;
