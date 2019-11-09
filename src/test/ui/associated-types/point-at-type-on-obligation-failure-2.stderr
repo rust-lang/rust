@@ -9,6 +9,32 @@ LL | impl Foo for () {
 LL |     type Assoc = bool;
    |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
 
-error: aborting due to previous error
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:16:5
+   |
+LL | trait Baz where Self::Assoc: Bar {
+   |                 ---------------- restricted in this bound
+LL |     type Assoc;
+   |          ----- associated type defined here
+...
+LL | impl Baz for () {
+   | --------------- in this `impl` item
+LL |     type Assoc = bool;
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:24:5
+   |
+LL | trait Bat where <Self as Bat>::Assoc: Bar {
+   |                 ------------------------- restricted in this bound
+LL |     type Assoc;
+   |          ----- associated type defined here
+...
+LL | impl Bat for () {
+   | --------------- in this `impl` item
+LL |     type Assoc = bool;
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

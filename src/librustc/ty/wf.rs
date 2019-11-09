@@ -2,9 +2,10 @@ use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::ty::subst::SubstsRef;
-use crate::traits;
+use crate::traits::{self, AssocTypeBoundData};
 use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
+use syntax::symbol::{kw, Ident};
 use syntax_pos::Span;
 use crate::middle::lang_items;
 use crate::mir::interpret::ConstValue;
@@ -176,6 +177,23 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             pred: &ty::Predicate<'_>,
             trait_assoc_items: ty::AssocItemsIterator<'_>,
         | {
+            let trait_item = tcx.hir().as_local_hir_id(trait_ref.def_id).and_then(|trait_id| {
+                tcx.hir().find(trait_id)
+            });
+            let (trait_name, trait_generics) = match trait_item {
+                Some(hir::Node::Item(hir::Item {
+                    ident,
+                    kind: hir::ItemKind::Trait(.., generics, _, _),
+                    ..
+                })) |
+                Some(hir::Node::Item(hir::Item {
+                    ident,
+                    kind: hir::ItemKind::TraitAlias(generics, _),
+                    ..
+                })) => (Some(ident), Some(generics)),
+                _ => (None, None),
+            };
+
             let item_span = item.map(|i| tcx.sess.source_map().def_span(i.span));
             match pred {
                 ty::Predicate::Projection(proj) => {
@@ -226,10 +244,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             item.ident == trait_assoc_item.ident
                         }).next() {
                             cause.span = impl_item.span;
-                            cause.code = traits::AssocTypeBound(
-                                item_span,
-                                trait_assoc_item.ident.span,
-                            );
+                            cause.code = traits::AssocTypeBound(Box::new(AssocTypeBoundData {
+                                impl_span: item_span,
+                                original: trait_assoc_item.ident.span,
+                                bounds: vec![],
+                            }));
                         }
                     }
                 }
@@ -251,14 +270,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     //   LL |     type Assoc = bool;
                     //      |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
                     //
-                    // FIXME: if the obligation comes from the where clause in the `trait`, we
-                    // should point at it:
+                    // If the obligation comes from the where clause in the `trait`, we point at it:
                     //
                     //   error[E0277]: the trait bound `bool: Bar` is not satisfied
                     //     --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
                     //      |
                     //      | trait Foo where <Self as Foo>>::Assoc: Bar {
-                    //      |                 -------------------------- obligation set here
+                    //      |                 -------------------------- restricted in this bound
                     //   LL |     type Assoc;
                     //      |          ----- associated type defined here
                     //   ...
@@ -278,11 +296,17 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 .next()
                                 .map(|impl_item| (impl_item, trait_assoc_item)))
                         {
+                            let bounds = trait_generics.map(|generics| get_generic_bound_spans(
+                                &generics,
+                                trait_name,
+                                trait_assoc_item.ident,
+                            )).unwrap_or_else(Vec::new);
                             cause.span = impl_item.span;
-                            cause.code = traits::AssocTypeBound(
-                                item_span,
-                                trait_assoc_item.ident.span,
-                            );
+                            cause.code = traits::AssocTypeBound(Box::new(AssocTypeBoundData {
+                                impl_span: item_span,
+                                original: trait_assoc_item.ident.span,
+                                bounds,
+                            }));
                         }
                     }
                 }
@@ -665,4 +689,57 @@ pub fn object_region_bounds<'tcx>(
     }).collect();
 
     tcx.required_region_bounds(open_ty, predicates)
+}
+
+/// Find the span of a generic bound affecting an associated type.
+fn get_generic_bound_spans(
+    generics: &hir::Generics,
+    trait_name: Option<&Ident>,
+    assoc_item_name: Ident,
+) -> Vec<Span> {
+    let mut bounds = vec![];
+    for clause in generics.where_clause.predicates.iter() {
+        if let hir::WherePredicate::BoundPredicate(pred) = clause {
+            match &pred.bounded_ty.kind {
+                hir::TyKind::Path(hir::QPath::Resolved(Some(ty), path)) => {
+                    let mut s = path.segments.iter();
+                    if let (a, Some(b), None) = (s.next(), s.next(), s.next()) {
+                        if a.map(|s| &s.ident) == trait_name
+                            && b.ident == assoc_item_name
+                            && is_self_path(&ty.kind)
+                        {
+                            // `<Self as Foo>::Bar`
+                            bounds.push(pred.span);
+                        }
+                    }
+                }
+                hir::TyKind::Path(hir::QPath::TypeRelative(ty, segment)) => {
+                    if segment.ident == assoc_item_name {
+                        if is_self_path(&ty.kind) {
+                            // `Self::Bar`
+                            bounds.push(pred.span);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    bounds
+}
+
+fn is_self_path(kind: &hir::TyKind) -> bool {
+    match kind {
+        hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
+            let mut s = path.segments.iter();
+            if let (Some(segment), None) = (s.next(), s.next()) {
+                if segment.ident.name == kw::SelfUpper {
+                    // `type(Self)`
+                    return true;
+                }
+            }
+        }
+        _ => {}
+    }
+    false
 }
