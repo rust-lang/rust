@@ -29,7 +29,7 @@ LL |         while false {}
    |         ^^^^^^^^^^^^^^
 
 error[E0744]: `while` is not allowed in a `const`
-  --> $DIR/const-loop.rs:42:5
+  --> $DIR/const-loop.rs:40:5
    |
 LL | /     while x < 4 {
 LL | |         x += 1;
@@ -37,7 +37,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `while` is not allowed in a `const`
-  --> $DIR/const-loop.rs:46:5
+  --> $DIR/const-loop.rs:44:5
    |
 LL | /     while x < 8 {
 LL | |         x += 1;
@@ -45,7 +45,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `for` is not allowed in a `const`
-  --> $DIR/const-loop.rs:56:5
+  --> $DIR/const-loop.rs:54:5
    |
 LL | /     for i in 0..4 {
 LL | |         x += i;
@@ -53,7 +53,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `for` is not allowed in a `const`
-  --> $DIR/const-loop.rs:60:5
+  --> $DIR/const-loop.rs:58:5
    |
 LL | /     for i in 0..4 {
 LL | |         x += i;
@@ -61,7 +61,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:70:5
+  --> $DIR/const-loop.rs:68:5
    |
 LL | /     loop {
 LL | |         x += 1;
@@ -72,7 +72,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `if` is not allowed in a `const`
-  --> $DIR/const-loop.rs:72:9
+  --> $DIR/const-loop.rs:70:9
    |
 LL | /         if x == 4 {
 LL | |             break;
@@ -80,7 +80,7 @@ LL | |         }
    | |_________^
 
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:77:5
+  --> $DIR/const-loop.rs:75:5
    |
 LL | /     loop {
 LL | |         x += 1;
@@ -91,7 +91,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `if` is not allowed in a `const`
-  --> $DIR/const-loop.rs:79:9
+  --> $DIR/const-loop.rs:77:9
    |
 LL | /         if x == 8 {
 LL | |             break;
@@ -99,13 +99,13 @@ LL | |         }
    | |_________^
 
 error[E0744]: `while let` is not allowed in a `const`
-  --> $DIR/const-loop.rs:89:5
+  --> $DIR/const-loop.rs:87:5
    |
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0744]: `while let` is not allowed in a `const`
-  --> $DIR/const-loop.rs:90:5
+  --> $DIR/const-loop.rs:88:5
    |
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,19 +122,6 @@ error[E0744]: `loop` is not allowed in a `const`
 LL |     const BAR: i32 = loop { break 4; };
    |                      ^^^^^^^^^^^^^^^^^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:31:15
-   |
-LL |         while false {}
-   |               ^^^^^
+error: aborting due to 17 previous errors
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:31:9
-   |
-LL |         while false {}
-   |         ^^^^^^^^^^^^^^
-
-error: aborting due to 19 previous errors
-
-Some errors have detailed explanations: E0019, E0744.
-For more information about an error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0744`.

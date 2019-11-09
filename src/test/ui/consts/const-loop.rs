@@ -30,8 +30,6 @@ fn main() {
     let x = [0; {
         while false {}
         //~^ ERROR `while` is not allowed in a `const`
-        //~| ERROR constant contains unimplemented expression type
-        //~| ERROR constant contains unimplemented expression type
         4
     }];
 }

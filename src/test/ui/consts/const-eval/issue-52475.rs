@@ -5,8 +5,6 @@ fn main() {
         let mut n = 0;
         while n < 5 {
         //~^ ERROR `while` is not allowed in a `const`
-        //~| ERROR constant contains unimplemented expression type
-        //~| ERROR constant contains unimplemented expression type
             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
             x = &0; // Materialize a new AllocId
         }
