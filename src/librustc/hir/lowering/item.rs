@@ -434,7 +434,7 @@ impl LoweringContext<'_> {
 
                 hir::ItemKind::Impl(
                     unsafety,
-                    self.lower_impl_polarity(polarity),
+                    polarity,
                     self.lower_defaultness(defaultness, true /* [1] */),
                     generics,
                     trait_ref,
@@ -1008,13 +1008,6 @@ impl LoweringContext<'_> {
                 assert!(has_value);
                 hir::Defaultness::Final
             }
-        }
-    }
-
-    fn lower_impl_polarity(&mut self, i: ImplPolarity) -> hir::ImplPolarity {
-        match i {
-            ImplPolarity::Positive => hir::ImplPolarity::Positive,
-            ImplPolarity::Negative => hir::ImplPolarity::Negative,
         }
     }
 

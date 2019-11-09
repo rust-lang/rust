@@ -21,7 +21,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy, IsAuto};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy, IsAuto, ImplPolarity};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -2154,24 +2154,6 @@ impl Defaultness {
         }
     }
 }
-
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
-pub enum ImplPolarity {
-    /// `impl Trait for Type`
-    Positive,
-    /// `impl !Trait for Type`
-    Negative,
-}
-
-impl fmt::Debug for ImplPolarity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            ImplPolarity::Positive => "positive",
-            ImplPolarity::Negative => "negative",
-        })
-    }
-}
-
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum FunctionRetTy {
