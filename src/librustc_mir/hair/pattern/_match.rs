@@ -763,35 +763,30 @@ impl<'tcx> Constructor<'tcx> {
                 remaining_ctors
             }
             ConstantRange(..) | ConstantValue(..) => {
-                if let Some(_self_range) = IntRange::from_ctor(tcx, param_env, self) {
-                    let mut remaining_ctors = vec![self.clone()];
-                    for other_ctor in other_ctors {
-                        if other_ctor == self {
-                            // If a constructor appears in a `match` arm, we can
+                if let Some(self_range) = IntRange::from_ctor(tcx, param_env, self) {
+                    let mut remaining_ranges = vec![self_range.clone()];
+                    let other_ranges = other_ctors
+                        .into_iter()
+                        .filter_map(|c| IntRange::from_ctor(tcx, param_env, c));
+                    for other_range in other_ranges {
+                        if other_range == self_range {
+                            // If the `self` range appears directly in a `match` arm, we can
                             // eliminate it straight away.
-                            remaining_ctors = vec![]
-                        } else if let Some(interval) =
-                            IntRange::from_ctor(tcx, param_env, other_ctor)
-                        {
-                            // Refine the required constructors for the type by subtracting
-                            // the range defined by the current constructor pattern.
-                            remaining_ctors =
-                                interval.subtract_from(tcx, param_env, remaining_ctors);
+                            remaining_ranges = vec![];
+                        } else {
+                            // Otherwise explicitely compute the remaining ranges.
+                            remaining_ranges = other_range.subtract_from(remaining_ranges);
                         }
 
-                        // If the constructor patterns that have been considered so far
-                        // already cover the entire range of values, then we know the
-                        // constructor is not missing, and we can move on to the next one.
-                        if remaining_ctors.is_empty() {
+                        // If the ranges that have been considered so far already cover the entire
+                        // range of values, we can return early.
+                        if remaining_ranges.is_empty() {
                             break;
                         }
                     }
 
-                    // If a constructor has not been matched, then it is missing.
-                    // We add `remaining_ctors` instead of `self`, because then we can
-                    // provide more detailed error information about precisely which
-                    // ranges have been omitted.
-                    remaining_ctors
+                    // Convert the ranges back into constructors
+                    remaining_ranges.into_iter().map(|range| range.into_ctor(tcx)).collect()
                 } else {
                     if other_ctors.iter().any(|c| {
                         c == self
@@ -1418,38 +1413,27 @@ impl<'tcx> IntRange<'tcx> {
 
     /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
     /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
-    fn subtract_from(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ranges: Vec<Constructor<'tcx>>,
-    ) -> Vec<Constructor<'tcx>> {
-        let ranges = ranges
-            .into_iter()
-            .filter_map(|r| IntRange::from_ctor(tcx, param_env, &r).map(|i| i.range));
+    fn subtract_from(self, ranges: Vec<IntRange<'tcx>>) -> Vec<IntRange<'tcx>> {
         let mut remaining_ranges = vec![];
         let ty = self.ty;
         let span = self.span;
         let (lo, hi) = self.range.into_inner();
         for subrange in ranges {
-            let (subrange_lo, subrange_hi) = subrange.into_inner();
+            let (subrange_lo, subrange_hi) = subrange.range.into_inner();
             if lo > subrange_hi || subrange_lo > hi {
                 // The pattern doesn't intersect with the subrange at all,
                 // so the subrange remains untouched.
-                remaining_ranges
-                    .push(IntRange { range: subrange_lo..=subrange_hi, ty, span }.into_ctor(tcx));
+                remaining_ranges.push(IntRange { range: subrange_lo..=subrange_hi, ty, span });
             } else {
                 if lo > subrange_lo {
                     // The pattern intersects an upper section of the
                     // subrange, so a lower section will remain.
-                    remaining_ranges
-                        .push(IntRange { range: subrange_lo..=(lo - 1), ty, span }.into_ctor(tcx));
+                    remaining_ranges.push(IntRange { range: subrange_lo..=(lo - 1), ty, span });
                 }
                 if hi < subrange_hi {
                     // The pattern intersects a lower section of the
                     // subrange, so an upper section will remain.
-                    remaining_ranges
-                        .push(IntRange { range: (hi + 1)..=subrange_hi, ty, span }.into_ctor(tcx));
+                    remaining_ranges.push(IntRange { range: (hi + 1)..=subrange_hi, ty, span });
                 }
             }
         }
@@ -1488,6 +1472,13 @@ impl<'tcx> IntRange<'tcx> {
         let (lo, hi) = (*self.range.start(), *self.range.end());
         let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
         (lo == other_hi || hi == other_lo)
+    }
+}
+
+// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
+impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.range == other.range && self.ty == other.ty
     }
 }
 
