@@ -940,6 +940,22 @@ impl Decodable for Symbol {
     }
 }
 
+impl<CTX> HashStable<CTX> for Symbol {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_str().hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> ToStableHashKey<CTX> for Symbol {
+    type KeyType = SymbolStr;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
+        self.as_str()
+    }
+}
+
 // The `&'static str`s in this type actually point into the arena.
 #[derive(Default)]
 pub struct Interner {

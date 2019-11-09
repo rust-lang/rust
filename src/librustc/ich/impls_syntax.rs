@@ -10,31 +10,12 @@ use syntax::ast;
 use syntax::feature_gate;
 use syntax::token;
 use syntax::tokenstream;
-use syntax_pos::symbol::SymbolStr;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
 use smallvec::SmallVec;
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.as_str().hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::Name {
-    type KeyType = SymbolStr;
-
-    #[inline]
-    fn to_stable_hash_key(&self,
-                          _: &StableHashingContext<'a>)
-                          -> SymbolStr {
-        self.as_str()
-    }
-}
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::MacroKind {
     Bang,
