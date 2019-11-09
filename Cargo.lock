@@ -1060,6 +1060,7 @@ dependencies = [
  "ra_arena 0.1.0",
  "ra_db 0.1.0",
  "ra_mbe 0.1.0",
+ "ra_parser 0.1.0",
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
  "ra_tt 0.1.0",

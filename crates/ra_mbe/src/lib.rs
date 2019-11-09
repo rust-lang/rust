@@ -31,8 +31,7 @@ pub enum ExpandError {
 }
 
 pub use crate::syntax_bridge::{
-    ast_to_token_tree, syntax_node_to_token_tree, token_tree_to_expr, token_tree_to_items,
-    token_tree_to_macro_stmts, token_tree_to_pat, token_tree_to_ty,
+    ast_to_token_tree, syntax_node_to_token_tree, token_tree_to_syntax_node, RevTokenMap, TokenMap,
 };
 
 /// This struct contains AST for a single `macro_rules` definition. What might
@@ -117,6 +116,10 @@ impl MacroRules {
         let mut tt = tt.clone();
         shift_subtree(&mut tt, self.shift);
         mbe_expander::expand(self, &tt)
+    }
+
+    pub fn shift(&self) -> u32 {
+        self.shift
     }
 }
 

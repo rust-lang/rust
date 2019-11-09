@@ -8,7 +8,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     db::DefDatabase2, type_ref::TypeRef, AstItemDef, EnumId, LocalEnumVariantId,
-    LocalStructFieldId, StructId, UnionId,
+    LocalStructFieldId, StructOrUnionId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -49,15 +49,11 @@ pub struct StructFieldData {
 }
 
 impl StructData {
-    pub(crate) fn struct_data_query(db: &impl DefDatabase2, struct_: StructId) -> Arc<StructData> {
-        let src = struct_.source(db);
-        let name = src.ast.name().map(|n| n.as_name());
-        let variant_data = VariantData::new(src.ast.kind());
-        let variant_data = Arc::new(variant_data);
-        Arc::new(StructData { name, variant_data })
-    }
-    pub(crate) fn union_data_query(db: &impl DefDatabase2, struct_: UnionId) -> Arc<StructData> {
-        let src = struct_.source(db);
+    pub(crate) fn struct_data_query(
+        db: &impl DefDatabase2,
+        id: StructOrUnionId,
+    ) -> Arc<StructData> {
+        let src = id.source(db);
         let name = src.ast.name().map(|n| n.as_name());
         let variant_data = VariantData::new(src.ast.kind());
         let variant_data = Arc::new(variant_data);

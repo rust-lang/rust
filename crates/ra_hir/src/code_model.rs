@@ -288,7 +288,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.0.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -296,11 +296,11 @@ impl Struct {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.struct_data(self.id).name.clone()
+        db.struct_data(self.id.into()).name.clone()
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
-        db.struct_data(self.id)
+        db.struct_data(self.id.into())
             .variant_data
             .fields()
             .into_iter()
@@ -310,7 +310,7 @@ impl Struct {
     }
 
     pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        db.struct_data(self.id)
+        db.struct_data(self.id.into())
             .variant_data
             .fields()
             .into_iter()
@@ -346,11 +346,11 @@ pub struct Union {
 
 impl Union {
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.union_data(self.id).name.clone()
+        db.struct_data(self.id.into()).name.clone()
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.0.module(db) }
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {

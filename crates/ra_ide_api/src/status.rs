@@ -94,10 +94,10 @@ impl FromIterator<TableEntry<FileId, Parse<ast::SourceFile>>> for SyntaxTreeStat
     }
 }
 
-impl FromIterator<TableEntry<MacroFile, Option<Parse<SyntaxNode>>>> for SyntaxTreeStats {
+impl<M> FromIterator<TableEntry<MacroFile, Option<(Parse<SyntaxNode>, M)>>> for SyntaxTreeStats {
     fn from_iter<T>(iter: T) -> SyntaxTreeStats
     where
-        T: IntoIterator<Item = TableEntry<MacroFile, Option<Parse<SyntaxNode>>>>,
+        T: IntoIterator<Item = TableEntry<MacroFile, Option<(Parse<SyntaxNode>, M)>>>,
     {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
