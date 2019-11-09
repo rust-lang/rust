@@ -17,7 +17,7 @@ use rustc::mir::*;
 use rustc::mir::interpret::ConstValue;
 use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
-use rustc::ty::{self, List, TyCtxt};
+use rustc::ty::{self, List, TyCtxt, TypeFoldable};
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::cast::CastTy;
 use syntax::ast::LitKind;
@@ -25,11 +25,67 @@ use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_index::vec::{IndexVec, Idx};
+use rustc_index::bit_set::HybridBitSet;
 use rustc_target::spec::abi::Abi;
 
+use std::cell::Cell;
 use std::{iter, mem, usize};
 
+use crate::transform::{MirPass, MirSource};
 use crate::transform::check_consts::{qualifs, Item, ConstKind, is_lang_panic_fn};
+
+/// A `MirPass` for promotion.
+///
+/// In this case, "promotion" entails the following:
+/// - Extract promotable temps in `fn` and `const fn` into their own MIR bodies.
+/// - Extend lifetimes in `const` and `static` by removing `Drop` and `StorageDead`.
+/// - Emit errors if the requirements of `#[rustc_args_required_const]` are not met.
+///
+/// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
+/// newly created `StaticKind::Promoted`.
+#[derive(Default)]
+pub struct PromoteTemps<'tcx> {
+    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
+}
+
+impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        // There's not really any point in promoting errorful MIR.
+        //
+        // This does not include MIR that failed const-checking, which we still try to promote.
+        if body.return_ty().references_error() {
+            tcx.sess.delay_span_bug(body.span, "PromoteTemps: MIR had errors");
+            return;
+        }
+
+        if src.promoted.is_some() {
+            return;
+        }
+
+        let def_id = src.def_id();
+
+        let item = Item::new(tcx, def_id, body);
+        let mut rpo = traversal::reverse_postorder(body);
+        let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
+
+        let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
+
+        // For now, lifetime extension is done in `const` and `static`s without creating promoted
+        // MIR fragments by removing `Drop` and `StorageDead` for each referent. However, this will
+        // not work inside loops when they are allowed in `const`s.
+        //
+        // FIXME: use promoted MIR fragments everywhere?
+        let promoted_fragments = if should_create_promoted_mir_fragments(item.const_kind) {
+            promote_candidates(def_id, body, tcx, temps, promotable_candidates)
+        } else {
+            // FIXME: promote const array initializers in consts.
+            remove_drop_and_storage_dead_on_promoted_locals(tcx, body, &promotable_candidates);
+            IndexVec::new()
+        };
+
+        self.promoted_fragments.set(promoted_fragments);
+    }
+}
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -538,7 +594,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         // is gone - we can always promote constants even if they
                         // fail to pass const-checking, as compilation would've
                         // errored independently and promotion can't change that.
-                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
                         if bits == super::qualify_consts::QUALIF_ERROR_BIT {
                             self.tcx.sess.delay_span_bug(
                                 constant.span,
@@ -1153,4 +1209,84 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     debug!("should_suggest_const_in_array_repeat_expressions_flag: mir_def_id={:?} \
             should_promote={:?} feature_flag={:?}", mir_def_id, should_promote, feature_flag);
     should_promote && !feature_flag
+}
+
+fn should_create_promoted_mir_fragments(const_kind: Option<ConstKind>) -> bool {
+    match const_kind {
+        Some(ConstKind::ConstFn) | None => true,
+        Some(ConstKind::Const) | Some(ConstKind::Static) | Some(ConstKind::StaticMut) => false,
+    }
+}
+
+/// In `const` and `static` everything without `StorageDead`
+/// is `'static`, we don't have to create promoted MIR fragments,
+/// just remove `Drop` and `StorageDead` on "promoted" locals.
+fn remove_drop_and_storage_dead_on_promoted_locals(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    promotable_candidates: &[Candidate],
+) {
+    debug!("run_pass: promotable_candidates={:?}", promotable_candidates);
+
+    // Removing `StorageDead` will cause errors for temps declared inside a loop body. For now we
+    // simply skip promotion if a loop exists, since loops are not yet allowed in a `const`.
+    //
+    // FIXME: Just create MIR fragments for `const`s instead of using this hackish approach?
+    if body.is_cfg_cyclic() {
+        tcx.sess.delay_span_bug(body.span, "Control-flow cycle detected in `const`");
+        return;
+    }
+
+    // The underlying local for promotion contexts like `&temp` and `&(temp.proj)`.
+    let mut requires_lifetime_extension = HybridBitSet::new_empty(body.local_decls.len());
+
+    promotable_candidates
+        .iter()
+        .filter_map(|c| {
+            match c {
+                Candidate::Ref(loc) => Some(loc),
+                Candidate::Repeat(_) | Candidate::Argument { .. } => None,
+            }
+        })
+        .map(|&Location { block, statement_index }| {
+            // FIXME: store the `Local` for each `Candidate` when it is created.
+            let place = match &body[block].statements[statement_index].kind {
+                StatementKind::Assign(box ( _, Rvalue::Ref(_, _, place))) => place,
+                _ => bug!("`Candidate::Ref` without corresponding assignment"),
+            };
+
+            match place.base {
+                PlaceBase::Local(local) => local,
+                PlaceBase::Static(_) => bug!("`Candidate::Ref` for a non-local"),
+            }
+        })
+        .for_each(|local| {
+            requires_lifetime_extension.insert(local);
+        });
+
+    // Remove `Drop` terminators and `StorageDead` statements for all promotable temps that require
+    // lifetime extension.
+    for block in body.basic_blocks_mut() {
+        block.statements.retain(|statement| {
+            match statement.kind {
+                StatementKind::StorageDead(index) => !requires_lifetime_extension.contains(index),
+                _ => true
+            }
+        });
+        let terminator = block.terminator_mut();
+        match &terminator.kind {
+            TerminatorKind::Drop {
+                location,
+                target,
+                ..
+            } => {
+                if let Some(index) = location.as_local() {
+                    if requires_lifetime_extension.contains(index) {
+                        terminator.kind = TerminatorKind::Goto { target: *target };
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }

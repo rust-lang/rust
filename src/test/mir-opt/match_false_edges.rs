@@ -39,7 +39,7 @@ fn main() {
 
 // END RUST SOURCE
 //
-// START rustc.full_tested_match.QualifyAndPromoteConstants.after.mir
+// START rustc.full_tested_match.PromoteTemps.after.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option::<i32>::Some(const 42i32,);
@@ -108,9 +108,9 @@ fn main() {
 //      _0 = ();
 //      return;
 //  }
-// END rustc.full_tested_match.QualifyAndPromoteConstants.after.mir
+// END rustc.full_tested_match.PromoteTemps.after.mir
 //
-// START rustc.full_tested_match2.QualifyAndPromoteConstants.before.mir
+// START rustc.full_tested_match2.PromoteTemps.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option::<i32>::Some(const 42i32,);
@@ -179,9 +179,9 @@ fn main() {
 //      _0 = ();
 //      return;
 //  }
-// END rustc.full_tested_match2.QualifyAndPromoteConstants.before.mir
+// END rustc.full_tested_match2.PromoteTemps.before.mir
 //
-// START rustc.main.QualifyAndPromoteConstants.before.mir
+// START rustc.main.PromoteTemps.before.mir
 //  bb0: {
 //     ...
 //      _2 = std::option::Option::<i32>::Some(const 1i32,);
@@ -276,4 +276,4 @@ fn main() {
 //      _0 = ();
 //      return;
 //  }
-// END rustc.main.QualifyAndPromoteConstants.before.mir
+// END rustc.main.PromoteTemps.before.mir
