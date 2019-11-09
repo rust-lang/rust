@@ -12,11 +12,12 @@ pub mod hygiene;
 pub mod diagnostics;
 
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxNode, TextRange,
+    SyntaxNode, TextRange, TextUnit,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -68,29 +69,25 @@ impl HirFileId {
     }
 
     /// Return expansion information if it is a macro-expansion file
-    pub fn parent_expansion(self, db: &dyn db::AstDatabase) -> Option<ExpansionInfo> {
+    pub fn expansion_info(self, db: &dyn db::AstDatabase) -> Option<ExpansionInfo> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
 
-                let arg_range = loc.ast_id.to_node(db).token_tree()?.syntax().text_range();
-                let def_range = loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range();
+                let arg_start = loc.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
+                let def_start =
+                    loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
 
                 let macro_def = db.macro_def(loc.def)?;
                 let shift = macro_def.0.shift();
-                let rev_map = db.parse_macro(macro_file)?.1;
+                let exp_map = db.parse_macro(macro_file)?.1;
+                let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
-                let arg_token_map = db.macro_arg(macro_file.macro_call_id)?.1;
-                let def_token_map = macro_def.1;
+                let arg_start = (loc.ast_id.file_id, arg_start);
+                let def_start = (loc.def.ast_id.file_id, def_start);
 
-                let arg_map = rev_map.map_ranges(&arg_token_map, arg_range, shift);
-                let def_map = rev_map.map_ranges(&def_token_map, def_range, 0);
-
-                let arg_file = loc.ast_id.file_id;
-                let def_file = loc.def.ast_id.file_id;
-
-                Some(ExpansionInfo { arg_file, def_file, arg_map, def_map })
+                Some(ExpansionInfo { arg_start, def_start, macro_arg, macro_def, exp_map, shift })
             }
         }
     }
@@ -143,28 +140,30 @@ impl MacroCallId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro
 pub struct ExpansionInfo {
-    pub(crate) arg_file: HirFileId,
-    pub(crate) def_file: HirFileId,
+    pub(crate) arg_start: (HirFileId, TextUnit),
+    pub(crate) def_start: (HirFileId, TextUnit),
+    pub(crate) shift: u32,
 
-    pub(crate) arg_map: Vec<(TextRange, TextRange)>,
-    pub(crate) def_map: Vec<(TextRange, TextRange)>,
+    pub(crate) macro_def: Arc<(mbe::MacroRules, mbe::TokenMap)>,
+    pub(crate) macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
+    pub(crate) exp_map: Arc<mbe::RevTokenMap>,
 }
 
 impl ExpansionInfo {
     pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
-        for (src, dest) in &self.arg_map {
-            if src.is_subrange(&from) {
-                return Some((self.arg_file, *dest));
-            }
+        fn look_in_rev_map(exp_map: &mbe::RevTokenMap, from: TextRange) -> Option<tt::TokenId> {
+            exp_map.ranges.iter().find(|&it| it.0.is_subrange(&from)).map(|it| it.1)
         }
 
-        for (src, dest) in &self.def_map {
-            if src.is_subrange(&from) {
-                return Some((self.def_file, *dest));
-            }
-        }
+        let token_id = look_in_rev_map(&self.exp_map, from)?;
+        let (token_map, file_offset, token_id) = if token_id.0 >= self.shift {
+            (&self.macro_arg.1, self.arg_start, tt::TokenId(token_id.0 - self.shift).into())
+        } else {
+            (&self.macro_def.1, self.def_start, token_id)
+        };
 
-        None
+        let range = token_map.relative_range_of(token_id)?;
+        Some((file_offset.0, TextRange::offset_len(range.start() + file_offset.1, range.len())))
     }
 }
 

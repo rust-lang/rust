@@ -36,7 +36,7 @@ fn find_range_from_node(
 ) -> (FileId, TextRange) {
     let text_range = node.text_range();
     let (file_id, text_range) = src
-        .parent_expansion(db)
+        .expansion_info(db)
         .and_then(|expansion_info| expansion_info.find_range(text_range))
         .unwrap_or((src, text_range));
 

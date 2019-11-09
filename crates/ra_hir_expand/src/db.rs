@@ -22,8 +22,8 @@ pub trait AstDatabase: SourceDatabase {
 
     #[salsa::interned]
     fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
-    fn macro_arg(&self, id: MacroCallId) -> Option<(Arc<tt::Subtree>, Arc<mbe::TokenMap>)>;
-    fn macro_def(&self, id: MacroDefId) -> Option<(Arc<mbe::MacroRules>, Arc<mbe::TokenMap>)>;
+    fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
+    fn macro_def(&self, id: MacroDefId) -> Option<Arc<(mbe::MacroRules, mbe::TokenMap)>>;
     fn parse_macro(
         &self,
         macro_file: MacroFile,
@@ -40,7 +40,7 @@ pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdM
 pub(crate) fn macro_def(
     db: &dyn AstDatabase,
     id: MacroDefId,
-) -> Option<(Arc<mbe::MacroRules>, Arc<mbe::TokenMap>)> {
+) -> Option<Arc<(mbe::MacroRules, mbe::TokenMap)>> {
     let macro_call = id.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
@@ -51,18 +51,18 @@ pub(crate) fn macro_def(
         log::warn!("fail on macro_def parse: {:#?}", tt);
         None
     })?;
-    Some((Arc::new(rules), Arc::new(tmap)))
+    Some(Arc::new((rules, tmap)))
 }
 
 pub(crate) fn macro_arg(
     db: &dyn AstDatabase,
     id: MacroCallId,
-) -> Option<(Arc<tt::Subtree>, Arc<mbe::TokenMap>)> {
+) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let loc = db.lookup_intern_macro(id);
     let macro_call = loc.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, tmap) = mbe::ast_to_token_tree(&arg)?;
-    Some((Arc::new(tt), Arc::new(tmap)))
+    Some(Arc::new((tt, tmap)))
 }
 
 pub(crate) fn macro_expand(

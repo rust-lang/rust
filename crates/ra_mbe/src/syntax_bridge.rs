@@ -23,7 +23,7 @@ pub struct TokenMap {
 /// Maps relative range of the expanded syntax node to `tt::TokenId`
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct RevTokenMap {
-    ranges: Vec<(TextRange, tt::TokenId)>,
+    pub ranges: Vec<(TextRange, tt::TokenId)>,
 }
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
@@ -120,36 +120,6 @@ impl TokenMap {
 impl RevTokenMap {
     fn add(&mut self, relative_range: TextRange, token_id: tt::TokenId) {
         self.ranges.push((relative_range, token_id.clone()))
-    }
-
-    /// Map a given token map to (Expanded syntax node, Input tokens) text-ranges pair
-    ///
-    /// This function do the following things:
-    ///
-    /// 1. Undo the increment of token-id `shift`:
-    ///     When we output a token from from macro argument, we increased its id
-    ///     by `shift` (so it's guaranteed to not to collide with anything from the definition)
-    ///     We undo the increment here to rollback to its original token id.
-    /// 2. Offset the input tokens (`to`) by `parent` text-range:
-    ///     We transforms the input tokens text-ranges from relative to original first token
-    ///     to parent text-range
-    /// 3. Maps expanded tokens text-ranges to parent text-ranges
-    ///
-    pub fn map_ranges(
-        &self,
-        to: &TokenMap,
-        parent: TextRange,
-        shift: u32,
-    ) -> Vec<(TextRange, TextRange)> {
-        self.ranges
-            .iter()
-            .filter_map(|(r, tid)| {
-                let adjusted_id = tt::TokenId(tid.0.checked_sub(shift)?);
-                let to_range = to.relative_range_of(adjusted_id)?;
-
-                Some((*r, TextRange::offset_len(to_range.start() + parent.start(), to_range.len())))
-            })
-            .collect()
     }
 }
 
