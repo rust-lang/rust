@@ -8,6 +8,7 @@ use rustc_index::vec::Idx;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
 use std::cmp::{PartialEq, PartialOrd, Ord};
 use std::fmt;
@@ -1134,5 +1135,22 @@ impl fmt::Debug for SymbolStr {
 impl fmt::Display for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
+    }
+}
+
+impl<CTX> HashStable<CTX> for SymbolStr {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        let str = self as &str;
+        str.hash_stable(hcx, hasher)
+    }
+}
+
+impl<CTX> ToStableHashKey<CTX> for SymbolStr {
+    type KeyType = SymbolStr;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
+        self.clone()
     }
 }

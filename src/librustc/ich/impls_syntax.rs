@@ -18,25 +18,6 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
-impl<'a> HashStable<StableHashingContext<'a>> for SymbolStr {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let str = self as &str;
-        str.hash_stable(hcx, hasher)
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for SymbolStr {
-    type KeyType = SymbolStr;
-
-    #[inline]
-    fn to_stable_hash_key(&self,
-                          _: &StableHashingContext<'a>)
-                          -> SymbolStr {
-        self.clone()
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
