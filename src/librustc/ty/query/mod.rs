@@ -42,7 +42,6 @@ use crate::util::common::ErrorReported;
 use crate::util::profiling::ProfileCategory::*;
 
 use rustc_data_structures::svh::Svh;
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::fx::{FxIndexMap, FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;

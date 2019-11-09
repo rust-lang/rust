@@ -123,7 +123,7 @@ pub trait Qualif {
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)
                     } else {
-                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let bits = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = QualifSet(bits).contains::<Self>();
 
