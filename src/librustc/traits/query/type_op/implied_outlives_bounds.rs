@@ -3,7 +3,7 @@ use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct ImpliedOutlivesBounds<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -38,8 +38,4 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
 
         tcx.implied_outlives_bounds(canonicalized)
     }
-}
-
-impl_stable_hash_for! {
-    struct ImpliedOutlivesBounds<'tcx> { ty }
 }

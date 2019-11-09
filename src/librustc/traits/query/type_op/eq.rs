@@ -2,7 +2,7 @@ use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable, Lift)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
 pub struct Eq<'tcx> {
     pub a: Ty<'tcx>,
     pub b: Ty<'tcx>,
@@ -34,8 +34,4 @@ impl<'tcx> super::QueryTypeOp<'tcx> for Eq<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
         tcx.type_op_eq(canonicalized)
     }
-}
-
-impl_stable_hash_for! {
-    struct Eq<'tcx> { a, b }
 }

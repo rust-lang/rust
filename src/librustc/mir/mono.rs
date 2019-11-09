@@ -251,7 +251,7 @@ pub struct CodegenUnit<'tcx> {
     size_estimate: Option<usize>,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Linkage {
     External,
     AvailableExternally,
@@ -266,32 +266,12 @@ pub enum Linkage {
     Common,
 }
 
-impl_stable_hash_for!(enum self::Linkage {
-    External,
-    AvailableExternally,
-    LinkOnceAny,
-    LinkOnceODR,
-    WeakAny,
-    WeakODR,
-    Appending,
-    Internal,
-    Private,
-    ExternalWeak,
-    Common
-});
-
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
     Default,
     Hidden,
     Protected,
 }
-
-impl_stable_hash_for!(enum self::Visibility {
-    Default,
-    Hidden,
-    Protected
-});
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
