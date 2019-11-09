@@ -213,16 +213,18 @@ impl Layout {
     /// Creates a layout by rounding the size of this layout up to a multiple
     /// of the layout's alignment.
     ///
-    /// Returns `Err` if the padded size would overflow.
-    ///
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
-    pub fn pad_to_align(&self) -> Result<Layout, LayoutErr> {
+    pub fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());
-        let new_size = self.size().checked_add(pad)
-            .ok_or(LayoutErr { private: () })?;
+        // This cannot overflow: it is an invariant of Layout that
+        // > `size`, when rounded up to the nearest multiple of `align`,
+        // > must not overflow (i.e., the rounded value must be less than
+        // > `usize::MAX`)
+        let new_size = self.size() + pad;
+        debug_assert!(new_size > self.size());
 
         Layout::from_size_align(new_size, self.align())
     }
