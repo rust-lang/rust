@@ -655,25 +655,6 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    fn display(&self, tcx: TyCtxt<'tcx>) -> String {
-        match self {
-            Constructor::ConstantValue(val, _) => format!("{}", val),
-            Constructor::ConstantRange(lo, hi, ty, range_end, _) => {
-                // Get the right sign on the output:
-                let ty = ty::ParamEnv::empty().and(*ty);
-                format!(
-                    "{}{}{}",
-                    ty::Const::from_bits(tcx, *lo, ty),
-                    range_end,
-                    ty::Const::from_bits(tcx, *hi, ty),
-                )
-            }
-            Constructor::FixedLenSlice(val) => format!("[{}]", val),
-            Constructor::VarLenSlice(prefix, suffix) => format!("[{}, .., {}]", prefix, suffix),
-            _ => bug!("bad constructor being displayed: `{:?}", self),
-        }
-    }
-
     // Returns the set of constructors covered by `self` but not by
     // anything in `other_ctors`.
     fn subtract_ctors(
@@ -1473,6 +1454,23 @@ impl<'tcx> IntRange<'tcx> {
         let (other_lo, other_hi) = (*other.range.start(), *other.range.end());
         (lo == other_hi || hi == other_lo)
     }
+
+    fn display(&self, tcx: TyCtxt<'tcx>) -> String {
+        let (lo, hi) = (self.range.start(), self.range.end());
+
+        let bias = IntRange::signed_bias(tcx, self.ty);
+        let (lo, hi) = (lo ^ bias, hi ^ bias);
+
+        let ty = ty::ParamEnv::empty().and(self.ty);
+        let lo_const = ty::Const::from_bits(tcx, lo, ty);
+        let hi_const = ty::Const::from_bits(tcx, hi, ty);
+
+        if lo == hi {
+            format!("{}", lo_const)
+        } else {
+            format!("{}{}{}", lo_const, RangeEnd::Included, hi_const)
+        }
+    }
 }
 
 // Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -2118,9 +2116,7 @@ fn lint_overlapping_patterns(
                 int_range.span,
                 &format!(
                     "this range overlaps on `{}`",
-                    IntRange { range: int_range.range, ty, span: DUMMY_SP }
-                        .into_ctor(tcx)
-                        .display(tcx),
+                    IntRange { range: int_range.range, ty, span: DUMMY_SP }.display(tcx),
                 ),
             );
         }
