@@ -36,11 +36,12 @@ pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> 
         );
 
         // look for the prelude
-        if def_map.prelude.is_none() {
-            let map = db.crate_def_map(dep.crate_id);
-            if map.prelude.is_some() {
-                def_map.prelude = map.prelude;
-            }
+        // If the dependency defines a prelude, we overwrite an already defined
+        // prelude. This is necessary to import the "std" prelude if a crate
+        // depends on both "core" and "std".
+        let dep_def_map = db.crate_def_map(dep.crate_id);
+        if dep_def_map.prelude.is_some() {
+            def_map.prelude = dep_def_map.prelude;
         }
     }
 

@@ -464,6 +464,37 @@ fn values_dont_shadow_extern_crates() {
 }
 
 #[test]
+fn std_prelude_takes_precedence_above_core_prelude() {
+    let map = def_map(
+        r#"
+        //- /main.rs crate:main deps:core,std
+        use {Foo, Bar};
+
+        //- /std.rs crate:std deps:core
+        #[prelude_import]
+        pub use self::prelude::*;
+        mod prelude {
+            pub struct Foo;
+            pub use core::prelude::Bar;
+        }
+
+        //- /core.rs crate:core
+        #[prelude_import]
+        pub use self::prelude::*;
+        mod prelude {
+            pub struct Bar;
+        }
+        "#,
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮Foo: t v
+    "###);
+}
+
+#[test]
 fn cfg_not_test() {
     let map = def_map(
         r#"
