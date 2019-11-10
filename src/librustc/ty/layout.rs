@@ -1614,13 +1614,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // (delay format until we actually need it)
         let record = |kind, packed, opt_discr_size, variants| {
             let type_desc = format!("{:?}", layout.ty);
-            self.tcx.sess.code_stats.borrow_mut().record_type_size(kind,
-                                                                   type_desc,
-                                                                   layout.align.abi,
-                                                                   layout.size,
-                                                                   packed,
-                                                                   opt_discr_size,
-                                                                   variants);
+            self.tcx.sess.code_stats.record_type_size(kind,
+                                                      type_desc,
+                                                      layout.align.abi,
+                                                      layout.size,
+                                                      packed,
+                                                      opt_discr_size,
+                                                      variants);
         };
 
         let adt_def = match layout.ty.kind {
