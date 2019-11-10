@@ -119,10 +119,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
     }
 }
 
-impl_stable_hash_for!(struct ast::Label {
-    ident
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.while_hashing_hir_bodies(true, |hcx| {

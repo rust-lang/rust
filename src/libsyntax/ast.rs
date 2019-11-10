@@ -55,7 +55,7 @@ mod tests;
 /// ```
 ///
 /// `'outer` is a label.
-#[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Copy, HashStable_Generic)]
 pub struct Label {
     pub ident: Ident,
 }
@@ -483,7 +483,7 @@ pub struct Crate {
 /// Possible values inside of compile-time attribute lists.
 ///
 /// E.g., the '..' in `#[name(..)]`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum NestedMetaItem {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
@@ -496,7 +496,7 @@ pub enum NestedMetaItem {
 /// A spanned compile-time attribute item.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct MetaItem {
     pub path: Path,
     pub kind: MetaItemKind,
@@ -506,7 +506,7 @@ pub struct MetaItem {
 /// A compile-time attribute item.
 ///
 /// E.g., `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///

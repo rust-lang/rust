@@ -125,23 +125,6 @@ impl<'ctx> syntax::StableHashingContextLike for StableHashingContext<'ctx> {
     }
 }
 
-impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {
-    MetaItem(meta_item),
-    Literal(lit)
-});
-
-impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
-    path,
-    kind,
-    span
-});
-
-impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
-    Word,
-    List(nested_items),
-    NameValue(lit)
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let SourceFile {
