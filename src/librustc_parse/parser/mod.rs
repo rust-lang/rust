@@ -15,8 +15,8 @@ use crate::{Directory, DirectoryOwnership};
 use crate::lexer::UnmatchedBrace;
 
 use syntax::ast::{
-    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident,
-    IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
+    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit,
+    IsAsync, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety,
 };
 
 use syntax::print::pprust;
@@ -1214,34 +1214,32 @@ impl<'a> Parser<'a> {
     /// Parses `extern string_literal?`.
     fn parse_extern(&mut self) -> PResult<'a, Extern> {
         Ok(if self.eat_keyword(kw::Extern) {
-            Extern::from_abi(self.parse_opt_abi())
+            Extern::from_abi(self.parse_abi())
         } else {
             Extern::None
         })
     }
 
     /// Parses a string literal as an ABI spec.
-    fn parse_opt_abi(&mut self) -> Option<StrLit> {
-        if let Some(ast::Lit { token: token::Lit { symbol, suffix, .. }, span, kind })
-                = self.parse_opt_lit() {
-            match kind {
-                ast::LitKind::Str(symbol_unescaped, style) => return Some(StrLit {
-                    style, symbol, suffix, span, symbol_unescaped,
-                }),
-                ast::LitKind::Err(_) => {}
+    fn parse_abi(&mut self) -> Option<StrLit> {
+        match self.parse_str_lit() {
+            Ok(str_lit) => Some(str_lit),
+            Err(Some(lit)) => match lit.kind {
+                ast::LitKind::Err(_) => None,
                 _ => {
-                    self.struct_span_err(span, "non-string ABI literal")
+                    self.struct_span_err(lit.span, "non-string ABI literal")
                         .span_suggestion(
-                            span,
+                            lit.span,
                             "specify the ABI with a string literal",
                             "\"C\"".to_string(),
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
+                    None
                 }
             }
+            Err(None) => None,
         }
-        None
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
@@ -1332,34 +1330,6 @@ impl<'a> Parser<'a> {
         self.check(&token::ModSep) &&
             self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace) ||
                                    *t == token::BinOp(token::Star))
-    }
-
-    fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
-        let ret = match self.token.kind {
-            token::Literal(token::Lit { kind: token::Str, symbol, suffix }) =>
-                (symbol, ast::StrStyle::Cooked, suffix),
-            token::Literal(token::Lit { kind: token::StrRaw(n), symbol, suffix }) =>
-                (symbol, ast::StrStyle::Raw(n), suffix),
-            _ => return None
-        };
-        self.bump();
-        Some(ret)
-    }
-
-    pub fn parse_str(&mut self) -> PResult<'a, (Symbol, StrStyle)> {
-        match self.parse_optional_str() {
-            Some((s, style, suf)) => {
-                let sp = self.prev_span;
-                self.expect_no_suffix(sp, "a string literal", suf);
-                Ok((s, style))
-            }
-            _ => {
-                let msg = "expected string literal";
-                let mut err = self.fatal(msg);
-                err.span_label(self.token.span, msg);
-                Err(err)
-            }
-        }
     }
 }
 

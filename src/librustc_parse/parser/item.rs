@@ -3,9 +3,9 @@ use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 
-use syntax::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
+use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
 use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
-use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
+use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, VariantData, StructField};
 use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
 
-            let abi = self.parse_opt_abi();
+            let abi = self.parse_abi();
 
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM

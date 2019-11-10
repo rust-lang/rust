@@ -1073,6 +1073,22 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
+    pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<Lit>> {
+        match self.parse_opt_lit() {
+            Some(lit) => match lit.kind {
+                ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
+                    style,
+                    symbol: lit.token.symbol,
+                    suffix: lit.token.suffix,
+                    span: lit.span,
+                    symbol_unescaped,
+                }),
+                _ => Err(Some(lit)),
+            }
+            None => Err(None),
+        }
+    }
+
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
             let msg = format!("unexpected token: {}", self.this_token_descr());
