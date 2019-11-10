@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
 
-            let abi = self.parse_opt_abi()?;
+            let abi = self.parse_opt_abi();
 
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM

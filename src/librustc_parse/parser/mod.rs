@@ -1214,21 +1214,20 @@ impl<'a> Parser<'a> {
     /// Parses `extern string_literal?`.
     fn parse_extern(&mut self) -> PResult<'a, Extern> {
         Ok(if self.eat_keyword(kw::Extern) {
-            Extern::from_abi(self.parse_opt_abi()?)
+            Extern::from_abi(self.parse_opt_abi())
         } else {
             Extern::None
         })
     }
 
     /// Parses a string literal as an ABI spec.
-    fn parse_opt_abi(&mut self) -> PResult<'a, Option<StrLit>> {
-        if self.token.can_begin_literal_or_bool() {
-            let ast::Lit { token: token::Lit { symbol, suffix, .. }, span, kind }
-                = self.parse_lit()?;
+    fn parse_opt_abi(&mut self) -> Option<StrLit> {
+        if let Some(ast::Lit { token: token::Lit { symbol, suffix, .. }, span, kind })
+                = self.parse_opt_lit() {
             match kind {
-                ast::LitKind::Str(symbol_unescaped, style) => return Ok(Some(StrLit {
+                ast::LitKind::Str(symbol_unescaped, style) => return Some(StrLit {
                     style, symbol, suffix, span, symbol_unescaped,
-                })),
+                }),
                 ast::LitKind::Err(_) => {}
                 _ => {
                     self.struct_span_err(span, "non-string ABI literal")
@@ -1242,7 +1241,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok(None)
+        None
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
