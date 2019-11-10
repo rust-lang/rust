@@ -418,9 +418,10 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
-        maybe_uninit,
-        MaybeUninit,
-        mem,
+        maybe_uninit_uninit,
+        maybe_uninit_zeroed,
+        mem_uninitialized,
+        mem_zeroed,
         member_constraints,
         message,
         meta,
@@ -713,8 +714,6 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
-        uninit,
-        uninitialized,
         universal_impl_trait,
         unmarked_api,
         unreachable_code,
@@ -745,7 +744,6 @@ symbols! {
         windows,
         windows_subsystem,
         Yield,
-        zeroed,
     }
 }
 
