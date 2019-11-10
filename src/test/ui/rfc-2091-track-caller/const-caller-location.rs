@@ -1,20 +1,20 @@
 // run-pass
 
-#![feature(const_fn, core_intrinsics, track_caller)]
+#![feature(const_fn, track_caller)]
 
-use std::{intrinsics::caller_location, panic::Location};
+use std::panic::Location;
 
-const LOCATION: &Location = caller_location();
+const LOCATION: &Location = Location::caller();
 
 const TRACKED: &Location = tracked();
 #[track_caller]
 const fn tracked() -> &'static Location <'static> {
-    caller_location()
+    Location::caller()
 }
 
 const NESTED: &Location = nested_location();
 const fn nested_location() -> &'static Location<'static> {
-    caller_location()
+    Location::caller()
 }
 
 const CONTAINED: &Location = contained();

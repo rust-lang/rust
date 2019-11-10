@@ -177,6 +177,60 @@ pub struct Location<'a> {
 }
 
 impl<'a> Location<'a> {
+    /// Returns the source location of the caller of this function. If that function's caller is
+    /// annotated then its call location will be returned, and so on up the stack to the first call
+    /// within a non-tracked function body.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(track_caller)]
+    /// use core::panic::Location;
+    ///
+    /// /// Returns the [`Location`] at which it is called.
+    /// #[track_caller]
+    /// fn get_caller_location() -> &'static Location<'static> {
+    ///     Location::caller()
+    /// }
+    ///
+    /// /// Returns a [`Location`] from within this function's definition.
+    /// fn get_just_one_location() -> &'static Location<'static> {
+    ///     get_caller_location()
+    /// }
+    ///
+    /// let fixed_location = get_just_one_location();
+    /// assert_eq!(fixed_location.file(), file!());
+    /// assert_eq!(fixed_location.line(), 15);
+    /// assert_eq!(fixed_location.column(), 5);
+    ///
+    /// // running the same untracked function in a different location gives us the same result
+    /// let second_fixed_location = get_just_one_location();
+    /// assert_eq!(fixed_location.file(), second_fixed_location.file());
+    /// assert_eq!(fixed_location.line(), second_fixed_location.line());
+    /// assert_eq!(fixed_location.column(), second_fixed_location.column());
+    ///
+    /// let this_location = get_caller_location();
+    /// assert_eq!(this_location.file(), file!());
+    /// assert_eq!(this_location.line(), 29);
+    /// assert_eq!(this_location.column(), 21);
+    ///
+    /// // running the tracked function in a different location produces a different value
+    /// let another_location = get_caller_location();
+    /// assert_eq!(this_location.file(), another_location.file());
+    /// assert_ne!(this_location.line(), another_location.line());
+    /// assert_ne!(this_location.column(), another_location.column());
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "track_caller",
+               reason = "uses #[track_caller] which is not yet stable",
+               issue = "47809")]
+    #[track_caller]
+    pub const fn caller() -> &'static Location<'static> {
+        crate::intrinsics::caller_location()
+    }
+}
+
+impl<'a> Location<'a> {
     #![unstable(feature = "panic_internals",
                 reason = "internal details of the implementation of the `panic!` \
                           and related macros",

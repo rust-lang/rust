@@ -1,16 +1,16 @@
 // run-pass
 
-#![feature(const_fn, core_intrinsics, track_caller)]
+#![feature(const_fn, track_caller)]
 
-use std::{intrinsics::caller_location, panic::Location};
+use std::panic::Location;
 
 #[track_caller]
-fn tracked() -> &'static Location <'static> {
-    caller_location()
+fn tracked() -> &'static Location<'static> {
+    Location::caller()
 }
 
 fn nested_intrinsic() -> &'static Location<'static> {
-    caller_location()
+    Location::caller()
 }
 
 fn nested_tracked() -> &'static Location<'static> {
@@ -18,7 +18,7 @@ fn nested_tracked() -> &'static Location<'static> {
 }
 
 fn main() {
-    let location = caller_location();
+    let location = Location::caller();
     assert_eq!(location.file(), file!());
     assert_eq!(location.line(), 21);
     assert_eq!(location.column(), 20);
