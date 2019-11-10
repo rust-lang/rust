@@ -17,6 +17,10 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
+impl<'ctx> syntax_pos::StableHashingContextLike for StableHashingContext<'ctx> {}
+impl<'ctx> syntax::StableHashingContextLike for StableHashingContext<'ctx> {}
+impl<'ctx> rustc_target::StableHashingContextLike for StableHashingContext<'ctx> {}
+
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     kind,
     token,

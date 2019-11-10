@@ -1562,3 +1562,8 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
         Err(line) => line as isize - 1
     }
 }
+
+/// Requirements for a `StableHashingContext` to be used in this crate.
+/// This is a hack to allow using the `HashStable_Generic` derive macro
+/// instead of implementing everything in librustc.
+pub trait StableHashingContextLike {}
