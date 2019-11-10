@@ -163,11 +163,6 @@ pub struct Validator<'a, 'mir, 'tcx> {
     /// this set is empty. Note that if we start removing locals from
     /// `derived_from_illegal_borrow`, just checking at the end won't be enough.
     derived_from_illegal_borrow: BitSet<Local>,
-
-    errors: Vec<(Span, String)>,
-
-    /// Whether to actually emit errors or just store them in `errors`.
-    pub(crate) suppress_errors: bool,
 }
 
 impl Deref for Validator<'_, 'mir, 'tcx> {
@@ -221,9 +216,7 @@ impl Validator<'a, 'mir, 'tcx> {
             span: item.body.span,
             item,
             qualifs,
-            errors: vec![],
             derived_from_illegal_borrow: BitSet::new_empty(item.body.local_decls.len()),
-            suppress_errors: false,
         }
     }
 
@@ -267,10 +260,6 @@ impl Validator<'a, 'mir, 'tcx> {
         self.qualifs.in_return_place(self.item)
     }
 
-    pub fn take_errors(&mut self) -> Vec<(Span, String)> {
-        std::mem::replace(&mut self.errors, vec![])
-    }
-
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context. Returns `Forbidden` if an error was emitted.
     pub fn check_op_spanned<O>(&mut self, op: O, span: Span) -> CheckOpResult
@@ -293,11 +282,7 @@ impl Validator<'a, 'mir, 'tcx> {
             return CheckOpResult::Unleashed;
         }
 
-        if !self.suppress_errors {
-            op.emit_error(self, span);
-        }
-
-        self.errors.push((span, format!("{:?}", op)));
+        op.emit_error(self, span);
         CheckOpResult::Forbidden
     }
 
