@@ -2,13 +2,15 @@ use super::{Parser, PathStyle, PrevTokenKind, TokenType};
 use super::item::ParamCfg;
 
 use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
-use crate::ptr::P;
-use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
-use crate::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
-use crate::ast::{Mutability, AnonConst, Mac};
-use crate::token::{self, Token};
-use crate::source_map::Span;
-use crate::symbol::{kw};
+
+use syntax::ptr::P;
+use syntax::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
+use syntax::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
+use syntax::ast::{Mutability, AnonConst, Mac};
+use syntax::token::{self, Token};
+use syntax::source_map::Span;
+use syntax::struct_span_fatal;
+use syntax_pos::symbol::kw;
 
 use errors::{PResult, Applicability, pluralize};
 

@@ -18,6 +18,8 @@ use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::svh::Svh;
+use rustc_parse::source_file_to_stream;
+use rustc_parse::parser::emit_unclosed_delims;
 
 use smallvec::SmallVec;
 use std::any::Any;
@@ -27,8 +29,6 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map;
-use syntax::parse::source_file_to_stream;
-use syntax::parse::parser::emit_unclosed_delims;
 use syntax::source_map::Spanned;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, FileName};

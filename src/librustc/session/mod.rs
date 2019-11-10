@@ -26,7 +26,7 @@ use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
-use syntax::sess::ParseSess;
+use syntax::sess::{ParseSess, ProcessCfgMod};
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
@@ -934,6 +934,7 @@ pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     let file_path_mapping = sopts.file_path_mapping();
 
@@ -944,6 +945,7 @@ pub fn build_session(
         Lrc::new(source_map::SourceMap::new(file_path_mapping)),
         DiagnosticOutput::Default,
         Default::default(),
+        process_cfg_mod,
     )
 }
 
@@ -1022,6 +1024,7 @@ pub fn build_session_with_source_map(
     source_map: Lrc<source_map::SourceMap>,
     diagnostics_output: DiagnosticOutput,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1062,7 +1065,14 @@ pub fn build_session_with_source_map(
         },
     );
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
+    build_session_(
+        sopts,
+        local_crate_source_file,
+        diagnostic_handler,
+        source_map,
+        lint_caps,
+        process_cfg_mod,
+    )
 }
 
 fn build_session_(
@@ -1071,6 +1081,7 @@ fn build_session_(
     span_diagnostic: errors::Handler,
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     let self_profiler =
         if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
@@ -1109,6 +1120,7 @@ fn build_session_(
     let parse_sess = ParseSess::with_span_handler(
         span_diagnostic,
         source_map,
+        process_cfg_mod,
     );
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),

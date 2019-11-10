@@ -2,13 +2,14 @@ use super::Parser;
 use super::item::ItemInfo;
 use super::diagnostics::Error;
 
-use crate::attr;
-use crate::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
-use crate::parse::{new_sub_parser_from_file, DirectoryOwnership};
-use crate::token::{self, TokenKind};
-use crate::source_map::{SourceMap, Span, DUMMY_SP, FileName};
-use crate::symbol::sym;
+use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
+use syntax::attr;
+use syntax::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
+use syntax::token::{self, TokenKind};
+use syntax::source_map::{SourceMap, Span, DUMMY_SP, FileName};
+
+use syntax_pos::symbol::sym;
 use errors::PResult;
 
 use std::path::{self, Path, PathBuf};
@@ -39,17 +40,12 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
-        let (in_cfg, outer_attrs) = {
-            // FIXME(Centril): This results in a cycle between config and parsing.
-            // Consider using dynamic dispatch via `self.sess` to disentangle the knot.
-            let mut strip_unconfigured = crate::config::StripUnconfigured {
-                sess: self.sess,
-                features: None, // Don't perform gated feature checking.
-            };
-            let mut outer_attrs = outer_attrs.to_owned();
-            strip_unconfigured.process_cfg_attrs(&mut outer_attrs);
-            (!self.cfg_mods || strip_unconfigured.in_cfg(&outer_attrs), outer_attrs)
-        };
+        // HACK(Centril): See documentation on `ParseSess::process_cfg_mod`.
+        let (in_cfg, outer_attrs) = (self.sess.process_cfg_mod)(
+            self.sess,
+            self.cfg_mods,
+            outer_attrs,
+        );
 
         let id_span = self.token.span;
         let id = self.parse_ident()?;

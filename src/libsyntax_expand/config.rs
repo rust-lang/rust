@@ -1,20 +1,20 @@
-use crate::attr::HasAttrs;
-use crate::feature_gate::{
+use rustc_parse::validate_attr;
+use syntax::attr::HasAttrs;
+use syntax::feature_gate::{
     feature_err,
     EXPLAIN_STMT_ATTR_SYNTAX,
     Features,
     get_features,
     GateIssue,
 };
-use crate::attr;
-use crate::ast;
-use crate::edition::Edition;
-use crate::mut_visit::*;
-use crate::parse;
-use crate::ptr::P;
-use crate::sess::ParseSess;
-use crate::symbol::sym;
-use crate::util::map_in_place::MapInPlace;
+use syntax::attr;
+use syntax::ast;
+use syntax::edition::Edition;
+use syntax::mut_visit::*;
+use syntax::ptr::P;
+use syntax::sess::ParseSess;
+use syntax::util::map_in_place::MapInPlace;
+use syntax_pos::symbol::sym;
 
 use errors::Applicability;
 use smallvec::SmallVec;
@@ -113,7 +113,7 @@ impl<'a> StripUnconfigured<'a> {
             return vec![];
         }
 
-        let res = parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
+        let res = rustc_parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
         let (cfg_predicate, expanded_attrs) = match res {
             Ok(result) => result,
             Err(mut e) => {
@@ -135,12 +135,11 @@ impl<'a> StripUnconfigured<'a> {
             // `cfg_attr` inside of another `cfg_attr`. E.g.
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
-            .flat_map(|(item, span)| self.process_cfg_attr(ast::Attribute {
-                kind: ast::AttrKind::Normal(item),
-                id: attr::mk_attr_id(),
-                style: attr.style,
+            .flat_map(|(item, span)| self.process_cfg_attr(attr::mk_attr_from_item(
+                attr.style,
+                item,
                 span,
-            }))
+            )))
             .collect()
         } else {
             vec![]
@@ -148,7 +147,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
-    pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
+    pub fn in_cfg(&self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             if !is_cfg(attr) {
                 return true;
@@ -168,7 +167,7 @@ impl<'a> StripUnconfigured<'a> {
                 true
             };
 
-            let meta_item = match attr.parse_meta(self.sess) {
+            let meta_item = match validate_attr::parse_meta(self.sess, attr) {
                 Ok(meta_item) => meta_item,
                 Err(mut err) => { err.emit(); return true; }
             };
@@ -349,4 +348,18 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name(sym::cfg)
+}
+
+/// Process the potential `cfg` attributes on a module.
+/// Also determine if the module should be included in this configuration.
+pub fn process_configure_mod(
+    sess: &ParseSess,
+    cfg_mods: bool,
+    attrs: &[ast::Attribute],
+) -> (bool, Vec<ast::Attribute>) {
+    // Don't perform gated feature checking.
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut attrs = attrs.to_owned();
+    strip_unconfigured.process_cfg_attrs(&mut attrs);
+    (!cfg_mods || strip_unconfigured.in_cfg(&attrs), attrs)
 }

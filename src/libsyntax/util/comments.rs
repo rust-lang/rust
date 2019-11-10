@@ -32,14 +32,14 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
-crate fn is_line_doc_comment(s: &str) -> bool {
+pub fn is_line_doc_comment(s: &str) -> bool {
     let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/') ||
               s.starts_with("//!");
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 
-crate fn is_block_doc_comment(s: &str) -> bool {
+pub fn is_block_doc_comment(s: &str) -> bool {
     // Prevent `/**/` from being parsed as a doc comment
     let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*') ||
                s.starts_with("/*!")) && s.len() >= 5;
@@ -47,7 +47,8 @@ crate fn is_block_doc_comment(s: &str) -> bool {
     res
 }
 
-crate fn is_doc_comment(s: &str) -> bool {
+// FIXME(#64197): Try to privatize this again.
+pub fn is_doc_comment(s: &str) -> bool {
     (s.starts_with("///") && is_line_doc_comment(s)) || s.starts_with("//!") ||
     (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
 }

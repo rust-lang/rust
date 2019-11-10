@@ -1,7 +1,7 @@
 //! Low-level Rust lexer.
 //!
 //! Tokens produced by this lexer are not yet ready for parsing the Rust syntax,
-//! for that see `libsyntax::parse::lexer`, which converts this basic token stream
+//! for that see `librustc_parse::lexer`, which converts this basic token stream
 //! into wide tokens used by actual parser.
 //!
 //! The purpose of this crate is to convert raw sources into a labeled sequence

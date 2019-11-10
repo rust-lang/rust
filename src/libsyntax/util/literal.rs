@@ -14,7 +14,7 @@ use rustc_lexer::unescape::{unescape_raw_str, unescape_raw_byte_str};
 
 use std::ascii;
 
-crate enum LitError {
+pub enum LitError {
     NotLiteral,
     LexerError,
     InvalidSuffix,
@@ -185,12 +185,12 @@ impl LitKind {
 
 impl Lit {
     /// Converts literal token into an AST literal.
-    crate fn from_lit_token(token: token::Lit, span: Span) -> Result<Lit, LitError> {
+    pub fn from_lit_token(token: token::Lit, span: Span) -> Result<Lit, LitError> {
         Ok(Lit { token, kind: LitKind::from_lit_token(token)?, span })
     }
 
     /// Converts arbitrary token into an AST literal.
-    crate fn from_token(token: &Token) -> Result<Lit, LitError> {
+    pub fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.kind {
             token::Ident(name, false) if name.is_bool_lit() =>
                 token::Lit::new(token::Bool, name, None),
@@ -217,8 +217,8 @@ impl Lit {
         Lit { token: kind.to_lit_token(), kind, span }
     }
 
-    /// Losslessly convert an AST literal into a token tree.
-    crate fn token_tree(&self) -> TokenTree {
+    /// Losslessly convert an AST literal into a token stream.
+    pub fn token_tree(&self) -> TokenTree {
         let token = match self.token.kind {
             token::Bool => token::Ident(self.token.symbol, false),
             _ => token::Literal(self.token),

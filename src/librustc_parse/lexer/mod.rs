@@ -1,7 +1,7 @@
-use crate::token::{self, Token, TokenKind};
-use crate::sess::ParseSess;
-use crate::symbol::{sym, Symbol};
-use crate::util::comments;
+use syntax::token::{self, Token, TokenKind};
+use syntax::sess::ParseSess;
+use syntax::symbol::{sym, Symbol};
+use syntax::util::comments;
 
 use errors::{FatalError, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span};
@@ -12,9 +12,6 @@ use std::char;
 use std::convert::TryInto;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
-
-#[cfg(test)]
-mod tests;
 
 mod tokentrees;
 mod unicode_chars;
@@ -35,7 +32,8 @@ pub struct StringReader<'a> {
     /// Initial position, read-only.
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
-    pos: BytePos,
+    // FIXME(#64197): `pub` is needed by tests for now.
+    pub pos: BytePos,
     /// Stop reading src at this index.
     end_src_index: usize,
     /// Source text to tokenize.

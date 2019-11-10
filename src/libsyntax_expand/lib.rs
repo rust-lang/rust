@@ -33,6 +33,35 @@ pub use mbe::macro_rules::compile_declarative_macro;
 pub mod base;
 pub mod build;
 pub mod expand;
+#[macro_use] pub mod config;
 pub mod proc_macro;
 
 crate mod mbe;
+
+// HACK(Centril, #64197): These shouldn't really be here.
+// Rather, they should be with their respective modules which are defined in other crates.
+// However, since for now constructing a `ParseSess` sorta requires `config` from this crate,
+// these tests will need to live here in the iterim.
+
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod parse {
+    #[cfg(test)]
+    mod tests;
+    #[cfg(test)]
+    mod lexer {
+        #[cfg(test)]
+        mod tests;
+    }
+}
+#[cfg(test)]
+mod tokenstream {
+    #[cfg(test)]
+    mod tests;
+}
+#[cfg(test)]
+mod mut_visit {
+    #[cfg(test)]
+    mod tests;
+}

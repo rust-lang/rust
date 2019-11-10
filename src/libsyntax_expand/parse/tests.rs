@@ -1,20 +1,26 @@
-use super::*;
-
-use crate::ast::{self, Name, PatKind};
-use crate::attr::first_attr_value_str_by_name;
-use crate::sess::ParseSess;
-use crate::parse::{PResult, new_parser_from_source_str};
-use crate::token::Token;
-use crate::print::pprust::item_to_string;
-use crate::ptr::P;
-use crate::source_map::FilePathMapping;
-use crate::symbol::{kw, sym};
+use crate::config::process_configure_mod;
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
-use crate::tokenstream::{DelimSpan, TokenTree, TokenStream};
-use crate::with_default_globals;
-use syntax_pos::{Span, BytePos, Pos};
+
+use rustc_parse::new_parser_from_source_str;
+use syntax::ast::{self, Name, PatKind};
+use syntax::attr::first_attr_value_str_by_name;
+use syntax::sess::ParseSess;
+use syntax::token::{self, Token};
+use syntax::print::pprust::item_to_string;
+use syntax::ptr::P;
+use syntax::source_map::FilePathMapping;
+use syntax::symbol::{kw, sym};
+use syntax::tokenstream::{DelimSpan, TokenTree, TokenStream};
+use syntax::visit;
+use syntax::with_default_globals;
+use syntax_pos::{Span, BytePos, Pos, FileName};
+use errors::PResult;
 
 use std::path::PathBuf;
+
+fn sess() -> ParseSess {
+    ParseSess::new(FilePathMapping::empty(), process_configure_mod)
+}
 
 /// Parses an item.
 ///
@@ -32,18 +38,12 @@ fn sp(a: u32, b: u32) -> Span {
 
 /// Parses a string, return an expression.
 fn string_to_expr(source_str : String) -> P<ast::Expr> {
-    let ps = ParseSess::new(FilePathMapping::empty());
-    with_error_checking_parse(source_str, &ps, |p| {
-        p.parse_expr()
-    })
+    with_error_checking_parse(source_str, &sess(), |p| p.parse_expr())
 }
 
 /// Parses a string, returns an item.
 fn string_to_item(source_str : String) -> Option<P<ast::Item>> {
-    let ps = ParseSess::new(FilePathMapping::empty());
-    with_error_checking_parse(source_str, &ps, |p| {
-        p.parse_item()
-    })
+    with_error_checking_parse(source_str, &sess(), |p| p.parse_item())
 }
 
 #[should_panic]
@@ -169,20 +169,20 @@ fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
     struct PatIdentVisitor {
         spans: Vec<Span>
     }
-    impl<'a> crate::visit::Visitor<'a> for PatIdentVisitor {
+    impl<'a> visit::Visitor<'a> for PatIdentVisitor {
         fn visit_pat(&mut self, p: &'a ast::Pat) {
             match p.kind {
                 PatKind::Ident(_ , ref ident, _) => {
                     self.spans.push(ident.span.clone());
                 }
                 _ => {
-                    crate::visit::walk_pat(self, p);
+                    visit::walk_pat(self, p);
                 }
             }
         }
     }
     let mut v = PatIdentVisitor { spans: Vec::new() };
-    crate::visit::walk_item(&mut v, &item);
+    visit::walk_item(&mut v, &item);
     return v.spans;
 }
 
@@ -233,7 +233,7 @@ let mut fflags: c_int = wb();
 
 #[test] fn crlf_doc_comments() {
     with_default_globals(|| {
-        let sess = ParseSess::new(FilePathMapping::empty());
+        let sess = sess();
 
         let name_1 = FileName::Custom("crlf_source_1".to_string());
         let source = "/// doc comment\r\nfn foo() {}".to_string();
@@ -268,7 +268,7 @@ fn ttdelim_span() {
     }
 
     with_default_globals(|| {
-        let sess = ParseSess::new(FilePathMapping::empty());
+        let sess = sess();
         let expr = parse_expr_from_source_str(PathBuf::from("foo").into(),
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
@@ -292,11 +292,10 @@ fn ttdelim_span() {
 #[test]
 fn out_of_line_mod() {
     with_default_globals(|| {
-        let sess = ParseSess::new(FilePathMapping::empty());
         let item = parse_item_from_source_str(
             PathBuf::from("foo").into(),
             "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
-            &sess,
+            &sess(),
         ).unwrap().unwrap();
 
         if let ast::ItemKind::Mod(ref m) = item.kind {

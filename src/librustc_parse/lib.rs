@@ -1,11 +1,12 @@
 //! The main parser interface.
 
-use crate::ast;
-use crate::parse::parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
-use crate::token::{self, Nonterminal};
-use crate::tokenstream::{self, TokenStream, TokenTree};
-use crate::print::pprust;
-use crate::sess::ParseSess;
+#![feature(crate_visibility_modifier)]
+
+use syntax::ast;
+use syntax::print::pprust;
+use syntax::sess::ParseSess;
+use syntax::token::{self, Nonterminal};
+use syntax::tokenstream::{self, TokenStream, TokenTree};
 
 use errors::{PResult, FatalError, Level, Diagnostic};
 use rustc_data_structures::sync::Lrc;
@@ -17,12 +18,14 @@ use std::str;
 
 use log::info;
 
-#[cfg(test)]
-mod tests;
+pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 #[macro_use]
 pub mod parser;
+use parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
 pub mod lexer;
+pub mod validate_attr;
+pub mod error_codes;
 
 #[derive(Clone)]
 pub struct Directory<'a> {

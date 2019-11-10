@@ -11,24 +11,26 @@ mod generics;
 mod diagnostics;
 use diagnostics::Error;
 
-use crate::ast::{
+use crate::{Directory, DirectoryOwnership};
+use crate::lexer::UnmatchedBrace;
+
+use syntax::ast::{
     self, Abi, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
     IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
 };
-use crate::parse::{Directory, DirectoryOwnership};
-use crate::parse::lexer::UnmatchedBrace;
-use crate::util::comments::{doc_comment_style, strip_doc_comment_decoration};
-use crate::token::{self, Token, TokenKind, DelimToken};
-use crate::print::pprust;
-use crate::ptr::P;
-use crate::sess::ParseSess;
-use crate::source_map::respan;
-use crate::symbol::{kw, sym, Symbol};
-use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
-use crate::ThinVec;
 
-use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
+use syntax::print::pprust;
+use syntax::ptr::P;
+use syntax::token::{self, Token, TokenKind, DelimToken};
+use syntax::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
+use syntax::sess::ParseSess;
+use syntax::source_map::respan;
+use syntax::struct_span_err;
+use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
+use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
+use rustc_data_structures::thin_vec::ThinVec;
+use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use log::debug;
 
 use std::borrow::Cow;

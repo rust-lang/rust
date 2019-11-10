@@ -11,15 +11,12 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-bitflags = "1.0"
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 log = "0.4"
-scoped-tls = "1.0"
-lazy_static = "1.0.0"
 syntax_pos = { path = "../libsyntax_pos" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_index = { path = "../librustc_index" }
 rustc_lexer = { path = "../librustc_lexer" }
+rustc_parse = { path = "../librustc_parse" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }

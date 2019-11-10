@@ -1,10 +1,10 @@
 use super::{Parser, TokenType};
-
-use crate::{maybe_whole, ThinVec};
-use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
-use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
-use crate::token::{self, Token};
-use crate::source_map::{Span, BytePos};
+use crate::maybe_whole;
+use syntax::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
+use syntax::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
+use syntax::ThinVec;
+use syntax::token::{self, Token};
+use syntax::source_map::{Span, BytePos};
 use syntax_pos::symbol::{kw, sym};
 
 use std::mem;

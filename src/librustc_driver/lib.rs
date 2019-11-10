@@ -63,7 +63,6 @@ use std::time::Instant;
 use syntax::ast;
 use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
-use syntax::parse;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, FileName};
 
@@ -1062,14 +1061,16 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 }
 
 fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
-    match *input {
-        Input::File(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
+    match input {
+        Input::File(ifile) => {
+            rustc_parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
         }
-        Input::Str { ref name, ref input } => {
-            parse::parse_crate_attrs_from_source_str(name.clone(),
-                                                     input.clone(),
-                                                     &sess.parse_sess)
+        Input::Str { name, input } => {
+            rustc_parse::parse_crate_attrs_from_source_str(
+                name.clone(),
+                input.clone(),
+                &sess.parse_sess,
+            )
         }
     }
 }

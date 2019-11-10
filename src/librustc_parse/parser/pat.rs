@@ -1,14 +1,13 @@
 use super::{Parser, PathStyle};
-
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use crate::ptr::P;
-use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
-use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
-use crate::mut_visit::{noop_visit_pat, noop_visit_mac, MutVisitor};
-use crate::token;
-use crate::print::pprust;
-use crate::source_map::{respan, Span, Spanned};
-use crate::ThinVec;
+use syntax::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
+use syntax::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
+use syntax::mut_visit::{noop_visit_pat, noop_visit_mac, MutVisitor};
+use syntax::ptr::P;
+use syntax::print::pprust;
+use syntax::ThinVec;
+use syntax::token;
+use syntax::source_map::{respan, Span, Spanned};
 use syntax_pos::symbol::{kw, sym};
 use errors::{PResult, Applicability, DiagnosticBuilder};
 

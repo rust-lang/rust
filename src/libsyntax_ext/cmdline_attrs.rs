@@ -2,7 +2,6 @@
 
 use syntax::ast::{self, AttrItem, AttrStyle};
 use syntax::attr::mk_attr;
-use syntax::parse;
 use syntax::token;
 use syntax::sess::ParseSess;
 use syntax_expand::panictry;
@@ -10,7 +9,7 @@ use syntax_pos::FileName;
 
 pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {
     for raw_attr in attrs {
-        let mut parser = parse::new_parser_from_source_str(
+        let mut parser = rustc_parse::new_parser_from_source_str(
             parse_sess,
             FileName::cli_crate_attr_source_code(&raw_attr),
             raw_attr.clone(),

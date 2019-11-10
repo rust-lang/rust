@@ -3,16 +3,18 @@ use super::expr::LhsExpr;
 use super::path::PathStyle;
 use super::pat::GateOr;
 use super::diagnostics::Error;
+use crate::maybe_whole;
+use crate::DirectoryOwnership;
 
-use crate::ptr::P;
-use crate::{maybe_whole, ThinVec};
-use crate::ast::{self, DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
-use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
-use crate::parse::DirectoryOwnership;
-use crate::util::classify;
-use crate::token;
-use crate::source_map::{respan, Span};
-use crate::symbol::{kw, sym};
+use syntax::ThinVec;
+use syntax::ptr::P;
+use syntax::ast;
+use syntax::ast::{DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
+use syntax::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
+use syntax::util::classify;
+use syntax::token;
+use syntax::source_map::{respan, Span};
+use syntax::symbol::{kw, sym};
 
 use std::mem;
 use errors::{PResult, Applicability};

@@ -1,10 +1,9 @@
-use super::*;
-
-use crate::ast::{self, Ident};
 use crate::tests::{string_to_crate, matches_codepattern};
-use crate::print::pprust;
-use crate::mut_visit;
-use crate::with_default_globals;
+
+use syntax::ast::{self, Ident};
+use syntax::print::pprust;
+use syntax::mut_visit::{self, MutVisitor};
+use syntax::with_default_globals;
 
 // This version doesn't care about getting comments or doc-strings in.
 fn fake_print_crate(s: &mut pprust::State<'_>,

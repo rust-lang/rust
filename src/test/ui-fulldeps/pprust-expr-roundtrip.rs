@@ -21,21 +21,24 @@
 
 extern crate rustc_data_structures;
 extern crate syntax;
+extern crate syntax_expand;
+extern crate rustc_parse;
 
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_parse::new_parser_from_source_str;
 use syntax::ast::*;
 use syntax::sess::ParseSess;
 use syntax::source_map::{Spanned, DUMMY_SP, FileName};
 use syntax::source_map::FilePathMapping;
 use syntax::mut_visit::{self, MutVisitor, visit_clobber};
-use syntax::parse;
 use syntax::print::pprust;
 use syntax::ptr::P;
+use syntax_expand::config::process_configure_mod;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
 
-    let mut p = parse::new_parser_from_source_str(
+    let mut p = new_parser_from_source_str(
         ps,
         FileName::Custom(src_as_string.clone()),
         src_as_string,
@@ -202,7 +205,7 @@ fn main() {
 }
 
 fn run() {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(FilePathMapping::empty(), process_configure_mod);
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

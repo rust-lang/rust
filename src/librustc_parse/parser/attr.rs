@@ -1,12 +1,10 @@
 use super::{SeqSep, Parser, TokenType, PathStyle};
-use crate::attr;
-use crate::ast;
-use crate::util::comments;
-use crate::token::{self, Nonterminal, DelimToken};
-use crate::tokenstream::{TokenStream, TokenTree};
-use crate::source_map::Span;
-
-use syntax_pos::Symbol;
+use syntax::attr;
+use syntax::ast;
+use syntax::util::comments;
+use syntax::token::{self, Nonterminal, DelimToken};
+use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax_pos::{Span, Symbol};
 use errors::PResult;
 
 use log::debug;
@@ -158,12 +156,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok(ast::Attribute {
-            kind: ast::AttrKind::Normal(item),
-            id: attr::mk_attr_id(),
-            style,
-            span,
-        })
+        Ok(attr::mk_attr_from_item(style, item, span))
     }
 
     /// Parses an inner part of an attribute (the path and following tokens).
@@ -268,7 +261,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
-    crate fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
+    pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         let cfg_predicate = self.parse_meta_item()?;

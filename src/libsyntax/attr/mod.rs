@@ -14,16 +14,12 @@ use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned};
-use crate::parse;
 use crate::token::{self, Token};
 use crate::ptr::P;
-use crate::sess::ParseSess;
 use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use crate::GLOBALS;
-
-use errors::PResult;
 
 use log::debug;
 use syntax_pos::Span;
@@ -281,7 +277,7 @@ impl MetaItem {
 }
 
 impl AttrItem {
-    crate fn meta(&self, span: Span) -> Option<MetaItem> {
+    pub fn meta(&self, span: Span) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             path: self.path.clone(),
@@ -328,21 +324,6 @@ impl Attribute {
                 Some(mk_name_value_item_str(Ident::new(sym::doc, self.span), comment, self.span)),
         }
     }
-
-    pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
-        match self.kind {
-            AttrKind::Normal(ref item) => {
-                Ok(MetaItem {
-                    path: item.path.clone(),
-                    kind: parse::parse_in_attr(sess, self, |parser| parser.parse_meta_item_kind())?,
-                    span: self.span,
-                })
-            }
-            AttrKind::DocComment(comment) => {
-                Ok(mk_name_value_item_str(Ident::new(sym::doc, self.span), comment, self.span))
-            }
-        }
-    }
 }
 
 /* Constructors */
@@ -382,8 +363,12 @@ crate fn mk_attr_id() -> AttrId {
 }
 
 pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
+    mk_attr_from_item(style, AttrItem { path, tokens }, span)
+}
+
+pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
     Attribute {
-        kind: AttrKind::Normal(AttrItem { path, tokens }),
+        kind: AttrKind::Normal(item),
         id: mk_attr_id(),
         style,
         span,

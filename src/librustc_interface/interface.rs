@@ -11,14 +11,15 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_parse::new_parser_from_source_str;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
-use syntax::{self, parse};
 use syntax::ast::{self, MetaItemKind};
 use syntax::token;
 use syntax::source_map::{FileName, FileLoader, SourceMap};
 use syntax::sess::ParseSess;
+use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
@@ -64,9 +65,9 @@ impl Compiler {
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     syntax::with_default_globals(move || {
         let cfg = cfgspecs.into_iter().map(|s| {
-            let sess = ParseSess::with_silent_emitter();
+            let sess = ParseSess::with_silent_emitter(process_configure_mod);
             let filename = FileName::cfg_spec_source_code(&s);
-            let mut parser = parse::new_parser_from_source_str(&sess, filename, s.to_string());
+            let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
             macro_rules! error {($reason: expr) => {
                 early_error(ErrorOutputType::default(),

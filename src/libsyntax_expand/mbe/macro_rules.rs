@@ -8,30 +8,30 @@ use crate::mbe::macro_parser::{Error, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
 use crate::mbe::transcribe::transcribe;
 
+use rustc_parse::parser::Parser;
+use rustc_parse::Directory;
 use syntax::ast;
 use syntax::attr::{self, TransparencyError};
 use syntax::edition::Edition;
 use syntax::feature_gate::Features;
-use syntax::parse::parser::Parser;
-use syntax::parse::Directory;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::token::{self, NtTT, Token, TokenKind::*};
 use syntax::tokenstream::{DelimSpan, TokenStream};
-
-use errors::{DiagnosticBuilder, FatalError};
-use log::debug;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::Span;
 
+use errors::{DiagnosticBuilder, FatalError};
+use log::debug;
+
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
 
 use errors::Applicability;
-use rustc_data_structures::sync::Lrc;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \

@@ -36,6 +36,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
 use syntax::symbol::{Symbol, sym};
 use syntax::{self, ast, attr};
+use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition::Edition;
 #[cfg(not(parallel_compiler))]
 use std::{thread, panic};
@@ -49,6 +50,7 @@ pub fn diagnostics_registry() -> Registry {
     // FIXME: need to figure out a way to get these back in here
     // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
     all_errors.extend_from_slice(&rustc_metadata::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_parse::error_codes::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_passes::error_codes::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_plugin::error_codes::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_mir::error_codes::DIAGNOSTICS);
@@ -103,6 +105,7 @@ pub fn create_session(
         source_map.clone(),
         diagnostic_output,
         lint_caps,
+        process_configure_mod,
     );
 
     let codegen_backend = get_codegen_backend(&sess);

@@ -1,16 +1,15 @@
-use crate::ast;
-use crate::parse::source_file_to_stream;
-use crate::parse::new_parser_from_source_str;
-use crate::parse::parser::Parser;
-use crate::sess::ParseSess;
-use crate::source_map::{SourceMap, FilePathMapping};
-use crate::tokenstream::TokenStream;
-use crate::with_default_globals;
+use crate::config::process_configure_mod;
+use rustc_parse::{source_file_to_stream, new_parser_from_source_str, parser::Parser};
+use syntax::ast;
+use syntax::tokenstream::TokenStream;
+use syntax::sess::ParseSess;
+use syntax::source_map::{SourceMap, FilePathMapping};
+use syntax::with_default_globals;
+use syntax_pos::{BytePos, Span, MultiSpan};
 
 use errors::emitter::EmitterWriter;
 use errors::{PResult, Handler};
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::{BytePos, Span, MultiSpan};
 
 use std::io;
 use std::io::prelude::*;
@@ -35,7 +34,7 @@ crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F)
 
 /// Maps a string to tts, using a made-up filename.
 crate fn string_to_stream(source_str: String) -> TokenStream {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(FilePathMapping::empty(), process_configure_mod);
     source_file_to_stream(
         &ps,
         ps.source_map().new_source_file(PathBuf::from("bogofile").into(),
@@ -45,7 +44,7 @@ crate fn string_to_stream(source_str: String) -> TokenStream {
 
 /// Parses a string, returns a crate.
 crate fn string_to_crate(source_str : String) -> ast::Crate {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(FilePathMapping::empty(), process_configure_mod);
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_crate_mod()
     })

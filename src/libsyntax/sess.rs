@@ -1,7 +1,7 @@
 //! Contains `ParseSess` which holds state living beyond what one `Parser` might.
 //! It also serves as an input to the parser itself.
 
-use crate::ast::{CrateConfig, NodeId};
+use crate::ast::{CrateConfig, NodeId, Attribute};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
@@ -71,14 +71,14 @@ impl GatedSpans {
 /// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: Handler,
-    crate unstable_features: UnstableFeatures,
+    pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub edition: Edition,
     pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// Used to determine and report recursive module inclusions.
-    pub(super) included_mod_stack: Lock<Vec<PathBuf>>,
+    pub included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the
@@ -89,10 +89,22 @@ pub struct ParseSess {
     pub gated_spans: GatedSpans,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
     pub reached_eof: Lock<bool>,
+    /// Process the potential `cfg` attributes on a module.
+    /// Also determine if the module should be included in this configuration.
+    ///
+    /// HACK(Centril): This is used to break a cyclic dependency between
+    /// the parser and cfg-stripping as defined in `syntax_expand::config`.
+    /// The dependency edge from the parser comes from `parse_item_mod`.
+    /// A principled solution to this hack would be to implement [#64197].
+    ///
+    /// [#64197]: https://github.com/rust-lang/rust/issues/64197
+    pub process_cfg_mod: ProcessCfgMod,
 }
 
+pub type ProcessCfgMod = fn(&ParseSess, bool, &[Attribute]) -> (bool, Vec<Attribute>);
+
 impl ParseSess {
-    pub fn new(file_path_mapping: FilePathMapping) -> Self {
+    pub fn new(file_path_mapping: FilePathMapping, process_cfg_mod: ProcessCfgMod) -> Self {
         let cm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(
             ColorConfig::Auto,
@@ -100,12 +112,17 @@ impl ParseSess {
             None,
             Some(cm.clone()),
         );
-        ParseSess::with_span_handler(handler, cm)
+        ParseSess::with_span_handler(handler, cm, process_cfg_mod)
     }
 
-    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
+    pub fn with_span_handler(
+        handler: Handler,
+        source_map: Lrc<SourceMap>,
+        process_cfg_mod: ProcessCfgMod,
+    ) -> Self {
         Self {
             span_diagnostic: handler,
+            process_cfg_mod,
             unstable_features: UnstableFeatures::from_environment(),
             config: FxHashSet::default(),
             edition: ExpnId::root().expn_data().edition,
@@ -121,10 +138,10 @@ impl ParseSess {
         }
     }
 
-    pub fn with_silent_emitter() -> Self {
+    pub fn with_silent_emitter(process_cfg_mod: ProcessCfgMod) -> Self {
         let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let handler = Handler::with_emitter(false, None, Box::new(SilentEmitter));
-        ParseSess::with_span_handler(handler, cm)
+        ParseSess::with_span_handler(handler, cm, process_cfg_mod)
     }
 
     #[inline]

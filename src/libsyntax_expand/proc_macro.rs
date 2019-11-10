@@ -4,7 +4,6 @@ use crate::proc_macro_server;
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::errors::{Applicability, FatalError};
-use syntax::parse;
 use syntax::symbol::sym;
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
@@ -135,7 +134,11 @@ impl MultiItemModifier for ProcMacroDerive {
         let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
         let msg = "proc-macro derive produced unparseable tokens";
 
-        let mut parser = parse::stream_to_parser(ecx.parse_sess, stream, Some("proc-macro derive"));
+        let mut parser = rustc_parse::stream_to_parser(
+            ecx.parse_sess,
+            stream,
+            Some("proc-macro derive"),
+        );
         let mut items = vec![];
 
         loop {
@@ -200,7 +203,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             if attr.get_normal_item().tokens.is_empty() {
                 return Ok(Vec::new());
             }
-            parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())
+            rustc_parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())
         };
 
         match parse_derive_paths(attr) {

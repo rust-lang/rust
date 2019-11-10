@@ -76,9 +76,9 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
+use rustc_parse::Directory;
+use rustc_parse::parser::{Parser, PathStyle};
 use syntax::ast::{Ident, Name};
-use syntax::parse::Directory;
-use syntax::parse::parser::{Parser, PathStyle};
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
@@ -652,7 +652,7 @@ pub(super) fn parse(
         directory,
         recurse_into_modules,
         true,
-        syntax::MACRO_ARGUMENTS,
+        rustc_parse::MACRO_ARGUMENTS,
     );
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which

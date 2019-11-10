@@ -3,18 +3,14 @@ use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
-use crate::ast::{
-    self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
-    PatKind, RangeEnd, VariantData,
-};
-use crate::attr::{self, check_builtin_attribute};
+use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use crate::attr;
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
-use crate::token;
 use crate::sess::ParseSess;
 use crate::symbol::{Symbol, sym};
-use crate::tokenstream::TokenTree;
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
@@ -330,19 +326,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         // Check feature gates for built-in attributes.
         if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
             gate_feature_fn!(self, has_feature, attr.span, name, descr, GateStrength::Hard);
-        }
-        // Check input tokens for built-in and key-value attributes.
-        match attr_info {
-            // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-            Some((name, _, template, _)) if name != sym::rustc_dummy =>
-                check_builtin_attribute(self.parse_sess, attr, name, template),
-            _ => if let Some(TokenTree::Token(token)) =
-                    attr.get_normal_item().tokens.trees().next() {
-                if token == token::Eq {
-                    // All key-value attributes are restricted to meta-item syntax.
-                    attr.parse_meta(self.parse_sess).map_err(|mut err| err.emit()).ok();
-                }
-            }
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.check_name(sym::doc) {

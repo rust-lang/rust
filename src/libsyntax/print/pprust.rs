@@ -321,7 +321,7 @@ fn token_to_string_ext(token: &Token, convert_dollar_crate: bool) -> String {
     token_kind_to_string_ext(&token.kind, convert_dollar_crate)
 }
 
-crate fn nonterminal_to_string(nt: &Nonterminal) -> String {
+pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
     match *nt {
         token::NtExpr(ref e)        => expr_to_string(e),
         token::NtMeta(ref e)        => attr_item_to_string(e),
@@ -939,8 +939,11 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
     }
 
-    crate fn print_mod(&mut self, _mod: &ast::Mod,
-                       attrs: &[ast::Attribute]) {
+    pub fn print_mod(
+        &mut self,
+        _mod: &ast::Mod,
+        attrs: &[ast::Attribute],
+    ) {
         self.print_inner_attributes(attrs);
         for item in &_mod.items {
             self.print_item(item);
@@ -955,7 +958,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_opt_lifetime(&mut self, lifetime: &Option<ast::Lifetime>) {
+    pub fn print_opt_lifetime(&mut self, lifetime: &Option<ast::Lifetime>) {
         if let Some(lt) = *lifetime {
             self.print_lifetime(lt);
             self.nbsp();
@@ -970,7 +973,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_type(&mut self, ty: &ast::Ty) {
+    pub fn print_type(&mut self, ty: &ast::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
         match ty.kind {
@@ -1995,7 +1998,7 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
-    crate fn print_expr(&mut self, expr: &ast::Expr) {
+    pub fn print_expr(&mut self, expr: &ast::Expr) {
         self.print_expr_outer_attr_style(expr, true)
     }
 
@@ -2332,7 +2335,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_usize(&mut self, i: usize) {
+    pub fn print_usize(&mut self, i: usize) {
         self.s.word(i.to_string())
     }
 
@@ -2601,7 +2604,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_type_bounds(&mut self, prefix: &'static str, bounds: &[ast::GenericBound]) {
+    pub fn print_type_bounds(&mut self, prefix: &'static str, bounds: &[ast::GenericBound]) {
         if !bounds.is_empty() {
             self.s.word(prefix);
             let mut first = true;
@@ -2760,7 +2763,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_mutability(&mut self, mutbl: ast::Mutability) {
+    pub fn print_mutability(&mut self, mutbl: ast::Mutability) {
         match mutbl {
             ast::Mutability::Mutable => self.word_nbsp("mut"),
             ast::Mutability::Immutable => {},
