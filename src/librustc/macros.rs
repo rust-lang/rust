@@ -166,23 +166,6 @@ macro_rules! impl_stable_hash_for {
     };
 }
 
-#[macro_export]
-macro_rules! impl_stable_hash_for_spanned {
-    ($T:path) => (
-
-        impl HashStable<StableHashingContext<'a>> for ::syntax::source_map::Spanned<$T>
-        {
-            #[inline]
-            fn hash_stable(&self,
-                           hcx: &mut StableHashingContext<'a>,
-                           hasher: &mut StableHasher) {
-                self.node.hash_stable(hcx, hasher);
-                self.span.hash_stable(hcx, hasher);
-            }
-        }
-    );
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Lift and TypeFoldable macros
 //
