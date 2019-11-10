@@ -18,7 +18,12 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 impl<'ctx> rustc_target::StableHashingContextLike for StableHashingContext<'ctx> {}
 
-impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, ident });
+impl<'a> HashStable<StableHashingContext<'a>> for ast::Lifetime {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.id.hash_stable(hcx, hasher);
+        self.ident.hash_stable(hcx, hasher);
+    }
+}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
