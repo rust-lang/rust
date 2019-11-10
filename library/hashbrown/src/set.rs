@@ -700,11 +700,7 @@ where
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
     pub fn is_subset(&self, other: &Self) -> bool {
-        if self.len() <= other.len() {
-            self.iter().all(|v| other.contains(v))
-        } else {
-            false
-        }
+        self.len() <= other.len() && self.iter().all(|v| other.contains(v))
     }
 
     /// Returns `true` if the set is a superset of another,
