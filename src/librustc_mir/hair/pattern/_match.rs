@@ -810,18 +810,19 @@ impl<'tcx> Constructor<'tcx> {
                                 adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
                             let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
                             match (is_visible, is_non_exhaustive, is_uninhabited) {
-                                // Treat all uninhabited types in non-exhaustive variants as `TyErr`.
+                                // Treat all uninhabited types in non-exhaustive variants as
+                                // `TyErr`.
                                 (_, true, true) => cx.tcx.types.err,
-                                // Treat all non-visible fields as `TyErr`. They can't appear in any
-                                // other pattern from this match (because they are private), so their
-                                // type does not matter - but we don't want to know they are
+                                // Treat all non-visible fields as `TyErr`. They can't appear in
+                                // any other pattern from this match (because they are private), so
+                                // their type does not matter - but we don't want to know they are
                                 // uninhabited.
                                 (false, ..) => cx.tcx.types.err,
                                 (true, ..) => {
                                     let ty = field.ty(cx.tcx, substs);
                                     match ty.kind {
-                                        // If the field type returned is an array of an unknown size
-                                        // return an TyErr.
+                                        // If the field type returned is an array of an unknown
+                                        // size return an TyErr.
                                         ty::Array(_, len)
                                             if len
                                                 .try_eval_usize(cx.tcx, cx.param_env)
