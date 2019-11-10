@@ -598,6 +598,68 @@ mod tests {
     }
 
     #[test]
+    fn completes_std_prelude_if_core_is_defined() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                fn foo() { let x: <|> }
+
+                //- /core/lib.rs
+                #[prelude_import]
+                use prelude::*;
+
+                mod prelude {
+                    struct Option;
+                }
+
+                //- /std/lib.rs
+                #[prelude_import]
+                use prelude::*;
+
+                mod prelude {
+                    struct String;
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "String",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "String",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "core",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "core",
+                kind: Module,
+            },
+            CompletionItem {
+                label: "foo()",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "foo()$0",
+                kind: Function,
+                lookup: "foo",
+                detail: "fn foo()",
+            },
+            CompletionItem {
+                label: "std",
+                source_range: [18; 18),
+                delete: [18; 18),
+                insert: "std",
+                kind: Module,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn completes_macros_as_value() {
         assert_debug_snapshot!(
             do_reference_completion(

@@ -199,6 +199,7 @@ impl ProjectWorkspace {
                     }
                 }
 
+                let libcore = sysroot.core().and_then(|it| sysroot_crates.get(&it).copied());
                 let libstd = sysroot.std().and_then(|it| sysroot_crates.get(&it).copied());
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
@@ -226,7 +227,7 @@ impl ProjectWorkspace {
                         }
                     }
 
-                    // Set deps to the std and to the lib target of the current package
+                    // Set deps to the core, std and to the lib target of the current package
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
                         if let Some(to) = lib_tgt {
                             if to != from {
@@ -238,6 +239,13 @@ impl ProjectWorkspace {
                                         pkg.name(&cargo)
                                     )
                                 }
+                            }
+                        }
+                        // core is added as a dependency before std in order to
+                        // mimic rustcs dependency order
+                        if let Some(core) = libcore {
+                            if let Err(_) = crate_graph.add_dep(from, "core".into(), core) {
+                                log::error!("cyclic dependency on core for {}", pkg.name(&cargo))
                             }
                         }
                         if let Some(std) = libstd {

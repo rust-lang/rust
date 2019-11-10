@@ -27,6 +27,10 @@ struct SysrootCrateData {
 }
 
 impl Sysroot {
+    pub fn core(&self) -> Option<SysrootCrate> {
+        self.by_name("core")
+    }
+
     pub fn std(&self) -> Option<SysrootCrate> {
         self.by_name("std")
     }
