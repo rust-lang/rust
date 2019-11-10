@@ -371,6 +371,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
             width: CountImplied,
             width_span: None,
             ty: "",
+            ty_span: None,
         };
         if !parser.eat(&token::Comma) {
             return (
