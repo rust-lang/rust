@@ -248,7 +248,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
 pub enum PanicInfo<O> {
     Panic {
         msg: Symbol,

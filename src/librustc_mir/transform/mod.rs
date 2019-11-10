@@ -18,6 +18,7 @@ pub mod cleanup_post_borrowck;
 pub mod check_consts;
 pub mod check_unsafety;
 pub mod simplify_branches;
+pub mod simplify_try;
 pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
@@ -305,6 +306,9 @@ fn run_optimization_passes<'tcx>(
         &copy_prop::CopyPropagation,
         &simplify_branches::SimplifyBranches::new("after-copy-prop"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
+        &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
+        &simplify_try::SimplifyArmIdentity,
+        &simplify_try::SimplifyBranchSame,
         &simplify::SimplifyCfg::new("final"),
         &simplify::SimplifyLocals,
 

@@ -3709,6 +3709,7 @@ dependencies = [
  "arena",
  "either",
  "graphviz",
+ "itertools 0.8.0",
  "log",
  "log_settings",
  "polonius-engine",
