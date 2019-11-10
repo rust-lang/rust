@@ -245,16 +245,10 @@ impl Validator<'a, 'mir, 'tcx> {
 
         check_short_circuiting_in_const_local(self.item);
 
-        // FIXME: give a span for the loop
         if body.is_cfg_cyclic() {
-            // FIXME: make this the `emit_error` impl of `ops::Loop` once the const
-            // checker is no longer run in compatability mode.
-            if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                self.tcx.sess.delay_span_bug(
-                    self.span,
-                    "complex control flow is forbidden in a const context",
-                );
-            }
+            // We can't provide a good span for the error here, but this should be caught by the
+            // HIR const-checker anyways.
+            self.check_op_spanned(ops::Loop, body.span);
         }
 
         self.visit_body(body);
@@ -565,14 +559,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                // FIXME: make this the `emit_error` impl of `ops::IfOrMatch` once the const
-                // checker is no longer run in compatability mode.
-                if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                    self.tcx.sess.delay_span_bug(
-                        self.span,
-                        "complex control flow is forbidden in a const context",
-                    );
-                }
+                self.check_op(ops::IfOrMatch);
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
