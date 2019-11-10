@@ -10,6 +10,7 @@ pub mod either;
 pub mod name;
 pub mod hygiene;
 pub mod diagnostics;
+pub mod builtin_macro;
 
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -21,6 +22,7 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
+use crate::builtin_macro::BuiltinExpander;
 
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
@@ -75,9 +77,15 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
 
+                // FIXME: Do we support expansion information in builtin macro?
+                let macro_decl = match loc.def {
+                    MacroDefId::DeclarativeMacro(it) => (it),
+                    MacroDefId::BuiltinMacro(_) => return None,
+                };
+
                 let arg_start = loc.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
                 let def_start =
-                    loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
+                    macro_decl.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
 
                 let macro_def = db.macro_def(loc.def)?;
                 let shift = macro_def.0.shift();
@@ -85,7 +93,7 @@ impl HirFileId {
                 let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
                 let arg_start = (loc.ast_id.file_id, arg_start);
-                let def_start = (loc.def.ast_id.file_id, def_start);
+                let def_start = (macro_decl.ast_id.file_id, def_start);
 
                 Some(ExpansionInfo { arg_start, def_start, macro_arg, macro_def, exp_map, shift })
             }
@@ -119,9 +127,22 @@ impl salsa::InternKey for MacroCallId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroDefId {
+pub enum MacroDefId {
+    DeclarativeMacro(DeclarativeMacro),
+    BuiltinMacro(BuiltinMacro),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DeclarativeMacro {
     pub krate: CrateId,
     pub ast_id: AstId<ast::MacroCall>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BuiltinMacro {
+    pub krate: CrateId,
+    pub ast_id: AstId<ast::MacroCall>,
+    pub expander: BuiltinExpander,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -144,7 +165,7 @@ pub struct ExpansionInfo {
     pub(crate) def_start: (HirFileId, TextUnit),
     pub(crate) shift: u32,
 
-    pub(crate) macro_def: Arc<(mbe::MacroRules, mbe::TokenMap)>,
+    pub(crate) macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     pub(crate) macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
     pub(crate) exp_map: Arc<mbe::RevTokenMap>,
 }

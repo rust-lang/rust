@@ -200,6 +200,7 @@ pub(super) struct MacroData {
     pub(super) path: Path,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
+    pub(super) builtin: bool,
 }
 
 struct RawItemsCollector {
@@ -367,7 +368,11 @@ impl RawItemsCollector {
         // FIXME: cfg_attr
         let export = m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "macro_export");
 
-        let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
+        // FIXME: cfg_attr
+        let builtin =
+            m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "rustc_builtin_macro");
+
+        let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export, builtin });
         self.push_item(current_module, attrs, RawItemKind::Macro(m));
     }
 

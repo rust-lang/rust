@@ -1,8 +1,9 @@
 //! FIXME: write short doc here
 
 use hir_expand::{
+    builtin_macro::find_builtin_macro,
     name::{self, AsName, Name},
-    HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind,
+    DeclarativeMacro, HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind,
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
@@ -688,11 +689,32 @@ where
     fn collect_macro(&mut self, mac: &raw::MacroData) {
         let ast_id = AstId::new(self.file_id, mac.ast_id);
 
+        // Case 0: builtin macros
+        if mac.builtin {
+            if let Some(name) = &mac.name {
+                let krate = self.def_collector.def_map.krate;
+                if let Some(macro_id) = find_builtin_macro(name, krate, ast_id) {
+                    self.def_collector.define_macro(
+                        self.module_id,
+                        name.clone(),
+                        macro_id,
+                        mac.export,
+                    );
+                    return;
+                }
+            }
+        }
+
         // Case 1: macro rules, define a macro in crate-global mutable scope
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
-                let macro_id = MacroDefId { ast_id, krate: self.def_collector.def_map.krate };
-                self.def_collector.define_macro(self.module_id, name.clone(), macro_id, mac.export);
+                let macro_id = DeclarativeMacro { ast_id, krate: self.def_collector.def_map.krate };
+                self.def_collector.define_macro(
+                    self.module_id,
+                    name.clone(),
+                    MacroDefId::DeclarativeMacro(macro_id),
+                    mac.export,
+                );
             }
             return;
         }

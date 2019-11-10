@@ -6,8 +6,8 @@ use crate::{
     adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::AstItemDef,
-    Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef, Module,
-    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+    Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef,
+    MacroDefId, Module, ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
 pub use hir_expand::Source;
@@ -140,10 +140,15 @@ impl HasSource for TypeAlias {
         self.id.source(db)
     }
 }
+
 impl HasSource for MacroDef {
     type Ast = ast::MacroCall;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::MacroCall> {
-        Source { file_id: self.id.ast_id.file_id(), ast: self.id.ast_id.to_node(db) }
+        let ast_id = match self.id {
+            MacroDefId::DeclarativeMacro(it) => it.ast_id,
+            MacroDefId::BuiltinMacro(it) => it.ast_id,
+        };
+        Source { file_id: ast_id.file_id(), ast: ast_id.to_node(db) }
     }
 }
 

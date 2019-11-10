@@ -9,7 +9,7 @@ use crate::{
     db::AstDatabase,
     either::Either,
     name::{AsName, Name},
-    HirFileId, HirFileIdRepr,
+    HirFileId, HirFileIdRepr, MacroDefId,
 };
 
 #[derive(Debug)]
@@ -24,7 +24,10 @@ impl Hygiene {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
-                Some(loc.def.krate)
+                match loc.def {
+                    MacroDefId::DeclarativeMacro(it) => Some(it.krate),
+                    MacroDefId::BuiltinMacro(_) => None,
+                }
             }
         };
         Hygiene { def_crate }
