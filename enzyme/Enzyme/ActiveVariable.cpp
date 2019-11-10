@@ -38,6 +38,10 @@ cl::opt<bool> printconst(
             "enzyme_printconst", cl::init(false), cl::Hidden,
             cl::desc("Print constant detection algorithm"));
 
+cl::opt<bool> nonmarkedglobals_inactive(
+            "enzyme_nonmarkedglobals_inactive", cl::init(false), cl::Hidden,
+            cl::desc("Consider all nonmarked globals to be inactive"));
+
 bool isIntASecretFloat(Value* val) {
     assert(val->getType()->isIntegerTy());
 
@@ -555,6 +559,13 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
         llvm::errs() << *(cast<Argument>(val)->getParent()) << "\n";
 	llvm::errs() << *val << "\n";
         assert(0 && "must've put arguments in constant/nonconstant");
+    }
+
+    if (auto gi = dyn_cast<GlobalVariable>(val)) {
+        if (!hasMetadata(gi, "enzyme_shadow") && nonmarkedglobals_inactive) {
+            constants.insert(val);
+            return true;
+        }
     }
     
     if (auto inst = dyn_cast<Instruction>(val)) {

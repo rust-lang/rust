@@ -59,7 +59,6 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
             "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
             cl::desc("Consider loads of nonmarked globals to be inactive"));
 
-
 // Computes a map of LoadInst -> boolean for a function indicating whether that load is "uncacheable".
 //   A load is considered "uncacheable" if the data at the loaded memory location can be modified after
 //   the load instruction.
@@ -659,7 +658,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
               for(unsigned i=0;i<op->getNumArgOperands(); i++) {
                 args.push_back(op->getArgOperand(i));
-
+                if (isa<LoadInst>(op->getArgOperand(i)))
+                llvm::errs() << "next: " << *op->getArgOperand(i) << " vconst: " << gutils->isConstantValue(op->getArgOperand(i)) << " iconst:" << gutils->isConstantInstruction(cast<LoadInst>(op->getArgOperand(i))) << "\n";
                 if (gutils->isConstantValue(op->getArgOperand(i)) && !called->empty()) {
                     subconstant_args.insert(i);
                     argsInverted.push_back(DIFFE_TYPE::CONSTANT);
