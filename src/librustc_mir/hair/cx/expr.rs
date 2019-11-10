@@ -628,6 +628,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             let cast = if cx.tables().is_coercion_cast(source.hir_id) {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
+            } else if cx.tables().expr_ty(source).is_region_ptr() {
+                // Special cased so that we can type check that the element
+                // type of the source matches the pointed to type of the
+                // destination.
+                ExprKind::Pointer { source: source.to_ref(), cast: PointerCast::ArrayToPointer }
             } else {
                 // check whether this is casting an enum variant discriminant
                 // to prevent cycles, we refer to the discriminant initializer

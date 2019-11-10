@@ -636,6 +636,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
 
+                // Coerce to a raw pointer so that we generate AddressOf in MIR.
+                let array_ptr_type = fcx.tcx.mk_ptr(m_expr);
+                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No)
+                    .unwrap_or_else(|_| bug!(
+                        "could not cast from reference to array to pointer to array ({:?} to {:?})",
+                        self.expr_ty,
+                        array_ptr_type,
+                    ));
+
                 // this will report a type mismatch if needed
                 fcx.demand_eqtype(self.span, ety, m_cast.ty);
                 return Ok(CastKind::ArrayPtrCast);

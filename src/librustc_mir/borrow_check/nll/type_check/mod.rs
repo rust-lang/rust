@@ -36,6 +36,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::{PointerCast};
+use rustc::ty::cast::CastTy;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef, GenericArgKind, UserSubsts};
 use rustc::ty::{
@@ -2177,72 +2178,125 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 ty_from,
                                 ty_to,
                                 terr
+                            );
+                        }
+                    }
+
+                    CastKind::Pointer(PointerCast::ArrayToPointer)  => {
+                        let ty_from = op.ty(body, tcx);
+
+                        let opt_ty_elem = match ty_from.kind {
+                            ty::RawPtr(
+                                ty::TypeAndMut { mutbl: hir::MutImmutable, ty: array_ty }
+                            ) => {
+                                match array_ty.kind {
+                                    ty::Array(ty_elem, _) => Some(ty_elem),
+                                    _ => None,
+                                }
+                            }
+                            _ => None,
+                        };
+
+                        let ty_elem = match opt_ty_elem {
+                            Some(ty_elem) => ty_elem,
+                            None => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "ArrayToPointer cast from unexpected type {:?}",
+                                    ty_from,
+                                );
+                                return;
+                            }
+                        };
+
+                        let ty_to = match ty.kind {
+                            ty::RawPtr(
+                                ty::TypeAndMut { mutbl: hir::MutImmutable, ty: ty_to }
+                            ) => {
+                                ty_to
+                            }
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "ArrayToPointer cast to unexpected type {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+
+                        if let Err(terr) = self.sub_types(
+                            ty_elem,
+                            ty_to,
+                            location.to_locations(),
+                            ConstraintCategory::Cast,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "relating {:?} with {:?} yields {:?}",
+                                ty_elem,
+                                ty_to,
+                                terr
                             )
                         }
                     }
 
                     CastKind::Misc => {
-                        if let ty::Ref(_, mut ty_from, _) = op.ty(body, tcx).kind {
-                            let (mut ty_to, mutability) = if let ty::RawPtr(ty::TypeAndMut {
-                                ty: ty_to,
-                                mutbl,
-                            }) = ty.kind {
-                                (ty_to, mutbl)
-                            } else {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "invalid cast types {:?} -> {:?}",
-                                    op.ty(body, tcx),
-                                    ty,
-                                );
-                                return;
-                            };
-
-                            // Handle the direct cast from `&[T; N]` to `*const T` by unwrapping
-                            // any array we find.
-                            while let ty::Array(ty_elem_from, _) = ty_from.kind {
-                                ty_from = ty_elem_from;
-                                if let ty::Array(ty_elem_to, _) = ty_to.kind {
-                                    ty_to = ty_elem_to;
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        let cast_ty_to = CastTy::from_ty(ty);
+                        match (cast_ty_from, cast_ty_to) {
+                            (Some(CastTy::RPtr(ref_tm)), Some(CastTy::Ptr(ptr_tm))) => {
+                                if let hir::MutMutable = ptr_tm.mutbl {
+                                    if let Err(terr) = self.eq_types(
+                                        ref_tm.ty,
+                                        ptr_tm.ty,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast,
+                                    ) {
+                                        span_mirbug!(
+                                            self,
+                                            rvalue,
+                                            "equating {:?} with {:?} yields {:?}",
+                                            ref_tm.ty,
+                                            ptr_tm.ty,
+                                            terr
+                                        )
+                                    }
                                 } else {
-                                    break;
+                                    if let Err(terr) = self.sub_types(
+                                        ref_tm.ty,
+                                        ptr_tm.ty,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast,
+                                    ) {
+                                        span_mirbug!(
+                                            self,
+                                            rvalue,
+                                            "relating {:?} with {:?} yields {:?}",
+                                            ref_tm.ty,
+                                            ptr_tm.ty,
+                                            terr
+                                        )
+                                    }
                                 }
-                            }
-
-                            if let hir::MutMutable = mutability {
-                                if let Err(terr) = self.eq_types(
-                                    ty_from,
-                                    ty_to,
-                                    location.to_locations(),
-                                    ConstraintCategory::Cast,
-                                ) {
-                                    span_mirbug!(
-                                        self,
-                                        rvalue,
-                                        "equating {:?} with {:?} yields {:?}",
-                                        ty_from,
-                                        ty_to,
-                                        terr
-                                    )
-                                }
-                            } else {
-                                if let Err(terr) = self.sub_types(
-                                    ty_from,
-                                    ty_to,
-                                    location.to_locations(),
-                                    ConstraintCategory::Cast,
-                                ) {
-                                    span_mirbug!(
-                                        self,
-                                        rvalue,
-                                        "relating {:?} with {:?} yields {:?}",
-                                        ty_from,
-                                        ty_to,
-                                        terr
-                                    )
-                                }
-                            }
+                            },
+                            (None, _)
+                            | (_, None)
+                            | (_, Some(CastTy::FnPtr))
+                            | (Some(CastTy::Float), Some(CastTy::Ptr(_)))
+                            | (Some(CastTy::Ptr(_)), Some(CastTy::Float))
+                            | (Some(CastTy::FnPtr), Some(CastTy::Float)) => span_mirbug!(
+                                self,
+                                rvalue,
+                                "Invalid cast {:?} -> {:?}",
+                                ty_from,
+                                ty,
+                            ),
+                            _ => (),
                         }
                     }
                 }
