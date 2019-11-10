@@ -14,7 +14,6 @@ use syntax::symbol::sym;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
-use std::fmt;
 use std::ops::Deref;
 
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
@@ -264,7 +263,7 @@ impl Validator<'a, 'mir, 'tcx> {
     /// context. Returns `Forbidden` if an error was emitted.
     pub fn check_op_spanned<O>(&mut self, op: O, span: Span) -> CheckOpResult
     where
-        O: NonConstOp + fmt::Debug
+        O: NonConstOp
     {
         trace!("check_op: op={:?}", op);
 
@@ -287,7 +286,7 @@ impl Validator<'a, 'mir, 'tcx> {
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    pub fn check_op(&mut self, op: impl NonConstOp + fmt::Debug) -> CheckOpResult {
+    pub fn check_op(&mut self, op: impl NonConstOp) -> CheckOpResult {
         let span = self.span;
         self.check_op_spanned(op, span)
     }
