@@ -71,6 +71,12 @@ and finally provides a code example.
 `rustdoc` is using the [commonmark markdown specification]. You might be
 interested into taking a look at their website to see what's possible to do.
 
+## Lints
+
+To be sure that you didn't miss any item without documentation or code examples,
+you can take a look at the rustdoc lints [here][rustdoc-lints].
+
 [standard library]: https://doc.rust-lang.org/stable/std/index.html
 [env::args]: https://doc.rust-lang.org/stable/std/env/fn.args.html
 [commonmark markdown specification]: https://commonmark.org/
+[rustdoc-lints]: lints.md

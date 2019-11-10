@@ -5,5 +5,6 @@
 - [Command-line arguments](command-line-arguments.md)
 - [The `#[doc]` attribute](the-doc-attribute.md)
 - [Documentation tests](documentation-tests.md)
+- [Lints](lints.md)
 - [Passes](passes.md)
 - [Unstable features](unstable-features.md)
