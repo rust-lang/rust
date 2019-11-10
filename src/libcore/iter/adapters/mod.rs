@@ -235,7 +235,7 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
           T: Copy
 {}
 
-#[stable(feature = "slice_iter_adapter_as_ref", since = "1.40.0")]
+#[stable(feature = "slice_iter_adapter_as_ref", since = "1.41.0")]
 impl<'a, T> AsRef<[T]> for Copied<slice::Iter<'a, T>> {
     fn as_ref(&self) -> &[T] {
         self.it.as_ref()
@@ -381,7 +381,7 @@ unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
           T: Clone
 {}
 
-#[stable(feature = "slice_iter_adapter_as_ref", since = "1.40.0")]
+#[stable(feature = "slice_iter_adapter_as_ref", since = "1.41.0")]
 impl<'a, T> AsRef<[T]> for Cloned<slice::Iter<'a, T>> {
     fn as_ref(&self) -> &[T] {
         self.it.as_ref()
@@ -1269,7 +1269,7 @@ unsafe impl<I> TrustedLen for Enumerate<I>
     where I: TrustedLen,
 {}
 
-#[stable(feature = "slice_iter_adapter_as_ref", since = "1.40.0")]
+#[stable(feature = "slice_iter_adapter_as_ref", since = "1.41.0")]
 impl<'a, T> AsRef<[T]> for Enumerate<slice::Iter<'a, T>> {
     fn as_ref(&self) -> &[T] {
         self.iter.as_ref()

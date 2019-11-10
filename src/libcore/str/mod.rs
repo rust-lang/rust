@@ -651,13 +651,13 @@ impl<'a> Chars<'a> {
     }
 }
 
-#[stable(feature = "chars_as_ref", since = "1.40.0")]
+#[stable(feature = "chars_as_ref", since = "1.41.0")]
 impl<'a> AsRef<str> for Chars<'a> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
-#[stable(feature = "chars_as_ref", since = "1.40.0")]
+#[stable(feature = "chars_as_ref", since = "1.41.0")]
 impl<'a> AsRef<[u8]> for Chars<'a> {
     fn as_ref(&self) -> &[u8] {
         self.as_str().as_bytes()
@@ -741,13 +741,13 @@ impl<'a> CharIndices<'a> {
     }
 }
 
-#[stable(feature = "chars_as_ref", since = "1.40.0")]
+#[stable(feature = "chars_as_ref", since = "1.41.0")]
 impl<'a> AsRef<str> for CharIndices<'a> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
-#[stable(feature = "chars_as_ref", since = "1.40.0")]
+#[stable(feature = "chars_as_ref", since = "1.41.0")]
 impl<'a> AsRef<[u8]> for CharIndices<'a> {
     fn as_ref(&self) -> &[u8] {
         self.as_str().as_bytes()
@@ -885,7 +885,7 @@ unsafe impl TrustedRandomAccess for Bytes<'_> {
     fn may_have_side_effect() -> bool { false }
 }
 
-#[stable(feature = "bytes_as_ref", since = "1.40.0")]
+#[stable(feature = "bytes_as_ref", since = "1.41.0")]
 impl<'a> AsRef<[u8]> for Bytes<'a> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
