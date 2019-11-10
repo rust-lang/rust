@@ -7,20 +7,22 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `.to_digit().is_some()` on `char`s.
+    /// **What it does:** Checks for `.to_digit(..).is_some()` on `char`s.
     ///
     /// **Why is this bad?** This is a convoluted way of checking if a `char` is a digit. It's
-    /// more straight forward use the dedicated `is_digit` method.
+    /// more straight forward to use the dedicated `is_digit` method.
     ///
     /// **Example:**
     /// ```rust
-    /// # let x: char = 'x'
-    /// let is_digit = x.to_digit().is_some();
+    /// # let c = 'c';
+    /// # let radix = 10;
+    /// let is_digit = c.to_digit(10).is_some();
     /// ```
     /// can be written as:
     /// ```
-    /// # let x: char = 'x'
-    /// let is_digit = x.is_digit();
+    /// # let c = 'c';
+    /// # let radix = 10;
+    /// let is_digit = c.is_digit(radix);
     /// ```
     pub TO_DIGIT_IS_SOME,
     style,
