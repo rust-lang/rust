@@ -152,7 +152,7 @@ pub fn change_constructor_path_regular_struct() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct2 {
@@ -213,7 +213,7 @@ pub fn change_constructor_path_tuple_struct() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct2(0, 1, 2);

@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local, UnOp,
     StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo,
-    BinOp, SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock,
+    BinOp, SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock, RETURN_PLACE,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -25,6 +25,7 @@ use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
+use crate::rustc::ty::subst::Subst;
 use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
     StackPopCleanup, LocalValue, LocalState, AllocId, Frame,
@@ -269,6 +270,7 @@ struct ConstPropagator<'mir, 'tcx> {
     param_env: ParamEnv<'tcx>,
     source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    ret: Option<OpTy<'tcx, ()>>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -308,11 +310,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
         let can_const_prop = CanConstProp::check(body);
 
+        let substs = &InternalSubsts::identity_for_item(tcx, def_id);
+
+        let ret =
+            ecx
+                .layout_of(body.return_ty().subst(tcx, substs))
+                .ok()
+                // Don't bother allocating memory for ZST types which have no values.
+                .filter(|ret_layout| !ret_layout.is_zst())
+                .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack));
+
         ecx.push_stack_frame(
-            Instance::new(def_id, &InternalSubsts::identity_for_item(tcx, def_id)),
+            Instance::new(def_id, substs),
             span,
             dummy_body,
-            None,
+            ret.map(Into::into),
             StackPopCleanup::None {
                 cleanup: false,
             },
@@ -327,6 +339,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             source_scope_local_data,
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
+            ret: ret.map(Into::into),
         }
     }
 
@@ -335,6 +348,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
+        if local == RETURN_PLACE {
+            // Try to read the return place as an immediate so that if it is representable as a
+            // scalar, we can handle it as such, but otherwise, just return the value as is.
+            return match self.ret.map(|ret| self.ecx.try_read_immediate(ret)) {
+                Some(Ok(Ok(imm))) => Some(imm.into()),
+                _ => self.ret,
+            };
+        }
+
         self.ecx.access_local(self.ecx.frame(), local, None).ok()
     }
 
@@ -643,7 +665,8 @@ impl CanConstProp {
             //        lint for x != y
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
-            *val = body.local_kind(local) == LocalKind::Temp;
+            let local_kind = body.local_kind(local);
+            *val = local_kind == LocalKind::Temp || local_kind == LocalKind::ReturnPointer;
 
             if !*val {
                 trace!("local {:?} can't be propagated because it's not a temporary", local);
@@ -731,7 +754,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             }
                         } else {
                             trace!("can't propagate into {:?}", local);
-                            self.remove_const(local);
+                            if local != RETURN_PLACE {
+                                self.remove_const(local);
+                            }
                         }
                     }
                 }
