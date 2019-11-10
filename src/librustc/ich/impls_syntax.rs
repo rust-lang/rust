@@ -197,17 +197,6 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
-impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
-    kind,
-    parent -> _,
-    call_site,
-    def_site,
-    allow_internal_unstable,
-    allow_internal_unsafe,
-    local_inner_macros,
-    edition
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let SourceFile {

@@ -616,12 +616,13 @@ impl Span {
 
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
     /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
     /// The expansion that produced this expansion.
+    #[stable_hasher(ignore)]
     pub parent: ExpnId,
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
