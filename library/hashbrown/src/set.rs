@@ -517,9 +517,14 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn intersection<'a>(&'a self, other: &'a Self) -> Intersection<'a, T, S> {
+        let (smaller, larger) = if self.len() <= other.len() {
+            (self, other)
+        } else {
+            (other, self)
+        };
         Intersection {
-            iter: self.iter(),
-            other,
+            iter: smaller.iter(),
+            other: larger,
         }
     }
 
@@ -543,8 +548,13 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, T, S> {
+        let (smaller, larger) = if self.len() <= other.len() {
+            (self, other)
+        } else {
+            (other, self)
+        };
         Union {
-            iter: self.iter().chain(other.difference(self)),
+            iter: larger.iter().chain(smaller.difference(larger)),
         }
     }
 
