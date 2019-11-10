@@ -12,6 +12,7 @@ use rustc::ty::layout::{
     self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
 };
 use rustc::ty::TypeFoldable;
+use rustc_macros::HashStable;
 
 use super::{
     GlobalId, AllocId, Allocation, Scalar, InterpResult, Pointer, PointerArithmetic,
@@ -19,7 +20,7 @@ use super::{
     RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue,
 };
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
 pub struct MemPlace<Tag=(), Id=AllocId> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
@@ -32,7 +33,7 @@ pub struct MemPlace<Tag=(), Id=AllocId> {
     pub meta: Option<Scalar<Tag, Id>>,
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
 pub enum Place<Tag=(), Id=AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Tag, Id>),
