@@ -272,6 +272,7 @@ pub mod strings;
 pub mod suspicious_trait_impl;
 pub mod swap;
 pub mod temporary_assignment;
+pub mod to_digit_is_some;
 pub mod trait_bounds;
 pub mod transmute;
 pub mod transmuting_null;
@@ -713,6 +714,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &swap::ALMOST_SWAPPED,
         &swap::MANUAL_SWAP,
         &temporary_assignment::TEMPORARY_ASSIGNMENT,
+        &to_digit_is_some::TO_DIGIT_IS_SOME,
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         &transmute::CROSSPOINTER_TRANSMUTE,
         &transmute::TRANSMUTE_BYTES_TO_STR,
@@ -944,6 +946,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
     store.register_late_pass(|| box exit::Exit);
+    store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1238,6 +1241,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&swap::ALMOST_SWAPPED),
         LintId::of(&swap::MANUAL_SWAP),
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
+        LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
         LintId::of(&transmute::TRANSMUTE_BYTES_TO_STR),
         LintId::of(&transmute::TRANSMUTE_INT_TO_BOOL),
@@ -1363,6 +1367,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
+        LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&try_err::TRY_ERR),
         LintId::of(&types::FN_TO_NUMERIC_CAST),
         LintId::of(&types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION),
