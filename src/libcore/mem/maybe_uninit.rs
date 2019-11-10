@@ -256,6 +256,7 @@ impl<T> MaybeUninit<T> {
     /// [type]: union.MaybeUninit.html
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
+    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_uninit")]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
@@ -339,6 +340,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline]
+    #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "maybe_uninit_zeroed")]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
         unsafe {

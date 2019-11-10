@@ -59,7 +59,8 @@ pub struct ModuleCodegen<M> {
     pub kind: ModuleKind,
 }
 
-pub const METADATA_FILENAME: &str = "rust.metadata.bin";
+// FIXME(eddyb) maybe include the crate name in this?
+pub const METADATA_FILENAME: &str = "lib.rmeta";
 pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
 
 

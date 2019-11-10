@@ -20,6 +20,9 @@ pub enum PointerCast {
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
+    /// Go from `*const [T; N]` to `*const T`
+    ArrayToPointer,
+
     /// Unsize a pointer/reference value, e.g., `&[T; n]` to
     /// `&[T]`. Note that the source could be a thin or fat pointer.
     /// This will do things like convert thin pointers to fat
