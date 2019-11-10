@@ -2276,7 +2276,7 @@ impl rustc_serialize::Decodable for AttrId {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
     pub tokens: TokenStream,

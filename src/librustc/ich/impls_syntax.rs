@@ -9,7 +9,6 @@ use std::mem;
 use syntax::ast;
 use syntax::feature_gate;
 use syntax::token;
-use syntax::tokenstream;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
@@ -17,7 +16,6 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-impl<'ctx> syntax::StableHashingContextLike for StableHashingContext<'ctx> {}
 impl<'ctx> rustc_target::StableHashingContextLike for StableHashingContext<'ctx> {}
 
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
@@ -47,11 +45,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl_stable_hash_for!(struct ::syntax::ast::AttrItem {
-    path,
-    tokens,
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
@@ -69,38 +62,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for tokenstream::TokenTree {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            tokenstream::TokenTree::Token(ref token) => {
-                token.hash_stable(hcx, hasher);
-            }
-            tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
-                span.hash_stable(hcx, hasher);
-                std_hash::Hash::hash(&delim, hasher);
-                for sub_tt in tts.trees() {
-                    sub_tt.hash_stable(hcx, hasher);
-                }
-            }
-        }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>>
-for tokenstream::TokenStream {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        for sub_tt in self.trees() {
-            sub_tt.hash_stable(hcx, hasher);
-        }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
+impl<'ctx> syntax::StableHashingContextLike for StableHashingContext<'ctx> {
+    fn hash_stable_tokenkind(&mut self, tokenkind: &token::TokenKind, hasher: &mut StableHasher) {
+        mem::discriminant(tokenkind).hash_stable(self, hasher);
+        match *tokenkind {
             token::Eq |
             token::Lt |
             token::Le |
@@ -141,13 +106,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
             token::CloseDelim(delim_token) => {
                 std_hash::Hash::hash(&delim_token, hasher);
             }
-            token::Literal(lit) => lit.hash_stable(hcx, hasher),
+            token::Literal(lit) => lit.hash_stable(self, hasher),
 
             token::Ident(name, is_raw) => {
-                name.hash_stable(hcx, hasher);
-                is_raw.hash_stable(hcx, hasher);
+                name.hash_stable(self, hasher);
+                is_raw.hash_stable(self, hasher);
             }
-            token::Lifetime(name) => name.hash_stable(hcx, hasher),
+            token::Lifetime(name) => name.hash_stable(self, hasher),
 
             token::Interpolated(_) => {
                 bug!("interpolated tokens should not be present in the HIR")
@@ -155,15 +120,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
 
             token::DocComment(val) |
             token::Shebang(val) |
-            token::Unknown(val) => val.hash_stable(hcx, hasher),
+            token::Unknown(val) => val.hash_stable(self, hasher),
         }
     }
 }
-
-impl_stable_hash_for!(struct token::Token {
-    kind,
-    span
-});
 
 impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {
     MetaItem(meta_item),

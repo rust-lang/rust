@@ -14,6 +14,7 @@ use syntax_pos::{self, Span, DUMMY_SP};
 
 use std::fmt;
 use std::mem;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 
@@ -262,7 +263,15 @@ pub enum TokenKind {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+impl<CTX> HashStable<CTX> for TokenKind
+    where CTX: crate::StableHashingContextLike
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        hcx.hash_stable_tokenkind(self, hasher)
+    }
+}
+
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,

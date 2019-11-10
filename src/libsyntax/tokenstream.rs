@@ -16,6 +16,7 @@
 use crate::token::{self, DelimToken, Token, TokenKind};
 
 use syntax_pos::{Span, DUMMY_SP};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use smallvec::{SmallVec, smallvec};
 
@@ -50,6 +51,26 @@ where
     DelimToken: Send + Sync,
     TokenStream: Send + Sync,
 {}
+
+impl<CTX> HashStable<CTX> for TokenTree
+    where CTX: crate::StableHashingContextLike
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            TokenTree::Token(ref token) => {
+                token.hash_stable(hcx, hasher);
+            }
+            TokenTree::Delimited(span, delim, ref tts) => {
+                span.hash_stable(hcx, hasher);
+                std::hash::Hash::hash(&delim, hasher);
+                for sub_tt in tts.trees() {
+                    sub_tt.hash_stable(hcx, hasher);
+                }
+            }
+        }
+    }
+}
 
 impl TokenTree {
     /// Checks if this TokenTree is equal to the other, regardless of span information.
@@ -112,6 +133,16 @@ impl TokenTree {
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
         TokenTree::token(token::CloseDelim(delim), span.close)
+    }
+}
+
+impl<CTX> HashStable<CTX> for TokenStream
+    where CTX: crate::StableHashingContextLike
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        for sub_tt in self.trees() {
+            sub_tt.hash_stable(hcx, hasher);
+        }
     }
 }
 
