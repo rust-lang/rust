@@ -241,6 +241,8 @@ impl ProjectWorkspace {
                                 }
                             }
                         }
+                        // core is added as a dependency before std in order to
+                        // mimic rustcs dependency order
                         if let Some(core) = libcore {
                             if let Err(_) = crate_graph.add_dep(from, "core".into(), core) {
                                 log::error!("cyclic dependency on core for {}", pkg.name(&cargo))
