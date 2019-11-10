@@ -141,8 +141,7 @@ impl<'a> Resolver<'a> {
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
-            Res::NonMacroAttr(attr_kind) =>
-                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
             _ => None,
         }
     }

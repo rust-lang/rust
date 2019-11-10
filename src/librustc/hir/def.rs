@@ -40,10 +40,10 @@ pub enum NonMacroAttrKind {
     Tool,
     /// Single-segment custom attribute registered by a derive macro (`#[serde(default)]`).
     DeriveHelper,
+    /// Single-segment custom attribute registered with `#[register_attr]`.
+    Registered,
     /// Single-segment custom attribute registered by a legacy plugin (`register_attribute`).
     LegacyPluginHelper,
-    /// Single-segment custom attribute not registered in any way (`#[my_attr]`).
-    Custom,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -329,8 +329,24 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Builtin => "built-in attribute",
             NonMacroAttrKind::Tool => "tool attribute",
             NonMacroAttrKind::DeriveHelper => "derive helper attribute",
+            NonMacroAttrKind::Registered => "explicitly registered attribute",
             NonMacroAttrKind::LegacyPluginHelper => "legacy plugin helper attribute",
-            NonMacroAttrKind::Custom => "custom attribute",
+        }
+    }
+
+    pub fn article(self) -> &'static str {
+        match self {
+            NonMacroAttrKind::Registered => "an",
+            _ => "a",
+        }
+    }
+
+    /// Users of some attributes cannot mark them as used, so they are considered always used.
+    pub fn is_used(self) -> bool {
+        match self {
+            NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper => true,
+            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered |
+            NonMacroAttrKind::LegacyPluginHelper => false,
         }
     }
 }
@@ -389,6 +405,7 @@ impl<Id> Res<Id> {
     pub fn article(&self) -> &'static str {
         match *self {
             Res::Def(kind, _) => kind.article(),
+            Res::NonMacroAttr(kind) => kind.article(),
             Res::Err => "an",
             _ => "a",
         }

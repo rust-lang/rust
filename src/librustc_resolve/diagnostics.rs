@@ -19,7 +19,7 @@ use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::{path_names_to_string, KNOWN_TOOLS};
+use crate::path_names_to_string;
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
@@ -400,6 +400,14 @@ impl<'a> Resolver<'a> {
                 Scope::Module(module) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
+                Scope::RegisteredAttrs => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Registered);
+                    if filter_fn(res) {
+                        suggestions.extend(this.registered_attrs.iter().map(|ident| {
+                            TypoSuggestion::from_res(ident.name, res)
+                        }));
+                    }
+                }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
                         let res = binding.res();
@@ -439,8 +447,8 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::ToolPrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
-                    suggestions.extend(KNOWN_TOOLS.iter().map(|name| {
-                        TypoSuggestion::from_res(*name, res)
+                    suggestions.extend(this.registered_tools.iter().map(|ident| {
+                        TypoSuggestion::from_res(ident.name, res)
                     }));
                 }
                 Scope::StdLibPrelude => {

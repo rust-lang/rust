@@ -546,6 +546,8 @@ symbols! {
         recursion_limit,
         reexport_test_harness_main,
         reflect,
+        register_attr,
+        register_tool,
         relaxed_adts,
         repr,
         repr128,
