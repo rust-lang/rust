@@ -161,11 +161,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
 
 impl_stable_hash_for_spanned!(usize);
 
-impl_stable_hash_for!(struct ast::Ident {
-    name,
-    span,
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::TraitItem {
