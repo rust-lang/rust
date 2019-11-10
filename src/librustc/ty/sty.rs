@@ -1204,6 +1204,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
+    #[derive(HashStable)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -1516,8 +1517,6 @@ impl DebruijnIndex {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
 }
-
-impl_stable_hash_for!(struct DebruijnIndex { private });
 
 /// Region utilities
 impl RegionKind {

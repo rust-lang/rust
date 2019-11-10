@@ -1215,7 +1215,7 @@ impl UnOp {
 }
 
 /// A statement.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub struct Stmt {
     pub hir_id: HirId,
     pub kind: StmtKind,

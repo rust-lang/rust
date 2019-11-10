@@ -140,13 +140,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
 
 impl_stable_hash_for_spanned!(hir::BinOpKind);
 
-impl_stable_hash_for!(struct hir::Stmt {
-    hir_id,
-    kind,
-    span,
-});
-
-
 impl_stable_hash_for_spanned!(ast::Name);
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
