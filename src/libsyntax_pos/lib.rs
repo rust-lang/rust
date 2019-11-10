@@ -34,7 +34,7 @@ pub use symbol::{Symbol, sym};
 mod analyze_source_file;
 pub mod fatal_error;
 
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lrc, Lock};
 
 use std::borrow::Cow;
@@ -242,6 +242,14 @@ impl PartialOrd for Span {
 impl Ord for Span {
     fn cmp(&self, rhs: &Self) -> Ordering {
         Ord::cmp(&self.data(), &rhs.data())
+    }
+}
+
+impl<CTX> HashStable<CTX> for Span
+    where CTX: StableHashingContextLike
+{
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        ctx.hash_stable_span(self, hasher)
     }
 }
 
@@ -1566,4 +1574,6 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
-pub trait StableHashingContextLike {}
+pub trait StableHashingContextLike {
+    fn hash_stable_span(&mut self, span: &Span, hasher: &mut StableHasher);
+}

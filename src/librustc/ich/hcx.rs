@@ -281,7 +281,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for Span {
+impl<'a> syntax_pos::StableHashingContextLike for StableHashingContext<'a> {
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
     /// fields (that would be similar to hashing pointers, since those are just
     /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
@@ -291,25 +291,25 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
     /// span starts and ends in the same file, which is almost always the case.
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable_span(&mut self, span: &Span, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
-        if !hcx.hash_spans {
+        if !self.hash_spans {
             return
         }
 
-        if *self == DUMMY_SP {
+        if *span == DUMMY_SP {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let span = self.data();
-        let (file_lo, line_lo, col_lo) = match hcx.source_map()
+        let span = span.data();
+        let (file_lo, line_lo, col_lo) = match self.source_map()
                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {
@@ -333,9 +333,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         std_hash::Hash::hash(&line_col_len, hasher);
 
         if span.ctxt == SyntaxContext::root() {
-            TAG_NO_EXPANSION.hash_stable(hcx, hasher);
+            TAG_NO_EXPANSION.hash_stable(self, hasher);
         } else {
-            TAG_EXPANSION.hash_stable(hcx, hasher);
+            TAG_EXPANSION.hash_stable(self, hasher);
 
             // Since the same expansion context is usually referenced many
             // times, we cache a stable hash of it and hash that instead of
@@ -352,14 +352,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
                 }
 
                 let mut hasher = StableHasher::new();
-                expn_id.expn_data().hash_stable(hcx, &mut hasher);
+                expn_id.expn_data().hash_stable(self, &mut hasher);
                 let sub_hash: Fingerprint = hasher.finish();
                 let sub_hash = sub_hash.to_smaller_hash();
                 cache.borrow_mut().insert(expn_id, sub_hash);
                 sub_hash
             });
 
-            sub_hash.hash_stable(hcx, hasher);
+            sub_hash.hash_stable(self, hasher);
         }
     }
 }
