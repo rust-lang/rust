@@ -5,6 +5,7 @@ pub struct B(Option<A>);
 pub struct C(Option<isize>);
 pub struct D(Option<&'static str>);
 pub struct E(Result<&'static str, isize>);
+pub struct J<'a>(&'a str);
 
 pub type F = Option<isize>;
 pub type G = usize;
@@ -22,6 +23,7 @@ pub fn id_F() -> TypeId { TypeId::of::<F>() }
 pub fn id_G() -> TypeId { TypeId::of::<G>() }
 pub fn id_H() -> TypeId { TypeId::of::<H>() }
 pub fn id_I() -> TypeId { TypeId::of::<I>() }
+pub fn id_J() -> TypeId { TypeId::of::<J>() }
 
 pub fn foo<T: Any>() -> TypeId { TypeId::of::<T>() }
 

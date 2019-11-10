@@ -11,9 +11,13 @@ extern crate typeid_intrinsic_aux2 as other2;
 
 use std::hash::{SipHasher, Hasher, Hash};
 use std::any::TypeId;
+use std::intrinsics::type_id;
 
 struct A;
 struct Test;
+struct ContainsRef<'a>{
+    field: &'a str
+}
 
 pub fn main() {
     assert_eq!(TypeId::of::<other1::A>(), other1::id_A());
@@ -25,6 +29,7 @@ pub fn main() {
     assert_eq!(TypeId::of::<other1::G>(), other1::id_G());
     assert_eq!(TypeId::of::<other1::H>(), other1::id_H());
     assert_eq!(TypeId::of::<other1::I>(), other1::id_I());
+    assert_eq!(TypeId::of::<other1::J>(), other1::id_J());
 
     assert_eq!(TypeId::of::<other2::A>(), other2::id_A());
     assert_eq!(TypeId::of::<other2::B>(), other2::id_B());
@@ -35,6 +40,7 @@ pub fn main() {
     assert_eq!(TypeId::of::<other2::G>(), other2::id_G());
     assert_eq!(TypeId::of::<other2::H>(), other2::id_H());
     assert_eq!(TypeId::of::<other1::I>(), other2::id_I());
+    assert_eq!(TypeId::of::<other2::J>(), other2::id_J());
 
     assert_eq!(other1::id_F(), other2::id_F());
     assert_eq!(other1::id_G(), other2::id_G());
@@ -47,6 +53,7 @@ pub fn main() {
     assert_eq!(TypeId::of::<A>(), other2::foo::<A>());
     assert_eq!(TypeId::of::<A>(), other1::foo::<A>());
     assert_eq!(other2::foo::<A>(), other1::foo::<A>());
+    assert_eq!(other1::id_J(), other2::id_J());
 
     // sanity test of TypeId
     let (a, b, c) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),
@@ -94,4 +101,11 @@ pub fn main() {
         TypeId::of::<for<'a, 'b> fn(&'a i32, &'b i32) -> &'a i32>(),
         TypeId::of::<for<'a, 'b> fn(&'b i32, &'a i32) -> &'a i32>()
     );
+
+    // non-static lifetimes are OK but ignored for the raw type_id intrinsic
+    fn non_static<'a>(arg: &'a str) {
+        assert_eq!(unsafe { type_id::<ContainsRef<'a>>() },
+                   unsafe { type_id::<ContainsRef<'static>>() });
+    }
+    non_static(&String::from("rah"));
 }
