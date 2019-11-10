@@ -1,7 +1,5 @@
 //! Utilities for formatting and printing strings.
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
@@ -279,6 +277,7 @@ impl<'a> ArgumentV1<'a> {
                issue = "0")]
     pub fn new<'b, T>(x: &'b T,
                       f: fn(&T, &mut Formatter<'_>) -> Result) -> ArgumentV1<'b> {
+        // SAFETY: relies on T being sized to avoid undefined behavior
         unsafe {
             ArgumentV1 {
                 formatter: mem::transmute(f),
@@ -296,6 +295,7 @@ impl<'a> ArgumentV1<'a> {
 
     fn as_usize(&self) -> Option<usize> {
         if self.formatter as usize == ArgumentV1::show_usize as usize {
+            // SAFETY: if the formatter is show_usize, it means it came in as &usize
             Some(unsafe { *(self.value as *const _ as *const usize) })
         } else {
             None
@@ -1355,6 +1355,8 @@ impl<'a> Formatter<'a> {
             let mut align = old_align;
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
+                // SAFETY: formatted.sign is always generated from determine_sign which is
+                // valid utf8
                 let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
                 self.buf.write_str(sign)?;
 
@@ -1386,6 +1388,8 @@ impl<'a> Formatter<'a> {
 
     fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
         fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
+            // SAFETY: formatted.sign is always generated from determine_sign which is
+            // valid utf8
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
         }
 
