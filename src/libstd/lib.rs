@@ -454,6 +454,7 @@ pub mod f64;
 pub mod thread;
 pub mod ascii;
 pub mod backtrace;
+pub mod bench;
 pub mod collections;
 pub mod env;
 pub mod error;

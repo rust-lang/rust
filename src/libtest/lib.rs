@@ -29,6 +29,7 @@
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(test)]
+#![feature(test_internals)]
 
 // Public reexports
 pub use self::ColorConfig::*;

@@ -7,13 +7,6 @@ pub enum Concurrent {
     No,
 }
 
-/// Number of times to run a benchmarked function
-#[derive(Clone, PartialEq, Eq)]
-pub enum BenchMode {
-    Auto,
-    Single,
-}
-
 /// Whether test is expected to panic or not
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShouldPanic {

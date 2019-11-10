@@ -1,10 +1,10 @@
 //! Benchmarking module.
+pub use std::bench::{Bencher, TimeIterations};
 pub use std::hint::black_box;
 
 use super::{
     event::CompletedTest,
     helpers::sink::Sink,
-    options::BenchMode,
     types::TestDesc,
     test_result::TestResult,
     Sender,
@@ -16,41 +16,6 @@ use std::cmp;
 use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
-
-/// Manager of the benchmarking runs.
-///
-/// This is fed into functions marked with `#[bench]` to allow for
-/// set-up & tear-down before running a piece of code repeatedly via a
-/// call to `iter`.
-#[derive(Clone)]
-pub struct Bencher {
-    mode: BenchMode,
-    summary: Option<stats::Summary>,
-    pub bytes: u64,
-}
-
-impl Bencher {
-    /// Callback for benchmark functions to run in their body.
-    pub fn iter<T, F>(&mut self, mut inner: F)
-    where
-        F: FnMut() -> T,
-    {
-        if self.mode == BenchMode::Single {
-            ns_iter_inner(&mut inner, 1);
-            return;
-        }
-
-        self.summary = Some(iter(&mut inner));
-    }
-
-    pub fn bench<F>(&mut self, mut f: F) -> Option<stats::Summary>
-    where
-        F: FnMut(&mut Bencher),
-    {
-        f(self);
-        self.summary
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BenchSamples {
@@ -104,27 +69,9 @@ fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     output
 }
 
-fn ns_from_dur(dur: Duration) -> u64 {
-    dur.as_secs() * 1_000_000_000 + (dur.subsec_nanos() as u64)
-}
-
-fn ns_iter_inner<T, F>(inner: &mut F, k: u64) -> u64
-where
-    F: FnMut() -> T,
-{
-    let start = Instant::now();
-    for _ in 0..k {
-        black_box(inner());
-    }
-    ns_from_dur(start.elapsed())
-}
-
-pub fn iter<T, F>(inner: &mut F) -> stats::Summary
-where
-    F: FnMut() -> T,
-{
+pub fn run_and_summarize(inner: TimeIterations<'_>) -> stats::Summary {
     // Initial bench run to get ballpark figure.
-    let ns_single = ns_iter_inner(inner, 1);
+    let ns_single = inner(1);
 
     // Try to estimate iter count for 1ms falling back to 1m
     // iterations if first run took < 1ns.
@@ -144,14 +91,14 @@ where
         let loop_start = Instant::now();
 
         for p in &mut *samples {
-            *p = ns_iter_inner(inner, n) as f64 / n as f64;
+            *p = inner(n) as f64 / n as f64;
         }
 
         stats::winsorize(samples, 5.0);
         let summ = stats::Summary::new(samples);
 
         for p in &mut *samples {
-            let ns = ns_iter_inner(inner, 5 * n);
+            let ns = inner(5 * n);
             *p = ns as f64 / (5 * n) as f64;
         }
 
@@ -188,16 +135,10 @@ where
     }
 }
 
-pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<CompletedTest>, nocapture: bool, f: F)
+pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<CompletedTest>, nocapture: bool, mut f: F)
 where
-    F: FnMut(&mut Bencher),
+    F: FnMut(&mut Bencher<'_>),
 {
-    let mut bs = Bencher {
-        mode: BenchMode::Auto,
-        summary: None,
-        bytes: 0,
-    };
-
     let data = Arc::new(Mutex::new(Vec::new()));
     let oldio = if !nocapture {
         Some((
@@ -208,7 +149,13 @@ where
         None
     };
 
-    let result = catch_unwind(AssertUnwindSafe(|| bs.bench(f)));
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let mut summary = None;
+        f(&mut Bencher::new(&mut |bytes, iter| {
+            summary = Some((bytes, run_and_summarize(iter)));
+        }));
+        summary
+    }));
 
     if let Some((printio, panicio)) = oldio {
         io::set_print(printio);
@@ -217,9 +164,9 @@ where
 
     let test_result = match result {
         //bs.bench(f) {
-        Ok(Some(ns_iter_summ)) => {
+        Ok(Some((bytes, ns_iter_summ))) => {
             let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
-            let mb_s = bs.bytes * 1000 / ns_iter;
+            let mb_s = bytes * 1000 / ns_iter;
 
             let bs = BenchSamples {
                 ns_iter_summ,
@@ -245,14 +192,11 @@ where
     monitor_ch.send(message).unwrap();
 }
 
-pub fn run_once<F>(f: F)
+pub fn run_once<F>(mut f: F)
 where
-    F: FnMut(&mut Bencher),
+    F: FnMut(&mut Bencher<'_>),
 {
-    let mut bs = Bencher {
-        mode: BenchMode::Single,
-        summary: None,
-        bytes: 0,
-    };
-    bs.bench(f);
+    f(&mut Bencher::new(&mut |_bytes, iter| {
+        iter(1);
+    }));
 }
