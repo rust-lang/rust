@@ -62,14 +62,8 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
     // See https://github.com/rust-lang/rust-clippy/issues/4015.
     let needs_disambiguation = ["serde", "regex", "clippy_lints"];
     // This assumes that deps are compiled (they are for Cargo integration tests).
-    let deps = fs::read_dir(host_libs().join("deps")).unwrap();
-    let deps: Vec<_> = if let Some(target_libs) = target_libs() {
-        deps.chain(fs::read_dir(target_libs.join("deps")).unwrap()).collect()
-    } else {
-        deps.collect()
-    };
+    let deps = fs::read_dir(target_libs().unwrap_or_else(host_libs).join("deps")).unwrap();
     let disambiguated = deps
-        .into_iter()
         .filter_map(|dep| {
             let path = dep.ok()?.path();
             let name = path.file_name()?.to_string_lossy();
