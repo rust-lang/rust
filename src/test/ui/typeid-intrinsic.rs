@@ -16,7 +16,7 @@ use std::intrinsics::type_id;
 struct A;
 struct Test;
 struct ContainsRef<'a>{
-    field: &'a str
+    _field: &'a str
 }
 
 pub fn main() {
@@ -103,9 +103,8 @@ pub fn main() {
     );
 
     // non-static lifetimes are OK but ignored for the raw type_id intrinsic
-    fn non_static<'a>(arg: &'a str) {
-        assert_eq!(unsafe { type_id::<ContainsRef<'a>>() },
-                   unsafe { type_id::<ContainsRef<'static>>() });
+    fn non_static<'a>(_arg: &'a str) {
+        assert_eq!(type_id::<ContainsRef<'a>>(), type_id::<ContainsRef<'static>>());
     }
     non_static(&String::from("rah"));
 }
