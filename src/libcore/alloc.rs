@@ -1,7 +1,5 @@
 //! Memory allocation APIs
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use crate::cmp;
@@ -88,6 +86,7 @@ impl Layout {
             return Err(LayoutErr { private: () });
         }
 
+        // SAFETY: performed checks above
         unsafe {
             Ok(Layout::from_size_align_unchecked(size, align))
         }
@@ -120,11 +119,11 @@ impl Layout {
     #[inline]
     pub fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
-        // Note that the align is guaranteed by rustc to be a power of two and
+        debug_assert!(Layout::from_size_align(size, align).is_ok());
+        // SAFETY: Note that the align is guaranteed by rustc to be a power of two and
         // the size+align combo is guaranteed to fit in our address space. As a
         // result use the unchecked constructor here to avoid inserting code
         // that panics if it isn't optimized well enough.
-        debug_assert!(Layout::from_size_align(size, align).is_ok());
         unsafe {
             Layout::from_size_align_unchecked(size, align)
         }
@@ -137,8 +136,8 @@ impl Layout {
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        // See rationale in `new` for why this us using an unsafe variant below
         debug_assert!(Layout::from_size_align(size, align).is_ok());
+        // SAFETY: See rationale in `new` for why this us using an unsafe variant below
         unsafe {
             Layout::from_size_align_unchecked(size, align)
         }
@@ -243,9 +242,9 @@ impl Layout {
         let alloc_size = padded_size.checked_mul(n)
             .ok_or(LayoutErr { private: () })?;
 
+        // SAFETY: self.align is already known to be valid and alloc_size has been
+        // padded already.
         unsafe {
-            // self.align is already known to be valid and alloc_size has been
-            // padded already.
             Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size))
         }
     }
@@ -1074,6 +1073,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
+            // SAFETY: layout has nonzero size
             unsafe { self.alloc(k).map(|p| p.cast()) }
         } else {
             Err(AllocErr)
@@ -1143,6 +1143,7 @@ pub unsafe trait Alloc {
     {
         match Layout::array::<T>(n) {
             Ok(ref layout) if layout.size() > 0 => {
+                // SAFETY: layout has nonzero size
                 unsafe {
                     self.alloc(layout.clone()).map(|p| p.cast())
                 }

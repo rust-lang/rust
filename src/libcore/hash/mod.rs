@@ -79,8 +79,6 @@
 //! }
 //! ```
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
@@ -569,6 +567,8 @@ mod impls {
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
+                    // SAFETY: all of the requirements for from_raw_parts are guaranteed since
+                    // data is a slice
                     state.write(unsafe { slice::from_raw_parts(ptr, newlen) })
                 }
             }
@@ -688,7 +688,7 @@ mod impls {
                 // Thin pointer
                 state.write_usize(*self as *const () as usize);
             } else {
-                // Fat pointer
+                // SAFETY: since it's not a thin pointer, it's a fat pointer
                 let (a, b) = unsafe {
                     *(self as *const Self as *const (usize, usize))
                 };
@@ -705,7 +705,7 @@ mod impls {
                 // Thin pointer
                 state.write_usize(*self as *const () as usize);
             } else {
-                // Fat pointer
+                // SAFETY: since it's not a thin pointer, it's a fat pointer
                 let (a, b) = unsafe {
                     *(self as *const Self as *const (usize, usize))
                 };
