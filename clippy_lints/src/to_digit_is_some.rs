@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// ```rust
     /// # let c = 'c';
     /// # let radix = 10;
-    /// let is_digit = c.to_digit(10).is_some();
+    /// let is_digit = c.to_digit(radix).is_some();
     /// ```
     /// can be written as:
     /// ```
