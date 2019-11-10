@@ -33,6 +33,7 @@ use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP, ExpnId};
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
@@ -108,6 +109,15 @@ impl PartialEq<Symbol> for Path {
     fn eq(&self, symbol: &Symbol) -> bool {
         self.segments.len() == 1 && {
             self.segments[0].ident.name == *symbol
+        }
+    }
+}
+
+impl<CTX> HashStable<CTX> for Path {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.segments.len().hash_stable(hcx, hasher);
+        for segment in &self.segments {
+            segment.ident.name.hash_stable(hcx, hasher);
         }
     }
 }
@@ -1411,7 +1421,7 @@ pub enum StrStyle {
 }
 
 /// An AST literal.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Lit {
     /// The original literal token as written in source code.
     pub token: token::Lit,

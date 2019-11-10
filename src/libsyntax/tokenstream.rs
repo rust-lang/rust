@@ -444,7 +444,7 @@ impl Cursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,

@@ -14,7 +14,6 @@ use std::cell::RefCell;
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::symbol::Symbol;
-use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene::{self, SyntaxContext};
 
@@ -361,13 +360,6 @@ impl<'a> syntax_pos::StableHashingContextLike for StableHashingContext<'a> {
 
             sub_hash.hash_stable(self, hasher);
         }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.open.hash_stable(hcx, hasher);
-        self.close.hash_stable(hcx, hasher);
     }
 }
 

@@ -20,12 +20,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 impl<'ctx> syntax::StableHashingContextLike for StableHashingContext<'ctx> {}
 impl<'ctx> rustc_target::StableHashingContextLike for StableHashingContext<'ctx> {}
 
-impl_stable_hash_for!(struct ::syntax::ast::Lit {
-    kind,
-    token,
-    span
-});
-
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
 
 impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, ident });
@@ -49,15 +43,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         filtered.len().hash_stable(hcx, hasher);
         for attr in filtered {
             attr.hash_stable(hcx, hasher);
-        }
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.segments.len().hash_stable(hcx, hasher);
-        for segment in &self.segments {
-            segment.ident.name.hash_stable(hcx, hasher);
         }
     }
 }
