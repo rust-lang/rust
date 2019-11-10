@@ -37,18 +37,15 @@ crate fn rustc_version() -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 4;
+const METADATA_VERSION: u8 = 5;
 
 /// Metadata header which includes `METADATA_VERSION`.
-/// To get older versions of rustc to ignore this metadata,
-/// there are 4 zero bytes at the start, which are treated
-/// as a length of 0 by old compilers.
 ///
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
 /// and further followed by the rustc version string.
-crate const METADATA_HEADER: &[u8; 12] =
-    &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+crate const METADATA_HEADER: &[u8; 8] =
+    &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
