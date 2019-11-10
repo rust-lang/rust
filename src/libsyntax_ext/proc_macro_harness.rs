@@ -92,10 +92,12 @@ pub fn inject(sess: &ParseSess,
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate && self.in_root && vis.node.is_pub() {
-            self.handler.span_err(sp,
-                                  "`proc-macro` crate types cannot \
-                                   export any items other than functions \
-                                   tagged with `#[proc_macro_derive]` currently");
+            self.handler.span_err(
+                sp,
+                "`proc-macro` crate types currently cannot export any items other \
+                    than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, \
+                    or `#[proc_macro_attribute]`",
+            );
         }
     }
 
