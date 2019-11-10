@@ -1130,7 +1130,7 @@ impl Ipv6Addr {
     /// The following return [`false`]:
     ///
     /// - the loopback address
-    /// - link-local, site-local, and unique local unicast addresses
+    /// - link-local and unique local unicast addresses
     /// - interface-, link-, realm-, admin- and site-local multicast addresses
     ///
     /// [`true`]: ../../std/primitive.bool.html
