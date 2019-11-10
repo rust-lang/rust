@@ -21,7 +21,6 @@ use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
-use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
@@ -38,7 +37,7 @@ use rustc_data_structures::jobserver;
 use ::jobserver::Client;
 
 use std;
-use std::cell::{self, Cell, RefCell};
+use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
@@ -126,8 +125,6 @@ pub struct Session {
 
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: Lock<CodeStats>,
-
-    next_node_id: OneThread<Cell<ast::NodeId>>,
 
     /// If `-zfuel=crate=n` is specified, `Some(crate)`.
     optimization_fuel_crate: Option<String>,
@@ -355,21 +352,6 @@ impl Session {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
-    pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
-        let id = self.next_node_id.get();
-
-        match id.as_usize().checked_add(count) {
-            Some(next) => {
-                self.next_node_id.set(ast::NodeId::from_usize(next));
-            }
-            None => bug!("input too large; ran out of node-IDs!"),
-        }
-
-        id
-    }
-    pub fn next_node_id(&self) -> NodeId {
-        self.reserve_node_ids(1)
-    }
     pub fn diagnostic(&self) -> &errors::Handler {
         &self.parse_sess.span_diagnostic
     }
@@ -1187,7 +1169,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
-        next_node_id: OneThread::new(Cell::new(NodeId::from_u32(1))),
         allocator_kind: Once::new(),
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),

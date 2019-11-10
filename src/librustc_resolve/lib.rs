@@ -961,6 +961,8 @@ pub struct Resolver<'a> {
     variant_vis: DefIdMap<ty::Visibility>,
 
     lint_buffer: lint::LintBuffer,
+
+    next_node_id: NodeId,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1077,6 +1079,10 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
         &mut self.lint_buffer
+    }
+
+    fn next_node_id(&mut self) -> NodeId {
+        self.next_node_id()
     }
 }
 
@@ -1226,7 +1232,16 @@ impl<'a> Resolver<'a> {
                     .collect(),
             variant_vis: Default::default(),
             lint_buffer: lint::LintBuffer::default(),
+            next_node_id: NodeId::from_u32(1),
         }
+    }
+
+    pub fn next_node_id(&mut self) -> NodeId {
+        let next = self.next_node_id.as_usize()
+            .checked_add(1)
+            .expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_usize(next);
+        self.next_node_id
     }
 
     pub fn lint_buffer(&mut self) -> &mut lint::LintBuffer {
@@ -2827,9 +2842,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn new_ast_path_segment(&self, ident: Ident) -> ast::PathSegment {
+    fn new_ast_path_segment(&mut self, ident: Ident) -> ast::PathSegment {
         let mut seg = ast::PathSegment::from_ident(ident);
-        seg.id = self.session.next_node_id();
+        seg.id = self.next_node_id();
         seg
     }
 

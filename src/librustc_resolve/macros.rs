@@ -95,7 +95,7 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> NodeId {
-        self.session.next_node_id()
+        self.next_node_id()
     }
 
     fn resolve_dollar_crates(&mut self) {
