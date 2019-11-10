@@ -30,9 +30,33 @@ function createDecorationFromTextmate(
 ): vscode.TextEditorDecorationType {
     const decorationOptions: vscode.DecorationRenderOptions = {};
     decorationOptions.rangeBehavior = vscode.DecorationRangeBehavior.OpenOpen;
-    decorationOptions.color = themeStyle.foreground;
-    decorationOptions.backgroundColor = themeStyle.background;
-    decorationOptions.fontStyle = themeStyle.fontStyle;
+
+    if (themeStyle.foreground) {
+        decorationOptions.color = themeStyle.foreground;
+    }
+
+    if (themeStyle.background) {
+        decorationOptions.backgroundColor = themeStyle.background;
+    }
+
+    if (themeStyle.fontStyle) {
+        const parts: string[] = themeStyle.fontStyle.split(' ');
+        parts.forEach(part => {
+            switch (part) {
+                case 'italic':
+                    decorationOptions.fontStyle = 'italic';
+                    break;
+                case 'bold':
+                    decorationOptions.fontWeight = 'bold';
+                    break;
+                case 'underline':
+                    decorationOptions.textDecoration = 'underline';
+                    break;
+                default:
+                    break;
+            }
+        });
+    }
     return vscode.window.createTextEditorDecorationType(decorationOptions);
 }
 
