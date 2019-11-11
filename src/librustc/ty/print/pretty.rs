@@ -864,6 +864,49 @@ pub trait PrettyPrinter<'tcx>:
 
         let u8 = self.tcx().types.u8;
 
+        if let ty::Ref(_, ref_ty, _) = ct.ty.kind {
+            let byte_str = match (ct.val, &ref_ty.kind) {
+                (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
+                    let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
+                    Some(self.tcx()
+                        .alloc_map.lock()
+                        .unwrap_memory(ptr.alloc_id)
+                        .get_bytes(&self.tcx(), ptr, Size::from_bytes(n)).unwrap())
+                },
+                (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
+                    // The `inspect` here is okay since we checked the bounds, and there are
+                    // no relocations (we have an active slice reference here). We don't use
+                    // this result to affect interpreter execution.
+                    Some(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
+                },
+                _ => None,
+            };
+
+            if let Some(byte_str) = byte_str {
+                p!(write("b\""));
+                for &c in byte_str {
+                    for e in std::ascii::escape_default(c) {
+                        self.write_char(e as char)?;
+                    }
+                }
+                p!(write("\""));
+                return Ok(self);
+            }
+
+            if let (ConstValue::Slice { data, start, end }, ty::Str) =
+                (ct.val, &ref_ty.kind)
+            {
+                // The `inspect` here is okay since we checked the bounds, and there are no
+                // relocations (we have an active `str` reference here). We don't use this
+                // result to affect interpreter execution.
+                let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                let s = ::std::str::from_utf8(slice)
+                    .expect("non utf8 str from miri");
+                p!(write("{:?}", s));
+                return Ok(self);
+            }
+        };
+
         match (ct.val, &ct.ty.kind) {
             (_,  ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
             (ConstValue::Unevaluated(did, substs), _) => {
@@ -937,54 +980,8 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_value_path(instance.def_id(), instance.substs));
             },
             _ => {
-                let printed = if let ty::Ref(_, ref_ty, _) = ct.ty.kind {
-                    let byte_str = match (ct.val, &ref_ty.kind) {
-                        (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                            let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
-                            Some(self.tcx()
-                                .alloc_map.lock()
-                                .unwrap_memory(ptr.alloc_id)
-                                .get_bytes(&self.tcx(), ptr, Size::from_bytes(n)).unwrap())
-                        },
-                        (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
-                            // The `inspect` here is okay since we checked the bounds, and there are
-                            // no relocations (we have an active slice reference here). We don't use
-                            // this result to affect interpreter execution.
-                            Some(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
-                        },
-                        _ => None,
-                    };
-
-                    if let Some(byte_str) = byte_str {
-                        p!(write("b\""));
-                        for &c in byte_str {
-                            for e in std::ascii::escape_default(c) {
-                                self.write_char(e as char)?;
-                            }
-                        }
-                        p!(write("\""));
-                        true
-                    } else if let (ConstValue::Slice { data, start, end }, ty::Str) =
-                        (ct.val, &ref_ty.kind)
-                    {
-                        // The `inspect` here is okay since we checked the bounds, and there are no
-                        // relocations (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
-                        let s = ::std::str::from_utf8(slice)
-                            .expect("non utf8 str from miri");
-                        p!(write("{:?}", s));
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                };
-                if !printed {
-                    // fallback
-                    p!(write("{:?} : ", ct.val), print(ct.ty))
-                }
+                // fallback
+                p!(write("{:?} : ", ct.val), print(ct.ty))
             }
         };
         Ok(self)
