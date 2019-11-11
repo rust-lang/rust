@@ -6,7 +6,7 @@ use rustc_lexer::unescape;
 
 use crate::{
     ast, match_ast, AstNode, SyntaxError, SyntaxErrorKind,
-    SyntaxKind::{BYTE, BYTE_STRING, CHAR, INT_NUMBER, STRING},
+    SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN_DEF, INT_NUMBER, STRING, TYPE_ALIAS_DEF},
     SyntaxNode, SyntaxToken, TextUnit, T,
 };
 
@@ -102,6 +102,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::BlockExpr(it) => { block::validate_block_expr(it, &mut errors) },
                 ast::FieldExpr(it) => { validate_numeric_name(it.name_ref(), &mut errors) },
                 ast::RecordField(it) => { validate_numeric_name(it.name_ref(), &mut errors) },
+                ast::Visibility(it) => { validate_visibility(it, &mut errors) },
                 _ => (),
             }
         }
@@ -204,5 +205,25 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
 
     fn int_token(name_ref: Option<ast::NameRef>) -> Option<SyntaxToken> {
         name_ref?.syntax().first_child_or_token()?.into_token().filter(|it| it.kind() == INT_NUMBER)
+    }
+}
+
+fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
+    let parent = match vis.syntax().parent() {
+        Some(it) => it,
+        None => return,
+    };
+    match parent.kind() {
+        FN_DEF | CONST_DEF | TYPE_ALIAS_DEF => (),
+        _ => return,
+    }
+    let impl_block = match parent.parent().and_then(|it| it.parent()).and_then(ast::ImplBlock::cast)
+    {
+        Some(it) => it,
+        None => return,
+    };
+    if impl_block.target_trait().is_some() {
+        errors
+            .push(SyntaxError::new(SyntaxErrorKind::VisibilityNotAllowed, vis.syntax.text_range()))
     }
 }
