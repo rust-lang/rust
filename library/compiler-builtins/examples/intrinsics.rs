@@ -7,7 +7,6 @@
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
 #![feature(asm)]
-#![feature(compiler_builtins_lib)]
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]

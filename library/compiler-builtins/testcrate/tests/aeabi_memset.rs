@@ -45,7 +45,7 @@ impl Aligned {
 
 #[test]
 fn zero() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -54,7 +54,7 @@ fn zero() {
 
     assert_eq!(*xs, [0; 8]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -66,7 +66,7 @@ fn zero() {
 
 #[test]
 fn one() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 1;
@@ -76,7 +76,7 @@ fn one() {
 
     assert_eq!(*xs, [0xef, 0, 0, 0, 0, 0, 0, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -88,7 +88,7 @@ fn one() {
 
 #[test]
 fn two() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 2;
@@ -98,7 +98,7 @@ fn two() {
 
     assert_eq!(*xs, [0xef, 0xef, 0, 0, 0, 0, 0, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -110,7 +110,7 @@ fn two() {
 
 #[test]
 fn three() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 3;
@@ -120,7 +120,7 @@ fn three() {
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0, 0, 0, 0, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -132,7 +132,7 @@ fn three() {
 
 #[test]
 fn four() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 4;
@@ -142,7 +142,7 @@ fn four() {
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0, 0, 0, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -154,7 +154,7 @@ fn four() {
 
 #[test]
 fn five() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 5;
@@ -164,7 +164,7 @@ fn five() {
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0, 0, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -176,7 +176,7 @@ fn five() {
 
 #[test]
 fn six() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 6;
@@ -186,7 +186,7 @@ fn six() {
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -198,7 +198,7 @@ fn six() {
 
 #[test]
 fn seven() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 7;
@@ -208,7 +208,7 @@ fn seven() {
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
@@ -220,7 +220,7 @@ fn seven() {
 
 #[test]
 fn eight() {
-    let mut aligned = Aligned::new([0u8; 8]);;
+    let mut aligned = Aligned::new([0u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let n = 8;
@@ -230,7 +230,7 @@ fn eight() {
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef]);
 
-    let mut aligned = Aligned::new([1u8; 8]);;
+    let mut aligned = Aligned::new([1u8; 8]);
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;

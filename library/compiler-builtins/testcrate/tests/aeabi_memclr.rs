@@ -46,7 +46,7 @@ impl Aligned {
 
 #[test]
 fn memclr4() {
-    let mut aligned = Aligned::new();;
+    let mut aligned = Aligned::new();
     assert_eq!(mem::align_of_val(&aligned), 4);
     let xs = &mut aligned.array;
 
