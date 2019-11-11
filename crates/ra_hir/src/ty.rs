@@ -17,8 +17,11 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, GenericParams,
-    HasGenericParams, Mutability, Name, Trait, TypeAlias,
+    db::HirDatabase,
+    expr::ExprId,
+    generics::{GenericParams, HasGenericParams},
+    util::make_mut_slice,
+    Adt, Crate, DefWithBody, Mutability, Name, Trait, TypeAlias,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -342,10 +345,7 @@ impl Substs {
         )
     }
 
-    pub fn build_for_def(
-        db: &impl HirDatabase,
-        def: impl crate::HasGenericParams,
-    ) -> SubstsBuilder {
+    pub fn build_for_def(db: &impl HirDatabase, def: impl HasGenericParams) -> SubstsBuilder {
         let params = def.generic_params(db);
         let param_count = params.count_params_including_parent();
         Substs::builder(param_count)
