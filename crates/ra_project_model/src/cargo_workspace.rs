@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use ra_arena::{impl_arena_id, Arena, RawId};
@@ -141,12 +142,14 @@ impl CargoWorkspace {
 
         for meta_pkg in meta.packages {
             let is_member = ws_members.contains(&meta_pkg.id);
+            let name = meta_pkg.name;
             let pkg = packages.alloc(PackageData {
-                name: meta_pkg.name,
+                name: name.clone(),
                 manifest: meta_pkg.manifest_path.clone(),
                 targets: Vec::new(),
                 is_member,
-                edition: Edition::from_string(&meta_pkg.edition),
+                edition: Edition::from_str(&meta_pkg.edition)
+                    .unwrap_or_else(|e| panic!("unknown edition {} for package {:?}", e, &name)),
                 dependencies: Vec::new(),
                 features: Vec::new(),
             });
