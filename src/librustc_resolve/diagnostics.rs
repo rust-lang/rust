@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
@@ -207,11 +207,11 @@ impl<'a> Resolver<'a> {
                 let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let msg = format!("variable `{}` is not bound in all patterns", name);
-                let mut err = self.session.struct_span_err_with_code(
+                let mut err = struct_span_err!(
+                    self.session,
                     msp,
-                    &msg,
-                    DiagnosticId::Error("E0408".into()),
+                    E0408,
+                    "variable `{}` is not bound in all patterns", name,
                 );
                 for sp in target_sp {
                     err.span_label(sp, format!("pattern doesn't bind `{}`", name));
