@@ -82,6 +82,7 @@ pub enum SyntaxErrorKind {
     InvalidBlockAttr,
     InvalidMatchInnerAttr,
     InvalidTupleIndexFormat,
+    VisibilityNotAllowed,
 }
 
 impl fmt::Display for SyntaxErrorKind {
@@ -99,6 +100,9 @@ impl fmt::Display for SyntaxErrorKind {
             }
             ParseError(msg) => write!(f, "{}", msg.0),
             EscapeError(err) => write!(f, "{}", err),
+            VisibilityNotAllowed => {
+                write!(f, "unnecessary visibility qualifier")
+            }
         }
     }
 }

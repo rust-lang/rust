@@ -71,13 +71,13 @@ impl NameDefinition {
         let module_src = self.container.definition_source(db);
         let file_id = module_src.file_id.original_file(db);
 
-        if let NameKind::Pat((def, _)) = self.kind {
-            let mut res = FxHashMap::default();
-            let range = match def {
+        if let NameKind::Local(var) = self.kind {
+            let range = match var.parent(db) {
                 DefWithBody::Function(f) => f.source(db).ast.syntax().text_range(),
                 DefWithBody::Const(c) => c.source(db).ast.syntax().text_range(),
                 DefWithBody::Static(s) => s.source(db).ast.syntax().text_range(),
             };
+            let mut res = FxHashMap::default();
             res.insert(file_id, Some(range));
             return SearchScope::new(res);
         }

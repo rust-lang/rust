@@ -56,7 +56,7 @@ use ra_db::{
 };
 use ra_syntax::{SourceFile, TextRange, TextUnit};
 
-use crate::{db::LineIndexDatabase, symbol_index::FileSymbol};
+use crate::{db::LineIndexDatabase, display::ToNav, symbol_index::FileSymbol};
 
 pub use crate::{
     assists::{Assist, AssistId},
@@ -351,7 +351,7 @@ impl Analysis {
         self.with_db(|db| {
             symbol_index::world_symbols(db, query)
                 .into_iter()
-                .map(|s| NavigationTarget::from_symbol(db, s))
+                .map(|s| s.to_nav(db))
                 .collect::<Vec<_>>()
         })
     }

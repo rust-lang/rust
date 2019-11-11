@@ -17,7 +17,7 @@ impl_arena_id!(ScopeId);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExprScopes {
-    body: Arc<Body>,
+    pub(crate) body: Arc<Body>,
     scopes: Arena<ScopeId, ScopeData>,
     scope_by_expr: FxHashMap<ExprId, ScopeId>,
 }

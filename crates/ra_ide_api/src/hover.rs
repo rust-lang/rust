@@ -117,27 +117,23 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 hir::AssocItem::Const(it) => from_def_source(db, it),
                 hir::AssocItem::TypeAlias(it) => from_def_source(db, it),
             }),
-            Some(Def(it)) => {
-                match it {
-                    hir::ModuleDef::Module(it) => {
-                        if let hir::ModuleSource::Module(it) = it.definition_source(db).ast {
-                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                        }
-                    }
-                    hir::ModuleDef::Function(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Adt(Adt::Struct(it)) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Adt(Adt::Union(it)) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Adt(Adt::Enum(it)) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::EnumVariant(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Const(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Trait(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::TypeAlias(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::BuiltinType(_) => {
-                        // FIXME: hover for builtin Type ?
+            Some(Def(it)) => match it {
+                hir::ModuleDef::Module(it) => {
+                    if let hir::ModuleSource::Module(it) = it.definition_source(db).ast {
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                     }
                 }
-            }
+                hir::ModuleDef::Function(it) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::Adt(Adt::Struct(it)) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::Adt(Adt::Union(it)) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::Adt(Adt::Enum(it)) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::EnumVariant(it) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::Const(it) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::Trait(it) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::TypeAlias(it) => res.extend(from_def_source(db, it)),
+                hir::ModuleDef::BuiltinType(it) => res.extend(Some(it.to_string())),
+            },
             Some(SelfType(ty)) => {
                 if let Some((adt_def, _)) = ty.as_adt() {
                     res.extend(match adt_def {
@@ -147,7 +143,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                     })
                 }
             }
-            Some(Pat(_)) | Some(SelfParam(_)) => {
+            Some(Local(_)) => {
                 // Hover for these shows type names
                 no_fallback = true;
             }
@@ -720,6 +716,18 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("macro_rules! foo"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
+
+    #[test]
+    fn test_hover_tuple_field() {
+        let (analysis, position) = single_file_with_position(
+            "
+            struct TS(String, i32<|>);
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
         assert_eq!(hover.info.is_exact(), true);
     }
 }

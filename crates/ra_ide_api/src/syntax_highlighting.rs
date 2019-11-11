@@ -2,19 +2,17 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{Mutability, Ty};
+use hir::{Mutability, Name};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
-use ra_syntax::{
-    ast::{self, NameOwner},
-    AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind,
-    SyntaxKind::*,
-    TextRange, T,
-};
+use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
 
 use crate::{
     db::RootDatabase,
-    references::{classify_name_ref, NameKind::*},
+    references::{
+        classify_name, classify_name_ref,
+        NameKind::{self, *},
+    },
     FileId,
 };
 
@@ -40,32 +38,12 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
     }
 }
 
-fn is_variable_mutable(
-    db: &RootDatabase,
-    analyzer: &hir::SourceAnalyzer,
-    pat: ast::BindPat,
-) -> bool {
-    if pat.is_mutable() {
-        return true;
-    }
-
-    let ty = analyzer.type_of_pat(db, &pat.into()).unwrap_or(Ty::Unknown);
-    if let Some((_, mutability)) = ty.as_reference() {
-        match mutability {
-            Mutability::Shared => false,
-            Mutability::Mut => true,
-        }
-    } else {
-        false
-    }
-}
-
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let parse = db.parse(file_id);
     let root = parse.tree().syntax().clone();
 
-    fn calc_binding_hash(file_id: FileId, text: &SmolStr, shadow_count: u32) -> u64 {
+    fn calc_binding_hash(file_id: FileId, name: &Name, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
             use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 
@@ -74,13 +52,13 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             hasher.finish()
         }
 
-        hash((file_id, text, shadow_count))
+        hash((file_id, name, shadow_count))
     }
 
     // Visited nodes to handle highlighting priorities
     // FIXME: retain only ranges here
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
-    let mut bindings_shadow_count: FxHashMap<SmolStr, u32> = FxHashMap::default();
+    let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
 
     let mut res = Vec::new();
     for node in root.descendants_with_tokens() {
@@ -100,81 +78,38 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 if node.ancestors().any(|it| it.kind() == ATTR) {
                     continue;
                 }
-                if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
-                    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
-                    match name_kind {
-                        Some(Macro(_)) => "macro",
-                        Some(Field(_)) => "field",
-                        Some(AssocItem(hir::AssocItem::Function(_))) => "function",
-                        Some(AssocItem(hir::AssocItem::Const(_))) => "constant",
-                        Some(AssocItem(hir::AssocItem::TypeAlias(_))) => "type",
-                        Some(Def(hir::ModuleDef::Module(_))) => "module",
-                        Some(Def(hir::ModuleDef::Function(_))) => "function",
-                        Some(Def(hir::ModuleDef::Adt(_))) => "type",
-                        Some(Def(hir::ModuleDef::EnumVariant(_))) => "constant",
-                        Some(Def(hir::ModuleDef::Const(_))) => "constant",
-                        Some(Def(hir::ModuleDef::Static(_))) => "constant",
-                        Some(Def(hir::ModuleDef::Trait(_))) => "type",
-                        Some(Def(hir::ModuleDef::TypeAlias(_))) => "type",
-                        Some(Def(hir::ModuleDef::BuiltinType(_))) => "type",
-                        Some(SelfType(_)) => "type",
-                        Some(Pat((_, ptr))) => {
-                            let pat = ptr.to_node(&root);
-                            if let Some(name) = pat.name() {
-                                let text = name.text();
-                                let shadow_count =
-                                    bindings_shadow_count.entry(text.clone()).or_default();
-                                binding_hash =
-                                    Some(calc_binding_hash(file_id, &text, *shadow_count))
-                            }
 
-                            let analyzer =
-                                hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                            if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
-                                "variable.mut"
-                            } else {
-                                "variable"
-                            }
-                        }
-                        Some(SelfParam(_)) => "type",
-                        Some(GenericParam(_)) => "type",
-                        None => "text",
+                let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
+                let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
+
+                if let Some(Local(local)) = &name_kind {
+                    if let Some(name) = local.name(db) {
+                        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                        binding_hash = Some(calc_binding_hash(file_id, &name, *shadow_count))
                     }
-                } else {
-                    "text"
-                }
+                };
+
+                name_kind.map_or("text", |it| highlight_name(db, it))
             }
             NAME => {
-                if let Some(name) = node.as_node().cloned().and_then(ast::Name::cast) {
-                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name.syntax(), None);
-                    if let Some(pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
-                        if let Some(name) = pat.name() {
-                            let text = name.text();
-                            let shadow_count =
-                                bindings_shadow_count.entry(text.clone()).or_default();
-                            *shadow_count += 1;
-                            binding_hash = Some(calc_binding_hash(file_id, &text, *shadow_count))
-                        }
+                let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
+                let name_kind = classify_name(db, file_id, &name).map(|d| d.kind);
 
-                        if is_variable_mutable(db, &analyzer, pat) {
-                            "variable.mut"
-                        } else {
-                            "variable"
-                        }
-                    } else {
-                        name.syntax()
-                            .parent()
-                            .map(|x| match x.kind() {
-                                TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
-                                    "type"
-                                }
-                                RECORD_FIELD_DEF => "field",
-                                _ => "function",
-                            })
-                            .unwrap_or("function")
+                if let Some(Local(local)) = &name_kind {
+                    if let Some(name) = local.name(db) {
+                        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                        *shadow_count += 1;
+                        binding_hash = Some(calc_binding_hash(file_id, &name, *shadow_count))
                     }
-                } else {
-                    "text"
+                };
+
+                match name_kind {
+                    Some(name_kind) => highlight_name(db, name_kind),
+                    None => name.syntax().parent().map_or("function", |x| match x.kind() {
+                        TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
+                        RECORD_FIELD_DEF => "field",
+                        _ => "function",
+                    }),
                 }
             }
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
@@ -270,6 +205,37 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     }
     buf.push_str("</code></pre>");
     buf
+}
+
+fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
+    match name_kind {
+        Macro(_) => "macro",
+        Field(_) => "field",
+        AssocItem(hir::AssocItem::Function(_)) => "function",
+        AssocItem(hir::AssocItem::Const(_)) => "constant",
+        AssocItem(hir::AssocItem::TypeAlias(_)) => "type",
+        Def(hir::ModuleDef::Module(_)) => "module",
+        Def(hir::ModuleDef::Function(_)) => "function",
+        Def(hir::ModuleDef::Adt(_)) => "type",
+        Def(hir::ModuleDef::EnumVariant(_)) => "constant",
+        Def(hir::ModuleDef::Const(_)) => "constant",
+        Def(hir::ModuleDef::Static(_)) => "constant",
+        Def(hir::ModuleDef::Trait(_)) => "type",
+        Def(hir::ModuleDef::TypeAlias(_)) => "type",
+        Def(hir::ModuleDef::BuiltinType(_)) => "type",
+        SelfType(_) => "type",
+        GenericParam(_) => "type",
+        Local(local) => {
+            if local.is_mut(db) {
+                "variable.mut"
+            } else {
+                match local.ty(db).as_reference() {
+                    Some((_, Mutability::Mut)) => "variable.mut",
+                    _ => "variable",
+                }
+            }
+        }
+    }
 }
 
 //FIXME: like, real html escaping

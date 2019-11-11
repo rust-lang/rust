@@ -14,7 +14,6 @@ matrix:
           script:
               - rustup component add rustfmt
               - rustup component add rust-src
-              - sed -i "s/debug = 1/debug = false/g" Cargo.toml
               - cargo test --no-run  # let's measure compile time separately
               - cargo test
           env:

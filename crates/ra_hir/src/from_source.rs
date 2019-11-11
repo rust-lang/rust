@@ -2,13 +2,17 @@
 
 use hir_def::{StructId, StructOrUnionId, UnionId};
 use hir_expand::name::AsName;
-use ra_syntax::ast::{self, AstNode, NameOwner};
+use ra_syntax::{
+    ast::{self, AstNode, NameOwner},
+    match_ast,
+};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    AstId, Const, Crate, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock, Module,
-    ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
+    AstId, Const, Crate, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasSource,
+    ImplBlock, Local, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias,
+    Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -123,6 +127,26 @@ impl FromSource for StructField {
             .flat_map(|it| it.iter())
             .map(|(id, _)| StructField { parent: variant_def, id })
             .find(|f| f.source(db) == src)
+    }
+}
+
+impl Local {
+    pub fn from_source(db: &impl HirDatabase, src: Source<ast::BindPat>) -> Option<Self> {
+        let file_id = src.file_id;
+        let parent: DefWithBody = src.ast.syntax().ancestors().find_map(|it| {
+            let res = match_ast! {
+                match it {
+                    ast::ConstDef(ast) => { Const::from_source(db, Source { ast, file_id})?.into() },
+                    ast::StaticDef(ast) => { Static::from_source(db, Source { ast, file_id})?.into() },
+                    ast::FnDef(ast) => { Function::from_source(db, Source { ast, file_id})?.into() },
+                    _ => return None,
+                }
+            };
+            Some(res)
+        })?;
+        let (_body, source_map) = db.body_with_source_map(parent);
+        let pat_id = source_map.node_pat(&src.ast.into())?;
+        Some(Local { parent, pat_id })
     }
 }
 
