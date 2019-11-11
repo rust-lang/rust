@@ -10,6 +10,11 @@ note: ...which requires const-evaluating + checking `Foo::bytes::{{constant}}#0`
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating `Foo::bytes::{{constant}}#0`...
+  --> $DIR/const-size_of-cycle.rs:5:17
+   |
+LL |     bytes: [u8; std::mem::size_of::<Foo>()]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating `std::mem::size_of`...
   --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()

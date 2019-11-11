@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic,
+    GlobalId, InterpResult, PointerArithmetic,
     InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
@@ -284,6 +284,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
+                // If this function is a `const fn` then as an optimization we can query this
+                // evaluation immediately.
+                //
+                // For the moment we only do this for functions which take no arguments
+                // (or all arguments are ZSTs) so that we don't memoize too much.
+                if self.tcx.is_const_fn_raw(instance.def.def_id()) &&
+                   args.iter().all(|a| a.layout.is_zst())
+                {
+                    let gid = GlobalId { instance, promoted: None };
+                    return self.eval_const_fn_call(gid, ret);
+                }
+
                 // We need MIR for this fn
                 let body = match M::find_fn(self, instance, args, ret, unwind)? {
                     Some(body) => body,
@@ -447,6 +459,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
             }
         }
+    }
+
+    /// Evaluate a const function where all arguments (if any) are zero-sized types.
+    /// The evaluation is memoized thanks to the query system.
+    fn eval_const_fn_call(
+        &mut self,
+        gid: GlobalId<'tcx>,
+        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+    ) -> InterpResult<'tcx> {
+        trace!("eval_const_fn_call: {:?}", gid);
+
+        let place = self.const_eval_raw(gid)?;
+        let dest = ret.ok_or_else(|| err_ub!(Unreachable))?.0;
+
+        self.copy_op(place.into(), dest)?;
+
+        self.return_to_block(ret.map(|r| r.1))?;
+        self.dump_place(*dest);
+        return Ok(())
     }
 
     fn drop_in_place(
