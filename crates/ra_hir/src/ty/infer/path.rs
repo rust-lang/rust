@@ -5,9 +5,10 @@ use hir_def::path::PathSegment;
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
+    generics::HasGenericParams,
     resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::{method_resolution, Namespace, Substs, Ty, TypableDef, TypeWalk},
-    AssocItem, Container, HasGenericParams, Name, Path,
+    AssocItem, Container, Name, Path,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

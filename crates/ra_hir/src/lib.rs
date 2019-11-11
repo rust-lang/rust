@@ -39,7 +39,7 @@ mod ty;
 mod impl_block;
 mod expr;
 mod lang_item;
-mod generics;
+pub mod generics;
 mod resolve;
 pub mod diagnostics;
 mod util;
@@ -70,7 +70,7 @@ pub use crate::{
     },
     expr::ExprScopes,
     from_source::FromSource,
-    generics::{GenericDef, GenericParam, GenericParams, HasGenericParams},
+    generics::GenericDef,
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     impl_block::ImplBlock,
     resolve::ScopeDef,

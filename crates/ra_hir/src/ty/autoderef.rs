@@ -9,7 +9,7 @@ use hir_expand::name;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
-use crate::{db::HirDatabase, HasGenericParams, Resolver};
+use crate::{db::HirDatabase, generics::HasGenericParams, Resolver};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 

@@ -16,13 +16,13 @@ use ra_db::salsa::{InternId, InternKey};
 use super::{Canonical, ChalkContext, Impl, Obligation};
 use crate::{
     db::HirDatabase,
-    generics::GenericDef,
+    generics::{GenericDef, HasGenericParams},
     ty::display::HirDisplay,
     ty::{
         ApplicationTy, GenericPredicate, Namespace, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
         TypeWalk,
     },
-    AssocItem, Crate, HasGenericParams, ImplBlock, Trait, TypeAlias,
+    AssocItem, Crate, ImplBlock, Trait, TypeAlias,
 };
 
 /// This represents a trait whose name we could not resolve.
