@@ -246,7 +246,7 @@ pub enum ValuePairs<'tcx> {
 /// encounter an error or subtyping constraint.
 ///
 /// See the `error_reporting` module for more details.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TypeTrace<'tcx> {
     cause: ObligationCause<'tcx>,
     values: ValuePairs<'tcx>,
@@ -1644,12 +1644,6 @@ impl<'tcx> TypeTrace<'tcx> {
             cause: ObligationCause::dummy(),
             values: Types(ExpectedFound { expected: tcx.types.err, found: tcx.types.err }),
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for TypeTrace<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TypeTrace({:?})", self.cause)
     }
 }
 
