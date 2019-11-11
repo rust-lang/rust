@@ -6,8 +6,8 @@
 /// # Examples
 ///
 /// ```
-/// let a = char::from('🎈');
-/// let b = char::from('🎉');
+/// let a = '🎈';
+/// let b = '🎉';
 /// let c = a + b;
 /// // `c` is a newly allocated `String`
 /// ```
