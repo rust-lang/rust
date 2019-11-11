@@ -79,6 +79,7 @@ pub fn run(options: Options) -> i32 {
         crate_name: options.crate_name.clone(),
         lint_caps: Default::default(),
         register_lints: None,
+        override_queries: None,
     };
 
     let mut test_args = options.test_args.clone();

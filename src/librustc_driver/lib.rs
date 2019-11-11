@@ -181,6 +181,7 @@ pub fn run_compiler(
             crate_name: None,
             lint_caps: Default::default(),
             register_lints: None,
+            override_queries: None,
         };
         callbacks.config(&mut config);
         config
@@ -259,6 +260,7 @@ pub fn run_compiler(
         crate_name: None,
         lint_caps: Default::default(),
         register_lints: None,
+        override_queries: None,
     };
 
     callbacks.config(&mut config);
