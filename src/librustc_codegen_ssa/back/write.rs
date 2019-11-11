@@ -19,7 +19,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
-use rustc::util::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;

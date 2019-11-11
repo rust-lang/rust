@@ -6,7 +6,7 @@ use crate::ty::query::queries;
 use crate::ty::query::{Query, QueryName};
 use crate::ty::query::QueryCache;
 use crate::ty::query::plumbing::CycleError;
-use crate::util::profiling::ProfileCategory;
+use rustc_data_structures::profiling::ProfileCategory;
 
 use std::borrow::Cow;
 use std::hash::Hash;
