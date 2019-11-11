@@ -465,8 +465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                self.eval_mir_constant(constant)
-                    .map(|c| OperandRef::from_const(bx, c))
+                self.eval_mir_constant_to_operand(bx, constant)
                     .unwrap_or_else(|err| {
                         match err {
                             // errored or at least linted
