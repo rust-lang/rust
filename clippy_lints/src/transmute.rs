@@ -361,7 +361,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                         ),
                         |db| {
                             let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                            let (deref, cast) = if mutbl == Mutability::MutMutable {
+                            let (deref, cast) = if mutbl == Mutability::Mutable {
                                 ("&mut *", "*mut")
                             } else {
                                 ("&*", "*const")
@@ -409,7 +409,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
                             if from_mutbl == to_mutbl;
                             then {
-                                let postfix = if from_mutbl == Mutability::MutMutable {
+                                let postfix = if from_mutbl == Mutability::Mutable {
                                     "_mut"
                                 } else {
                                     ""
@@ -449,7 +449,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             let sugg_paren = arg
                                                 .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
                                                 .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
-                                            let sugg = if to_mutbl == Mutability::MutMutable {
+                                            let sugg = if to_mutbl == Mutability::Mutable {
                                                 sugg_paren.mut_addr_deref()
                                             } else {
                                                 sugg_paren.addr_deref()

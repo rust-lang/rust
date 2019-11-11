@@ -548,7 +548,7 @@ fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span,
         Tuple(ref substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
         Array(ty, _) | Slice(ty) => is_mutable_ty(cx, ty, span, tys),
         RawPtr(ty::TypeAndMut { ty, mutbl }) | Ref(_, ty, mutbl) => {
-            mutbl == hir::Mutability::MutMutable || is_mutable_ty(cx, ty, span, tys)
+            mutbl == hir::Mutability::Mutable || is_mutable_ty(cx, ty, span, tys)
         },
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
@@ -653,7 +653,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     tys.clear();
                 }
             },
-            Assign(ref target, _) | AssignOp(_, ref target, _) | AddrOf(hir::Mutability::MutMutable, ref target) => {
+            Assign(ref target, _) | AssignOp(_, ref target, _) | AddrOf(hir::Mutability::Mutable, ref target) => {
                 self.mutates_static |= is_mutated_static(self.cx, target)
             },
             _ => {},

@@ -393,7 +393,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
                     } else {
                         format!("{} ", lt.name.ident().as_str())
                     };
-                    let mutopt = if mut_ty.mutbl == Mutability::MutMutable {
+                    let mutopt = if mut_ty.mutbl == Mutability::Mutable {
                         "mut "
                     } else {
                         ""
@@ -2377,9 +2377,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RefToMut {
         if_chain! {
             if let ExprKind::Unary(UnOp::UnDeref, e) = &expr.kind;
             if let ExprKind::Cast(e, t) = &e.kind;
-            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutMutable, .. }) = t.kind;
+            if let TyKind::Ptr(MutTy { mutbl: Mutability::Mutable, .. }) = t.kind;
             if let ExprKind::Cast(e, t) = &e.kind;
-            if let TyKind::Ptr(MutTy { mutbl: Mutability::MutImmutable, .. }) = t.kind;
+            if let TyKind::Ptr(MutTy { mutbl: Mutability::Immutable, .. }) = t.kind;
             if let ty::Ref(..) = cx.tables.node_type(e.hir_id).kind;
             then {
                 span_lint(

@@ -4,7 +4,7 @@
 
 use crate::utils::{snippet_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::hir::{BindingAnnotation, MutImmutable, Node, Pat, PatKind};
+use rustc::hir::{BindingAnnotation, Mutability, Node, Pat, PatKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
 
         if_chain! {
             // Only lint immutable refs, because `&mut ref T` may be useful.
-            if let PatKind::Ref(ref sub_pat, MutImmutable) = pat.kind;
+            if let PatKind::Ref(ref sub_pat, Mutability::Immutable) = pat.kind;
 
             // Check sub_pat got a `ref` keyword (excluding `ref mut`).
             if let PatKind::Binding(BindingAnnotation::Ref, .., spanned_name, _) = sub_pat.kind;

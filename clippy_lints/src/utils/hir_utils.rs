@@ -447,8 +447,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             ExprKind::Closure(cap, _, eid, _, _) => {
                 match cap {
-                    CaptureClause::CaptureByValue => 0,
-                    CaptureClause::CaptureByRef => 1,
+                    CaptureBy::Value => 0,
+                    CaptureBy::Ref => 1,
                 }
                 .hash(&mut self.s);
                 // closures inherit TypeckTables

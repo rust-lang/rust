@@ -2764,8 +2764,8 @@ fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(
             _ => unreachable!(),
         };
         let method_name = match mutbl {
-            hir::MutImmutable => "iter",
-            hir::MutMutable => "iter_mut",
+            hir::Mutability::Immutable => "iter",
+            hir::Mutability::Mutable => "iter_mut",
         };
         (ty_name, method_name)
     })
@@ -2955,8 +2955,8 @@ impl SelfKind {
             }
 
             let trait_path = match mutability {
-                hir::Mutability::MutImmutable => &paths::ASREF_TRAIT,
-                hir::Mutability::MutMutable => &paths::ASMUT_TRAIT,
+                hir::Mutability::Immutable => &paths::ASREF_TRAIT,
+                hir::Mutability::Mutable => &paths::ASMUT_TRAIT,
             };
 
             let trait_def_id = match get_trait_def_id(cx, trait_path) {
@@ -2969,9 +2969,9 @@ impl SelfKind {
         match self {
             Self::Value => matches_value(parent_ty, ty),
             Self::Ref => {
-                matches_ref(cx, hir::Mutability::MutImmutable, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty)
+                matches_ref(cx, hir::Mutability::Immutable, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty)
             },
-            Self::RefMut => matches_ref(cx, hir::Mutability::MutMutable, parent_ty, ty),
+            Self::RefMut => matches_ref(cx, hir::Mutability::Mutable, parent_ty, ty),
             Self::No => ty != parent_ty,
         }
     }
