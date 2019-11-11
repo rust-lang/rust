@@ -10,6 +10,8 @@ use syntax::attr;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
 

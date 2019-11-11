@@ -35,6 +35,8 @@ use std::mem;
 use std::ops::Deref;
 use std::cmp::max;
 
+use rustc_error_codes::*;
+
 use smallvec::{smallvec, SmallVec};
 
 use self::CandidateKind::*;

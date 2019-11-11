@@ -77,8 +77,6 @@ pub mod diagnostics {
     pub mod macros;
 }
 
-pub mod error_codes;
-
 pub mod util {
     pub mod classify;
     pub mod comments;

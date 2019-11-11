@@ -31,3 +31,4 @@ rustc_fs_util = { path = "../librustc_fs_util" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_target = { path = "../librustc_target" }
+rustc_error_codes = { path = "../librustc_error_codes" }

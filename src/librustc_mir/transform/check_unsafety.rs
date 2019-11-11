@@ -18,6 +18,8 @@ use std::ops::Bound;
 
 use crate::util;
 
+use rustc_error_codes::*;
+
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     const_context: bool,

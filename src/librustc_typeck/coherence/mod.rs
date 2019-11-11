@@ -12,6 +12,8 @@ use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
 
+use rustc_error_codes::*;
+
 mod builtin;
 mod inherent_impls;
 mod inherent_impls_overlap;

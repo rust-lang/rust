@@ -18,6 +18,8 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
 ///

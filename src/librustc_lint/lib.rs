@@ -23,7 +23,6 @@
 extern crate rustc;
 
 mod array_into_iter;
-mod error_codes;
 mod nonstandard_style;
 mod redundant_semicolon;
 pub mod builtin;

@@ -10,6 +10,8 @@ use syntax_pos::{Span, Symbol};
 
 use super::{ConstKind, Item};
 
+use rustc_error_codes::*;
+
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
     /// Whether this operation can be evaluated by miri.

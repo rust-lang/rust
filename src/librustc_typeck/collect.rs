@@ -48,6 +48,8 @@ use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
 use errors::{Applicability, DiagnosticId, StashKey};
 
+use rustc_error_codes::*;
+
 struct OnlySelfBounds(bool);
 
 ///////////////////////////////////////////////////////////////////////////

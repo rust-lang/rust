@@ -30,6 +30,8 @@ use syntax_pos::Span;
 use std::collections::BTreeSet;
 use std::mem::replace;
 
+use rustc_error_codes::*;
+
 mod diagnostics;
 
 type Res = def::Res<NodeId>;

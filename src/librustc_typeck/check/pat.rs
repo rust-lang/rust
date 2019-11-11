@@ -14,6 +14,8 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 use syntax_pos::hygiene::DesugaringKind;
 
+use rustc_error_codes::*;
+
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 

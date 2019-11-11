@@ -51,6 +51,8 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 use syntax_pos::{Span, DUMMY_SP};
 
+use rustc_error_codes::*;
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         $crate::borrow_check::nll::type_check::mirbug(

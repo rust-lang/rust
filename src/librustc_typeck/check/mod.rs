@@ -130,6 +130,8 @@ use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
 
+use rustc_error_codes::*;
+
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::hash_map::Entry;
 use std::cmp;

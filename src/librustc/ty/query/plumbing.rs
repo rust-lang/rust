@@ -26,6 +26,8 @@ use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 use syntax::source_map::DUMMY_SP;
 
+use rustc_error_codes::*;
+
 pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,

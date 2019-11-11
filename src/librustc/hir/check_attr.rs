@@ -16,6 +16,8 @@ use std::fmt::{self, Display};
 use syntax::{attr, symbol::sym};
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum MethodKind {
     Trait { body: bool },

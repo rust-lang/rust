@@ -39,6 +39,8 @@ use syntax::ast;
 use syntax::symbol::{sym, kw};
 use syntax_pos::{DUMMY_SP, Span, ExpnKind, MultiSpan};
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,

@@ -17,6 +17,9 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
 
+use rustc_error_codes::*;
+
+
 use std::env;
 use std::num::NonZeroU32;
 

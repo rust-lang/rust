@@ -23,6 +23,8 @@ use crate::path_names_to_string;
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
+use rustc_error_codes::*;
+
 type Res = def::Res<ast::NodeId>;
 
 /// A vector of spans and replacements, a message and applicability.

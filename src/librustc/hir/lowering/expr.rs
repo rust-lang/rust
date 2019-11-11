@@ -11,6 +11,8 @@ use syntax::ast::*;
 use syntax::source_map::{respan, DesugaringKind, Span, Spanned};
 use syntax::symbol::{sym, Symbol};
 
+use rustc_error_codes::*;
+
 impl LoweringContext<'_> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> HirVec<hir::Expr> {
         exprs.iter().map(|x| self.lower_expr(x)).collect()

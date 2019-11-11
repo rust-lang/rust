@@ -20,8 +20,6 @@ extern crate syntax;
 
 use rustc::ty::query::Providers;
 
-pub mod error_codes;
-
 pub mod ast_validation;
 mod check_const;
 pub mod hir_stats;

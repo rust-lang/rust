@@ -3,6 +3,8 @@ use syntax_pos::Span;
 use errors::{Applicability, DiagnosticId, DiagnosticBuilder};
 use rustc::ty::{Ty, TypeFoldable};
 
+use rustc_error_codes::*;
+
 pub trait StructuredDiagnostic<'tcx> {
     fn session(&self) -> &Session;
 

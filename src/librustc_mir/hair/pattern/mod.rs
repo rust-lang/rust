@@ -28,6 +28,8 @@ use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
+use rustc_error_codes::*;
+
 #[derive(Clone, Debug)]
 pub enum PatternError {
     AssocConstInPattern(Span),

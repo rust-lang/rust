@@ -30,6 +30,8 @@ use syntax::{struct_span_err, unwrap_or};
 use syntax_pos::hygiene::ExpnId;
 use syntax_pos::{MultiSpan, Span};
 
+use rustc_error_codes::*;
+
 use log::*;
 
 use std::cell::Cell;

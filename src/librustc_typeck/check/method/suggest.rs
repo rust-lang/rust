@@ -18,6 +18,8 @@ use syntax_pos::{Span, FileName};
 use syntax::ast;
 use syntax::util::lev_distance;
 
+use rustc_error_codes::*;
+
 use std::cmp::Ordering;
 
 use super::{MethodError, NoMatchData, CandidateSource};

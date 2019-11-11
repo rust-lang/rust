@@ -18,6 +18,8 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
 
+use rustc_error_codes::*;
+
 const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
 
 /// Creates a placeholder argument.

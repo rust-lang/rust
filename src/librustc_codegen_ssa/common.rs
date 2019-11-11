@@ -12,6 +12,8 @@ use crate::traits::*;
 use rustc::hir;
 use crate::traits::BuilderMethods;
 
+use rustc_error_codes::*;
+
 pub enum IntPredicate {
     IntEQ,
     IntNE,

@@ -4,6 +4,8 @@ use crate::ty::{self, Region};
 use crate::ty::error::TypeError;
 use errors::DiagnosticBuilder;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self,
                                      err: &mut DiagnosticBuilder<'_>,

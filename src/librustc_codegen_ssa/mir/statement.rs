@@ -6,6 +6,8 @@ use super::LocalRef;
 use super::OperandValue;
 use crate::traits::*;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(
         &mut self,

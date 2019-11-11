@@ -36,6 +36,8 @@ use std::slice;
 
 use rustc_data_structures::fx::FxHashSet;
 
+use rustc_error_codes::*;
+
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
 

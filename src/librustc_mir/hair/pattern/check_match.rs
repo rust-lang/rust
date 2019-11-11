@@ -20,6 +20,8 @@ use std::slice;
 
 use syntax_pos::{MultiSpan, Span};
 
+use rustc_error_codes::*;
+
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match tcx.hir().as_local_hir_id(def_id) {
         None => return,

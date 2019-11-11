@@ -12,6 +12,8 @@ use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
 
+use rustc_error_codes::*;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,

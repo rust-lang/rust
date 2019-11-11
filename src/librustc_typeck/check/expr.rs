@@ -42,6 +42,8 @@ use rustc::ty::TypeFoldable;
 use rustc::ty::subst::InternalSubsts;
 use rustc::traits::{self, ObligationCauseCode};
 
+use rustc_error_codes::*;
+
 use std::fmt::Display;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {

@@ -23,6 +23,8 @@ use syntax::{span_err, struct_span_err, walk_list};
 use syntax_pos::{Span, MultiSpan};
 use errors::{Applicability, FatalError};
 
+use rustc_error_codes::*;
+
 struct AstValidator<'a> {
     session: &'a Session,
     has_proc_macro_decls: bool,

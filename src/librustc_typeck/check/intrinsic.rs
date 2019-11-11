@@ -12,6 +12,8 @@ use syntax::symbol::Symbol;
 
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 use std::iter;
 
 fn equate_intrinsic_type<'tcx>(

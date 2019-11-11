@@ -19,8 +19,6 @@ use syntax::symbol::sym;
 use syntax_expand::base::{Resolver, SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
 use syntax_expand::proc_macro::BangProcMacro;
 
-mod error_codes;
-
 mod asm;
 mod assert;
 mod cfg;

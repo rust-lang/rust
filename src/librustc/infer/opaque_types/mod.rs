@@ -15,6 +15,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
 /// Information about the opaque types whose values we

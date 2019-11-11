@@ -23,6 +23,8 @@ use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
 
+use rustc_error_codes::*;
+
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {

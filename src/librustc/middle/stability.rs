@@ -26,6 +26,9 @@ use std::cmp::Ordering;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
+use rustc_error_codes::*;
+
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
     Unstable,

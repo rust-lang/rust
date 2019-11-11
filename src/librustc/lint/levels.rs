@@ -16,6 +16,8 @@ use syntax::print::pprust;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::{Symbol, sym};
 
+use rustc_error_codes::*;
+
 pub struct LintLevelSets {
     list: Vec<LintSet>,
     lint_cap: Level,

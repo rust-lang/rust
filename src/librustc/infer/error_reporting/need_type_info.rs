@@ -9,6 +9,8 @@ use syntax::source_map::DesugaringKind;
 use syntax_pos::Span;
 use errors::{Applicability, DiagnosticBuilder};
 
+use rustc_error_codes::*;
+
 struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,

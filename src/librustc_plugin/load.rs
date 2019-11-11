@@ -14,6 +14,8 @@ use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
+use rustc_error_codes::*;
+
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
     fn(&mut Registry<'_>);

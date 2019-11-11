@@ -83,8 +83,6 @@ mod tests;
 #[macro_use]
 mod macros;
 
-pub mod error_codes;
-
 #[macro_use]
 pub mod query;
 
