@@ -16,8 +16,6 @@
 use crate::token::{self, DelimToken, Token, TokenKind};
 
 use syntax_pos::{Span, DUMMY_SP};
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
 use smallvec::{SmallVec, smallvec};
 
@@ -129,7 +127,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(TokenStream, 8);
+rustc_data_structures::static_assert_size!(TokenStream, 8);
 
 #[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum IsJoint {
