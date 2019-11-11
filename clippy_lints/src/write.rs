@@ -2,9 +2,9 @@ use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, sp
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_parse::parser;
 use std::borrow::Cow;
 use syntax::ast::*;
-use syntax::parse::parser;
 use syntax::token;
 use syntax::tokenstream::TokenStream;
 use syntax_pos::{BytePos, Span};
