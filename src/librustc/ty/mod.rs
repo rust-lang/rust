@@ -1847,7 +1847,7 @@ pub struct VariantDef {
     /// If this variant is a struct variant, then this is `None`.
     pub ctor_def_id: Option<DefId>,
     /// Variant or struct name.
-    #[stable_hasher(project = name)]
+    #[stable_hasher(project(name))]
     pub ident: Ident,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
