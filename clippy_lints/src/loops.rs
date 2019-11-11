@@ -2192,8 +2192,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         }
         walk_expr(self, expr);
     }
+
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
+        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir())
     }
 }
 

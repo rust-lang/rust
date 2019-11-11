@@ -132,3 +132,16 @@ mod issue_1670 {
         }
     }
 }
+
+mod issue_4732 {
+    pub fn test() {
+        let slice = &[1, 2, 3];
+        let mut index = 0;
+
+        // should not trigger the lint because the count is used after the loop
+        for _v in slice {
+            index += 1
+        }
+        let _closure = || println!("index: {}", index);
+    }
+}
