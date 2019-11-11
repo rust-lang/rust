@@ -23,9 +23,9 @@ fn main() {
 // START rustc.main.ConstProp.after.mir
 //  bb0: {
 //      ...
-//      _4 = const Scalar(AllocId(1).0x0) : &i32;
-//      _3 = const Scalar(AllocId(1).0x0) : &i32;
-//      _2 = const Scalar(AllocId(1).0x0) : *const i32;
+//      _4 = const {pointer} : &i32;
+//      _3 = const {pointer} : &i32;
+//      _2 = const {pointer} : *const i32;
 //      ...
 //      _1 = move _2 as usize (Misc);
 //      ...
