@@ -3,7 +3,7 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{ast, AstNode};
 
-use crate::{db::RootDatabase, FilePosition, NavigationTarget, RangeInfo};
+use crate::{db::RootDatabase, display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
@@ -33,7 +33,7 @@ pub(crate) fn goto_type_definition(
 
     let adt_def = analyzer.autoderef(db, ty).find_map(|ty| ty.as_adt().map(|adt| adt.0))?;
 
-    let nav = NavigationTarget::from_adt_def(db, adt_def);
+    let nav = adt_def.to_nav(db);
     Some(RangeInfo::new(node.text_range(), vec![nav]))
 }
 

@@ -29,19 +29,8 @@ pub struct NavigationTarget {
     docs: Option<String>,
 }
 
-fn find_range_from_node(
-    db: &RootDatabase,
-    src: hir::HirFileId,
-    node: &SyntaxNode,
-) -> (FileId, TextRange) {
-    let text_range = node.text_range();
-    let (file_id, text_range) = src
-        .expansion_info(db)
-        .and_then(|expansion_info| expansion_info.find_range(text_range))
-        .unwrap_or((src, text_range));
-
-    // FIXME: handle recursive macro generated macro
-    (file_id.original_file(db), text_range)
+pub(crate) trait ToNav {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget;
 }
 
 impl NavigationTarget {
@@ -95,19 +84,6 @@ impl NavigationTarget {
         NavigationTarget::from_named(db, file_id.into(), pat, None, None)
     }
 
-    pub(crate) fn from_symbol(db: &RootDatabase, symbol: FileSymbol) -> NavigationTarget {
-        NavigationTarget {
-            file_id: symbol.file_id,
-            name: symbol.name.clone(),
-            kind: symbol.ptr.kind(),
-            full_range: symbol.ptr.range(),
-            focus_range: symbol.name_range,
-            container_name: symbol.container_name.clone(),
-            description: description_from_symbol(db, &symbol),
-            docs: docs_from_symbol(db, &symbol),
-        }
-    }
-
     pub(crate) fn from_pat(
         db: &RootDatabase,
         file_id: FileId,
@@ -136,39 +112,6 @@ impl NavigationTarget {
         }
     }
 
-    pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
-        let src = module.definition_source(db);
-        let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        match src.ast {
-            ModuleSource::SourceFile(node) => {
-                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
-
-                NavigationTarget::from_syntax(
-                    file_id,
-                    name,
-                    None,
-                    text_range,
-                    node.syntax(),
-                    None,
-                    None,
-                )
-            }
-            ModuleSource::Module(node) => {
-                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
-
-                NavigationTarget::from_syntax(
-                    file_id,
-                    name,
-                    None,
-                    text_range,
-                    node.syntax(),
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
-        }
-    }
-
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
@@ -183,55 +126,7 @@ impl NavigationTarget {
                 src.ast.short_label(),
             );
         }
-        NavigationTarget::from_module(db, module)
-    }
-
-    pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {
-        let src = field.source(db);
-        match src.ast {
-            FieldSource::Named(it) => NavigationTarget::from_named(
-                db,
-                src.file_id,
-                &it,
-                it.doc_comment_text(),
-                it.short_label(),
-            ),
-            FieldSource::Pos(it) => {
-                let (file_id, text_range) = find_range_from_node(db, src.file_id, it.syntax());
-                NavigationTarget::from_syntax(
-                    file_id,
-                    "".into(),
-                    None,
-                    text_range,
-                    it.syntax(),
-                    None,
-                    None,
-                )
-            }
-        }
-    }
-
-    pub(crate) fn from_def_source<A, D>(db: &RootDatabase, def: D) -> NavigationTarget
-    where
-        D: HasSource<Ast = A>,
-        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
-    {
-        let src = def.source(db);
-        NavigationTarget::from_named(
-            db,
-            src.file_id,
-            &src.ast,
-            src.ast.doc_comment_text(),
-            src.ast.short_label(),
-        )
-    }
-
-    pub(crate) fn from_adt_def(db: &RootDatabase, adt_def: hir::Adt) -> NavigationTarget {
-        match adt_def {
-            hir::Adt::Struct(it) => NavigationTarget::from_def_source(db, it),
-            hir::Adt::Union(it) => NavigationTarget::from_def_source(db, it),
-            hir::Adt::Enum(it) => NavigationTarget::from_def_source(db, it),
-        }
+        module.to_nav(db)
     }
 
     pub(crate) fn from_def(
@@ -239,54 +134,19 @@ impl NavigationTarget {
         module_def: hir::ModuleDef,
     ) -> Option<NavigationTarget> {
         let nav = match module_def {
-            hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
-            hir::ModuleDef::Function(func) => NavigationTarget::from_def_source(db, func),
-            hir::ModuleDef::Adt(it) => NavigationTarget::from_adt_def(db, it),
-            hir::ModuleDef::Const(it) => NavigationTarget::from_def_source(db, it),
-            hir::ModuleDef::Static(it) => NavigationTarget::from_def_source(db, it),
-            hir::ModuleDef::EnumVariant(it) => NavigationTarget::from_def_source(db, it),
-            hir::ModuleDef::Trait(it) => NavigationTarget::from_def_source(db, it),
-            hir::ModuleDef::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
+            hir::ModuleDef::Module(module) => module.to_nav(db),
+            hir::ModuleDef::Function(it) => it.to_nav(db),
+            hir::ModuleDef::Adt(it) => it.to_nav(db),
+            hir::ModuleDef::Const(it) => it.to_nav(db),
+            hir::ModuleDef::Static(it) => it.to_nav(db),
+            hir::ModuleDef::EnumVariant(it) => it.to_nav(db),
+            hir::ModuleDef::Trait(it) => it.to_nav(db),
+            hir::ModuleDef::TypeAlias(it) => it.to_nav(db),
             hir::ModuleDef::BuiltinType(..) => {
                 return None;
             }
         };
         Some(nav)
-    }
-
-    pub(crate) fn from_impl_block(
-        db: &RootDatabase,
-        impl_block: hir::ImplBlock,
-    ) -> NavigationTarget {
-        let src = impl_block.source(db);
-        let (file_id, text_range) = find_range_from_node(db, src.file_id, src.ast.syntax());
-
-        NavigationTarget::from_syntax(
-            file_id,
-            "impl".into(),
-            None,
-            text_range,
-            src.ast.syntax(),
-            None,
-            None,
-        )
-    }
-
-    pub(crate) fn from_assoc_item(
-        db: &RootDatabase,
-        assoc_item: hir::AssocItem,
-    ) -> NavigationTarget {
-        match assoc_item {
-            AssocItem::Function(it) => NavigationTarget::from_def_source(db, it),
-            AssocItem::Const(it) => NavigationTarget::from_def_source(db, it),
-            AssocItem::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
-        }
-    }
-
-    pub(crate) fn from_macro_def(db: &RootDatabase, macro_call: hir::MacroDef) -> NavigationTarget {
-        let src = macro_call.source(db);
-        log::debug!("nav target {:#?}", src.ast.syntax());
-        NavigationTarget::from_named(db, src.file_id, &src.ast, src.ast.doc_comment_text(), None)
     }
 
     #[cfg(test)]
@@ -357,6 +217,172 @@ impl NavigationTarget {
             docs,
         }
     }
+}
+
+impl ToNav for FileSymbol {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        NavigationTarget {
+            file_id: self.file_id,
+            name: self.name.clone(),
+            kind: self.ptr.kind(),
+            full_range: self.ptr.range(),
+            focus_range: self.name_range,
+            container_name: self.container_name.clone(),
+            description: description_from_symbol(db, self),
+            docs: docs_from_symbol(db, self),
+        }
+    }
+}
+
+pub(crate) trait ToNavFromAst {}
+impl ToNavFromAst for hir::Function {}
+impl ToNavFromAst for hir::Const {}
+impl ToNavFromAst for hir::Static {}
+impl ToNavFromAst for hir::Struct {}
+impl ToNavFromAst for hir::Enum {}
+impl ToNavFromAst for hir::EnumVariant {}
+impl ToNavFromAst for hir::Union {}
+impl ToNavFromAst for hir::TypeAlias {}
+impl ToNavFromAst for hir::Trait {}
+
+impl<D> ToNav for D
+where
+    D: HasSource + ToNavFromAst + Copy,
+    D::Ast: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+{
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        NavigationTarget::from_named(
+            db,
+            src.file_id,
+            &src.ast,
+            src.ast.doc_comment_text(),
+            src.ast.short_label(),
+        )
+    }
+}
+
+impl ToNav for hir::Module {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.definition_source(db);
+        let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
+        match src.ast {
+            ModuleSource::SourceFile(node) => {
+                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
+
+                NavigationTarget::from_syntax(
+                    file_id,
+                    name,
+                    None,
+                    text_range,
+                    node.syntax(),
+                    None,
+                    None,
+                )
+            }
+            ModuleSource::Module(node) => {
+                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
+
+                NavigationTarget::from_syntax(
+                    file_id,
+                    name,
+                    None,
+                    text_range,
+                    node.syntax(),
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
+            }
+        }
+    }
+}
+
+impl ToNav for hir::ImplBlock {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let (file_id, text_range) = find_range_from_node(db, src.file_id, src.ast.syntax());
+
+        NavigationTarget::from_syntax(
+            file_id,
+            "impl".into(),
+            None,
+            text_range,
+            src.ast.syntax(),
+            None,
+            None,
+        )
+    }
+}
+
+impl ToNav for hir::StructField {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+
+        match src.ast {
+            FieldSource::Named(it) => NavigationTarget::from_named(
+                db,
+                src.file_id,
+                &it,
+                it.doc_comment_text(),
+                it.short_label(),
+            ),
+            FieldSource::Pos(it) => {
+                let (file_id, text_range) = find_range_from_node(db, src.file_id, it.syntax());
+                NavigationTarget::from_syntax(
+                    file_id,
+                    "".into(),
+                    None,
+                    text_range,
+                    it.syntax(),
+                    None,
+                    None,
+                )
+            }
+        }
+    }
+}
+
+impl ToNav for hir::MacroDef {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        log::debug!("nav target {:#?}", src.ast.syntax());
+        NavigationTarget::from_named(db, src.file_id, &src.ast, src.ast.doc_comment_text(), None)
+    }
+}
+
+impl ToNav for hir::Adt {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        match self {
+            hir::Adt::Struct(it) => it.to_nav(db),
+            hir::Adt::Union(it) => it.to_nav(db),
+            hir::Adt::Enum(it) => it.to_nav(db),
+        }
+    }
+}
+
+impl ToNav for hir::AssocItem {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        match self {
+            AssocItem::Function(it) => it.to_nav(db),
+            AssocItem::Const(it) => it.to_nav(db),
+            AssocItem::TypeAlias(it) => it.to_nav(db),
+        }
+    }
+}
+
+fn find_range_from_node(
+    db: &RootDatabase,
+    src: hir::HirFileId,
+    node: &SyntaxNode,
+) -> (FileId, TextRange) {
+    let text_range = node.text_range();
+    let (file_id, text_range) = src
+        .expansion_info(db)
+        .and_then(|expansion_info| expansion_info.find_range(text_range))
+        .unwrap_or((src, text_range));
+
+    // FIXME: handle recursive macro generated macro
+    (file_id.original_file(db), text_range)
 }
 
 pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {

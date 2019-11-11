@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, ApplicationTy, FromSource, Ty, TypeCtor};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
-use crate::{db::RootDatabase, FilePosition, NavigationTarget, RangeInfo};
+use crate::{db::RootDatabase, display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
@@ -58,7 +58,7 @@ fn impls_for_def(
         impls
             .all_impls()
             .filter(|impl_block| is_equal_for_find_impls(&ty, &impl_block.target_ty(db)))
-            .map(|imp| NavigationTarget::from_impl_block(db, imp))
+            .map(|imp| imp.to_nav(db))
             .collect(),
     )
 }
@@ -75,12 +75,7 @@ fn impls_for_trait(
     let krate = module.krate();
     let impls = db.impls_in_crate(krate);
 
-    Some(
-        impls
-            .lookup_impl_blocks_for_trait(tr)
-            .map(|imp| NavigationTarget::from_impl_block(db, imp))
-            .collect(),
-    )
+    Some(impls.lookup_impl_blocks_for_trait(tr).map(|imp| imp.to_nav(db)).collect())
 }
 
 fn is_equal_for_find_impls(original_ty: &Ty, impl_ty: &Ty) -> bool {
