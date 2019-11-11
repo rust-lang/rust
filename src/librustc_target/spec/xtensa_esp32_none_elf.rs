@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult, abi::Abi}; 
+use crate::spec::{abi::Abi, LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
 // use crate::spec::abi::Abi;
 
 pub fn target() -> TargetResult {
@@ -60,7 +60,7 @@ pub fn target() -> TargetResult {
                 Abi::SysV64,
             ],
 
-            .. Default::default( )
-        }
+            ..Default::default()
+        },
     })
 }
