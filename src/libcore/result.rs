@@ -514,6 +514,28 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Applies a function to the contained value (if any),
+    /// or returns the provided default (if not).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_map_or)]
+    /// let x: Result<_, &str> = Ok("foo");
+    /// assert_eq!(x.map_or(42, |v| v.len()), 3);
+    ///
+    /// let x: Result<&str, _> = Err("bar");
+    /// assert_eq!(x.map_or(42, |v| v.len()), 42);
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_map_or", issue = "66293")]
+    pub fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
+        match self {
+            Ok(t) => f(t),
+            Err(_) => default,
+        }
+    }
+
     /// Maps a `Result<T, E>` to `U` by applying a function to a
     /// contained [`Ok`] value, or a fallback function to a
     /// contained [`Err`] value.
