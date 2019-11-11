@@ -23,6 +23,7 @@
 
 #include "FunctionUtils.h"
 
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 
@@ -359,6 +360,15 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
       return result;
+    } else if (auto arg = dyn_cast<ConstantExpr>(val)) {
+      if (arg->isCast()) {
+          auto result = ConstantExpr::getCast(arg->getOpcode(), cast<Constant>(invertPointerM(arg->getOperand(0), BuilderM)), arg->getType());
+          return result;
+      } else if (arg->isGEPWithNoNotionalOverIndexing()) {
+          auto result = arg->getWithOperandReplaced(0, cast<Constant>(invertPointerM(arg->getOperand(0), BuilderM)));
+          return result;
+      }
+      goto end;
     } else if (auto arg = dyn_cast<ExtractValueInst>(val)) {
       IRBuilder<> bb(arg);
       auto result = bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb), arg->getIndices(), arg->getName()+"'ipev");
@@ -478,6 +488,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
          return lookupM(which, BuilderM);
      }
     }
+
+  end:;
     assert(BuilderM.GetInsertBlock());
     assert(BuilderM.GetInsertBlock()->getParent());
     assert(val);

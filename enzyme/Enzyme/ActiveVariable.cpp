@@ -203,8 +203,7 @@ Type* isIntPointerASecretFloat(Value* val) {
                         continue;
                     } 
                     if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
-                        v = gep->getOperand(0);
-                        continue;
+                        trackPointer(gep->getOperand(0));
                     } 
                     if (auto phi = dyn_cast<PHINode>(v)) {
                         for(auto &a : phi->incoming_values()) {
@@ -220,6 +219,10 @@ Type* isIntPointerASecretFloat(Value* val) {
                     do {
                         if (auto st = dyn_cast<CompositeType>(et)) {
                             et = st->getTypeAtIndex((unsigned int)0);
+                            continue;
+                        } 
+                        if (auto st = dyn_cast<ArrayType>(et)) {
+                            et = st->getElementType();
                             continue;
                         } 
                         break;
@@ -414,6 +417,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                         continue;
                     if (fnp->getIntrinsicID() == Intrinsic::memcpy && call->getArgOperand(0) != inst && call->getArgOperand(1) != inst)
                         continue;
+                    if (fnp->getIntrinsicID() == Intrinsic::memmove && call->getArgOperand(0) != inst && call->getArgOperand(1) != inst)
+                        continue;
                 }
 			}
 
@@ -566,6 +571,29 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
             constants.insert(val);
             return true;
         }
+        //TODO consider this more
+        if (gi->isConstant() && isconstantValueM(gi->getInitializer(), constants, nonconstant, retvals, originalInstructions, directions)) {
+            constants.insert(val);
+            return true;
+        }
+    }
+
+    if (auto ce = dyn_cast<ConstantExpr>(val)) {
+        if (ce->isCast()) {
+            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, retvals, originalInstructions, directions)) {
+                constants.insert(val);
+                return true;
+            }
+        }
+        if (ce->isGEPWithNoNotionalOverIndexing()) {
+            if (isconstantValueM(ce->getOperand(0), constants, nonconstant, retvals, originalInstructions, directions)) {
+                constants.insert(val);
+                return true;
+            }
+            if (auto gi = dyn_cast<GlobalVariable>(val)) {
+
+            }
+        }
     }
     
     if (auto inst = dyn_cast<Instruction>(val)) {
@@ -599,6 +627,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
                     if (fnp->getIntrinsicID() == Intrinsic::memset && call->getArgOperand(0) != val && call->getArgOperand(1) != val)
                         continue;
                     if (fnp->getIntrinsicID() == Intrinsic::memcpy && call->getArgOperand(0) != val && call->getArgOperand(1) != val)
+                        continue;
+                    if (fnp->getIntrinsicID() == Intrinsic::memmove && call->getArgOperand(0) != val && call->getArgOperand(1) != val)
                         continue;
                 }
 			}

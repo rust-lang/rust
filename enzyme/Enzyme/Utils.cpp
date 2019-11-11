@@ -97,3 +97,9 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T) {
     }
     return F;
 }
+
+//TODO implement differential memmove
+Function* getOrInsertDifferentialFloatMemmove(Module& M, PointerType* T) {
+    llvm::errs() << "warning: didn't implement memmove, using memcpy as fallback which can result in errors\n";
+    return getOrInsertDifferentialFloatMemcpy(M, T);
+}

@@ -508,7 +508,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
     
         if(auto op = dyn_cast_or_null<IntrinsicInst>(inst)) {
           switch(op->getIntrinsicID()) {
-            case Intrinsic::memcpy: {
+            case Intrinsic::memcpy:
+            case Intrinsic::memmove: {
                 if (gutils->isConstantInstruction(inst)) continue;
 
                 if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
@@ -520,7 +521,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                     args.push_back(op->getOperand(3));
 
                     Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-                    auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::memcpy, tys), args);
+                    auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), op->getIntrinsicID(), tys), args);
                     cal->setAttributes(op->getAttributes());
                     cal->setCallingConv(op->getCallingConv());
                     cal->setTailCallKind(op->getTailCallKind());
@@ -658,8 +659,6 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
               for(unsigned i=0;i<op->getNumArgOperands(); i++) {
                 args.push_back(op->getArgOperand(i));
-                if (isa<LoadInst>(op->getArgOperand(i)))
-                llvm::errs() << "next: " << *op->getArgOperand(i) << " vconst: " << gutils->isConstantValue(op->getArgOperand(i)) << " iconst:" << gutils->isConstantInstruction(cast<LoadInst>(op->getArgOperand(i))) << "\n";
                 if (gutils->isConstantValue(op->getArgOperand(i)) && !called->empty()) {
                     subconstant_args.insert(i);
                     argsInverted.push_back(DIFFE_TYPE::CONSTANT);
@@ -2170,6 +2169,38 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
                         Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
                         auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::memcpy, tys), args);
+                        cal->setAttributes(op->getAttributes());
+                        cal->setCallingConv(op->getCallingConv());
+                        cal->setTailCallKind(op->getTailCallKind());
+                    }
+                }
+            break;
+        }
+        case Intrinsic::memmove: {
+            if (gutils->isConstantInstruction(inst)) continue;
+                if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0)) ) {
+                    SmallVector<Value*, 4> args;
+                    auto secretpt = PointerType::getUnqual(secretty);
+
+                    args.push_back(Builder2.CreatePointerCast(invertPointer(op->getOperand(0)), secretpt));
+                    args.push_back(Builder2.CreatePointerCast(invertPointer(op->getOperand(1)), secretpt));
+                    args.push_back(Builder2.CreateUDiv(lookup(op->getOperand(2)),
+
+                        ConstantInt::get(op->getOperand(2)->getType(), Builder2.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(secretty)/8)
+                    ));
+                    auto dmemmove = getOrInsertDifferentialFloatMemmove(*M, secretpt);
+                    Builder2.CreateCall(dmemmove, args);
+                } else {
+                    if (topLevel) {
+                        SmallVector<Value*, 4> args;
+                        IRBuilder <>BuilderZ(op);
+                        args.push_back(gutils->invertPointerM(op->getOperand(0), BuilderZ));
+                        args.push_back(gutils->invertPointerM(op->getOperand(1), BuilderZ));
+                        args.push_back(op->getOperand(2));
+                        args.push_back(op->getOperand(3));
+
+                        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
+                        auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::memmove, tys), args);
                         cal->setAttributes(op->getAttributes());
                         cal->setCallingConv(op->getCallingConv());
                         cal->setTailCallKind(op->getTailCallKind());

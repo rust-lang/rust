@@ -399,7 +399,9 @@ public:
                     }
                     for( auto u : users) {
                         if (auto li = dyn_cast<LoadInst>(u)) {
-                            li->replaceAllUsesWith(ret);
+                            IRBuilder<> lb(li);
+                            ValueToValueMapTy empty;
+                            li->replaceAllUsesWith(unwrapM(ret, lb, empty, /*lookupifable*/false));
                             erase(li);
                         } else if (auto si = dyn_cast<StoreInst>(u)) {
                             erase(si);
@@ -656,7 +658,7 @@ public:
             }
           } else {
             if (auto inti = dyn_cast<IntrinsicInst>(inst)) {
-                if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy) {
+                if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy || inti->getIntrinsicID() == Intrinsic::memmove) {
                     erase(inst);
                     continue;
                 }

@@ -258,4 +258,7 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function* called) {
 //! Create function for type that performs the derivative memcpy on floating point memory
 llvm::Function* getOrInsertDifferentialFloatMemcpy(llvm::Module& M, llvm::PointerType* T);
 
+//! Create function for type that performs the derivative memmove on floating point memory
+llvm::Function* getOrInsertDifferentialFloatMemmove(llvm::Module& M, llvm::PointerType* T);
+
 #endif
