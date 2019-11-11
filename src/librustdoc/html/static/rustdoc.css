@@ -197,7 +197,7 @@ nav.sub {
 
 /* Everything else */
 
-.js-only, .hidden {
+.hidden {
 	display: none !important;
 }
 

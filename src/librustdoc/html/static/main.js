@@ -142,10 +142,6 @@ function getSearchElement() {
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
 
-    onEachLazy(document.getElementsByClassName("js-only"), function(e) {
-        removeClass(e, "js-only");
-    });
-
     function getQueryStringParams() {
         var params = {};
         window.location.search.substring(1).split("&").
@@ -2626,6 +2622,10 @@ function getSearchElement() {
             option.innerText = crates_text[i];
             elem.appendChild(option);
         }
+
+        if (search_input) {
+            search_input.removeAttribute('disabled');
+        };
     }
 
     window.addSearchOptions = addSearchOptions;
