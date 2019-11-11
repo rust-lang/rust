@@ -10,8 +10,7 @@ greatly appreciated!
 3. Commit this change
 4. Run `git tag` to create a tag for this version
 5. Delete the `libm/Cargo.toml` file
-6. Comment out the `[dev-dependencies]` section of `Cargo.toml`
-7. Run `cargo +nightly publish --allow-dirty`
-8. Push the tag
-9. Push the commit
-10. Undo changes to `Cargo.toml` and the `libm` submodule
+6. Run `cargo +nightly publish`
+7. Push the tag
+8. Push the commit
+9. Undo changes to `Cargo.toml` and the `libm` submodule
