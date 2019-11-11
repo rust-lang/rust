@@ -260,18 +260,20 @@ pub struct FunctionDebugContext<'a, 'tcx> {
     debug_context: &'a mut DebugContext<'tcx>,
     entry_id: UnitEntryId,
     symbol: usize,
-    mir_span: Span,
-    local_decls: rustc_index::vec::IndexVec<mir::Local, mir::LocalDecl<'tcx>>,
+    instance: Instance<'tcx>,
+    mir: &'tcx mir::Body<'tcx>,
 }
 
 impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub fn new(
         debug_context: &'a mut DebugContext<'tcx>,
-        mir: &'tcx Body,
+        instance: Instance<'tcx>,
         func_id: FuncId,
         name: &str,
         _sig: &Signature,
     ) -> Self {
+        let mir = debug_context.tcx.instance_mir(instance.def);
+
         let (symbol, _) = debug_context.symbols.insert_full(func_id, name.to_string());
 
         // FIXME: add to appropriate scope intead of root
@@ -299,18 +301,19 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             debug_context,
             entry_id,
             symbol,
-            mir_span: mir.span,
-            local_decls: mir.local_decls.clone(),
+            instance,
+            mir,
         }
     }
 
     pub fn define(
         &mut self,
-        tcx: TyCtxt,
         context: &Context,
         isa: &dyn cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
     ) {
+        let tcx = self.debug_context.tcx;
+
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
 
         line_program.begin_sequence(Some(Address::Symbol {
@@ -351,7 +354,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
                     create_row_for_span(line_program, source_info.0);
                 } else {
-                    create_row_for_span(line_program, self.mir_span);
+                    create_row_for_span(line_program, self.mir.span);
                 }
                 end = offset + size;
             }
@@ -386,7 +389,12 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 );
                 let live_ranges_id = self.debug_context.dwarf.unit.ranges.add(live_ranges);
 
-                let local_type = self.debug_context.dwarf_ty(self.local_decls[mir::Local::from_u32(value_label.as_u32())].ty);
+                let local_ty = tcx.subst_and_normalize_erasing_regions(
+                    self.instance.substs,
+                    ty::ParamEnv::reveal_all(),
+                    &self.mir.local_decls[mir::Local::from_u32(value_label.as_u32())].ty,
+                );
+                let local_type = self.debug_context.dwarf_ty(local_ty);
 
                 let var_id = self
                     .debug_context
