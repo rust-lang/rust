@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir;
-use crate::mir::interpret::{PanicInfo, Scalar};
+use crate::mir::interpret::{ConstValue, GlobalAlloc, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -2339,6 +2339,24 @@ pub struct Constant<'tcx> {
     pub user_ty: Option<UserTypeAnnotationIndex>,
 
     pub literal: &'tcx ty::Const<'tcx>,
+}
+
+impl Constant<'tcx> {
+    pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
+        match self.literal.val {
+            ConstValue::Scalar(Scalar::Ptr(ptr)) => match tcx.alloc_map.lock().get(ptr.alloc_id) {
+                Some(GlobalAlloc::Static(def_id)) => Some(def_id),
+                Some(_) => None,
+                None => {
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP, "MIR cannot contain dangling const pointers",
+                    );
+                    None
+                },
+            },
+            _ => None,
+        }
+    }
 }
 
 /// A collection of projections into user types.

@@ -408,12 +408,21 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match place_base {
             PlaceBase::Local(_) => {}
-            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_, _), .. }) => {
+            PlaceBase::Static(_) => {
                 bug!("Promotion must be run after const validation");
             }
+        }
+    }
 
-            PlaceBase::Static(box Static{ kind: StaticKind::Static, def_id, .. }) => {
-                let is_thread_local = self.tcx.has_attr(*def_id, sym::thread_local);
+    fn visit_operand(
+        &mut self,
+        op: &Operand<'tcx>,
+        location: Location,
+    ) {
+        self.super_operand(op, location);
+        if let Operand::Constant(c) = op {
+            if let Some(def_id) = c.check_static_ptr(self.tcx) {
+                let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
                 if is_thread_local {
                     self.check_op(ops::ThreadLocalAccess);
                 } else if self.const_kind() != ConstKind::Static || !context.is_mutating_use() {
