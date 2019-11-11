@@ -591,14 +591,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
-                    ty::BindByValue(hir::MutMutable) =>
+                    ty::BindByValue(hir::Mutability::Mutable) =>
                         (Mutability::Mut, BindingMode::ByValue),
-                    ty::BindByValue(hir::MutImmutable) =>
+                    ty::BindByValue(hir::Mutability::Immutable) =>
                         (Mutability::Not, BindingMode::ByValue),
-                    ty::BindByReference(hir::MutMutable) =>
+                    ty::BindByReference(hir::Mutability::Mutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             BorrowKind::Mut { allow_two_phase_borrow: false })),
-                    ty::BindByReference(hir::MutImmutable) =>
+                    ty::BindByReference(hir::Mutability::Immutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             BorrowKind::Shared)),
                 };

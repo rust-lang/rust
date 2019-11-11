@@ -149,7 +149,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         ty::Ref(
                             _, /*rgn*/
                             _, /*ty*/
-                            hir::MutImmutable
+                            hir::Mutability::Immutable
                             ) => {
                             // don't continue traversing over derefs of raw pointers or shared
                             // borrows.
@@ -160,7 +160,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         ty::Ref(
                             _, /*rgn*/
                             _, /*ty*/
-                            hir::MutMutable,
+                            hir::Mutability::Mutable,
                             ) => {
                             self.next = Some(PlaceRef {
                                 base: cursor.base,

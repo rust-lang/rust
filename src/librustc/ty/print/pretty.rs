@@ -471,8 +471,8 @@ pub trait PrettyPrinter<'tcx>:
             ty::Float(t) => p!(write("{}", t.name_str())),
             ty::RawPtr(ref tm) => {
                 p!(write("*{} ", match tm.mutbl {
-                    hir::MutMutable => "mut",
-                    hir::MutImmutable => "const",
+                    hir::Mutability::Mutable => "mut",
+                    hir::Mutability::Immutable => "const",
                 }));
                 p!(print(tm.ty))
             }
@@ -607,10 +607,9 @@ pub trait PrettyPrinter<'tcx>:
             ty::Generator(did, substs, movability) => {
                 let upvar_tys = substs.as_generator().upvar_tys(did, self.tcx());
                 let witness = substs.as_generator().witness(did, self.tcx());
-                if movability == hir::GeneratorMovability::Movable {
-                    p!(write("[generator"));
-                } else {
-                    p!(write("[static generator"));
+                match movability {
+                    hir::Movability::Movable => p!(write("[generator")),
+                    hir::Movability::Static  => p!(write("[static generator")),
                 }
 
                 // FIXME(eddyb) should use `def_span`.

@@ -1367,8 +1367,8 @@ fn determine_mode(tcx: TyCtxt<'_>, hir_id: HirId, def_id: DefId) -> Mode {
         hir::BodyOwnerKind::Fn if tcx.is_const_fn(def_id) => Mode::ConstFn,
         hir::BodyOwnerKind::Fn => Mode::NonConstFn,
         hir::BodyOwnerKind::Const => Mode::Const,
-        hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
-        hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
+        hir::BodyOwnerKind::Static(hir::Mutability::Immutable) => Mode::Static,
+        hir::BodyOwnerKind::Static(hir::Mutability::Mutable) => Mode::StaticMut,
     }
 }
 

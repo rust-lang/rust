@@ -7,7 +7,7 @@ use rustc::ty::TyCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Node, Destination, GeneratorMovability};
+use rustc::hir::{self, Node, Destination, Movability};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
@@ -59,7 +59,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
             hir::ExprKind::Closure(_, ref function_decl, b, span, movability) => {
-                let cx = if let Some(GeneratorMovability::Static) = movability {
+                let cx = if let Some(Movability::Static) = movability {
                     AsyncClosure(span)
                 } else {
                     Closure(span)

@@ -351,7 +351,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
     pat.walk(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                if bm != ty::BindByValue(hir::MutImmutable) {
+                if bm != ty::BindByValue(hir::Mutability::Immutable) {
                     // Nothing to check.
                     return true;
                 }

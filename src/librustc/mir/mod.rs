@@ -491,8 +491,8 @@ pub enum Mutability {
 impl From<Mutability> for hir::Mutability {
     fn from(m: Mutability) -> Self {
         match m {
-            Mutability::Mut => hir::MutMutable,
-            Mutability::Not => hir::MutImmutable,
+            Mutability::Mut => hir::Mutability::Mutable,
+            Mutability::Not => hir::Mutability::Immutable,
         }
     }
 }
@@ -2161,7 +2161,7 @@ pub enum AggregateKind<'tcx> {
     Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
     Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]

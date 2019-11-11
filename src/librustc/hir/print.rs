@@ -295,8 +295,8 @@ impl<'a> State<'a> {
             hir::TyKind::Ptr(ref mt) => {
                 self.s.word("*");
                 match mt.mutbl {
-                    hir::MutMutable => self.word_nbsp("mut"),
-                    hir::MutImmutable => self.word_nbsp("const"),
+                    hir::Mutability::Mutable => self.word_nbsp("mut"),
+                    hir::Mutability::Immutable => self.word_nbsp("const"),
                 }
                 self.print_type(&mt.ty);
             }
@@ -390,7 +390,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::MutMutable {
+                if m == hir::Mutability::Mutable {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -506,7 +506,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ref ty, m, expr) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::MutMutable {
+                if m == hir::Mutability::Mutable {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -1628,11 +1628,11 @@ impl<'a> State<'a> {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::MutImmutable);
+                        self.print_mutability(hir::Mutability::Immutable);
                     }
                     hir::BindingAnnotation::RefMut => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::MutMutable);
+                        self.print_mutability(hir::Mutability::Mutable);
                     }
                     hir::BindingAnnotation::Unannotated => {}
                     hir::BindingAnnotation::Mutable => {
@@ -1909,10 +1909,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureClause) {
+    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
-            hir::CaptureByValue => self.word_space("move"),
-            hir::CaptureByRef => {},
+            hir::CaptureBy::Value => self.word_space("move"),
+            hir::CaptureBy::Ref => {},
         }
     }
 
@@ -2061,8 +2061,8 @@ impl<'a> State<'a> {
 
     pub fn print_mutability(&mut self, mutbl: hir::Mutability) {
         match mutbl {
-            hir::MutMutable => self.word_nbsp("mut"),
-            hir::MutImmutable => {},
+            hir::Mutability::Mutable => self.word_nbsp("mut"),
+            hir::Mutability::Immutable => {},
         }
     }
 

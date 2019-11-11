@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use syntax::attr;
 use syntax::ast::*;
 use syntax::visit::{self, Visitor};
-use syntax::source_map::{respan, DesugaringKind, Spanned};
+use syntax::source_map::{respan, DesugaringKind};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
@@ -289,7 +289,7 @@ impl LoweringContext<'_> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
                     ),
-                    self.lower_mutability(m),
+                    m,
                     self.lower_const_body(e),
                 )
             }
@@ -433,8 +433,8 @@ impl LoweringContext<'_> {
                 );
 
                 hir::ItemKind::Impl(
-                    self.lower_unsafety(unsafety),
-                    self.lower_impl_polarity(polarity),
+                    unsafety,
+                    polarity,
                     self.lower_defaultness(defaultness, true /* [1] */),
                     generics,
                     trait_ref,
@@ -449,8 +449,8 @@ impl LoweringContext<'_> {
                     .map(|item| self.lower_trait_item_ref(item))
                     .collect();
                 hir::ItemKind::Trait(
-                    self.lower_is_auto(is_auto),
-                    self.lower_unsafety(unsafety),
+                    is_auto,
+                    unsafety,
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                     bounds,
                     items,
@@ -719,7 +719,7 @@ impl LoweringContext<'_> {
                 }
                 ForeignItemKind::Static(ref t, m) => {
                     hir::ForeignItemKind::Static(
-                        self.lower_ty(t, ImplTraitContext::disallowed()), self.lower_mutability(m))
+                        self.lower_ty(t, ImplTraitContext::disallowed()), m)
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
@@ -1011,13 +1011,6 @@ impl LoweringContext<'_> {
         }
     }
 
-    fn lower_impl_polarity(&mut self, i: ImplPolarity) -> hir::ImplPolarity {
-        match i {
-            ImplPolarity::Positive => hir::ImplPolarity::Positive,
-            ImplPolarity::Negative => hir::ImplPolarity::Negative,
-        }
-    }
-
     fn record_body(&mut self, params: HirVec<hir::Param>, value: hir::Expr) -> hir::BodyId {
         let body = hir::Body {
             generator_kind: self.generator_kind,
@@ -1275,18 +1268,11 @@ impl LoweringContext<'_> {
         (generics, hir::FnSig { header, decl })
     }
 
-    fn lower_is_auto(&mut self, a: IsAuto) -> hir::IsAuto {
-        match a {
-            IsAuto::Yes => hir::IsAuto::Yes,
-            IsAuto::No => hir::IsAuto::No,
-        }
-    }
-
     fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
-            unsafety: self.lower_unsafety(h.unsafety),
+            unsafety: h.unsafety,
             asyncness: self.lower_asyncness(h.asyncness.node),
-            constness: self.lower_constness(h.constness),
+            constness: h.constness.node,
             abi: self.lower_abi(h.abi),
         }
     }
@@ -1309,20 +1295,6 @@ impl LoweringContext<'_> {
         .span_label(abi.span, "invalid ABI")
         .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
         .emit();
-    }
-
-    pub(super) fn lower_unsafety(&mut self, u: Unsafety) -> hir::Unsafety {
-        match u {
-            Unsafety::Unsafe => hir::Unsafety::Unsafe,
-            Unsafety::Normal => hir::Unsafety::Normal,
-        }
-    }
-
-    fn lower_constness(&mut self, c: Spanned<Constness>) -> hir::Constness {
-        match c.node {
-            Constness::Const => hir::Constness::Const,
-            Constness::NotConst => hir::Constness::NotConst,
-        }
     }
 
     fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {

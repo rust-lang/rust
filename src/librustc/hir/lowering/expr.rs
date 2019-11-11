@@ -64,7 +64,6 @@ impl LoweringContext<'_> {
                 hir::ExprKind::Type(expr, self.lower_ty(ty, ImplTraitContext::disallowed()))
             }
             ExprKind::AddrOf(m, ref ohs) => {
-                let m = self.lower_mutability(m);
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::AddrOf(m, ohs)
             }
@@ -474,7 +473,6 @@ impl LoweringContext<'_> {
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
-        let capture_clause = self.lower_capture_clause(capture_clause);
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(ty),
             None => FunctionRetTy::Default(span),
@@ -495,7 +493,7 @@ impl LoweringContext<'_> {
             decl,
             body_id,
             span,
-            Some(hir::GeneratorMovability::Static)
+            Some(hir::Movability::Static)
         );
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
@@ -701,7 +699,6 @@ impl LoweringContext<'_> {
                 generator_kind,
                 movability,
             );
-            let capture_clause = this.lower_capture_clause(capture_clause);
             this.current_item = prev;
             hir::ExprKind::Closure(
                 capture_clause,
@@ -713,20 +710,13 @@ impl LoweringContext<'_> {
         })
     }
 
-    fn lower_capture_clause(&mut self, c: CaptureBy) -> hir::CaptureClause {
-        match c {
-            CaptureBy::Value => hir::CaptureByValue,
-            CaptureBy::Ref => hir::CaptureByRef,
-        }
-    }
-
     fn generator_movability_for_fn(
         &mut self,
         decl: &FnDecl,
         fn_decl_span: Span,
         generator_kind: Option<hir::GeneratorKind>,
         movability: Movability,
-    ) -> Option<hir::GeneratorMovability> {
+    ) -> Option<hir::Movability> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) =>  {
                 if !decl.inputs.is_empty() {
@@ -737,10 +727,7 @@ impl LoweringContext<'_> {
                         "generators cannot have explicit parameters"
                     );
                 }
-                Some(match movability {
-                    Movability::Movable => hir::GeneratorMovability::Movable,
-                    Movability::Static => hir::GeneratorMovability::Static,
-                })
+                Some(movability)
             },
             Some(hir::GeneratorKind::Async(_)) => {
                 bug!("non-`async` closure body turned `async` during lowering");
@@ -811,7 +798,7 @@ impl LoweringContext<'_> {
                 this.expr(fn_decl_span, async_body, ThinVec::new())
             });
             hir::ExprKind::Closure(
-                this.lower_capture_clause(capture_clause),
+                capture_clause,
                 fn_decl,
                 body_id,
                 fn_decl_span,
@@ -1350,7 +1337,7 @@ impl LoweringContext<'_> {
     }
 
     fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
-        self.expr(span, hir::ExprKind::AddrOf(hir::MutMutable, e), ThinVec::new())
+        self.expr(span, hir::ExprKind::AddrOf(hir::Mutability::Mutable, e), ThinVec::new())
     }
 
     fn expr_unit(&mut self, sp: Span) -> hir::Expr {

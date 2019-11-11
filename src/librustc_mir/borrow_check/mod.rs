@@ -137,7 +137,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             };
             let bm = *tables.pat_binding_modes().get(var_hir_id)
                 .expect("missing binding mode");
-            if bm == ty::BindByValue(hir::MutMutable) {
+            if bm == ty::BindByValue(hir::Mutability::Mutable) {
                 upvar.mutability = Mutability::Mut;
             }
             upvar
@@ -235,7 +235,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let movable_generator = match tcx.hir().get(id) {
         Node::Expr(&hir::Expr {
-            kind: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
+            kind: hir::ExprKind::Closure(.., Some(hir::Movability::Static)),
             ..
         }) => false,
         _ => true,
@@ -2118,10 +2118,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable
-                                    hir::MutImmutable => Err(place),
+                                    hir::Mutability::Immutable => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
-                                    hir::MutMutable => {
+                                    hir::Mutability::Mutable => {
                                         let mode = match self.is_upvar_field_projection(place) {
                                             Some(field)
                                                 if self.upvars[field.index()].by_ref =>
@@ -2141,10 +2141,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::RawPtr(tnm) => {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
-                                    hir::MutImmutable => Err(place),
+                                    hir::Mutability::Immutable => Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of
                                     // context. The users have to check by themselves.
-                                    hir::MutMutable => {
+                                    hir::Mutability::Mutable => {
                                         Ok(RootPlace {
                                             place_base: place.base,
                                             place_projection: place.projection,

@@ -581,7 +581,7 @@ where
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                     debuginfo.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                        if bm == ty::BindByValue(hir::MutMutable) {
+                        if bm == ty::BindByValue(hir::Mutability::Mutable) {
                             mutability = Mutability::Mut;
                         } else {
                             mutability = Mutability::Not;

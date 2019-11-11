@@ -257,7 +257,7 @@ pub enum ExprKind<'tcx> {
         closure_id: DefId,
         substs: UpvarSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
-        movability: Option<hir::GeneratorMovability>,
+        movability: Option<hir::Movability>,
     },
     Literal {
         literal: &'tcx Const<'tcx>,

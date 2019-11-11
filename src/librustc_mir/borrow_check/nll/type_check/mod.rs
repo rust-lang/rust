@@ -2138,7 +2138,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_from = match op.ty(body, tcx).kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
-                                mutbl: hir::MutMutable,
+                                mutbl: hir::Mutability::Mutable,
                             }) => ty_from,
                             _ => {
                                 span_mirbug!(
@@ -2153,7 +2153,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_to = match ty.kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_to,
-                                mutbl: hir::MutImmutable,
+                                mutbl: hir::Mutability::Immutable,
                             }) => ty_to,
                             _ => {
                                 span_mirbug!(
@@ -2187,7 +2187,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let opt_ty_elem = match ty_from.kind {
                             ty::RawPtr(
-                                ty::TypeAndMut { mutbl: hir::MutImmutable, ty: array_ty }
+                                ty::TypeAndMut { mutbl: hir::Mutability::Immutable, ty: array_ty }
                             ) => {
                                 match array_ty.kind {
                                     ty::Array(ty_elem, _) => Some(ty_elem),
@@ -2212,7 +2212,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_to = match ty.kind {
                             ty::RawPtr(
-                                ty::TypeAndMut { mutbl: hir::MutImmutable, ty: ty_to }
+                                ty::TypeAndMut { mutbl: hir::Mutability::Immutable, ty: ty_to }
                             ) => {
                                 ty_to
                             }
@@ -2250,7 +2250,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::RPtr(ref_tm)), Some(CastTy::Ptr(ptr_tm))) => {
-                                if let hir::MutMutable = ptr_tm.mutbl {
+                                if let hir::Mutability::Mutable = ptr_tm.mutbl {
                                     if let Err(terr) = self.eq_types(
                                         ref_tm.ty,
                                         ptr_tm.ty,
@@ -2504,13 +2504,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             });
 
                             match mutbl {
-                                hir::Mutability::MutImmutable => {
+                                hir::Mutability::Immutable => {
                                     // Immutable reference. We don't need the base
                                     // to be valid for the entire lifetime of
                                     // the borrow.
                                     break;
                                 }
-                                hir::Mutability::MutMutable => {
+                                hir::Mutability::Mutable => {
                                     // Mutable reference. We *do* need the base
                                     // to be valid, because after the base becomes
                                     // invalid, someone else can use our mutable deref.

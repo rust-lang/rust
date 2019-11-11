@@ -733,6 +733,30 @@ pub enum Mutability {
     Immutable,
 }
 
+impl Mutability {
+    /// Returns `MutMutable` only if both `self` and `other` are mutable.
+    pub fn and(self, other: Self) -> Self {
+        match self {
+            Mutability::Mutable => other,
+            Mutability::Immutable => Mutability::Immutable,
+        }
+    }
+
+    pub fn invert(self) -> Self {
+        match self {
+            Mutability::Mutable => Mutability::Immutable,
+            Mutability::Immutable => Mutability::Mutable,
+        }
+    }
+
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Mutability::Mutable => "mut ",
+            Mutability::Immutable => "",
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BinOpKind {
     /// The `+` operator (addition)
@@ -1315,10 +1339,14 @@ pub enum CaptureBy {
     Ref,
 }
 
-/// The movability of a generator / closure literal.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+/// The movability of a generator / closure literal:
+/// whether a generator contains self-references, causing it to be `!Unpin`.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum Movability {
+    /// May contain self-references, `!Unpin`.
     Static,
+    /// Must not contain self-references, `Unpin`.
     Movable,
 }
 
@@ -1967,10 +1995,32 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug)]
 pub enum Unsafety {
     Unsafe,
     Normal,
+}
+
+impl Unsafety {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Unsafety::Unsafe => "unsafe ",
+            Unsafety::Normal => "",
+        }
+    }
+}
+
+impl fmt::Display for Unsafety {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(
+            match *self {
+                Unsafety::Normal => "normal",
+                Unsafety::Unsafe => "unsafe",
+            },
+            f,
+        )
+    }
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2015,18 +2065,6 @@ pub enum Constness {
 pub enum Defaultness {
     Default,
     Final,
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(
-            match *self {
-                Unsafety::Normal => "normal",
-                Unsafety::Unsafe => "unsafe",
-            },
-            f,
-        )
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]

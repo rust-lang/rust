@@ -13,10 +13,10 @@ CloneTypeFoldableAndLiftImpls! { BindingMode, }
 impl BindingMode {
     pub fn convert(ba: BindingAnnotation) -> BindingMode {
         match ba {
-            Unannotated => BindingMode::BindByValue(Mutability::MutImmutable),
-            Mutable => BindingMode::BindByValue(Mutability::MutMutable),
-            Ref => BindingMode::BindByReference(Mutability::MutImmutable),
-            RefMut => BindingMode::BindByReference(Mutability::MutMutable),
+            Unannotated => BindingMode::BindByValue(Mutability::Immutable),
+            Mutable => BindingMode::BindByValue(Mutability::Mutable),
+            Ref => BindingMode::BindByReference(Mutability::Immutable),
+            RefMut => BindingMode::BindByReference(Mutability::Mutable),
         }
     }
 }

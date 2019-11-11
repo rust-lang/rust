@@ -3859,8 +3859,8 @@ pub enum Mutability {
 impl Clean<Mutability> for hir::Mutability {
     fn clean(&self, _: &DocContext<'_>) -> Mutability {
         match self {
-            &hir::MutMutable => Mutable,
-            &hir::MutImmutable => Immutable,
+            &hir::Mutability::Mutable => Mutable,
+            &hir::Mutability::Immutable => Immutable,
         }
     }
 }

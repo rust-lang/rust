@@ -30,7 +30,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_pat_top(&self, pat: &'tcx Pat, expected: Ty<'tcx>, discrim_span: Option<Span>) {
-        let def_bm = BindingMode::BindByValue(hir::Mutability::MutImmutable);
+        let def_bm = BindingMode::BindByValue(hir::Mutability::Immutable);
         self.check_pat(pat, expected, def_bm, discrim_span);
     }
 
@@ -194,7 +194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // See issue #46688.
             let def_bm = match pat.kind {
-                PatKind::Ref(..) => ty::BindByValue(hir::MutImmutable),
+                PatKind::Ref(..) => ty::BindByValue(hir::Mutability::Immutable),
                 _ => def_bm,
             };
             (expected, def_bm)
@@ -275,10 +275,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // (depending on whether we observe `&` or `&mut`).
                 ty::BindByValue(_) |
                 // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ty::BindByReference(hir::Mutability::MutMutable) => inner_mutability,
+                ty::BindByReference(hir::Mutability::Mutable) => inner_mutability,
                 // Once a `ref`, always a `ref`.
                 // This is because a `& &mut` cannot mutate the underlying value.
-                ty::BindByReference(m @ hir::Mutability::MutImmutable) => m,
+                ty::BindByReference(m @ hir::Mutability::Immutable) => m,
             });
         }
 
