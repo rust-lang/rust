@@ -11,6 +11,7 @@ pub mod name;
 pub mod hygiene;
 pub mod diagnostics;
 pub mod builtin_macro;
+pub mod quote;
 
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
