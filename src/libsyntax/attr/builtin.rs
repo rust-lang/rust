@@ -535,6 +535,10 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
     super::first_attr_value_str_by_name(attrs, sym::crate_name)
 }
 
+pub fn is_accessible(_sess: &ParseSess, _path: &ast::Path) -> bool {
+    true
+}
+
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
     eval_condition(cfg, sess, &mut |cfg| {
@@ -546,6 +550,15 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             return error(cfg.path.span, "`cfg` predicate key must be an identifier");
         }
         match &cfg.kind {
+            MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::accessible => {
+                if mis.len() != 1 {
+                    span_err!(sess.span_diagnostic, cfg.span, E0536, "expected 1 cfg-pattern");
+                    return false;
+                }
+                dbg!(&cfg);
+                dbg!(&cfg.path);
+                unreachable!();
+            }
             MetaItemKind::List(..) => {
                 error(cfg.span, "unexpected parentheses after `cfg` predicate key")
             }

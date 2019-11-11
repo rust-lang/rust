@@ -529,6 +529,9 @@ declare_features! (
     /// Allows using the `#[register_attr]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
 
+    /// Allows the use of `#[cfg(accessible(..))]`.
+    (active, cfg_accessible, "1.41.0", Some(64797), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

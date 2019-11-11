@@ -27,6 +27,7 @@ macro_rules! cfg_fn {
 /// `cfg(...)`'s that are feature gated.
 const GATED_CFGS: &[(Symbol, Symbol, GateFn)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
+    (sym::accessible, sym::cfg_accessible, cfg_fn!(cfg_accessible)),
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
