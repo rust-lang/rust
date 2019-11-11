@@ -486,7 +486,8 @@ impl AddAssign<char> for Cow<'_, str> {
         if let Cow::Borrowed(lhs) = *self {
             let mut s = String::with_capacity(lhs.len() + rhs.len_utf8());
             // 4 bytes more since we know `rhs.len_utf8() <= 4`
-            s.vec.buf.amortized_new_size(s.capacity(), 4).expect("capacity overflow");
+            let new_optimal_size = s.vec.buf.amortized_new_size(s.capacity(), 4).expect("capacity overflow");
+            s.reserve_exact(new_optimal_size - s.capacity());
             s.push_str(lhs);
             *self = Cow::Owned(s);
         }
