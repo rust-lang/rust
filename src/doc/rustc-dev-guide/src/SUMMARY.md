@@ -38,7 +38,7 @@
         - [Incremental compilation](./queries/incremental-compilation.md)
         - [Incremental compilation In Detail](./queries/incremental-compilation-in-detail.md)
         - [Debugging and Testing](./incrcomp-debugging.md)
-    - [The parser](./the-parser.md)
+    - [Lexing and Parsing](./the-parser.md)
     - [`#[test]` Implementation](./test-implementation.md)
     - [Macro expansion](./macro-expansion.md)
     - [Name resolution](./name-resolution.md)

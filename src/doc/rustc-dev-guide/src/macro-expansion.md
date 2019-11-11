@@ -1,5 +1,8 @@
 # Macro expansion
 
+> `libsyntax`, `librustc_expand`, and `libsyntax_ext` are all undergoing
+> refactoring, so some of the links in this chapter may be broken.
+
 Macro expansion happens during parsing. `rustc` has two parsers, in fact: the
 normal Rust parser, and the macro parser. During the parsing phase, the normal
 Rust parser will set aside the contents of macros and their invocations. Later,
