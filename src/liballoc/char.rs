@@ -1,12 +1,12 @@
 /// Implements the `+` operator for concatenating two `char`s together.
 ///
-/// This operation results into a new string being allocated with copies of the two `char`s in
+/// This operation results into a new `String` being allocated with copies of the two `char`s in
 /// the respective order.
 ///
 /// # Examples
 ///
 /// ```
-/// let a = char::from("🎈");
+/// let a = char::from('🎈');
 /// let b = char::from('🎉');
 /// let c = a + b;
 /// // `c` is a newly allocated `String`
