@@ -10,6 +10,8 @@ pub mod either;
 pub mod name;
 pub mod hygiene;
 pub mod diagnostics;
+pub mod builtin_macro;
+pub mod quote;
 
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -21,6 +23,7 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
+use crate::builtin_macro::BuiltinExpander;
 
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
@@ -122,6 +125,13 @@ impl salsa::InternKey for MacroCallId {
 pub struct MacroDefId {
     pub krate: CrateId,
     pub ast_id: AstId<ast::MacroCall>,
+    pub kind: MacroDefKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroDefKind {
+    Declarative,
+    BuiltIn(BuiltinExpander),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -144,7 +154,7 @@ pub struct ExpansionInfo {
     pub(crate) def_start: (HirFileId, TextUnit),
     pub(crate) shift: u32,
 
-    pub(crate) macro_def: Arc<(mbe::MacroRules, mbe::TokenMap)>,
+    pub(crate) macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     pub(crate) macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
     pub(crate) exp_map: Arc<mbe::RevTokenMap>,
 }

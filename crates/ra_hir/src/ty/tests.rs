@@ -4810,3 +4810,22 @@ fn no_such_field_diagnostics() {
     "###
     );
 }
+
+#[test]
+fn infer_builtin_macros_line() {
+    assert_snapshot!(
+        infer(r#"
+#[rustc_builtin_macro]
+macro_rules! line {() => {}}
+
+fn main() {
+    let x = line!();
+}
+"#),
+        @r###"
+        ![0; 1) '6': i32
+        [64; 88) '{     ...!(); }': ()
+        [74; 75) 'x': i32        
+    "###
+    );
+}
