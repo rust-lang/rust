@@ -11,31 +11,35 @@ warning: skipping const checks
   --> $DIR/enum_discriminants.rs:88:5
    |
 LL | /     if let E1::V2 { .. } = (E1::V1 { f: true }) {
+LL | |
 LL | |         unreachable!()
 LL | |     }
    | |_____^
 
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:91:5
+  --> $DIR/enum_discriminants.rs:92:5
    |
 LL | /     if let E1::V1 { .. } = (E1::V1 { f: true }) {
+LL | |
 LL | |     } else {
 LL | |         unreachable!()
 LL | |     }
    | |_____^
 
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:96:5
+  --> $DIR/enum_discriminants.rs:98:5
    |
 LL | /     if let E2::V1 { .. } = E2::V3::<Infallible> {
+LL | |
 LL | |         unreachable!()
 LL | |     }
    | |_____^
 
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:99:5
+  --> $DIR/enum_discriminants.rs:102:5
    |
 LL | /     if let E2::V3 { .. } = E2::V3::<Infallible> {
+LL | |
 LL | |     } else {
 LL | |         unreachable!()
 LL | |     }
