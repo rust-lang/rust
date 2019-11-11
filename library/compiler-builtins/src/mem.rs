@@ -129,50 +129,65 @@ where
 }
 
 intrinsics! {
+    #[cfg(target_has_atomic_load_store = "8")]
     pub extern "C" fn __llvm_memcpy_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "16")]
     pub extern "C" fn __llvm_memcpy_element_unordered_atomic_2(dest: *mut u16, src: *const u16, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "32")]
     pub extern "C" fn __llvm_memcpy_element_unordered_atomic_4(dest: *mut u32, src: *const u32, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "64")]
     pub extern "C" fn __llvm_memcpy_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "128")]
     pub extern "C" fn __llvm_memcpy_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
 
+    #[cfg(target_has_atomic_load_store = "8")]
     pub extern "C" fn __llvm_memmove_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "16")]
     pub extern "C" fn __llvm_memmove_element_unordered_atomic_2(dest: *mut u16, src: *const u16, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "32")]
     pub extern "C" fn __llvm_memmove_element_unordered_atomic_4(dest: *mut u32, src: *const u32, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "64")]
     pub extern "C" fn __llvm_memmove_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "128")]
     pub extern "C" fn __llvm_memmove_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
 
+    #[cfg(target_has_atomic_load_store = "8")]
     pub extern "C" fn __llvm_memset_element_unordered_atomic_1(s: *mut u8, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "16")]
     pub extern "C" fn __llvm_memset_element_unordered_atomic_2(s: *mut u16, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "32")]
     pub extern "C" fn __llvm_memset_element_unordered_atomic_4(s: *mut u32, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "64")]
     pub extern "C" fn __llvm_memset_element_unordered_atomic_8(s: *mut u64, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
+    #[cfg(target_has_atomic_load_store = "128")]
     pub extern "C" fn __llvm_memset_element_unordered_atomic_16(s: *mut u128, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
