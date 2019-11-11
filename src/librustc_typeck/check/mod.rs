@@ -907,7 +907,15 @@ fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFol
                                 },
                                 GenericArgKind::Const(old_const) => {
                                     if let ConstValue::Infer(_) = old_const.val {
-                                        self.tcx.mk_param_from_def(param)
+                        // This should never happen - we currently do not support
+                        // 'const projections', e.g.:
+                        // `impl<T: SomeTrait> MyTrait for T where <T as SomeTrait>::MyConst == 25`
+                        // which should be the only way for us to end up with a const inference
+                        // variable after projection. If Rust ever gains support for this kind
+                        // of projection, this should *probably* be changed to
+                        // `self.tcx.mk_param_from_def(param)`
+                                        bug!("Found infer const: `{:?}` in opaque type: {:?}",
+                                             old_const, ty);
                                     } else {
                                         old_param.fold_with(self)
                                     }
