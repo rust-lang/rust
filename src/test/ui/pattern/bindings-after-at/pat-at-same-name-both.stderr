@@ -1,0 +1,53 @@
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:10:13
+   |
+LL |     let a @ a @ a = ();
+   |             ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:10:17
+   |
+LL |     let a @ a @ a = ();
+   |                 ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:13:21
+   |
+LL |     let ref a @ ref a = ();
+   |                     ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:15:29
+   |
+LL |     let ref mut a @ ref mut a = ();
+   |                             ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:18:17
+   |
+LL |     let a @ (Ok(a) | Err(a)) = Ok(());
+   |                 ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/pat-at-same-name-both.rs:18:26
+   |
+LL |     let a @ (Ok(a) | Err(a)) = Ok(());
+   |                          ^ used in a pattern more than once
+
+warning: the feature `bindings_after_at` is incomplete and may cause the compiler to crash
+  --> $DIR/pat-at-same-name-both.rs:4:12
+   |
+LL | #![feature(bindings_after_at)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
+  --> $DIR/pat-at-same-name-both.rs:6:12
+   |
+LL | #![feature(or_patterns)]
+   |            ^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0416`.

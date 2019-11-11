@@ -2,11 +2,9 @@
 //~^ WARN the feature `bindings_after_at` is incomplete and may cause the compiler to crash
 
 fn main() {
-    let x = Some("s".to_string());
-    match x {
-        op_string @ Some(s) => {},
-        //~^ ERROR E0007
-        //~| ERROR E0382
+    match Some("hi".to_string()) {
+        ref op_string_ref @ Some(s) => {},
+        //~^ ERROR E0009
         None => {},
     }
 }

@@ -4,23 +4,22 @@ use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack}
 
 use super::{PatCtxt, PatKind, PatternError};
 
-use rustc::lint;
-use rustc::session::Session;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc_errors::{Applicability, DiagnosticBuilder};
-
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::HirId;
 use rustc::hir::{self, Pat};
-
-use std::slice;
-
+use rustc::lint;
+use rustc::session::Session;
+use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc_error_codes::*;
+use rustc_errors::{Applicability, DiagnosticBuilder};
+use syntax::feature_gate::feature_err;
+use syntax_pos::symbol::sym;
 use syntax_pos::{MultiSpan, Span};
 
-use rustc_error_codes::*;
+use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match tcx.hir().as_local_hir_id(def_id) {
@@ -123,7 +122,9 @@ impl PatCtxt<'_, '_> {
 impl<'tcx> MatchVisitor<'_, 'tcx> {
     fn check_patterns(&mut self, has_guard: bool, pat: &Pat) {
         check_legality_of_move_bindings(self, has_guard, pat);
-        check_legality_of_bindings_in_at_patterns(self, pat);
+        if !self.tcx.features().bindings_after_at {
+            check_legality_of_bindings_in_at_patterns(self, pat);
+        }
     }
 
     fn check_match(&mut self, scrut: &hir::Expr, arms: &'tcx [hir::Arm], source: hir::MatchSource) {
@@ -656,13 +657,12 @@ impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
         match pat.kind {
             hir::PatKind::Binding(.., ref subpat) => {
                 if !self.bindings_allowed {
-                    struct_span_err!(
-                        self.cx.tcx.sess,
+                    feature_err(
+                        &self.cx.tcx.sess.parse_sess,
+                        sym::bindings_after_at,
                         pat.span,
-                        E0303,
-                        "pattern bindings are not allowed after an `@`"
+                        "pattern bindings after an `@` are unstable",
                     )
-                    .span_label(pat.span, "not allowed after `@`")
                     .emit();
                 }
 

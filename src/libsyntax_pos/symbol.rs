@@ -165,6 +165,7 @@ symbols! {
         bench,
         bin,
         bind_by_move_pattern_guards,
+        bindings_after_at,
         block,
         bool,
         borrowck_graphviz_postflow,

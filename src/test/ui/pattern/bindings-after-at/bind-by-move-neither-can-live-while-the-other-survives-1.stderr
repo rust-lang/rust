@@ -1,0 +1,20 @@
+warning: the feature `bindings_after_at` is incomplete and may cause the compiler to crash
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:1:12
+   |
+LL | #![feature(bindings_after_at)]
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0009]: cannot bind by-move and by-ref in the same pattern
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:9:23
+   |
+LL |         Some(ref _y @ _z) => { },
+   |              ---------^^
+   |              |        |
+   |              |        by-move pattern here
+   |              both by-ref and by-move used
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0009`.
