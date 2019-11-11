@@ -1418,14 +1418,14 @@ mod tests {
     }
 
     #[bench]
-    fn bench_buffered_reader(b: &mut test::Bencher) {
+    fn bench_buffered_reader(b: &mut test::Bencher<'_>) {
         b.iter(|| {
             BufReader::new(io::empty())
         });
     }
 
     #[bench]
-    fn bench_buffered_writer(b: &mut test::Bencher) {
+    fn bench_buffered_writer(b: &mut test::Bencher<'_>) {
         b.iter(|| {
             BufWriter::new(io::sink())
         });

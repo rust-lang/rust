@@ -3,7 +3,7 @@
 use test::Bencher;
 
 #[bench]
-fn new_drop(b: &mut Bencher) {
+fn new_drop(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     b.iter(|| {
@@ -13,7 +13,7 @@ fn new_drop(b: &mut Bencher) {
 }
 
 #[bench]
-fn new_insert_drop(b: &mut Bencher) {
+fn new_insert_drop(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     b.iter(|| {
@@ -24,7 +24,7 @@ fn new_insert_drop(b: &mut Bencher) {
 }
 
 #[bench]
-fn grow_by_insertion(b: &mut Bencher) {
+fn grow_by_insertion(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     let mut m = HashMap::new();
@@ -42,7 +42,7 @@ fn grow_by_insertion(b: &mut Bencher) {
 }
 
 #[bench]
-fn find_existing(b: &mut Bencher) {
+fn find_existing(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     let mut m = HashMap::new();
@@ -59,7 +59,7 @@ fn find_existing(b: &mut Bencher) {
 }
 
 #[bench]
-fn find_nonexisting(b: &mut Bencher) {
+fn find_nonexisting(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     let mut m = HashMap::new();
@@ -76,7 +76,7 @@ fn find_nonexisting(b: &mut Bencher) {
 }
 
 #[bench]
-fn hashmap_as_queue(b: &mut Bencher) {
+fn hashmap_as_queue(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     let mut m = HashMap::new();
@@ -95,7 +95,7 @@ fn hashmap_as_queue(b: &mut Bencher) {
 }
 
 #[bench]
-fn get_remove_insert(b: &mut Bencher) {
+fn get_remove_insert(b: &mut Bencher<'_>) {
     use super::map::HashMap;
 
     let mut m = HashMap::new();

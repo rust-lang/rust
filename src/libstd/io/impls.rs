@@ -340,7 +340,7 @@ mod tests {
     use crate::io::prelude::*;
 
     #[bench]
-    fn bench_read_slice(b: &mut test::Bencher) {
+    fn bench_read_slice(b: &mut test::Bencher<'_>) {
         let buf = [5; 1024];
         let mut dst = [0; 128];
 
@@ -354,7 +354,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_write_slice(b: &mut test::Bencher) {
+    fn bench_write_slice(b: &mut test::Bencher<'_>) {
         let mut buf = [0; 1024];
         let src = [5; 128];
 
@@ -368,7 +368,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_read_vec(b: &mut test::Bencher) {
+    fn bench_read_vec(b: &mut test::Bencher<'_>) {
         let buf = vec![5; 1024];
         let mut dst = [0; 128];
 
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_write_vec(b: &mut test::Bencher) {
+    fn bench_write_vec(b: &mut test::Bencher<'_>) {
         let mut buf = Vec::with_capacity(1024);
         let src = [5; 128];
 

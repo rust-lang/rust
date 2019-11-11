@@ -76,7 +76,7 @@ impl fmt::Display for TestName {
 
 /// Represents a benchmark function.
 pub trait TDynBenchFn: Send {
-    fn run(&self, harness: &mut Bencher);
+    fn run(&self, harness: &mut Bencher<'_>);
 }
 
 // A function that runs a test. If the function returns successfully,
@@ -85,7 +85,7 @@ pub trait TDynBenchFn: Send {
 // to support isolation of tests into threads.
 pub enum TestFn {
     StaticTestFn(fn()),
-    StaticBenchFn(fn(&mut Bencher)),
+    StaticBenchFn(fn(&mut Bencher<'_>)),
     DynTestFn(Box<dyn FnOnce() + Send>),
     DynBenchFn(Box<dyn TDynBenchFn + 'static>),
 }

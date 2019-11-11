@@ -286,7 +286,7 @@ fn sparse_matrix_iter() {
 
 /// Merge dense hybrid set into empty sparse hybrid set.
 #[bench]
-fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher) {
+fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher<'_>) {
     let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
     for i in 0..10 {
         assert!(pre_dense.insert(i));
@@ -301,7 +301,7 @@ fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher) {
 
 /// Merge dense hybrid set into full hybrid set with same indices.
 #[bench]
-fn union_hybrid_sparse_full_to_dense(b: &mut Bencher) {
+fn union_hybrid_sparse_full_to_dense(b: &mut Bencher<'_>) {
     let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
     for i in 0..10 {
         assert!(pre_dense.insert(i));
@@ -319,7 +319,7 @@ fn union_hybrid_sparse_full_to_dense(b: &mut Bencher) {
 
 /// Merge dense hybrid set into full hybrid set with indices over the whole domain.
 #[bench]
-fn union_hybrid_sparse_domain_to_dense(b: &mut Bencher) {
+fn union_hybrid_sparse_domain_to_dense(b: &mut Bencher<'_>) {
     let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX*64);
     for i in 0..10 {
         assert!(pre_dense.insert(i));
@@ -337,7 +337,7 @@ fn union_hybrid_sparse_domain_to_dense(b: &mut Bencher) {
 
 /// Merge dense hybrid set into empty hybrid set where the domain is very small.
 #[bench]
-fn union_hybrid_sparse_empty_small_domain(b: &mut Bencher) {
+fn union_hybrid_sparse_empty_small_domain(b: &mut Bencher<'_>) {
     let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
     for i in 0..SPARSE_MAX {
         assert!(pre_dense.insert(i));
@@ -352,7 +352,7 @@ fn union_hybrid_sparse_empty_small_domain(b: &mut Bencher) {
 
 /// Merge dense hybrid set into full hybrid set where the domain is very small.
 #[bench]
-fn union_hybrid_sparse_full_small_domain(b: &mut Bencher) {
+fn union_hybrid_sparse_full_small_domain(b: &mut Bencher<'_>) {
     let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
     for i in 0..SPARSE_MAX {
         assert!(pre_dense.insert(i));

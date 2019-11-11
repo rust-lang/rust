@@ -3,7 +3,7 @@ use test::Bencher;
 // Overhead of various match forms
 
 #[bench]
-fn option_some(b: &mut Bencher) {
+fn option_some(b: &mut Bencher<'_>) {
     let x = Some(10);
     b.iter(|| {
         match x {
@@ -14,7 +14,7 @@ fn option_some(b: &mut Bencher) {
 }
 
 #[bench]
-fn vec_pattern(b: &mut Bencher) {
+fn vec_pattern(b: &mut Bencher<'_>) {
     let x = [1,2,3,4,5,6];
     b.iter(|| {
         match x {

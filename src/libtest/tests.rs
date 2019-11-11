@@ -598,13 +598,13 @@ pub fn test_metricmap_compare() {
 
 #[test]
 pub fn test_bench_once_no_iter() {
-    fn f(_: &mut Bencher) {}
+    fn f(_: &mut Bencher<'_>) {}
     bench::run_once(f);
 }
 
 #[test]
 pub fn test_bench_once_iter() {
-    fn f(b: &mut Bencher) {
+    fn f(b: &mut Bencher<'_>) {
         b.iter(|| {})
     }
     bench::run_once(f);
@@ -612,7 +612,7 @@ pub fn test_bench_once_iter() {
 
 #[test]
 pub fn test_bench_no_iter() {
-    fn f(_: &mut Bencher) {}
+    fn f(_: &mut Bencher<'_>) {}
 
     let (tx, rx) = channel();
 
@@ -630,7 +630,7 @@ pub fn test_bench_no_iter() {
 
 #[test]
 pub fn test_bench_iter() {
-    fn f(b: &mut Bencher) {
+    fn f(b: &mut Bencher<'_>) {
         b.iter(|| {})
     }
 

@@ -70,7 +70,7 @@ fn test_stack() {
 }
 
 #[bench]
-fn bench_streaming_small(b: &mut Bencher) {
+fn bench_streaming_small(b: &mut Bencher<'_>) {
     b.iter( || {
         let mut parser = Parser::new(
             r#"{
@@ -91,7 +91,7 @@ fn bench_streaming_small(b: &mut Bencher) {
     });
 }
 #[bench]
-fn bench_small(b: &mut Bencher) {
+fn bench_small(b: &mut Bencher<'_>) {
     b.iter( || {
         let _ = from_str(r#"{
             "a": 1.0,
@@ -115,7 +115,7 @@ fn big_json() -> string::String {
 }
 
 #[bench]
-fn bench_streaming_large(b: &mut Bencher) {
+fn bench_streaming_large(b: &mut Bencher<'_>) {
     let src = big_json();
     b.iter( || {
         let mut parser = Parser::new(src.chars());
@@ -128,7 +128,7 @@ fn bench_streaming_large(b: &mut Bencher) {
     });
 }
 #[bench]
-fn bench_large(b: &mut Bencher) {
+fn bench_large(b: &mut Bencher<'_>) {
     let src = big_json();
     b.iter( || { let _ = from_str(&src); });
 }

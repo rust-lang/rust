@@ -69,13 +69,13 @@ pub fn test_copy() {
 }
 
 #[bench]
-pub fn bench_copy(b: &mut Bencher) {
+pub fn bench_copy(b: &mut Bencher<'_>) {
     let arena = TypedArena::default();
     b.iter(|| arena.alloc(Point { x: 1, y: 2, z: 3 }))
 }
 
 #[bench]
-pub fn bench_copy_nonarena(b: &mut Bencher) {
+pub fn bench_copy_nonarena(b: &mut Bencher<'_>) {
     b.iter(|| {
         let _: Box<_> = Box::new(Point { x: 1, y: 2, z: 3 });
     })
@@ -118,7 +118,7 @@ pub fn test_typed_arena_clear() {
 }
 
 #[bench]
-pub fn bench_typed_arena_clear(b: &mut Bencher) {
+pub fn bench_typed_arena_clear(b: &mut Bencher<'_>) {
     let mut arena = TypedArena::default();
     b.iter(|| {
         arena.alloc(Point { x: 1, y: 2, z: 3 });
@@ -192,7 +192,7 @@ fn test_typed_arena_drop_small_count() {
 }
 
 #[bench]
-pub fn bench_noncopy(b: &mut Bencher) {
+pub fn bench_noncopy(b: &mut Bencher<'_>) {
     let arena = TypedArena::default();
     b.iter(|| {
         arena.alloc(Noncopy {
@@ -203,7 +203,7 @@ pub fn bench_noncopy(b: &mut Bencher) {
 }
 
 #[bench]
-pub fn bench_noncopy_nonarena(b: &mut Bencher) {
+pub fn bench_noncopy_nonarena(b: &mut Bencher<'_>) {
     b.iter(|| {
         let _: Box<_> = Box::new(Noncopy {
             string: "hello world".to_string(),

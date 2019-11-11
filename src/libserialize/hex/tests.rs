@@ -53,7 +53,7 @@ pub fn test_from_hex_all_bytes() {
 }
 
 #[bench]
-pub fn bench_to_hex(b: &mut Bencher) {
+pub fn bench_to_hex(b: &mut Bencher<'_>) {
     let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
              ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
     b.iter(|| {
@@ -63,7 +63,7 @@ pub fn bench_to_hex(b: &mut Bencher) {
 }
 
 #[bench]
-pub fn bench_from_hex(b: &mut Bencher) {
+pub fn bench_from_hex(b: &mut Bencher<'_>) {
     let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
              ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
     let sb = s.as_bytes().to_hex();

@@ -96,7 +96,7 @@ fn test_remove_single() {
 }
 
 #[bench]
-fn bench_insert_empty(b: &mut Bencher) {
+fn bench_insert_empty(b: &mut Bencher<'_>) {
     b.iter(|| {
         let mut list = black_box(TinyList::new());
         list.insert(1);
@@ -105,7 +105,7 @@ fn bench_insert_empty(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_insert_one(b: &mut Bencher) {
+fn bench_insert_one(b: &mut Bencher<'_>) {
     b.iter(|| {
         let mut list = black_box(TinyList::new_single(0));
         list.insert(1);
@@ -114,42 +114,42 @@ fn bench_insert_one(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_contains_empty(b: &mut Bencher) {
+fn bench_contains_empty(b: &mut Bencher<'_>) {
     b.iter(|| {
         black_box(TinyList::new()).contains(&1)
     });
 }
 
 #[bench]
-fn bench_contains_unknown(b: &mut Bencher) {
+fn bench_contains_unknown(b: &mut Bencher<'_>) {
     b.iter(|| {
         black_box(TinyList::new_single(0)).contains(&1)
     });
 }
 
 #[bench]
-fn bench_contains_one(b: &mut Bencher) {
+fn bench_contains_one(b: &mut Bencher<'_>) {
     b.iter(|| {
         black_box(TinyList::new_single(1)).contains(&1)
     });
 }
 
 #[bench]
-fn bench_remove_empty(b: &mut Bencher) {
+fn bench_remove_empty(b: &mut Bencher<'_>) {
     b.iter(|| {
         black_box(TinyList::new()).remove(&1)
     });
 }
 
 #[bench]
-fn bench_remove_unknown(b: &mut Bencher) {
+fn bench_remove_unknown(b: &mut Bencher<'_>) {
     b.iter(|| {
         black_box(TinyList::new_single(0)).remove(&1)
     });
 }
 
 #[bench]
-fn bench_remove_one(b: &mut Bencher) {
+fn bench_remove_one(b: &mut Bencher<'_>) {
     b.iter(|| {
         black_box(TinyList::new_single(1)).remove(&1)
     });

@@ -371,7 +371,7 @@ fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 
     if !has_sig {
         cx.parse_sess.span_diagnostic.span_err(i.span, "functions used as benches must have \
-            signature `fn(&mut Bencher) -> impl Termination`");
+            signature `fn(&mut Bencher<'_>) -> impl Termination`");
     }
 
     has_sig

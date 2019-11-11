@@ -2612,7 +2612,7 @@ mod tests {
 
     #[bench]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    fn bench_read_to_end(b: &mut test::Bencher) {
+    fn bench_read_to_end(b: &mut test::Bencher<'_>) {
         b.iter(|| {
             let mut lr = repeat(1).take(10000000);
             let mut vec = Vec::with_capacity(1024);
