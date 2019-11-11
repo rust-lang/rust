@@ -143,7 +143,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                     })
                 }
             }
-            Some(Pat(_)) | Some(SelfParam(_)) => {
+            Some(Local(_)) => {
                 // Hover for these shows type names
                 no_fallback = true;
             }

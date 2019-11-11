@@ -28,7 +28,7 @@ use crate::{
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
-    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId,
+    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, Local,
     MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
 
@@ -94,6 +94,7 @@ fn def_with_body_from_child_node(
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     resolver: Resolver,
+    body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<crate::ty::InferenceResult>>,
     scopes: Option<Arc<crate::expr::ExprScopes>>,
@@ -104,7 +105,7 @@ pub enum PathResolution {
     /// An item
     Def(crate::ModuleDef),
     /// A local binding (only value namespace)
-    LocalBinding(Either<AstPtr<ast::BindPat>, AstPtr<ast::SelfParam>>),
+    Local(Local),
     /// A generic parameter
     GenericParam(u32),
     SelfType(crate::ImplBlock),
@@ -152,6 +153,7 @@ impl SourceAnalyzer {
             let resolver = expr::resolver_for_scope(def.body(db), db, scope);
             SourceAnalyzer {
                 resolver,
+                body_owner: Some(def),
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
@@ -162,6 +164,7 @@ impl SourceAnalyzer {
                     .ancestors()
                     .find_map(|node| try_get_resolver_for_node(db, file_id, &node))
                     .unwrap_or_default(),
+                body_owner: None,
                 body_source_map: None,
                 infer: None,
                 scopes: None,
@@ -233,16 +236,9 @@ impl SourceAnalyzer {
         });
         let values = self.resolver.resolve_path_in_value_ns_fully(db, &path).and_then(|val| {
             let res = match val {
-                ValueNs::LocalBinding(it) => {
-                    // We get a `PatId` from resolver, but it actually can only
-                    // point at `BindPat`, and not at the arbitrary pattern.
-                    let pat_ptr = self
-                        .body_source_map
-                        .as_ref()?
-                        .pat_syntax(it)?
-                        .ast // FIXME: ignoring file_id here is definitelly wrong
-                        .map_a(|ptr| ptr.cast::<ast::BindPat>().unwrap());
-                    PathResolution::LocalBinding(pat_ptr)
+                ValueNs::LocalBinding(pat_id) => {
+                    let var = Local { parent: self.body_owner?, pat_id };
+                    PathResolution::Local(var)
                 }
                 ValueNs::Function(it) => PathResolution::Def(it.into()),
                 ValueNs::Const(it) => PathResolution::Def(it.into()),

@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{AssocItem, FieldSource, HasSource, ModuleSource};
+use hir::{AssocItem, Either, FieldSource, HasSource, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    ast::{self, DocCommentsOwner},
-    match_ast, AstNode, AstPtr, SmolStr,
-    SyntaxKind::{self, NAME},
+    ast::{self, DocCommentsOwner, NameOwner},
+    match_ast, AstNode, SmolStr,
+    SyntaxKind::{self, BIND_PAT},
     SyntaxNode, TextRange,
 };
 
@@ -74,42 +74,6 @@ impl NavigationTarget {
     /// including doc comments, and `focus_range` is the range of the identifier.
     pub fn focus_range(&self) -> Option<TextRange> {
         self.focus_range
-    }
-
-    pub(crate) fn from_bind_pat(
-        db: &RootDatabase,
-        file_id: FileId,
-        pat: &ast::BindPat,
-    ) -> NavigationTarget {
-        NavigationTarget::from_named(db, file_id.into(), pat, None, None)
-    }
-
-    pub(crate) fn from_pat(
-        db: &RootDatabase,
-        file_id: FileId,
-        pat: AstPtr<ast::BindPat>,
-    ) -> NavigationTarget {
-        let parse = db.parse(file_id);
-        let pat = pat.to_node(parse.tree().syntax());
-        NavigationTarget::from_bind_pat(db, file_id, &pat)
-    }
-
-    pub(crate) fn from_self_param(
-        file_id: FileId,
-        par: AstPtr<ast::SelfParam>,
-    ) -> NavigationTarget {
-        let (name, full_range) = ("self".into(), par.syntax_node_ptr().range());
-
-        NavigationTarget {
-            file_id,
-            name,
-            full_range,
-            focus_range: None,
-            kind: NAME,
-            container_name: None,
-            description: None, //< No document node for SelfParam
-            docs: None,        //< No document node for SelfParam
-        }
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
@@ -366,6 +330,32 @@ impl ToNav for hir::AssocItem {
             AssocItem::Function(it) => it.to_nav(db),
             AssocItem::Const(it) => it.to_nav(db),
             AssocItem::TypeAlias(it) => it.to_nav(db),
+        }
+    }
+}
+
+impl ToNav for hir::Local {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let (full_range, focus_range) = match src.ast {
+            Either::A(it) => {
+                (it.syntax().text_range(), it.name().map(|it| it.syntax().text_range()))
+            }
+            Either::B(it) => (it.syntax().text_range(), Some(it.self_kw_token().text_range())),
+        };
+        let name = match self.name(db) {
+            Some(it) => it.to_string().into(),
+            None => "".into(),
+        };
+        NavigationTarget {
+            file_id: src.file_id.original_file(db),
+            name,
+            kind: BIND_PAT,
+            full_range,
+            focus_range,
+            container_name: None,
+            description: None,
+            docs: None,
         }
     }
 }
