@@ -158,7 +158,7 @@ impl<Q> old_dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
     const BOTTOM_VALUE: bool = false;
 }
 
-impl<Q> dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<Q> dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -173,7 +173,12 @@ where
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
         self.transfer_function(state).initialize_state();
     }
+}
 
+impl<Q> dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+where
+    Q: Qualif,
+{
     fn apply_statement_effect(
         &self,
         state: &mut BitSet<Self::Idx>,
