@@ -19,7 +19,7 @@ cranelift-module = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-object = { git = "https://github.com/CraneStation/cranelift.git", optional = true }
 target-lexicon = "0.9.0"
-faerie = "0.11.0"
+faerie = "0.12.0"
 
 #goblin = "0.0.17"
 ar = "0.8.0"
