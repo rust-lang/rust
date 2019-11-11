@@ -1027,6 +1027,66 @@ impl String {
         self.vec.try_reserve_exact(additional)
     }
 
+    /// Attempts to ensure that the String buffer contains at least enough space to hold
+    /// `String::len() + additional` elements. If it doesn't already have
+    /// enough capacity, will reallocate in place enough space plus comfortable slack
+    /// space to get amortized `O(1)` behavior.
+    ///
+    /// Consider using the [`reserve`] method unless you absolutely know
+    /// that you require the `String` to have optimal capacity based off the
+    /// `additional` bytes requirement.
+    ///
+    /// [`reserve`]: #method.reserve
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `usize`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let mut s = String::new();
+    ///
+    /// s.amortized_reserve(10);
+    ///
+    /// assert!(s.capacity() >= 10);
+    /// ```
+    ///
+    /// This will increase the capacity upto double the amount to ensure
+    /// optimal capacity is maintained saving future allocation operations cost:
+    ///
+    /// ```
+    /// let mut s = String::with_capacity(10);
+    /// s.push('a');
+    /// s.push('b');
+    ///
+    /// // s now has a length of 2 and a capacity of 10
+    /// assert_eq!(2, s.len());
+    /// assert_eq!(10, s.capacity());
+    ///
+    /// // Since we requested to reserve an optimal amount of space...
+    /// s.amortized_reserve(8);
+    ///
+    /// // ... it doubles the previous capacity.
+    /// assert_eq!(20, s.capacity());
+    /// ```
+    #[inline]
+    #[stable(feature = "string_amortized_reserve", since = "1.4.1")]
+    pub fn amortized_reserve(&mut self, additional: usize) {
+        
+        // Nothing we can really do about these checks, sadly.
+        let required_cap = self.len().checked_add(additional)
+            .expect("capacity overflow");
+        // Cannot overflow, because `self.capacity() <= isize::MAX`, and type of `self.capacity()` is `usize`.
+        let double_cap = self.capacity() * 2;
+        // `double_cap` guarantees exponential growth.
+        let new_cap = cmp::max(double_cap, required_cap);
+
+        self.vec.reserve_exact(new_cap)
+    }
+
     /// Shrinks the capacity of this `String` to match its length.
     ///
     /// # Examples
