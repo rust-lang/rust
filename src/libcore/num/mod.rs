@@ -5279,42 +5279,42 @@ macro_rules! nzint_impl_from {
 }
 
 // Non-zero Unsigned -> Non-zero Unsigned
-nzint_impl_from! { NonZeroU8, NonZeroU16, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroU32, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroU64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroU128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroUsize, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroU32, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroU64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroU128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroUsize, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU32, NonZeroU64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU32, NonZeroU128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU64, NonZeroU128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
+nzint_impl_from! { NonZeroU8, NonZeroU16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroU32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroUsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroU32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroUsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU64, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
 
 // Non-zero Signed -> Non-zero Signed
-nzint_impl_from! { NonZeroI8, NonZeroI16, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI8, NonZeroI32, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI8, NonZeroI64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI8, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI8, NonZeroIsize, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI16, NonZeroI32, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI16, NonZeroI64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI16, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI16, NonZeroIsize, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI32, NonZeroI64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI32, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroI64, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
+nzint_impl_from! { NonZeroI8, NonZeroI16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
 
 // NonZero UnSigned -> Non-zero Signed
-nzint_impl_from! { NonZeroU8, NonZeroI16, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroI32, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroI64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU8, NonZeroIsize, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroI32, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroI64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU16, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU32, NonZeroI64, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU32, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
-nzint_impl_from! { NonZeroU64, NonZeroI128, #[unstable(feature = "nz_int_conv", issue = "66196")] }
+nzint_impl_from! { NonZeroU8, NonZeroI16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
