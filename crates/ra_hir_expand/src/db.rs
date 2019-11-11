@@ -10,7 +10,7 @@ use ra_syntax::{AstNode, Parse, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc,
-    MacroDefId, MacroFile, MacroFileKind,
+    MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -69,9 +69,9 @@ pub(crate) fn macro_def(
     db: &dyn AstDatabase,
     id: MacroDefId,
 ) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
-    match id {
-        MacroDefId::DeclarativeMacro(it) => {
-            let macro_call = it.ast_id.to_node(db);
+    match id.kind {
+        MacroDefKind::Declarative => {
+            let macro_call = id.ast_id.to_node(db);
             let arg = macro_call.token_tree()?;
             let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
                 log::warn!("fail on macro_def to token tree: {:#?}", arg);
@@ -83,8 +83,8 @@ pub(crate) fn macro_def(
             })?;
             Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
         }
-        MacroDefId::BuiltinMacro(it) => {
-            Some(Arc::new((TokenExpander::Builtin(it.expander.clone()), mbe::TokenMap::default())))
+        MacroDefKind::BuiltIn(expander) => {
+            Some(Arc::new((TokenExpander::Builtin(expander.clone()), mbe::TokenMap::default())))
         }
     }
 }
