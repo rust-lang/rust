@@ -55,11 +55,12 @@ fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], typ
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.kind {
-                    ty::Ref(_, _, MutImmutable)
+                    ty::Ref(_, _, Mutability::Immutable)
                     | ty::RawPtr(ty::TypeAndMut {
-                        mutbl: MutImmutable, ..
+                        mutbl: Mutability::Immutable,
+                        ..
                     }) => {
-                        if let ExprKind::AddrOf(MutMutable, _) = argument.kind {
+                        if let ExprKind::AddrOf(Mutability::Mutable, _) = argument.kind {
                             span_lint(
                                 cx,
                                 UNNECESSARY_MUT_PASSED,

@@ -128,7 +128,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         match expr.kind {
-            ExprKind::AddrOf(Mutability::MutMutable, _) => {
+            ExprKind::AddrOf(Mutability::Mutable, _) => {
                 self.found = true;
                 return;
             },
@@ -136,7 +136,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                 if let Some(adj) = self.cx.tables.adjustments().get(expr.hir_id) {
                     if adj
                         .iter()
-                        .any(|a| matches!(a.target.kind, ty::Ref(_, _, Mutability::MutMutable)))
+                        .any(|a| matches!(a.target.kind, ty::Ref(_, _, Mutability::Mutable)))
                     {
                         self.found = true;
                         return;

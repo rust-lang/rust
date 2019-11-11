@@ -97,7 +97,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
             }
 
             if_chain! {
-                if let ty::Ref(input_lt, ty, Mutability::MutImmutable) = ty.kind;
+                if let ty::Ref(input_lt, ty, Mutability::Immutable) = ty.kind;
                 if !output_lts.contains(&input_lt);
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());

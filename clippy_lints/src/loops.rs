@@ -1506,8 +1506,8 @@ fn make_iterator_snippet(cx: &LateContext<'_, '_>, arg: &Expr, applic_ref: &mut 
         match &arg.kind {
             ExprKind::AddrOf(mutability, arg_inner) if has_iter_method(cx, cx.tables.expr_ty(&arg_inner)).is_some() => {
                 let meth_name = match mutability {
-                    MutMutable => "iter_mut",
-                    MutImmutable => "iter",
+                    Mutability::Mutable => "iter_mut",
+                    Mutability::Immutable => "iter",
                 };
                 format!(
                     "{}.{}()",
@@ -1539,14 +1539,14 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
             let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).kind {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                     (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
-                    (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, MutImmutable),
+                    (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, Mutability::Immutable),
                     _ => return,
                 },
                 _ => return,
             };
             let mutbl = match mutbl {
-                MutImmutable => "",
-                MutMutable => "_mut",
+                Mutability::Immutable => "",
+                Mutability::Mutable => "_mut",
             };
             let arg = match arg.kind {
                 ExprKind::AddrOf(_, ref expr) => &**expr,
@@ -1874,7 +1874,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 self.visit_expr(rhs);
             },
             ExprKind::AddrOf(mutbl, ref expr) => {
-                if mutbl == MutMutable {
+                if mutbl == Mutability::Mutable {
                     self.prefer_mutable = true;
                 }
                 self.visit_expr(expr);
@@ -1885,7 +1885,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     let ty = self.cx.tables.expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = ty.kind {
-                        if mutbl == MutMutable {
+                        if mutbl == Mutability::Mutable {
                             self.prefer_mutable = true;
                         }
                     }
@@ -1897,7 +1897,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = ty.kind {
-                        if mutbl == MutMutable {
+                        if mutbl == Mutability::Mutable {
                             self.prefer_mutable = true;
                         }
                     }
@@ -2090,7 +2090,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::Assign(ref lhs, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
-                    ExprKind::AddrOf(mutability, _) if mutability == MutMutable => *state = VarState::DontWarn,
+                    ExprKind::AddrOf(mutability, _) if mutability == Mutability::Mutable => *state = VarState::DontWarn,
                     _ => (),
                 }
             }
@@ -2172,7 +2172,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                             VarState::DontWarn
                         }
                     },
-                    ExprKind::AddrOf(mutability, _) if mutability == MutMutable => self.state = VarState::DontWarn,
+                    ExprKind::AddrOf(mutability, _) if mutability == Mutability::Mutable => {
+                        self.state = VarState::DontWarn
+                    },
                     _ => (),
                 }
             }

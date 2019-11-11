@@ -150,7 +150,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
     let fn_ty = sig.skip_binder();
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
-        if let ty::Ref(_, ty, MutImmutable) = ty.kind {
+        if let ty::Ref(_, ty, Mutability::Immutable) = ty.kind {
             if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) {
                 let mut ty_snippet = None;
                 if_chain! {
@@ -254,7 +254,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
     }
 
     if let FunctionRetTy::Return(ref ty) = decl.output {
-        if let Some((out, MutMutable, _)) = get_rptr_lm(ty) {
+        if let Some((out, Mutability::Mutable, _)) = get_rptr_lm(ty) {
             let mut immutables = vec![];
             for (_, ref mutbl, ref argspan) in decl
                 .inputs
@@ -262,7 +262,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
                 .filter_map(|ty| get_rptr_lm(ty))
                 .filter(|&(lt, _, _)| lt.name == out.name)
             {
-                if *mutbl == MutMutable {
+                if *mutbl == Mutability::Mutable {
                     return;
                 }
                 immutables.push(*argspan);
