@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use syntax::expand::allocator::AllocatorKind;
 use rustc_target::spec::Target;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_macros::HashStable;
@@ -228,6 +229,7 @@ pub trait CrateStore {
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
     fn injected_panic_runtime(&self) -> Option<CrateNum>;
+    fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;

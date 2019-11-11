@@ -549,7 +549,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         });
     let allocator_module = if any_dynamic_crate {
         None
-    } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
+    } else if let Some(kind) = tcx.allocator_kind() {
         let llmod_id = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                        &["crate"],
                                                        Some("allocator")).to_string();

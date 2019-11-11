@@ -21,7 +21,6 @@ use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::edition::Edition;
-use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
@@ -99,11 +98,6 @@ pub struct Session {
 
     /// The maximum number of stackframes allowed in const eval.
     pub const_eval_stack_frame_limit: usize,
-
-    /// The `metadata::creader` module may inject an allocator/`panic_runtime`
-    /// dependency if it didn't already find one, and this tracks what was
-    /// injected.
-    pub allocator_kind: Once<Option<AllocatorKind>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -1179,7 +1173,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
-        allocator_kind: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
