@@ -4,6 +4,8 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Spanned;
 
+use if_chain::if_chain;
+
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
@@ -146,53 +148,46 @@ declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use crate::utils::{snippet, snippet_with_applicability};
-        use syntax::ast::{LitKind, StrStyle};
+        use syntax::ast::LitKind;
 
-        if let ExprKind::MethodCall(ref path, _, ref args) = e.kind {
-            if path.ident.name == sym!(as_bytes) {
-                if let ExprKind::Lit(ref lit) = args[0].kind {
-                    if let LitKind::Str(ref lit_content, style) = lit.node {
-                        let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
-                        let expanded = if let StrStyle::Raw(n) = style {
-                            let term = "#".repeat(usize::from(n));
-                            format!("r{0}\"{1}\"{0}", term, lit_content.as_str())
-                        } else {
-                            format!("\"{}\"", lit_content.as_str())
-                        };
-                        let mut applicability = Applicability::MachineApplicable;
-                        if callsite.starts_with("include_str!") {
-                            span_lint_and_sugg(
-                                cx,
-                                STRING_LIT_AS_BYTES,
-                                e.span,
-                                "calling `as_bytes()` on `include_str!(..)`",
-                                "consider using `include_bytes!(..)` instead",
-                                snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability).replacen(
-                                    "include_str",
-                                    "include_bytes",
-                                    1,
-                                ),
-                                applicability,
-                            );
-                        } else if callsite == expanded
-                            && lit_content.as_str().chars().all(|c| c.is_ascii())
-                            && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
-                            && !args[0].span.from_expansion()
-                        {
-                            span_lint_and_sugg(
-                                cx,
-                                STRING_LIT_AS_BYTES,
-                                e.span,
-                                "calling `as_bytes()` on a string literal",
-                                "consider using a byte string literal instead",
-                                format!(
-                                    "b{}",
-                                    snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability)
-                                ),
-                                applicability,
-                            );
-                        }
-                    }
+        if_chain! {
+            if let ExprKind::MethodCall(path, _, args) = &e.kind;
+            if path.ident.name == sym!(as_bytes);
+            if let ExprKind::Lit(lit) = &args[0].kind;
+            if let LitKind::Str(lit_content, _) = &lit.node;
+            then {
+                let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
+                let mut applicability = Applicability::MachineApplicable;
+                if callsite.starts_with("include_str!") {
+                    span_lint_and_sugg(
+                        cx,
+                        STRING_LIT_AS_BYTES,
+                        e.span,
+                        "calling `as_bytes()` on `include_str!(..)`",
+                        "consider using `include_bytes!(..)` instead",
+                        snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability).replacen(
+                            "include_str",
+                            "include_bytes",
+                            1,
+                        ),
+                        applicability,
+                    );
+                } else if lit_content.as_str().is_ascii()
+                    && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
+                    && !args[0].span.from_expansion()
+                {
+                    span_lint_and_sugg(
+                        cx,
+                        STRING_LIT_AS_BYTES,
+                        e.span,
+                        "calling `as_bytes()` on a string literal",
+                        "consider using a byte string literal instead",
+                        format!(
+                            "b{}",
+                            snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability)
+                        ),
+                        applicability,
+                    );
                 }
             }
         }
