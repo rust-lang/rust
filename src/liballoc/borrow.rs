@@ -484,7 +484,7 @@ impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
 impl AddAssign<char> for Cow<'_, str> {
     fn add_assign(&mut self, rhs: char) {
         if let Cow::Borrowed(lhs) = *self {
-            let mut s = String::with_capacity(s.len() + rhs.len_utf8());
+            let mut s = String::with_capacity(lhs.len() + rhs.len_utf8());
             // 4 bytes more since we know `rhs.len_utf8() <= 4`
             s.vec.buf.amortized_new_size(s.capacity(), 4).expect("capacity overflow");
             s.push_str(lhs);
