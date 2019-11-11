@@ -385,6 +385,41 @@ fn test_clone_from() {
 }
 
 #[test]
+fn test_vec_deque_truncate_drop() {
+    static mut DROPS: u32 = 0;
+    #[derive(Clone)]
+    struct Elem(i32);
+    impl Drop for Elem {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
+    for push_front in 0..=v.len() {
+        let v = v.clone();
+        let mut tester = VecDeque::with_capacity(5);
+        for (index, elem) in v.into_iter().enumerate() {
+            if index < push_front {
+                tester.push_front(elem);
+            } else {
+                tester.push_back(elem);
+            }
+        }
+        assert_eq!(unsafe { DROPS }, 0);
+        tester.truncate(3);
+        assert_eq!(unsafe { DROPS }, 2);
+        tester.truncate(0);
+        assert_eq!(unsafe { DROPS }, 5);
+        unsafe {
+            DROPS = 0;
+        }
+    }
+}
+
+#[test]
 fn issue_53529() {
     use crate::boxed::Box;
 
