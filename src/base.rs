@@ -356,7 +356,8 @@ fn trans_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), operand, ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, ty) => {
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, ty)
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, ty) => {
                     let operand = trans_operand(fx, operand);
                     let layout = fx.layout_of(ty);
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
