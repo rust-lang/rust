@@ -21,7 +21,7 @@ const FOO: Bar = Bar {
 fn main() {
     match FOO {
         Bar { a: Foo { field: (5, 6) } } => {},
-        FOO => unreachable!(),
+        FOO => unreachable!(), //~ WARNING unreachable pattern
         _ => unreachable!(),
     }
 }
