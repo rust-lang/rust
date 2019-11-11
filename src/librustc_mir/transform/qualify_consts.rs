@@ -798,23 +798,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     return;
                 }
                 unleash_miri!(self);
-
-                if self.mode.requires_const_checking() && !self.suppress_errors {
-                    self.record_error(ops::StaticAccess);
-                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
-                                                    "{}s cannot refer to statics, use \
-                                                    a constant instead", self.mode);
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(
-                            "Static and const variables can refer to other const variables. \
-                                But a const variable cannot refer to a static variable."
-                        );
-                        err.help(
-                            "To fix this, the value can be extracted as a const and then used."
-                        );
-                    }
-                    err.emit()
-                }
             }
         }
     }

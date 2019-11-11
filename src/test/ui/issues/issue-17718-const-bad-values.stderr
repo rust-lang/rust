@@ -10,13 +10,6 @@ error[E0017]: references in constants may only refer to immutable values
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                         ^^^^^^ constants require immutable values
 
-error[E0013]: constants cannot refer to statics, use a constant instead
-  --> $DIR/issue-17718-const-bad-values.rs:5:41
-   |
-LL | const C2: &'static mut usize = unsafe { &mut S };
-   |                                         ^^^^^^
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0013, E0017.
-For more information about an error, try `rustc --explain E0013`.
+For more information about this error, try `rustc --explain E0017`.

@@ -336,8 +336,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         self.span,
                         "cannot mutate statics in the initializer of another static",
                     );
-                } else {
-                    self.check_op(ops::StaticAccess);
                 }
             }
         }

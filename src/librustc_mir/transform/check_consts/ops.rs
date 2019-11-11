@@ -262,31 +262,6 @@ impl NonConstOp for RawPtrToIntCast {
     }
 }
 
-/// An access to a (non-thread-local) `static`.
-#[derive(Debug)]
-pub struct StaticAccess;
-impl NonConstOp for StaticAccess {
-    fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
-        item.const_kind().is_static()
-    }
-
-    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = struct_span_err!(item.tcx.sess, span, E0013,
-                                        "{}s cannot refer to statics, use \
-                                        a constant instead", item.const_kind());
-        if item.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "Static and const variables can refer to other const variables. \
-                    But a const variable cannot refer to a static variable."
-            );
-            err.help(
-                "To fix this, the value can be extracted as a const and then used."
-            );
-        }
-        err.emit();
-    }
-}
-
 /// An access to a thread-local `static`.
 #[derive(Debug)]
 pub struct ThreadLocalAccess;

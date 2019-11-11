@@ -4,19 +4,6 @@ error[E0015]: calls in constant functions are limited to constant functions, tup
 LL |     random()
    |     ^^^^^^^^
 
-error[E0013]: constant functions cannot refer to statics, use a constant instead
-  --> $DIR/const-fn-not-safe-for-const.rs:20:5
-   |
-LL |     Y
-   |     ^
+error: aborting due to previous error
 
-error[E0013]: constant functions cannot refer to statics, use a constant instead
-  --> $DIR/const-fn-not-safe-for-const.rs:25:5
-   |
-LL |     &Y
-   |     ^^
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0013, E0015.
-For more information about an error, try `rustc --explain E0013`.
+For more information about this error, try `rustc --explain E0015`.

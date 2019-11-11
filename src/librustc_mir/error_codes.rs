@@ -228,27 +228,6 @@ const CON : Box<i32> = box 0;
 ```
 "##,
 
-E0013: r##"
-Static and const variables can refer to other const variables. But a const
-variable cannot refer to a static variable.
-
-Erroneous code example:
-
-```compile_fail,E0013
-static X: i32 = 42;
-const Y: i32 = X;
-```
-
-In this example, `Y` cannot refer to `X` here. To fix this, the value can be
-extracted as a const and then used:
-
-```
-const A: i32 = 42;
-static X: i32 = A;
-const Y: i32 = A;
-```
-"##,
-
 // FIXME(#57563) Change the language here when const fn stabilizes
 E0015: r##"
 The only functions that can be called in static or constant expressions are
