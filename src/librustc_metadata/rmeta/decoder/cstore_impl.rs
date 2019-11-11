@@ -527,4 +527,8 @@ impl CrateStore for cstore::CStore {
     {
         rmeta::METADATA_HEADER
     }
+
+    fn injected_panic_runtime(&self) -> Option<CrateNum> {
+        self.injected_panic_runtime
+    }
 }

@@ -2,7 +2,6 @@ pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
 use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
-use crate::hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
@@ -105,7 +104,6 @@ pub struct Session {
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
     pub allocator_kind: Once<Option<AllocatorKind>>,
-    pub injected_panic_runtime: Once<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -1182,7 +1180,6 @@ fn build_session_(
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
         allocator_kind: Once::new(),
-        injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,

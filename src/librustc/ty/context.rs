@@ -1338,6 +1338,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
+    pub fn injected_panic_runtime(self) -> Option<CrateNum> {
+        self.cstore.injected_panic_runtime()
+    }
+
     pub fn features(self) -> &'tcx feature_gate::Features {
         self.features_query(LOCAL_CRATE)
     }

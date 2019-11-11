@@ -101,6 +101,7 @@ crate struct CrateMetadata {
 #[derive(Clone)]
 pub struct CStore {
     metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
+    pub(crate) injected_panic_runtime: Option<CrateNum>,
 }
 
 pub enum LoadedMacro {
@@ -116,6 +117,7 @@ impl Default for CStore {
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
             metas: IndexVec::from_elem_n(None, 1),
+            injected_panic_runtime: None,
         }
     }
 }

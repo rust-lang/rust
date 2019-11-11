@@ -531,7 +531,7 @@ impl<'a> CrateLoader<'a> {
         });
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
-            self.sess.injected_panic_runtime.set(None);
+            self.cstore.injected_panic_runtime = None;
             return
         }
 
@@ -563,7 +563,7 @@ impl<'a> CrateLoader<'a> {
         // we just don't need one at all, then we're done here and there's
         // nothing else to do.
         if !needs_panic_runtime || runtime_found {
-            self.sess.injected_panic_runtime.set(None);
+            self.cstore.injected_panic_runtime = None;
             return
         }
 
@@ -600,7 +600,7 @@ impl<'a> CrateLoader<'a> {
                                    name, desired_strategy.desc()));
         }
 
-        self.sess.injected_panic_runtime.set(Some(cnum));
+        self.cstore.injected_panic_runtime = Some(cnum);
         self.inject_dependency_if(cnum, "a panic runtime",
                                   &|data| data.root.needs_panic_runtime);
     }
