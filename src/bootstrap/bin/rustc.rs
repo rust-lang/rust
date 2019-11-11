@@ -94,6 +94,11 @@ fn main() {
         // other crate intentionally as this is the only crate for now that we
         // ship with panic=abort.
         //
+        // FIXME: Remove the special case for "panic_abort"
+        // once https://github.com/rust-lang/rust/pull/60026
+        // rides the release train into the bootstrap compiler.
+        // `cfg(bootstrap)`: (added to make this easier to grep for)
+        //
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.

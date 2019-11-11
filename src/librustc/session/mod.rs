@@ -563,6 +563,18 @@ impl Session {
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
+        // This is a hack to support `libpanic_abort`. We require `libpanic_abort`
+        // to always be built with `PanicStrategy::Abort`, regardless of what panic
+        // strategy is suppplied to the compiler. Ideally, this would be an intenral
+        // attribute in `libpanic_abort` - howevver, emscripten needs to access
+        // the panic strategy before we even start parsing the crate:
+        // https://github.com/rust-lang/rust/blob/3fc30d8/src/librustc_codegen_llvm/llvm_util.rs#L77
+        //
+        // As a result, we need to use a special environment variable, which is set from
+        // the `build.rs` of `libpanic_abort`
+        if env::var("RUSTC_INTERNAL_FORCE_PANIC_ABORT").is_ok() {
+            return PanicStrategy::Abort;
+        }
         self.opts
             .cg
             .panic
