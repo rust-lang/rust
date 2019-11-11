@@ -19,7 +19,9 @@ use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode, TextUnit};
 
-use crate::{db::RootDatabase, FilePosition, FileRange, NavigationTarget, RangeInfo};
+use crate::{
+    db::RootDatabase, display::ToNav, FilePosition, FileRange, NavigationTarget, RangeInfo,
+};
 
 pub(crate) use self::{
     classify::{classify_name, classify_name_ref},
@@ -76,12 +78,12 @@ pub(crate) fn find_all_refs(
     let RangeInfo { range, info: (name, def) } = find_name(db, &syntax, position)?;
 
     let declaration = match def.kind {
-        NameKind::Macro(mac) => NavigationTarget::from_macro_def(db, mac),
-        NameKind::Field(field) => NavigationTarget::from_field(db, field),
-        NameKind::AssocItem(assoc) => NavigationTarget::from_assoc_item(db, assoc),
+        NameKind::Macro(mac) => mac.to_nav(db),
+        NameKind::Field(field) => field.to_nav(db),
+        NameKind::AssocItem(assoc) => assoc.to_nav(db),
         NameKind::Def(def) => NavigationTarget::from_def(db, def)?,
         NameKind::SelfType(ref ty) => match ty.as_adt() {
-            Some((def_id, _)) => NavigationTarget::from_adt_def(db, def_id),
+            Some((adt, _)) => adt.to_nav(db),
             None => return None,
         },
         NameKind::Pat((_, pat)) => NavigationTarget::from_pat(db, position.file_id, pat),

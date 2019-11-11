@@ -9,7 +9,7 @@ use ra_syntax::{
 
 use crate::{
     db::RootDatabase,
-    display::ShortLabel,
+    display::{ShortLabel, ToNav},
     references::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
@@ -56,16 +56,16 @@ pub(crate) fn reference_definition(
 
     let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
     match name_kind {
-        Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
-        Some(Field(field)) => return Exact(NavigationTarget::from_field(db, field)),
-        Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_assoc_item(db, assoc)),
+        Some(Macro(mac)) => return Exact(mac.to_nav(db)),
+        Some(Field(field)) => return Exact(field.to_nav(db)),
+        Some(AssocItem(assoc)) => return Exact(assoc.to_nav(db)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
         },
         Some(SelfType(ty)) => {
-            if let Some((def_id, _)) = ty.as_adt() {
-                return Exact(NavigationTarget::from_adt_def(db, def_id));
+            if let Some((adt, _)) = ty.as_adt() {
+                return Exact(adt.to_nav(db));
             }
         }
         Some(Pat((_, pat))) => return Exact(NavigationTarget::from_pat(db, file_id, pat)),
@@ -79,7 +79,7 @@ pub(crate) fn reference_definition(
     // Fallback index based approach:
     let navs = crate::symbol_index::index_resolve(db, name_ref)
         .into_iter()
-        .map(|s| NavigationTarget::from_symbol(db, s))
+        .map(|s| s.to_nav(db))
         .collect();
     Approximate(navs)
 }
@@ -95,7 +95,7 @@ pub(crate) fn name_definition(
         if module.has_semi() {
             let src = hir::Source { file_id: file_id.into(), ast: module };
             if let Some(child_module) = hir::Module::from_declaration(db, src) {
-                let nav = NavigationTarget::from_module(db, child_module);
+                let nav = child_module.to_nav(db);
                 return Some(vec![nav]);
             }
         }
