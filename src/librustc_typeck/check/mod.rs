@@ -893,7 +893,7 @@ fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFol
             match ty.kind {
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
-                    if ty.has_infer_types() {
+                    if ty.needs_infer() {
                         let new_substs = InternalSubsts::for_item(self.tcx, def_id, |param, _| {
                             let old_param = substs[param.index as usize];
                             match old_param.unpack() {
@@ -905,7 +905,20 @@ fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFol
                                         old_param.fold_with(self)
                                     }
                                 },
-                                _ => old_param
+                                GenericArgKind::Const(old_const) => {
+                                    if let ConstValue::Infer(_) = old_const.val {
+                                        self.tcx.mk_param_from_def(param)
+                                    } else {
+                                        old_param.fold_with(self)
+                                    }
+                                }
+                                GenericArgKind::Lifetime(old_region) => {
+                                    if let RegionKind::ReVar(_) = old_region {
+                                        self.tcx.mk_param_from_def(param)
+                                    } else {
+                                        old_param.fold_with(self)
+                                    }
+                                }
                             }
                         });
                         let new_ty = self.tcx.mk_opaque(def_id, new_substs);
