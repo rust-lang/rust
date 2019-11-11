@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 332] = [
+pub const ALL_LINTS: [Lint; 333] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1875,6 +1875,13 @@ pub const ALL_LINTS: [Lint; 332] = [
         desc: "getting the inner pointer of a temporary `CString`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "to_digit_is_some",
+        group: "style",
+        desc: "`char.is_digit()` is clearer",
+        deprecation: None,
+        module: "to_digit_is_some",
     },
     Lint {
         name: "todo",

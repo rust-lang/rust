@@ -364,7 +364,7 @@ impl LiteralDigitGrouping {
                 if_chain! {
                     if let Some(src) = snippet_opt(cx, lit.span);
                     if let Some(firstch) = src.chars().next();
-                    if char::to_digit(firstch, 10).is_some();
+                    if char::is_digit(firstch, 10);
                     then {
                         let digit_info = DigitInfo::new(&src, false);
                         let _ = Self::do_lint(digit_info.digits, digit_info.suffix, in_macro).map_err(|warning_type| {
@@ -378,7 +378,7 @@ impl LiteralDigitGrouping {
                 if_chain! {
                     if let Some(src) = snippet_opt(cx, lit.span);
                     if let Some(firstch) = src.chars().next();
-                    if char::to_digit(firstch, 10).is_some();
+                    if char::is_digit(firstch, 10);
                     then {
                         let digit_info = DigitInfo::new(&src, true);
                         // Separate digits into integral and fractional parts.
@@ -512,7 +512,7 @@ impl DecimalLiteralRepresentation {
             if let LitKind::Int(val, _) = lit.kind;
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(firstch) = src.chars().next();
-            if char::to_digit(firstch, 10).is_some();
+            if char::is_digit(firstch, 10);
             let digit_info = DigitInfo::new(&src, false);
             if digit_info.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
