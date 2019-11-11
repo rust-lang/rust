@@ -9,12 +9,15 @@ use ra_syntax::{
     ast::{self, NameOwner},
     AstNode, Direction, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::*,
-    TextRange, T,
+    SyntaxNode, TextRange, T,
 };
 
 use crate::{
     db::RootDatabase,
-    references::{classify_name_ref, NameKind::*},
+    references::{
+        classify_name, classify_name_ref,
+        NameKind::{self, *},
+    },
     FileId,
 };
 
@@ -100,81 +103,43 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 if node.ancestors().any(|it| it.kind() == ATTR) {
                     continue;
                 }
-                if let Some(name_ref) = node.as_node().cloned().and_then(ast::NameRef::cast) {
-                    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
-                    match name_kind {
-                        Some(Macro(_)) => "macro",
-                        Some(Field(_)) => "field",
-                        Some(AssocItem(hir::AssocItem::Function(_))) => "function",
-                        Some(AssocItem(hir::AssocItem::Const(_))) => "constant",
-                        Some(AssocItem(hir::AssocItem::TypeAlias(_))) => "type",
-                        Some(Def(hir::ModuleDef::Module(_))) => "module",
-                        Some(Def(hir::ModuleDef::Function(_))) => "function",
-                        Some(Def(hir::ModuleDef::Adt(_))) => "type",
-                        Some(Def(hir::ModuleDef::EnumVariant(_))) => "constant",
-                        Some(Def(hir::ModuleDef::Const(_))) => "constant",
-                        Some(Def(hir::ModuleDef::Static(_))) => "constant",
-                        Some(Def(hir::ModuleDef::Trait(_))) => "type",
-                        Some(Def(hir::ModuleDef::TypeAlias(_))) => "type",
-                        Some(Def(hir::ModuleDef::BuiltinType(_))) => "type",
-                        Some(SelfType(_)) => "type",
-                        Some(Pat((_, ptr))) => {
-                            let pat = ptr.to_node(&root);
-                            if let Some(name) = pat.name() {
-                                let text = name.text();
-                                let shadow_count =
-                                    bindings_shadow_count.entry(text.clone()).or_default();
-                                binding_hash =
-                                    Some(calc_binding_hash(file_id, &text, *shadow_count))
-                            }
 
-                            let analyzer =
-                                hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                            if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
-                                "variable.mut"
-                            } else {
-                                "variable"
-                            }
-                        }
-                        Some(SelfParam(_)) => "type",
-                        Some(GenericParam(_)) => "type",
-                        None => "text",
+                let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
+                let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
+
+                if let Some(Pat((_, ptr))) = &name_kind {
+                    let pat = ptr.to_node(&root);
+                    if let Some(name) = pat.name() {
+                        let text = name.text();
+                        let shadow_count = bindings_shadow_count.entry(text.clone()).or_default();
+                        binding_hash = Some(calc_binding_hash(file_id, &text, *shadow_count))
                     }
-                } else {
-                    "text"
-                }
+                };
+
+                name_kind
+                    .map_or("text", |it| highlight_name(db, file_id, name_ref.syntax(), &root, it))
             }
             NAME => {
-                if let Some(name) = node.as_node().cloned().and_then(ast::Name::cast) {
-                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name.syntax(), None);
-                    if let Some(pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
-                        if let Some(name) = pat.name() {
-                            let text = name.text();
-                            let shadow_count =
-                                bindings_shadow_count.entry(text.clone()).or_default();
-                            *shadow_count += 1;
-                            binding_hash = Some(calc_binding_hash(file_id, &text, *shadow_count))
-                        }
+                let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
+                let name_kind = classify_name(db, file_id, &name).map(|d| d.kind);
 
-                        if is_variable_mutable(db, &analyzer, pat) {
-                            "variable.mut"
-                        } else {
-                            "variable"
-                        }
-                    } else {
-                        name.syntax()
-                            .parent()
-                            .map(|x| match x.kind() {
-                                TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
-                                    "type"
-                                }
-                                RECORD_FIELD_DEF => "field",
-                                _ => "function",
-                            })
-                            .unwrap_or("function")
+                if let Some(Pat((_, ptr))) = &name_kind {
+                    let pat = ptr.to_node(&root);
+                    if let Some(name) = pat.name() {
+                        let text = name.text();
+                        let shadow_count = bindings_shadow_count.entry(text.clone()).or_default();
+                        *shadow_count += 1;
+                        binding_hash = Some(calc_binding_hash(file_id, &text, *shadow_count))
                     }
-                } else {
-                    "text"
+                };
+
+                match name_kind {
+                    Some(name_kind) => highlight_name(db, file_id, name.syntax(), &root, name_kind),
+                    None => name.syntax().parent().map_or("function", |x| match x.kind() {
+                        TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => "type",
+                        RECORD_FIELD_DEF => "field",
+                        _ => "function",
+                    }),
                 }
             }
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
@@ -270,6 +235,42 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     }
     buf.push_str("</code></pre>");
     buf
+}
+
+fn highlight_name(
+    db: &RootDatabase,
+    file_id: FileId,
+    node: &SyntaxNode,
+    root: &SyntaxNode,
+    name_kind: NameKind,
+) -> &'static str {
+    match name_kind {
+        Macro(_) => "macro",
+        Field(_) => "field",
+        AssocItem(hir::AssocItem::Function(_)) => "function",
+        AssocItem(hir::AssocItem::Const(_)) => "constant",
+        AssocItem(hir::AssocItem::TypeAlias(_)) => "type",
+        Def(hir::ModuleDef::Module(_)) => "module",
+        Def(hir::ModuleDef::Function(_)) => "function",
+        Def(hir::ModuleDef::Adt(_)) => "type",
+        Def(hir::ModuleDef::EnumVariant(_)) => "constant",
+        Def(hir::ModuleDef::Const(_)) => "constant",
+        Def(hir::ModuleDef::Static(_)) => "constant",
+        Def(hir::ModuleDef::Trait(_)) => "type",
+        Def(hir::ModuleDef::TypeAlias(_)) => "type",
+        Def(hir::ModuleDef::BuiltinType(_)) => "type",
+        SelfType(_) => "type",
+        SelfParam(_) => "type",
+        GenericParam(_) => "type",
+        Pat((_, ptr)) => {
+            let analyzer = hir::SourceAnalyzer::new(db, file_id, node, None);
+            if is_variable_mutable(db, &analyzer, ptr.to_node(&root)) {
+                "variable.mut"
+            } else {
+                "variable"
+            }
+        }
+    }
 }
 
 //FIXME: like, real html escaping
