@@ -39,6 +39,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
+use std::num::NonZeroU32;
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -4399,7 +4400,7 @@ pub struct Stability {
     pub since: String,
     pub deprecation: Option<Deprecation>,
     pub unstable_reason: Option<String>,
-    pub issue: Option<u32>,
+    pub issue: Option<NonZeroU32>,
 }
 
 #[derive(Clone, Debug)]
@@ -4428,7 +4429,7 @@ impl Clean<Stability> for attr::Stability {
                 _ => None,
             },
             issue: match self.level {
-                attr::Unstable {issue, ..} => Some(issue),
+                attr::Unstable {issue, ..} => issue,
                 _ => None,
             }
         }

@@ -18,6 +18,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
 
 use std::env;
+use std::num::NonZeroU32;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Stability {
@@ -55,25 +56,28 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 
-fn find_lang_feature_issue(feature: Symbol) -> Option<u32> {
+fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
         // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(info.issue.is_some())
-        info.issue
+        // assert!(info.issue().is_some())
+        info.issue()
     } else {
         // search in Accepted, Removed, or Stable Removed features
-        let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
+        let found = ACCEPTED_FEATURES
+            .iter()
+            .chain(REMOVED_FEATURES)
+            .chain(STABLE_REMOVED_FEATURES)
             .find(|t| t.name == feature);
         match found {
-            Some(&Feature { issue, .. }) => issue,
-            None => panic!("Feature `{}` is not declared anywhere", feature),
+            Some(found) => found.issue(),
+            None => panic!("feature `{}` is not declared anywhere", feature),
         }
     }
 }
 
 pub enum GateIssue {
     Language,
-    Library(Option<u32>)
+    Library(Option<NonZeroU32>)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -126,14 +130,11 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
         GateStrength::Soft => diag.struct_span_warn(span, explain),
     };
 
-    match issue {
-        None | Some(0) => {}  // We still accept `0` as a stand-in for backwards compatibility
-        Some(n) => {
-            err.note(&format!(
-                "for more information, see https://github.com/rust-lang/rust/issues/{}",
-                n,
-            ));
-        }
+    if let Some(n) = issue {
+        err.note(&format!(
+            "for more information, see https://github.com/rust-lang/rust/issues/{}",
+            n,
+        ));
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
