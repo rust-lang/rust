@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, BuiltinType, HasSource, HirDisplay};
+use hir::{Adt, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::{ancestors_at_offset, find_covering_element, find_node_at_offset},
@@ -132,11 +132,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),
                 hir::ModuleDef::Trait(it) => res.extend(from_def_source(db, it)),
                 hir::ModuleDef::TypeAlias(it) => res.extend(from_def_source(db, it)),
-                hir::ModuleDef::BuiltinType(it) => {
-                    if let Some(b) = BuiltinType::ALL.iter().find(|(_, ty)| *ty == it) {
-                        res.extend(Some(b.0.to_string()))
-                    }
-                }
+                hir::ModuleDef::BuiltinType(it) => res.extend(Some(it.to_string())),
             },
             Some(SelfType(ty)) => {
                 if let Some((adt_def, _)) = ty.as_adt() {

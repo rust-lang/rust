@@ -3,6 +3,8 @@
 //! A peculiarity of built-in types is that they are always available and are
 //! not associated with any particular crate.
 
+use std::fmt;
+
 use hir_expand::name::{self, Name};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -60,4 +62,34 @@ impl BuiltinType {
         (name::F32, BuiltinType::Float { bitness: FloatBitness::X32 }),
         (name::F64, BuiltinType::Float { bitness: FloatBitness::X64 }),
     ];
+}
+
+impl fmt::Display for BuiltinType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let type_name = match self {
+            BuiltinType::Char => "char",
+            BuiltinType::Bool => "bool",
+            BuiltinType::Str => "str",
+            BuiltinType::Int { signedness, bitness } => match (signedness, bitness) {
+                (Signedness::Signed, IntBitness::Xsize) => "isize",
+                (Signedness::Signed, IntBitness::X8) => "i8",
+                (Signedness::Signed, IntBitness::X16) => "i16",
+                (Signedness::Signed, IntBitness::X32) => "i32",
+                (Signedness::Signed, IntBitness::X64) => "i64",
+                (Signedness::Signed, IntBitness::X128) => "i128",
+
+                (Signedness::Unsigned, IntBitness::Xsize) => "usize",
+                (Signedness::Unsigned, IntBitness::X8) => "u8",
+                (Signedness::Unsigned, IntBitness::X16) => "u16",
+                (Signedness::Unsigned, IntBitness::X32) => "u32",
+                (Signedness::Unsigned, IntBitness::X64) => "u64",
+                (Signedness::Unsigned, IntBitness::X128) => "u128",
+            },
+            BuiltinType::Float { bitness } => match bitness {
+                FloatBitness::X32 => "f32",
+                FloatBitness::X64 => "f64",
+            },
+        };
+        f.write_str(type_name)
+    }
 }
