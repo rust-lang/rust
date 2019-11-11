@@ -6,11 +6,15 @@ use std::marker::PhantomData;
 
 use syntax::source_map::FileName;
 
+use cranelift::codegen::ir::{StackSlots, ValueLoc};
+use cranelift::codegen::isa::RegUnit;
+
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, EndianVec, FileId, LineProgram, LineString,
-    LineStringTable, Range, RangeList, Result, Sections, UnitEntryId, Writer,
+    self, Address, AttributeValue, DwarfUnit, EndianVec, Expression, FileId, LineProgram,
+    LineString, LineStringTable, Location, LocationList, Range, RangeList, Result, Sections,
+    UnitEntryId, Writer,
 };
-use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, SectionId};
+use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, SectionId, X86_64};
 
 fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     use rustc::ty::layout::Endian;
@@ -380,9 +384,9 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     .chain(
                         value_loc_ranges
                             .iter()
-                            .map(|val_loc_range| Range::OffsetPair {
-                                begin: u64::from(val_loc_range.start),
-                                end: u64::from(val_loc_range.end),
+                            .map(|value_loc_range| Range::OffsetPair {
+                                begin: u64::from(value_loc_range.start),
+                                end: u64::from(value_loc_range.end),
                             }),
                     )
                     .collect(),
@@ -414,6 +418,34 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 var_entry.set(
                     gimli::DW_AT_type,
                     AttributeValue::ThisUnitEntryRef(local_type),
+                );
+
+
+                let loc_list = LocationList(
+                    Some(Location::BaseAddress {
+                        address: Address::Symbol {
+                            symbol: self.symbol,
+                            addend: 0,
+                        },
+                    })
+                    .into_iter()
+                    .chain(
+                        value_loc_ranges
+                            .iter()
+                            .map(|value_loc_range| Location::OffsetPair {
+                                begin: u64::from(value_loc_range.start),
+                                end: u64::from(value_loc_range.end),
+                                data: Expression(translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap()),
+                            }),
+                    )
+                    .collect(),
+                );
+                let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
+
+                let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
+                var_entry.set(
+                    gimli::DW_AT_location,
+                    AttributeValue::LocationListRef(loc_list_id),
                 );
             }
         }
@@ -508,5 +540,89 @@ impl Writer for WriterRelocate {
             addend: val as i64,
         });
         self.write_udata_at(offset, 0, size)
+    }
+}
+
+
+
+
+
+
+// Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
+
+fn map_reg(reg: RegUnit) -> Register {
+    static mut REG_X86_MAP: Option<HashMap<RegUnit, Register>> = None;
+    // FIXME lazy initialization?
+    unsafe {
+        if REG_X86_MAP.is_none() {
+            REG_X86_MAP = Some(HashMap::new());
+        }
+        if let Some(val) = REG_X86_MAP.as_mut().unwrap().get(&reg) {
+            return *val;
+        }
+        let result = match reg {
+            0 => X86_64::RAX,
+            1 => X86_64::RCX,
+            2 => X86_64::RDX,
+            3 => X86_64::RBX,
+            4 => X86_64::RSP,
+            5 => X86_64::RBP,
+            6 => X86_64::RSI,
+            7 => X86_64::RDI,
+            8 => X86_64::R8,
+            9 => X86_64::R9,
+            10 => X86_64::R10,
+            11 => X86_64::R11,
+            12 => X86_64::R12,
+            13 => X86_64::R13,
+            14 => X86_64::R14,
+            15 => X86_64::R15,
+            16 => X86_64::XMM0,
+            17 => X86_64::XMM1,
+            18 => X86_64::XMM2,
+            19 => X86_64::XMM3,
+            20 => X86_64::XMM4,
+            21 => X86_64::XMM5,
+            22 => X86_64::XMM6,
+            23 => X86_64::XMM7,
+            24 => X86_64::XMM8,
+            25 => X86_64::XMM9,
+            26 => X86_64::XMM10,
+            27 => X86_64::XMM11,
+            28 => X86_64::XMM12,
+            29 => X86_64::XMM13,
+            30 => X86_64::XMM14,
+            31 => X86_64::XMM15,
+            _ => panic!("unknown x86_64 register {}", reg),
+        };
+        REG_X86_MAP.as_mut().unwrap().insert(reg, result);
+        result
+    }
+}
+
+fn translate_loc(loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
+    match loc {
+        ValueLoc::Reg(reg) => {
+            let machine_reg = map_reg(reg).0 as u8;
+            assert!(machine_reg <= 32); // FIXME
+            Some(vec![gimli::constants::DW_OP_reg0.0 + machine_reg])
+        }
+        ValueLoc::Stack(ss) => {
+            if let Some(ss_offset) = stack_slots[ss].offset {
+                let endian = gimli::RunTimeEndian::Little;
+                let mut writer = write::EndianVec::new(endian);
+                writer
+                    .write_u8(gimli::constants::DW_OP_breg0.0 + X86_64::RBP.0 as u8)
+                    .expect("bp wr");
+                writer.write_sleb128(ss_offset as i64 + 16).expect("ss wr");
+                writer
+                    .write_u8(gimli::constants::DW_OP_deref.0 as u8)
+                    .expect("bp wr");
+                let buf = writer.into_vec();
+                return Some(buf);
+            }
+            None
+        }
+        _ => None,
     }
 }
