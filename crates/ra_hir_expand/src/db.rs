@@ -28,7 +28,7 @@ impl TokenExpander {
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
-            TokenExpander::Builtin(it) => it.expand(tt),
+            TokenExpander::Builtin(it) => it.expand(db, id, tt),
         }
     }
 
