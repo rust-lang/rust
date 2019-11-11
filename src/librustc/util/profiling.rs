@@ -65,6 +65,46 @@ fn thread_id_to_u64(tid: ThreadId) -> u64 {
     unsafe { mem::transmute::<ThreadId, u64>(tid) }
 }
 
+struct ReservedStringIds {
+    string_ids: Vec<StringId>,
+}
+
+impl ReservedStringIds {
+    #[inline]
+    fn get(&self, id: StringIds) -> StringId {
+        self.string_ids[id as usize]
+    }
+}
+
+macro_rules! reserved_string_ids {
+    ($($id:ident),*) => {
+        #[repr(usize)]
+        #[derive(Copy, Clone)]
+        pub enum StringIds {
+            Invalid = 0,
+            $($id),*
+        }
+
+        fn reserve_string_ids(p: &Profiler) -> ReservedStringIds {
+            let mut string_ids = Vec::new();
+
+            string_ids.push(p.alloc_string("<INVALID>"));
+
+            $(
+                assert_eq!(string_ids.len(), StringIds::$id as usize);
+                string_ids.push(p.alloc_string(stringify!($string)));
+            )*
+
+            ReservedStringIds {
+                string_ids
+            }
+        }
+    }
+}
+
+reserved_string_ids! {
+    ComputeQueryResultHash
+}
 
 /// A reference to the SelfProfiler. It can be cloned and sent across thread
 /// boundaries at will.
@@ -126,6 +166,20 @@ impl SelfProfilerRef {
     pub fn generic_activity(&self, event_id: &str) -> TimingGuard<'_> {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             let event_id = profiler.profiler.alloc_string(event_id);
+            TimingGuard::start(
+                profiler,
+                profiler.generic_activity_event_kind,
+                event_id
+            )
+        })
+    }
+
+    /// Start profiling a generic activity with a known StringId. Profiling
+    /// continues until the TimingGuard returned from this call is dropped.
+    #[inline(always)]
+    pub fn generic_activity_with_id(&self, event_id: StringIds) -> TimingGuard<'_> {
+        self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
+            let event_id = profiler.reserved_string_ids.get(event_id);
             TimingGuard::start(
                 profiler,
                 profiler.generic_activity_event_kind,
@@ -213,6 +267,7 @@ pub struct SelfProfiler {
     incremental_load_result_event_kind: StringId,
     query_blocked_event_kind: StringId,
     query_cache_hit_event_kind: StringId,
+    reserved_string_ids: ReservedStringIds,
 }
 
 impl SelfProfiler {
@@ -263,6 +318,8 @@ impl SelfProfiler {
             event_filter_mask = EventFilter::DEFAULT;
         }
 
+        let reserved_string_ids = reserve_string_ids(&profiler);
+
         Ok(SelfProfiler {
             profiler,
             event_filter_mask,
@@ -271,6 +328,7 @@ impl SelfProfiler {
             incremental_load_result_event_kind,
             query_blocked_event_kind,
             query_cache_hit_event_kind,
+            reserved_string_ids,
         })
     }
 

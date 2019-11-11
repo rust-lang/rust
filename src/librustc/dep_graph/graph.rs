@@ -14,6 +14,7 @@ use crate::ty::{self, TyCtxt};
 use parking_lot::{Mutex, Condvar};
 
 use crate::ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
+use crate::util::profiling::StringIds;
 
 use super::debug::EdgeFilter;
 use super::dep_node::{DepNode, DepKind, WorkProductId};
@@ -271,7 +272,12 @@ impl DepGraph {
                 })
             };
 
-            let current_fingerprint = hash_result(&mut hcx, &result);
+            let current_fingerprint = {
+                let _prof_timer = hcx.sess().prof
+                    .generic_activity_with_id(StringIds::ComputeQueryResultHash);
+
+                hash_result(&mut hcx, &result)
+            };
 
             let dep_node_index = finish_task_and_alloc_depnode(
                 &data.current,
