@@ -529,7 +529,6 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(result_map_or_else)]
     /// let k = 21;
     ///
     /// let x : Result<_, &str> = Ok("foo");
@@ -539,7 +538,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_or_else(|e| k * 2, |v| v.len()), 42);
     /// ```
     #[inline]
-    #[unstable(feature = "result_map_or_else", issue = "53268")]
+    #[stable(feature = "result_map_or_else", since = "1.41.0")]
     pub fn map_or_else<U, D: FnOnce(E) -> U, F: FnOnce(T) -> U>(self, default: D, f: F) -> U {
         match self {
             Ok(t) => f(t),
