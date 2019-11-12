@@ -38,9 +38,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
 
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
-
 use std::fmt;
 
 #[cfg(test)]
@@ -1028,7 +1025,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Expr, 96);
+rustc_data_structures::static_assert_size!(Expr, 96);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
