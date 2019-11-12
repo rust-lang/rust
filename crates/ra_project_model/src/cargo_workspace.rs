@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use ra_arena::{impl_arena_id, Arena, RawId};
@@ -140,18 +141,21 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         for meta_pkg in meta.packages {
-            let is_member = ws_members.contains(&meta_pkg.id);
+            let cargo_metadata::Package { id, edition, name, manifest_path, .. } = meta_pkg;
+            let is_member = ws_members.contains(&id);
+            let edition = Edition::from_str(&edition)
+                .map_err(|e| (format!("metadata for package {} failed: {}", &name, e.msg)))?;
             let pkg = packages.alloc(PackageData {
-                name: meta_pkg.name,
-                manifest: meta_pkg.manifest_path.clone(),
+                name,
+                manifest: manifest_path,
                 targets: Vec::new(),
                 is_member,
-                edition: Edition::from_string(&meta_pkg.edition),
+                edition,
                 dependencies: Vec::new(),
                 features: Vec::new(),
             });
             let pkg_data = &mut packages[pkg];
-            pkg_by_id.insert(meta_pkg.id.clone(), pkg);
+            pkg_by_id.insert(id, pkg);
             for meta_tgt in meta_pkg.targets {
                 let tgt = targets.alloc(TargetData {
                     pkg,
