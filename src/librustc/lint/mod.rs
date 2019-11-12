@@ -39,13 +39,15 @@ use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::Symbol;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate, late_lint_mod, CheckLintNameResult,
                         BufferedEarlyLint,};
+
+pub use rustc_session::lint::Level;
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -539,46 +541,6 @@ impl LintId {
     /// Gets the name of the lint.
     pub fn to_string(&self) -> String {
         self.lint.name_lower()
-    }
-}
-
-/// Setting for how to handle a lint.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable)]
-pub enum Level {
-    Allow, Warn, Deny, Forbid,
-}
-
-impl Level {
-    /// Converts a level to a lower-case string.
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Allow => "allow",
-            Warn => "warn",
-            Deny => "deny",
-            Forbid => "forbid",
-        }
-    }
-
-    /// Converts a lower-case string to a level.
-    pub fn from_str(x: &str) -> Option<Level> {
-        match x {
-            "allow" => Some(Allow),
-            "warn" => Some(Warn),
-            "deny" => Some(Deny),
-            "forbid" => Some(Forbid),
-            _ => None,
-        }
-    }
-
-    /// Converts a symbol to a level.
-    pub fn from_symbol(x: Symbol) -> Option<Level> {
-        match x {
-            sym::allow => Some(Allow),
-            sym::warn => Some(Warn),
-            sym::deny => Some(Deny),
-            sym::forbid => Some(Forbid),
-            _ => None,
-        }
     }
 }
 
