@@ -25,7 +25,7 @@ use crate::{
     generics::{GenericDef, WherePredicate},
     resolve::{Resolver, TypeNs},
     ty::{
-        primitive::{FloatTy, IntTy},
+        primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
         Adt,
     },
     util::make_mut_slice,
@@ -657,11 +657,39 @@ fn type_for_builtin(def: BuiltinType) -> Ty {
         BuiltinType::Char => TypeCtor::Char,
         BuiltinType::Bool => TypeCtor::Bool,
         BuiltinType::Str => TypeCtor::Str,
-        BuiltinType::Int(BuiltinInt { signedness, bitness }) => {
-            TypeCtor::Int(IntTy { signedness, bitness }.into())
-        }
-        BuiltinType::Float(BuiltinFloat { bitness }) => TypeCtor::Float(FloatTy { bitness }.into()),
+        BuiltinType::Int(t) => TypeCtor::Int(IntTy::from(t).into()),
+        BuiltinType::Float(t) => TypeCtor::Float(FloatTy::from(t).into()),
     })
+}
+
+impl From<BuiltinInt> for IntTy {
+    fn from(t: BuiltinInt) -> Self {
+        IntTy { signedness: t.signedness, bitness: t.bitness }
+    }
+}
+
+impl From<BuiltinFloat> for FloatTy {
+    fn from(t: BuiltinFloat) -> Self {
+        FloatTy { bitness: t.bitness }
+    }
+}
+
+impl From<Option<BuiltinInt>> for UncertainIntTy {
+    fn from(t: Option<BuiltinInt>) -> Self {
+        match t {
+            None => UncertainIntTy::Unknown,
+            Some(t) => UncertainIntTy::Known(t.into()),
+        }
+    }
+}
+
+impl From<Option<BuiltinFloat>> for UncertainFloatTy {
+    fn from(t: Option<BuiltinFloat>) -> Self {
+        match t {
+            None => UncertainFloatTy::Unknown,
+            Some(t) => UncertainFloatTy::Known(t.into()),
+        }
+    }
 }
 
 fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {

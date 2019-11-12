@@ -1,10 +1,6 @@
-use std::fs;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::Path;
+use std::{collections::HashMap, fs, io::prelude::*, io::BufReader, path::Path};
 
 use walkdir::{DirEntry, WalkDir};
-
 use xtask::project_root;
 
 fn is_exclude_dir(p: &Path) -> bool {
@@ -37,6 +33,7 @@ fn no_docs_comments() {
     let crates = project_root().join("crates");
     let iter = WalkDir::new(crates);
     let mut missing_docs = Vec::new();
+    let mut contains_fixme = Vec::new();
     for f in iter.into_iter().filter_entry(|e| !is_hidden(e)) {
         let f = f.unwrap();
         if f.file_type().is_dir() {
@@ -54,7 +51,12 @@ fn no_docs_comments() {
         let mut reader = BufReader::new(fs::File::open(f.path()).unwrap());
         let mut line = String::new();
         reader.read_line(&mut line).unwrap();
-        if !line.starts_with("//!") {
+
+        if line.starts_with("//!") {
+            if line.contains("FIXME") {
+                contains_fixme.push(f.path().to_path_buf())
+            }
+        } else {
             missing_docs.push(f.path().display().to_string());
         }
     }
@@ -64,5 +66,40 @@ fn no_docs_comments() {
              modules:\n{}\n\n",
             missing_docs.join("\n")
         )
+    }
+
+    let whitelist = [
+        "ra_batch",
+        "ra_cli",
+        "ra_db",
+        "ra_hir",
+        "ra_hir_expand",
+        "ra_hir_def",
+        "ra_ide_api",
+        "ra_lsp_server",
+        "ra_mbe",
+        "ra_parser",
+        "ra_prof",
+        "ra_project_model",
+        "ra_syntax",
+        "ra_text_edit",
+        "ra_tt",
+    ];
+
+    let mut has_fixmes = whitelist.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();
+    'outer: for path in contains_fixme {
+        for krate in whitelist.iter() {
+            if path.components().any(|it| it.as_os_str() == *krate) {
+                has_fixmes.insert(krate, true);
+                continue 'outer;
+            }
+        }
+        panic!("FIXME doc in a fully-documented crate: {}", path.display())
+    }
+
+    for (krate, has_fixme) in has_fixmes.iter() {
+        if !has_fixme {
+            panic!("crate {} is fully documented, remove it from the white list", krate)
+        }
     }
 }

@@ -129,24 +129,6 @@ impl IntTy {
             (Signedness::Unsigned, IntBitness::X128) => "u128",
         }
     }
-
-    pub(crate) fn from_suffix(suffix: &str) -> Option<IntTy> {
-        match suffix {
-            "isize" => Some(IntTy::isize()),
-            "i8" => Some(IntTy::i8()),
-            "i16" => Some(IntTy::i16()),
-            "i32" => Some(IntTy::i32()),
-            "i64" => Some(IntTy::i64()),
-            "i128" => Some(IntTy::i128()),
-            "usize" => Some(IntTy::usize()),
-            "u8" => Some(IntTy::u8()),
-            "u16" => Some(IntTy::u16()),
-            "u32" => Some(IntTy::u32()),
-            "u64" => Some(IntTy::u64()),
-            "u128" => Some(IntTy::u128()),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -179,14 +161,6 @@ impl FloatTy {
         match self.bitness {
             FloatBitness::X32 => "f32",
             FloatBitness::X64 => "f64",
-        }
-    }
-
-    pub(crate) fn from_suffix(suffix: &str) -> Option<FloatTy> {
-        match suffix {
-            "f32" => Some(FloatTy::f32()),
-            "f64" => Some(FloatTy::f64()),
-            _ => None,
         }
     }
 }

@@ -1,6 +1,10 @@
 //! FIXME: write short doc here
 
-use hir_def::{path::GenericArgs, type_ref::TypeRef};
+use hir_def::{
+    builtin_type::{BuiltinFloat, BuiltinInt},
+    path::GenericArgs,
+    type_ref::TypeRef,
+};
 use hir_expand::{
     hygiene::Hygiene,
     name::{self, AsName, Name},
@@ -16,15 +20,13 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    db::HirDatabase,
-    ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
-    AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
-    Source,
+    db::HirDatabase, AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind,
+    Mutability, Path, Resolver, Source,
 };
 
 use super::{
-    ArithOp, Array, BinaryOp, BindingAnnotation, Body, BodySourceMap, CmpOp, Expr, ExprId, Literal,
-    LogicOp, MatchArm, Ordering, Pat, PatId, PatPtr, RecordFieldPat, RecordLitField, Statement,
+    Array, BinaryOp, BindingAnnotation, Body, BodySourceMap, Expr, ExprId, Literal, MatchArm, Pat,
+    PatId, PatPtr, RecordFieldPat, RecordLitField, Statement,
 };
 
 pub(super) fn lower(
@@ -46,7 +48,7 @@ pub(super) fn lower(
             exprs: Arena::default(),
             pats: Arena::default(),
             params: Vec::new(),
-            body_expr: ExprId((!0).into()),
+            body_expr: ExprId::dummy(),
         },
     }
     .collect(params, body)
@@ -423,28 +425,18 @@ where
             ast::Expr::Literal(e) => {
                 let lit = match e.kind() {
                     LiteralKind::IntNumber { suffix } => {
-                        let known_name = suffix
-                            .and_then(|it| IntTy::from_suffix(&it).map(UncertainIntTy::Known));
+                        let known_name = suffix.and_then(|it| BuiltinInt::from_suffix(&it));
 
-                        Literal::Int(
-                            Default::default(),
-                            known_name.unwrap_or(UncertainIntTy::Unknown),
-                        )
+                        Literal::Int(Default::default(), known_name)
                     }
                     LiteralKind::FloatNumber { suffix } => {
-                        let known_name = suffix
-                            .and_then(|it| FloatTy::from_suffix(&it).map(UncertainFloatTy::Known));
+                        let known_name = suffix.and_then(|it| BuiltinFloat::from_suffix(&it));
 
-                        Literal::Float(
-                            Default::default(),
-                            known_name.unwrap_or(UncertainFloatTy::Unknown),
-                        )
+                        Literal::Float(Default::default(), known_name)
                     }
                     LiteralKind::ByteString => Literal::ByteString(Default::default()),
                     LiteralKind::String => Literal::String(Default::default()),
-                    LiteralKind::Byte => {
-                        Literal::Int(Default::default(), UncertainIntTy::Known(IntTy::u8()))
-                    }
+                    LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
                     LiteralKind::Bool => Literal::Bool(Default::default()),
                     LiteralKind::Char => Literal::Char(Default::default()),
                 };
@@ -599,49 +591,5 @@ where
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
         let hygiene = Hygiene::new(self.db, self.current_file_id);
         Path::from_src(path, &hygiene)
-    }
-}
-
-impl From<ast::BinOp> for BinaryOp {
-    fn from(ast_op: ast::BinOp) -> Self {
-        match ast_op {
-            ast::BinOp::BooleanOr => BinaryOp::LogicOp(LogicOp::Or),
-            ast::BinOp::BooleanAnd => BinaryOp::LogicOp(LogicOp::And),
-            ast::BinOp::EqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
-            ast::BinOp::NegatedEqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: true }),
-            ast::BinOp::LesserEqualTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: false })
-            }
-            ast::BinOp::GreaterEqualTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: false })
-            }
-            ast::BinOp::LesserTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: true })
-            }
-            ast::BinOp::GreaterTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: true })
-            }
-            ast::BinOp::Addition => BinaryOp::ArithOp(ArithOp::Add),
-            ast::BinOp::Multiplication => BinaryOp::ArithOp(ArithOp::Mul),
-            ast::BinOp::Subtraction => BinaryOp::ArithOp(ArithOp::Sub),
-            ast::BinOp::Division => BinaryOp::ArithOp(ArithOp::Div),
-            ast::BinOp::Remainder => BinaryOp::ArithOp(ArithOp::Rem),
-            ast::BinOp::LeftShift => BinaryOp::ArithOp(ArithOp::Shl),
-            ast::BinOp::RightShift => BinaryOp::ArithOp(ArithOp::Shr),
-            ast::BinOp::BitwiseXor => BinaryOp::ArithOp(ArithOp::BitXor),
-            ast::BinOp::BitwiseOr => BinaryOp::ArithOp(ArithOp::BitOr),
-            ast::BinOp::BitwiseAnd => BinaryOp::ArithOp(ArithOp::BitAnd),
-            ast::BinOp::Assignment => BinaryOp::Assignment { op: None },
-            ast::BinOp::AddAssign => BinaryOp::Assignment { op: Some(ArithOp::Add) },
-            ast::BinOp::DivAssign => BinaryOp::Assignment { op: Some(ArithOp::Div) },
-            ast::BinOp::MulAssign => BinaryOp::Assignment { op: Some(ArithOp::Mul) },
-            ast::BinOp::RemAssign => BinaryOp::Assignment { op: Some(ArithOp::Rem) },
-            ast::BinOp::ShlAssign => BinaryOp::Assignment { op: Some(ArithOp::Shl) },
-            ast::BinOp::ShrAssign => BinaryOp::Assignment { op: Some(ArithOp::Shr) },
-            ast::BinOp::SubAssign => BinaryOp::Assignment { op: Some(ArithOp::Sub) },
-            ast::BinOp::BitOrAssign => BinaryOp::Assignment { op: Some(ArithOp::BitOr) },
-            ast::BinOp::BitAndAssign => BinaryOp::Assignment { op: Some(ArithOp::BitAnd) },
-            ast::BinOp::BitXorAssign => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
-        }
     }
 }
