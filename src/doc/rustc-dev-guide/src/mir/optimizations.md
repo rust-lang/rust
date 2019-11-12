@@ -3,9 +3,13 @@
 MIR optimizations are optimizations run on the [MIR][mir] to produce better MIR
 before codegen. This is important for two reasons: first, it make the final
 generated executable code better, and second, it means that LLVM has less work
-to do, so compilation is faster.
+to do, so compilation is faster. Note that since MIR is generic (not
+[monomorphized][monomorph] yet), these optimizations are particularly
+effective; we can optimize the generic version, so all of the monomorphizations
+are cheaper!
 
 [mir]: https://rust-lang.github.io/rustc-guide/mir/index.html
+[monomorph]: https://rust-lang.github.io/rustc-guide/appendix/glossary.html?highlight=monomorphize#appendix-c-glossary
 
 MIR optimizations run after borrow checking. We run a series of optimization
 passes over the MIR to improve it. Some passes are required to run on all code,
