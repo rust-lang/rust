@@ -7,8 +7,6 @@ use crate::mem;
 use crate::ptr::Unique;
 use crate::cmp::Ordering;
 
-// ignore-tidy-undocumented-unsafe
-
 /// `*mut T` but non-zero and covariant.
 ///
 /// This is often the correct thing to use when building data structures using
@@ -68,6 +66,7 @@ impl<T: Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub const fn dangling() -> Self {
+        // SAFETY: must not be dereferenced, but mem::align_of::<T>() > 0 if T is sized
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
             NonNull::new_unchecked(ptr)
@@ -92,6 +91,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
+            // SAFETY: just checked that ptr > 0
             Some(unsafe { Self::new_unchecked(ptr) })
         } else {
             None
@@ -131,6 +131,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
+        // SAFETY: self.pointer is non-null
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as *mut U)
         }
@@ -207,6 +208,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
+        // SAFETY: Unique::as_ptr() can't be null
         unsafe { NonNull::new_unchecked(unique.as_ptr()) }
     }
 }
@@ -215,6 +217,7 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 impl<T: ?Sized> From<&mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
+        // SAFETY: references can't be null
         unsafe { NonNull { pointer: reference as *mut T } }
     }
 }
@@ -223,6 +226,7 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
 impl<T: ?Sized> From<&T> for NonNull<T> {
     #[inline]
     fn from(reference: &T) -> Self {
+        // SAFETY: references can't be null
         unsafe { NonNull { pointer: reference as *const T } }
     }
 }

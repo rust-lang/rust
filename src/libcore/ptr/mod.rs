@@ -65,8 +65,6 @@
 //! [`write_volatile`]: ./fn.write_volatile.html
 //! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::intrinsics;
@@ -251,6 +249,7 @@ pub(crate) struct FatPtr<T> {
 #[inline]
 #[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
 pub fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
+    // SAFETY: FatPtr.data and Repr.rust are both usize in the same location
     unsafe { Repr { raw: FatPtr { data, len } }.rust }
 }
 
@@ -267,6 +266,7 @@ pub fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[inline]
 #[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
 pub fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
+    // SAFETY: FatPtr.data and Repr.rust_mut are both usize in the same location
     unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
 }
 
@@ -1233,6 +1233,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *const T where T: Sized {
+        // SAFETY: see documentation
         unsafe {
             intrinsics::arith_offset(self, count)
         }
@@ -1723,6 +1724,7 @@ impl<T: ?Sized> *const T {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
+        // SAFETY: align is a power of two
         unsafe {
             align_offset(self, align)
         }
@@ -1931,6 +1933,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[inline]
     pub fn wrapping_offset(self, count: isize) -> *mut T where T: Sized {
+        // SAFETY: see documentation
         unsafe {
             intrinsics::arith_offset(self, count) as *mut T
         }
@@ -2574,6 +2577,7 @@ impl<T: ?Sized> *mut T {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
+        // SAFETY: align is a power of two
         unsafe {
             align_offset(self, align)
         }

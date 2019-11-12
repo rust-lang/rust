@@ -5,8 +5,6 @@ use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ptr::NonNull;
 
-// ignore-tidy-undocumented-unsafe
-
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. Useful for building abstractions like
 /// `Box<T>`, `Vec<T>`, `String`, and `HashMap<K, V>`.
@@ -71,6 +69,7 @@ impl<T: Sized> Unique<T> {
     // FIXME: rename to dangling() to match NonNull?
     #[inline]
     pub const fn empty() -> Self {
+        // SAFETY: must not be dereferenced, but mem::align_of::<T>() > 0 if T is sized
         unsafe {
             Unique::new_unchecked(mem::align_of::<T>() as *mut T)
         }
@@ -93,6 +92,7 @@ impl<T: ?Sized> Unique<T> {
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
+            // SAFETY: just checked that ptr > 0
             Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
         } else {
             None
@@ -128,6 +128,7 @@ impl<T: ?Sized> Unique<T> {
     /// Casts to a pointer of another type.
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
+        // SAFETY: self.pointer is non-null
         unsafe {
             Unique::new_unchecked(self.as_ptr() as *mut U)
         }
@@ -169,6 +170,7 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 impl<T: ?Sized> From<&mut T> for Unique<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
+        // SAFETY: references can't be null
         unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
     }
 }
@@ -177,6 +179,7 @@ impl<T: ?Sized> From<&mut T> for Unique<T> {
 impl<T: ?Sized> From<&T> for Unique<T> {
     #[inline]
     fn from(reference: &T) -> Self {
+        // SAFETY: references can't be null
         unsafe { Unique { pointer: reference as *const T, _marker: PhantomData } }
     }
 }
@@ -185,6 +188,7 @@ impl<T: ?Sized> From<&T> for Unique<T> {
 impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     #[inline]
     fn from(p: NonNull<T>) -> Self {
+        // SAFETY: NonNull::as_ptr() can't be null
         unsafe { Unique::new_unchecked(p.as_ptr()) }
     }
 }
