@@ -57,7 +57,7 @@ mod as_keyword { }
 /// 'outer: for i in 1..=5 {
 ///     println!("outer iteration (i): {}", i);
 ///
-///     'inner: for j in 1..=200 {
+///     '_inner: for j in 1..=200 {
 ///         println!("    inner iteration (j): {}", j);
 ///         if j >= 3 {
 ///             // breaks from inner loop, let's outer loop continue.
@@ -178,7 +178,7 @@ mod const_keyword { }
 ///```rust
 /// // Print Odd numbers under 30 with unit <= 5
 /// 'tens: for ten in 0..3 {
-///     'units: for unit in 0..=9 {
+///     '_units: for unit in 0..=9 {
 ///         if unit % 2 == 0 {
 ///             continue;
 ///         }

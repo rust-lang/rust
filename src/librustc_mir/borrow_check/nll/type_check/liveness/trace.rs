@@ -249,7 +249,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         // Reverse DFS. But for drops, we do it a bit differently.
         // The stack only ever stores *terminators of blocks*. Within
         // a block, we walk back the statements in an inner loop.
-        'next_block: while let Some(term_point) = self.stack.pop() {
+        while let Some(term_point) = self.stack.pop() {
             self.compute_drop_live_points_for_block(mpi, term_point);
         }
     }
