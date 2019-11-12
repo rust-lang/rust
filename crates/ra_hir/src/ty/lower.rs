@@ -9,7 +9,7 @@ use std::iter;
 use std::sync::Arc;
 
 use hir_def::{
-    builtin_type::BuiltinType,
+    builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType},
     path::{GenericArg, PathSegment},
     type_ref::{TypeBound, TypeRef},
 };
@@ -657,10 +657,10 @@ fn type_for_builtin(def: BuiltinType) -> Ty {
         BuiltinType::Char => TypeCtor::Char,
         BuiltinType::Bool => TypeCtor::Bool,
         BuiltinType::Str => TypeCtor::Str,
-        BuiltinType::Int { signedness, bitness } => {
+        BuiltinType::Int(BuiltinInt { signedness, bitness }) => {
             TypeCtor::Int(IntTy { signedness, bitness }.into())
         }
-        BuiltinType::Float { bitness } => TypeCtor::Float(FloatTy { bitness }.into()),
+        BuiltinType::Float(BuiltinFloat { bitness }) => TypeCtor::Float(FloatTy { bitness }.into()),
     })
 }
 
