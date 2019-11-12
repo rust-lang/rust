@@ -42,6 +42,24 @@ cl::opt<bool> nonmarkedglobals_inactive(
             "enzyme_nonmarkedglobals_inactive", cl::init(false), cl::Hidden,
             cl::desc("Consider all nonmarked globals to be inactive"));
 
+bool isKnownIntegerTBAA(Instruction* inst) {
+  if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
+	if (md->getNumOperands() != 3) return false;
+	Metadata* metadata = md->getOperand(1).get();
+	if (auto mda = dyn_cast<MDNode>(metadata)) {
+	  if (mda->getNumOperands() == 0) return false;
+	  Metadata* metadata2 = mda->getOperand(0).get();
+	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
+	    auto typeNameStringRef = typeName->getString();
+	    if (typeNameStringRef == "long") {
+		  return true; 
+	    }
+	  }
+	}
+  }
+  return false;
+}
+
 bool isIntASecretFloat(Value* val) {
     assert(val->getType()->isIntegerTy());
 
@@ -55,10 +73,10 @@ bool isIntASecretFloat(Value* val) {
 		 //if (cint->isOne()) return cint;
 	}
 
-
     if (auto inst = dyn_cast<Instruction>(val)) {
         bool floatingUse = false;
         bool pointerUse = false;
+        bool intUse = false;
         SmallPtrSet<Value*, 4> seen;
 
         std::function<void(Value*)> trackPointer = [&](Value* v) {
@@ -129,12 +147,13 @@ bool isIntASecretFloat(Value* val) {
             
             if (auto si = dyn_cast<StoreInst>(use)) {
                 assert(inst == si->getValueOperand());
-
+				if (isKnownIntegerTBAA(si)) intUse = true;
                 trackPointer(si->getPointerOperand());
             }
         }
 
         if (auto li = dyn_cast<LoadInst>(inst)) {
+			if (isKnownIntegerTBAA(li)) intUse = true;
             trackPointer(li->getOperand(0));
         }
 
@@ -152,10 +171,11 @@ bool isIntASecretFloat(Value* val) {
             pointerUse = true;
         }
 
-        if (pointerUse && !floatingUse) return false; 
-        if (!pointerUse && floatingUse) return true;
+        if (intUse  && !pointerUse && !floatingUse) return false; 
+        if (!intUse && pointerUse && !floatingUse) return false; 
+        if (!intUse && !pointerUse && floatingUse) return true;
         llvm::errs() << *inst->getParent()->getParent() << "\n";
-        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
         assert(0 && "ambiguous unsure if constant or not");
     }
 
@@ -267,6 +287,24 @@ Type* isIntPointerASecretFloat(Value* val) {
     assert(0 && "unsure if constant or not");
 }
 
+cl::opt<bool> ipoconst(
+            "enzyme_ipoconst", cl::init(false), cl::Hidden,
+            cl::desc("Interprocedural constant detection"));
+
+/*
+bool isFunctionArgumentConstant(CallInst* CI, Value* arg, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions) {
+    Function* F = CI->getCalledFunction();
+    if (F == nullptr) return false;
+    if (F->isEmpty()) return false;
+
+    for(unsigned i=0; i<CI->getArgOperands(); i++) {
+
+    }
+
+    assert(ipoconst);
+}
+*/
+
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
 bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, uint8_t directions) {
@@ -335,6 +373,36 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		constants.insert(inst);
 		return true;
 	}
+	
+	if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
+		if (isKnownIntegerTBAA(inst)) {
+			if (printconst)
+				llvm::errs() << " constant instruction from TBAA " << *inst << "\n";
+			constants.insert(inst);
+			return true;
+		}
+	}
+
+    /* TODO consider constant stores
+    if (auto si = dyn_cast<StoreInst>(inst)) {
+		SmallPtrSet<Value*, 20> constants2;
+		constants2.insert(constants.begin(), constants.end());
+		SmallPtrSet<Value*, 20> nonconstant2;
+		nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+		constants2.insert(inst);
+        if (isconstantValueM(si->getValueOperand(), constants2, nonconstant2, retvals, originalInstructions, directions)) {
+			constants.insert(inst);
+			constants.insert(constants2.begin(), constants2.end());
+            constants.insert(constants_tmp.begin(), constants_tmp.end());
+
+			// not here since if had full updown might not have been nonconstant
+			//nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+    		if (printconst)
+			  llvm::errs() << "constant(" << (int)directions << ") store:" << *inst << "\n";
+			return true;
+        }
+    }
+    */
 
     if (printconst)
 	  llvm::errs() << "checking if is constant[" << (int)directions << "] " << *inst << "\n";
@@ -354,6 +422,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 
 		for (const auto &a:inst->users()) {
 		  if(auto store = dyn_cast<StoreInst>(a)) {
+
 			if (inst == store->getPointerOperand() && !isconstantValueM(store->getValueOperand(), constants2, nonconstant2, retvals, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
@@ -420,6 +489,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                         continue;
                     if (fnp->getIntrinsicID() == Intrinsic::memmove && call->getArgOperand(0) != inst && call->getArgOperand(1) != inst)
                         continue;
+
                 }
 			}
 

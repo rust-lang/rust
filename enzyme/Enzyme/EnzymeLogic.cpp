@@ -783,7 +783,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
 
-          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !isIntASecretFloat(op->getValueOperand()) ) ) {
+          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && !isIntASecretFloat(op->getValueOperand()) ) ) {
             IRBuilder <> storeBuilder(op);
             //llvm::errs() << "a op value: " << *op->getValueOperand() << "\n";
             Value* valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
@@ -2472,9 +2472,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           ts->setSyncScopeID(op->getSyncScopeID());
       } else if (topLevel) {
         IRBuilder <> storeBuilder(op);
-        //llvm::errs() << "op value: " << *op->getValueOperand() << "\n";
+        llvm::errs() << "store op pointer: " << *op << "\n";
+        llvm::errs() << "op value: " << *op->getValueOperand() << "\n";
         Value* valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
-        //llvm::errs() << "op pointer: " << *op->getPointerOperand() << "\n";
+        llvm::errs() << "op pointer: " << *op->getPointerOperand() << "\n";
         Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
         storeBuilder.CreateStore(valueop, pointerop);
         //llvm::errs() << "ignoring store bc pointer of " << *op << "\n";
@@ -2555,7 +2556,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       setDiffe(inst, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<CastInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
-      if (op->getType()->isPointerTy()) continue;
+      if (op->getType()->isPointerTy() || op->getOpcode() == CastInst::CastOps::PtrToInt) continue;
 
       if (!gutils->isConstantValue(op->getOperand(0))) {
         if (op->getOpcode()==CastInst::CastOps::FPTrunc || op->getOpcode()==CastInst::CastOps::FPExt) {

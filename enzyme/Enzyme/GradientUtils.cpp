@@ -396,9 +396,23 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<BinaryOperator>(val)) {
-      assert(arg->getType()->isIntOrIntVectorTy());
+ 	  assert(arg->getType()->isIntOrIntVectorTy());
       IRBuilder <> bb(arg);
-      auto li = bb.CreateBinOp(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getName());
+      Value* val0 = nullptr;
+      Value* val1 = nullptr;
+
+      if (isa<ConstantInt>(arg->getOperand(0))) {
+        val0 = arg->getOperand(0);
+        val1 = invertPointerM(arg->getOperand(1), bb);
+      } else if (isa<ConstantInt>(arg->getOperand(1))) {
+        val0 = invertPointerM(arg->getOperand(0), bb);
+        val1 = arg->getOperand(1);
+      } else {
+        val0 = invertPointerM(arg->getOperand(0), bb);
+        val1 = invertPointerM(arg->getOperand(1), bb);
+      }
+      
+      auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(val)) {
