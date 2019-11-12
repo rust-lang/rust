@@ -560,13 +560,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.kind {
-            ty::Adt(adt_def, ..) => adt_def.is_variant_list_non_exhaustive(),
-            _ => false,
-        }
-    }
-
     fn is_local(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
             ty::Adt(adt_def, ..) => adt_def.did.is_local(),
@@ -1133,7 +1126,7 @@ fn all_constructors<'a, 'tcx>(
     pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
-    let ctors = match pcx.ty.kind {
+    match pcx.ty.kind {
         ty::Bool => [true, false]
             .iter()
             .map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b), pcx.span))
@@ -1150,17 +1143,49 @@ fn all_constructors<'a, 'tcx>(
                 vec![VarLenSlice(0, 0)]
             }
         }
-        ty::Adt(def, substs) if def.is_enum() => def
-            .variants
-            .iter()
-            .filter(|v| {
-                !cx.tcx.features().exhaustive_patterns
-                    || !v
-                        .uninhabited_from(cx.tcx, substs, def.adt_kind())
-                        .contains(cx.tcx, cx.module)
-            })
-            .map(|v| Variant(v.def_id))
-            .collect(),
+        ty::Adt(def, substs) if def.is_enum() => {
+            let ctors: Vec<_> = def
+                .variants
+                .iter()
+                .filter(|v| {
+                    !cx.tcx.features().exhaustive_patterns
+                        || !v
+                            .uninhabited_from(cx.tcx, substs, def.adt_kind())
+                            .contains(cx.tcx, cx.module)
+                })
+                .map(|v| Variant(v.def_id))
+                .collect();
+
+            // If our scrutinee is *privately* an empty enum, we must treat it as though it had an
+            // "unknown" constructor (in that case, all other patterns obviously can't be variants)
+            // to avoid exposing its emptyness. See the `match_privately_empty` test for details.
+            // FIXME: currently the only way I know of something can be a privately-empty enum is
+            // when the exhaustive_patterns feature flag is not present, so this is only needed for
+            // that case.
+            let is_privately_empty = ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+            // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+            // additionnal "unknown" constructor.
+            let is_declared_nonexhaustive =
+                def.is_variant_list_non_exhaustive() && !cx.is_local(pcx.ty);
+
+            if is_privately_empty || is_declared_nonexhaustive {
+                // There is no point in enumerating all possible variants, because the user can't
+                // actually match against them themselves. So we return only the fictitious
+                // constructor.
+                // E.g., in an example like:
+                // ```
+                //     let err: io::ErrorKind = ...;
+                //     match err {
+                //         io::ErrorKind::NotFound => {},
+                //     }
+                // ```
+                // we don't want to show every possible IO error, but instead have only `_` as the
+                // witness.
+                vec![NonExhaustive]
+            } else {
+                ctors
+            }
+        }
         ty::Char => {
             vec![
                 // The valid Unicode Scalar Value ranges.
@@ -1180,6 +1205,15 @@ fn all_constructors<'a, 'tcx>(
                 ),
             ]
         }
+        ty::Int(_) | ty::Uint(_)
+            if pcx.ty.is_ptr_sized_integral()
+                && !cx.tcx.features().precise_pointer_size_matching =>
+        {
+            // `usize`/`isize` are not allowed to be matched exhaustively unless the
+            // `precise_pointer_size_matching` feature is enabled. So we treat those types like
+            // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+            vec![NonExhaustive]
+        }
         ty::Int(ity) => {
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
@@ -1198,38 +1232,7 @@ fn all_constructors<'a, 'tcx>(
                 vec![Single]
             }
         }
-    };
-
-    // FIXME: currently the only way I know of something can
-    // be a privately-empty enum is when the exhaustive_patterns
-    // feature flag is not present, so this is only
-    // needed for that case.
-    let is_privately_empty = ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-    let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
-    let is_non_exhaustive = is_privately_empty
-        || is_declared_nonexhaustive
-        || (pcx.ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching);
-    if is_non_exhaustive {
-        // If our scrutinee is *privately* an empty enum, we must treat it as though it had an
-        // "unknown" constructor (in that case, all other patterns obviously can't be variants) to
-        // avoid exposing its emptyness. See the `match_privately_empty` test for details.
-        //
-        // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an additionnal
-        // "unknown" constructor. However there is no point in enumerating all possible variants,
-        // because the user can't actually match against them themselves. So we return only the
-        // fictitious constructor.
-        // E.g., in an example like:
-        // ```
-        //     let err: io::ErrorKind = ...;
-        //     match err {
-        //         io::ErrorKind::NotFound => {},
-        //     }
-        // ```
-        // we don't want to show every possible IO error, but instead have only `_` as the witness.
-        return vec![NonExhaustive];
     }
-
-    ctors
 }
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
