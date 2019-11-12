@@ -1,6 +1,6 @@
-use crate::prelude::*;
+mod emit;
 
-use crate::backend::WriteDebugInfo;
+use crate::prelude::*;
 
 use syntax::source_map::FileName;
 
@@ -8,11 +8,12 @@ use cranelift::codegen::ir::{StackSlots, ValueLoc};
 use cranelift::codegen::isa::RegUnit;
 
 use gimli::write::{
-    self, Address, AttributeValue, DwarfUnit, EndianVec, Expression, FileId, LineProgram,
-    LineString, LineStringTable, Location, LocationList, Range, RangeList, Result, Sections,
-    UnitEntryId, Writer,
+    self, Address, AttributeValue, DwarfUnit, Expression, FileId, LineProgram, LineString,
+    LineStringTable, Location, LocationList, Range, RangeList, UnitEntryId, Writer,
 };
-use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, SectionId, X86_64};
+use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, X86_64};
+
+pub use emit::{DebugReloc, DebugRelocName};
 
 fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     use rustc::ty::layout::Endian;
@@ -55,20 +56,6 @@ fn line_program_add_file(
             line_program.add_file(dummy_file_name, dir_id, None)
         }
     }
-}
-
-#[derive(Clone)]
-pub struct DebugReloc {
-    pub offset: u32,
-    pub size: u8,
-    pub name: DebugRelocName,
-    pub addend: i64,
-}
-
-#[derive(Clone)]
-pub enum DebugRelocName {
-    Section(SectionId),
-    Symbol(usize),
 }
 
 pub struct DebugContext<'tcx> {
@@ -224,37 +211,6 @@ impl<'tcx> DebugContext<'tcx> {
         self.types.insert(ty, type_id);
 
         type_id
-    }
-
-    pub fn emit<P: WriteDebugInfo>(&mut self, product: &mut P) {
-        let unit_range_list_id = self.dwarf.unit.ranges.add(self.unit_range_list.clone());
-        let root = self.dwarf.unit.root();
-        let root = self.dwarf.unit.get_mut(root);
-        root.set(
-            gimli::DW_AT_ranges,
-            AttributeValue::RangeListRef(unit_range_list_id),
-        );
-
-        let mut sections = Sections::new(WriterRelocate::new(self));
-        self.dwarf.write(&mut sections).unwrap();
-
-        let mut section_map = HashMap::new();
-        let _: Result<()> = sections.for_each_mut(|id, section| {
-            if !section.writer.slice().is_empty() {
-                let section_id = product.add_debug_section(id, section.writer.take());
-                section_map.insert(id, section_id);
-            }
-            Ok(())
-        });
-
-        let _: Result<()> = sections.for_each(|id, section| {
-            if let Some(section_id) = section_map.get(&id) {
-                for reloc in &section.relocs {
-                    product.add_debug_reloc(&section_map, &self.symbols, section_id, reloc);
-                }
-            }
-            Ok(())
-        });
     }
 }
 
@@ -449,85 +405,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     }
 }
 
-#[derive(Clone)]
-struct WriterRelocate {
-    relocs: Vec<DebugReloc>,
-    writer: EndianVec<RunTimeEndian>,
-}
-
-impl WriterRelocate {
-    fn new(ctx: &DebugContext) -> Self {
-        WriterRelocate {
-            relocs: Vec::new(),
-            writer: EndianVec::new(ctx.endian),
-        }
-    }
-}
-
-impl Writer for WriterRelocate {
-    type Endian = RunTimeEndian;
-
-    fn endian(&self) -> Self::Endian {
-        self.writer.endian()
-    }
-
-    fn len(&self) -> usize {
-        self.writer.len()
-    }
-
-    fn write(&mut self, bytes: &[u8]) -> Result<()> {
-        self.writer.write(bytes)
-    }
-
-    fn write_at(&mut self, offset: usize, bytes: &[u8]) -> Result<()> {
-        self.writer.write_at(offset, bytes)
-    }
-
-    fn write_address(&mut self, address: Address, size: u8) -> Result<()> {
-        match address {
-            Address::Constant(val) => self.write_udata(val, size),
-            Address::Symbol { symbol, addend } => {
-                let offset = self.len() as u64;
-                self.relocs.push(DebugReloc {
-                    offset: offset as u32,
-                    size,
-                    name: DebugRelocName::Symbol(symbol),
-                    addend: addend as i64,
-                });
-                self.write_udata(0, size)
-            }
-        }
-    }
-
-    // TODO: implement write_eh_pointer
-
-    fn write_offset(&mut self, val: usize, section: SectionId, size: u8) -> Result<()> {
-        let offset = self.len() as u32;
-        self.relocs.push(DebugReloc {
-            offset,
-            size,
-            name: DebugRelocName::Section(section),
-            addend: val as i64,
-        });
-        self.write_udata(0, size)
-    }
-
-    fn write_offset_at(
-        &mut self,
-        offset: usize,
-        val: usize,
-        section: SectionId,
-        size: u8,
-    ) -> Result<()> {
-        self.relocs.push(DebugReloc {
-            offset: offset as u32,
-            size,
-            name: DebugRelocName::Section(section),
-            addend: val as i64,
-        });
-        self.write_udata_at(offset, 0, size)
-    }
-}
 
 
 
