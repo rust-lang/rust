@@ -1357,6 +1357,10 @@ impl<'tcx> IntRange<'tcx> {
         remaining_ranges
     }
 
+    fn is_subrange(&self, other: &Self) -> bool {
+        other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
+    }
+
     fn intersection(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Option<Self> {
         let ty = self.ty;
         let (lo, hi) = self.boundaries();
@@ -1370,7 +1374,7 @@ impl<'tcx> IntRange<'tcx> {
             }
         } else {
             // If the range should not be treated exhaustively, fallback to checking for inclusion.
-            if other_lo <= lo && hi <= other_hi { Some(self.clone()) } else { None }
+            if self.is_subrange(other) { Some(self.clone()) } else { None }
         }
     }
 
@@ -2236,9 +2240,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                     Some(pat) => ctor.intersection(cx.tcx, &pat).map(|_| {
                         // Constructor splitting should ensure that all intersections we encounter
                         // are actually inclusions.
-                        let (pat_lo, pat_hi) = pat.boundaries();
-                        let (ctor_lo, ctor_hi) = ctor.boundaries();
-                        assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
+                        assert!(ctor.is_subrange(&pat));
                         PatStack::default()
                     }),
                     _ => None,
