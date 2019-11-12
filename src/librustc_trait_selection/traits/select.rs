@@ -2971,7 +2971,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     tcx.mk_dynamic(existential_predicates, region_b);
 
                 if tcx.features().trait_upcasting {
-                    // Register obligations for `dyn TraitA1 [TraitA2...]: TraitB1 [TraitB2...]`.
+                    // Given that we are upcasting `dyn (TraitA1 + ... + TraitAn)` to
+                    // `dyn (TraitB1 + ... + TraitBn)`, register proof obligations like
+                    //
+                    //     dyn (TraitA1 + ... + TraitAn): TraitB1
+                    //     ...
+                    //     dyn (TraitA1 + ... + TraitAn): TraitBn
+                    //
+                    // So, if for example we are upcasting `dyn (Foo + Send)` to `dyn (Bar + Send)`,
+                    // then we would check that `dyn (Foo + Send): Bar` and `dyn (Foo + Send): Send`
+                    // -- or at least we would, were it not for the slight pre-filter hack.
+                    //
+                    // The pre-filter hack removes cases where `TraitBi` is an auto-trait like
+                    // `Send`, so long as we see that auto-trait in the A type. In our example, this
+                    // would skip the dyn (Foo + Send): Send obligation. There are two reasons for
+                    // this. The first is efficiency -- this case trivially holds. The second is
+                    // because we would otherwise encounter ambiguity errors during bootstrap, owing
+                    // to the `rustc_datastructures::sync::Send` trait (which is not the same as the
+                    // standard `Send` trait). This trait has a `impl<T: ?Sized> Send for T` impl,
+                    // and thus we get an error when trying to choose between this impl versus and
+                    // the automatic impl that we prove from `dyn Traits`. This ambiguity is silly
+                    // (it doesn't matter which one we choose), but rather than resolve that in the
+                    // general case (which is subtle), we can screen it out here easily enough.
                     nested.extend(
                         data_b.iter()
                             // HACK(alexreg | nikomatsakis): we handle auto traits specially here

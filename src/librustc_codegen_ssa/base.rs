@@ -161,7 +161,10 @@ pub fn unsized_info<'tcx, 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // Trait upcast
 
             let source_ptr = old_info.expect("unsized_info: missing old info for trait upcast");
+            // Only bother offsetting into the parent vtable if we are upcasting to a
+            // non-auto trait.
             let target_ptr = if let Some(target_trait_ref) = target_data.principal() {
+                // Find the offset of the supertrait's vtable within the subtrait (parent) vtable.
                 let trait_ref = target_trait_ref.with_self_ty(tcx, source);
                 let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref));
                 let offset = match vtable {
@@ -172,12 +175,14 @@ pub fn unsized_info<'tcx, 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     _ => bug!("unsized_info: unexpected vtable kind {:?}", vtable),
                 };
 
+                // Ensure the pointer to the parent vtable has the right LLVM type.
                 let vtable_layout = bx.cx().layout_of(tcx.mk_mut_ptr(source));
                 let source_ptr = bx.pointercast(
                     source_ptr,
                     bx.cx().scalar_pair_element_backend_type(vtable_layout, 1, true),
                 );
 
+                // Perform the offset within the parent vtable.
                 bx.struct_gep(source_ptr, offset as u64)
             } else {
                 source_ptr
