@@ -1231,9 +1231,9 @@ impl<'tcx> IntRange<'tcx> {
         (*self.range.start(), *self.range.end())
     }
 
+    /// Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching` feature
+    /// is enabled.
     fn treat_exhaustively(&self, tcx: TyCtxt<'tcx>) -> bool {
-        // Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching`
-        // feature is enabled.
         !self.ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
     }
 
@@ -1416,7 +1416,7 @@ impl<'tcx> IntRange<'tcx> {
     }
 }
 
-// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
+/// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
 impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
     fn eq(&self, other: &Self) -> bool {
         self.range == other.range && self.ty == other.ty
@@ -2079,9 +2079,9 @@ fn constructor_covered_by_range<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &Pat<'tcx>,
-) -> bool {
+) -> Option<()> {
     if let Single = ctor {
-        return true;
+        return Some(());
     }
 
     let (pat_from, pat_to, pat_end, ty) = match *pat.kind {
@@ -2096,16 +2096,11 @@ fn constructor_covered_by_range<'tcx>(
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, pat_from, pat_to, ty);
 
-    let to = match compare_const_vals(tcx, ctor_to, pat_to, param_env, ty) {
-        Some(to) => to,
-        None => return false,
-    };
-    let from = match compare_const_vals(tcx, ctor_from, pat_from, param_env, ty) {
-        Some(from) => from,
-        None => return false,
-    };
-    (from == Ordering::Greater || from == Ordering::Equal)
-        && (to == Ordering::Less || (pat_end == ctor_end && to == Ordering::Equal))
+    let to = compare_const_vals(tcx, ctor_to, pat_to, param_env, ty)?;
+    let from = compare_const_vals(tcx, ctor_from, pat_from, param_env, ty)?;
+    let intersects = (from == Ordering::Greater || from == Ordering::Equal)
+        && (to == Ordering::Less || (pat_end == ctor_end && to == Ordering::Equal));
+    if intersects { Some(()) } else { None }
 }
 
 fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
@@ -2251,11 +2246,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                 // by `IntRange`. For these cases, the constructor may not be a
                 // range so intersection actually devolves into being covered
                 // by the pattern.
-                if constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat) {
-                    Some(PatStack::default())
-                } else {
-                    None
-                }
+                constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat)
+                    .map(|()| PatStack::default())
             }
         }
 
