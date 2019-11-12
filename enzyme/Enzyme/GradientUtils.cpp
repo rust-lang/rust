@@ -89,6 +89,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 	if (setupMerge) {
         for(auto pair : loopContexts) {
 			auto &lc = pair.second;
+            assert(lc.exitBlocks.size() > 0);
 
             lc.latchMerge = BasicBlock::Create(newFunc->getContext(), "loopMerge", newFunc);
             loopContexts[pair.first].latchMerge = lc.latchMerge;
@@ -137,6 +138,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                     }
                 }
             }
+            assert(targetToPreds.size() > 0);
 
             BasicBlock* backlatch = nullptr;
             for(auto blk : predecessors(lc.header)) {
@@ -711,7 +713,12 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         
         loopContexts[L].latchMerge = nullptr;
     
-        fake::SCEVExpander::getExitBlocks(L, loopContexts[L].exitBlocks); 
+        fake::SCEVExpander::getExitBlocks(L, loopContexts[L].exitBlocks);
+        if (loopContexts[L].exitBlocks.size() == 0) {
+            llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
+            llvm::errs() << "L: " << *L << "\n";
+        }
+        assert(loopContexts[L].exitBlocks.size() > 0);
 
         auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
         PHINode* CanonicalIV = pair.first;
@@ -870,6 +877,7 @@ bool GradientUtils::getContext(BasicBlock* BB, LoopContext& loopContext) {
 //   * If replacePHIs is null (usual case), this function does the branch
 //   * If replacePHIs isn't null, do not perform the branch and instead replace the PHI's with the derived condition as to whether we should branch to a particular target
 void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& BuilderM, const std::map<BasicBlock*, std::vector<std::pair</*pred*/BasicBlock*,/*successor*/BasicBlock*>>> &targetToPreds, const std::map<BasicBlock*,PHINode*>* replacePHIs) {
+  assert(targetToPreds.size() > 0);
   if (replacePHIs) {
       if (replacePHIs->size() == 0) return;
 
@@ -1072,6 +1080,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       targets.push_back(pair.first);
       idx++;
   }
+  assert(targets.size() > 0);
 
   for(const auto &pair: storing) {
       assert(pair.first->getTerminator());
@@ -1103,6 +1112,9 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
           assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
           BuilderM.CreateCondBr(which, /*true*/targets[1], /*false*/targets[0]);
       } else {
+          assert(targets.size() > 0);
+          llvm::errs() << "which: " << *which << "\n";
+          llvm::errs() << "targets.back(): " << *targets.back() << "\n";
           auto swit = BuilderM.CreateSwitch(which, targets.back(), targets.size()-1);
           for(unsigned i=0; i<targets.size()-1; i++) {
             swit->addCase(ConstantInt::get(T, i), targets[i]);

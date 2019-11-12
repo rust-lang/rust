@@ -106,12 +106,14 @@ static bool promoteMemoryToRegister(Function &F, DominatorTree &DT,
 }
 
 void forceRecursiveInlining(Function *NewF, const Function* F) {
-   int count = 0;
+   static int count = 0;
    remover:
      SmallPtrSet<Instruction*, 10> originalInstructions;
      for (inst_iterator I = inst_begin(NewF), E = inst_end(NewF); I != E; ++I) {
          originalInstructions.insert(&*I);
      }
+        if (count >= autodiff_inline_count)
+            return;
    for (inst_iterator I = inst_begin(NewF), E = inst_end(NewF); I != E; ++I)
      if (auto call = dyn_cast<CallInst>(&*I)) {
         //if (isconstantM(call, constants, nonconstant, returnvals, originalInstructions)) continue;

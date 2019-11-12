@@ -408,6 +408,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			}
 			if (auto call = dyn_cast<CallInst>(a)) {
                 auto fnp = call->getCalledFunction();
+                // For known library functions, special case how derivatives flow to allow for more aggressive active variable detection
                 if (fnp) {
                     auto fn = fnp->getName();
                     // todo realloc consider?
