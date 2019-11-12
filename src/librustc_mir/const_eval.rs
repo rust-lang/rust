@@ -325,6 +325,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
         ret: Option<mir::BasicBlock>,
+        _unwind: Option<mir::BasicBlock> // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
         // Only check non-glue functions
@@ -336,7 +337,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_fn(instance, args, dest)? {
+                return if ecx.hook_panic_fn(instance, args, dest)? {
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
@@ -374,7 +375,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<mir::BasicBlock>,
+        _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         if ecx.emulate_intrinsic(span, instance, args, dest)? {
             return Ok(());
@@ -467,12 +470,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
-    }
-
-    /// Called immediately before a stack frame gets popped.
-    #[inline(always)]
-    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }

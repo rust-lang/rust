@@ -143,6 +143,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _args: &[OpTy<'tcx>],
         _dest: Option<PlaceTy<'tcx>>,
         _ret: Option<BasicBlock>,
+        _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         Ok(None)
     }
@@ -162,7 +163,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
-        _dest: PlaceTy<'tcx>,
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<BasicBlock>,
+        _unwind: Option<BasicBlock>
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("calling intrinsics isn't supported in ConstProp");
     }
@@ -249,12 +252,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     #[inline(always)]
     fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
-    }
-
-    /// Called immediately before a stack frame gets popped.
-    #[inline(always)]
-    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }

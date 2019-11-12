@@ -97,6 +97,27 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(vtable)
     }
 
+    /// Resolve the function at the specified slot in the provided
+    /// vtable. An index of '0' corresponds to the first method
+    /// declared in the trait of the provided vtable
+    pub fn get_vtable_slot(
+        &self,
+        vtable: Scalar<M::PointerTag>,
+        idx: usize
+    ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
+        let ptr_size = self.pointer_size();
+        // Skip over the 'drop_ptr', 'size', and 'align' fields
+        let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+        let vtable_slot = self.memory.check_ptr_access(
+            vtable_slot,
+            ptr_size,
+            self.tcx.data_layout.pointer_align.abi,
+        )?.expect("cannot be a ZST");
+        let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
+            .read_ptr_sized(self, vtable_slot)?.not_undef()?;
+        Ok(self.memory.get_fn(fn_ptr)?)
+    }
+
     /// Returns the drop fn instance as well as the actual dynamic type
     pub fn read_drop_type_from_vtable(
         &self,

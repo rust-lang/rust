@@ -315,7 +315,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
 }
 
 impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
-    Goto(block),
+    Goto { ret, unwind },
     None { cleanup },
 });
 
@@ -326,7 +326,7 @@ struct FrameSnapshot<'a, 'tcx> {
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
     locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
-    block: &'a mir::BasicBlock,
+    block: Option<mir::BasicBlock>,
     stmt: usize,
 }
 
@@ -364,7 +364,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             instance: *instance,
             span: *span,
             return_to_block,
-            block,
+            block: *block,
             stmt: *stmt,
             return_place: return_place.map(|r| r.snapshot(ctx)),
             locals: locals.iter().map(|local| local.snapshot(ctx)).collect(),

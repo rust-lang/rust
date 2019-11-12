@@ -15,7 +15,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
-            self.frame_mut().block = target;
+            self.frame_mut().block = Some(target);
             self.frame_mut().stmt = 0;
             Ok(())
         } else {
@@ -31,7 +31,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match terminator.kind {
             Return => {
                 self.frame().return_place.map(|r| self.dump_place(*r));
-                self.pop_stack_frame()?
+                self.pop_stack_frame(/* unwinding */ false)?
             }
 
             Goto { target } => self.goto_block(Some(target))?,
@@ -67,6 +67,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ref func,
                 ref args,
                 ref destination,
+                ref cleanup,
                 ..
             } => {
                 let (dest, ret) = match *destination {
@@ -98,13 +99,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     &args[..],
                     dest,
                     ret,
+                    *cleanup
                 )?;
             }
 
             Drop {
                 ref location,
                 target,
-                ..
+                unwind,
             } => {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
@@ -117,6 +119,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     instance,
                     terminator.source_info.span,
                     target,
+                    unwind
                 )?;
             }
 
@@ -160,10 +163,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
+
+            // When we encounter Resume, we've finished unwinding
+            // cleanup for the current stack frame. We pop it in order
+            // to continue unwinding the next frame
+            Resume => {
+                trace!("unwinding: resuming from cleanup");
+                // By definition, a Resume terminator means
+                // that we're unwinding
+                self.pop_stack_frame(/* unwinding */ true)?;
+                return Ok(())
+            },
+
             Yield { .. } |
             GeneratorDrop |
             DropAndReplace { .. } |
-            Resume |
             Abort => unimplemented!("{:#?}", terminator.kind),
             FalseEdges { .. } => bug!("should have been eliminated by\
                                       `simplify_branches` mir pass"),
@@ -237,6 +251,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: Option<PlaceTy<'tcx, M::PointerTag>>,
         ret: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
@@ -249,17 +264,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                // The intrinsic itself cannot diverge, so if we got here without a return
-                // place... (can happen e.g., for transmute returning `!`)
-                let dest = match dest {
-                    Some(dest) => dest,
-                    None => throw_ub!(Unreachable)
-                };
-                M::call_intrinsic(self, span, instance, args, dest)?;
+                let old_stack = self.cur_frame();
+                let old_bb = self.frame().block;
+                M::call_intrinsic(self, span, instance, args, dest, ret, unwind)?;
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
-                self.goto_block(ret)?;
-                self.dump_place(*dest);
+                if ret.is_some() {
+                    self.goto_block(ret)?;
+                } else {
+                    // If this intrinsic call doesn't have a ret block,
+                    // then the intrinsic implementation should have
+                    // changed the stack frame (otherwise, we'll end
+                    // up trying to execute this intrinsic call again)
+                    debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
+                }
+                if let Some(dest) = dest {
+                    self.dump_place(*dest)
+                }
                 Ok(())
             }
             ty::InstanceDef::VtableShim(..) |
@@ -294,7 +315,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 // We need MIR for this fn
-                let body = match M::find_fn(self, instance, args, dest, ret)? {
+                let body = match M::find_fn(self, instance, args, dest, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
@@ -304,7 +325,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     span,
                     body,
                     dest,
-                    StackPopCleanup::Goto(ret),
+                    StackPopCleanup::Goto { ret, unwind }
                 )?;
 
                 // We want to pop this frame again in case there was an error, to put
@@ -422,7 +443,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let mut args = args.to_vec();
-                let ptr_size = self.pointer_size();
                 // We have to implement all "object safe receivers".  Currently we
                 // support built-in pointers (&, &mut, Box) as well as unsized-self.  We do
                 // not yet support custom self types.
@@ -439,15 +459,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 // Find and consult vtable
                 let vtable = receiver_place.vtable();
-                let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
-                let vtable_slot = self.memory.check_ptr_access(
-                    vtable_slot,
-                    ptr_size,
-                    self.tcx.data_layout.pointer_align.abi,
-                )?.expect("cannot be a ZST");
-                let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
-                    .read_ptr_sized(self, vtable_slot)?.not_undef()?;
-                let drop_fn = self.memory.get_fn(fn_ptr)?;
+                let drop_fn = self.get_vtable_slot(vtable, idx)?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -462,7 +474,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, span, caller_abi, &args, dest, ret)
+                self.eval_fn_call(drop_fn, span, caller_abi, &args, dest, ret, unwind)
             }
         }
     }
@@ -473,6 +485,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::Instance<'tcx>,
         span: Span,
         target: mir::BasicBlock,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
         // We take the address of the object.  This may well be unaligned, which is fine
@@ -503,6 +516,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             &[arg.into()],
             Some(dest.into()),
             Some(target),
+            unwind
         )
     }
 }
