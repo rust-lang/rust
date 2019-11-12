@@ -1,10 +1,11 @@
 //! ra_cfg defines conditional compiling options, `cfg` attibute parser and evaluator
+
+mod cfg_expr;
+
 use std::iter::IntoIterator;
 
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
-
-mod cfg_expr;
 
 pub use cfg_expr::{parse_cfg, CfgExpr};
 
