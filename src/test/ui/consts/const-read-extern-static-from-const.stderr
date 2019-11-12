@@ -1,0 +1,12 @@
+error: any use of this value will cause an error
+  --> $DIR/const-read-extern-static-from-const.rs:7:24
+   |
+LL | const X: u8 = unsafe { FOO };
+   | -----------------------^^^---
+   |                        |
+   |                        tried to read from foreign (extern) static
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+
