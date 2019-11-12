@@ -14,7 +14,9 @@ fn main() {
         if entry.file_name() == "error_codes.rs" {
             println!("cargo:rerun-if-changed={}", entry.path().to_str().unwrap());
             let file = fs::read_to_string(entry.path()).unwrap()
-                .replace("syntax::register_diagnostics!", "register_diagnostics!");
+                .replace("crate::register_diagnostics!", "register_diagnostics!")
+                .replace(": include_str!(\"./",
+                         ": include_str!(\"../../../../../../../../src/librustc_error_codes/");
             let contents = format!("(|| {{\n{}\n}})()", file);
 
             fs::write(&out_dir.join(&format!("error_{}.rs", idx)), &contents).unwrap();
