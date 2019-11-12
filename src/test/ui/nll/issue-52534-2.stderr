@@ -1,8 +1,8 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/issue-52534-2.rs:6:9
+  --> $DIR/issue-52534-2.rs:6:13
    |
 LL |         y = &x
-   |         ^^^^^^ borrowed value does not live long enough
+   |             ^^ borrowed value does not live long enough
 LL |
 LL |     }
    |     - `x` dropped here while still borrowed

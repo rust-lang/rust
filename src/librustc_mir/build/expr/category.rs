@@ -48,11 +48,12 @@ impl Category {
             | ExprKind::Match { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::Use { .. }
+            | ExprKind::Adt { .. }
+            | ExprKind::Borrow { .. }
             | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
-            | ExprKind::Adt { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
@@ -60,7 +61,6 @@ impl Category {
             | ExprKind::Cast { .. }
             | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
-            | ExprKind::Borrow { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::Yield { .. }

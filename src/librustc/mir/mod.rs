@@ -1665,6 +1665,15 @@ pub enum FakeReadCause {
     /// Therefore, we insert a "fake read" here to ensure that we get
     /// appropriate errors.
     ForLet,
+
+    /// If we have an index expression like
+    ///
+    /// (*x)[1][{ x = y; 4}]
+    ///
+    /// then the first bounds check is invalidated when we evaluate the second
+    /// index expression. Thus we create a fake borrow of `x` across the second
+    /// indexer, which will cause a borrow check error.
+    ForIndex,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -1764,9 +1773,8 @@ impl_stable_hash_for!(struct Static<'tcx> {
     def_id
 });
 
-#[derive(
-    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub enum ProjectionElem<V, T> {
     Deref,
     Field(Field, T),
