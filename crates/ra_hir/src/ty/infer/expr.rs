@@ -452,8 +452,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
                 }
                 Literal::Char(..) => Ty::simple(TypeCtor::Char),
-                Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int(*ty)),
-                Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float(*ty)),
+                Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int((*ty).into())),
+                Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float((*ty).into())),
             },
         };
         // use a new type variable if we got Ty::Unknown here
