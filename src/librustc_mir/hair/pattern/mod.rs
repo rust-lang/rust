@@ -26,7 +26,7 @@ use rustc_index::vec::Idx;
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
@@ -55,6 +55,11 @@ pub struct Pat<'tcx> {
     pub kind: Box<PatKind<'tcx>>,
 }
 
+impl<'tcx> Pat<'tcx> {
+    pub(crate) fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
+        Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatTyProj<'tcx> {

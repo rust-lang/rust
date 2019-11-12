@@ -18,7 +18,7 @@ use rustc::hir::{self, Pat};
 
 use std::slice;
 
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
+use syntax_pos::{MultiSpan, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match tcx.hir().as_local_hir_id(def_id) {
@@ -491,7 +491,7 @@ fn check_not_useful(
     matrix: &Matrix<'_, 'tcx>,
     hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
-    let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
+    let wild_pattern = super::Pat::wildcard_from_ty(ty);
     match is_useful(cx, matrix, &PatStack::from_pattern(&wild_pattern), ConstructWitness, hir_id) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {

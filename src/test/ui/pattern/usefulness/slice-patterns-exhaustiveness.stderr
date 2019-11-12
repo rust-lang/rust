@@ -1,0 +1,91 @@
+error[E0004]: non-exhaustive patterns: `&[false, true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:13:11
+   |
+LL |     match s2 {
+   |           ^^ pattern `&[false, true]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[false, _, true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:18:11
+   |
+LL |     match s3 {
+   |           ^^ pattern `&[false, _, true]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[false, .., true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:23:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false, .., true]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[false, _, _]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:30:11
+   |
+LL |     match s3 {
+   |           ^^ pattern `&[false, _, _]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:34:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:38:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:43:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[false, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:48:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false, _, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[_, .., false]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:54:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, .., false]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[_, _, .., true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:61:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, .., true]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[true, _, .., _]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:68:11
+   |
+LL |     match s {
+   |           ^ pattern `&[true, _, .., _]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0004`.
