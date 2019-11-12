@@ -13,7 +13,7 @@ use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
-use std::str::FromStr;
+use std::{error::Error, str::FromStr};
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -98,13 +98,18 @@ pub enum Edition {
     Edition2015,
 }
 
+#[derive(Debug)]
+pub struct ParseEditionError {
+    pub msg: String,
+}
+
 impl FromStr for Edition {
-    type Err = String;
+    type Err = ParseEditionError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "2015" => Ok(Edition::Edition2015),
             "2018" => Ok(Edition::Edition2018),
-            _ => Err(format! {"unknown edition: {}" , s}),
+            _ => Err(ParseEditionError { msg: format!("unknown edition: {}", s) }),
         }
     }
 }

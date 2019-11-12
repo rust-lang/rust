@@ -141,20 +141,21 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         for meta_pkg in meta.packages {
-            let is_member = ws_members.contains(&meta_pkg.id);
-            let name = meta_pkg.name;
+            let cargo_metadata::Package { id, edition, name, manifest_path, .. } = meta_pkg;
+            let is_member = ws_members.contains(&id);
+            let edition = Edition::from_str(&edition)
+                .map_err(|e| (format!("metadata for package {} failed: {}", &name, e.msg)))?;
             let pkg = packages.alloc(PackageData {
-                name: name.clone(),
-                manifest: meta_pkg.manifest_path.clone(),
+                name,
+                manifest: manifest_path,
                 targets: Vec::new(),
                 is_member,
-                edition: Edition::from_str(&meta_pkg.edition)
-                    .unwrap_or_else(|e| panic!("unknown edition {} for package {:?}", e, &name)),
+                edition,
                 dependencies: Vec::new(),
                 features: Vec::new(),
             });
             let pkg_data = &mut packages[pkg];
-            pkg_by_id.insert(meta_pkg.id.clone(), pkg);
+            pkg_by_id.insert(id, pkg);
             for meta_tgt in meta_pkg.targets {
                 let tgt = targets.alloc(TargetData {
                     pkg,
