@@ -1,8 +1,0 @@
-warning: unused arithmetic operation that must be used
-  --> $DIR/issue-64970.rs:13:9
-   |
-LL |         1i32 / n;
-   |         ^^^^^^^^
-   |
-   = note: `#[warn(unused_must_use)]` on by default
-

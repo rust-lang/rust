@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![warn(unused_imports)] // Warning explanation here, it's OK
 
@@ -24,6 +24,7 @@ mod test {
 }
 
 use test::Unused;   // This is really unused, so warning is OK
+                    //~^ WARNING unused import
 use test::A;        // This is used by the test2::func() through import of super::*
 use test::B;        // This is used by the test2::func() through import of super::*
 

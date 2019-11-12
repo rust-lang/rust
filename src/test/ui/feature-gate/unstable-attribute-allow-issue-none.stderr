@@ -1,0 +1,8 @@
+error[E0545]: incorrect 'issue'
+  --> $DIR/unstable-attribute-allow-issue-none.rs:12:1
+   |
+LL | #[unstable(feature = "unstable_test_feature", issue = "something")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

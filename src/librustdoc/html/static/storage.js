@@ -24,10 +24,6 @@ function removeClass(elem, className) {
     elem.classList.remove(className);
 }
 
-function isHidden(elem) {
-    return elem.offsetParent === null;
-}
-
 function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
         var length = arr.length;

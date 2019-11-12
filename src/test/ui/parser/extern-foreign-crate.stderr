@@ -2,7 +2,7 @@ error: expected one of `;` or `as`, found `{`
   --> $DIR/extern-foreign-crate.rs:4:18
    |
 LL | extern crate foo {}
-   |                  ^ expected one of `;` or `as` here
+   |                  ^ expected one of `;` or `as`
 
 error: aborting due to previous error
 

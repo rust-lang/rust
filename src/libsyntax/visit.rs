@@ -14,7 +14,7 @@
 //! those that are created by the expansion of a macro.
 
 use crate::ast::*;
-use crate::parse::token::Token;
+use crate::token::Token;
 use crate::tokenstream::{TokenTree, TokenStream};
 
 use syntax_pos::Span;
@@ -25,7 +25,7 @@ pub enum FnKind<'a> {
     ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
 
     /// E.g., `fn foo(&self)`.
-    Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
+    Method(Ident, &'a FnSig, Option<&'a Visibility>, &'a Block),
 
     /// E.g., `|x, y| body`.
     Closure(&'a Expr),
@@ -244,12 +244,11 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemKind::Fn(ref declaration, ref header, ref generics, ref body) => {
+        ItemKind::Fn(ref sig, ref generics, ref body) => {
             visitor.visit_generics(generics);
-            visitor.visit_fn_header(header);
-            visitor.visit_fn(FnKind::ItemFn(item.ident, header,
-                                            &item.vis, body),
-                             declaration,
+            visitor.visit_fn_header(&sig.header);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, &sig.header, &item.vis, body),
+                             &sig.decl,
                              item.span,
                              item.id)
         }
@@ -846,7 +845,10 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 }
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
-    visitor.visit_tts(attr.tokens.clone());
+    match attr.kind {
+        AttrKind::Normal(ref item) => visitor.visit_tts(item.tokens.clone()),
+        AttrKind::DocComment(_) => {}
+    }
 }
 
 pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {

@@ -29,6 +29,7 @@ extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_interface;
 extern crate rustc_metadata;
+extern crate rustc_parse;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate rustc_lexer;
@@ -140,7 +141,7 @@ fn opts() -> Vec<RustcOptGroup> {
         }),
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
         stable("extern", |o| {
-            o.optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")
+            o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")
         }),
         unstable("extern-html-root-url", |o| {
             o.optmulti("", "extern-html-root-url",

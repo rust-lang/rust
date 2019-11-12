@@ -95,10 +95,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
 
-        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
+        let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
         match intrinsic_name {
             "caller_location" => {
-                let caller = self.tcx.sess.source_map().lookup_char_pos(span.lo());
+                let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+                let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
                 let location = self.alloc_caller_location(
                     Symbol::intern(&caller.file.name.to_string()),
                     caller.line as u32,
@@ -262,8 +263,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
                 if a.is_bits() && b.is_bits() {
-                    let a = a.to_usize(self)?;
-                    let b = b.to_usize(self)?;
+                    let a = a.to_machine_usize(self)?;
+                    let b = b.to_machine_usize(self)?;
                     if a == b && a != 0 {
                         self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
                         return Ok(true);

@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                     }
                 }
             }
-            TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::MutImmutable }) => {
+            TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::Immutable }) => {
                 if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner_def_id()) {
                     if cx.tcx.impl_trait_ref(impl_did).is_some() {
                         return;

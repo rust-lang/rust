@@ -359,13 +359,20 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
         // Ignore stores of constants because `ConstProp` and `CopyProp` can remove uses of many
         // of these locals. However, if the local is still needed, then it will be referenced in
         // another place and we'll mark it as being used there.
-        if ctx == PlaceContext::MutatingUse(MutatingUseContext::Store) {
-            let stmt =
-                &self.body.basic_blocks()[location.block].statements[location.statement_index];
-            if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(c)))) = &stmt.kind {
-                if p.as_local().is_some() {
-                    trace!("skipping store of const value {:?} to {:?}", c, local);
-                    return;
+        if ctx == PlaceContext::MutatingUse(MutatingUseContext::Store) ||
+           ctx == PlaceContext::MutatingUse(MutatingUseContext::Projection) {
+            let block = &self.body.basic_blocks()[location.block];
+            if location.statement_index != block.statements.len() {
+                let stmt =
+                    &block.statements[location.statement_index];
+
+                if let StatementKind::Assign(
+                    box (p, Rvalue::Use(Operand::Constant(c)))
+                ) = &stmt.kind {
+                    if !p.is_indirect() {
+                        trace!("skipping store of const value {:?} to {:?}", c, p);
+                        return;
+                    }
                 }
             }
         }
@@ -392,7 +399,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
                     self.map[*l].is_some()
                 }
                 StatementKind::Assign(box (place, _)) => {
-                    if let Some(local) = place.as_local() {
+                    if let PlaceBase::Local(local) = place.base {
                         self.map[local].is_some()
                     } else {
                         true

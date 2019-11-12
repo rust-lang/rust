@@ -466,13 +466,13 @@ pub trait PrettyPrinter<'tcx>:
         match ty.kind {
             ty::Bool => p!(write("bool")),
             ty::Char => p!(write("char")),
-            ty::Int(t) => p!(write("{}", t.ty_to_string())),
-            ty::Uint(t) => p!(write("{}", t.ty_to_string())),
-            ty::Float(t) => p!(write("{}", t.ty_to_string())),
+            ty::Int(t) => p!(write("{}", t.name_str())),
+            ty::Uint(t) => p!(write("{}", t.name_str())),
+            ty::Float(t) => p!(write("{}", t.name_str())),
             ty::RawPtr(ref tm) => {
                 p!(write("*{} ", match tm.mutbl {
-                    hir::MutMutable => "mut",
-                    hir::MutImmutable => "const",
+                    hir::Mutability::Mutable => "mut",
+                    hir::Mutability::Immutable => "const",
                 }));
                 p!(print(tm.ty))
             }
@@ -607,10 +607,9 @@ pub trait PrettyPrinter<'tcx>:
             ty::Generator(did, substs, movability) => {
                 let upvar_tys = substs.as_generator().upvar_tys(did, self.tcx());
                 let witness = substs.as_generator().witness(did, self.tcx());
-                if movability == hir::GeneratorMovability::Movable {
-                    p!(write("[generator"));
-                } else {
-                    p!(write("[static generator"));
+                match movability {
+                    hir::Movability::Movable => p!(write("[generator")),
+                    hir::Movability::Static  => p!(write("[static generator")),
                 }
 
                 // FIXME(eddyb) should use `def_span`.
@@ -895,10 +894,11 @@ pub trait PrettyPrinter<'tcx>:
                 let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
                 let max = truncate(u128::max_value(), bit_size);
 
+                let ui_str = ui.name_str();
                 if data == max {
-                    p!(write("std::{}::MAX", ui))
+                    p!(write("std::{}::MAX", ui_str))
                 } else {
-                    p!(write("{}{}", data, ui))
+                    p!(write("{}{}", data, ui_str))
                 };
             },
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Int(i)) => {
@@ -911,10 +911,11 @@ pub trait PrettyPrinter<'tcx>:
                 let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                     .unwrap()
                     .size;
+                let i_str = i.name_str();
                 match data {
-                    d if d == min => p!(write("std::{}::MIN", i)),
-                    d if d == max => p!(write("std::{}::MAX", i)),
-                    _ => p!(write("{}{}", sign_extend(data, size) as i128, i))
+                    d if d == min => p!(write("std::{}::MIN", i_str)),
+                    d if d == max => p!(write("std::{}::MAX", i_str)),
+                    _ => p!(write("{}{}", sign_extend(data, size) as i128, i_str))
                 }
             },
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Char) =>
@@ -1666,8 +1667,7 @@ define_print_and_forward_display! {
     }
 
     ty::TypeAndMut<'tcx> {
-        p!(write("{}", if self.mutbl == hir::MutMutable { "mut " } else { "" }),
-            print(self.ty))
+        p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
 
     ty::ExistentialTraitRef<'tcx> {
@@ -1693,9 +1693,7 @@ define_print_and_forward_display! {
     }
 
     ty::FnSig<'tcx> {
-        if self.unsafety == hir::Unsafety::Unsafe {
-            p!(write("unsafe "));
-        }
+        p!(write("{}", self.unsafety.prefix_str()));
 
         if self.abi != Abi::Rust {
             p!(write("extern {} ", self.abi));

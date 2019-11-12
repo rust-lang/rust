@@ -2,7 +2,7 @@ error: expected one of `,`, `.`, `?`, `}`, or an operator, found `with`
   --> $DIR/removed-syntax-with-1.rs:8:25
    |
 LL |     let b = S { foo: () with a, bar: () };
-   |             -           ^^^^ expected one of `,`, `.`, `?`, `}`, or an operator here
+   |             -           ^^^^ expected one of `,`, `.`, `?`, `}`, or an operator
    |             |
    |             while parsing this struct
 

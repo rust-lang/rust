@@ -4,7 +4,9 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
 use rustc::mir::*;
-use rustc::ty;
+use rustc::ty::{self, CanonicalUserTypeAnnotation};
+use rustc_data_structures::fx::FxHashMap;
+use syntax_pos::symbol::sym;
 
 use rustc_target::spec::abi::Abi;
 
@@ -200,16 +202,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
-                            Some(this.hir.tcx().item_name(def_id).as_str())
+                            Some(this.hir.tcx().item_name(def_id))
                         } else {
                             None
                         }
                     }
                     _ => None,
                 };
-                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                if intrinsic == Some("move_val_init") {
+                if let Some(sym::move_val_init) = intrinsic {
                     // `move_val_init` has "magic" semantics - the second argument is
                     // always evaluated "directly" into the first one.
 
@@ -271,6 +272,102 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Use { source } => {
                 this.into(destination, block, source)
             }
+            ExprKind::Borrow { arg, borrow_kind } => {
+                // We don't do this in `as_rvalue` because we use `as_place`
+                // for borrow expressions, so we cannot create an `RValue` that
+                // remains valid across user code. `as_rvalue` is usually called
+                // by this method anyway, so this shouldn't cause too many
+                // unnecessary temporaries.
+                let arg_place = match borrow_kind {
+                    BorrowKind::Shared => unpack!(block = this.as_read_only_place(block, arg)),
+                    _ => unpack!(block = this.as_place(block, arg)),
+                };
+                let borrow = Rvalue::Ref(
+                    this.hir.tcx().lifetimes.re_erased,
+                    borrow_kind,
+                    arg_place,
+                );
+                this.cfg.push_assign(block, source_info, destination, borrow);
+                block.unit()
+            }
+            ExprKind::Adt {
+                adt_def,
+                variant_index,
+                substs,
+                user_ty,
+                fields,
+                base,
+            } => {
+                // See the notes for `ExprKind::Array` in `as_rvalue` and for
+                // `ExprKind::Borrow` above.
+                let is_union = adt_def.is_union();
+                let active_field_index = if is_union {
+                    Some(fields[0].name.index())
+                } else {
+                    None
+                };
+
+                let scope =  this.local_scope();
+
+                // first process the set of fields that were provided
+                // (evaluating them in order given by user)
+                let fields_map: FxHashMap<_, _> = fields
+                    .into_iter()
+                    .map(|f| {
+                        (
+                            f.name,
+                            unpack!(block = this.as_operand(block, scope, f.expr)),
+                        )
+                    }).collect();
+
+                let field_names = this.hir.all_fields(adt_def, variant_index);
+
+                let fields = if let Some(FruInfo { base, field_types }) = base {
+                    let base = unpack!(block = this.as_place(block, base));
+
+                    // MIR does not natively support FRU, so for each
+                    // base-supplied field, generate an operand that
+                    // reads it from the base.
+                    field_names
+                        .into_iter()
+                        .zip(field_types.into_iter())
+                        .map(|(n, ty)| match fields_map.get(&n) {
+                            Some(v) => v.clone(),
+                            None => this.consume_by_copy_or_move(
+                                this.hir.tcx().mk_place_field(base.clone(), n, ty),
+                            ),
+                        }).collect()
+                } else {
+                    field_names
+                        .iter()
+                        .filter_map(|n| fields_map.get(n).cloned())
+                        .collect()
+                };
+
+                let inferred_ty = expr.ty;
+                let user_ty = user_ty.map(|ty| {
+                    this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
+                        span: source_info.span,
+                        user_ty: ty,
+                        inferred_ty,
+                    })
+                });
+                let adt = box AggregateKind::Adt(
+                    adt_def,
+                    variant_index,
+                    substs,
+                    user_ty,
+                    active_field_index,
+                );
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    destination,
+                    Rvalue::Aggregate(adt, fields)
+                );
+                block.unit()
+            }
+
 
             // These cases don't actually need a destination
             ExprKind::Assign { .. }
@@ -325,10 +422,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Cast { .. }
             | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
-            | ExprKind::Borrow { .. }
             | ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
-            | ExprKind::Adt { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
             | ExprKind::Yield { .. } => {

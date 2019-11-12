@@ -80,7 +80,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
         match ty.kind {
-            ty::Ref(_, _, hir::Mutability::MutMutable) => return Err((
+            ty::Ref(_, _, hir::Mutability::Mutable) => return Err((
                 span,
                 "mutable references in const fn are unstable".into(),
             )),
@@ -150,7 +150,8 @@ fn check_rvalue(
                 _ => check_operand(tcx, operand, span, def_id, body),
             }
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _) => {
+        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _)
+        | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, _) => {
             check_operand(tcx, operand, span, def_id, body)
         }
         Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _) |
@@ -402,7 +403,7 @@ fn check_terminator(
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
 fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    match &tcx.item_name(def_id).as_str()[..] {
+    match &*tcx.item_name(def_id).as_str() {
         | "size_of"
         | "min_align_of"
         | "needs_drop"

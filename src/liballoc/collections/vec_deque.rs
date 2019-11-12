@@ -835,7 +835,8 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shortens the `VecDeque`, dropping excess elements from the back.
+    /// Shortens the `VecDeque`, keeping the first `len` elements and dropping
+    /// the rest.
     ///
     /// If `len` is greater than the `VecDeque`'s current length, this has no
     /// effect.
@@ -855,8 +856,31 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
-        for _ in len..self.len() {
-            self.pop_back();
+        // Safe because:
+        //
+        // * Any slice passed to `drop_in_place` is valid; the second case has
+        //   `len <= front.len()` and returning on `len > self.len()` ensures
+        //   `begin <= back.len()` in the first case
+        // * The head of the VecDeque is moved before calling `drop_in_place`,
+        //   so no value is dropped twice if `drop_in_place` panics
+        unsafe {
+            if len > self.len() {
+                return;
+            }
+            let num_dropped = self.len() - len;
+            let (front, back) = self.as_mut_slices();
+            if len > front.len() {
+                let begin = len - front.len();
+                let drop_back = back.get_unchecked_mut(begin..) as *mut _;
+                self.head = self.wrap_sub(self.head, num_dropped);
+                ptr::drop_in_place(drop_back);
+            } else {
+                let drop_back = back as *mut _;
+                let drop_front = front.get_unchecked_mut(len..) as *mut _;
+                self.head = self.wrap_sub(self.head, num_dropped);
+                ptr::drop_in_place(drop_front);
+                ptr::drop_in_place(drop_back);
+            }
         }
     }
 
@@ -1117,7 +1141,7 @@ impl<T> VecDeque<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
-        self.drain(..);
+        self.truncate(0);
     }
 
     /// Returns `true` if the `VecDeque` contains an element equal to the

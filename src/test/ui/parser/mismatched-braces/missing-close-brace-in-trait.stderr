@@ -15,7 +15,7 @@ LL | trait T {
 LL |     fn foo(&self);
    |                   -
    |                   |
-   |                   expected one of 7 possible tokens here
+   |                   expected one of 7 possible tokens
    |                   help: `}` may belong here
 LL | 
 LL | pub(crate) struct Bar<T>();

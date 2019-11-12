@@ -53,7 +53,7 @@ impl Command {
     }
 
     pub fn sym_arg(&mut self, arg: Symbol) -> &mut Command {
-        self.arg(&arg.as_str());
+        self.arg(&*arg.as_str());
         self
     }
 

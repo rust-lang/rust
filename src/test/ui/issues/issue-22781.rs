@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(unused_variables)]
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::Vacant;

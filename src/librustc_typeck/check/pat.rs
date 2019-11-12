@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use crate::util::nodemap::FxHashMap;
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use rustc::hir::{self, PatKind, Pat, HirId};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -30,7 +30,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_pat_top(&self, pat: &'tcx Pat, expected: Ty<'tcx>, discrim_span: Option<Span>) {
-        let def_bm = BindingMode::BindByValue(hir::Mutability::MutImmutable);
+        let def_bm = BindingMode::BindByValue(hir::Mutability::Immutable);
         self.check_pat(pat, expected, def_bm, discrim_span);
     }
 
@@ -194,7 +194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // See issue #46688.
             let def_bm = match pat.kind {
-                PatKind::Ref(..) => ty::BindByValue(hir::MutImmutable),
+                PatKind::Ref(..) => ty::BindByValue(hir::Mutability::Immutable),
                 _ => def_bm,
             };
             (expected, def_bm)
@@ -275,10 +275,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // (depending on whether we observe `&` or `&mut`).
                 ty::BindByValue(_) |
                 // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ty::BindByReference(hir::Mutability::MutMutable) => inner_mutability,
+                ty::BindByReference(hir::Mutability::Mutable) => inner_mutability,
                 // Once a `ref`, always a `ref`.
                 // This is because a `& &mut` cannot mutate the underlying value.
-                ty::BindByReference(m @ hir::Mutability::MutImmutable) => m,
+                ty::BindByReference(m @ hir::Mutability::Immutable) => m,
             });
         }
 
@@ -703,8 +703,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[ty::FieldDef],
         expected: Ty<'tcx>
     ) {
-        let subpats_ending = pluralise!(subpats.len());
-        let fields_ending = pluralise!(fields.len());
+        let subpats_ending = pluralize!(subpats.len());
+        let fields_ending = pluralize!(fields.len());
         let res_span = self.tcx.def_span(res.def_id());
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -978,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     // we don't want to throw `E0027` in case we have thrown `E0026` for them
-                    unmentioned_fields.retain(|&x| x.as_str() != suggested_name.as_str());
+                    unmentioned_fields.retain(|&x| x.name != suggested_name);
                 }
             }
         }
@@ -1174,10 +1174,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0527,
             "pattern requires {} element{} but array has {}",
             min_len,
-            pluralise!(min_len),
+            pluralize!(min_len),
             size,
         )
-        .span_label(span, format!("expected {} element{}", size, pluralise!(size)))
+        .span_label(span, format!("expected {} element{}", size, pluralize!(size)))
         .emit();
     }
 
@@ -1188,14 +1188,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0528,
             "pattern requires at least {} element{} but array has {}",
             min_len,
-            pluralise!(min_len),
+            pluralize!(min_len),
             size,
         ).span_label(
             span,
             format!(
                 "pattern cannot match array of {} element{}",
                 size,
-                pluralise!(size),
+                pluralize!(size),
             ),
         ).emit();
     }

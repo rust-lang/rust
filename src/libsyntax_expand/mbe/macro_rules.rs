@@ -8,31 +8,30 @@ use crate::mbe::macro_parser::{Error, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
 use crate::mbe::transcribe::transcribe;
 
+use rustc_parse::parser::Parser;
+use rustc_parse::Directory;
 use syntax::ast;
 use syntax::attr::{self, TransparencyError};
 use syntax::edition::Edition;
 use syntax::feature_gate::Features;
-use syntax::parse::parser::Parser;
-use syntax::parse::token::TokenKind::*;
-use syntax::parse::token::{self, NtTT, Token};
-use syntax::parse::Directory;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
+use syntax::token::{self, NtTT, Token, TokenKind::*};
 use syntax::tokenstream::{DelimSpan, TokenStream};
-
-use errors::{DiagnosticBuilder, FatalError};
-use log::debug;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::Span;
 
+use errors::{DiagnosticBuilder, FatalError};
+use log::debug;
+
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
-use std::slice;
+use std::{mem, slice};
 
 use errors::Applicability;
-use rustc_data_structures::sync::Lrc;
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
@@ -182,7 +181,6 @@ fn generic_extension<'cx>(
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_failure: Option<(Token, &str)> = None;
-
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -190,8 +188,18 @@ fn generic_extension<'cx>(
             _ => cx.span_bug(sp, "malformed macro lhs"),
         };
 
+        // Take a snapshot of the state of pre-expansion gating at this point.
+        // This is used so that if a matcher is not `Success(..)`ful,
+        // then the spans which became gated when parsing the unsucessful matcher
+        // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
+        let mut gated_spans_snaphot = mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+
         match parse_tt(cx, lhs_tt, arg.clone()) {
             Success(named_matches) => {
+                // The matcher was `Success(..)`ful.
+                // Merge the gated spans from parsing the matcher with the pre-existing ones.
+                cx.parse_sess.gated_spans.merge(gated_spans_snaphot);
+
                 let rhs = match rhses[i] {
                     // ignore delimiters
                     mbe::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
@@ -225,7 +233,7 @@ fn generic_extension<'cx>(
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false, None);
                 p.root_module_name =
-                    cx.current_expansion.module.mod_path.last().map(|id| id.as_str().to_string());
+                    cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
 
                 p.process_potential_macro_variable();
@@ -248,6 +256,10 @@ fn generic_extension<'cx>(
             },
             Error(err_sp, ref msg) => cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]),
         }
+
+        // The matcher was not `Success(..)`ful.
+        // Restore to the state before snapshotting and maybe try again.
+        mem::swap(&mut gated_spans_snaphot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
     }
 
     let (token, label) = best_failure.expect("ran no matchers");
@@ -566,7 +578,7 @@ impl FirstSets {
                     }
                     TokenTree::Delimited(span, ref delimited) => {
                         build_recur(sets, &delimited.tts[..]);
-                        first.replace_with(delimited.open_tt(span.open));
+                        first.replace_with(delimited.open_tt(span));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts[..]);
@@ -628,7 +640,7 @@ impl FirstSets {
                     return first;
                 }
                 TokenTree::Delimited(span, ref delimited) => {
-                    first.add_one(delimited.open_tt(span.open));
+                    first.add_one(delimited.open_tt(span));
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
@@ -826,7 +838,7 @@ fn check_matcher_core(
                 }
             }
             TokenTree::Delimited(span, ref d) => {
-                let my_suffix = TokenSet::singleton(d.close_tt(span.close));
+                let my_suffix = TokenSet::singleton(d.close_tt(span));
                 check_matcher_core(sess, features, attrs, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();

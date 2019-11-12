@@ -3,7 +3,7 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global isHidden, onEach, removeClass, updateLocalStorage */
+/* global onEach, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -161,59 +161,111 @@ function getSearchElement() {
         return window.history && typeof window.history.pushState === "function";
     }
 
-    var main = document.getElementById("main");
+    function isHidden(elem) {
+        return elem.offsetHeight === 0;
+    }
 
-    function highlightSourceLines(ev) {
-        // If we're in mobile mode, we should add the sidebar in any case.
-        hideSidebar();
-        var elem;
+    var main = document.getElementById("main");
+    var savedHash = "";
+
+    function handleHashes(ev) {
         var search = getSearchElement();
-        var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
-        if (match) {
-            from = parseInt(match[1], 10);
-            to = from;
-            if (typeof match[2] !== "undefined") {
-                to = parseInt(match[2], 10);
-            }
-            if (to < from) {
-                var tmp = to;
-                to = from;
-                from = tmp;
-            }
-            elem = document.getElementById(from);
-            if (!elem) {
-                return;
-            }
-            if (ev === null) {
-                var x = document.getElementById(from);
-                if (x) {
-                    x.scrollIntoView();
-                }
-            }
-            onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
-                onEachLazy(e.getElementsByTagName("span"), function(i_e) {
-                    removeClass(i_e, "line-highlighted");
-                });
-            });
-            for (i = from; i <= to; ++i) {
-                elem = document.getElementById(i);
-                if (!elem) {
-                    break;
-                }
-                addClass(elem, "line-highlighted");
-            }
-        } else if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+        if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+            // This block occurs when clicking on an element in the navbar while
+            // in a search.
             addClass(search, "hidden");
             removeClass(main, "hidden");
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (browserSupportsHistoryApi()) {
                 history.replaceState(hash, "", "?search=#" + hash);
             }
-            elem = document.getElementById(hash);
+            var elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
         }
+        // This part is used in case an element is not visible.
+        if (savedHash !== window.location.hash) {
+            savedHash = window.location.hash;
+            if (savedHash.length === 0) {
+                return;
+            }
+            var elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
+            if (!elem || !isHidden(elem)) {
+                return;
+            }
+            var parent = elem.parentNode;
+            if (parent && hasClass(parent, "impl-items")) {
+                // In case this is a trait implementation item, we first need to toggle
+                // the "Show hidden undocumented items".
+                onEachLazy(parent.getElementsByClassName("collapsed"), function(e) {
+                    if (e.parentNode === parent) {
+                        // Only click on the toggle we're looking for.
+                        e.click();
+                        return true;
+                    }
+                });
+                if (isHidden(elem)) {
+                    // The whole parent is collapsed. We need to click on its toggle as well!
+                    if (hasClass(parent.lastElementChild, "collapse-toggle")) {
+                        parent.lastElementChild.click();
+                    }
+                }
+            }
+        }
+    }
+
+    function highlightSourceLines(match, ev) {
+        if (typeof match === "undefined") {
+            // If we're in mobile mode, we should hide the sidebar in any case.
+            hideSidebar();
+            match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
+        }
+        if (!match) {
+            return;
+        }
+        var from = parseInt(match[1], 10);
+        var to = from;
+        if (typeof match[2] !== "undefined") {
+            to = parseInt(match[2], 10);
+        }
+        if (to < from) {
+            var tmp = to;
+            to = from;
+            from = tmp;
+        }
+        var elem = document.getElementById(from);
+        if (!elem) {
+            return;
+        }
+        if (!ev) {
+            var x = document.getElementById(from);
+            if (x) {
+                x.scrollIntoView();
+            }
+        }
+        onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
+            onEachLazy(e.getElementsByTagName("span"), function(i_e) {
+                removeClass(i_e, "line-highlighted");
+            });
+        });
+        for (var i = from; i <= to; ++i) {
+            elem = document.getElementById(i);
+            if (!elem) {
+                break;
+            }
+            addClass(elem, "line-highlighted");
+        }
+    }
+
+    function onHashChange(ev) {
+        // If we're in mobile mode, we should hide the sidebar in any case.
+        hideSidebar();
+        var match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
+        if (match) {
+            return highlightSourceLines(match, ev);
+        }
+        handleHashes(ev);
     }
 
     function expandSection(id) {
@@ -233,9 +285,6 @@ function getSearchElement() {
             }
         }
     }
-
-    highlightSourceLines(null);
-    window.onhashchange = highlightSourceLines;
 
     // Gets the human-readable string for the virtual-key code of the
     // given KeyboardEvent, ev.
@@ -358,7 +407,7 @@ function getSearchElement() {
             var set_fragment = function(name) {
                 if (browserSupportsHistoryApi()) {
                     history.replaceState(null, null, "#" + name);
-                    highlightSourceLines(null);
+                    highlightSourceLines();
                 } else {
                     location.replace("#" + name);
                 }
@@ -2106,7 +2155,7 @@ function getSearchElement() {
     function autoCollapse(pageId, collapse) {
         if (collapse) {
             toggleAllDocs(pageId, true);
-        } else if (getCurrentValue("rustdoc-trait-implementations") !== "false") {
+        } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("implementations-list");
 
             if (impl_list !== null) {
@@ -2144,7 +2193,7 @@ function getSearchElement() {
     }
 
     var toggle = createSimpleToggle(false);
-    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") === "true";
+    var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
     var pageId = getPageId();
 
     var func = function(e) {
@@ -2274,7 +2323,31 @@ function getSearchElement() {
         return wrapper;
     }
 
-    var showItemDeclarations = getCurrentValue("rustdoc-item-declarations") === "false";
+    var currentType = document.getElementsByClassName("type-decl")[0];
+    var className = null;
+    if (currentType) {
+        currentType = currentType.getElementsByClassName("rust")[0];
+        if (currentType) {
+            currentType.classList.forEach(function(item) {
+                if (item !== "main") {
+                    className = item;
+                    return true;
+                }
+            });
+        }
+    }
+    var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
+    if (showItemDeclarations === null) {
+        if (className === "enum" || className === "macro") {
+            showItemDeclarations = "false";
+        } else if (className === "struct" || className === "union" || className === "trait") {
+            showItemDeclarations = "true";
+        } else {
+            // In case we found an unknown type, we just use the "parent" value.
+            showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
+        }
+    }
+    showItemDeclarations = showItemDeclarations === "false";
     function buildToggleWrapper(e) {
         if (hasClass(e, "autohide")) {
             var wrap = e.previousElementSibling;
@@ -2357,7 +2430,7 @@ function getSearchElement() {
 
     // To avoid checking on "rustdoc-item-attributes" value on every loop...
     var itemAttributesFunc = function() {};
-    if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+    if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
         itemAttributesFunc = function(x) {
             collapseDocs(x.previousSibling.childNodes[0], "toggle");
         };
@@ -2602,6 +2675,9 @@ function getSearchElement() {
         popup.appendChild(container);
         insertAfter(popup, getSearchElement());
     }
+
+    onHashChange();
+    window.onhashchange = onHashChange;
 
     buildHelperPopup();
 }());

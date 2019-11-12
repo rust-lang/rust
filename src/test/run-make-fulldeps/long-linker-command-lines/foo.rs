@@ -7,11 +7,42 @@
 // Eventually we should see an argument that looks like `@` as we switch from
 // passing literal arguments to passing everything in the file.
 
+use std::collections::HashSet;
 use std::env;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write, Read};
-use std::path::PathBuf;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+fn write_test_case(file: &Path, n: usize) -> HashSet<String> {
+    let mut libs = HashSet::new();
+    let mut f = BufWriter::new(File::create(&file).unwrap());
+    let mut prefix = String::new();
+    for _ in 0..n {
+        prefix.push_str("foo");
+    }
+    for i in 0..n {
+        writeln!(f, "#[link(name = \"S{}{}S\")]", prefix, i).unwrap();
+        libs.insert(format!("{}{}", prefix, i));
+    }
+    writeln!(f, "extern {{}}\nfn main() {{}}").unwrap();
+    f.into_inner().unwrap();
+
+    libs
+}
+
+fn read_linker_args(path: &Path) -> String {
+    let contents = fs::read(path).unwrap();
+    if cfg!(target_env = "msvc") {
+        let mut i = contents.chunks(2).map(|c| {
+            c[0] as u16 | ((c[1] as u16) << 8)
+        });
+        assert_eq!(i.next(), Some(0xfeff), "Expected UTF-16 BOM");
+        String::from_utf16(&i.collect::<Vec<u16>>()).unwrap()
+    } else {
+        String::from_utf8(contents).unwrap()
+    }
+}
 
 fn main() {
     let tmpdir = PathBuf::from(env::var_os("TMPDIR").unwrap());
@@ -29,16 +60,7 @@ fn main() {
     for i in (1..).map(|i| i * 100) {
         println!("attempt: {}", i);
         let file = tmpdir.join("bar.rs");
-        let mut f = BufWriter::new(File::create(&file).unwrap());
-        let mut lib_name = String::new();
-        for _ in 0..i {
-            lib_name.push_str("foo");
-        }
-        for j in 0..i {
-            writeln!(f, "#[link(name = \"{}{}\")]", lib_name, j).unwrap();
-        }
-        writeln!(f, "extern {{}}\nfn main() {{}}").unwrap();
-        f.into_inner().unwrap();
+        let mut expected_libs = write_test_case(&file, i);
 
         drop(fs::remove_file(&ok));
         let output = Command::new(&rustc)
@@ -67,24 +89,17 @@ fn main() {
             continue
         }
 
-        let mut contents = Vec::new();
-        File::open(&ok).unwrap().read_to_end(&mut contents).unwrap();
-
-        for j in 0..i {
-            let exp = format!("{}{}", lib_name, j);
-            let exp = if cfg!(target_env = "msvc") {
-                let mut out = Vec::with_capacity(exp.len() * 2);
-                for c in exp.encode_utf16() {
-                    // encode in little endian
-                    out.push(c as u8);
-                    out.push((c >> 8) as u8);
-                }
-                out
-            } else {
-                exp.into_bytes()
-            };
-            assert!(contents.windows(exp.len()).any(|w| w == &exp[..]));
+        let linker_args = read_linker_args(&ok);
+        for mut arg in linker_args.split('S') {
+            expected_libs.remove(arg);
         }
+
+        assert!(
+            expected_libs.is_empty(),
+            "expected but missing libraries: {:#?}\nlinker arguments: \n{}",
+            expected_libs,
+            linker_args,
+        );
 
         break
     }

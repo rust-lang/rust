@@ -68,7 +68,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         Some(name) => name,
                         None => continue, // skip like historical compilers
                     };
-                    lib.kind = match &kind.as_str()[..] {
+                    lib.kind = match &*kind.as_str() {
                         "static" => cstore::NativeStatic,
                         "static-nobundle" => cstore::NativeStaticNobundle,
                         "dylib" => cstore::NativeUnknown,

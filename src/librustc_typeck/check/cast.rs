@@ -341,10 +341,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                          tstr);
         match self.expr_ty.kind {
             ty::Ref(_, _, mt) => {
-                let mtstr = match mt {
-                    hir::MutMutable => "mut ",
-                    hir::MutImmutable => "",
-                };
+                let mtstr = mt.prefix_str();
                 if self.cast_ty.is_trait() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                         Ok(s) => {
@@ -630,7 +627,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     ) -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
-        if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
+        if m_expr.mutbl == hir::Mutability::Immutable &&
+            m_cast.mutbl == hir::Mutability::Immutable {
             if let ty::Array(ety, _) = m_expr.ty.kind {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
@@ -638,6 +636,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // To allow raw pointers to work correctly, we
                 // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
+
+                // Coerce to a raw pointer so that we generate AddressOf in MIR.
+                let array_ptr_type = fcx.tcx.mk_ptr(m_expr);
+                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No)
+                    .unwrap_or_else(|_| bug!(
+                        "could not cast from reference to array to pointer to array ({:?} to {:?})",
+                        self.expr_ty,
+                        array_ptr_type,
+                    ));
 
                 // this will report a type mismatch if needed
                 fcx.demand_eqtype(self.span, ety, m_cast.ty);

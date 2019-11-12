@@ -1,6 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
+use rustc::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc::traits::{TraitEngine, Normalized, ObligationCause, TraitEngineExt};
 use rustc::ty::query::Providers;
@@ -172,7 +173,7 @@ fn dtorck_constraint_for_ty<'tcx>(
         return Ok(());
     }
 
-    if tcx.trivial_dropck_outlives(ty) {
+    if trivial_dropck_outlives(tcx, ty) {
         return Ok(());
     }
 

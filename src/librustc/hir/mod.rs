@@ -3,9 +3,7 @@
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
 pub use self::BlockCheckMode::*;
-pub use self::CaptureClause::*;
 pub use self::FunctionRetTy::*;
-pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
@@ -23,6 +21,7 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy, IsAuto, ImplPolarity};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -1053,30 +1052,6 @@ pub enum PatKind {
     Slice(HirVec<P<Pat>>, Option<P<Pat>>, HirVec<P<Pat>>),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Mutability {
-    MutMutable,
-    MutImmutable,
-}
-
-impl Mutability {
-    /// Returns `MutMutable` only if both `self` and `other` are mutable.
-    pub fn and(self, other: Self) -> Self {
-        match self {
-            MutMutable => other,
-            MutImmutable => MutImmutable,
-        }
-    }
-
-    pub fn invert(self) -> Self {
-        match self {
-            MutMutable => MutImmutable,
-            MutImmutable => MutMutable,
-        }
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum BinOpKind {
     /// The `+` operator (addition).
@@ -1616,6 +1591,11 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    ///
+    /// To resolve the called method to a `DefId`, call [`type_dependent_def_id`] with
+    /// the `hir_id` of the `MethodCall` node itself.
+    ///
+    /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
     MethodCall(P<PathSegment>, Span, HirVec<Expr>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(HirVec<Expr>),
@@ -1647,8 +1627,8 @@ pub enum ExprKind {
     /// The `Span` is the argument block `|...|`.
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
-    /// `Option<GeneratorMovability>`.
-    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
+    /// `Option<Movability>`.
+    Closure(CaptureBy, P<FnDecl>, BodyId, Span, Option<Movability>),
     /// A block (e.g., `'label: { ... }`).
     Block(P<Block>, Option<Label>),
 
@@ -1698,6 +1678,10 @@ pub enum ExprKind {
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
+///
+/// To resolve the path to a `DefId`, call [`qpath_res`].
+///
+/// [`qpath_res`]: ../ty/struct.TypeckTables.html#method.qpath_res
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum QPath {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
@@ -1817,17 +1801,6 @@ pub struct Destination {
     pub target_id: Result<HirId, LoopIdError>,
 }
 
-/// Whether a generator contains self-references, causing it to be `!Unpin`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GeneratorMovability {
-    /// May contain self-references, `!Unpin`.
-    Static,
-
-    /// Must not contain self-references, `Unpin`.
-    Movable,
-}
-
 /// The yield kind that caused an `ExprKind::Yield`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum YieldSource {
@@ -1846,12 +1819,6 @@ impl fmt::Display for YieldSource {
     }
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum CaptureClause {
-    CaptureByValue,
-    CaptureByRef,
-}
-
 // N.B., if you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -1860,9 +1827,10 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-/// Represents a method's signature in a trait declaration or implementation.
+/// Represents a function's signature in a trait declaration,
+/// trait implementation, or a free function.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct MethodSig {
+pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
@@ -1905,7 +1873,7 @@ pub enum TraitItemKind {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(P<Ty>, Option<BodyId>),
     /// A method with an optional body.
-    Method(MethodSig, TraitMethod),
+    Method(FnSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds, Option<P<Ty>>),
@@ -1939,7 +1907,7 @@ pub enum ImplItemKind {
     /// of the expression.
     Const(P<Ty>, BodyId),
     /// A method implementation with the given signature and body.
-    Method(MethodSig, BodyId),
+    Method(FnSig, BodyId),
     /// An associated type.
     TyAlias(P<Ty>),
     /// An associated `type = impl Trait`.
@@ -2154,31 +2122,11 @@ impl ImplicitSelfKind {
     }
 }
 
-/// Is the trait definition an auto trait?
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum IsAuto {
-    Yes,
-    No
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, HashStable,
          Ord, RustcEncodable, RustcDecodable, Debug)]
 pub enum IsAsync {
     Async,
     NotAsync,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
-         RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Unsafety {
-    Unsafe,
-    Normal,
-}
-
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum Constness {
-    Const,
-    NotConst,
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2206,33 +2154,6 @@ impl Defaultness {
         }
     }
 }
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Unsafety::Normal => "normal",
-            Unsafety::Unsafe => "unsafe",
-        })
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
-pub enum ImplPolarity {
-    /// `impl Trait for Type`
-    Positive,
-    /// `impl !Trait for Type`
-    Negative,
-}
-
-impl fmt::Debug for ImplPolarity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            ImplPolarity::Positive => "positive",
-            ImplPolarity::Negative => "negative",
-        })
-    }
-}
-
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum FunctionRetTy {
@@ -2509,7 +2430,7 @@ pub enum ItemKind {
     /// A `const` item.
     Const(P<Ty>, BodyId),
     /// A function declaration.
-    Fn(P<FnDecl>, FnHeader, Generics, BodyId),
+    Fn(FnSig, Generics, BodyId),
     /// A module.
     Mod(Mod),
     /// An external module, e.g. `extern { .. }`.
@@ -2574,7 +2495,7 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Fn(_, ref generics, _) |
             ItemKind::TyAlias(_, ref generics) |
             ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |
@@ -2667,7 +2588,7 @@ pub struct Upvar {
     pub span: Span
 }
 
-pub type CaptureModeMap = NodeMap<CaptureClause>;
+pub type CaptureModeMap = NodeMap<CaptureBy>;
 
  // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
  // has length > 0 if the trait is found through an chain of imports, starting with the

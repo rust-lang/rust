@@ -134,9 +134,6 @@ declare_features! (
     /// Allows using `rustc_*` attributes (RFC 572).
     (active, rustc_attrs, "1.0.0", Some(29642), None),
 
-    /// Allows using `#[on_unimplemented(..)]` on traits.
-    (active, on_unimplemented, "1.0.0", Some(29628), None),
-
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
 
@@ -210,10 +207,10 @@ declare_features! (
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (active, allocator_internals, "1.20.0", None, None),
 
-    // no-tracking-issue-end
-
     /// Added for testing E0705; perma-unstable.
-    (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),
+    (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+
+    // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
     // feature-group-end: internal feature gates
@@ -267,9 +264,6 @@ declare_features! (
 
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (active, simd_ffi, "1.0.0", Some(27731), None),
-
-    /// Allows using custom attributes (RFC 572).
-    (active, custom_attribute, "1.0.0", Some(29642), None),
 
     /// Allows using non lexical lifetimes (RFC 2094).
     (active, nll, "1.0.0", Some(43234), None),
@@ -469,10 +463,6 @@ declare_features! (
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.
     (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
-    /// Allows relaxing the coherence rules such that
-    /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
-    (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
-
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 
@@ -532,6 +522,12 @@ declare_features! (
 
     /// Allows using the `efiapi` ABI.
     (active, abi_efiapi, "1.40.0", Some(65815), None),
+
+    /// Allows using the `#[register_attr]` attribute.
+    (active, register_attr, "1.41.0", Some(66080), None),
+
+    /// Allows using the `#[register_attr]` attribute.
+    (active, register_tool, "1.41.0", Some(66079), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

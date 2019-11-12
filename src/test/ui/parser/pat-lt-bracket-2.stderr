@@ -2,7 +2,7 @@ error: expected one of `:`, `@`, or `|`, found `<`
   --> $DIR/pat-lt-bracket-2.rs:1:7
    |
 LL | fn a(B<) {}
-   |       ^ expected one of `:`, `@`, or `|` here
+   |       ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a type, explicitly ignore the parameter name

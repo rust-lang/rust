@@ -24,7 +24,7 @@ error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found
 LL |     if (a and b) {
    |           ^^^
    |           |
-   |           expected one of 8 possible tokens here
+   |           expected one of 8 possible tokens
    |           help: use `&&` instead of `and` for the boolean operator
 
 error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `or`
@@ -33,7 +33,7 @@ error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found
 LL |     if (a or b) {
    |           ^^
    |           |
-   |           expected one of 8 possible tokens here
+   |           expected one of 8 possible tokens
    |           help: use `||` instead of `or` for the boolean operator
 
 error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `and`
@@ -42,7 +42,7 @@ error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `and`
 LL |     while a and b {
    |             ^^^
    |             |
-   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator
    |             help: use `&&` instead of `and` for the boolean operator
 
 error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `or`
@@ -51,7 +51,7 @@ error: expected one of `!`, `.`, `::`, `?`, `{`, or an operator, found `or`
 LL |     while a or b {
    |             ^^
    |             |
-   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator here
+   |             expected one of `!`, `.`, `::`, `?`, `{`, or an operator
    |             help: use `||` instead of `or` for the boolean operator
 
 error: aborting due to 6 previous errors

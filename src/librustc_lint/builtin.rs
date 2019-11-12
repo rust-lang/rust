@@ -706,7 +706,7 @@ impl EarlyLintPass for DeprecatedAttr {
             }
         }
         if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
-            let path_str = pprust::path_to_string(&attr.path);
+            let path_str = pprust::path_to_string(&attr.get_normal_item().path);
             let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
             lint_deprecated_attr(cx, attr, &msg, None);
         }
@@ -736,7 +736,7 @@ impl UnusedDocComment {
         let mut sugared_span: Option<Span> = None;
 
         while let Some(attr) = attrs.next() {
-            if attr.is_sugared_doc {
+            if attr.is_doc_comment() {
                 sugared_span = Some(
                     sugared_span.map_or_else(
                         || attr.span,
@@ -745,7 +745,7 @@ impl UnusedDocComment {
                 );
             }
 
-            if attrs.peek().map(|next_attr| next_attr.is_sugared_doc).unwrap_or_default() {
+            if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
                 continue;
             }
 
@@ -926,8 +926,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                    consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
             Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
-                if to_mt == hir::Mutability::MutMutable &&
-                   from_mt == hir::Mutability::MutImmutable {
+                if to_mt == hir::Mutability::Mutable &&
+                   from_mt == hir::Mutability::Immutable {
                     cx.span_lint(MUTABLE_TRANSMUTES, expr.span, msg);
                 }
             }
@@ -1476,14 +1476,12 @@ impl KeywordIdents {
         let mut lint = cx.struct_span_lint(
             KEYWORD_IDENTS,
             ident.span,
-            &format!("`{}` is a keyword in the {} edition",
-                     ident.as_str(),
-                     next_edition),
+            &format!("`{}` is a keyword in the {} edition", ident, next_edition),
         );
         lint.span_suggestion(
             ident.span,
             "you can use a raw identifier to stay compatible",
-            format!("r#{}", ident.as_str()),
+            format!("r#{}", ident),
             Applicability::MachineApplicable,
         );
         lint.emit()
@@ -1905,30 +1903,45 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
 
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<InitKind> {
-            const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
-            const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
             // `transmute` is inside an anonymous module (the `extern` block?);
             // `Invalid` represents the empty string and matches that.
+            // FIXME(#66075): use diagnostic items.  Somehow, that does not seem to work
+            // on intrinsics right now.
             const TRANSMUTE_PATH: &[Symbol] =
                 &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
 
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
+                // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                     let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
-                    if cx.match_def_path(def_id, ZEROED_PATH) {
+                    if cx.tcx.is_diagnostic_item(sym::mem_zeroed, def_id) {
                         return Some(InitKind::Zeroed);
-                    }
-                    if cx.match_def_path(def_id, UININIT_PATH) {
+                    } else if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, def_id) {
                         return Some(InitKind::Uninit);
-                    }
-                    if cx.match_def_path(def_id, TRANSMUTE_PATH) {
+                    } else if cx.match_def_path(def_id, TRANSMUTE_PATH) {
                         if is_zero(&args[0]) {
                             return Some(InitKind::Zeroed);
                         }
                     }
-                    // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
-                    // `MaybeUninit::uninit().assume_init()`.
+                }
+            } else if let hir::ExprKind::MethodCall(_, _, ref args) = expr.kind {
+                // Find problematic calls to `MaybeUninit::assume_init`.
+                let def_id = cx.tables.type_dependent_def_id(expr.hir_id)?;
+                if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
+                    // This is a call to *some* method named `assume_init`.
+                    // See if the `self` parameter is one of the dangerous constructors.
+                    if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
+                        if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
+                            let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+
+                            if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
+                                return Some(InitKind::Zeroed);
+                            } else if cx.tcx.is_diagnostic_item(sym::maybe_uninit_uninit, def_id) {
+                                return Some(InitKind::Uninit);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1949,6 +1962,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
                 FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
                 Never => Some((format!("The never type (`!`) has no valid value"), None)),
+                RawPtr(tm) if matches!(tm.ty.kind, Dynamic(..)) => // raw ptr to dyn Trait
+                    Some((format!("The vtable of a wide raw pointer must be non-null"), None)),
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit =>
                     Some((format!("Booleans must be `true` or `false`"), None)),
@@ -2032,7 +2047,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 );
                 err.span_label(expr.span,
                     "this code causes undefined behavior when executed");
-                err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
+                err.span_label(expr.span, "help: use `MaybeUninit<T>` instead, \
+                    and only call `assume_init` after initialization is done");
                 if let Some(span) = span {
                     err.span_note(span, &msg);
                 } else {

@@ -26,7 +26,7 @@ use rustc_index::vec::Idx;
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
@@ -55,6 +55,11 @@ pub struct Pat<'tcx> {
     pub kind: Box<PatKind<'tcx>>,
 }
 
+impl<'tcx> Pat<'tcx> {
+    pub(crate) fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
+        Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatTyProj<'tcx> {
@@ -293,10 +298,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 match self.ty.kind {
                     ty::Adt(def, _) if def.is_box() => write!(f, "box ")?,
                     ty::Ref(_, _, mutbl) => {
-                        write!(f, "&")?;
-                        if mutbl == hir::MutMutable {
-                            write!(f, "mut ")?;
-                        }
+                        write!(f, "&{}", mutbl.prefix_str())?;
                     }
                     _ => bug!("{} is a bad Deref pattern type", self.ty)
                 }
@@ -594,14 +596,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
-                    ty::BindByValue(hir::MutMutable) =>
+                    ty::BindByValue(hir::Mutability::Mutable) =>
                         (Mutability::Mut, BindingMode::ByValue),
-                    ty::BindByValue(hir::MutImmutable) =>
+                    ty::BindByValue(hir::Mutability::Immutable) =>
                         (Mutability::Not, BindingMode::ByValue),
-                    ty::BindByReference(hir::MutMutable) =>
+                    ty::BindByReference(hir::Mutability::Mutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             BorrowKind::Mut { allow_two_phase_borrow: false })),
-                    ty::BindByReference(hir::MutImmutable) =>
+                    ty::BindByReference(hir::Mutability::Immutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             BorrowKind::Shared)),
                 };

@@ -367,118 +367,52 @@ fn orphan_check_trait_ref<'tcx>(
              trait_ref);
     }
 
-    if tcx.features().re_rebalance_coherence {
-        // Given impl<P1..=Pn> Trait<T1..=Tn> for T0, an impl is valid only
-        // if at least one of the following is true:
-        //
-        // - Trait is a local trait
-        // (already checked in orphan_check prior to calling this function)
-        // - All of
-        //     - At least one of the types T0..=Tn must be a local type.
-        //      Let Ti be the first such type.
-        //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
-        //
-        fn uncover_fundamental_ty<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            ty: Ty<'tcx>,
-            in_crate: InCrate,
-        ) -> Vec<Ty<'tcx>> {
-            if fundamental_ty(ty) && ty_is_non_local(tcx, ty, in_crate).is_some() {
-                ty.walk_shallow().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).collect()
-            } else {
-                vec![ty]
+    // Given impl<P1..=Pn> Trait<T1..=Tn> for T0, an impl is valid only
+    // if at least one of the following is true:
+    //
+    // - Trait is a local trait
+    // (already checked in orphan_check prior to calling this function)
+    // - All of
+    //     - At least one of the types T0..=Tn must be a local type.
+    //      Let Ti be the first such type.
+    //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
+    //
+    fn uncover_fundamental_ty<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        in_crate: InCrate,
+    ) -> Vec<Ty<'tcx>> {
+        if fundamental_ty(ty) && ty_is_non_local(tcx, ty, in_crate).is_some() {
+            ty.walk_shallow().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).collect()
+        } else {
+            vec![ty]
+        }
+    }
+
+    let mut non_local_spans = vec![];
+    for (i, input_ty) in trait_ref
+        .input_types()
+        .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+        .enumerate()
+    {
+        debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
+        let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
+        if non_local_tys.is_none() {
+            debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
+            return Ok(());
+        } else if let ty::Param(_) = input_ty.kind {
+            debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
+            return Err(OrphanCheckErr::UncoveredTy(input_ty))
+        }
+        if let Some(non_local_tys) = non_local_tys {
+            for input_ty in non_local_tys {
+                non_local_spans.push((input_ty, i == 0));
             }
         }
-
-        let mut non_local_spans = vec![];
-        for (i, input_ty) in trait_ref
-            .input_types()
-            .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-            .enumerate()
-        {
-            debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
-            let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
-            if non_local_tys.is_none() {
-                debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
-                return Ok(());
-            } else if let ty::Param(_) = input_ty.kind {
-                debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
-                return Err(OrphanCheckErr::UncoveredTy(input_ty))
-            }
-            if let Some(non_local_tys) = non_local_tys {
-                for input_ty in non_local_tys {
-                    non_local_spans.push((input_ty, i == 0));
-                }
-            }
-        }
-        // If we exit above loop, never found a local type.
-        debug!("orphan_check_trait_ref: no local type");
-        Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
-    } else {
-        let mut non_local_spans = vec![];
-        // First, create an ordered iterator over all the type
-        // parameters to the trait, with the self type appearing
-        // first.  Find the first input type that either references a
-        // type parameter OR some local type.
-        for (i, input_ty) in trait_ref.input_types().enumerate() {
-            let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
-            if non_local_tys.is_none() {
-                debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
-
-                // First local input type. Check that there are no
-                // uncovered type parameters.
-                let uncovered_tys = uncovered_tys(tcx, input_ty, in_crate);
-                for uncovered_ty in uncovered_tys {
-                    if let Some(param) = uncovered_ty.walk()
-                        .find(|t| is_possibly_remote_type(t, in_crate))
-                    {
-                        debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
-                        return Err(OrphanCheckErr::UncoveredTy(param));
-                    }
-                }
-
-                // OK, found local type, all prior types upheld invariant.
-                return Ok(());
-            }
-
-            // Otherwise, enforce invariant that there are no type
-            // parameters reachable.
-            if let Some(param) = input_ty.walk()
-                .find(|t| is_possibly_remote_type(t, in_crate))
-            {
-                debug!("orphan_check_trait_ref: uncovered type `{:?}`", param);
-                return Err(OrphanCheckErr::UncoveredTy(param));
-            }
-
-            if let Some(non_local_tys) = non_local_tys {
-                for input_ty in non_local_tys {
-                    non_local_spans.push((input_ty, i == 0));
-                }
-            }
-        }
-        // If we exit above loop, never found a local type.
-        debug!("orphan_check_trait_ref: no local type");
-        Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
     }
-}
-
-fn uncovered_tys<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
-    if ty_is_non_local_constructor(tcx, ty, in_crate).is_none() {
-        vec![]
-    } else if fundamental_ty(ty) {
-        ty.walk_shallow()
-          .flat_map(|t| uncovered_tys(tcx, t, in_crate))
-          .collect()
-    } else {
-        vec![ty]
-    }
-}
-
-fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
-    match ty.kind {
-        ty::Projection(..) | ty::Param(..) => true,
-        _ => false,
-    }
+    // If we exit above loop, never found a local type.
+    debug!("orphan_check_trait_ref: no local type");
+    Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
 }
 
 fn ty_is_non_local<'t>(tcx: TyCtxt<'t>, ty: Ty<'t>, in_crate: InCrate) -> Option<Vec<Ty<'t>>> {

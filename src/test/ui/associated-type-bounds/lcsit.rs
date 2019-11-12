@@ -2,7 +2,7 @@
 
 #![feature(associated_type_bounds)]
 #![feature(impl_trait_in_bindings)]
-
+//~^ WARNING `impl_trait_in_bindings` is incomplete
 #![allow(non_upper_case_globals)]
 
 use std::ops::Add;

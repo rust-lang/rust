@@ -628,6 +628,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             let cast = if cx.tables().is_coercion_cast(source.hir_id) {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
+            } else if cx.tables().expr_ty(source).is_region_ptr() {
+                // Special cased so that we can type check that the element
+                // type of the source matches the pointed to type of the
+                // destination.
+                ExprKind::Pointer { source: source.to_ref(), cast: PointerCast::ArrayToPointer }
             } else {
                 // check whether this is casting an enum variant discriminant
                 // to prevent cycles, we refer to the discriminant initializer
@@ -855,8 +860,8 @@ impl ToBorrowKind for AutoBorrowMutability {
 impl ToBorrowKind for hir::Mutability {
     fn to_borrow_kind(&self) -> BorrowKind {
         match *self {
-            hir::MutMutable => BorrowKind::Mut { allow_two_phase_borrow: false },
-            hir::MutImmutable => BorrowKind::Shared,
+            hir::Mutability::Mutable => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir::Mutability::Immutable => BorrowKind::Shared,
         }
     }
 }
@@ -1008,7 +1013,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::MutImmutable,
+                                                               mutbl: hir::Mutability::Immutable,
                                                            });
                         Expr {
                             ty: closure_ty,
@@ -1029,7 +1034,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::MutMutable,
+                                                               mutbl: hir::Mutability::Mutable,
                                                            });
                         Expr {
                             ty: closure_ty,

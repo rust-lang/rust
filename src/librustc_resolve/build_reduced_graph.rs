@@ -33,7 +33,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
 use syntax::feature_gate::is_builtin_attr;
-use syntax::parse::token::{self, Token};
+use syntax::token::{self, Token};
 use syntax::print::pprust;
 use syntax::{span_err, struct_span_err};
 use syntax::source_map::{respan, Spanned};
@@ -141,8 +141,7 @@ impl<'a> Resolver<'a> {
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
-            Res::NonMacroAttr(attr_kind) =>
-                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
             _ => None,
         }
     }
@@ -449,7 +448,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                     name: kw::PathRoot,
                                     span: source.ident.span,
                                 },
-                                id: Some(self.r.session.next_node_id()),
+                                id: Some(self.r.next_node_id()),
                             });
                             source.ident.name = crate_name;
                         }
@@ -1229,8 +1228,10 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
-        if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope));
+        if !attr.is_doc_comment() && is_builtin_attr(attr) {
+            self.r.builtin_attrs.push(
+                (attr.get_normal_item().path.segments[0].ident, self.parent_scope)
+            );
         }
         visit::walk_attribute(self, attr);
     }

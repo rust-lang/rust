@@ -63,35 +63,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let drop = Instance::resolve_drop_in_place(*tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
 
-        // no need to do any alignment checks on the memory accesses below, because we know the
+        // No need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
-        self.memory
-            .get_mut(vtable.alloc_id)?
-            .write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
+        let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
+        vtable_alloc.write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
 
-        let size_ptr = vtable.offset(ptr_size, self)?;
-        self.memory
-            .get_mut(size_ptr.alloc_id)?
-            .write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
-        let align_ptr = vtable.offset(ptr_size * 2, self)?;
-        self.memory
-            .get_mut(align_ptr.alloc_id)?
-            .write_ptr_sized(tcx, align_ptr, Scalar::from_uint(align, ptr_size).into())?;
+        let size_ptr = vtable.offset(ptr_size, tcx)?;
+        vtable_alloc.write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
+        let align_ptr = vtable.offset(ptr_size * 2, tcx)?;
+        vtable_alloc.write_ptr_sized(tcx, align_ptr, Scalar::from_uint(align, ptr_size).into())?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
                 // resolve for vtable: insert shims where needed
                 let instance = ty::Instance::resolve_for_vtable(
-                    *self.tcx,
+                    *tcx,
                     self.param_env,
                     def_id,
                     substs,
                 ).ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
-                self.memory
-                    .get_mut(method_ptr.alloc_id)?
+                // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
+                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
+                self.memory.get_raw_mut(vtable.alloc_id)?
                     .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
             }
         }
@@ -114,7 +109,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.tcx.data_layout.pointer_align.abi,
         )?.expect("cannot be a ZST");
         let drop_fn = self.memory
-            .get(vtable.alloc_id)?
+            .get_raw(vtable.alloc_id)?
             .read_ptr_sized(self, vtable)?
             .not_undef()?;
         // We *need* an instance here, no other kind of function value, to be able
@@ -140,7 +135,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             3*pointer_size,
             self.tcx.data_layout.pointer_align.abi,
         )?.expect("cannot be a ZST");
-        let alloc = self.memory.get(vtable.alloc_id)?;
+        let alloc = self.memory.get_raw(vtable.alloc_id)?;
         let size = alloc.read_ptr_sized(
             self,
             vtable.offset(pointer_size, self)?

@@ -2,7 +2,7 @@ error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `type`,
   --> $DIR/issue-41155.rs:5:1
    |
 LL |     pub
-   |        - expected one of 8 possible tokens here
+   |        - expected one of 8 possible tokens
 LL | }
    | ^ unexpected token
 

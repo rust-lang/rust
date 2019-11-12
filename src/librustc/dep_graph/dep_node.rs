@@ -525,7 +525,7 @@ impl<'tcx> DepNodeParams<'tcx> for CrateNum {
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
-        tcx.crate_name(*self).as_str().to_string()
+        tcx.crate_name(*self).to_string()
     }
 }
 

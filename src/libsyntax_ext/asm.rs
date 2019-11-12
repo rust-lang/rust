@@ -8,7 +8,7 @@ use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax_expand::base::{self, *};
-use syntax::parse::token::{self, Token};
+use syntax::token::{self, Token};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::ast::AsmDialect;

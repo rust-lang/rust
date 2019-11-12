@@ -287,7 +287,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 let kind = match scalar.value {
                     abi::Int(..) |
                     abi::Pointer => RegKind::Integer,
-                    abi::Float(_) => RegKind::Float,
+                    abi::F32 | abi::F64 => RegKind::Float,
                 };
                 HomogeneousAggregate::Homogeneous(Reg {
                     kind,
@@ -554,7 +554,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "arm" => arm::compute_abi_info(cx, self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),
-            "powerpc" => powerpc::compute_abi_info(cx, self),
+            "powerpc" => powerpc::compute_abi_info(self),
             "powerpc64" => powerpc64::compute_abi_info(cx, self),
             "s390x" => s390x::compute_abi_info(cx, self),
             "msp430" => msp430::compute_abi_info(self),

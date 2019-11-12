@@ -2,7 +2,7 @@ error: expected one of `::`, `;`, or `as`, found `.`
   --> $DIR/issue-33455.rs:1:8
    |
 LL | use foo.bar;
-   |        ^ expected one of `::`, `;`, or `as` here
+   |        ^ expected one of `::`, `;`, or `as`
 
 error: aborting due to previous error
 

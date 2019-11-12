@@ -13,7 +13,7 @@ error: expected one of `::` or `>`, found `Foo`
   --> $DIR/associated-types-project-from-hrtb-explicit.rs:10:29
    |
 LL | fn foo2<I>(x: <I as for<'x> Foo<&'x isize>>::A)
-   |                             ^^^ expected one of `::` or `>` here
+   |                             ^^^ expected one of `::` or `>`
 
 error: aborting due to 2 previous errors
 

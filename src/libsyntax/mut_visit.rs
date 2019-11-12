@@ -9,7 +9,7 @@
 
 use crate::ast::*;
 use crate::source_map::{Spanned, respan};
-use crate::parse::token::{self, Token};
+use crate::token::{self, Token};
 use crate::ptr::P;
 use crate::ThinVec;
 use crate::tokenstream::*;
@@ -21,9 +21,6 @@ use syntax_pos::Span;
 use rustc_data_structures::sync::Lrc;
 use std::ops::DerefMut;
 use std::{panic, process, ptr};
-
-#[cfg(test)]
-mod tests;
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
@@ -357,7 +354,7 @@ pub fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_method_sig<T: MutVisitor>(MethodSig { header, decl }: &mut MethodSig, vis: &mut T) {
+pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl }: &mut FnSig, vis: &mut T) {
     vis.visit_fn_header(header);
     vis.visit_fn_decl(decl);
 }
@@ -550,10 +547,14 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
-    let Attribute { item: AttrItem { path, tokens }, id: _, style: _, is_sugared_doc: _, span }
-        = attr;
-    vis.visit_path(path);
-    vis.visit_tts(tokens);
+    let Attribute { kind, id: _, style: _, span } = attr;
+    match kind {
+        AttrKind::Normal(AttrItem { path, tokens }) => {
+            vis.visit_path(path);
+            vis.visit_tts(tokens);
+        }
+        AttrKind::DocComment(_) => {}
+    }
     vis.visit_span(span);
 }
 
@@ -874,9 +875,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             vis.visit_expr(expr);
         }
-        ItemKind::Fn(decl, header, generics, body) => {
-            vis.visit_fn_decl(decl);
-            vis.visit_fn_header(header);
+        ItemKind::Fn(sig, generics, body) => {
+            visit_fn_sig(sig, vis);
             vis.visit_generics(generics);
             vis.visit_block(body);
         }
@@ -934,7 +934,7 @@ pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
             visit_opt(default, |default| vis.visit_expr(default));
         }
         TraitItemKind::Method(sig, body) => {
-            visit_method_sig(sig, vis);
+            visit_fn_sig(sig, vis);
             visit_opt(body, |body| vis.visit_block(body));
         }
         TraitItemKind::Type(bounds, default) => {
@@ -966,7 +966,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
             visitor.visit_expr(expr);
         }
         ImplItemKind::Method(sig, body) => {
-            visit_method_sig(sig, visitor);
+            visit_fn_sig(sig, visitor);
             visitor.visit_block(body);
         }
         ImplItemKind::TyAlias(ty) => visitor.visit_ty(ty),

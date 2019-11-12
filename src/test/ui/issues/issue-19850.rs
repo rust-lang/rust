@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(unused_variables)]
 // Test that `<Type as Trait>::Output` and `Self::Output` are accepted as type annotations in let
 // bindings

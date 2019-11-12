@@ -2410,22 +2410,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutMutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Mutable})
     }
 
     #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Immutable})
     }
 
     #[inline]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutMutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Mutable})
     }
 
     #[inline]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Immutable})
     }
 
     #[inline]
@@ -2516,7 +2516,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_generator(self,
                         id: DefId,
                         generator_substs: SubstsRef<'tcx>,
-                        movability: hir::GeneratorMovability)
+                        movability: hir::Movability)
                         -> Ty<'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))
     }
@@ -3044,5 +3044,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins)
+    };
+    providers.has_panic_handler = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        // We want to check if the panic handler was defined in this crate
+        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
     };
 }

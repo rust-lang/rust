@@ -26,31 +26,29 @@ macro_rules! panic {
 /// For details, see `std::macros`.
 #[cfg(not(bootstrap))]
 #[macro_export]
-#[allow_internal_unstable(core_panic, panic_internals)]
+#[allow_internal_unstable(core_panic,
+    // FIXME(anp, eddyb) `core_intrinsics` is used here to allow calling
+    // the `caller_location` intrinsic, but once  `#[track_caller]` is implemented,
+    // `panicking::{panic, panic_fmt}` can use that instead of a `Location` argument.
+    core_intrinsics,
+)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
-    ($msg:expr) => ({
-        const LOC: &$crate::panic::Location<'_> = &$crate::panic::Location::internal_constructor(
-            $crate::file!(),
-            $crate::line!(),
-            $crate::column!(),
-        );
-        $crate::panicking::panic($msg, LOC)
-    });
+    ($msg:expr) => (
+        $crate::panicking::panic($msg, $crate::intrinsics::caller_location())
+    );
     ($msg:expr,) => (
         $crate::panic!($msg)
     );
-    ($fmt:expr, $($arg:tt)+) => ({
-        const LOC: &$crate::panic::Location<'_> = &$crate::panic::Location::internal_constructor(
-            $crate::file!(),
-            $crate::line!(),
-            $crate::column!(),
-        );
-        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+), LOC)
-    });
+    ($fmt:expr, $($arg:tt)+) => (
+        $crate::panicking::panic_fmt(
+            $crate::format_args!($fmt, $($arg)+),
+            $crate::intrinsics::caller_location(),
+        )
+    );
 }
 
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
@@ -1276,6 +1274,10 @@ pub(crate) mod builtin {
     }
 
     /// Inline assembly.
+    ///
+    /// Read the [unstable book] for the usage.
+    ///
+    /// [unstable book]: ../unstable-book/library-features/asm.html
     #[unstable(feature = "asm", issue = "29722",
                reason = "inline assembly is not stable enough for use and is subject to change")]
     #[rustc_builtin_macro]

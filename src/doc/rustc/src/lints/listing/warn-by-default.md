@@ -307,46 +307,6 @@ warning: path statement with no effect
   |
 ```
 
-## patterns-in-fns-without-body
-
-This lint detects patterns in functions without body were that were
-previously erroneously allowed. Some example code that triggers this lint:
-
-```rust
-trait Trait {
-    fn foo(mut arg: u8);
-}
-```
-
-This will produce:
-
-```text
-warning: patterns aren't allowed in methods without bodies
- --> src/main.rs:2:12
-  |
-2 |     fn foo(mut arg: u8);
-  |            ^^^^^^^
-  |
-  = note: `#[warn(patterns_in_fns_without_body)]` on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #35203 <https://github.com/rust-lang/rust/issues/35203>
-```
-
-To fix this, remove the pattern; it can be used in the implementation without
-being used in the definition. That is:
-
-```rust
-trait Trait {
-    fn foo(arg: u8);
-}
-
-impl Trait for i32 {
-    fn foo(mut arg: u8) {
-
-    }
-}
-```
-
 ## plugin-as-library
 
 This lint detects when compiler plugins are used as ordinary library in

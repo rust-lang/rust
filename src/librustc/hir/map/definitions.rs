@@ -19,7 +19,7 @@ use std::hash::Hash;
 use syntax::ast;
 use syntax_pos::symbol::{Symbol, sym};
 use syntax_pos::hygiene::ExpnId;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
@@ -310,10 +310,6 @@ pub enum DefPathData {
     AnonConst,
     /// An `impl Trait` type node.
     ImplTrait,
-    /// Identifies a piece of crate metadata that is global to a whole crate
-    /// (as opposed to just one item). `GlobalMetaData` components are only
-    /// supposed to show up right below the crate root.
-    GlobalMetaData(Symbol),
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
@@ -444,9 +440,6 @@ impl Definitions {
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
         self.set_invocation_parent(ExpnId::root(), root_index);
 
-        // Allocate some other `DefIndex`es that always must exist.
-        GlobalMetaDataKind::allocate_def_indices(self);
-
         root_index
     }
 
@@ -553,8 +546,7 @@ impl DefPathData {
             TypeNs(name) |
             ValueNs(name) |
             MacroNs(name) |
-            LifetimeNs(name) |
-            GlobalMetaData(name) => Some(name),
+            LifetimeNs(name) => Some(name),
 
             Impl |
             CrateRoot |
@@ -572,8 +564,7 @@ impl DefPathData {
             TypeNs(name) |
             ValueNs(name) |
             MacroNs(name) |
-            LifetimeNs(name) |
-            GlobalMetaData(name) => {
+            LifetimeNs(name) => {
                 name
             }
             // Note that this does not show up in user print-outs.
@@ -591,78 +582,3 @@ impl DefPathData {
         self.as_symbol().to_string()
     }
 }
-
-// We define the `GlobalMetaDataKind` enum with this macro because we want to
-// make sure that we exhaustively iterate over all variants when registering
-// the corresponding `DefIndex`es in the `DefTable`.
-macro_rules! define_global_metadata_kind {
-    (pub enum GlobalMetaDataKind {
-        $($variant:ident),*
-    }) => (
-        pub enum GlobalMetaDataKind {
-            $($variant),*
-        }
-
-        impl GlobalMetaDataKind {
-            fn allocate_def_indices(definitions: &mut Definitions) {
-                $({
-                    let instance = GlobalMetaDataKind::$variant;
-                    definitions.create_def_with_parent(
-                        CRATE_DEF_INDEX,
-                        ast::DUMMY_NODE_ID,
-                        DefPathData::GlobalMetaData(instance.name()),
-                        ExpnId::root(),
-                        DUMMY_SP
-                    );
-
-                    // Make sure calling `def_index` does not crash.
-                    instance.def_index(&definitions.table);
-                })*
-            }
-
-            pub fn def_index(&self, def_path_table: &DefPathTable) -> DefIndex {
-                let def_key = DefKey {
-                    parent: Some(CRATE_DEF_INDEX),
-                    disambiguated_data: DisambiguatedDefPathData {
-                        data: DefPathData::GlobalMetaData(self.name()),
-                        disambiguator: 0,
-                    }
-                };
-
-                // These `DefKey`s are all right after the root,
-                // so a linear search is fine.
-                let index = def_path_table.index_to_key
-                                          .iter()
-                                          .position(|k| *k == def_key)
-                                          .unwrap();
-
-                DefIndex::from(index)
-            }
-
-            fn name(&self) -> Symbol {
-
-                let string = match *self {
-                    $(
-                        GlobalMetaDataKind::$variant => {
-                            concat!("{{GlobalMetaData::", stringify!($variant), "}}")
-                        }
-                    )*
-                };
-
-                Symbol::intern(string)
-            }
-        }
-    )
-}
-
-define_global_metadata_kind!(pub enum GlobalMetaDataKind {
-    Krate,
-    CrateDeps,
-    DylibDependencyFormats,
-    LangItems,
-    LangItemsMissing,
-    NativeLibraries,
-    SourceMap,
-    Impls,
-    ExportedSymbols
-});

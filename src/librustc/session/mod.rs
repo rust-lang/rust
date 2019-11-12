@@ -21,13 +21,12 @@ use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
-use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
-use syntax::sess::ParseSess;
+use syntax::sess::{ParseSess, ProcessCfgMod};
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
@@ -38,10 +37,11 @@ use rustc_data_structures::jobserver;
 use ::jobserver::Client;
 
 use std;
-use std::cell::{self, Cell, RefCell};
+use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::Arc;
@@ -125,9 +125,7 @@ pub struct Session {
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: Lock<CodeStats>,
-
-    next_node_id: OneThread<Cell<ast::NodeId>>,
+    pub code_stats: CodeStats,
 
     /// If `-zfuel=crate=n` is specified, `Some(crate)`.
     optimization_fuel_crate: Option<String>,
@@ -147,9 +145,6 @@ pub struct Session {
 
     /// Metadata about the allocators for the current crate being compiled.
     pub has_global_allocator: Once<bool>,
-
-    /// Metadata about the panic handlers for the current crate being compiled.
-    pub has_panic_handler: Once<bool>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -189,7 +184,7 @@ enum DiagnosticBuilderMethod {
 pub enum DiagnosticMessageId {
     ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32), // issue number
+    StabilityId(Option<NonZeroU32>), // issue number
 }
 
 impl From<&'static lint::Lint> for DiagnosticMessageId {
@@ -358,21 +353,6 @@ impl Session {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
-    pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
-        let id = self.next_node_id.get();
-
-        match id.as_usize().checked_add(count) {
-            Some(next) => {
-                self.next_node_id.set(ast::NodeId::from_usize(next));
-            }
-            None => bug!("input too large; ran out of node-IDs!"),
-        }
-
-        id
-    }
-    pub fn next_node_id(&self) -> NodeId {
-        self.reserve_node_ids(1)
-    }
     pub fn diagnostic(&self) -> &errors::Handler {
         &self.parse_sess.span_diagnostic
     }
@@ -955,6 +935,7 @@ pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     let file_path_mapping = sopts.file_path_mapping();
 
@@ -965,6 +946,7 @@ pub fn build_session(
         Lrc::new(source_map::SourceMap::new(file_path_mapping)),
         DiagnosticOutput::Default,
         Default::default(),
+        process_cfg_mod,
     )
 }
 
@@ -1043,6 +1025,7 @@ pub fn build_session_with_source_map(
     source_map: Lrc<source_map::SourceMap>,
     diagnostics_output: DiagnosticOutput,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1083,7 +1066,14 @@ pub fn build_session_with_source_map(
         },
     );
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
+    build_session_(
+        sopts,
+        local_crate_source_file,
+        diagnostic_handler,
+        source_map,
+        lint_caps,
+        process_cfg_mod,
+    )
 }
 
 fn build_session_(
@@ -1092,6 +1082,7 @@ fn build_session_(
     span_diagnostic: errors::Handler,
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     let self_profiler =
         if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
@@ -1130,6 +1121,7 @@ fn build_session_(
     let parse_sess = ParseSess::with_span_handler(
         span_diagnostic,
         source_map,
+        process_cfg_mod,
     );
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
@@ -1190,7 +1182,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
-        next_node_id: OneThread::new(Cell::new(NodeId::from_u32(1))),
         allocator_kind: Once::new(),
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
@@ -1211,7 +1202,6 @@ fn build_session_(
         print_fuel,
         jobserver: jobserver::client(),
         has_global_allocator: Once::new(),
-        has_panic_handler: Once::new(),
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),

@@ -23,7 +23,7 @@ use rustc_target::spec::abi;
 use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
-use syntax::errors::pluralise;
+use syntax::errors::pluralize;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
@@ -392,7 +392,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     quantifier,
                     bound,
                     kind,
-                    pluralise!(bound),
+                    pluralize!(bound),
                 ))
             };
 
@@ -1360,7 +1360,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 span,
                 E0191,
                 "the value of the associated type{} {} must be specified",
-                pluralise!(associated_types.len()),
+                pluralize!(associated_types.len()),
                 names,
             );
             let (suggest, potential_assoc_types_spans) =

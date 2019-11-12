@@ -31,10 +31,6 @@ use syntax::symbol::{Symbol, sym};
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
                  ATTR_EXPECTED_CGU_REUSE};
 
-const MODULE: Symbol = sym::module;
-const CFG: Symbol = sym::cfg;
-const KIND: Symbol = sym::kind;
-
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
@@ -71,7 +67,7 @@ impl AssertModuleSource<'tcx> {
         } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
             (CguReuse::No, ComparisonKind::Exact)
         } else if attr.check_name(ATTR_EXPECTED_CGU_REUSE) {
-            match &self.field(attr, KIND).as_str()[..] {
+            match &*self.field(attr, sym::kind).as_str() {
                 "no" => (CguReuse::No, ComparisonKind::Exact),
                 "pre-lto" => (CguReuse::PreLto, ComparisonKind::Exact),
                 "post-lto" => (CguReuse::PostLto, ComparisonKind::Exact),
@@ -98,8 +94,8 @@ impl AssertModuleSource<'tcx> {
             return;
         }
 
-        let user_path = self.field(attr, MODULE).as_str().to_string();
-        let crate_name = self.tcx.crate_name(LOCAL_CRATE).as_str().to_string();
+        let user_path = self.field(attr, sym::module).to_string();
+        let crate_name = self.tcx.crate_name(LOCAL_CRATE).to_string();
 
         if !user_path.starts_with(&crate_name) {
             let msg = format!("Found malformed codegen unit name `{}`. \
@@ -125,7 +121,7 @@ impl AssertModuleSource<'tcx> {
                                                        cgu_path_components,
                                                        cgu_special_suffix);
 
-        debug!("mapping '{}' to cgu name '{}'", self.field(attr, MODULE), cgu_name);
+        debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
         if !self.available_cgus.contains(&cgu_name) {
             self.tcx.sess.span_err(attr.span,
@@ -135,7 +131,7 @@ impl AssertModuleSource<'tcx> {
                     cgu_name,
                     self.available_cgus
                         .iter()
-                        .map(|cgu| cgu.as_str().to_string())
+                        .map(|cgu| cgu.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")));
         }
@@ -169,7 +165,7 @@ impl AssertModuleSource<'tcx> {
     /// cfg flag called `foo`.
     fn check_config(&self, attr: &ast::Attribute) -> bool {
         let config = &self.tcx.sess.parse_sess.config;
-        let value = self.field(attr, CFG);
+        let value = self.field(attr, sym::cfg);
         debug!("check_config(config={:?}, value={:?})", config, value);
         if config.iter().any(|&(name, _)| name == value) {
             debug!("check_config: matched");

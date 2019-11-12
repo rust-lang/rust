@@ -4,13 +4,16 @@ set -ex
 
 source shared.sh
 
-LLVM=llvmorg-8.0.0-rc2
+LLVM=llvmorg-9.0.0
 
 mkdir llvm-project
 cd llvm-project
 
 curl -L https://github.com/llvm/llvm-project/archive/$LLVM.tar.gz | \
   tar xzf - --strip-components=1
+
+yum install -y patch
+patch -Np1 < ../llvm-project-centos.patch
 
 mkdir clang-build
 cd clang-build

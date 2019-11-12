@@ -1,4 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
+// compile-flags: -Zsave-analysis
 
 #![feature(rustc_attrs)]
 #![allow(warnings)]

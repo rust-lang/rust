@@ -843,13 +843,13 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         ty::Bool => ("bool", DW_ATE_boolean),
         ty::Char => ("char", DW_ATE_unsigned_char),
         ty::Int(int_ty) => {
-            (int_ty.ty_to_string(), DW_ATE_signed)
+            (int_ty.name_str(), DW_ATE_signed)
         },
         ty::Uint(uint_ty) => {
-            (uint_ty.ty_to_string(), DW_ATE_unsigned)
+            (uint_ty.name_str(), DW_ATE_unsigned)
         },
         ty::Float(float_ty) => {
-            (float_ty.ty_to_string(), DW_ATE_float)
+            (float_ty.name_str(), DW_ATE_float)
         },
         _ => bug!("debuginfo::basic_type_metadata - t is invalid type")
     };
@@ -1904,8 +1904,8 @@ fn prepare_enum_metadata(
 
             let discr_type = match discr.value {
                 layout::Int(t, _) => t,
-                layout::Float(layout::FloatTy::F32) => Integer::I32,
-                layout::Float(layout::FloatTy::F64) => Integer::I64,
+                layout::F32 => Integer::I32,
+                layout::F64 => Integer::I64,
                 layout::Pointer => cx.data_layout().ptr_sized_integer(),
             }.to_ty(cx.tcx, false);
 

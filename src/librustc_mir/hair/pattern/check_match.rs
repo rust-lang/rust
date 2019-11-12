@@ -18,7 +18,7 @@ use rustc::hir::{self, Pat};
 
 use std::slice;
 
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
+use syntax_pos::{MultiSpan, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match tcx.hir().as_local_hir_id(def_id) {
@@ -351,7 +351,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
     pat.walk(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                if bm != ty::BindByValue(hir::MutImmutable) {
+                if bm != ty::BindByValue(hir::Mutability::Immutable) {
                     // Nothing to check.
                     return true;
                 }
@@ -491,7 +491,7 @@ fn check_not_useful(
     matrix: &Matrix<'_, 'tcx>,
     hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
-    let wild_pattern = super::Pat { ty, span: DUMMY_SP, kind: box PatKind::Wild };
+    let wild_pattern = super::Pat::wildcard_from_ty(ty);
     match is_useful(cx, matrix, &PatStack::from_pattern(&wild_pattern), ConstructWitness, hir_id) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
@@ -548,7 +548,7 @@ fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
 }
 
 fn pattern_not_covered_label(witnesses: &[super::Pat<'_>], joined_patterns: &str) -> String {
-    format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
+    format!("pattern{} {} not covered", rustc_errors::pluralize!(witnesses.len()), joined_patterns)
 }
 
 /// Point at the definition of non-covered `enum` variants.

@@ -549,7 +549,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::MethodReceiver => Some(super::MethodReceiver),
             super::BlockTailExpression(id) => Some(super::BlockTailExpression(id)),
             super::TrivialBound => Some(super::TrivialBound),
-            super::AssocTypeBound(impl_sp, sp) => Some(super::AssocTypeBound(impl_sp, sp)),
+            super::AssocTypeBound(ref data) => Some(super::AssocTypeBound(data.clone())),
         }
     }
 }

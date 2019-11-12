@@ -521,7 +521,7 @@ where
 
         let ref_ty = tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut {
             ty,
-            mutbl: hir::Mutability::MutMutable
+            mutbl: hir::Mutability::Mutable
         });
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
@@ -580,7 +580,7 @@ where
 
         let ref_ty = tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut {
             ty: ety,
-            mutbl: hir::Mutability::MutMutable
+            mutbl: hir::Mutability::Mutable
         });
         let ptr = &Place::from(self.new_temp(ref_ty));
         let can_go = &Place::from(self.new_temp(tcx.types.bool));

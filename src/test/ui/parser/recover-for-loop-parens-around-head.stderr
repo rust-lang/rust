@@ -2,7 +2,7 @@ error: expected one of `)`, `,`, `@`, or `|`, found keyword `in`
   --> $DIR/recover-for-loop-parens-around-head.rs:10:16
    |
 LL |     for ( elem in vec ) {
-   |                ^^ expected one of `)`, `,`, `@`, or `|` here
+   |                ^^ expected one of `)`, `,`, `@`, or `|`
 
 error: unexpected closing `)`
   --> $DIR/recover-for-loop-parens-around-head.rs:10:23

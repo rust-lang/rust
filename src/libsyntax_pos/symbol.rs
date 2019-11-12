@@ -148,6 +148,7 @@ symbols! {
         associated_type_bounds,
         associated_type_defaults,
         associated_types,
+        assume_init,
         async_await,
         async_closure,
         attr,
@@ -417,7 +418,10 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
-        mem,
+        maybe_uninit_uninit,
+        maybe_uninit_zeroed,
+        mem_uninitialized,
+        mem_zeroed,
         member_constraints,
         message,
         meta,
@@ -428,6 +432,7 @@ symbols! {
         module,
         module_path,
         more_struct_aliases,
+        move_val_init,
         movbe_target_feature,
         must_use,
         naked,
@@ -542,6 +547,8 @@ symbols! {
         recursion_limit,
         reexport_test_harness_main,
         reflect,
+        register_attr,
+        register_tool,
         relaxed_adts,
         repr,
         repr128,
@@ -563,6 +570,7 @@ symbols! {
         rust_2018_preview,
         rust_begin_unwind,
         rustc,
+        Rust,
         RustcDecodable,
         RustcEncodable,
         rustc_allocator,
@@ -709,7 +717,6 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
-        uninitialized,
         universal_impl_trait,
         unmarked_api,
         unreachable_code,
@@ -734,14 +741,12 @@ symbols! {
         visible_private_types,
         volatile,
         warn,
-        warn_directory_ownership,
         wasm_import_module,
         wasm_target_feature,
         while_let,
         windows,
         windows_subsystem,
         Yield,
-        zeroed,
     }
 }
 
@@ -806,9 +811,9 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
-    /// Convert the name to a `LocalInternedString`. This is a slowish
-    /// operation because it requires locking the symbol interner.
-    pub fn as_str(self) -> LocalInternedString {
+    /// Convert the name to a `SymbolStr`. This is a slowish operation because
+    /// it requires locking the symbol interner.
+    pub fn as_str(self) -> SymbolStr {
         self.name.as_str()
     }
 }
@@ -896,11 +901,11 @@ impl Symbol {
         })
     }
 
-    /// Convert to a `LocalInternedString`. This is a slowish operation because
-    /// it requires locking the symbol interner.
-    pub fn as_str(self) -> LocalInternedString {
+    /// Convert to a `SymbolStr`. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    pub fn as_str(self) -> SymbolStr {
         with_interner(|interner| unsafe {
-            LocalInternedString {
+            SymbolStr {
                 string: std::mem::transmute::<&str, &str>(interner.get(self))
             }
         })
@@ -973,6 +978,7 @@ impl Interner {
         self.names.insert(string, name);
         name
     }
+
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
@@ -1078,7 +1084,6 @@ impl Ident {
     }
 }
 
-// If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
@@ -1092,46 +1097,42 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// safely treat `string` which points to interner data, as an immortal string,
 /// as long as this type never crosses between threads.
 //
-// FIXME: ensure that the interner outlives any thread which uses
-// `LocalInternedString`, by creating a new thread right after constructing the
-// interner.
+// FIXME: ensure that the interner outlives any thread which uses `SymbolStr`,
+// by creating a new thread right after constructing the interner.
 #[derive(Clone, Eq, PartialOrd, Ord)]
-pub struct LocalInternedString {
+pub struct SymbolStr {
     string: &'static str,
 }
 
-impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
-where
-    str: std::convert::AsRef<U>
-{
-    #[inline]
-    fn as_ref(&self) -> &U {
-        self.string.as_ref()
-    }
-}
-
-impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for LocalInternedString {
+// This impl allows a `SymbolStr` to be directly equated with a `String` or
+// `&str`.
+impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
     }
 }
 
-impl !Send for LocalInternedString {}
-impl !Sync for LocalInternedString {}
+impl !Send for SymbolStr {}
+impl !Sync for SymbolStr {}
 
-impl std::ops::Deref for LocalInternedString {
+/// This impl means that if `ss` is a `SymbolStr`:
+/// - `*ss` is a `str`;
+/// - `&*ss` is a `&str`;
+/// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
+///   function expecting a `&str`.
+impl std::ops::Deref for SymbolStr {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str { self.string }
 }
 
-impl fmt::Debug for LocalInternedString {
+impl fmt::Debug for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.string, f)
     }
 }
 
-impl fmt::Display for LocalInternedString {
+impl fmt::Display for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
     }

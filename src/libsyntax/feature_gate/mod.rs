@@ -18,8 +18,9 @@ mod active;
 mod builtin_attrs;
 mod check;
 
-use std::fmt;
 use crate::{edition::Edition, symbol::Symbol};
+use std::fmt;
+use std::num::NonZeroU32;
 use syntax_pos::Span;
 
 #[derive(Clone, Copy)]
@@ -46,9 +47,15 @@ pub struct Feature {
     state: State,
     name: Symbol,
     since: &'static str,
-    issue: Option<u32>,
+    issue: Option<u32>,  // FIXME: once #58732 is done make this an Option<NonZeroU32>
     edition: Option<Edition>,
     description: &'static str,
+}
+
+impl Feature {
+    fn issue(&self) -> Option<NonZeroU32> {
+        self.issue.and_then(|i| NonZeroU32::new(i))
+    }
 }
 
 pub use active::{Features, INCOMPLETE_FEATURES};

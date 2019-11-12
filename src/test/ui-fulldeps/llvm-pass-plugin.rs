@@ -3,6 +3,6 @@
 // ignore-stage1
 
 #![feature(plugin)]
-#![plugin(llvm_pass_plugin)]
+#![plugin(llvm_pass_plugin)] //~ WARNING compiler plugins are deprecated
 
 pub fn main() { }

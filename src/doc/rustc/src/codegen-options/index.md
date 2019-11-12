@@ -197,7 +197,11 @@ in software.
 ## prefer-dynamic
 
 By default, `rustc` prefers to statically link dependencies. This option will
-make it use dynamic linking instead.
+indicate that dynamic linking should be used if possible if both a static and
+dynamic versions of a library are available. There is an internal algorithm
+for determining whether or not it is possible to statically or dynamically
+link with a dependency. For example, `cdylib` crate types may only use static
+linkage.
 
 ## no-integrated-as
 

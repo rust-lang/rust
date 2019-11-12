@@ -89,7 +89,7 @@
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
-#![feature(on_unimplemented)]
+#![cfg_attr(bootstrap, feature(on_unimplemented))]
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]

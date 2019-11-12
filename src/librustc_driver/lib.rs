@@ -25,8 +25,6 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-use pretty::{PpMode, UserIdentifiedItem};
-
 //use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -42,6 +40,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use errors::PResult;
 use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
@@ -64,7 +63,6 @@ use std::time::Instant;
 use syntax::ast;
 use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
-use syntax::parse::{self, PResult};
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, FileName};
 
@@ -284,33 +282,29 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        let pretty_info = parse_pretty(sess, &matches);
-
         compiler.parse()?;
 
-        if let Some((ppm, opt_uii)) = pretty_info {
+        if let Some((ppm, opt_uii)) = &sess.opts.pretty {
             if ppm.needs_ast_map(&opt_uii) {
-                pretty::visit_crate(sess, &mut compiler.parse()?.peek_mut(), ppm);
                 compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                     let expanded_crate = compiler.expansion()?.take().0;
                     pretty::print_after_hir_lowering(
                         tcx,
                         compiler.input(),
                         &expanded_crate,
-                        ppm,
+                        *ppm,
                         opt_uii.clone(),
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                     Ok(())
                 })?;
             } else {
-                let mut krate = compiler.parse()?.take();
-                pretty::visit_crate(sess, &mut krate, ppm);
+                let krate = compiler.parse()?.take();
                 pretty::print_after_parsing(
                     sess,
                     &compiler.input(),
                     &krate,
-                    ppm,
+                    *ppm,
                     compiler.output_file().as_ref().map(|p| &**p),
                 );
             }
@@ -399,7 +393,7 @@ pub fn run_compiler(
         mem::drop(compiler.global_ctxt()?.take());
 
         if sess.opts.debugging_opts.print_type_sizes {
-            sess.code_stats.borrow().print_type_sizes();
+            sess.code_stats.print_type_sizes();
         }
 
         compiler.link()?;
@@ -466,28 +460,6 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
         }
     } else {
         None
-    }
-}
-
-fn parse_pretty(sess: &Session,
-                matches: &getopts::Matches)
-                -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-    let pretty = if sess.opts.debugging_opts.unstable_options {
-        matches.opt_default("pretty", "normal").map(|a| {
-            // stable pretty-print variants only
-            pretty::parse_pretty(sess, &a, false)
-        })
-    } else {
-        None
-    };
-
-    if pretty.is_none() {
-        sess.opts.debugging_opts.unpretty.as_ref().map(|a| {
-            // extended with unstable pretty-print variants
-            pretty::parse_pretty(sess, &a, true)
-        })
-    } else {
-        pretty
     }
 }
 
@@ -1043,12 +1015,6 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
-    // Late check to see if @file was used without unstable options enabled
-    if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
-        early_error(ErrorOutputType::default(),
-            "@path is unstable - use -Z unstable-options to enable its use");
-    }
-
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
@@ -1095,14 +1061,16 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 }
 
 fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
-    match *input {
-        Input::File(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
+    match input {
+        Input::File(ifile) => {
+            rustc_parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
         }
-        Input::Str { ref name, ref input } => {
-            parse::parse_crate_attrs_from_source_str(name.clone(),
-                                                     input.clone(),
-                                                     &sess.parse_sess)
+        Input::Str { name, input } => {
+            rustc_parse::parse_crate_attrs_from_source_str(
+                name.clone(),
+                input.clone(),
+                &sess.parse_sess,
+            )
         }
     }
 }

@@ -3,7 +3,7 @@
 // ignore-stage1
 
 #![feature(plugin)]
-#![plugin(plugin_args(hello(there), how(are="you")))]
+#![plugin(plugin_args(hello(there), how(are="you")))] //~ WARNING compiler plugins are deprecated
 
 fn main() {
     assert_eq!(plugin_args!(), "hello(there), how(are = \"you\")");

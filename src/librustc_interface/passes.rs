@@ -16,15 +16,18 @@ use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
+use rustc::session::config::{PpMode, PpSourceMode};
 use rustc::session::search_paths::PathKind;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
+use rustc_errors::PResult;
 use rustc_incremental;
 use rustc_metadata::cstore;
 use rustc_mir as mir;
+use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin as plugin;
 use rustc_plugin::registry::Registry;
@@ -36,7 +39,6 @@ use syntax::{self, ast, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax_expand::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
-use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax::symbol::Symbol;
 use syntax_pos::FileName;
@@ -59,12 +61,11 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let krate = time(sess, "parsing", || {
         let _prof_timer = sess.prof.generic_activity("parse_crate");
 
-        match *input {
-            Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
-            Input::Str {
-                ref input,
-                ref name,
-            } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
+        match input {
+            Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
+            Input::Str { input, name } => {
+                parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+            }
         }
     })?;
 
@@ -180,7 +181,7 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = syntax::config::features(
+    let (krate, features) = syntax_expand::config::features(
         krate,
         &sess.parse_sess,
         sess.edition(),
@@ -393,8 +394,12 @@ fn configure_and_expand_inner<'a>(
 
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
-    if sess.opts.actually_rustdoc {
-        util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
+    let mut should_loop = sess.opts.actually_rustdoc;
+    if let Some((PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops), _)) = sess.opts.pretty {
+        should_loop |= true;
+    }
+    if should_loop {
+        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
 
     let has_proc_macro_decls = time(sess, "AST validation", || {
@@ -483,7 +488,7 @@ pub fn lower_to_hir(
 ) -> Result<hir::map::Forest> {
     // Lower AST to HIR.
     let hir_forest = time(sess, "lowering AST -> HIR", || {
-        let nt_to_tokenstream = syntax::parse::nt_to_tokenstream;
+        let nt_to_tokenstream = rustc_parse::nt_to_tokenstream;
         let hir_crate = lower_crate(sess, &dep_graph, &krate, resolver, nt_to_tokenstream);
 
         if sess.opts.debugging_opts.hir_stats {

@@ -5,116 +5,26 @@ use rustc::hir::map as hir_map;
 use rustc::hir::print as pprust_hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::Session;
-use rustc::session::config::Input;
+use rustc::session::config::{PpMode, PpSourceMode, UserIdentifiedItem, Input};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
-use rustc_interface::util::ReplaceBodyWithLoop;
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;
-use syntax::mut_visit::MutVisitor;
 use syntax::print::{pprust};
 use syntax_pos::FileName;
 
 use std::cell::Cell;
 use std::fs::File;
 use std::io::Write;
-use std::option;
 use std::path::Path;
-use std::str::FromStr;
 
 pub use self::UserIdentifiedItem::*;
 pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
-use self::NodesMatchingUII::*;
 use crate::abort_on_err;
 
 use crate::source_name;
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpSourceMode {
-    PpmNormal,
-    PpmEveryBodyLoops,
-    PpmExpanded,
-    PpmIdentified,
-    PpmExpandedIdentified,
-    PpmExpandedHygiene,
-    PpmTyped,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpMode {
-    PpmSource(PpSourceMode),
-    PpmHir(PpSourceMode),
-    PpmHirTree(PpSourceMode),
-    PpmMir,
-    PpmMirCFG,
-}
-
-impl PpMode {
-    pub fn needs_ast_map(&self, opt_uii: &Option<UserIdentifiedItem>) -> bool {
-        match *self {
-            PpmSource(PpmNormal) |
-            PpmSource(PpmEveryBodyLoops) |
-            PpmSource(PpmIdentified) => opt_uii.is_some(),
-
-            PpmSource(PpmExpanded) |
-            PpmSource(PpmExpandedIdentified) |
-            PpmSource(PpmExpandedHygiene) |
-            PpmHir(_) |
-            PpmHirTree(_) |
-            PpmMir |
-            PpmMirCFG => true,
-            PpmSource(PpmTyped) => panic!("invalid state"),
-        }
-    }
-
-    pub fn needs_analysis(&self) -> bool {
-        match *self {
-            PpmMir | PpmMirCFG => true,
-            _ => false,
-        }
-    }
-}
-
-pub fn parse_pretty(sess: &Session,
-                    name: &str,
-                    extended: bool)
-                    -> (PpMode, Option<UserIdentifiedItem>) {
-    let mut split = name.splitn(2, '=');
-    let first = split.next().unwrap();
-    let opt_second = split.next();
-    let first = match (first, extended) {
-        ("normal", _) => PpmSource(PpmNormal),
-        ("identified", _) => PpmSource(PpmIdentified),
-        ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
-        ("expanded", _) => PpmSource(PpmExpanded),
-        ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
-        ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
-        ("hir", true) => PpmHir(PpmNormal),
-        ("hir,identified", true) => PpmHir(PpmIdentified),
-        ("hir,typed", true) => PpmHir(PpmTyped),
-        ("hir-tree", true) => PpmHirTree(PpmNormal),
-        ("mir", true) => PpmMir,
-        ("mir-cfg", true) => PpmMirCFG,
-        _ => {
-            if extended {
-                sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
-                                     `expanded`, `identified`, `expanded,identified`, \
-                                     `expanded,hygiene`, `everybody_loops`, \
-                                     `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
-                                     `mir` or `mir-cfg`; got {}",
-                                    name));
-            } else {
-                sess.fatal(&format!("argument to `pretty` must be one of `normal`, `expanded`, \
-                                     `identified`, or `expanded,identified`; got {}",
-                                    name));
-            }
-        }
-    };
-    let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>().ok());
-    (first, opt_second)
-}
 
 
 
@@ -131,76 +41,74 @@ pub fn parse_pretty(sess: &Session,
 // (The `use_once_payload` is working around the current lack of once
 // functions in the compiler.)
 
-impl PpSourceMode {
-    /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, F>(
-        &self,
-        sess: &'tcx Session,
-        tcx: Option<TyCtxt<'tcx>>,
-        f: F,
-    ) -> A
-    where
-        F: FnOnce(&dyn PrinterSupport) -> A,
-    {
-        match *self {
-            PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
-                let annotation = NoAnn {
-                    sess,
-                    tcx,
-                };
-                f(&annotation)
-            }
-
-            PpmIdentified | PpmExpandedIdentified => {
-                let annotation = IdentifiedAnnotation {
-                    sess,
-                    tcx,
-                };
-                f(&annotation)
-            }
-            PpmExpandedHygiene => {
-                let annotation = HygieneAnnotation {
-                    sess,
-                };
-                f(&annotation)
-            }
-            _ => panic!("Should use call_with_pp_support_hir"),
+/// Constructs a `PrinterSupport` object and passes it to `f`.
+fn call_with_pp_support<'tcx, A, F>(
+    ppmode: &PpSourceMode,
+    sess: &'tcx Session,
+    tcx: Option<TyCtxt<'tcx>>,
+    f: F,
+) -> A
+where
+    F: FnOnce(&dyn PrinterSupport) -> A,
+{
+    match *ppmode {
+        PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
+            let annotation = NoAnn {
+                sess,
+                tcx,
+            };
+            f(&annotation)
         }
+
+        PpmIdentified | PpmExpandedIdentified => {
+            let annotation = IdentifiedAnnotation {
+                sess,
+                tcx,
+            };
+            f(&annotation)
+        }
+        PpmExpandedHygiene => {
+            let annotation = HygieneAnnotation {
+                sess,
+            };
+            f(&annotation)
+        }
+        _ => panic!("Should use call_with_pp_support_hir"),
     }
-    fn call_with_pp_support_hir<A, F>(&self, tcx: TyCtxt<'_>, f: F) -> A
-    where
-        F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A,
-    {
-        match *self {
-            PpmNormal => {
-                let annotation = NoAnn {
-                    sess: tcx.sess,
-                    tcx: Some(tcx),
-                };
-                f(&annotation, tcx.hir().forest.krate())
-            }
-
-            PpmIdentified => {
-                let annotation = IdentifiedAnnotation {
-                    sess: tcx.sess,
-                    tcx: Some(tcx),
-                };
-                f(&annotation, tcx.hir().forest.krate())
-            }
-            PpmTyped => {
-                abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
-
-                let empty_tables = ty::TypeckTables::empty(None);
-                let annotation = TypedAnnotation {
-                    tcx,
-                    tables: Cell::new(&empty_tables)
-                };
-                tcx.dep_graph.with_ignore(|| {
-                    f(&annotation, tcx.hir().forest.krate())
-                })
-            }
-            _ => panic!("Should use call_with_pp_support"),
+}
+fn call_with_pp_support_hir<A, F>(ppmode: &PpSourceMode, tcx: TyCtxt<'_>, f: F) -> A
+where
+    F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A,
+{
+    match *ppmode {
+        PpmNormal => {
+            let annotation = NoAnn {
+                sess: tcx.sess,
+                tcx: Some(tcx),
+            };
+            f(&annotation, tcx.hir().forest.krate())
         }
+
+        PpmIdentified => {
+            let annotation = IdentifiedAnnotation {
+                sess: tcx.sess,
+                tcx: Some(tcx),
+            };
+            f(&annotation, tcx.hir().forest.krate())
+        }
+        PpmTyped => {
+            abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
+
+            let empty_tables = ty::TypeckTables::empty(None);
+            let annotation = TypedAnnotation {
+                tcx,
+                tables: Cell::new(&empty_tables)
+            };
+            tcx.dep_graph.with_ignore(|| {
+                f(&annotation, tcx.hir().forest.krate())
+            })
+        }
+        _ => panic!("Should use call_with_pp_support"),
     }
 }
 
@@ -482,102 +390,6 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum UserIdentifiedItem {
-    ItemViaNode(ast::NodeId),
-    ItemViaPath(Vec<String>),
-}
-
-impl FromStr for UserIdentifiedItem {
-    type Err = ();
-    fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
-        Ok(s.parse()
-            .map(ast::NodeId::from_u32)
-            .map(ItemViaNode)
-            .unwrap_or_else(|_| ItemViaPath(s.split("::").map(|s| s.to_string()).collect())))
-    }
-}
-
-enum NodesMatchingUII<'a> {
-    NodesMatchingDirect(option::IntoIter<ast::NodeId>),
-    NodesMatchingSuffix(Box<dyn Iterator<Item = ast::NodeId> + 'a>),
-}
-
-impl<'a> Iterator for NodesMatchingUII<'a> {
-    type Item = ast::NodeId;
-
-    fn next(&mut self) -> Option<ast::NodeId> {
-        match self {
-            &mut NodesMatchingDirect(ref mut iter) => iter.next(),
-            &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            &NodesMatchingDirect(ref iter) => iter.size_hint(),
-            &NodesMatchingSuffix(ref iter) => iter.size_hint(),
-        }
-    }
-}
-
-impl UserIdentifiedItem {
-    fn reconstructed_input(&self) -> String {
-        match *self {
-            ItemViaNode(node_id) => node_id.to_string(),
-            ItemViaPath(ref parts) => parts.join("::"),
-        }
-    }
-
-    fn all_matching_node_ids<'a, 'hir>(&'a self,
-                                       map: &'a hir_map::Map<'hir>)
-                                       -> NodesMatchingUII<'a> {
-        match *self {
-            ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
-            ItemViaPath(ref parts) => {
-                NodesMatchingSuffix(Box::new(map.nodes_matching_suffix(&parts)))
-            }
-        }
-    }
-
-    fn to_one_node_id(self,
-                      user_option: &str,
-                      sess: &Session,
-                      map: &hir_map::Map<'_>)
-                      -> ast::NodeId {
-        let fail_because = |is_wrong_because| -> ast::NodeId {
-            let message = format!("{} needs NodeId (int) or unique path suffix (b::c::d); got \
-                                   {}, which {}",
-                                  user_option,
-                                  self.reconstructed_input(),
-                                  is_wrong_because);
-            sess.fatal(&message)
-        };
-
-        let mut saw_node = ast::DUMMY_NODE_ID;
-        let mut seen = 0;
-        for node in self.all_matching_node_ids(map) {
-            saw_node = node;
-            seen += 1;
-            if seen > 1 {
-                fail_because("does not resolve uniquely");
-            }
-        }
-        if seen == 0 {
-            fail_because("does not resolve to any item");
-        }
-
-        assert!(seen == 1);
-        return saw_node;
-    }
-}
-
-pub fn visit_crate(sess: &Session, krate: &mut ast::Crate, ppm: PpMode) {
-    if let PpmSource(PpmEveryBodyLoops) = ppm {
-        ReplaceBodyWithLoop::new(sess).visit_crate(krate);
-    }
-}
-
 fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     let src_name = source_name(input);
     let src = String::clone(&sess.source_map()
@@ -613,7 +425,7 @@ pub fn print_after_parsing(sess: &Session,
     if let PpmSource(s) = ppm {
         // Silently ignores an identified node.
         let out = &mut out;
-        s.call_with_pp_support(sess, None, move |annotation| {
+        call_with_pp_support(&s, sess, None, move |annotation| {
             debug!("pretty printing source code {:?}", s);
             let sess = annotation.sess();
             *out = pprust::print_crate(sess.source_map(),
@@ -658,7 +470,7 @@ pub fn print_after_hir_lowering<'tcx>(
                 // Silently ignores an identified node.
                 let out = &mut out;
                 let src = src.clone();
-                s.call_with_pp_support(tcx.sess, Some(tcx), move |annotation| {
+                call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     *out = pprust::print_crate(sess.source_map(),
@@ -674,7 +486,7 @@ pub fn print_after_hir_lowering<'tcx>(
             (PpmHir(s), None) => {
                 let out = &mut out;
                 let src = src.clone();
-                s.call_with_pp_support_hir(tcx, move |annotation, krate| {
+                call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     *out = pprust_hir::print_crate(sess.source_map(),
@@ -688,7 +500,7 @@ pub fn print_after_hir_lowering<'tcx>(
 
             (PpmHirTree(s), None) => {
                 let out = &mut out;
-                s.call_with_pp_support_hir(tcx, move |_annotation, krate| {
+                call_with_pp_support_hir(&s, tcx, move |_annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     *out = format!("{:#?}", krate);
                 });
@@ -697,7 +509,7 @@ pub fn print_after_hir_lowering<'tcx>(
             (PpmHir(s), Some(uii)) => {
                 let out = &mut out;
                 let src = src.clone();
-                s.call_with_pp_support_hir(tcx, move |annotation, _| {
+                call_with_pp_support_hir(&s, tcx, move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let hir_map = annotation.hir_map().expect("-Z unpretty missing HIR map");
@@ -722,7 +534,7 @@ pub fn print_after_hir_lowering<'tcx>(
 
             (PpmHirTree(s), Some(uii)) => {
                 let out = &mut out;
-                s.call_with_pp_support_hir(tcx, move |_annotation, _krate| {
+                call_with_pp_support_hir(&s, tcx, move |_annotation, _krate| {
                     debug!("pretty printing source code {:?}", s);
                     for node_id in uii.all_matching_node_ids(tcx.hir()) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);

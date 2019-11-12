@@ -3,7 +3,7 @@
 // ignore-stage1
 
 #![feature(plugin)]
-#![plugin(roman_numerals)]
+#![plugin(roman_numerals)] //~ WARNING compiler plugins are deprecated
 
 pub fn main() {
     assert_eq!(rn!(MMXV), 2015);

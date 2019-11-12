@@ -1,5 +1,5 @@
 warning: `[error]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning-crlf.rs:8:6
+  --> $DIR/intra-links-warning-crlf.rs:7:6
    |
 LL | /// [error]
    |      ^^^^^ cannot be resolved, ignoring
@@ -16,7 +16,7 @@ LL | /// docs [error1]
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: `[error2]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning-crlf.rs:14:11
+  --> $DIR/intra-links-warning-crlf.rs:15:11
    |
 LL | /// docs [error2]
    |           ^^^^^^ cannot be resolved, ignoring
@@ -24,7 +24,7 @@ LL | /// docs [error2]
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: `[error]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning-crlf.rs:21:20
+  --> $DIR/intra-links-warning-crlf.rs:23:20
    |
 LL |  * It also has an [error].
    |                    ^^^^^ cannot be resolved, ignoring

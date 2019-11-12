@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 const A: [u32; 1] = [0];

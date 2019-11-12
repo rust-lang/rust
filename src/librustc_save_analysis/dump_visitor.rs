@@ -24,7 +24,7 @@ use std::path::Path;
 use std::env;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::parse::token;
+use syntax::token;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{
     bounds_to_string,
@@ -272,7 +272,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_method(
         &mut self,
-        sig: &'l ast::MethodSig,
+        sig: &'l ast::FnSig,
         body: Option<&'l ast::Block>,
         id: ast::NodeId,
         ident: ast::Ident,
@@ -1334,8 +1334,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
             }
-            Fn(ref decl, ref header, ref ty_params, ref body) => {
-                self.process_fn(item, &decl, &header, ty_params, &body)
+            Fn(ref sig, ref ty_params, ref body) => {
+                self.process_fn(item, &sig.decl, &sig.header, ty_params, &body)
             }
             Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),

@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 trait T {
     type T;

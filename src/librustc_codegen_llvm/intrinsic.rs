@@ -18,8 +18,8 @@ use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
-use syntax::ast::{self, FloatTy};
 use rustc_target::abi::HasDataLayout;
+use syntax::ast;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::traits::*;
@@ -163,12 +163,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
                             }
-                            Primitive::Float(FloatTy::F64) |
+                            Primitive::F64 |
                             Primitive::Pointer => {
                                 emit_va_arg(self, args[0], ret_ty)
                             }
                             // `va_arg` should never be used with the return type f32.
-                            Primitive::Float(FloatTy::F32) => {
+                            Primitive::F32 => {
                                 bug!("the va_arg intrinsic does not work with `f32`")
                             }
                         }
@@ -1335,7 +1335,7 @@ fn generic_simd_intrinsic(
             },
             ty::Float(f) => {
                 return_error!("unsupported element type `{}` of floating-point vector `{}`",
-                              f, in_ty);
+                              f.name_str(), in_ty);
             },
             _ => {
                 return_error!("`{}` is not a floating-point type", in_ty);
@@ -1573,7 +1573,7 @@ fn generic_simd_intrinsic(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).kind {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::MutMutable
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mutable
                 => (ptr_count(arg_tys[1].simd_type(tcx)),
                     non_ptr(arg_tys[1].simd_type(tcx))),
             _ => {

@@ -166,7 +166,7 @@ macro_rules! experimental {
 }
 
 const IMPL_DETAIL: &str = "internal implementation detail";
-const INTERAL_UNSTABLE: &str = "this is an internal attribute that will never be stable";
+const INTERNAL_UNSTABLE: &str = "this is an internal attribute that will never be stable";
 
 pub type BuiltinAttribute = (Symbol, AttributeType, AttributeTemplate, AttributeGate);
 
@@ -329,6 +329,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
     gated!(track_caller, Whitelisted, template!(Word), experimental!(track_caller)),
+    gated!(
+        register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),
+        experimental!(register_attr),
+    ),
+    gated!(
+        register_tool, CrateLevel, template!(List: "tool1, tool2, ..."),
+        experimental!(register_tool),
+    ),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
@@ -418,14 +426,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         linkage, Whitelisted, template!(NameValueStr: "external|internal|..."),
         "the `linkage` attribute is experimental and not portable across platforms",
     ),
-    rustc_attr!(rustc_std_internal_symbol, Whitelisted, template!(Word), INTERAL_UNSTABLE),
+    rustc_attr!(rustc_std_internal_symbol, Whitelisted, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Macro related:
     // ==========================================================================
 
     rustc_attr!(rustc_builtin_macro, Whitelisted, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERAL_UNSTABLE),
+    rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
         rustc_macro_transparency, Whitelisted,
         template!(NameValueStr: "transparent|semitransparent|opaque"),
@@ -436,17 +444,16 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Diagnostics related:
     // ==========================================================================
 
-    gated!(
+    rustc_attr!(
         rustc_on_unimplemented, Whitelisted,
         template!(
             List: r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#,
             NameValueStr: "message"
         ),
-        on_unimplemented,
-        experimental!(rustc_on_unimplemented),
+        INTERNAL_UNSTABLE
     ),
     // Whitelists "identity-like" conversion methods to suggest on type mismatch.
-    rustc_attr!(rustc_conversion_suggestion, Whitelisted, template!(Word), INTERAL_UNSTABLE),
+    rustc_attr!(rustc_conversion_suggestion, Whitelisted, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:
@@ -454,7 +461,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_promotable, Whitelisted, template!(Word), IMPL_DETAIL),
     rustc_attr!(rustc_allow_const_fn_ptr, Whitelisted, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_args_required_const, Whitelisted, template!(List: "N"), INTERAL_UNSTABLE),
+    rustc_attr!(rustc_args_required_const, Whitelisted, template!(List: "N"), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:

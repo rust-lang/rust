@@ -48,7 +48,7 @@ error: expected one of `!` or `::`, found `(`
   --> $DIR/issue-40006.rs:28:9
    |
 LL |     ::Y ();
-   |         ^ expected one of `!` or `::` here
+   |         ^ expected one of `!` or `::`
 
 error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:32:8

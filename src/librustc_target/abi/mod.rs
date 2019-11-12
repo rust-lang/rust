@@ -3,11 +3,9 @@ pub use Primitive::*;
 
 use crate::spec::Target;
 
-use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_index::vec::{Idx, IndexVec};
-use syntax_pos::symbol::{sym, Symbol};
 use syntax_pos::Span;
 
 pub mod call;
@@ -534,49 +532,6 @@ impl Integer {
     }
 }
 
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
-         PartialOrd, Ord)]
-pub enum FloatTy {
-    F32,
-    F64,
-}
-
-impl fmt::Debug for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
-    }
-}
-
-impl FloatTy {
-    pub fn ty_to_string(self) -> &'static str {
-        match self {
-            FloatTy::F32 => "f32",
-            FloatTy::F64 => "f64",
-        }
-    }
-
-    pub fn to_symbol(self) -> Symbol {
-        match self {
-            FloatTy::F32 => sym::f32,
-            FloatTy::F64 => sym::f64,
-        }
-    }
-
-    pub fn bit_width(self) -> usize {
-        match self {
-            FloatTy::F32 => 32,
-            FloatTy::F64 => 64,
-        }
-    }
-}
-
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Primitive {
@@ -588,7 +543,8 @@ pub enum Primitive {
     /// a negative integer passed by zero-extension will appear positive in
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
-    Float(FloatTy),
+    F32,
+    F64,
     Pointer
 }
 
@@ -598,8 +554,8 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.size(),
-            Float(FloatTy::F32) => Size::from_bits(32),
-            Float(FloatTy::F64) => Size::from_bits(64),
+            F32 => Size::from_bits(32),
+            F64 => Size::from_bits(64),
             Pointer => dl.pointer_size
         }
     }
@@ -609,15 +565,15 @@ impl Primitive {
 
         match self {
             Int(i, _) => i.align(dl),
-            Float(FloatTy::F32) => dl.f32_align,
-            Float(FloatTy::F64) => dl.f64_align,
+            F32 => dl.f32_align,
+            F64 => dl.f64_align,
             Pointer => dl.pointer_align
         }
     }
 
     pub fn is_float(self) -> bool {
         match self {
-            Float(_) => true,
+            F32 | F64 => true,
             _ => false
         }
     }
@@ -738,11 +694,7 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(count) => {
-                assert!(i < count,
-                        "Tried to access field {} of union with {} fields", i, count);
-                Size::ZERO
-            },
+            FieldPlacement::Union(_) => Size::ZERO,
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);

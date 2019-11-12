@@ -2,7 +2,7 @@ error: expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `
   --> $DIR/multitrait.rs:5:9
    |
 LL | impl Cmp, ToString for S {
-   |         ^ expected one of 8 possible tokens here
+   |         ^ expected one of 8 possible tokens
 
 error: aborting due to previous error
 

@@ -108,7 +108,7 @@ use crate::mbe::{KleeneToken, TokenTree};
 
 use syntax::ast::NodeId;
 use syntax::early_buffered_lints::BufferedEarlyLintId;
-use syntax::parse::token::{DelimToken, Token, TokenKind};
+use syntax::token::{DelimToken, Token, TokenKind};
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
 

@@ -13,7 +13,7 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
   --> $DIR/macro-incomplete-parse.rs:10:14
    |
 LL |     () => ( 1,
-   |              ^ expected one of `.`, `;`, `?`, `}`, or an operator here
+   |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
 ...
 LL |     ignored_expr!();
    |     ---------------- in this macro invocation

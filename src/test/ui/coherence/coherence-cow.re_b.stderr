@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-cow.rs:23:1
+  --> $DIR/coherence-cow.rs:22:1
    |
 LL | impl<T> Remote for Pair<Cover<T>,T> { }
    | ^^^^^^^^^^^^^^^^^^^----------------

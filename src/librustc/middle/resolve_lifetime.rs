@@ -17,7 +17,7 @@ use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use crate::rustc::lint;
 use crate::session::Session;
 use crate::util::nodemap::{DefIdMap, FxHashMap, FxHashSet, HirIdMap, HirIdSet};
-use errors::{Applicability, DiagnosticBuilder, pluralise};
+use errors::{Applicability, DiagnosticBuilder, pluralize};
 use rustc_macros::HashStable;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -460,8 +460,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.kind {
-            hir::ItemKind::Fn(ref decl, _, ref generics, _) => {
-                self.visit_early_late(None, decl, generics, |this| {
+            hir::ItemKind::Fn(ref sig, ref generics, _) => {
+                self.visit_early_late(None, &sig.decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
             }
@@ -1524,8 +1524,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             {
                 match parent {
                     Node::Item(item) => {
-                        if let hir::ItemKind::Fn(decl, _, _, _) = &item.kind {
-                            find_arg_use_span(&decl.inputs);
+                        if let hir::ItemKind::Fn(sig, _, _) = &item.kind {
+                            find_arg_use_span(&sig.decl.inputs);
                         }
                     },
                     Node::ImplItem(impl_item) => {
@@ -3044,7 +3044,7 @@ pub fn report_missing_lifetime_specifiers(
         span,
         E0106,
         "missing lifetime specifier{}",
-        pluralise!(count)
+        pluralize!(count)
     )
 }
 

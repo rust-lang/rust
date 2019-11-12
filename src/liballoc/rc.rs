@@ -280,7 +280,7 @@ struct RcBox<T: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
     ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<RcBox<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -1512,7 +1512,6 @@ pub type FileLinesResult = Result<FileLines, SpanLinesError>;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SpanLinesError {
-    IllFormedSpan(Span),
     DistinctSources(DistinctSources),
 }
 

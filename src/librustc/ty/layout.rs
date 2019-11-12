@@ -132,8 +132,8 @@ impl PrimitiveExt for Primitive {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            Float(FloatTy::F32) => tcx.types.f32,
-            Float(FloatTy::F64) => tcx.types.f64,
+            F32 => tcx.types.f32,
+            F64 => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
         }
     }
@@ -144,7 +144,7 @@ impl PrimitiveExt for Primitive {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             Pointer => tcx.types.usize,
-            Float(..) => bug!("floats do not have an int type"),
+            F32 | F64 => bug!("floats do not have an int type"),
         }
     }
 }
@@ -538,7 +538,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Uint(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
-            ty::Float(fty) => scalar(Float(fty)),
+            ty::Float(fty) => scalar(match fty {
+                ast::FloatTy::F32 => F32,
+                ast::FloatTy::F64 => F64,
+            }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range = 1..=*ptr.valid_range.end();
@@ -1611,13 +1614,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // (delay format until we actually need it)
         let record = |kind, packed, opt_discr_size, variants| {
             let type_desc = format!("{:?}", layout.ty);
-            self.tcx.sess.code_stats.borrow_mut().record_type_size(kind,
-                                                                   type_desc,
-                                                                   layout.align.abi,
-                                                                   layout.size,
-                                                                   packed,
-                                                                   opt_discr_size,
-                                                                   variants);
+            self.tcx.sess.code_stats.record_type_size(kind,
+                                                      type_desc,
+                                                      layout.align.abi,
+                                                      layout.size,
+                                                      packed,
+                                                      opt_discr_size,
+                                                      variants);
         };
 
         let adt_def = match layout.ty.kind {
@@ -2218,12 +2221,12 @@ where
                 let tcx = cx.tcx();
                 let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SP);
                 let kind = match mt {
-                    hir::MutImmutable => if is_freeze {
+                    hir::Mutability::Immutable => if is_freeze {
                         PointerKind::Frozen
                     } else {
                         PointerKind::Shared
                     },
-                    hir::MutMutable => {
+                    hir::Mutability::Mutable => {
                         // Previously we would only emit noalias annotations for LLVM >= 6 or in
                         // panic=abort mode. That was deemed right, as prior versions had many bugs
                         // in conjunction with unwinding, but later versions didn’t seem to have
@@ -2454,7 +2457,8 @@ impl_stable_hash_for!(enum crate::ty::layout::Integer {
 
 impl_stable_hash_for!(enum crate::ty::layout::Primitive {
     Int(integer, signed),
-    Float(fty),
+    F32,
+    F64,
     Pointer
 });
 

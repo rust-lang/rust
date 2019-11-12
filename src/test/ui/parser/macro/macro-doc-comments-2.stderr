@@ -5,7 +5,7 @@ LL | macro_rules! inner {
    | ------------------ when calling this macro
 ...
 LL |     /// Outer
-   |     ^ no rules expected this token in macro call
+   |     ^^^^^^^^^ no rules expected this token in macro call
 
 error: aborting due to previous error
 

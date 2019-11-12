@@ -498,10 +498,6 @@ impl SourceMap {
     pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
         debug!("span_to_lines(sp={:?})", sp);
 
-        if sp.lo() > sp.hi() {
-            return Err(SpanLinesError::IllFormedSpan(sp));
-        }
-
         let lo = self.lookup_char_pos(sp.lo());
         debug!("span_to_lines: lo={:?}", lo);
         let hi = self.lookup_char_pos(sp.hi());
@@ -549,10 +545,6 @@ impl SourceMap {
     fn span_to_source<F>(&self, sp: Span, extract_source: F) -> Result<String, SpanSnippetError>
         where F: Fn(&str, usize, usize) -> Result<String, SpanSnippetError>
     {
-        if sp.lo() > sp.hi() {
-            return Err(SpanSnippetError::IllFormedSpan(sp));
-        }
-
         let local_begin = self.lookup_byte_offset(sp.lo());
         let local_end = self.lookup_byte_offset(sp.hi());
 
@@ -762,14 +754,14 @@ impl SourceMap {
 
     /// Finds the width of a character, either before or after the provided span.
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
-        // Disregard malformed spans and assume a one-byte wide character.
-        if sp.lo() >= sp.hi() {
-            debug!("find_width_of_character_at_span: early return malformed span");
+        let sp = sp.data();
+        if sp.lo == sp.hi {
+            debug!("find_width_of_character_at_span: early return empty span");
             return 1;
         }
 
-        let local_begin = self.lookup_byte_offset(sp.lo());
-        let local_end = self.lookup_byte_offset(sp.hi());
+        let local_begin = self.lookup_byte_offset(sp.lo);
+        let local_end = self.lookup_byte_offset(sp.hi);
         debug!("find_width_of_character_at_span: local_begin=`{:?}`, local_end=`{:?}`",
                local_begin, local_end);
 

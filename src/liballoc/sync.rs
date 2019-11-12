@@ -195,7 +195,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<ArcInner<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

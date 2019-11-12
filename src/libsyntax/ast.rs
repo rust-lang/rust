@@ -22,12 +22,11 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use crate::util::parser::ExprPrecedence;
 
-pub use rustc_target::abi::FloatTy;
 pub use syntax_pos::symbol::{Ident, Symbol as Name};
 
-use crate::parse::token::{self, DelimToken};
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
+use crate::token::{self, DelimToken};
 use crate::tokenstream::TokenStream;
 
 use syntax_pos::symbol::{kw, sym, Symbol};
@@ -38,10 +37,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
-use rustc_target::spec::abi::Abi;
-
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
 
 use std::fmt;
 
@@ -90,7 +85,7 @@ impl fmt::Debug for Lifetime {
 
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ident.name.as_str())
+        write!(f, "{}", self.ident.name)
     }
 }
 
@@ -539,7 +534,7 @@ pub struct Pat {
 impl Pat {
     /// Attempt reparsing the pattern as a type.
     /// This is intended for use by diagnostics.
-    pub(super) fn to_ty(&self) -> Option<P<Ty>> {
+    pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
@@ -733,6 +728,30 @@ pub enum PatKind {
 pub enum Mutability {
     Mutable,
     Immutable,
+}
+
+impl Mutability {
+    /// Returns `MutMutable` only if both `self` and `other` are mutable.
+    pub fn and(self, other: Self) -> Self {
+        match self {
+            Mutability::Mutable => other,
+            Mutability::Immutable => Mutability::Immutable,
+        }
+    }
+
+    pub fn invert(self) -> Self {
+        match self {
+            Mutability::Mutable => Mutability::Immutable,
+            Mutability::Immutable => Mutability::Mutable,
+        }
+    }
+
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Mutability::Mutable => "mut ",
+            Mutability::Immutable => "",
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -1006,7 +1025,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Expr, 96);
+rustc_data_structures::static_assert_size!(Expr, 96);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1033,7 +1052,7 @@ impl Expr {
         }
     }
 
-    fn to_bound(&self) -> Option<GenericBound> {
+    pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
                 PolyTraitRef::new(Vec::new(), path.clone(), self.span),
@@ -1044,7 +1063,7 @@ impl Expr {
     }
 
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
-    pub(super) fn to_ty(&self) -> Option<P<Ty>> {
+    pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
             // Trivial conversions.
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
@@ -1317,10 +1336,14 @@ pub enum CaptureBy {
     Ref,
 }
 
-/// The movability of a generator / closure literal.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+/// The movability of a generator / closure literal:
+/// whether a generator contains self-references, causing it to be `!Unpin`.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum Movability {
+    /// May contain self-references, `!Unpin`.
     Static,
+    /// Must not contain self-references, `Unpin`.
     Movable,
 }
 
@@ -1401,13 +1424,22 @@ pub struct Lit {
 
 // Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
     /// e.g. `42_u32`.
     Unsigned(UintTy),
     /// e.g. `42`.
+    Unsuffixed,
+}
+
+/// Type of the float literal based on provided suffix.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+pub enum LitFloatType {
+    /// A float literal with a suffix (`1f32` or `1E10f32`).
+    Suffixed(FloatTy),
+    /// A float literal without a suffix (`1.0 or 1.0E10`).
     Unsuffixed,
 }
 
@@ -1428,9 +1460,7 @@ pub enum LitKind {
     /// An integer literal (`1`).
     Int(u128, LitIntType),
     /// A float literal (`1f64` or `1E10f64`).
-    Float(Symbol, FloatTy),
-    /// A float literal without a suffix (`1.0 or 1.0E10`).
-    FloatUnsuffixed(Symbol),
+    Float(Symbol, LitFloatType),
     /// A boolean literal.
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
@@ -1457,7 +1487,7 @@ impl LitKind {
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {
-            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => true,
+            LitKind::Int(..) | LitKind::Float(..) => true,
             _ => false,
         }
     }
@@ -1474,14 +1504,14 @@ impl LitKind {
             // suffixed variants
             LitKind::Int(_, LitIntType::Signed(..))
             | LitKind::Int(_, LitIntType::Unsigned(..))
-            | LitKind::Float(..) => true,
+            | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)
             | LitKind::ByteStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
             | LitKind::Int(_, LitIntType::Unsuffixed)
-            | LitKind::FloatUnsuffixed(..)
+            | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
             | LitKind::Err(..) => false,
         }
@@ -1496,10 +1526,10 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-/// Represents a method's signature in a trait declaration,
-/// or in an implementation.
+/// Represents a function's signature in a trait declaration,
+/// trait implementation, or free function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct MethodSig {
+pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
@@ -1523,7 +1553,7 @@ pub struct TraitItem {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
-    Method(MethodSig, Option<P<Block>>),
+    Method(FnSig, Option<P<Block>>),
     Type(GenericBounds, Option<P<Ty>>),
     Macro(Mac),
 }
@@ -1547,13 +1577,42 @@ pub struct ImplItem {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
-    Method(MethodSig, P<Block>),
+    Method(FnSig, P<Block>),
     TyAlias(P<Ty>),
     OpaqueTy(GenericBounds),
     Macro(Mac),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl FloatTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            FloatTy::F32 => sym::f32,
+            FloatTy::F64 => sym::f64,
+        }
+    }
+
+    pub fn bit_width(self) -> usize {
+        match self {
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1563,20 +1622,8 @@ pub enum IntTy {
     I128,
 }
 
-impl fmt::Debug for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
-    }
-}
-
 impl IntTy {
-    pub fn ty_to_string(&self) -> &'static str {
+    pub fn name_str(&self) -> &'static str {
         match *self {
             IntTy::Isize => "isize",
             IntTy::I8 => "i8",
@@ -1587,7 +1634,7 @@ impl IntTy {
         }
     }
 
-    pub fn to_symbol(&self) -> Symbol {
+    pub fn name(&self) -> Symbol {
         match *self {
             IntTy::Isize => sym::isize,
             IntTy::I8 => sym::i8,
@@ -1602,7 +1649,7 @@ impl IntTy {
         // Cast to a `u128` so we can correctly print `INT128_MIN`. All integral types
         // are parsed as `u128`, so we wouldn't want to print an extra negative
         // sign.
-        format!("{}{}", val as u128, self.ty_to_string())
+        format!("{}{}", val as u128, self.name_str())
     }
 
     pub fn bit_width(&self) -> Option<usize> {
@@ -1617,7 +1664,7 @@ impl IntTy {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy, Debug)]
 pub enum UintTy {
     Usize,
     U8,
@@ -1628,7 +1675,7 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn ty_to_string(&self) -> &'static str {
+    pub fn name_str(&self) -> &'static str {
         match *self {
             UintTy::Usize => "usize",
             UintTy::U8 => "u8",
@@ -1639,7 +1686,7 @@ impl UintTy {
         }
     }
 
-    pub fn to_symbol(&self) -> Symbol {
+    pub fn name(&self) -> Symbol {
         match *self {
             UintTy::Usize => sym::usize,
             UintTy::U8 => sym::u8,
@@ -1651,7 +1698,7 @@ impl UintTy {
     }
 
     pub fn val_to_string(&self, val: u128) -> String {
-        format!("{}{}", val, self.ty_to_string())
+        format!("{}{}", val, self.name_str())
     }
 
     pub fn bit_width(&self) -> Option<usize> {
@@ -1663,18 +1710,6 @@ impl UintTy {
             UintTy::U64 => 64,
             UintTy::U128 => 128,
         })
-    }
-}
-
-impl fmt::Debug for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
     }
 }
 
@@ -1957,10 +1992,32 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug)]
 pub enum Unsafety {
     Unsafe,
     Normal,
+}
+
+impl Unsafety {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Unsafety::Unsafe => "unsafe ",
+            Unsafety::Normal => "",
+        }
+    }
+}
+
+impl fmt::Display for Unsafety {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(
+            match *self {
+                Unsafety::Normal => "normal",
+                Unsafety::Unsafe => "unsafe",
+            },
+            f,
+        )
+    }
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -2005,18 +2062,6 @@ pub enum Constness {
 pub enum Defaultness {
     Default,
     Final,
-}
-
-impl fmt::Display for Unsafety {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(
-            match *self {
-                Unsafety::Normal => "normal",
-                Unsafety::Unsafe => "unsafe",
-            },
-            f,
-        )
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
@@ -2190,22 +2235,29 @@ pub struct AttrItem {
 }
 
 /// Metadata associated with an item.
-/// Doc-comments are promoted to attributes that have `is_sugared_doc = true`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Attribute {
-    pub item: AttrItem,
+    pub kind: AttrKind,
     pub id: AttrId,
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
-    pub is_sugared_doc: bool,
     pub span: Span,
 }
 
-// Compatibility impl to avoid churn, consider removing.
-impl std::ops::Deref for Attribute {
-    type Target = AttrItem;
-    fn deref(&self) -> &Self::Target { &self.item }
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AttrKind {
+    /// A normal attribute.
+    Normal(AttrItem),
+
+    /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
+    /// variant (which is much less compact and thus more expensive).
+    ///
+    /// Note: `self.has_name(sym::doc)` and `self.check_name(sym::doc)` succeed
+    /// for this variant, but this may change in the future.
+    /// ```
+    DocComment(Symbol),
 }
 
 /// `TraitRef`s appear in impls.
@@ -2351,6 +2403,27 @@ impl Item {
     }
 }
 
+/// A reference to an ABI.
+///
+/// In AST our notion of an ABI is still syntactic unlike in `rustc_target::spec::abi::Abi`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, PartialEq)]
+pub struct Abi {
+    pub symbol: Symbol,
+    pub span: Span,
+}
+
+impl Abi {
+    pub fn new(symbol: Symbol, span: Span) -> Self {
+        Self { symbol, span }
+    }
+}
+
+impl Default for Abi {
+    fn default() -> Self {
+        Self::new(sym::Rust, DUMMY_SP)
+    }
+}
+
 /// A function header.
 ///
 /// All the information between the visibility and the name of the function is
@@ -2369,7 +2442,7 @@ impl Default for FnHeader {
             unsafety: Unsafety::Normal,
             asyncness: dummy_spanned(IsAsync::NotAsync),
             constness: dummy_spanned(Constness::NotConst),
-            abi: Abi::Rust,
+            abi: Abi::default(),
         }
     }
 }
@@ -2395,7 +2468,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
+    Fn(FnSig, Generics, P<Block>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.

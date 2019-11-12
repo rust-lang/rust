@@ -1,10 +1,8 @@
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-unboxed-closures.rs:9:5
+  --> $DIR/feature-gate-unboxed-closures.rs:9:12
    |
-LL | /     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
-LL | |         a + b
-LL | |     }
-   | |_____^
+LL |     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
+   |            ^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable

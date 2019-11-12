@@ -1,3 +1,5 @@
+// ignore-tidy-undocumented-unsafe
+
 use crate::cmp;
 
 use super::super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};

@@ -156,6 +156,7 @@ where
     fn try_from(slice: &[T]) -> Result<&[T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_ptr() as *const [T; N];
+            // SAFETY: ok because we just checked that the length fits
             unsafe { Ok(&*ptr) }
         } else {
             Err(TryFromSliceError(()))
@@ -173,6 +174,7 @@ where
     fn try_from(slice: &mut [T]) -> Result<&mut [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_mut_ptr() as *mut [T; N];
+            // SAFETY: ok because we just checked that the length fits
             unsafe { Ok(&mut *ptr) }
         } else {
             Err(TryFromSliceError(()))
