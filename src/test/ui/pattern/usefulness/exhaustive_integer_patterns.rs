@@ -154,4 +154,13 @@ fn main() {
     match 0u128 { //~ ERROR non-exhaustive patterns
         4 ..= u128::MAX => {}
     }
+
+    const FOO: i32 = 42;
+    const BAR: &i32 = &42;
+    match &0 {
+        &42 => {}
+        &FOO => {} //~ ERROR unreachable pattern
+        BAR => {} // not detected as unreachable because `try_eval_bits` fails on BAR
+        _ => {}
+    }
 }
