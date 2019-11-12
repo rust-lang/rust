@@ -7,8 +7,8 @@ use cranelift::codegen::ir::{StackSlots, ValueLoc};
 use cranelift::codegen::isa::RegUnit;
 
 use gimli::write::{
-    self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString,
-    Location, LocationList, Range, RangeList, UnitEntryId, Writer,
+    self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
+    LocationList, Range, RangeList, UnitEntryId, Writer,
 };
 use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, X86_64};
 
@@ -105,9 +105,7 @@ impl<'tcx> DebugContext<'tcx> {
             return *type_id;
         }
 
-        let new_entry = |dwarf: &mut DwarfUnit, tag| {
-            dwarf.unit.add(dwarf.unit.root(), tag)
-        };
+        let new_entry = |dwarf: &mut DwarfUnit, tag| dwarf.unit.add(dwarf.unit.root(), tag);
 
         let primtive = |dwarf: &mut DwarfUnit, ate| {
             let type_id = new_entry(dwarf, gimli::DW_TAG_base_type);
@@ -122,7 +120,11 @@ impl<'tcx> DebugContext<'tcx> {
             ty::Uint(_) => primtive(&mut self.dwarf, gimli::DW_ATE_unsigned),
             ty::Int(_) => primtive(&mut self.dwarf, gimli::DW_ATE_signed),
             ty::Float(_) => primtive(&mut self.dwarf, gimli::DW_ATE_float),
-            ty::Ref(_, pointee_ty, mutbl) | ty::RawPtr(ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
+            ty::Ref(_, pointee_ty, mutbl)
+            | ty::RawPtr(ty::TypeAndMut {
+                ty: pointee_ty,
+                mutbl,
+            }) => {
                 let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_pointer_type);
 
                 // Ensure that type is inserted before recursing to avoid duplicates
@@ -145,7 +147,10 @@ impl<'tcx> DebugContext<'tcx> {
         let type_entry = self.dwarf.unit.get_mut(type_id);
 
         type_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-        type_entry.set(gimli::DW_AT_byte_size, AttributeValue::Udata(layout.size.bytes()));
+        type_entry.set(
+            gimli::DW_AT_byte_size,
+            AttributeValue::Udata(layout.size.bytes()),
+        );
 
         self.types.insert(ty, type_id);
 
@@ -219,14 +224,8 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             .add(self.entry_id, gimli::DW_TAG_variable);
         let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
 
-        var_entry.set(
-            gimli::DW_AT_name,
-            AttributeValue::String(name.into_bytes()),
-        );
-        var_entry.set(
-            gimli::DW_AT_type,
-            AttributeValue::ThisUnitEntryRef(dw_ty),
-        );
+        var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
+        var_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(dw_ty));
 
         var_id
     }
@@ -250,38 +249,36 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 length: end as u64,
             });
 
-        {
-            let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
+        let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
-            for (value_label, value_loc_ranges) in value_labels_ranges.iter() {
-                let var_id = self.define_local(mir::Local::from_u32(value_label.as_u32()));
+        for (value_label, value_loc_ranges) in value_labels_ranges.iter() {
+            let var_id = self.define_local(mir::Local::from_u32(value_label.as_u32()));
 
-                let loc_list = LocationList(
-                    value_loc_ranges
-                        .iter()
-                        .map(|value_loc_range| {
-                            Location::StartEnd {
-                                begin: Address::Symbol {
-                                    symbol: self.symbol,
-                                    addend: i64::from(value_loc_range.start),
-                                },
-                                end: Address::Symbol {
-                                    symbol: self.symbol,
-                                    addend: i64::from(value_loc_range.end),
-                                },
-                                data: Expression(translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap()),
-                            }
-                        })
-                        .collect(),
-                );
-                let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
+            let loc_list = LocationList(
+                value_loc_ranges
+                    .iter()
+                    .map(|value_loc_range| Location::StartEnd {
+                        begin: Address::Symbol {
+                            symbol: self.symbol,
+                            addend: i64::from(value_loc_range.start),
+                        },
+                        end: Address::Symbol {
+                            symbol: self.symbol,
+                            addend: i64::from(value_loc_range.end),
+                        },
+                        data: Expression(
+                            translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap(),
+                        ),
+                    })
+                    .collect(),
+            );
+            let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
 
-                let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
-                var_entry.set(
-                    gimli::DW_AT_location,
-                    AttributeValue::LocationListRef(loc_list_id),
-                );
-            }
+            let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
+            var_entry.set(
+                gimli::DW_AT_location,
+                AttributeValue::LocationListRef(loc_list_id),
+            );
         }
     }
 }

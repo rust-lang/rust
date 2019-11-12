@@ -5,8 +5,7 @@ use syntax::source_map::FileName;
 use cranelift::codegen::binemit::CodeOffset;
 
 use gimli::write::{
-    Address, AttributeValue, FileId, LineProgram, LineString,
-    LineStringTable, Range, UnitEntryId,
+    Address, AttributeValue, FileId, LineProgram, LineString, LineStringTable, Range, UnitEntryId,
 };
 
 fn line_program_add_file(
@@ -131,11 +130,15 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(
             gimli::DW_AT_low_pc,
-            AttributeValue::Address(Address::Symbol { symbol: self.symbol, addend: 0 }),
+            AttributeValue::Address(Address::Symbol {
+                symbol: self.symbol,
+                addend: 0,
+            }),
         );
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(end as u64));
 
-        self.debug_context.emit_location(self.entry_id, self.mir.span);
+        self.debug_context
+            .emit_location(self.entry_id, self.mir.span);
 
         end
     }
