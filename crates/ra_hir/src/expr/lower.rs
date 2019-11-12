@@ -20,8 +20,8 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    db::HirDatabase, AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind,
-    Mutability, Path, Resolver, Source,
+    db::HirDatabase, AstId, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path,
+    Resolver, Source,
 };
 
 use super::{
@@ -33,7 +33,6 @@ pub(super) fn lower(
     db: &impl HirDatabase,
     resolver: Resolver,
     file_id: HirFileId,
-    owner: DefWithBody,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
@@ -44,7 +43,6 @@ pub(super) fn lower(
         current_file_id: file_id,
         source_map: BodySourceMap::default(),
         body: Body {
-            owner,
             exprs: Arena::default(),
             pats: Arena::default(),
             params: Vec::new(),

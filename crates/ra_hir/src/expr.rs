@@ -22,8 +22,6 @@ pub use hir_def::expr::{
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    /// The def of the item this body belongs to
-    owner: DefWithBody,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -86,7 +84,7 @@ impl Body {
             }
         };
 
-        let (body, source_map) = lower::lower(db, def.resolver(db), file_id, def, params, body);
+        let (body, source_map) = lower::lower(db, def.resolver(db), file_id, params, body);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -102,10 +100,6 @@ impl Body {
         self.body_expr
     }
 
-    pub fn owner(&self) -> DefWithBody {
-        self.owner
-    }
-
     pub fn exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {
         self.exprs.iter()
     }
@@ -117,21 +111,21 @@ impl Body {
 
 // needs arbitrary_self_types to be a method... or maybe move to the def?
 pub(crate) fn resolver_for_expr(
-    body: Arc<Body>,
     db: &impl HirDatabase,
+    owner: DefWithBody,
     expr_id: ExprId,
 ) -> Resolver {
-    let scopes = db.expr_scopes(body.owner);
-    resolver_for_scope(body, db, scopes.scope_for(expr_id))
+    let scopes = db.expr_scopes(owner);
+    resolver_for_scope(db, owner, scopes.scope_for(expr_id))
 }
 
 pub(crate) fn resolver_for_scope(
-    body: Arc<Body>,
     db: &impl HirDatabase,
+    owner: DefWithBody,
     scope_id: Option<scope::ScopeId>,
 ) -> Resolver {
-    let mut r = body.owner.resolver(db);
-    let scopes = db.expr_scopes(body.owner);
+    let mut r = owner.resolver(db);
+    let scopes = db.expr_scopes(owner);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
         r = r.push_expr_scope(Arc::clone(&scopes), scope);

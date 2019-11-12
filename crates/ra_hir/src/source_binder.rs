@@ -150,7 +150,7 @@ impl SourceAnalyzer {
                 None => scope_for(&scopes, &source_map, &node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, file_id.into(), offset),
             };
-            let resolver = expr::resolver_for_scope(def.body(db), db, scope);
+            let resolver = expr::resolver_for_scope(db, def, scope);
             SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
