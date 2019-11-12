@@ -93,7 +93,7 @@ impl LintLevelSets {
 
         // If `level` is none then we actually assume the default level for this
         // lint.
-        let mut level = level.unwrap_or_else(|| lint.default_level(sess));
+        let mut level = level.unwrap_or_else(|| lint.default_level(sess.edition()));
 
         // If we're about to issue a warning, check at the last minute for any
         // directives against the warnings "lint". If, for example, there's an

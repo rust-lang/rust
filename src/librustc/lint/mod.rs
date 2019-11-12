@@ -27,8 +27,6 @@ use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::lint::builtin::parser::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
-use crate::lint::builtin::parser::INCOMPLETE_INCLUDE;
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
@@ -37,8 +35,6 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use std::{hash, ptr};
 use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
-use syntax::early_buffered_lints::BufferedEarlyLintId;
-use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
@@ -47,87 +43,7 @@ pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore
                         check_crate, check_ast_crate, late_lint_mod, CheckLintNameResult,
                         BufferedEarlyLint,};
 
-pub use rustc_session::lint::Level;
-
-/// Specification of a single lint.
-#[derive(Copy, Clone, Debug)]
-pub struct Lint {
-    /// A string identifier for the lint.
-    ///
-    /// This identifies the lint in attributes and in command-line arguments.
-    /// In those contexts it is always lowercase, but this field is compared
-    /// in a way which is case-insensitive for ASCII characters. This allows
-    /// `declare_lint!()` invocations to follow the convention of upper-case
-    /// statics without repeating the name.
-    ///
-    /// The name is written with underscores, e.g., "unused_imports".
-    /// On the command line, underscores become dashes.
-    pub name: &'static str,
-
-    /// Default level for the lint.
-    pub default_level: Level,
-
-    /// Description of the lint or the issue it detects.
-    ///
-    /// e.g., "imports that are never used"
-    pub desc: &'static str,
-
-    /// Starting at the given edition, default to the given lint level. If this is `None`, then use
-    /// `default_level`.
-    pub edition_lint_opts: Option<(Edition, Level)>,
-
-    /// `true` if this lint is reported even inside expansions of external macros.
-    pub report_in_external_macro: bool,
-
-    pub future_incompatible: Option<FutureIncompatibleInfo>,
-
-    pub is_plugin: bool,
-}
-
-/// Extra information for a future incompatibility lint.
-#[derive(Copy, Clone, Debug)]
-pub struct FutureIncompatibleInfo {
-    /// e.g., a URL for an issue/PR/RFC or error code
-    pub reference: &'static str,
-    /// If this is an edition fixing lint, the edition in which
-    /// this lint becomes obsolete
-    pub edition: Option<Edition>,
-}
-
-impl Lint {
-    pub const fn default_fields_for_macro() -> Self {
-        Lint {
-            name: "",
-            default_level: Level::Forbid,
-            desc: "",
-            edition_lint_opts: None,
-            is_plugin: false,
-            report_in_external_macro: false,
-            future_incompatible: None,
-        }
-    }
-
-    /// Returns the `rust::lint::Lint` for a `syntax::early_buffered_lints::BufferedEarlyLintId`.
-    pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
-        match lint_id {
-            BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
-            BufferedEarlyLintId::MetaVariableMisuse => META_VARIABLE_MISUSE,
-            BufferedEarlyLintId::IncompleteInclude => INCOMPLETE_INCLUDE,
-        }
-    }
-
-    /// Gets the lint's name, with ASCII letters converted to lowercase.
-    pub fn name_lower(&self) -> String {
-        self.name.to_ascii_lowercase()
-    }
-
-    pub fn default_level(&self, session: &Session) -> Level {
-        self.edition_lint_opts
-            .filter(|(e, _)| *e <= session.edition())
-            .map(|(_, l)| l)
-            .unwrap_or(self.default_level)
-    }
-}
+pub use rustc_session::lint::{Lint, Level, FutureIncompatibleInfo};
 
 /// Declares a static item of type `&'static Lint`.
 #[macro_export]
