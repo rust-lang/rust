@@ -7,7 +7,6 @@ use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExten
 use syntax_expand::base::MacroExpanderFn;
 use syntax::symbol::Symbol;
 use syntax::ast;
-use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
 
 use std::borrow::ToOwned;
@@ -39,9 +38,6 @@ pub struct Registry<'a> {
 
     #[doc(hidden)]
     pub llvm_passes: Vec<String>,
-
-    #[doc(hidden)]
-    pub attributes: Vec<(Symbol, AttributeType)>,
 }
 
 impl<'a> Registry<'a> {
@@ -54,7 +50,6 @@ impl<'a> Registry<'a> {
             krate_span,
             syntax_exts: vec![],
             llvm_passes: vec![],
-            attributes: vec![],
         }
     }
 
@@ -97,13 +92,5 @@ impl<'a> Registry<'a> {
     /// execute.
     pub fn register_llvm_pass(&mut self, name: &str) {
         self.llvm_passes.push(name.to_owned());
-    }
-
-    /// Register an attribute with an attribute type.
-    ///
-    /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
-    /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
-    pub fn register_attribute(&mut self, name: Symbol, ty: AttributeType) {
-        self.attributes.push((name, ty));
     }
 }

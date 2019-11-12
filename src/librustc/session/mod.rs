@@ -21,11 +21,10 @@ use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::edition::Edition;
-use syntax::feature_gate::{self, AttributeType};
+use syntax::feature_gate;
 use errors::json::JsonEmitter;
 use syntax::source_map;
 use syntax::sess::{ParseSess, ProcessCfgMod};
-use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
@@ -79,7 +78,6 @@ pub struct Session {
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
-    pub plugin_attributes: Lock<Vec<(Symbol, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
@@ -1166,7 +1164,6 @@ fn build_session_(
         working_dir,
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
-        plugin_attributes: Lock::new(Vec::new()),
         crate_types: Once::new(),
         crate_disambiguator: Once::new(),
         features: Once::new(),
