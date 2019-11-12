@@ -552,6 +552,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 break;
             }
             case Intrinsic::stacksave:
+            case Intrinsic::prefetch:
             case Intrinsic::stackrestore:
             case Intrinsic::dbg_declare:
             case Intrinsic::dbg_value:
@@ -2232,6 +2233,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         }
         case Intrinsic::assume:
         case Intrinsic::stacksave:
+        case Intrinsic::prefetch:
         case Intrinsic::stackrestore:
         case Intrinsic::dbg_declare:
         case Intrinsic::dbg_value:

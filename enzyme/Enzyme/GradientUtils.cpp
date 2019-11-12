@@ -76,7 +76,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
         return lc.latchMerge;
     }
 
-    //llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
+    llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
     return reverseBlocks[BB];
   }
 
@@ -133,8 +133,8 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                 for(auto pred : predecessors(exit)) {
                     auto fd = std::find(latches.begin(), latches.end(), pred);
                     if ( fd != latches.end()) {
-                        auto latch = *fd;
-                        targetToPreds[reverseBlocks[latch]].push_back(std::make_pair(pred, exit));
+                        targetToPreds[reverseBlocks[pred]].push_back(std::make_pair(pred, exit));
+                        //targetToPreds[getReverseOrLatchMerge(pred, exit)].push_back(std::make_pair(pred, exit));
                     }
                 }
             }
@@ -553,6 +553,7 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
     for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
         PHINode *PN = cast<PHINode>(II);
         if (PN == CanonicalIV) continue;
+        if (PN->getType()->isPointerTy()) continue;
         if (!SE.isSCEVable(PN->getType())) continue;
         const SCEV *S = SE.getSCEV(PN);
         if (SE.getCouldNotCompute() == S) continue;
@@ -951,7 +952,6 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
   IntegerType* T = (targetToPreds.size() == 2) ? Type::getInt1Ty(BuilderM.getContext()) : Type::getInt8Ty(BuilderM.getContext());
   CallInst* freeLocation;
-  AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
 
   Instruction* equivalentTerminator = nullptr;
   
@@ -1000,6 +1000,9 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       BasicBlock* block = equivalentTerminator->getParent();
       assert(branch->getCondition());
 
+      assert(branch->getCondition()->getType() == T);
+
+      AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
       storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
@@ -1033,12 +1036,14 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
           }
       }
   } else if (auto si = dyn_cast<SwitchInst>(equivalentTerminator)) {
-      assert(branch->getCondition());
       BasicBlock* block = equivalentTerminator->getParent();
 
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
-      storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
+
+      AllocaInst* cache = createCacheForScope(ctx, si->getCondition()->getType(), "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+      Value* condition = si->getCondition();
+      storeInstructionInCache(ctx, pbuilder, condition, cache);
 
       Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
 
@@ -1082,6 +1087,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
   nofast:;
 
+  AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
   std::vector<BasicBlock*> targets;
   {
   size_t idx = 0;

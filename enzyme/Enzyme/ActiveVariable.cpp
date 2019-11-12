@@ -346,6 +346,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		switch(op->getIntrinsicID()) {
 			case Intrinsic::assume:
 			case Intrinsic::stacksave:
+                        case Intrinsic::prefetch:
 			case Intrinsic::stackrestore:
 			case Intrinsic::lifetime_start:
 			case Intrinsic::lifetime_end:

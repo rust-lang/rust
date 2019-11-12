@@ -467,13 +467,14 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  //auto baa = new BasicAAResult(ba.run(*NewF, AM));
  AssumptionCache* AC = new AssumptionCache(*NewF);
  TargetLibraryInfo* TLI = new TargetLibraryInfo(AM.getResult<TargetLibraryAnalysis>(*NewF));
+ DominatorTree* DTL = new DominatorTree(*NewF);
  auto baa = new BasicAAResult(NewF->getParent()->getDataLayout(),
 #if LLVM_VERSION_MAJOR > 6
                         *NewF,
 #endif
                         *TLI,
                         *AC,
-                        &AM.getResult<DominatorTreeAnalysis>(*NewF),
+                        DTL/*&AM.getResult<DominatorTreeAnalysis>(*NewF)*/,
                         AM.getCachedResult<LoopAnalysis>(*NewF)
 #if LLVM_VERSION_MAJOR > 6
                         ,AM.getCachedResult<PhiValuesAnalysis>(*NewF)

@@ -1165,8 +1165,9 @@ endCheck:
                 }   
             }
         }
-
-        v.CreateStore(val, getCachePointer(v, ctx, cache));
+        Value* loc = getCachePointer(v, ctx, cache);
+        assert(cast<PointerType>(loc->getType())->getElementType() == val->getType());
+        v.CreateStore(val, loc);
     }
 
     void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
@@ -1381,11 +1382,26 @@ public:
         sv.push_back(i);
       Value* ptr = BuilderM.CreateGEP(getDifferential(val), sv);
       Value* old = BuilderM.CreateLoad(ptr);
+
+      Value* res = nullptr;
+
+      if (old->getType()->isIntOrIntVectorTy()) {
+        res = BuilderM.CreateFAdd(BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())), BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
+        res = BuilderM.CreateBitCast(res, old->getType());
+      } else if(old->getType()->isFPOrFPVectorTy()) {
+        res = BuilderM.CreateFAdd(old, dif);
+      } else {
+        assert(old);
+        assert(dif);
+        llvm::errs() << *newFunc << "\n" << "cannot handle type " << *old << "\n" << *dif;
+        report_fatal_error("cannot handle type");
+      }
+
         
-      Value* res = BuilderM.CreateFAdd(old, dif);
       SelectInst* addedSelect = nullptr;
 
         //! optimize fadd of select to select of fadd
+        // TODO: Handle Selects of ints
         if (SelectInst* select = dyn_cast<SelectInst>(dif)) {
             if (ConstantFP* ci = dyn_cast<ConstantFP>(select->getTrueValue())) {
                 if (ci->isZero()) {
@@ -1426,6 +1442,7 @@ public:
 
       Value* res;
       Value* old = BuilderM.CreateLoad(ptr);
+
       if (old->getType()->isIntOrIntVectorTy()) {
         res = BuilderM.CreateFAdd(BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())), BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
         res = BuilderM.CreateBitCast(res, old->getType());
