@@ -1983,10 +1983,11 @@ pub struct Method {
     pub defaultness: Option<hir::Defaultness>,
     pub all_types: Vec<Type>,
     pub ret_types: Vec<Type>,
+    pub parent: Option<DefId>
 }
 
 impl<'a> Clean<Method> for (&'a hir::FnSig, &'a hir::Generics, hir::BodyId,
-                            Option<hir::Defaultness>) {
+                            Option<hir::Defaultness>, Option<DefId>) {
     fn clean(&self, cx: &DocContext<'_>) -> Method {
         let (generics, decl) = enter_impl_trait(cx, || {
             (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx))
@@ -1999,6 +2000,7 @@ impl<'a> Clean<Method> for (&'a hir::FnSig, &'a hir::Generics, hir::BodyId,
             defaultness: self.3,
             all_types,
             ret_types,
+            parent: self.4,
         }
     }
 }
@@ -2314,7 +2316,7 @@ impl Clean<Item> for hir::TraitItem {
                                     default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
-                MethodItem((sig, &self.generics, body, None).clean(cx))
+                MethodItem((sig, &self.generics, body, None, None).clean(cx))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
@@ -2349,13 +2351,28 @@ impl Clean<Item> for hir::TraitItem {
 
 impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let impl_container_did = cx.tcx.opt_associated_item(self.hir_id.owner_def_id())
+            .and_then(|associated_item| match associated_item.container {
+                ty::AssocItemContainer::ImplContainer(did) => Some(did),
+                _ => None
+            });
+
+        let for_trait_did = impl_container_did.and_then(|did| cx.tcx.trait_id_of_impl(did));
+        let parent_item = for_trait_did
+            .and_then(|did| {
+                cx.tcx.associated_items(did).find(|item| item.ident.name == self.ident.name)
+            })
+            .map(|item| item.def_id);
+
         let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx),
                                     Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Method(ref sig, body) => {
-                MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
+                MethodItem(
+                    (sig, &self.generics, body, Some(self.defaultness), parent_item).clean(cx)
+                )
             }
             hir::ImplItemKind::TyAlias(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
@@ -2448,6 +2465,7 @@ impl Clean<Item> for ty::AssocItem {
                         defaultness,
                         all_types,
                         ret_types,
+                        parent: None
                     })
                 } else {
                     TyMethodItem(TyMethod {

@@ -6,7 +6,7 @@ use crate::clean::{self, AttributesExt, NestedAttributesExt};
 use crate::clean::Item;
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
-use crate::passes::{ImplStripper, Pass};
+use crate::passes::Pass;
 
 pub const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",
@@ -25,7 +25,7 @@ pub fn strip_hidden(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     };
 
     // strip all impls referencing stripped items
-    let mut stripper = ImplStripper { retained: &retained };
+    let mut stripper = ReferencesStripper { retained: &retained };
     let krate = stripper.fold_crate(krate);
 
     krate
@@ -56,6 +56,21 @@ impl<'a> DocFolder for Stripper<'a> {
         } else {
             if self.update_retained {
                 self.retained.insert(i.def_id);
+            }
+        }
+        self.fold_item_recur(i)
+    }
+}
+
+struct ReferencesStripper<'a> {
+    retained: &'a DefIdSet
+}
+
+impl<'a> DocFolder for ReferencesStripper<'a> {
+    fn fold_item(&mut self, i: Item) -> Option<Item> {
+        if let clean::ItemEnum::MethodItem(ref method) = &i.inner {
+            if method.parent.map(|did| !self.retained.contains(&did)).unwrap_or(false) {
+                return None;
             }
         }
         self.fold_item_recur(i)

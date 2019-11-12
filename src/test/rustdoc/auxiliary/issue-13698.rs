@@ -1,8 +1,13 @@
 // compile-flags: -Cmetadata=aux
 
-pub trait Foo {
+pub trait FooAux {
     #[doc(hidden)]
     fn foo(&self) {}
+
+    #[doc(hidden)]
+    fn foo2(&self);
 }
 
-impl Foo for i32 {}
+impl FooAux for i32 {
+  fn foo2(&self) {}
+}
