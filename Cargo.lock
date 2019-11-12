@@ -3885,6 +3885,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_session"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc_data_structures",
+ "libserialize",
+ "rustc_errors",
+ "serialize",
+ "syntax_pos",
+]
+
+[[package]]
 name = "rustc_target"
 version = "0.0.0"
 dependencies = [
