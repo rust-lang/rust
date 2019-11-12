@@ -2809,7 +2809,22 @@ impl<'a, T> IntoIterator for &'a mut VecDeque<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for VecDeque<A> {
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T) {
-        iter.into_iter().for_each(move |elt| self.push_back(elt));
+        // This function should be the moral equivalent of:
+        //
+        //      for item in iter.into_iter() {
+        //          self.push_back(item);
+        //      }
+        let mut iter = iter.into_iter();
+        while let Some(element) = iter.next() {
+            if self.len() == self.capacity() {
+                let (lower, _) = iter.size_hint();
+                self.reserve(lower.saturating_add(1));
+            }
+
+            let head = self.head;
+            self.head = self.wrap_add(self.head, 1);
+            unsafe { self.buffer_write(head, element); }
+        }
     }
 }
 
