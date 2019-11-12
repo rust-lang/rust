@@ -2,6 +2,8 @@ use crate::prelude::*;
 
 use syntax::source_map::FileName;
 
+use cranelift::codegen::binemit::CodeOffset;
+
 use gimli::write::{
     Address, AttributeValue, FileId, LineProgram, LineString,
     LineStringTable, Range, UnitEntryId,
@@ -75,7 +77,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         context: &Context,
         isa: &dyn cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
-    ) {
+    ) -> CodeOffset {
         let tcx = self.debug_context.tcx;
 
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
@@ -135,15 +137,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
         self.debug_context.emit_location(self.entry_id, self.mir.span);
 
-        self.debug_context
-            .unit_range_list
-            .0
-            .push(Range::StartLength {
-                begin: Address::Symbol {
-                    symbol: self.symbol,
-                    addend: 0,
-                },
-                length: end as u64,
-            });
+        end
     }
 }

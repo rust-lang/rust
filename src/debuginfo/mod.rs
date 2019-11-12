@@ -8,7 +8,7 @@ use cranelift::codegen::isa::RegUnit;
 
 use gimli::write::{
     self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString,
-    Location, LocationList, RangeList, UnitEntryId, Writer,
+    Location, LocationList, Range, RangeList, UnitEntryId, Writer,
 };
 use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, X86_64};
 
@@ -237,7 +237,18 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         isa: &dyn cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
     ) {
-        self.create_debug_lines(context, isa, source_info_set);
+        let end = self.create_debug_lines(context, isa, source_info_set);
+
+        self.debug_context
+            .unit_range_list
+            .0
+            .push(Range::StartLength {
+                begin: Address::Symbol {
+                    symbol: self.symbol,
+                    addend: 0,
+                },
+                length: end as u64,
+            });
 
         {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
