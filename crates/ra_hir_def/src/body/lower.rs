@@ -54,10 +54,6 @@ pub(super) fn lower(
 struct ExprCollector<DB> {
     db: DB,
     resolver: MacroResolver,
-    // Expr collector expands macros along the way. original points to the file
-    // we started with, current points to the current macro expansion. source
-    // maps don't support macros yet, so we only record info into source map if
-    // current == original (see #1196)
     original_file_id: HirFileId,
     current_file_id: HirFileId,
 
