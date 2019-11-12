@@ -41,6 +41,7 @@ use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::Arc;
@@ -124,7 +125,7 @@ pub struct Session {
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: Lock<CodeStats>,
+    pub code_stats: CodeStats,
 
     /// If `-zfuel=crate=n` is specified, `Some(crate)`.
     optimization_fuel_crate: Option<String>,
@@ -183,7 +184,7 @@ enum DiagnosticBuilderMethod {
 pub enum DiagnosticMessageId {
     ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32), // issue number
+    StabilityId(Option<NonZeroU32>), // issue number
 }
 
 impl From<&'static lint::Lint> for DiagnosticMessageId {

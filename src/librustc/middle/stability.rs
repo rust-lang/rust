@@ -22,8 +22,9 @@ use syntax::attr::{self, Stability, Deprecation, RustcDeprecation};
 use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::{FxHashSet, FxHashMap};
 
-use std::mem::replace;
 use std::cmp::Ordering;
+use std::mem::replace;
+use std::num::NonZeroU32;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
@@ -441,7 +442,7 @@ impl<'tcx> Index<'tcx> {
                 let stability = tcx.intern_stability(Stability {
                     level: attr::StabilityLevel::Unstable {
                         reason: Some(Symbol::intern(reason)),
-                        issue: 27812,
+                        issue: NonZeroU32::new(27812),
                         is_soft: false,
                     },
                     feature: sym::rustc_private,
@@ -488,7 +489,7 @@ pub fn report_unstable(
     sess: &Session,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: u32,
+    issue: Option<NonZeroU32>,
     is_soft: bool,
     span: Span,
     soft_handler: impl FnOnce(&'static lint::Lint, Span, &str),
@@ -520,7 +521,7 @@ pub fn report_unstable(
             soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
         } else {
             emit_feature_err(
-                &sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg
+                &sess.parse_sess, feature, span, GateIssue::Library(issue), &msg
             );
         }
     }
@@ -637,7 +638,7 @@ pub enum EvalResult {
     Deny {
         feature: Symbol,
         reason: Option<Symbol>,
-        issue: u32,
+        issue: Option<NonZeroU32>,
         is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
@@ -758,7 +759,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == 27812 {
+                if feature == sym::rustc_private && issue == NonZeroU32::new(27812) {
                     if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }

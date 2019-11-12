@@ -207,10 +207,10 @@ declare_features! (
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (active, allocator_internals, "1.20.0", None, None),
 
-    // no-tracking-issue-end
-
     /// Added for testing E0705; perma-unstable.
-    (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),
+    (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+
+    // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
     // feature-group-end: internal feature gates

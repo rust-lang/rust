@@ -14,8 +14,6 @@ use syntax_pos::{self, Span, DUMMY_SP};
 
 use std::fmt;
 use std::mem;
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -261,7 +259,7 @@ pub enum TokenKind {
 
 // `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(TokenKind, 16);
+rustc_data_structures::static_assert_size!(TokenKind, 16);
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Token {
