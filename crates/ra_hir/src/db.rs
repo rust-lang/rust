@@ -113,10 +113,10 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(crate::ty::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDef) -> Substs;
 
-    #[salsa::invoke(Body::body_with_source_map_query)]
+    #[salsa::invoke(crate::expr::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBody) -> (Arc<Body>, Arc<BodySourceMap>);
 
-    #[salsa::invoke(Body::body_query)]
+    #[salsa::invoke(crate::expr::body_query)]
     fn body(&self, def: DefWithBody) -> Arc<Body>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]

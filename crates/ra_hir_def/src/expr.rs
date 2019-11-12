@@ -9,6 +9,8 @@
 //! 3. Unresolved. Paths are stored as sequences of names, and not as defs the
 //!    names refer to.
 //! 4. Desugared. There's no `if let`.
+//!
+//! See also a neighboring `body` module.
 
 use hir_expand::name::Name;
 use ra_arena::{impl_arena_id, RawId};
