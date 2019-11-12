@@ -2,8 +2,6 @@ use crate::prelude::*;
 
 use crate::backend::WriteDebugInfo;
 
-use std::marker::PhantomData;
-
 use syntax::source_map::FileName;
 
 use cranelift::codegen::ir::{StackSlots, ValueLoc};
@@ -310,6 +308,41 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         }
     }
 
+    fn define_local(&mut self, local: mir::Local) -> UnitEntryId {
+        let local_decl = &self.mir.local_decls[local];
+
+        let ty = self.debug_context.tcx.subst_and_normalize_erasing_regions(
+            self.instance.substs,
+            ty::ParamEnv::reveal_all(),
+            &local_decl.ty,
+        );
+        let dw_ty = self.debug_context.dwarf_ty(ty);
+
+        let name = if let Some(name) = local_decl.name {
+            format!("{}{:?}", name.as_str(), local)
+        } else {
+            format!("{:?}", local)
+        };
+
+        let var_id = self
+            .debug_context
+            .dwarf
+            .unit
+            .add(self.entry_id, gimli::DW_TAG_variable);
+        let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
+
+        var_entry.set(
+            gimli::DW_AT_name,
+            AttributeValue::String(name.into_bytes()),
+        );
+        var_entry.set(
+            gimli::DW_AT_type,
+            AttributeValue::ThisUnitEntryRef(dw_ty),
+        );
+
+        var_id
+    }
+
     pub fn define(
         &mut self,
         context: &Context,
@@ -373,28 +406,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
             for (value_label, value_loc_ranges) in value_labels_ranges.iter() {
-                let local_ty = tcx.subst_and_normalize_erasing_regions(
-                    self.instance.substs,
-                    ty::ParamEnv::reveal_all(),
-                    &self.mir.local_decls[mir::Local::from_u32(value_label.as_u32())].ty,
-                );
-                let local_type = self.debug_context.dwarf_ty(local_ty);
-
-                let var_id = self
-                    .debug_context
-                    .dwarf
-                    .unit
-                    .add(self.entry_id, gimli::DW_TAG_variable);
-                let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
-
-                var_entry.set(
-                    gimli::DW_AT_name,
-                    AttributeValue::String(format!("{:?}", value_label).into_bytes()),
-                );
-                var_entry.set(
-                    gimli::DW_AT_type,
-                    AttributeValue::ThisUnitEntryRef(local_type),
-                );
+                let var_id = self.define_local(mir::Local::from_u32(value_label.as_u32()));
 
                 let loc_list = LocationList(
                     value_loc_ranges
