@@ -1,7 +1,7 @@
 # MIR optimizations
 
 MIR optimizations are optimizations run on the [MIR][mir] to produce better MIR
-before codegen. This is important for two reasons: first, it make the final
+before codegen. This is important for two reasons: first, it makes the final
 generated executable code better, and second, it means that LLVM has less work
 to do, so compilation is faster. Note that since MIR is generic (not
 [monomorphized][monomorph] yet), these optimizations are particularly
