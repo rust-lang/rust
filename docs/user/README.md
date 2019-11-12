@@ -107,6 +107,8 @@ host.
        "lsp.diagnostics": true,
        // Automatically insert `()` and `<>` when completing functions and types.
        "completion.insertion.add-call-parenthesis": true,
+       // Enable completions like `.if`, `.match`, etc.
+       "completion.enable-postfix": true,
        // Show notification when workspace is fully loaded
        "notifications.workspace-loaded": true,
    }

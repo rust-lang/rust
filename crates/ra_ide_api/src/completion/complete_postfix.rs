@@ -13,6 +13,10 @@ use crate::{
 };
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
+    if ctx.db.feature_flags.get("completions.enable-postfix") == false {
+        return;
+    }
+
     let dot_receiver = match &ctx.dot_receiver {
         Some(it) => it,
         None => return,
