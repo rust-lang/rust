@@ -5,7 +5,7 @@ use syntax::source_map::FileName;
 use cranelift::codegen::binemit::CodeOffset;
 
 use gimli::write::{
-    Address, AttributeValue, FileId, LineProgram, LineString, LineStringTable, Range, UnitEntryId,
+    Address, AttributeValue, FileId, LineProgram, LineString, LineStringTable, UnitEntryId,
 };
 
 fn line_program_add_file(

@@ -172,7 +172,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         instance: Instance<'tcx>,
         func_id: FuncId,
         name: &str,
-        _sig: &Signature,
     ) -> Self {
         let mir = debug_context.tcx.instance_mir(instance.def);
 
@@ -235,6 +234,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         context: &Context,
         isa: &dyn cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<(Span, mir::SourceScope)>,
+        local_map: HashMap<mir::Local, CPlace<'tcx>>,
     ) {
         let end = self.create_debug_lines(context, isa, source_info_set);
 
@@ -251,34 +251,53 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
         let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
-        for (value_label, value_loc_ranges) in value_labels_ranges.iter() {
-            let var_id = self.define_local(mir::Local::from_u32(value_label.as_u32()));
+        for (local, _local_decl) in self.mir.local_decls.iter_enumerated() {
+            let var_id = self.define_local(local);
+            let value_label = cranelift::codegen::ir::ValueLabel::from_u32(local.as_u32());
 
-            let loc_list = LocationList(
-                value_loc_ranges
-                    .iter()
-                    .map(|value_loc_range| Location::StartEnd {
-                        begin: Address::Symbol {
-                            symbol: self.symbol,
-                            addend: i64::from(value_loc_range.start),
-                        },
-                        end: Address::Symbol {
-                            symbol: self.symbol,
-                            addend: i64::from(value_loc_range.end),
-                        },
-                        data: Expression(
-                            translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap(),
-                        ),
-                    })
-                    .collect(),
-            );
-            let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
+            let location = match local_map[&local].inner() {
+                CPlaceInner::Var(_) => {
+                    if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
+                        let loc_list = LocationList(
+                            value_loc_ranges
+                                .iter()
+                                .map(|value_loc_range| Location::StartEnd {
+                                    begin: Address::Symbol {
+                                        symbol: self.symbol,
+                                        addend: i64::from(value_loc_range.start),
+                                    },
+                                    end: Address::Symbol {
+                                        symbol: self.symbol,
+                                        addend: i64::from(value_loc_range.end),
+                                    },
+                                    data: Expression(
+                                        translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap(),
+                                    ),
+                                })
+                                .collect(),
+                        );
+                        let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
+
+                        AttributeValue::LocationListRef(loc_list_id)
+                    } else {
+                        // FIXME set value labels for unused locals
+
+                        AttributeValue::Exprloc(Expression(vec![]))
+                    }
+                }
+                CPlaceInner::Addr(_, _) => {
+                    // FIXME implement this (used by arguments and returns)
+
+                    AttributeValue::Exprloc(Expression(vec![]))
+                }
+                CPlaceInner::Stack(stack_slot) => {
+                    AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
+                }
+                CPlaceInner::NoPlace => AttributeValue::Exprloc(Expression(vec![])),
+            };
 
             let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
-            var_entry.set(
-                gimli::DW_AT_location,
-                AttributeValue::LocationListRef(loc_list_id),
-            );
+            var_entry.set(gimli::DW_AT_location, location);
         }
     }
 }

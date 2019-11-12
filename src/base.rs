@@ -17,7 +17,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut debug_context = cx
         .debug_context
         .as_mut()
-        .map(|debug_context| FunctionDebugContext::new(debug_context, instance, func_id, &name, &sig));
+        .map(|debug_context| FunctionDebugContext::new(debug_context, instance, func_id, &name));
 
     // Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
@@ -61,6 +61,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let instance = fx.instance;
     let clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
+    let local_map = fx.local_map;
 
     #[cfg(debug_assertions)]
     crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &func, &clif_comments, None);
@@ -92,7 +93,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let isa = cx.module.isa();
     debug_context
         .as_mut()
-        .map(|x| x.define(context, isa, &source_info_set));
+        .map(|x| x.define(context, isa, &source_info_set, local_map));
 
     // Clear context to make it usable for the next function
     context.clear();
