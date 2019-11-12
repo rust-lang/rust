@@ -6,6 +6,7 @@ use crate::print::pprust;
 use crate::sess::ParseSess;
 
 use errors::{Applicability, Handler};
+use std::num::NonZeroU32;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
 
@@ -157,7 +158,7 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: u32, is_soft: bool },
+    Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
     Stable { since: Symbol },
 }
 
@@ -394,18 +395,28 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
                     match (feature, reason, issue) {
                         (Some(feature), reason, Some(issue)) => {
+                            let issue = match &*issue.as_str() {
+                                // FIXME(rossmacarthur): remove "0" because "none" should be used
+                                // See #41260
+                                "none" | "0" => None,
+                                issue => {
+                                    if let Ok(num) = issue.parse() {
+                                        NonZeroU32::new(num)
+                                    } else {
+                                        span_err!(
+                                            diagnostic,
+                                            attr.span,
+                                            E0545,
+                                            "incorrect 'issue'"
+                                        );
+                                        continue
+                                    }
+                                }
+                            };
                             stab = Some(Stability {
                                 level: Unstable {
                                     reason,
-                                    issue: {
-                                        if let Ok(issue) = issue.as_str().parse() {
-                                            issue
-                                        } else {
-                                            span_err!(diagnostic, attr.span, E0545,
-                                                      "incorrect 'issue'");
-                                            continue
-                                        }
-                                    },
+                                    issue,
                                     is_soft,
                                 },
                                 feature,
