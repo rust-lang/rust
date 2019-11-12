@@ -1099,7 +1099,6 @@ fn build_session_(
             );
             match profiler {
                 Ok(profiler) => {
-                    crate::ty::query::QueryName::register_with_profiler(&profiler);
                     Some(Arc::new(profiler))
                 },
                 Err(e) => {

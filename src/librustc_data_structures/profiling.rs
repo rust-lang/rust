@@ -205,6 +205,12 @@ impl SelfProfilerRef {
             TimingGuard::none()
         }));
     }
+
+    pub fn register_queries(&self, f: impl FnOnce(&SelfProfiler)) {
+        if let Some(profiler) = &self.profiler {
+            f(&profiler)
+        }
+    }
 }
 
 pub struct SelfProfiler {

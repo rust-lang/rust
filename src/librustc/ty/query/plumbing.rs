@@ -827,7 +827,9 @@ macro_rules! define_queries_inner {
         }
 
         impl QueryName {
-            pub fn register_with_profiler(profiler: &rustc_data_structures::profiling::SelfProfiler) {
+            pub fn register_with_profiler(
+                profiler: &rustc_data_structures::profiling::SelfProfiler,
+            ) {
                 $(profiler.register_query_name(QueryName::$name);)*
             }
 
