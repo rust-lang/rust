@@ -781,65 +781,68 @@ impl<'tcx> Constructor<'tcx> {
         ty: Ty<'tcx>,
     ) -> Vec<Pat<'tcx>> {
         debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
-        match ty.kind {
-            ty::Tuple(ref fs) => {
-                fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
-            }
-            ty::Slice(ty) | ty::Array(ty, _) => match *self {
-                FixedLenSlice(length) => (0..length).map(|_| Pat::wildcard_from_ty(ty)).collect(),
-                VarLenSlice(prefix, suffix) => {
-                    (0..prefix + suffix).map(|_| Pat::wildcard_from_ty(ty)).collect()
+
+        match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => {
+                    fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
                 }
-                ConstantValue(..) => vec![],
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
-            },
-            ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
-            ty::Adt(adt, substs) => {
-                if adt.is_box() {
-                    // Use T as the sub pattern type of Box<T>.
-                    vec![Pat::wildcard_from_ty(substs.type_at(0))]
-                } else {
-                    let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                    let is_non_exhaustive =
-                        variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
-                    variant
-                        .fields
-                        .iter()
-                        .map(|field| {
-                            let is_visible =
-                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                            let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
-                            match (is_visible, is_non_exhaustive, is_uninhabited) {
-                                // Treat all uninhabited types in non-exhaustive variants as
-                                // `TyErr`.
-                                (_, true, true) => cx.tcx.types.err,
-                                // Treat all non-visible fields as `TyErr`. They can't appear in
-                                // any other pattern from this match (because they are private), so
-                                // their type does not matter - but we don't want to know they are
-                                // uninhabited.
-                                (false, ..) => cx.tcx.types.err,
-                                (true, ..) => {
-                                    let ty = field.ty(cx.tcx, substs);
-                                    match ty.kind {
-                                        // If the field type returned is an array of an unknown
-                                        // size return an TyErr.
-                                        ty::Array(_, len)
-                                            if len
-                                                .try_eval_usize(cx.tcx, cx.param_env)
-                                                .is_none() =>
-                                        {
-                                            cx.tcx.types.err
+                ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
+                ty::Adt(adt, substs) => {
+                    if adt.is_box() {
+                        // Use T as the sub pattern type of Box<T>.
+                        vec![Pat::wildcard_from_ty(substs.type_at(0))]
+                    } else {
+                        let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
+                        let is_non_exhaustive =
+                            variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
+                        variant
+                            .fields
+                            .iter()
+                            .map(|field| {
+                                let is_visible = adt.is_enum()
+                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
+                                match (is_visible, is_non_exhaustive, is_uninhabited) {
+                                    // Treat all uninhabited types in non-exhaustive variants as
+                                    // `TyErr`.
+                                    (_, true, true) => cx.tcx.types.err,
+                                    // Treat all non-visible fields as `TyErr`. They can't appear
+                                    // in any other pattern from this match (because they are
+                                    // private), so their type does not matter - but we don't want
+                                    // to know they are uninhabited.
+                                    (false, ..) => cx.tcx.types.err,
+                                    (true, ..) => {
+                                        let ty = field.ty(cx.tcx, substs);
+                                        match ty.kind {
+                                            // If the field type returned is an array of an unknown
+                                            // size return an TyErr.
+                                            ty::Array(_, len)
+                                                if len
+                                                    .try_eval_usize(cx.tcx, cx.param_env)
+                                                    .is_none() =>
+                                            {
+                                                cx.tcx.types.err
+                                            }
+                                            _ => ty,
                                         }
-                                        _ => ty,
                                     }
                                 }
-                            }
-                        })
-                        .map(Pat::wildcard_from_ty)
-                        .collect()
+                            })
+                            .map(Pat::wildcard_from_ty)
+                            .collect()
+                    }
                 }
-            }
-            _ => vec![],
+                _ => vec![],
+            },
+            FixedLenSlice(_) | VarLenSlice(..) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => {
+                    let arity = self.arity(cx, ty);
+                    (0..arity).map(|_| Pat::wildcard_from_ty(ty)).collect()
+                }
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
+            ConstantValue(..) | ConstantRange(..) => vec![],
         }
     }
 
@@ -850,19 +853,19 @@ impl<'tcx> Constructor<'tcx> {
     /// A struct pattern's arity is the number of fields it contains, etc.
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
-        match ty.kind {
-            ty::Tuple(ref fs) => fs.len() as u64,
-            ty::Slice(..) | ty::Array(..) => match *self {
-                FixedLenSlice(length) => length,
-                VarLenSlice(prefix, suffix) => prefix + suffix,
-                ConstantValue(..) => 0,
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+        match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => fs.len() as u64,
+                ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
+                ty::Ref(..) => 1,
+                ty::Adt(adt, _) => {
+                    adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
+                }
+                _ => 0,
             },
-            ty::Ref(..) => 1,
-            ty::Adt(adt, _) => {
-                adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
-            }
-            _ => 0,
+            FixedLenSlice(length) => *length,
+            VarLenSlice(prefix, suffix) => prefix + suffix,
+            ConstantValue(..) | ConstantRange(..) => 0,
         }
     }
 
@@ -886,53 +889,49 @@ impl<'tcx> Constructor<'tcx> {
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Pat<'tcx> {
         let mut subpatterns = pats.into_iter();
-        let pat = match ty.kind {
-            ty::Adt(..) | ty::Tuple(..) => {
-                let subpatterns = subpatterns
-                    .enumerate()
-                    .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
-                    .collect();
 
-                if let ty::Adt(adt, substs) = ty.kind {
-                    if adt.is_enum() {
-                        PatKind::Variant {
-                            adt_def: adt,
-                            substs,
-                            variant_index: self.variant_index_for_adt(cx, adt),
-                            subpatterns,
+        let pat = match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Adt(..) | ty::Tuple(..) => {
+                    let subpatterns = subpatterns
+                        .enumerate()
+                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                        .collect();
+
+                    if let ty::Adt(adt, substs) = ty.kind {
+                        if adt.is_enum() {
+                            PatKind::Variant {
+                                adt_def: adt,
+                                substs,
+                                variant_index: self.variant_index_for_adt(cx, adt),
+                                subpatterns,
+                            }
+                        } else {
+                            PatKind::Leaf { subpatterns }
                         }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }
-                } else {
-                    PatKind::Leaf { subpatterns }
                 }
-            }
-
-            ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
-
-            ty::Slice(_) | ty::Array(..) => match self {
-                FixedLenSlice(_) => {
-                    PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
-                }
-                VarLenSlice(prefix_len, _suffix_len) => {
-                    let prefix = subpatterns.by_ref().take(*prefix_len as usize).collect();
-                    let suffix = subpatterns.collect();
-                    let wild = Pat::wildcard_from_ty(ty);
-                    PatKind::Slice { prefix, slice: Some(wild), suffix }
-                }
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
-            },
-
-            _ => match *self {
-                ConstantValue(value, _) => PatKind::Constant { value },
-                ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
-                    lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
-                    hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
-                    end,
-                }),
+                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
+                ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => PatKind::Wild,
             },
+            FixedLenSlice(_) => {
+                PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
+            }
+            &VarLenSlice(prefix_len, _) => {
+                let prefix = subpatterns.by_ref().take(prefix_len as usize).collect();
+                let suffix = subpatterns.collect();
+                let wild = Pat::wildcard_from_ty(ty);
+                PatKind::Slice { prefix, slice: Some(wild), suffix }
+            }
+            &ConstantValue(value, _) => PatKind::Constant { value },
+            &ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
+                lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
+                hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
+                end,
+            }),
         };
 
         Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
