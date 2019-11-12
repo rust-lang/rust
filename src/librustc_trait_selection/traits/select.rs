@@ -1865,9 +1865,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 //
                 // We always upcast when we can because of reason 3 (region bounds).
 
-                // All of a's auto traits need to be in b's auto traits.
-                data_b.auto_traits()
-                  .all(|b| data_a.auto_traits().any(|a| a == b))
+                if self.tcx().features().trait_upcasting {
+                    true
+                } else {
+                    // Just allow upcast kinds 2 and 3 from above.
+                    data_a.principal_def_id() == data_b.principal_def_id() &&
+                        data_b.auto_traits()
+                            // All of a's auto traits need to be in b's auto traits.
+                            .all(|b| data_a.auto_traits().any(|a| a == b))
+                }
             }
 
             // `T` -> `Trait`
@@ -2949,12 +2955,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let iter = data_a
                         .principal()
                         .map(ty::ExistentialPredicate::Trait)
-                        .into_iter()
-                        .chain(data_a.projection_bounds().map(ty::ExistentialPredicate::Projection))
-                        .chain(data_b.auto_traits().map(ty::ExistentialPredicate::AutoTrait));
+                        .into_iter().chain(
+                            data_a
+                                .projection_bounds()
+                                .map(|x| ty::ExistentialPredicate::Projection(x)),
+                        )
+                        .chain(
+                            data_b
+                                .auto_traits()
+                                .map(ty::ExistentialPredicate::AutoTrait),
+                        );
                     tcx.mk_existential_predicates(iter)
                 });
-                let source_ty = tcx.mk_dynamic(existential_predicates, region_b);
+                let source_with_target_auto_traits =
+                    tcx.mk_dynamic(existential_predicates, region_b);
 
                 if tcx.features().trait_upcasting {
                     // Register obligations for `dyn TraitA1 [TraitA2...]: TraitB1 [TraitB2...]`.
@@ -2975,7 +2989,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 }
                             })
                             .map(|predicate|
-                                predicate_to_obligation(predicate.with_self_ty(tcx, source_ty))
+                                predicate_to_obligation(predicate.with_self_ty(tcx, source))
                             ),
                     );
                 } else {
@@ -2997,7 +3011,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // with what our behavior should be there. -nikomatsakis
                     let InferOk { obligations, .. } = self.infcx
                         .at(&obligation.cause, obligation.param_env)
-                        .eq(target, source_ty) // FIXME: see above.
+                        .eq(target, source_with_target_auto_traits) // FIXME: see above.
                         .map_err(|_| Unimplemented)?;
                     nested.extend(obligations);
                 }

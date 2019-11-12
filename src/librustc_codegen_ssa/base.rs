@@ -161,25 +161,27 @@ pub fn unsized_info<'tcx, 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // Trait upcast
 
             let source_ptr = old_info.expect("unsized_info: missing old info for trait upcast");
-            let target_trait_ref = target_data.principal()
-                .expect("target trait object of upcast does not have principal");
+            let target_ptr = if let Some(target_trait_ref) = target_data.principal() {
+                let trait_ref = target_trait_ref.with_self_ty(tcx, source);
+                let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref));
+                let offset = match vtable {
+                    Vtable::VtableObject(ref data) => data.vtable_base,
+                    // HACK(alexreg): slightly dubious solution to ICE in
+                    // `manual-self-impl-for-unsafe-obj` test.
+                    Vtable::VtableImpl(_) => 0,
+                    _ => bug!("unsized_info: unexpected vtable kind {:?}", vtable),
+                };
 
-            let trait_ref = target_trait_ref.with_self_ty(tcx, source);
-            let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref));
-            let offset = match vtable {
-                Vtable::VtableObject(ref data) => data.vtable_base,
-                // HACK(alexreg): dubious solution to ICE in `manual-self-impl-for-unsafe-obj` test.
-                Vtable::VtableImpl(_) => 0,
-                _ => bug!("unsized_info: unexpected vtable kind {:?}", vtable),
+                let vtable_layout = bx.cx().layout_of(tcx.mk_mut_ptr(source));
+                let source_ptr = bx.pointercast(
+                    source_ptr,
+                    bx.cx().scalar_pair_element_backend_type(vtable_layout, 1, true),
+                );
+
+                bx.struct_gep(source_ptr, offset as u64)
+            } else {
+                source_ptr
             };
-
-            let vtable_layout = bx.cx().layout_of(tcx.mk_mut_ptr(source));
-            let source_ptr = bx.pointercast(
-                source_ptr,
-                bx.cx().scalar_pair_element_backend_type(vtable_layout, 1, true),
-            );
-
-            let target_ptr = bx.struct_gep(source_ptr, offset as u64);
 
             let vtable_layout = bx.cx().layout_of(tcx.mk_mut_ptr(target));
             bx.pointercast(
