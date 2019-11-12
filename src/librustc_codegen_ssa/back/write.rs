@@ -1752,7 +1752,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             }
         };
 
-        sess.cgu_reuse_tracker.check_expected_reuse(sess);
+        sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
 
         sess.abort_if_errors();
 
