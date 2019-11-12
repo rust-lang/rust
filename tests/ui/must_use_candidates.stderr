@@ -12,12 +12,6 @@ error: this method could have a `#[must_use]` attribute
 LL |     pub fn inherent_pure(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add the attribute: `#[must_use] pub fn inherent_pure(&self) -> u8`
 
-error: this method could have a `#[must_use]` attribute
-  --> $DIR/must_use_candidates.rs:31:5
-   |
-LL |     fn trait_impl_pure(&self, i: u32) -> u32 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add the attribute: `#[must_use] fn trait_impl_pure(&self, i: u32) -> u32`
-
 error: this function could have a `#[must_use]` attribute
   --> $DIR/must_use_candidates.rs:48:1
    |
@@ -36,5 +30,5 @@ error: this function could have a `#[must_use]` attribute
 LL | pub fn arcd(_x: Arc<u32>) -> bool {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add the attribute: `#[must_use] pub fn arcd(_x: Arc<u32>) -> bool`
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

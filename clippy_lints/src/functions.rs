@@ -1,6 +1,6 @@
 use crate::utils::{
     attrs::is_proc_macro, iter_input_pats, match_def_path, qpath_res, return_ty, snippet, snippet_opt,
-    span_help_and_lint, span_lint, span_lint_and_then, type_is_unsafe_function,
+    span_help_and_lint, span_lint, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
 };
 use matches::matches;
 use rustc::hir::{self, def::Res, def_id::DefId, intravisit};
@@ -254,7 +254,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
             if let Some(attr) = attr {
                 let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
                 check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
-            } else if cx.access_levels.is_exported(item.hir_id) && !is_proc_macro(&item.attrs) {
+            } else if cx.access_levels.is_exported(item.hir_id)
+                && !is_proc_macro(&item.attrs)
+                && trait_ref_of_method(cx, item.hir_id).is_none()
+            {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,
