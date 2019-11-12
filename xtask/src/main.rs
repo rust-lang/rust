@@ -179,7 +179,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
     Cmd { unix: r"npm ci", windows: r"cmd.exe /c npm.cmd ci", work_dir: "./editors/code" }.run()?;
     Cmd {
-        unix: r"npm run package",
+        unix: r"npm run package --scripts-prepend-node-path",
         windows: r"cmd.exe /c npm.cmd run package",
         work_dir: "./editors/code",
     }

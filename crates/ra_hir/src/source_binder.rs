@@ -28,8 +28,8 @@ use crate::{
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
-    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, HasBody, HirFileId, Local,
-    MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
+    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, GenericParam, HasBody,
+    HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
 
 fn try_get_resolver_for_node(
@@ -107,7 +107,7 @@ pub enum PathResolution {
     /// A local binding (only value namespace)
     Local(Local),
     /// A generic parameter
-    GenericParam(u32),
+    GenericParam(GenericParam),
     SelfType(crate::ImplBlock),
     Macro(MacroDef),
     AssocItem(crate::AssocItem),
@@ -227,7 +227,10 @@ impl SourceAnalyzer {
     ) -> Option<PathResolution> {
         let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it),
-            TypeNs::GenericParam(it) => PathResolution::GenericParam(it),
+            TypeNs::GenericParam(idx) => PathResolution::GenericParam(GenericParam {
+                parent: self.resolver.generic_def().unwrap(),
+                idx,
+            }),
             TypeNs::AdtSelfType(it) | TypeNs::Adt(it) => PathResolution::Def(it.into()),
             TypeNs::EnumVariant(it) => PathResolution::Def(it.into()),
             TypeNs::TypeAlias(it) => PathResolution::Def(it.into()),

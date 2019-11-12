@@ -23,7 +23,7 @@ use crate::{
     adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     expr::{validation::ExprValidator, BindingAnnotation, Body, BodySourceMap, Pat, PatId},
-    generics::HasGenericParams,
+    generics::{GenericDef, HasGenericParams},
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
         TypeAliasId,
@@ -1120,4 +1120,10 @@ impl Local {
         let root = src.file_syntax(db);
         src.map(|ast| ast.map(|it| it.cast().unwrap().to_node(&root), |it| it.to_node(&root)))
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct GenericParam {
+    pub(crate) parent: GenericDef,
+    pub(crate) idx: u32,
 }
