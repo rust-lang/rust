@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 333] = [
+pub const ALL_LINTS: [Lint; 334] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -902,6 +902,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         desc: "large size difference between variants on an enum",
         deprecation: None,
         module: "large_enum_variant",
+    },
+    Lint {
+        name: "large_stack_arrays",
+        group: "pedantic",
+        desc: "allocating large arrays on stack may cause stack overflow",
+        deprecation: None,
+        module: "large_stack_arrays",
     },
     Lint {
         name: "len_without_is_empty",
