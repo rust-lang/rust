@@ -550,7 +550,7 @@ where
     }
 
     fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(self.into())
+        db.body(self.into())
     }
 
     fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
@@ -564,7 +564,7 @@ impl HasBody for DefWithBody {
     }
 
     fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(self)
+        db.body(self)
     }
 
     fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
@@ -666,7 +666,7 @@ impl Function {
     }
 
     pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(self.into())
+        db.body(self.into())
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
@@ -1079,7 +1079,7 @@ pub struct Local {
 
 impl Local {
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
-        let body = db.body_hir(self.parent);
+        let body = db.body(self.parent);
         match &body[self.pat_id] {
             Pat::Bind { name, .. } => Some(name.clone()),
             _ => None,
@@ -1091,7 +1091,7 @@ impl Local {
     }
 
     pub fn is_mut(self, db: &impl HirDatabase) -> bool {
-        let body = db.body_hir(self.parent);
+        let body = db.body(self.parent);
         match &body[self.pat_id] {
             Pat::Bind { mode, .. } => match mode {
                 BindingAnnotation::Mutable | BindingAnnotation::RefMut => true,
