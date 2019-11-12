@@ -43,7 +43,7 @@ use crate::{
     expr::{BindingAnnotation, Body, ExprId, PatId},
     resolve::{Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, ConstData, DefWithBody, FnData, Function, HasBody, Path, StructField,
+    Adt, AssocItem, ConstData, DefWithBody, FnData, Function, Path, StructField,
 };
 
 macro_rules! ty_app {
@@ -64,9 +64,8 @@ mod coerce;
 /// The entry point of type inference.
 pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
     let _p = profile("infer_query");
-    let body = def.body(db);
     let resolver = def.resolver(db);
-    let mut ctx = InferenceContext::new(db, body, resolver);
+    let mut ctx = InferenceContext::new(db, def, resolver);
 
     match def {
         DefWithBody::Const(ref c) => ctx.collect_const(&c.data(db)),
@@ -187,6 +186,7 @@ impl Index<PatId> for InferenceResult {
 #[derive(Clone, Debug)]
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
+    owner: DefWithBody,
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
@@ -204,7 +204,7 @@ struct InferenceContext<'a, D: HirDatabase> {
 }
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
-    fn new(db: &'a D, body: Arc<Body>, resolver: Resolver) -> Self {
+    fn new(db: &'a D, owner: DefWithBody, resolver: Resolver) -> Self {
         InferenceContext {
             result: InferenceResult::default(),
             var_unification_table: InPlaceUnificationTable::new(),
@@ -213,7 +213,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             trait_env: lower::trait_env(db, &resolver),
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
-            body,
+            owner,
+            body: db.body(owner),
             resolver,
         }
     }

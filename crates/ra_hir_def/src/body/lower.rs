@@ -1,9 +1,10 @@
 //! FIXME: write short doc here
 
-use hir_def::{path::GenericArgs, type_ref::TypeRef};
 use hir_expand::{
+    either::Either,
     hygiene::Hygiene,
     name::{self, AsName, Name},
+    AstId, HirFileId, MacroCallLoc, MacroFileKind, Source,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -13,25 +14,24 @@ use ra_syntax::{
     },
     AstNode, AstPtr,
 };
-use test_utils::tested_by;
 
 use crate::{
-    db::HirDatabase,
-    ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
-    AstId, DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
-    Source,
-};
-
-use super::{
-    ArithOp, Array, BinaryOp, BindingAnnotation, Body, BodySourceMap, CmpOp, Expr, ExprId, Literal,
-    LogicOp, MatchArm, Ordering, Pat, PatId, PatPtr, RecordFieldPat, RecordLitField, Statement,
+    body::{Body, BodySourceMap, MacroResolver, PatPtr},
+    builtin_type::{BuiltinFloat, BuiltinInt},
+    db::DefDatabase2,
+    expr::{
+        ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
+        MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+    },
+    path::GenericArgs,
+    path::Path,
+    type_ref::{Mutability, TypeRef},
 };
 
 pub(super) fn lower(
-    db: &impl HirDatabase,
-    resolver: Resolver,
+    db: &impl DefDatabase2,
+    resolver: MacroResolver,
     file_id: HirFileId,
-    owner: DefWithBody,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
@@ -42,11 +42,10 @@ pub(super) fn lower(
         current_file_id: file_id,
         source_map: BodySourceMap::default(),
         body: Body {
-            owner,
             exprs: Arena::default(),
             pats: Arena::default(),
             params: Vec::new(),
-            body_expr: ExprId((!0).into()),
+            body_expr: ExprId::dummy(),
         },
     }
     .collect(params, body)
@@ -54,11 +53,7 @@ pub(super) fn lower(
 
 struct ExprCollector<DB> {
     db: DB,
-    resolver: Resolver,
-    // Expr collector expands macros along the way. original points to the file
-    // we started with, current points to the current macro expansion. source
-    // maps don't support macros yet, so we only record info into source map if
-    // current == original (see #1196)
+    resolver: MacroResolver,
     original_file_id: HirFileId,
     current_file_id: HirFileId,
 
@@ -68,7 +63,7 @@ struct ExprCollector<DB> {
 
 impl<'a, DB> ExprCollector<&'a DB>
 where
-    DB: HirDatabase,
+    DB: DefDatabase2,
 {
     fn collect(
         mut self,
@@ -209,7 +204,6 @@ where
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
-                            tested_by!(infer_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();
@@ -423,28 +417,18 @@ where
             ast::Expr::Literal(e) => {
                 let lit = match e.kind() {
                     LiteralKind::IntNumber { suffix } => {
-                        let known_name = suffix
-                            .and_then(|it| IntTy::from_suffix(&it).map(UncertainIntTy::Known));
+                        let known_name = suffix.and_then(|it| BuiltinInt::from_suffix(&it));
 
-                        Literal::Int(
-                            Default::default(),
-                            known_name.unwrap_or(UncertainIntTy::Unknown),
-                        )
+                        Literal::Int(Default::default(), known_name)
                     }
                     LiteralKind::FloatNumber { suffix } => {
-                        let known_name = suffix
-                            .and_then(|it| FloatTy::from_suffix(&it).map(UncertainFloatTy::Known));
+                        let known_name = suffix.and_then(|it| BuiltinFloat::from_suffix(&it));
 
-                        Literal::Float(
-                            Default::default(),
-                            known_name.unwrap_or(UncertainFloatTy::Unknown),
-                        )
+                        Literal::Float(Default::default(), known_name)
                     }
                     LiteralKind::ByteString => Literal::ByteString(Default::default()),
                     LiteralKind::String => Literal::String(Default::default()),
-                    LiteralKind::Byte => {
-                        Literal::Int(Default::default(), UncertainIntTy::Known(IntTy::u8()))
-                    }
+                    LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
                     LiteralKind::Bool => Literal::Bool(Default::default()),
                     LiteralKind::Char => Literal::Char(Default::default()),
                 };
@@ -467,7 +451,7 @@ where
 
                 if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
                     if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
-                        let call_id = self.db.intern_macro(MacroCallLoc { def: def.id, ast_id });
+                        let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id });
                         let file_id = call_id.as_file(MacroFileKind::Expr);
                         if let Some(node) = self.db.parse_or_expand(file_id) {
                             if let Some(expr) = ast::Expr::cast(node) {

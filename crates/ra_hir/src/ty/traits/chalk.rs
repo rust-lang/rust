@@ -714,7 +714,7 @@ fn closure_fn_trait_impl_datum(
     let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
     let trait_ = get_fn_trait(db, krate, data.fn_trait)?; // get corresponding fn trait
 
-    let num_args: u16 = match &db.body_hir(data.def)[data.expr] {
+    let num_args: u16 = match &db.body(data.def)[data.expr] {
         crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
         _ => {
             log::warn!("closure for closure type {:?} not found", data);

@@ -130,10 +130,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
                     Substs(sig_tys.into()),
                 );
-                let closure_ty = Ty::apply_one(
-                    TypeCtor::Closure { def: self.body.owner(), expr: tgt_expr },
-                    sig_ty,
-                );
+                let closure_ty =
+                    Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -184,7 +182,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = expr::resolver_for_expr(self.body.clone(), self.db, tgt_expr);
+                let resolver = expr::resolver_for_expr(self.db, self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),
@@ -452,8 +450,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
                 }
                 Literal::Char(..) => Ty::simple(TypeCtor::Char),
-                Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int(*ty)),
-                Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float(*ty)),
+                Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int((*ty).into())),
+                Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float((*ty).into())),
             },
         };
         // use a new type variable if we got Ty::Unknown here

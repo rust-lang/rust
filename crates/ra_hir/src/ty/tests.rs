@@ -222,7 +222,6 @@ mod collections {
 
 #[test]
 fn infer_while_let() {
-    covers!(infer_while_let);
     let (db, pos) = TestDB::with_position(
         r#"
 //- /main.rs
@@ -4825,7 +4824,7 @@ fn main() {
         @r###"
         ![0; 1) '6': i32
         [64; 88) '{     ...!(); }': ()
-        [74; 75) 'x': i32        
+        [74; 75) 'x': i32
     "###
     );
 }

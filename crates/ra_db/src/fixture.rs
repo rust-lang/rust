@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use std::str::FromStr;
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
@@ -164,7 +165,7 @@ fn parse_meta(meta: &str) -> ParsedMeta {
         match key {
             "crate" => krate = Some(value.to_string()),
             "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
-            "edition" => edition = Edition::from_string(&value),
+            "edition" => edition = Edition::from_str(&value).unwrap(),
             "cfg" => {
                 for key in value.split(',') {
                     match split1(key, '=') {

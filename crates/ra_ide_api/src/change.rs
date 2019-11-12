@@ -276,7 +276,7 @@ impl RootDatabase {
 
         self.query(hir::db::ExprScopesQuery).sweep(sweep);
         self.query(hir::db::InferQuery).sweep(sweep);
-        self.query(hir::db::BodyHirQuery).sweep(sweep);
+        self.query(hir::db::BodyQuery).sweep(sweep);
     }
 
     pub(crate) fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
@@ -333,7 +333,7 @@ impl RootDatabase {
             hir::db::GenericPredicatesQuery
             hir::db::GenericDefaultsQuery
             hir::db::BodyWithSourceMapQuery
-            hir::db::BodyHirQuery
+            hir::db::BodyQuery
             hir::db::ImplsInCrateQuery
             hir::db::ImplsForTraitQuery
             hir::db::AssociatedTyDataQuery

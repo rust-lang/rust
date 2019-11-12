@@ -14,6 +14,8 @@ pub mod type_ref;
 pub mod builtin_type;
 pub mod adt;
 pub mod diagnostics;
+pub mod expr;
+pub mod body;
 
 #[cfg(test)]
 mod test_db;
