@@ -380,9 +380,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 E0029,
                 "only char and numeric types are allowed in range patterns"
             );
-            err.span_label(span, "ranges require char or numeric types");
-            err.note(&format!("start type: {}", self.ty_to_string(lhs_ty)));
-            err.note(&format!("end type: {}", self.ty_to_string(rhs_ty)));
+            if !lhs_compat && !rhs_compat {
+                err.span_label(
+                    begin.span,
+                    &format!("this is of type `{}` but it should be `char` or numeric", lhs_ty)
+                );
+                err.span_label(
+                    end.span,
+                    &format!("this is of type `{}` but it should be `char` or numeric", rhs_ty)
+                );
+            } else if !lhs_compat {
+                err.span_label(
+                    begin.span,
+                    &format!("this is of type `{}` but it should be `char` or numeric", lhs_ty)
+                );
+                if !rhs_ty.references_error() {
+                    err.span_label(
+                        end.span,
+                        &format!("this is of type `{}`", rhs_ty)
+                    );
+                }
+            } else {
+                err.span_label(
+                    end.span,
+                    &format!("this is of type `{}` but it should be `char` or numeric", rhs_ty)
+                );
+                if !lhs_ty.references_error() {
+                    err.span_label(
+                        begin.span,
+                        &format!("this is of type `{}`", lhs_ty)
+                    );
+                }
+            }
             if self.tcx.sess.teach(&err.get_code().unwrap()) {
                 err.note(
                     "In a match expression, only numbers and characters can be matched \
