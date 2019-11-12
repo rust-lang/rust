@@ -42,4 +42,10 @@ fn main() {
         r"
 "
     );
+
+    // Don't warn on CRLF (#4208)
+    print!("\r\n");
+    print!("foo\r\n");
+    print!("\\r\n"); //~ ERROR
+    print!("foo\rbar\n") // ~ ERROR
 }

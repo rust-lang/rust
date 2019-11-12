@@ -29,6 +29,8 @@ extern crate rustc_errors;
 #[allow(unused_extern_crates)]
 extern crate rustc_index;
 #[allow(unused_extern_crates)]
+extern crate rustc_lexer;
+#[allow(unused_extern_crates)]
 extern crate rustc_mir;
 #[allow(unused_extern_crates)]
 extern crate rustc_parse;

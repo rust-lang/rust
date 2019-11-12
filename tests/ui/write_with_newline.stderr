@@ -88,5 +88,27 @@ LL |         &mut v,
 LL |         r""
    |
 
-error: aborting due to 7 previous errors
+error: using `write!()` with a format string that ends in a single newline
+  --> $DIR/write_with_newline.rs:56:5
+   |
+LL |     write!(&mut v, "/r/n"); //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!()` instead
+   |
+LL |     writeln!(&mut v, "/r"); //~ ERROR
+   |     ^^^^^^^             --
+
+error: using `write!()` with a format string that ends in a single newline
+  --> $DIR/write_with_newline.rs:57:5
+   |
+LL |     write!(&mut v, "foo/rbar/n");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!()` instead
+   |
+LL |     writeln!(&mut v, "foo/rbar");
+   |     ^^^^^^^                  --
+
+error: aborting due to 9 previous errors
 
