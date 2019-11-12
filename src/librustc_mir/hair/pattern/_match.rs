@@ -737,7 +737,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// This returns one wildcard pattern for each argument to this constructor.
     ///
-    /// This must be consistent with `apply`, `specialize_one_pattern` and `arity`.
+    /// This must be consistent with `apply`, `specialize_one_pattern`, and `arity`.
     fn wildcard_subpatterns<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -815,7 +815,7 @@ impl<'tcx> Constructor<'tcx> {
     /// For instance, a tuple pattern `(_, 42, Some([]))` has the arity of 3.
     /// A struct pattern's arity is the number of fields it contains, etc.
     ///
-    /// This must be consistent with `wildcard_subpatterns`, `specialize_one_pattern` and `apply`.
+    /// This must be consistent with `wildcard_subpatterns`, `specialize_one_pattern`, and `apply`.
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
         match self {
@@ -837,7 +837,7 @@ impl<'tcx> Constructor<'tcx> {
     /// Apply a constructor to a list of patterns, yielding a new pattern. `pats`
     /// must have as many elements as this constructor's arity.
     ///
-    /// This must be consistent with `wildcard_subpatterns`, `specialize_one_pattern` and `arity`.
+    /// This must be consistent with `wildcard_subpatterns`, `specialize_one_pattern`, and `arity`.
     ///
     /// Examples:
     /// `self`: `Constructor::Single`
@@ -1369,7 +1369,7 @@ impl<'tcx> IntRange<'tcx> {
                 None
             }
         } else {
-            // If the range sould not be treated exhaustively, fallback to checking for inclusion.
+            // If the range should not be treated exhaustively, fallback to checking for inclusion.
             if other_lo <= lo && hi <= other_hi { Some(self.clone()) } else { None }
         }
     }
