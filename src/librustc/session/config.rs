@@ -1,7 +1,7 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
-use crate::lint;
+use rustc_session::lint;
 use crate::middle::cstore;
 use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
@@ -2854,7 +2854,7 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
-    use crate::lint;
+    use rustc_session::lint;
     use crate::middle::cstore;
     use std::collections::BTreeMap;
     use std::hash::Hash;

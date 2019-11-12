@@ -12,6 +12,8 @@ use syntax::ast;
 use syntax::edition::Edition;
 use syntax::source_map::Span;
 use syntax::symbol::Symbol;
+use syntax::early_buffered_lints::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
+use rustc_session::declare_lint;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -404,31 +406,6 @@ declare_lint! {
     };
 }
 
-/// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
-pub mod parser {
-    declare_lint! {
-        pub ILL_FORMED_ATTRIBUTE_INPUT,
-        Deny,
-        "ill-formed attribute inputs that were previously accepted and used in practice",
-        @future_incompatible = super::FutureIncompatibleInfo {
-            reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
-            edition: None,
-        };
-    }
-
-    declare_lint! {
-        pub META_VARIABLE_MISUSE,
-        Allow,
-        "possible meta-variable misuse at macro definition"
-    }
-
-    declare_lint! {
-        pub INCOMPLETE_INCLUDE,
-        Deny,
-        "trailing content in included file"
-    }
-}
-
 declare_lint! {
     pub DEPRECATED_IN_FUTURE,
     Allow,
@@ -520,8 +497,8 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        parser::ILL_FORMED_ATTRIBUTE_INPUT,
-        parser::META_VARIABLE_MISUSE,
+        ILL_FORMED_ATTRIBUTE_INPUT,
+        META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         MUTABLE_BORROW_RESERVATION_CONFLICT,

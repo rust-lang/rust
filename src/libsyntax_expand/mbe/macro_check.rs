@@ -107,7 +107,7 @@
 use crate::mbe::{KleeneToken, TokenTree};
 
 use syntax::ast::NodeId;
-use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax::early_buffered_lints::META_VARIABLE_MISUSE;
 use syntax::token::{DelimToken, Token, TokenKind};
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym};
@@ -623,5 +623,5 @@ fn ops_is_prefix(
 }
 
 fn buffer_lint(sess: &ParseSess, span: MultiSpan, node_id: NodeId, message: &str) {
-    sess.buffer_lint(BufferedEarlyLintId::MetaVariableMisuse, span, node_id, message);
+    sess.buffer_lint(&META_VARIABLE_MISUSE, span, node_id, message);
 }

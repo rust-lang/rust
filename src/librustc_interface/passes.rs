@@ -439,8 +439,7 @@ fn configure_and_expand_inner<'a>(
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
-            let lint = lint::Lint::from_parser_lint_id(lint_id);
-            resolver.lint_buffer().buffer_lint(lint, id, span, &msg);
+            resolver.lint_buffer().buffer_lint(lint_id, id, span, &msg);
         }
     });
 

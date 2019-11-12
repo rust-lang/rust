@@ -2,7 +2,7 @@
 //! It also serves as an input to the parser itself.
 
 use crate::ast::{CrateConfig, NodeId};
-use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
+use crate::early_buffered_lints::BufferedEarlyLint;
 
 use errors::{Applicability, emitter::SilentEmitter, Handler, ColorConfig, DiagnosticBuilder};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
@@ -137,7 +137,7 @@ impl ParseSess {
 
     pub fn buffer_lint(
         &self,
-        lint_id: BufferedEarlyLintId,
+        lint_id: &'static rustc_session::lint::Lint,
         span: impl Into<MultiSpan>,
         id: NodeId,
         msg: &str,

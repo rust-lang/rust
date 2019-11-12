@@ -1,5 +1,6 @@
 use syntax_pos::{Symbol, sym};
 use syntax_pos::edition::Edition;
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 pub use self::Level::*;
 
 /// Setting for how to handle a lint.
@@ -113,4 +114,125 @@ impl Lint {
             .map(|(_, l)| l)
             .unwrap_or(self.default_level)
     }
+}
+
+/// Identifies a lint known to the compiler.
+#[derive(Clone, Copy, Debug)]
+pub struct LintId {
+    // Identity is based on pointer equality of this field.
+    pub lint: &'static Lint,
+}
+
+impl PartialEq for LintId {
+    fn eq(&self, other: &LintId) -> bool {
+        std::ptr::eq(self.lint, other.lint)
+    }
+}
+
+impl Eq for LintId { }
+
+impl std::hash::Hash for LintId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let ptr = self.lint as *const Lint;
+        ptr.hash(state);
+    }
+}
+
+impl LintId {
+    /// Gets the `LintId` for a `Lint`.
+    pub fn of(lint: &'static Lint) -> LintId {
+        LintId {
+            lint,
+        }
+    }
+
+    pub fn lint_name_raw(&self) -> &'static str {
+        self.lint.name
+    }
+
+    /// Gets the name of the lint.
+    pub fn to_string(&self) -> String {
+        self.lint.name_lower()
+    }
+}
+
+impl<HCX> HashStable<HCX> for LintId {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+        self.lint_name_raw().hash_stable(hcx, hasher);
+    }
+}
+
+impl<HCX> ToStableHashKey<HCX> for LintId {
+    type KeyType = &'static str;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
+        self.lint_name_raw()
+    }
+}
+
+/// Declares a static item of type `&'static Lint`.
+#[macro_export]
+macro_rules! declare_lint {
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
+        $crate::declare_lint!(
+            $vis $NAME, $Level, $desc,
+        );
+    );
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $(@future_incompatible = $fi:expr;)? $($v:ident),*) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            edition_lint_opts: None,
+            is_plugin: false,
+            $($v: true,)*
+            $(future_incompatible: Some($fi),)*
+            ..$crate::lint::Lint::default_fields_for_macro()
+        };
+    );
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $lint_edition: expr => $edition_level: ident
+    ) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
+            report_in_external_macro: false,
+            is_plugin: false,
+        };
+    );
+}
+
+#[macro_export]
+macro_rules! declare_tool_lint {
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+    ) => (
+        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false}
+    );
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
+        report_in_external_macro: $rep:expr
+    ) => (
+         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep}
+    );
+    (
+        $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
+        $external:expr
+    ) => (
+        $(#[$attr])*
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: &concat!(stringify!($tool), "::", stringify!($NAME)),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            edition_lint_opts: None,
+            report_in_external_macro: $external,
+            future_incompatible: None,
+            is_plugin: true,
+        };
+    );
 }

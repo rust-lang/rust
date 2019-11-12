@@ -9,6 +9,7 @@ use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Ident, Item, ItemKind};
 use syntax::symbol::{sym, Symbol};
+use rustc_session::declare_tool_lint;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,

@@ -4,7 +4,7 @@ use errors::{PResult, Applicability};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MetaItem, MetaItemKind};
 use syntax::attr::mk_name_value_item_str;
-use syntax::early_buffered_lints::BufferedEarlyLintId;
+use syntax::early_buffered_lints::ILL_FORMED_ATTRIBUTE_INPUT;
 use syntax::sess::ParseSess;
 use syntax_pos::{Symbol, sym};
 
@@ -93,7 +93,7 @@ pub fn check_builtin_attribute(
             }
             if should_warn(name) {
                 sess.buffer_lint(
-                    BufferedEarlyLintId::IllFormedAttributeInput,
+                    &ILL_FORMED_ATTRIBUTE_INPUT,
                     meta.span,
                     ast::CRATE_NODE_ID,
                     &msg,
