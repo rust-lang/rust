@@ -198,6 +198,21 @@ pub fn take_alloc_error_hook() -> fn(Layout) {
     }
 }
 
+/// A custom error hook, used by librustc_driver.
+/// This lives in `libstd` so that we can call `dumb_print`.
+///
+/// This hook prints out a message like the default error hook,
+/// but then panics to generate a backtrace. If we are completely
+/// out of memory, panicking and/or backtrace generation may fail:
+/// this is fine, since the backtrace is best-effort only. We
+/// are guaranteed to print the actual error message, though.
+#[doc(hidden)]
+#[unstable(feature = "alloc_internals", issue = "0")]
+pub fn rustc_alloc_error_hook(layout: Layout) {
+    dumb_print(format_args!("memory allocation of {} bytes failed. backtrace:", layout.size()));
+    panic!();
+}
+
 fn default_alloc_error_hook(layout: Layout) {
     dumb_print(format_args!("memory allocation of {} bytes failed", layout.size()));
 }

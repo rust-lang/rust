@@ -12,6 +12,8 @@
 #![feature(set_stdio)]
 #![feature(no_debug)]
 #![feature(integer_atomics)]
+#![feature(alloc_error_hook)]
+#![feature(alloc_internals)]
 
 #![recursion_limit="256"]
 
@@ -149,6 +151,14 @@ pub fn run_compiler(
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>
 ) -> interface::Result<()> {
+
+    // Install a custom alloc error hook on Nightly, to try
+    // so we can try to generate a backtrace on OOM in the compiler
+    // See https://github.com/rust-lang/rust/issues/66342 for details
+    if UnstableFeatures::from_environment().is_nightly_build() {
+        std::alloc::set_alloc_error_hook(std::alloc::rustc_alloc_error_hook);
+    }
+
     let mut args = Vec::new();
     for arg in at_args {
         match args::arg_expand(arg.clone()) {
