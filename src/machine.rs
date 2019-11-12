@@ -173,6 +173,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
+        _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         ecx.find_fn(instance, args, dest, ret)
     }
@@ -194,8 +195,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
-        dest: PlaceTy<'tcx, Tag>,
+        dest: Option<PlaceTy<'tcx, Tag>>,
+        _ret: Option<mir::BasicBlock>,
+        _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
+        let dest = match dest {
+            Some(dest) => dest,
+            None => throw_ub!(Unreachable)
+        };
         ecx.call_intrinsic(span, instance, args, dest)
     }
 
@@ -353,13 +360,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
-    ) -> InterpResult<'tcx> {
-        Ok(ecx
+        _unwinding: bool
+    ) -> InterpResult<'tcx, StackPopInfo> {
+        ecx
             .memory
             .extra
             .stacked_borrows
             .borrow_mut()
-            .end_call(extra))
+            .end_call(extra);
+        Ok(StackPopInfo::Normal)
     }
 
     #[inline(always)]
