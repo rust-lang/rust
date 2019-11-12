@@ -22,9 +22,9 @@ could be useful for debugging.
 
 When you have an ICE (panic in the compiler), you can set
 `RUST_BACKTRACE=1` to get the stack trace of the `panic!` like in
-normal Rust programs.  IIRC backtraces **don't work** on Mac and on MinGW,
+normal Rust programs.  IIRC backtraces **don't work** on MinGW,
 sorry. If you have trouble or the backtraces are full of `unknown`,
-you might want to find some way to use Linux or MSVC on Windows.
+you might want to find some way to use Linux, Mac, or MSVC on Windows.
 
 In the default configuration, you don't have line numbers enabled, so the
 backtrace looks like this:
