@@ -373,26 +373,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
             for (value_label, value_loc_ranges) in value_labels_ranges.iter() {
-                let live_ranges = RangeList(
-                    Some(Range::BaseAddress {
-                        address: Address::Symbol {
-                            symbol: self.symbol,
-                            addend: 0,
-                        },
-                    })
-                    .into_iter()
-                    .chain(
-                        value_loc_ranges
-                            .iter()
-                            .map(|value_loc_range| Range::OffsetPair {
-                                begin: u64::from(value_loc_range.start),
-                                end: u64::from(value_loc_range.end),
-                            }),
-                    )
-                    .collect(),
-                );
-                let live_ranges_id = self.debug_context.dwarf.unit.ranges.add(live_ranges);
-
                 let local_ty = tcx.subst_and_normalize_erasing_regions(
                     self.instance.substs,
                     ty::ParamEnv::reveal_all(),
@@ -408,10 +388,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
 
                 var_entry.set(
-                    gimli::DW_AT_ranges,
-                    AttributeValue::RangeListRef(live_ranges_id),
-                );
-                var_entry.set(
                     gimli::DW_AT_name,
                     AttributeValue::String(format!("{:?}", value_label).into_bytes()),
                 );
@@ -420,25 +396,23 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     AttributeValue::ThisUnitEntryRef(local_type),
                 );
 
-
                 let loc_list = LocationList(
-                    Some(Location::BaseAddress {
-                        address: Address::Symbol {
-                            symbol: self.symbol,
-                            addend: 0,
-                        },
-                    })
-                    .into_iter()
-                    .chain(
-                        value_loc_ranges
-                            .iter()
-                            .map(|value_loc_range| Location::OffsetPair {
-                                begin: u64::from(value_loc_range.start),
-                                end: u64::from(value_loc_range.end),
+                    value_loc_ranges
+                        .iter()
+                        .map(|value_loc_range| {
+                            Location::StartEnd {
+                                begin: Address::Symbol {
+                                    symbol: self.symbol,
+                                    addend: i64::from(value_loc_range.start),
+                                },
+                                end: Address::Symbol {
+                                    symbol: self.symbol,
+                                    addend: i64::from(value_loc_range.end),
+                                },
                                 data: Expression(translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap()),
-                            }),
-                    )
-                    .collect(),
+                            }
+                        })
+                        .collect(),
                 );
                 let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
 
