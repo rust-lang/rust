@@ -242,7 +242,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
-                        self.report_cannot_move_from_static(original_path, span)
+                        self.cannot_move_out_of(span, "an immutable place")
                     }
                     IllegalMoveOriginKind::BorrowedContent { target_place } => {
                         self.report_cannot_move_from_borrowed_content(
@@ -265,29 +265,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         self.add_move_hints(error, &mut err, err_span);
         err.buffer(&mut self.errors_buffer);
-    }
-
-    fn report_cannot_move_from_static(
-        &mut self,
-        place: &Place<'tcx>,
-        span: Span
-    ) -> DiagnosticBuilder<'a> {
-        let description = if place.projection.is_empty() {
-            format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
-        } else {
-            let base_static = PlaceRef {
-                base: &place.base,
-                projection: &place.projection[..1],
-            };
-
-            format!(
-                "`{:?}` as `{:?}` is a static item",
-                self.describe_place(place.as_ref()).unwrap(),
-                self.describe_place(base_static).unwrap(),
-            )
-        };
-
-        self.cannot_move_out_of(span, &description)
     }
 
     fn report_cannot_move_from_borrowed_content(

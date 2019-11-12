@@ -15,5 +15,5 @@ fn test(f: Foo) {
 }
 
 fn main() {
-    test(BAR); //~ ERROR cannot move out of static item
+    test(BAR); //~ ERROR cannot move out of an immutable place
 }

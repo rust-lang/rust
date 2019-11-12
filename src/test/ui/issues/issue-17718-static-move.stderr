@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of static item `FOO`
+error[E0507]: cannot move out of an immutable place
   --> $DIR/issue-17718-static-move.rs:6:14
    |
 LL |     let _a = FOO;

@@ -85,7 +85,7 @@ error[E0019]: static contains unimplemented expression type
 LL |     box 3;
    |         ^
 
-error[E0507]: cannot move out of static item `x`
+error[E0507]: cannot move out of an immutable place
   --> $DIR/check-static-values-constraints.rs:116:45
    |
 LL |     let y = { static x: Box<isize> = box 3; x };

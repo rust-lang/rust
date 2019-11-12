@@ -115,6 +115,6 @@ static STATIC19: Box<isize> =
 pub fn main() {
     let y = { static x: Box<isize> = box 3; x };
     //~^ ERROR allocations are not allowed in statics
-    //~| ERROR cannot move out of static item
+    //~| ERROR cannot move out of an immutable place
     //~| ERROR contains unimplemented expression
 }

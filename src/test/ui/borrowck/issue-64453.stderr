@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of static item `settings_dir`
+error[E0507]: cannot move out of an immutable place
   --> $DIR/issue-64453.rs:15:37
    |
 LL |     let settings_data = from_string(settings_dir);

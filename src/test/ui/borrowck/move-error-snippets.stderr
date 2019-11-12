@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of static item `D`
+error[E0507]: cannot move out of an immutable place
   --> $DIR/move-error-snippets.rs:16:18
    |
 LL | | #[macro_use]

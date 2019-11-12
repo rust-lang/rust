@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of static item `X`
+error[E0507]: cannot move out of an immutable place
   --> $DIR/issue-47215-ice-from-drop-elab.rs:17:21
    |
 LL |         let mut x = X;

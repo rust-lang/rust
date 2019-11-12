@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of static item `BAR`
+error[E0507]: cannot move out of an immutable place
   --> $DIR/static-items-cant-move.rs:18:10
    |
 LL |     test(BAR);
