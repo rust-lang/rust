@@ -3,11 +3,11 @@ use self::code_stats::CodeStats;
 
 use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use crate::lint;
 use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
 
 use rustc_data_structures::base_n;
