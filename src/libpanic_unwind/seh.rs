@@ -222,7 +222,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // exception (constructed above).
     let ptrs = mem::transmute::<_, raw::TraitObject>(data);
     let mut ptrs = [ptrs.data as u64, ptrs.vtable as u64];
-    let mut ptrs_ptr = ptrs.as_mut_ptr();
+    let ptrs_ptr = ptrs.as_mut_ptr();
     let throw_ptr = ptrs_ptr as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
