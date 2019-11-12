@@ -163,4 +163,10 @@ fn main() {
         BAR => {} // Not detected as unreachable because `try_eval_bits` fails on `BAR`.
         _ => {}
     }
+
+    // Regression test, see https://github.com/rust-lang/rust/pull/66326#issuecomment-552889933
+    match &0 {
+        BAR => {} // ok
+        _ => {}
+    }
 }
