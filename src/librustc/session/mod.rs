@@ -124,7 +124,7 @@ pub struct Session {
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: Lock<CodeStats>,
+    pub code_stats: CodeStats,
 
     /// If `-zfuel=crate=n` is specified, `Some(crate)`.
     optimization_fuel_crate: Option<String>,

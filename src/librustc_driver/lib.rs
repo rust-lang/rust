@@ -393,7 +393,7 @@ pub fn run_compiler(
         mem::drop(compiler.global_ctxt()?.take());
 
         if sess.opts.debugging_opts.print_type_sizes {
-            sess.code_stats.borrow().print_type_sizes();
+            sess.code_stats.print_type_sizes();
         }
 
         compiler.link()?;
