@@ -10,7 +10,7 @@ use crate::traits::*;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir,
                         in_incr_comp_dir, in_incr_comp_dir_sess};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
-use rustc::dep_graph::cgu_reuse_tracker::CguReuseTracker;
+use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Lto,
                              Sanitizer, SwitchWithOptPath};

@@ -5,6 +5,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use std::sync::{Arc, Mutex};
 use syntax_pos::Span;
+use log::debug;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum CguReuse {
@@ -93,7 +94,7 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn check_expected_reuse(&self, diag: &errors::Handler) {
+    pub fn check_expected_reuse(&self, diag: &rustc_errors::Handler) {
         if let Some(ref data) = self.data {
             let data = data.lock().unwrap();
 

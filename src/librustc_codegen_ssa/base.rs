@@ -25,8 +25,8 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
-use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir;
+use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::lang_items::StartFnLangItem;

@@ -1,7 +1,7 @@
 pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
-use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
+use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
