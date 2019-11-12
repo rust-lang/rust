@@ -1232,8 +1232,7 @@ impl<'a> Builder<'a> {
         }
 
         // Try to use a sysroot-relative bindir, in case it was configured absolutely.
-        let bindir = self.config.bindir_relative().unwrap_or(&self.config.bindir);
-        cargo.env("RUSTC_INSTALL_BINDIR", bindir);
+        cargo.env("RUSTC_INSTALL_BINDIR", self.config.bindir_relative());
 
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
