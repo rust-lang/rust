@@ -13,7 +13,7 @@ use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
-use std::{error::Error, str::FromStr};
+use std::str::FromStr;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
