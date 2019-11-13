@@ -13,7 +13,7 @@ This attribute has two effects:
 2. The item's doc-tests will only run on the specific platform.
 
 In addition to allowing the use of the `#[doc(cfg)]` attribute, this feature enables the use of a
-special conditional compilation flag, `#[cfg(rustdoc)]`, set whenever building documentation on your
+special conditional compilation flag, `#[cfg(doc)]`, set whenever building documentation on your
 crate.
 
 This feature was introduced as part of PR [#43348] to allow the platform-specific parts of the
@@ -22,7 +22,7 @@ standard library be documented.
 ```rust
 #![feature(doc_cfg)]
 
-#[cfg(any(windows, rustdoc))]
+#[cfg(any(windows, doc))]
 #[doc(cfg(windows))]
 /// The application's icon in the notification area (a.k.a. system tray).
 ///
