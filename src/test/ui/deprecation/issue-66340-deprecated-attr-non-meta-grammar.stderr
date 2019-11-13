@@ -1,0 +1,8 @@
+error: expected unsuffixed literal or identifier, found `test`
+  --> $DIR/issue-66340-deprecated-attr-non-meta-grammar.rs:9:21
+   |
+LL | #[deprecated(note = test)]
+   |                     ^^^^
+
+error: aborting due to previous error
+
