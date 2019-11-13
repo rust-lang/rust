@@ -325,60 +325,6 @@ macro_rules! EnumLiftImpl {
 }
 
 #[macro_export]
-macro_rules! BraceStructTypeFoldableImpl {
-    (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
-        $($field:ident),* $(,)?
-    } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
-            $(where $($wc)*)*
-        {
-            fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
-                &self,
-                folder: &mut V,
-            ) -> Self {
-                let $s { $($field,)* } = self;
-                $s { $($field: $crate::ty::fold::TypeFoldable::fold_with($field, folder),)* }
-            }
-
-            fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
-                &self,
-                visitor: &mut V,
-            ) -> bool {
-                let $s { $($field,)* } = self;
-                false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! TupleStructTypeFoldableImpl {
-    (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
-        $($field:ident),* $(,)?
-    } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
-            $(where $($wc)*)*
-        {
-            fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
-                &self,
-                folder: &mut V,
-            ) -> Self {
-                let $s($($field,)*)= self;
-                $s($($crate::ty::fold::TypeFoldable::fold_with($field, folder),)*)
-            }
-
-            fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
-                &self,
-                visitor: &mut V,
-            ) -> bool {
-                let $s($($field,)*) = self;
-                false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
-            }
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! EnumTypeFoldableImpl {
     (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
         $($variants:tt)*
