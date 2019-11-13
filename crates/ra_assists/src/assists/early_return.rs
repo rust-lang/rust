@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::{iter::once, ops::RangeInclusive};
 
 use hir::db::HirDatabase;
 use ra_syntax::{
@@ -45,19 +45,22 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
     let cond = if_expr.condition()?;
 
     // Check if there is an IfLet that we can handle.
-    let bound_ident = match cond.pat() {
+    let if_let_pat = match cond.pat() {
         None => None, // No IfLet, supported.
         Some(TupleStructPat(pat)) if pat.args().count() == 1 => {
             let path = pat.path()?;
             match path.qualifier() {
-                None => Some(path.segment()?.name_ref()?),
+                None => {
+                    let bound_ident = pat.args().next().unwrap();
+                    Some((path, bound_ident))
+                }
                 Some(_) => return None,
             }
         }
         Some(_) => return None, // Unsupported IfLet.
     };
 
-    let expr = cond.expr()?;
+    let cond_expr = cond.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
 
     let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::Block::cast)?;
@@ -79,11 +82,11 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     let parent_container = parent_block.syntax().parent()?.parent()?;
 
-    let early_expression = match parent_container.kind() {
-        WHILE_EXPR | LOOP_EXPR => Some("continue"),
-        FN_DEF => Some("return"),
-        _ => None,
-    }?;
+    let early_expression: ast::Expr = match parent_container.kind() {
+        WHILE_EXPR | LOOP_EXPR => make::expr_continue().into(),
+        FN_DEF => make::expr_return().into(),
+        _ => return None,
+    };
 
     if then_block.syntax().first_child_or_token().map(|t| t.kind() == L_CURLY).is_none() {
         return None;
@@ -94,22 +97,43 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
-        let new_block = match bound_ident {
+        let new_block = match if_let_pat {
             None => {
                 // If.
-                let early_expression = &(early_expression.to_owned() + ";");
-                let new_expr =
-                    if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
+                let early_expression = &(early_expression.syntax().to_string() + ";");
+                let new_expr = if_indent_level
+                    .increase_indent(make::if_expression(&cond_expr, early_expression));
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
-            Some(bound_ident) => {
+            Some((path, bound_ident)) => {
                 // If-let.
-                let new_expr = if_indent_level.increase_indent(make::let_match_early(
-                    expr,
-                    &bound_ident.syntax().to_string(),
-                    early_expression,
-                ));
-                replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
+                let match_expr = {
+                    let happy_arm = make::match_arm(
+                        once(
+                            make::tuple_struct_pat(
+                                path,
+                                once(make::bind_pat(make::name("it")).into()),
+                            )
+                            .into(),
+                        ),
+                        make::expr_path(make::path_from_name_ref(make::name_ref("it"))).into(),
+                    );
+
+                    let sad_arm = make::match_arm(
+                        // FIXME: would be cool to use `None` or `Err(_)` if appropriate
+                        once(make::placeholder_pat().into()),
+                        early_expression.into(),
+                    );
+
+                    make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
+                };
+
+                let let_stmt = make::let_stmt(
+                    make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
+                    Some(match_expr.into()),
+                );
+                let let_stmt = if_indent_level.increase_indent(let_stmt);
+                replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
             }
         };
         edit.target(if_expr.syntax().text_range());
@@ -205,12 +229,35 @@ mod tests {
                 bar();
                 le<|>t n = match n {
                     Some(it) => it,
-                    None => return,
+                    _ => return,
                 };
                 foo(n);
 
                 //comment
                 bar();
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn convert_if_let_result() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main() {
+                if<|> let Ok(x) = Err(92) {
+                    foo(x);
+                }
+            }
+            "#,
+            r#"
+            fn main() {
+                le<|>t x = match Err(92) {
+                    Ok(it) => it,
+                    _ => return,
+                };
+                foo(x);
             }
             "#,
         );
@@ -236,7 +283,7 @@ mod tests {
                 bar();
                 le<|>t n = match n {
                     Ok(it) => it,
-                    None => return,
+                    _ => return,
                 };
                 foo(n);
 
@@ -294,7 +341,7 @@ mod tests {
                 while true {
                     le<|>t n = match n {
                         Some(it) => it,
-                        None => continue,
+                        _ => continue,
                     };
                     foo(n);
                     bar();
@@ -351,7 +398,7 @@ mod tests {
                 loop {
                     le<|>t n = match n {
                         Some(it) => it,
-                        None => continue,
+                        _ => continue,
                     };
                     foo(n);
                     bar();
