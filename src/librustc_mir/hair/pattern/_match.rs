@@ -560,13 +560,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.kind {
-            ty::Adt(adt_def, ..) => adt_def.is_variant_list_non_exhaustive(),
-            _ => false,
-        }
-    }
-
     fn is_local(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
             ty::Adt(adt_def, ..) => adt_def.did.is_local(),
@@ -590,6 +583,8 @@ enum Constructor<'tcx> {
     FixedLenSlice(u64),
     /// Slice patterns. Captures any array constructor of `length >= i + j`.
     VarLenSlice(u64, u64),
+    /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
+    NonExhaustive,
 }
 
 // Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -597,6 +592,7 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Constructor::Single, Constructor::Single) => true,
+            (Constructor::NonExhaustive, Constructor::NonExhaustive) => true,
             (Constructor::Variant(a), Constructor::Variant(b)) => a == b,
             (Constructor::ConstantValue(a, _), Constructor::ConstantValue(b, _)) => a == b,
             (
@@ -771,6 +767,8 @@ impl<'tcx> Constructor<'tcx> {
                 // ranges have been omitted.
                 remaining_ctors
             }
+            // This constructor is never covered by anything else
+            NonExhaustive => vec![NonExhaustive],
         }
     }
 
@@ -781,65 +779,68 @@ impl<'tcx> Constructor<'tcx> {
         ty: Ty<'tcx>,
     ) -> Vec<Pat<'tcx>> {
         debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
-        match ty.kind {
-            ty::Tuple(ref fs) => {
-                fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
-            }
-            ty::Slice(ty) | ty::Array(ty, _) => match *self {
-                FixedLenSlice(length) => (0..length).map(|_| Pat::wildcard_from_ty(ty)).collect(),
-                VarLenSlice(prefix, suffix) => {
-                    (0..prefix + suffix).map(|_| Pat::wildcard_from_ty(ty)).collect()
+
+        match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => {
+                    fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
                 }
-                ConstantValue(..) => vec![],
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
-            },
-            ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
-            ty::Adt(adt, substs) => {
-                if adt.is_box() {
-                    // Use T as the sub pattern type of Box<T>.
-                    vec![Pat::wildcard_from_ty(substs.type_at(0))]
-                } else {
-                    let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                    let is_non_exhaustive =
-                        variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
-                    variant
-                        .fields
-                        .iter()
-                        .map(|field| {
-                            let is_visible =
-                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                            let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
-                            match (is_visible, is_non_exhaustive, is_uninhabited) {
-                                // Treat all uninhabited types in non-exhaustive variants as
-                                // `TyErr`.
-                                (_, true, true) => cx.tcx.types.err,
-                                // Treat all non-visible fields as `TyErr`. They can't appear in
-                                // any other pattern from this match (because they are private), so
-                                // their type does not matter - but we don't want to know they are
-                                // uninhabited.
-                                (false, ..) => cx.tcx.types.err,
-                                (true, ..) => {
-                                    let ty = field.ty(cx.tcx, substs);
-                                    match ty.kind {
-                                        // If the field type returned is an array of an unknown
-                                        // size return an TyErr.
-                                        ty::Array(_, len)
-                                            if len
-                                                .try_eval_usize(cx.tcx, cx.param_env)
-                                                .is_none() =>
-                                        {
-                                            cx.tcx.types.err
+                ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
+                ty::Adt(adt, substs) => {
+                    if adt.is_box() {
+                        // Use T as the sub pattern type of Box<T>.
+                        vec![Pat::wildcard_from_ty(substs.type_at(0))]
+                    } else {
+                        let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
+                        let is_non_exhaustive =
+                            variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
+                        variant
+                            .fields
+                            .iter()
+                            .map(|field| {
+                                let is_visible = adt.is_enum()
+                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                let is_uninhabited = cx.is_uninhabited(field.ty(cx.tcx, substs));
+                                match (is_visible, is_non_exhaustive, is_uninhabited) {
+                                    // Treat all uninhabited types in non-exhaustive variants as
+                                    // `TyErr`.
+                                    (_, true, true) => cx.tcx.types.err,
+                                    // Treat all non-visible fields as `TyErr`. They can't appear
+                                    // in any other pattern from this match (because they are
+                                    // private), so their type does not matter - but we don't want
+                                    // to know they are uninhabited.
+                                    (false, ..) => cx.tcx.types.err,
+                                    (true, ..) => {
+                                        let ty = field.ty(cx.tcx, substs);
+                                        match ty.kind {
+                                            // If the field type returned is an array of an unknown
+                                            // size return an TyErr.
+                                            ty::Array(_, len)
+                                                if len
+                                                    .try_eval_usize(cx.tcx, cx.param_env)
+                                                    .is_none() =>
+                                            {
+                                                cx.tcx.types.err
+                                            }
+                                            _ => ty,
                                         }
-                                        _ => ty,
                                     }
                                 }
-                            }
-                        })
-                        .map(Pat::wildcard_from_ty)
-                        .collect()
+                            })
+                            .map(Pat::wildcard_from_ty)
+                            .collect()
+                    }
                 }
-            }
-            _ => vec![],
+                _ => vec![],
+            },
+            FixedLenSlice(_) | VarLenSlice(..) => match ty.kind {
+                ty::Slice(ty) | ty::Array(ty, _) => {
+                    let arity = self.arity(cx, ty);
+                    (0..arity).map(|_| Pat::wildcard_from_ty(ty)).collect()
+                }
+                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+            },
+            ConstantValue(..) | ConstantRange(..) | NonExhaustive => vec![],
         }
     }
 
@@ -850,19 +851,19 @@ impl<'tcx> Constructor<'tcx> {
     /// A struct pattern's arity is the number of fields it contains, etc.
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
-        match ty.kind {
-            ty::Tuple(ref fs) => fs.len() as u64,
-            ty::Slice(..) | ty::Array(..) => match *self {
-                FixedLenSlice(length) => length,
-                VarLenSlice(prefix, suffix) => prefix + suffix,
-                ConstantValue(..) => 0,
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
+        match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Tuple(ref fs) => fs.len() as u64,
+                ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
+                ty::Ref(..) => 1,
+                ty::Adt(adt, _) => {
+                    adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
+                }
+                _ => 0,
             },
-            ty::Ref(..) => 1,
-            ty::Adt(adt, _) => {
-                adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
-            }
-            _ => 0,
+            FixedLenSlice(length) => *length,
+            VarLenSlice(prefix, suffix) => prefix + suffix,
+            ConstantValue(..) | ConstantRange(..) | NonExhaustive => 0,
         }
     }
 
@@ -886,53 +887,50 @@ impl<'tcx> Constructor<'tcx> {
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Pat<'tcx> {
         let mut subpatterns = pats.into_iter();
-        let pat = match ty.kind {
-            ty::Adt(..) | ty::Tuple(..) => {
-                let subpatterns = subpatterns
-                    .enumerate()
-                    .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
-                    .collect();
 
-                if let ty::Adt(adt, substs) = ty.kind {
-                    if adt.is_enum() {
-                        PatKind::Variant {
-                            adt_def: adt,
-                            substs,
-                            variant_index: self.variant_index_for_adt(cx, adt),
-                            subpatterns,
+        let pat = match self {
+            Single | Variant(_) => match ty.kind {
+                ty::Adt(..) | ty::Tuple(..) => {
+                    let subpatterns = subpatterns
+                        .enumerate()
+                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                        .collect();
+
+                    if let ty::Adt(adt, substs) = ty.kind {
+                        if adt.is_enum() {
+                            PatKind::Variant {
+                                adt_def: adt,
+                                substs,
+                                variant_index: self.variant_index_for_adt(cx, adt),
+                                subpatterns,
+                            }
+                        } else {
+                            PatKind::Leaf { subpatterns }
                         }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }
-                } else {
-                    PatKind::Leaf { subpatterns }
                 }
-            }
-
-            ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
-
-            ty::Slice(_) | ty::Array(..) => match self {
-                FixedLenSlice(_) => {
-                    PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
-                }
-                VarLenSlice(prefix_len, _suffix_len) => {
-                    let prefix = subpatterns.by_ref().take(*prefix_len as usize).collect();
-                    let suffix = subpatterns.collect();
-                    let wild = Pat::wildcard_from_ty(ty);
-                    PatKind::Slice { prefix, slice: Some(wild), suffix }
-                }
-                _ => bug!("bad slice pattern {:?} {:?}", self, ty),
-            },
-
-            _ => match *self {
-                ConstantValue(value, _) => PatKind::Constant { value },
-                ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
-                    lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
-                    hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
-                    end,
-                }),
+                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
+                ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => PatKind::Wild,
             },
+            FixedLenSlice(_) => {
+                PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
+            }
+            &VarLenSlice(prefix_len, _) => {
+                let prefix = subpatterns.by_ref().take(prefix_len as usize).collect();
+                let suffix = subpatterns.collect();
+                let wild = Pat::wildcard_from_ty(ty);
+                PatKind::Slice { prefix, slice: Some(wild), suffix }
+            }
+            &ConstantValue(value, _) => PatKind::Constant { value },
+            &ConstantRange(lo, hi, ty, end, _) => PatKind::Range(PatRange {
+                lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
+                hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
+                end,
+            }),
+            NonExhaustive => PatKind::Wild,
         };
 
         Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
@@ -1128,7 +1126,7 @@ fn all_constructors<'a, 'tcx>(
     pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
-    let ctors = match pcx.ty.kind {
+    match pcx.ty.kind {
         ty::Bool => [true, false]
             .iter()
             .map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b), pcx.span))
@@ -1145,17 +1143,49 @@ fn all_constructors<'a, 'tcx>(
                 vec![VarLenSlice(0, 0)]
             }
         }
-        ty::Adt(def, substs) if def.is_enum() => def
-            .variants
-            .iter()
-            .filter(|v| {
-                !cx.tcx.features().exhaustive_patterns
-                    || !v
-                        .uninhabited_from(cx.tcx, substs, def.adt_kind())
-                        .contains(cx.tcx, cx.module)
-            })
-            .map(|v| Variant(v.def_id))
-            .collect(),
+        ty::Adt(def, substs) if def.is_enum() => {
+            let ctors: Vec<_> = def
+                .variants
+                .iter()
+                .filter(|v| {
+                    !cx.tcx.features().exhaustive_patterns
+                        || !v
+                            .uninhabited_from(cx.tcx, substs, def.adt_kind())
+                            .contains(cx.tcx, cx.module)
+                })
+                .map(|v| Variant(v.def_id))
+                .collect();
+
+            // If our scrutinee is *privately* an empty enum, we must treat it as though it had an
+            // "unknown" constructor (in that case, all other patterns obviously can't be variants)
+            // to avoid exposing its emptyness. See the `match_privately_empty` test for details.
+            // FIXME: currently the only way I know of something can be a privately-empty enum is
+            // when the exhaustive_patterns feature flag is not present, so this is only needed for
+            // that case.
+            let is_privately_empty = ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+            // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+            // additionnal "unknown" constructor.
+            let is_declared_nonexhaustive =
+                def.is_variant_list_non_exhaustive() && !cx.is_local(pcx.ty);
+
+            if is_privately_empty || is_declared_nonexhaustive {
+                // There is no point in enumerating all possible variants, because the user can't
+                // actually match against them themselves. So we return only the fictitious
+                // constructor.
+                // E.g., in an example like:
+                // ```
+                //     let err: io::ErrorKind = ...;
+                //     match err {
+                //         io::ErrorKind::NotFound => {},
+                //     }
+                // ```
+                // we don't want to show every possible IO error, but instead have only `_` as the
+                // witness.
+                vec![NonExhaustive]
+            } else {
+                ctors
+            }
+        }
         ty::Char => {
             vec![
                 // The valid Unicode Scalar Value ranges.
@@ -1175,6 +1205,15 @@ fn all_constructors<'a, 'tcx>(
                 ),
             ]
         }
+        ty::Int(_) | ty::Uint(_)
+            if pcx.ty.is_ptr_sized_integral()
+                && !cx.tcx.features().precise_pointer_size_matching =>
+        {
+            // `usize`/`isize` are not allowed to be matched exhaustively unless the
+            // `precise_pointer_size_matching` feature is enabled. So we treat those types like
+            // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+            vec![NonExhaustive]
+        }
         ty::Int(ity) => {
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
@@ -1193,8 +1232,7 @@ fn all_constructors<'a, 'tcx>(
                 vec![Single]
             }
         }
-    };
-    ctors
+    }
 }
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
@@ -1592,9 +1630,6 @@ pub fn is_useful<'p, 'a, 'tcx>(
         let all_ctors = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
 
-        let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
-        let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
-
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
         // from the first column.
@@ -1602,38 +1637,15 @@ pub fn is_useful<'p, 'a, 'tcx>(
         // Therefore, if there is some pattern that is unmatched by `matrix`,
         // it will still be unmatched if the first constructor is replaced by
         // any of the constructors in `missing_ctors`
-        //
-        // However, if our scrutinee is *privately* an empty enum, we
-        // must treat it as though it had an "unknown" constructor (in
-        // that case, all other patterns obviously can't be variants)
-        // to avoid exposing its emptyness. See the `match_privately_empty`
-        // test for details.
-        //
-        // FIXME: currently the only way I know of something can
-        // be a privately-empty enum is when the exhaustive_patterns
-        // feature flag is not present, so this is only
-        // needed for that case.
 
-        // Missing constructors are those that are not matched by any
-        // non-wildcard patterns in the current column. To determine if
-        // the set is empty, we can check that `.peek().is_none()`, so
-        // we only fully construct them on-demand, because they're rarely used and can be big.
+        // Missing constructors are those that are not matched by any non-wildcard patterns in the
+        // current column. We only fully construct them on-demand, because they're rarely used and
+        // can be big.
         let missing_ctors = MissingConstructors::new(cx.tcx, cx.param_env, all_ctors, used_ctors);
 
-        debug!(
-            "missing_ctors.empty()={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
-            missing_ctors.is_empty(),
-            is_privately_empty,
-            is_declared_nonexhaustive
-        );
+        debug!("missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
-        // For privately empty and non-exhaustive enums, we work as if there were an "extra"
-        // `_` constructor for the type, so we can never match over all constructors.
-        let is_non_exhaustive = is_privately_empty
-            || is_declared_nonexhaustive
-            || (pcx.ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching);
-
-        if missing_ctors.is_empty() && !is_non_exhaustive {
+        if missing_ctors.is_empty() {
             let (all_ctors, _) = missing_ctors.into_inner();
             split_grouped_constructors(cx.tcx, cx.param_env, pcx, all_ctors, matrix, DUMMY_SP, None)
                 .into_iter()
@@ -1662,26 +1674,9 @@ pub fn is_useful<'p, 'a, 'tcx>(
             //
             // we can report 3 witnesses: `S`, `E`, and `W`.
             //
-            // However, there are 2 cases where we don't want
+            // However, there is a case where we don't want
             // to do this and instead report a single `_` witness:
-            //
-            // 1) If the user is matching against a non-exhaustive
-            // enum, there is no point in enumerating all possible
-            // variants, because the user can't actually match
-            // against them themselves, e.g., in an example like:
-            // ```
-            //     let err: io::ErrorKind = ...;
-            //     match err {
-            //         io::ErrorKind::NotFound => {},
-            //     }
-            // ```
-            // we don't want to show every possible IO error,
-            // but instead have `_` as the witness (this is
-            // actually *required* if the user specified *all*
-            // IO errors, but is probably what we want in every
-            // case).
-            //
-            // 2) If the user didn't actually specify a constructor
+            // if the user didn't actually specify a constructor
             // in this arm, e.g., in
             // ```
             //     let x: (Direction, Direction, bool) = ...;
@@ -1691,7 +1686,7 @@ pub fn is_useful<'p, 'a, 'tcx>(
             // `(<direction-1>, <direction-2>, true)` - we are
             // satisfied with `(_, _, true)`. In this case,
             // `used_ctors` is empty.
-            if is_non_exhaustive || missing_ctors.all_ctors_are_missing() {
+            if missing_ctors.all_ctors_are_missing() {
                 // All constructors are unused. Add a wild pattern
                 // rather than each individual constructor.
                 usefulness.apply_wildcard(pcx.ty)
@@ -2218,13 +2213,21 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// fields filled with wild patterns.
 fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    pat: &'q Pat<'tcx>,
+    mut pat: &'q Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
+    while let PatKind::AscribeUserType { ref subpattern, .. } = *pat.kind {
+        pat = subpattern;
+    }
+
+    if let NonExhaustive = constructor {
+        // Only a wildcard pattern can match the special extra constructor
+        return if pat.is_wildcard() { Some(PatStack::default()) } else { None };
+    }
+
     let result = match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => PatStack::from_pattern(subpattern)
-            .specialize_constructor(cx, constructor, ctor_wild_subpatterns),
+        PatKind::AscribeUserType { .. } => bug!(), // Handled above
 
         PatKind::Binding { .. } | PatKind::Wild => {
             Some(PatStack::from_slice(ctor_wild_subpatterns))
