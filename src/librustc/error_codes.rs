@@ -1912,8 +1912,8 @@ fn bar<'short, 'long>(c: Foo<'short>, l: &'long isize) {
 ```
 
 In this example, we tried to set a value with an incompatible lifetime to
-another one (`'long` is unrelated to `'short`). We can solve this issue in two different
-ways:
+another one (`'long` is unrelated to `'short`). We can solve this issue in
+two different ways:
 
 Either we make `'short` live at least as long as `'long`:
 
