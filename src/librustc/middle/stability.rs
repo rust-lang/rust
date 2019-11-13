@@ -110,7 +110,7 @@ pub fn report_unstable(
     let span_key = msp.primary_span().and_then(|sp: Span| {
         if !sp.is_dummy() {
             let file = sm.lookup_char_pos(sp.lo()).file;
-            if file.name.is_macros() { None } else { Some(span) }
+            if file.is_imported() { None } else { Some(span) }
         } else {
             None
         }

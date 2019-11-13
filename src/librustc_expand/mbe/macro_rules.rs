@@ -105,10 +105,10 @@ impl<'a> ParserAnyMacro<'a> {
             if e.span.is_dummy() {
                 // Get around lack of span in error (#30128)
                 e.replace_span_with(site_span);
-                if parser.sess.source_map().span_to_filename(arm_span).is_real() {
+                if !parser.sess.source_map().is_imported(arm_span) {
                     e.span_label(arm_span, "in this macro arm");
                 }
-            } else if !parser.sess.source_map().span_to_filename(parser.token.span).is_real() {
+            } else if parser.sess.source_map().is_imported(parser.token.span) {
                 e.span_label(site_span, "in this macro invocation");
             }
             match kind {
@@ -297,7 +297,7 @@ fn generic_extension<'cx>(
     let span = token.span.substitute_dummy(sp);
     let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
-    if !def_span.is_dummy() && cx.source_map().span_to_filename(def_span).is_real() {
+    if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().def_span(def_span), "when calling this macro");
     }
 

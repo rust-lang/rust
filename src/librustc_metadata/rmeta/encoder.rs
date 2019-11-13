@@ -1235,10 +1235,9 @@ impl EncodeContext<'tcx> {
 
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
-        use rustc_ast_pretty::pprust;
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
         record!(self.per_def.kind[def_id] <- EntryKind::MacroDef(self.lazy(MacroDef {
-            body: pprust::tts_to_string(macro_def.body.clone()),
+            body: macro_def.body.clone(),
             legacy: macro_def.legacy,
         })));
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);

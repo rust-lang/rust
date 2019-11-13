@@ -103,6 +103,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             #value,
         });
         keyword_stream.extend(quote! {
+            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
@@ -120,6 +121,8 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             #value,
         });
         symbols_stream.extend(quote! {
+            #[allow(rustc::default_hash_types)]
+            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
@@ -149,6 +152,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             () => {
                 #symbols_stream
 
+                #[allow(non_upper_case_globals)]
                 pub const digits_array: &[Symbol; 10] = &[
                     #digits_stream
                 ];
