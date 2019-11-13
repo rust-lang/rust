@@ -219,7 +219,7 @@ impl<'a> NumericLiteral<'a> {
     }
 
     /// Returns literal formatted in a sensible way.
-    crate fn grouping_hint(&self) -> String {
+    crate fn format(&self) -> String {
         let mut output = String::new();
 
         if let Some(prefix) = self.prefix {
@@ -324,7 +324,7 @@ enum WarningType {
 }
 
 impl WarningType {
-    crate fn display(&self, grouping_hint: &str, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
+    crate fn display(&self, suggested_format: String, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
         match self {
             Self::MistypedLiteralSuffix => span_lint_and_sugg(
                 cx,
@@ -332,7 +332,7 @@ impl WarningType {
                 span,
                 "mistyped literal suffix",
                 "did you mean to write",
-                grouping_hint.to_string(),
+                suggested_format,
                 Applicability::MaybeIncorrect,
             ),
             Self::UnreadableLiteral => span_lint_and_sugg(
@@ -341,7 +341,7 @@ impl WarningType {
                 span,
                 "long literal lacking separators",
                 "consider",
-                grouping_hint.to_owned(),
+                suggested_format,
                 Applicability::MachineApplicable,
             ),
             Self::LargeDigitGroups => span_lint_and_sugg(
@@ -350,7 +350,7 @@ impl WarningType {
                 span,
                 "digit groups should be smaller",
                 "consider",
-                grouping_hint.to_owned(),
+                suggested_format,
                 Applicability::MachineApplicable,
             ),
             Self::InconsistentDigitGrouping => span_lint_and_sugg(
@@ -359,7 +359,7 @@ impl WarningType {
                 span,
                 "digits grouped inconsistently by underscores",
                 "consider",
-                grouping_hint.to_owned(),
+                suggested_format,
                 Applicability::MachineApplicable,
             ),
             Self::DecimalRepresentation => span_lint_and_sugg(
@@ -368,7 +368,7 @@ impl WarningType {
                 span,
                 "integer literal has a better hexadecimal representation",
                 "consider",
-                grouping_hint.to_owned(),
+                suggested_format,
                 Applicability::MachineApplicable,
             ),
         };
@@ -425,7 +425,7 @@ impl LiteralDigitGrouping {
 
 
                 if let Err(warning_type) = result {
-                    warning_type.display(&num_lit.grouping_hint(), cx, lit.span)
+                    warning_type.display(num_lit.format(), cx, lit.span)
                 }
             }
         }
@@ -453,11 +453,11 @@ impl LiteralDigitGrouping {
         let last_group = split.next().expect("At least one group");
         if split.next().is_some() && mistyped_suffixes.contains(&last_group) {
             *part = &part[..part.len() - last_group.len()];
-            let mut hint = num_lit.grouping_hint();
-            hint.push('_');
-            hint.push(missing_char);
-            hint.push_str(last_group);
-            WarningType::MistypedLiteralSuffix.display(&hint, cx, span);
+            let mut sugg = num_lit.format();
+            sugg.push('_');
+            sugg.push(missing_char);
+            sugg.push_str(last_group);
+            WarningType::MistypedLiteralSuffix.display(sugg, cx, span);
             false
         } else {
             true
@@ -546,7 +546,7 @@ impl DecimalLiteralRepresentation {
                 let hex = format!("{:#X}", val);
                 let num_lit = NumericLiteral::new(&hex, None, false);
                 let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                    warning_type.display(&num_lit.grouping_hint(), cx, lit.span)
+                    warning_type.display(num_lit.format(), cx, lit.span)
                 });
             }
         }

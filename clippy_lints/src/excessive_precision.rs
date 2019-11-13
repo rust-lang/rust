@@ -87,7 +87,7 @@ impl ExcessivePrecision {
                 None
             } else {
                 let num_lit = super::literal_representation::NumericLiteral::new(&s, None, true);
-                Some(num_lit.grouping_hint())
+                Some(num_lit.format())
             }
         } else {
             None
