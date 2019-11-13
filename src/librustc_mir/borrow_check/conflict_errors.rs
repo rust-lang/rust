@@ -1695,7 +1695,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let mut visitor = FakeReadCauseFinder { place, cause: None };
-        visitor.visit_body(&self.body);
+        visitor.visit_body(self.body);
         match visitor.cause {
             Some(FakeReadCause::ForMatchGuard) => Some("match guard"),
             Some(FakeReadCause::ForIndex) => Some("indexing expression"),

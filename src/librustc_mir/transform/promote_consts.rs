@@ -41,11 +41,11 @@ use crate::transform::check_consts::{qualifs, Item, ConstKind, is_lang_panic_fn}
 /// newly created `StaticKind::Promoted`.
 #[derive(Default)]
 pub struct PromoteTemps<'tcx> {
-    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
+    pub promoted_fragments: Cell<IndexVec<Promoted, BodyCache<'tcx>>>,
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
