@@ -1043,6 +1043,10 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// `zero` indicates if the memory is zero-initialized, or alternatively
     /// left entirely uninitialized.
     /// This is conservative: in doubt, it will answer `true`.
+    ///
+    /// FIXME: Once we removed all the conservatism, we could alternatively
+    /// create an all-0/all-undef constant and run the vonst value validator to see if
+    /// this is a valid value for the given type.
     pub fn might_permit_raw_init<C, E>(
         self,
         cx: &C,
@@ -1095,11 +1099,14 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                             FieldPlacement::Array { .. } =>
                                 // FIXME(#66151): The widely use smallvec 0.6 creates uninit arrays
                                 // with any element type, so let us not (yet) complain about that.
-                                // count == 0 ||
-                                // self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)?
+                                /* count == 0 ||
+                                self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)? */
                                 true,
-                            FieldPlacement::Arbitrary { ref offsets, .. } => {
-                                let mut res = true;
+                            FieldPlacement::Arbitrary { .. } => {
+                                // FIXME(#66151) cargo depends on sized-chunks 0.3.0 which
+                                // has some illegal zero-initialization, so let us not (yet)
+                                // complain about aggregates either.
+                                /* let mut res = true;
                                 // Check that all fields accept zero-init.
                                 for idx in 0..offsets.len() {
                                     let field = self.field(cx, idx).to_result()?;
@@ -1108,7 +1115,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                                         break;
                                     }
                                 }
-                                res
+                                res */
+                                true
                             }
                         }
                     }

@@ -92,6 +92,7 @@ fn main() {
             "attempted to zero-initialize type `*const dyn std::marker::Send`, which is invalid"
         );
 
+        /* FIXME(#66151) we conservatively do not error here yet.
         test_panic_msg(
             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
             "attempted to leave type `(std::ptr::NonNull<u32>, u32, u32)` uninitialized, \
@@ -102,6 +103,7 @@ fn main() {
             "attempted to zero-initialize type `(std::ptr::NonNull<u32>, u32, u32)`, \
                 which is invalid"
         );
+        */
 
         test_panic_msg(
             || mem::uninitialized::<bool>(),

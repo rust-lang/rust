@@ -526,6 +526,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         #[derive(Debug, PartialEq)]
         enum PanicIntrinsic { IfUninhabited, IfZeroInvalid, IfAnyInvalid };
         let panic_intrinsic = intrinsic.and_then(|i| match i {
+            // FIXME: Move to symbols instead of strings.
             "panic_if_uninhabited" => Some(PanicIntrinsic::IfUninhabited),
             "panic_if_zero_invalid" => Some(PanicIntrinsic::IfZeroInvalid),
             "panic_if_any_invalid" => Some(PanicIntrinsic::IfAnyInvalid),
@@ -555,6 +556,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let location = self.get_caller_location(&mut bx, span).immediate();
 
                 // Obtain the panic entry point.
+                // FIXME: dedup this with `codegen_assert_terminator` above.
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
