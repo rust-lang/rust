@@ -18,3 +18,4 @@ LL |             let _failure_proves_not_implied_outlives_region_b: &'b T = &x;
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0623`.
