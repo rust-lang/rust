@@ -84,9 +84,9 @@ pub fn placeholder_pat() -> ast::PlaceholderPat {
 
 pub fn tuple_struct_pat(
     path: ast::Path,
-    pats: impl Iterator<Item = ast::Pat>,
+    pats: impl IntoIterator<Item = ast::Pat>,
 ) -> ast::TupleStructPat {
-    let pats_str = pats.map(|p| p.syntax().to_string()).join(", ");
+    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(", ");
     return from_text(&format!("{}({})", path.syntax(), pats_str));
 
     fn from_text(text: &str) -> ast::TupleStructPat {
@@ -94,8 +94,8 @@ pub fn tuple_struct_pat(
     }
 }
 
-pub fn record_pat(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
-    let pats_str = pats.map(|p| p.syntax().to_string()).join(", ");
+pub fn record_pat(path: ast::Path, pats: impl IntoIterator<Item = ast::Pat>) -> ast::RecordPat {
+    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(", ");
     return from_text(&format!("{} {{ {} }}", path.syntax(), pats_str));
 
     fn from_text(text: &str) -> ast::RecordPat {
@@ -129,8 +129,11 @@ pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::Mat
     }
 }
 
-pub fn where_pred(path: ast::Path, bounds: impl Iterator<Item = ast::TypeBound>) -> ast::WherePred {
-    let bounds = bounds.map(|b| b.syntax().to_string()).join(" + ");
+pub fn where_pred(
+    path: ast::Path,
+    bounds: impl IntoIterator<Item = ast::TypeBound>,
+) -> ast::WherePred {
+    let bounds = bounds.into_iter().map(|b| b.syntax().to_string()).join(" + ");
     return from_text(&format!("{}: {}", path.syntax(), bounds));
 
     fn from_text(text: &str) -> ast::WherePred {
@@ -138,8 +141,8 @@ pub fn where_pred(path: ast::Path, bounds: impl Iterator<Item = ast::TypeBound>)
     }
 }
 
-pub fn where_clause(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereClause {
-    let preds = preds.map(|p| p.syntax().to_string()).join(", ");
+pub fn where_clause(preds: impl IntoIterator<Item = ast::WherePred>) -> ast::WhereClause {
+    let preds = preds.into_iter().map(|p| p.syntax().to_string()).join(", ");
     return from_text(preds.as_str());
 
     fn from_text(text: &str) -> ast::WhereClause {
