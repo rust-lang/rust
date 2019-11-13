@@ -114,7 +114,7 @@ pub(super) enum Radix {
 impl Radix {
     /// Returns a reasonable digit group size for this radix.
     #[must_use]
-    crate fn suggest_grouping(&self) -> usize {
+    fn suggest_grouping(&self) -> usize {
         match *self {
             Self::Binary | Self::Hexadecimal => 4,
             Self::Octal | Self::Decimal => 3,
@@ -122,12 +122,18 @@ impl Radix {
     }
 }
 
+/// A helper method to format numeric literals with digit grouping.
+/// `lit` must be a valid numeric literal without suffix.
+pub fn format_numeric_literal(lit: &str, type_suffix: Option<&str>, float: bool) -> String {
+    NumericLiteral::new(lit, type_suffix, float).format()
+}
+
 #[derive(Debug)]
 pub(super) struct NumericLiteral<'a> {
     /// Which radix the literal was represented in.
-    crate radix: Radix,
+    radix: Radix,
     /// The radix prefix, if present.
-    crate prefix: Option<&'a str>,
+    prefix: Option<&'a str>,
 
     /// The integer part of the number.
     integer: &'a str,
@@ -137,7 +143,7 @@ pub(super) struct NumericLiteral<'a> {
     exponent: Option<(char, &'a str)>,
 
     /// The type suffix, including preceding underscore if present.
-    crate suffix: Option<&'a str>,
+    suffix: Option<&'a str>,
 }
 
 impl<'a> NumericLiteral<'a> {
@@ -152,7 +158,7 @@ impl<'a> NumericLiteral<'a> {
     }
 
     #[must_use]
-    crate fn new(lit: &'a str, suffix: Option<&'a str>, float: bool) -> Self {
+    fn new(lit: &'a str, suffix: Option<&'a str>, float: bool) -> Self {
         // Determine delimiter for radix prefix, if present, and radix.
         let radix = if lit.starts_with("0x") {
             Radix::Hexadecimal
@@ -219,7 +225,7 @@ impl<'a> NumericLiteral<'a> {
     }
 
     /// Returns literal formatted in a sensible way.
-    crate fn format(&self) -> String {
+    fn format(&self) -> String {
         let mut output = String::new();
 
         if let Some(prefix) = self.prefix {
@@ -324,7 +330,7 @@ enum WarningType {
 }
 
 impl WarningType {
-    crate fn display(&self, suggested_format: String, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
+    fn display(&self, suggested_format: String, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
         match self {
             Self::MistypedLiteralSuffix => span_lint_and_sugg(
                 cx,
