@@ -7,7 +7,7 @@
 
 #![feature(repr_align)]
 
-#[repr(align(16), C)]
+#[repr(align(16))]
 pub struct A(i64);
 
 pub extern "C" fn foo(x: A) {}

@@ -72,7 +72,6 @@ mod dwarf;
 // hairy and tightly coupled, for more information see the compiler's
 // implementation of this.
 #[no_mangle]
-#[allow(improper_ctypes)]
 pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
                                                   data: *mut u8,
                                                   data_ptr: *mut usize,

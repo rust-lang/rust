@@ -87,7 +87,6 @@ pub struct RustString {
 }
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
-#[allow(improper_ctypes)]
 #[no_mangle]
 pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
                                                  ptr: *const c_char,

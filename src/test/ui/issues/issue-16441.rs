@@ -5,7 +5,6 @@
 struct Empty;
 
 // This used to cause an ICE
-#[allow(improper_ctypes)]
 extern "C" fn ice(_a: Empty) {}
 
 fn main() {
