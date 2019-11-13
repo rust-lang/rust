@@ -4,6 +4,10 @@ use itertools::Itertools;
 
 use crate::{ast, AstNode, SourceFile};
 
+pub fn name(text: &str) -> ast::Name {
+    ast_from_text(&format!("mod {};", text))
+}
+
 pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}; }}", text))
 }
@@ -43,6 +47,21 @@ pub fn expr_unit() -> ast::Expr {
 pub fn expr_unimplemented() -> ast::Expr {
     expr_from_text("unimplemented!()")
 }
+pub fn expr_path(path: ast::Path) -> ast::Expr {
+    expr_from_text(&path.syntax().to_string())
+}
+pub fn expr_continue() -> ast::Expr {
+    expr_from_text("continue")
+}
+pub fn expr_break() -> ast::Expr {
+    expr_from_text("break")
+}
+pub fn expr_return() -> ast::Expr {
+    expr_from_text("return")
+}
+pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
+    expr_from_text(&format!("match {} {}", expr.syntax(), match_arm_list.syntax()))
+}
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
@@ -65,9 +84,9 @@ pub fn placeholder_pat() -> ast::PlaceholderPat {
 
 pub fn tuple_struct_pat(
     path: ast::Path,
-    pats: impl Iterator<Item = ast::Pat>,
+    pats: impl IntoIterator<Item = ast::Pat>,
 ) -> ast::TupleStructPat {
-    let pats_str = pats.map(|p| p.syntax().to_string()).join(", ");
+    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(", ");
     return from_text(&format!("{}({})", path.syntax(), pats_str));
 
     fn from_text(text: &str) -> ast::TupleStructPat {
@@ -75,8 +94,8 @@ pub fn tuple_struct_pat(
     }
 }
 
-pub fn record_pat(path: ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
-    let pats_str = pats.map(|p| p.syntax().to_string()).join(", ");
+pub fn record_pat(path: ast::Path, pats: impl IntoIterator<Item = ast::Pat>) -> ast::RecordPat {
+    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(", ");
     return from_text(&format!("{} {{ {} }}", path.syntax(), pats_str));
 
     fn from_text(text: &str) -> ast::RecordPat {
@@ -92,8 +111,8 @@ pub fn path_pat(path: ast::Path) -> ast::PathPat {
     }
 }
 
-pub fn match_arm(pats: impl Iterator<Item = ast::Pat>, expr: ast::Expr) -> ast::MatchArm {
-    let pats_str = pats.map(|p| p.syntax().to_string()).join(" | ");
+pub fn match_arm(pats: impl IntoIterator<Item = ast::Pat>, expr: ast::Expr) -> ast::MatchArm {
+    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(" | ");
     return from_text(&format!("{} => {}", pats_str, expr.syntax()));
 
     fn from_text(text: &str) -> ast::MatchArm {
@@ -101,8 +120,8 @@ pub fn match_arm(pats: impl Iterator<Item = ast::Pat>, expr: ast::Expr) -> ast::
     }
 }
 
-pub fn match_arm_list(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
-    let arms_str = arms.map(|arm| format!("\n    {}", arm.syntax())).join(",");
+pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
+    let arms_str = arms.into_iter().map(|arm| format!("\n    {}", arm.syntax())).join(",");
     return from_text(&format!("{},\n", arms_str));
 
     fn from_text(text: &str) -> ast::MatchArmList {
@@ -110,25 +129,11 @@ pub fn match_arm_list(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchAr
     }
 }
 
-pub fn let_match_early(expr: ast::Expr, path: &str, early_expression: &str) -> ast::LetStmt {
-    return from_text(&format!(
-        r#"let {} = match {} {{
-    {}(it) => it,
-    None => {},
-}};"#,
-        expr.syntax().text(),
-        expr.syntax().text(),
-        path,
-        early_expression
-    ));
-
-    fn from_text(text: &str) -> ast::LetStmt {
-        ast_from_text(&format!("fn f() {{ {} }}", text))
-    }
-}
-
-pub fn where_pred(path: ast::Path, bounds: impl Iterator<Item = ast::TypeBound>) -> ast::WherePred {
-    let bounds = bounds.map(|b| b.syntax().to_string()).join(" + ");
+pub fn where_pred(
+    path: ast::Path,
+    bounds: impl IntoIterator<Item = ast::TypeBound>,
+) -> ast::WherePred {
+    let bounds = bounds.into_iter().map(|b| b.syntax().to_string()).join(" + ");
     return from_text(&format!("{}: {}", path.syntax(), bounds));
 
     fn from_text(text: &str) -> ast::WherePred {
@@ -136,8 +141,8 @@ pub fn where_pred(path: ast::Path, bounds: impl Iterator<Item = ast::TypeBound>)
     }
 }
 
-pub fn where_clause(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereClause {
-    let preds = preds.map(|p| p.syntax().to_string()).join(", ");
+pub fn where_clause(preds: impl IntoIterator<Item = ast::WherePred>) -> ast::WhereClause {
+    let preds = preds.into_iter().map(|p| p.syntax().to_string()).join(", ");
     return from_text(preds.as_str());
 
     fn from_text(text: &str) -> ast::WhereClause {
@@ -151,6 +156,14 @@ pub fn if_expression(condition: &ast::Expr, statement: &str) -> ast::IfExpr {
         condition.syntax().text(),
         statement
     ))
+}
+
+pub fn let_stmt(pattern: ast::Pat, initializer: Option<ast::Expr>) -> ast::LetStmt {
+    let text = match initializer {
+        Some(it) => format!("let {} = {};", pattern.syntax(), it.syntax()),
+        None => format!("let {};", pattern.syntax()),
+    };
+    ast_from_text(&format!("fn f() {{ {} }}", text))
 }
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {
