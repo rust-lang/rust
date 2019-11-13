@@ -335,6 +335,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
+        override_queries: None,
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
