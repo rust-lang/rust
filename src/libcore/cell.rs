@@ -1554,7 +1554,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// This can be cast to a pointer of any kind.
     /// Ensure that the access is unique (no active references, mutable or not)
     /// when casting to `&mut T`, and ensure that there are no mutations
-    /// or mutable aliases going on when casting to `&T`
+    /// or mutable aliases going on when casting to `&T`.
     ///
     /// # Examples
     ///
