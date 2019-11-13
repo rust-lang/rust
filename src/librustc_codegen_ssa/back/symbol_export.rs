@@ -194,7 +194,7 @@ fn exported_symbols_provider_local(
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
-    if tcx.sess.allocator_kind.get().is_some() {
+    if tcx.allocator_kind().is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));

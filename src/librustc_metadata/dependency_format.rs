@@ -184,7 +184,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
     //
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
-    activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
+    activate_injected_dep(tcx.injected_panic_runtime(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
 
     // When dylib B links to dylib A, then when using B we must also link to A.
@@ -244,7 +244,6 @@ fn add_library(
 }
 
 fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
-    let sess = &tcx.sess;
     let crates = cstore::used_crates(tcx, RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         return None
@@ -264,7 +263,7 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
     // Our allocator/panic runtime may not have been linked above if it wasn't
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
-    activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
+    activate_injected_dep(tcx.injected_panic_runtime(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
 
     Some(ret)
