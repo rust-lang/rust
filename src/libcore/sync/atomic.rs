@@ -162,14 +162,14 @@ pub fn spin_loop_hint() {
 /// This type has the same in-memory representation as a [`bool`].
 ///
 /// [`bool`]: ../../../std/primitive.bool.html
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(C, align(1))]
 pub struct AtomicBool {
     v: UnsafeCell<u8>,
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicBool {
     /// Creates an `AtomicBool` initialized to `false`.
@@ -179,14 +179,14 @@ impl Default for AtomicBool {
 }
 
 // Send is implicitly implemented for AtomicBool.
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Sync for AtomicBool {}
 
 /// A raw pointer type which can be safely shared between threads.
 ///
 /// This type has the same in-memory representation as a `*mut T`.
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
@@ -195,7 +195,7 @@ pub struct AtomicPtr<T> {
     p: UnsafeCell<*mut T>,
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for AtomicPtr<T> {
     /// Creates a null `AtomicPtr<T>`.
@@ -204,10 +204,10 @@ impl<T> Default for AtomicPtr<T> {
     }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Send for AtomicPtr<T> {}
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Sync for AtomicPtr<T> {}
 
@@ -308,7 +308,7 @@ pub enum Ordering {
 /// An [`AtomicBool`] initialized to `false`.
 ///
 /// [`AtomicBool`]: struct.AtomicBool.html
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(
     since = "1.34.0",
@@ -317,7 +317,7 @@ pub enum Ordering {
 )]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 impl AtomicBool {
     /// Creates a new `AtomicBool`.
     ///
@@ -804,7 +804,7 @@ impl AtomicBool {
     }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 impl<T> AtomicPtr<T> {
     /// Creates a new `AtomicPtr`.
     ///
@@ -1114,7 +1114,7 @@ impl<T> AtomicPtr<T> {
     }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_bool_from", since = "1.24.0")]
 impl From<bool> for AtomicBool {
     /// Converts a `bool` into an `AtomicBool`.
@@ -1130,14 +1130,14 @@ impl From<bool> for AtomicBool {
     fn from(b: bool) -> Self { Self::new(b) }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 impl<T> From<*mut T> for AtomicPtr<T> {
     #[inline]
     fn from(p: *mut T) -> Self { Self::new(p) }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 macro_rules! atomic_int {
     ($cfg_cas:meta,
      $stable:meta,
@@ -1895,7 +1895,7 @@ assert_eq!(min_foo, 12);
     }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
     cfg(target_has_atomic = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1912,7 +1912,7 @@ atomic_int! {
     "AtomicI8::new(0)",
     i8 AtomicI8 ATOMIC_I8_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
     cfg(target_has_atomic = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1929,7 +1929,7 @@ atomic_int! {
     "AtomicU8::new(0)",
     u8 AtomicU8 ATOMIC_U8_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "16"))]
+#[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
     cfg(target_has_atomic = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1946,7 +1946,7 @@ atomic_int! {
     "AtomicI16::new(0)",
     i16 AtomicI16 ATOMIC_I16_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "16"))]
+#[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
     cfg(target_has_atomic = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1963,7 +1963,7 @@ atomic_int! {
     "AtomicU16::new(0)",
     u16 AtomicU16 ATOMIC_U16_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "32"))]
+#[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
     cfg(target_has_atomic = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1980,7 +1980,7 @@ atomic_int! {
     "AtomicI32::new(0)",
     i32 AtomicI32 ATOMIC_I32_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "32"))]
+#[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
     cfg(target_has_atomic = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -1997,10 +1997,7 @@ atomic_int! {
     "AtomicU32::new(0)",
     u32 AtomicU32 ATOMIC_U32_INIT
 }
-#[cfg(any(
-    all(bootstrap, target_has_atomic = "64"),
-    target_has_atomic_load_store = "64"
-))]
+#[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
     cfg(target_has_atomic = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2017,10 +2014,7 @@ atomic_int! {
     "AtomicI64::new(0)",
     i64 AtomicI64 ATOMIC_I64_INIT
 }
-#[cfg(any(
-    all(bootstrap, target_has_atomic = "64"),
-    target_has_atomic_load_store = "64"
-))]
+#[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
     cfg(target_has_atomic = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -2071,22 +2065,22 @@ atomic_int! {
     "AtomicU128::new(0)",
     u128 AtomicU128 ATOMIC_U128_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[cfg(target_pointer_width = "16")]
 macro_rules! ptr_width {
     () => { 2 }
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[cfg(target_pointer_width = "32")]
 macro_rules! ptr_width {
     () => { 4 }
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[cfg(target_pointer_width = "64")]
 macro_rules! ptr_width {
     () => { 8 }
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 atomic_int!{
     cfg(target_has_atomic = "ptr"),
     stable(feature = "rust1", since = "1.0.0"),
@@ -2103,7 +2097,7 @@ atomic_int!{
     "AtomicIsize::new(0)",
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 atomic_int!{
     cfg(target_has_atomic = "ptr"),
     stable(feature = "rust1", since = "1.0.0"),
@@ -2530,7 +2524,7 @@ pub fn compiler_fence(order: Ordering) {
 }
 
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "8"))]
+#[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2538,7 +2532,7 @@ impl fmt::Debug for AtomicBool {
     }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2546,7 +2540,7 @@ impl<T> fmt::Debug for AtomicPtr<T> {
     }
 }
 
-#[cfg(any(bootstrap, target_has_atomic_load_store = "ptr"))]
+#[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_pointer", since = "1.24.0")]
 impl<T> fmt::Pointer for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -1301,7 +1301,6 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_ptr_offset_from")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
@@ -1311,21 +1310,6 @@ impl<T: ?Sized> *const T {
         // FIXME: do this with a real assert at some point
         [()][(!ok) as usize];
         intrinsics::ptr_offset_from(self, origin)
-    }
-
-    #[unstable(feature = "ptr_offset_from", issue = "41079")]
-    #[inline]
-    #[cfg(bootstrap)]
-    /// bootstrap
-    pub unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
-        let pointee_size = mem::size_of::<T>();
-        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
-
-        // This is the same sequence that Clang emits for pointer subtraction.
-        // It can be neither `nsw` nor `nuw` because the input is treated as
-        // unsigned but then the output is treated as signed, so neither works.
-        let d = isize::wrapping_sub(self as _, origin as _);
-        intrinsics::exact_div(d, pointee_size as _)
     }
 
     /// Calculates the distance between two pointers. The returned value is in

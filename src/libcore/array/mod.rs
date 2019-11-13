@@ -14,10 +14,8 @@ use crate::hash::{Hash, self};
 use crate::marker::Unsize;
 use crate::slice::{Iter, IterMut};
 
-#[cfg(not(bootstrap))]
 mod iter;
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
 

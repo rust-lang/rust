@@ -146,7 +146,6 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
 /// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
-#[cfg(not(bootstrap))]
 #[unstable(feature = "structural_match", issue = "31434")]
 #[rustc_on_unimplemented(message="the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
@@ -197,7 +196,6 @@ pub trait StructuralPartialEq {
 /// As a hack to work around this, we use two separate traits injected by each
 /// of the two derives (`#[derive(PartialEq)]` and `#[derive(Eq)]`) and check
 /// that both of them are present as part of structural-match checking.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "structural_match", issue = "31434")]
 #[rustc_on_unimplemented(message="the type `{Self}` does not `#[derive(Eq)]`")]
 #[lang = "structural_teq"]
@@ -517,11 +515,9 @@ macro_rules! impls{
             }
         }
 
-        #[cfg(not(bootstrap))]
         #[unstable(feature = "structural_match", issue = "31434")]
         impl<T: ?Sized> StructuralPartialEq for $t<T> { }
 
-        #[cfg(not(bootstrap))]
         #[unstable(feature = "structural_match", issue = "31434")]
         impl<T: ?Sized> StructuralEq for $t<T> { }
         )

@@ -9,10 +9,8 @@
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
-#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(specialization)]
 #![feature(step_trait)]
 

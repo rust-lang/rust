@@ -697,7 +697,6 @@ extern "rust-intrinsic" {
     pub fn panic_if_uninhabited<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
-    #[cfg(not(bootstrap))]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Creates a value initialized to zero.
@@ -1346,7 +1345,6 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[cfg(not(bootstrap))]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.

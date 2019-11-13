@@ -167,7 +167,7 @@ impl fmt::Display for PanicInfo<'_> {
 ///
 /// panic!("Normal panic");
 /// ```
-#[cfg_attr(not(bootstrap), lang = "panic_location")]
+#[lang = "panic_location"]
 #[derive(Debug)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
