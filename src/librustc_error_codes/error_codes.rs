@@ -338,6 +338,7 @@ E0619: include_str!("./error_codes/E0619.md"),
 E0620: include_str!("./error_codes/E0620.md"),
 E0621: include_str!("./error_codes/E0621.md"),
 E0622: include_str!("./error_codes/E0622.md"),
+E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
 E0633: include_str!("./error_codes/E0633.md"),
@@ -565,7 +566,6 @@ E0743: include_str!("./error_codes/E0743.md"),
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
-    E0623, // lifetime mismatch where both parameters are anonymous regions
     E0625, // thread-local statics cannot be accessed at compile-time
     E0627, // yield statement outside of generator literal
     E0628, // generators cannot have explicit parameters
