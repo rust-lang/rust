@@ -400,36 +400,21 @@ impl LiteralDigitGrouping {
                         }
                     }
 
-                    match lit.kind {
-                        LitKind::Int(..) => {
-                            Self::do_lint(digit_info.digits, in_macro)?;
-                        },
-                        LitKind::Float(..) => {
-                            // Separate digits into integral and fractional parts.
-                            let parts: Vec<&str> = digit_info
-                                .digits
-                                .split_terminator('.')
-                                .collect();
+                    let (integer, fraction, _) = digit_info.split_digit_parts();
 
-                            // Lint integral and fractional parts separately, and then check consistency of digit
-                            // groups if both pass.
-                            let integral_group_size = Self::do_lint(parts[0], in_macro)?;
-                            if parts.len() > 1 {
-                                // Lint the fractional part of literal just like integral part, but reversed.
-                                let fractional_part = &parts[1].chars().rev().collect::<String>();
-                                let fractional_group_size = Self::do_lint(fractional_part, in_macro)?;
-                                let consistent = Self::parts_consistent(integral_group_size,
-                                                                        fractional_group_size,
-                                                                        parts[0].len(),
-                                                                        parts[1].len());
-                                if !consistent {
-                                    return Err(WarningType::InconsistentDigitGrouping);
-                                };
-                            };
-                        },
-                        _ => (),
+                    let integral_group_size = Self::do_lint(integer, in_macro)?;
+                    if let Some(fraction) = fraction {
+                        let fractional_part = fraction.chars().rev().collect::<String>();
+                        let fractional_group_size = Self::do_lint(&fractional_part, in_macro)?;
+
+                        let consistent = Self::parts_consistent(integral_group_size,
+                                                                fractional_group_size,
+                                                                integer.len(),
+                                                                fraction.len());
+                        if !consistent {
+                            return Err(WarningType::InconsistentDigitGrouping);
+                        };
                     }
-
                     Ok(())
                 })();
 
