@@ -27,11 +27,11 @@ use syntax::source_map;
 use syntax::sess::{ParseSess, ProcessCfgMod};
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
-use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
 use rustc_data_structures::jobserver;
+use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use ::jobserver::Client;
 
 use std;
@@ -1091,7 +1091,6 @@ fn build_session_(
             );
             match profiler {
                 Ok(profiler) => {
-                    crate::ty::query::QueryName::register_with_profiler(&profiler);
                     Some(Arc::new(profiler))
                 },
                 Err(e) => {

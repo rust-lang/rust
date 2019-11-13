@@ -39,7 +39,7 @@ use crate::ty::util::NeedsDrop;
 use crate::ty::subst::SubstsRef;
 use crate::util::nodemap::{DefIdSet, DefIdMap};
 use crate::util::common::ErrorReported;
-use crate::util::profiling::ProfileCategory::*;
+use rustc_data_structures::profiling::ProfileCategory::*;
 
 use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;

@@ -7,8 +7,6 @@ use std::sync::Arc;
 use std::thread::ThreadId;
 use std::u32;
 
-use crate::ty::query::QueryName;
-
 use measureme::{StringId, TimestampKind};
 
 /// MmapSerializatioSink is faster on macOS and Linux
@@ -20,6 +18,10 @@ type SerializationSink = measureme::FileSerializationSink;
 
 type Profiler = measureme::Profiler<SerializationSink>;
 
+pub trait QueryName: Sized + Copy {
+    fn discriminant(self) -> Discriminant<Self>;
+    fn as_str(self) -> &'static str;
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum ProfileCategory {
@@ -32,7 +34,7 @@ pub enum ProfileCategory {
     Other,
 }
 
-bitflags! {
+bitflags::bitflags! {
     struct EventFilter: u32 {
         const GENERIC_ACTIVITIES = 1 << 0;
         const QUERY_PROVIDERS    = 1 << 1;
@@ -137,7 +139,7 @@ impl SelfProfilerRef {
     /// Start profiling a query provider. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
-    pub fn query_provider(&self, query_name: QueryName) -> TimingGuard<'_> {
+    pub fn query_provider(&self, query_name: impl QueryName) -> TimingGuard<'_> {
         self.exec(EventFilter::QUERY_PROVIDERS, |profiler| {
             let event_id = SelfProfiler::get_query_name_string_id(query_name);
             TimingGuard::start(profiler, profiler.query_event_kind, event_id)
@@ -146,7 +148,7 @@ impl SelfProfilerRef {
 
     /// Record a query in-memory cache hit.
     #[inline(always)]
-    pub fn query_cache_hit(&self, query_name: QueryName) {
+    pub fn query_cache_hit(&self, query_name: impl QueryName) {
         self.non_guard_query_event(
             |profiler| profiler.query_cache_hit_event_kind,
             query_name,
@@ -159,7 +161,7 @@ impl SelfProfilerRef {
     /// Profiling continues until the TimingGuard returned from this call is
     /// dropped.
     #[inline(always)]
-    pub fn query_blocked(&self, query_name: QueryName) -> TimingGuard<'_> {
+    pub fn query_blocked(&self, query_name: impl QueryName) -> TimingGuard<'_> {
         self.exec(EventFilter::QUERY_BLOCKED, |profiler| {
             let event_id = SelfProfiler::get_query_name_string_id(query_name);
             TimingGuard::start(profiler, profiler.query_blocked_event_kind, event_id)
@@ -170,7 +172,7 @@ impl SelfProfilerRef {
     /// incremental compilation on-disk cache. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
-    pub fn incr_cache_loading(&self, query_name: QueryName) -> TimingGuard<'_> {
+    pub fn incr_cache_loading(&self, query_name: impl QueryName) -> TimingGuard<'_> {
         self.exec(EventFilter::INCR_CACHE_LOADS, |profiler| {
             let event_id = SelfProfiler::get_query_name_string_id(query_name);
             TimingGuard::start(
@@ -185,7 +187,7 @@ impl SelfProfilerRef {
     fn non_guard_query_event(
         &self,
         event_kind: fn(&SelfProfiler) -> StringId,
-        query_name: QueryName,
+        query_name: impl QueryName,
         event_filter: EventFilter,
         timestamp_kind: TimestampKind
     ) {
@@ -202,6 +204,12 @@ impl SelfProfilerRef {
 
             TimingGuard::none()
         }));
+    }
+
+    pub fn register_queries(&self, f: impl FnOnce(&SelfProfiler)) {
+        if let Some(profiler) = &self.profiler {
+            f(&profiler)
+        }
     }
 }
 
@@ -274,15 +282,15 @@ impl SelfProfiler {
         })
     }
 
-    fn get_query_name_string_id(query_name: QueryName) -> StringId {
+    fn get_query_name_string_id(query_name: impl QueryName) -> StringId {
         let discriminant = unsafe {
-            mem::transmute::<Discriminant<QueryName>, u64>(mem::discriminant(&query_name))
+            mem::transmute::<Discriminant<_>, u64>(query_name.discriminant())
         };
 
         StringId::reserved(discriminant as u32)
     }
 
-    pub fn register_query_name(&self, query_name: QueryName) {
+    pub fn register_query_name(&self, query_name: impl QueryName) {
         let id = SelfProfiler::get_query_name_string_id(query_name);
         self.profiler.alloc_string_with_reserved_id(id, query_name.as_str());
     }
