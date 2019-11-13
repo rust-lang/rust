@@ -321,8 +321,8 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     nonconstant2.insert(nonconstant.begin(), nonconstant.end());
 
     //Ask the question, even if is this is active, are all its uses inactive (meaning this use does not impact its activity)
-    nonconstant2.insert(val);
-    //constants2.insert(val);
+    //nonconstant2.insert(val);
+    constants2.insert(val);
 
     if (printconst)
         llvm::errs() << " < SUBFN " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";

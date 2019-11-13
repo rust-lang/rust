@@ -1,3 +1,12 @@
+
+// RUN: clang -std=c11 -O1 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -S | lli - 
+// RUN: clang -std=c11 -O2 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -S | lli - 
+// RUN: clang -std=c11 -O3 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -S | lli - 
+
+// RUN: clang -std=c11 -O1 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | lli - 
+// RUN: clang -std=c11 -O2 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | lli - 
+// RUN: clang -std=c11 -O3 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | lli - 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -62,9 +71,9 @@ int main(int argc, char** argv) {
   for (int i = 0; i < N; i++) {
     printf("Diffe for index %d is %f\n", i, d_array[i]);
     if (i%2 == 0) {
-      assert(approx_fp_equality_float(d_array[i], 0.0, 1e-10));
+      APPROX_EQ(d_array[i], 0.0, 1e-10);
     } else {
-      assert(approx_fp_equality_float(d_array[i], 1.0, 1e-10));
+      APPROX_EQ(d_array[i], 1.0, 1e-10);
     }
   }
 

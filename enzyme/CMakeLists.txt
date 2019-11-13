@@ -48,4 +48,3 @@ message("found llvm version " ${LLVM_VERSION_MAJOR})
 
 add_subdirectory(Enzyme)
 add_subdirectory(test)
-add_subdirectory(functional_tests_c)

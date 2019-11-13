@@ -1,3 +1,12 @@
+
+// RUN: clang -std=c11 -O1 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -S | lli - 
+// RUN: clang -std=c11 -O2 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -S | lli - 
+// RUN: clang -std=c11 -O3 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -S | lli - 
+
+// RUN: clang -std=c11 -O1 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | lli - 
+// RUN: clang -std=c11 -O2 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | lli - 
+// RUN: clang -std=c11 -O3 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_inline=1 -S | lli - 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -13,8 +22,9 @@ double f_read(double* x) {
   return product;
 }
 
-void g_write(double* x, double product) {
+double* g_write(double* x, double product) {
   *x = (*x) * product;
+  return x;
 }
 
 double h_read(double* x) {
@@ -23,7 +33,7 @@ double h_read(double* x) {
 
 double readwriteread_helper(double* x) {
   double product = f_read(x);
-  g_write(x, product);
+  x = g_write(x, product);
   double ret = h_read(x);
   return ret; 
 }
@@ -41,8 +51,9 @@ int main(int argc, char** argv) {
   *dx = 0.0;
 
   __builtin_autodiff(readwriteread, x, dx, &ret, &dret);
+
   
   printf("dx is %f ret is %f\n", *dx, ret);
-  assert(approx_fp_equality_double(*dx, 3*2.0*2.0, 1e-10));
+  APPROX_EQ(*dx, 3*2.0*2.0, 1e-10);
   return 0;
 }

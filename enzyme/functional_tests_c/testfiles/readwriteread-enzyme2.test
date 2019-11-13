@@ -1,6 +1,0 @@
-; RUN: cd %desired_wd
-; RUN: make clean-readwriteread-enzyme2 ENZYME_PLUGIN=%loadEnzyme
-; RUN: make build/readwriteread-enzyme2 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
-; RUN: build/readwriteread-enzyme2
-; RUN: make clean-readwriteread-enzyme2 ENZYME_PLUGIN=%loadEnzyme
-
