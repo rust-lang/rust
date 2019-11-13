@@ -30,5 +30,31 @@ error: digits grouped inconsistently by underscores
 LL |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
    |                                                                ^^^^^^^^^^^^^^ help: consider: `1.234_567_8_f32`
 
-error: aborting due to 5 previous errors
+error: long literal lacking separators
+  --> $DIR/inconsistent_digit_grouping.rs:17:13
+   |
+LL |     let _ = 0x100000;
+   |             ^^^^^^^^ help: consider: `0x0010_0000`
+   |
+   = note: `-D clippy::unreadable-literal` implied by `-D warnings`
+
+error: long literal lacking separators
+  --> $DIR/inconsistent_digit_grouping.rs:18:13
+   |
+LL |     let _ = 0x1000000;
+   |             ^^^^^^^^^ help: consider: `0x0100_0000`
+
+error: long literal lacking separators
+  --> $DIR/inconsistent_digit_grouping.rs:19:13
+   |
+LL |     let _ = 0x10000000;
+   |             ^^^^^^^^^^ help: consider: `0x1000_0000`
+
+error: long literal lacking separators
+  --> $DIR/inconsistent_digit_grouping.rs:20:13
+   |
+LL |     let _ = 0x100000000_u64;
+   |             ^^^^^^^^^^^^^^^ help: consider: `0x0001_0000_0000_u64`
+
+error: aborting due to 9 previous errors
 

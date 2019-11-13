@@ -19,4 +19,6 @@ fn main() {
     #[allow(overflowing_literals)]
     let fail28 = 241251235E723_64;
     let fail29 = 42279.911_32;
+
+    let _ = 1.12345E1_32;
 }

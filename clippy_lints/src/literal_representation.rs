@@ -190,26 +190,70 @@ impl<'a> DigitInfo<'a> {
         }
     }
 
+    fn split_digit_parts(&self) -> (&str, Option<&str>, Option<(char, &str)>) {
+        let digits = self.digits;
+
+        let mut integer = digits;
+        let mut fraction = None;
+        let mut exponent = None;
+
+        if self.float {
+            for (i, c) in digits.char_indices() {
+                match c {
+                    '.' => {
+                        integer = &digits[..i];
+                        fraction = Some(&digits[i + 1..]);
+                    },
+                    'e' | 'E' => {
+                        if integer.len() > i {
+                            integer = &digits[..i];
+                        } else {
+                            fraction = Some(&digits[integer.len() + 1..i]);
+                        };
+                        exponent = Some((c, &digits[i + 1..]));
+                        break;
+                    },
+                    _ => {},
+                }
+            }
+        }
+
+        (integer, fraction, exponent)
+    }
+
     /// Returns literal formatted in a sensible way.
     crate fn grouping_hint(&self) -> String {
+        let mut output = String::new();
+
+        if let Some(prefix) = self.prefix {
+            output.push_str(prefix);
+        }
+
         let group_size = self.radix.suggest_grouping();
-        if self.digits.contains('.') {
-            let mut parts = self.digits.split('.');
-            let int_part_hint = parts
-                .next()
-                .expect("split always returns at least one element")
-                .chars()
-                .rev()
-                .filter(|&c| c != '_')
-                .collect::<Vec<_>>()
-                .chunks(group_size)
-                .map(|chunk| chunk.iter().rev().collect())
-                .rev()
-                .collect::<Vec<String>>()
-                .join("_");
-            let frac_part_hint = parts
-                .next()
-                .expect("already checked that there is a `.`")
+
+        let (integer, fraction, exponent) = &self.split_digit_parts();
+
+        let int_digits: Vec<_> = integer.chars().rev().filter(|&c| c != '_').collect();
+        let int_part_hint = int_digits
+            .chunks(group_size)
+            .map(|chunk| chunk.iter().rev().collect())
+            .rev()
+            .collect::<Vec<String>>()
+            .join("_");
+
+        // Pad leading hexidecimal group with zeros
+        if self.radix == Radix::Hexadecimal {
+            debug_assert!(group_size > 0);
+            let first_group_size = (int_digits.len() + group_size - 1) % group_size + 1;
+            for _ in 0..group_size - first_group_size {
+                output.push('0');
+            }
+        }
+
+        output.push_str(&int_part_hint);
+
+        if let Some(fraction) = fraction {
+            let frac_part_hint = fraction
                 .chars()
                 .filter(|&c| c != '_')
                 .collect::<Vec<_>>()
@@ -217,62 +261,40 @@ impl<'a> DigitInfo<'a> {
                 .map(|chunk| chunk.iter().collect())
                 .collect::<Vec<String>>()
                 .join("_");
-            let suffix_hint = match self.suffix {
-                Some(suffix) if is_mistyped_float_suffix(suffix) => format!("_f{}", &suffix[1..]),
-                Some(suffix) => suffix.to_string(),
-                None => String::new(),
-            };
-            format!("{}.{}{}", int_part_hint, frac_part_hint, suffix_hint)
-        } else if self.float && (self.digits.contains('E') || self.digits.contains('e')) {
-            let which_e = if self.digits.contains('E') { 'E' } else { 'e' };
-            let parts: Vec<&str> = self.digits.split(which_e).collect();
-            let filtered_digits_vec_0 = parts[0].chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
-            let filtered_digits_vec_1 = parts[1].chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
-            let before_e_hint = filtered_digits_vec_0
-                .chunks(group_size)
-                .map(|chunk| chunk.iter().rev().collect())
-                .rev()
-                .collect::<Vec<String>>()
-                .join("_");
-            let after_e_hint = filtered_digits_vec_1
-                .chunks(group_size)
-                .map(|chunk| chunk.iter().rev().collect())
-                .rev()
-                .collect::<Vec<String>>()
-                .join("_");
-            let suffix_hint = match self.suffix {
-                Some(suffix) if is_mistyped_float_suffix(suffix) => format!("_f{}", &suffix[1..]),
-                Some(suffix) => suffix.to_string(),
-                None => String::new(),
-            };
-            format!(
-                "{}{}{}{}{}",
-                self.prefix.unwrap_or(""),
-                before_e_hint,
-                which_e,
-                after_e_hint,
-                suffix_hint
-            )
-        } else {
-            let filtered_digits_vec = self.digits.chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
-            let mut hint = filtered_digits_vec
-                .chunks(group_size)
-                .map(|chunk| chunk.iter().rev().collect())
-                .rev()
-                .collect::<Vec<String>>()
-                .join("_");
-            // Forces hexadecimal values to be grouped by 4 being filled with zeroes (e.g 0x00ab_cdef)
-            let nb_digits_to_fill = filtered_digits_vec.len() % 4;
-            if self.radix == Radix::Hexadecimal && nb_digits_to_fill != 0 {
-                hint = format!("{:0>4}{}", &hint[..nb_digits_to_fill], &hint[nb_digits_to_fill..]);
-            }
-            let suffix_hint = match self.suffix {
-                Some(suffix) if is_mistyped_suffix(suffix) => format!("_i{}", &suffix[1..]),
-                Some(suffix) => suffix.to_string(),
-                None => String::new(),
-            };
-            format!("{}{}{}", self.prefix.unwrap_or(""), hint, suffix_hint)
+
+            output.push('.');
+            output.push_str(&frac_part_hint);
         }
+
+        if let Some((separator, exponent)) = exponent {
+            let after_e_hint = exponent
+                .chars()
+                .rev()
+                .filter(|&c| c != '_')
+                .collect::<Vec<_>>()
+                .chunks(group_size)
+                .map(|chunk| chunk.iter().rev().collect())
+                .rev()
+                .collect::<Vec<String>>()
+                .join("_");
+
+            output.push(*separator);
+            output.push_str(&after_e_hint);
+        }
+
+        if let Some(suffix) = self.suffix {
+            if self.float && is_mistyped_float_suffix(suffix) {
+                output.push_str("_f");
+                output.push_str(&suffix[1..]);
+            } else if is_mistyped_suffix(suffix) {
+                output.push_str("_i");
+                output.push_str(&suffix[1..]);
+            } else {
+                output.push_str(suffix);
+            }
+        }
+
+        output
     }
 }
 

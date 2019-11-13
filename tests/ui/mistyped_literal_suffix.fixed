@@ -19,4 +19,6 @@ fn main() {
     #[allow(overflowing_literals)]
     let fail28 = 241_251_235E723_f64;
     let fail29 = 42_279.911_f32;
+
+    let _ = 1.123_45E1_f32;
 }
