@@ -26,7 +26,7 @@ use crate::clean::Attributes;
 use crate::config::Options;
 use crate::html::markdown::{self, ErrorCodes, LangString, Ignore};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct TestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     pub no_crate_inject: bool,
@@ -638,6 +638,19 @@ pub struct Collector {
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
+}
+
+impl ::std::fmt::Debug for Collector {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        f.debug_struct("Collector")
+            .field("tests", &self.tests)
+            .field("options", &self.options)
+            .field("use_headers", &self.use_headers)
+            .field("enable_per_target_ignores", &self.enable_per_target_ignores)
+            .field("cratename", &self.cratename)
+            .field("opts", &self.opts)
+            .finish()
+    }
 }
 
 impl Collector {

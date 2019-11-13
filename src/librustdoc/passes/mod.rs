@@ -322,6 +322,7 @@ pub fn look_for_tests<'tcx>(
         }
     };
 
+    #[derive(Debug)]
     struct Tests {
         found_tests: usize,
     }
