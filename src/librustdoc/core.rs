@@ -1,5 +1,6 @@
 use rustc_lint;
 use rustc::session::{self, config};
+use rustc::hir::def::Namespace::TypeNS;
 use rustc::hir::def_id::{DefId, DefIndex, CrateNum, LOCAL_CRATE};
 use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
@@ -13,11 +14,13 @@ use rustc_interface::interface;
 use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
 
+use syntax::ast::CRATE_NODE_ID;
 use syntax::source_map;
 use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
 use syntax::symbol::sym;
+use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 
@@ -246,6 +249,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         ..
     } = options;
 
+    let extern_names: Vec<String> = externs.iter().map(|(s,_)| s).cloned().collect();
+
     // Add the rustdoc cfg into the doc build.
     cfgs.push("doc".to_string());
 
@@ -344,7 +349,25 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.borrow().clone();
+        let resolver = {
+            let parts = abort_on_err(compiler.expansion(), sess).peek();
+            let resolver = parts.1.borrow();
+
+            // Before we actually clone it, let's force all the extern'd crates to
+            // actually be loaded, just in case they're only referred to inside
+            // intra-doc-links
+            resolver.borrow_mut().access(|resolver| {
+                for extern_name in &extern_names {
+                    resolver.resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
+                        .unwrap_or_else(
+                            |()| panic!("Unable to resolve external crate {}", extern_name)
+                        );
+                }
+            });
+
+            // Now we're good to clone the resolver because everything should be loaded
+            resolver.clone()
+        };
 
         if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");

@@ -143,6 +143,10 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("extern", |o| {
             o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")
         }),
+        stable("extern-private", |o| {
+            o.optmulti("", "extern-private",
+                       "pass an --extern to rustc (compatibility only)", "NAME=PATH")
+        }),
         unstable("extern-html-root-url", |o| {
             o.optmulti("", "extern-html-root-url",
                        "base URL to use for dependencies", "NAME=URL")
