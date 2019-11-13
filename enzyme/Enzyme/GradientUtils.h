@@ -980,6 +980,7 @@ endCheck:
         }
         return sublimits;
     }
+    std::map<std::pair<Value*, int>, MDNode*> invariantGroups;
    
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
     AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, CallInst** freeLocation, Instruction** lastScopeAllocLocation) {
@@ -1010,13 +1011,17 @@ endCheck:
             Value* size = sublimits[i].first;
             Type* myType = types[i];
 
+            
             IRBuilder <> allocationBuilder(&containedloops.back().first.preheader->back());
+            
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 
+                            allocationBuilder.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
+            StoreInst* storealloc = nullptr;
             if (!sublimits[i].second.back().first.dynamic) {
                 auto firstallocation = CallInst::CreateMalloc(
                         &allocationBuilder.GetInsertBlock()->back(),
                         size->getType(),
-                        myType,
-                        ConstantInt::get(size->getType(), allocationBuilder.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8), size, nullptr, name+"_malloccache");
+                        myType, byteSizeOfType, size, nullptr, name+"_malloccache");
                 CallInst* malloccall = dyn_cast<CallInst>(firstallocation);
                 if (malloccall == nullptr) {
                     malloccall = cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
@@ -1024,7 +1029,7 @@ endCheck:
                 malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
                 malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
                 
-                allocationBuilder.CreateStore(firstallocation, storeInto);
+                storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
                 
                 if (lastScopeAllocLocation) {
                     *lastScopeAllocLocation = cast<Instruction>(firstallocation);
@@ -1052,7 +1057,17 @@ endCheck:
                 if (lastScopeAllocLocation) {
                     *lastScopeAllocLocation = cast<Instruction>(allocation);
                 }
-                build.CreateStore(allocation, storeInto);
+                storealloc = build.CreateStore(allocation, storeInto);
+            }
+            
+            if (invariantGroups.find(std::make_pair((Value*)alloc, i)) == invariantGroups.end()) {
+                MDNode* invgroup = MDNode::getDistinct(alloc->getContext(), {});
+                invariantGroups[std::make_pair((Value*)alloc, i)] = invgroup;
+            }
+            storealloc->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair((Value*)alloc, i)]);
+            unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+            if ((bsize & (bsize - 1)) == 0) {
+                storealloc->setAlignment(bsize);
             }
 
             if (freeLocation) {
@@ -1076,7 +1091,13 @@ endCheck:
                 }
 
                 auto forfree = cast<LoadInst>(tbuild.CreateLoad(unwrapM(storeInto, tbuild, antimap, /*lookup*/false)));
-                forfree->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(forfree->getContext(), {}));
+                forfree->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair((Value*)alloc, i)]);
+                forfree->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(forfree->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
+                unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+                if ((bsize & (bsize - 1)) == 0) {
+                    forfree->setAlignment(bsize);
+                }
+                //forfree->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(forfree->getContext(), {}));
                 auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(forfree, Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
                 ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
                 if (ci->getParent()==nullptr) {
@@ -1109,7 +1130,19 @@ endCheck:
         Value* next = cache;
         for(int i=sublimits.size()-1; i>=0; i--) {
             next = BuilderM.CreateLoad(next);
-            cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(next->getContext(), {}));
+            //cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(next->getContext(), {}));
+            if (invariantGroups.find(std::make_pair(cache, i)) == invariantGroups.end()) {
+                MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
+                invariantGroups[std::make_pair(cache, i)] = invgroup;
+            }
+            cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair(cache, i)]);
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()), 
+                            ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(next->getType())/8);
+            cast<LoadInst>(next)->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
+            unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+            if ((bsize & (bsize - 1)) == 0) {
+                cast<LoadInst>(next)->setAlignment(bsize);
+            }
 
             const auto& containedloops = sublimits[i].second; 
 
@@ -1160,9 +1193,23 @@ endCheck:
         return next;
     }
     
+    std::map<Value*, MDNode*> valueInvariantGroups;
+    
     LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
         auto result = BuilderM.CreateLoad(getCachePointer(BuilderM, ctx, cache));
-        result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(ctx->getContext(), {}));
+        
+        if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
+            MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
+            valueInvariantGroups[cache] = invgroup;
+        }
+        result->setMetadata(LLVMContext::MD_invariant_group, valueInvariantGroups[cache]);
+        ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()), 
+                        ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(result->getType())/8);
+        //result->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
+        unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+        if ((bsize & (bsize - 1)) == 0) {
+            result->setAlignment(bsize);
+        }
         return result;
     }
 
@@ -1184,7 +1231,18 @@ endCheck:
         }
         Value* loc = getCachePointer(v, ctx, cache);
         assert(cast<PointerType>(loc->getType())->getElementType() == val->getType());
-        v.CreateStore(val, loc);
+        StoreInst* storeinst = v.CreateStore(val, loc);
+        if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
+            MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
+            valueInvariantGroups[cache] = invgroup;
+        }
+        storeinst->setMetadata(LLVMContext::MD_invariant_group, valueInvariantGroups[cache]);
+        ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()), 
+                        ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(val->getType())/8);
+        unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+        if ((bsize & (bsize - 1)) == 0) {
+            storeinst->setAlignment(bsize);
+        }
     }
 
     void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {

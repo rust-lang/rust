@@ -1077,14 +1077,16 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
 
         if (retAlloca) {
           auto result = Builder.CreateLoad(retAlloca, "retreload");
-          result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(retAlloca->getContext(), {}));
+          //TODO reintroduce invariant load/group
+          //result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(retAlloca->getContext(), {}));
           assert(gutils->isConstantInstruction(result));
           retargs.push_back(result);
         }
         
         if (dretAlloca) {
           auto result = Builder.CreateLoad(dretAlloca, "dretreload");
-          result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(dretAlloca->getContext(), {}));
+          //TODO reintroduce invariant load/group
+          //result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(dretAlloca->getContext(), {}));
           assert(gutils->isConstantInstruction(result));
           retargs.push_back(result);
         }
