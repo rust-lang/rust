@@ -168,10 +168,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let ptr_size = this.pointer_size().bits();
 
+        // We cap the number of read bytes to the largest value that we are able to fit in both the
+        // host's and target's `isize`.
         let count = this
             .read_scalar(count_op)?
             .to_machine_usize(&*this.tcx)?
-            .min(1 << (ptr_size - 1));
+            .min(1 << (ptr_size - 1))
+            .min(isize::max_value() as u64);
         // Reading zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
@@ -180,6 +183,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.read_scalar(buf_op)?.not_undef()?;
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
+            // This can never fail because `count` was capped to be smaller than
+            // `isize::max_value()`.
             let count = isize::try_from(count).unwrap();
             // We want to read at most `count` bytes. We are sure that `count` is not negative
             // because it was a target's `usize`. Also we are sure that its smaller than
@@ -188,6 +193,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let result = handle
                 .file
                 .read(&mut bytes)
+                // `File::read` never returns a value larger than `i64::max_value()`, so this
+                // unwrap cannot fail.
                 .map(|c| i64::try_from(c).unwrap());
 
             match result {
@@ -218,10 +225,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let ptr_size = this.pointer_size().bits();
 
+        // We cap the number of read bytes to the largest value that we are able to fit in both the
+        // host's and target's `isize`.
         let count = this
             .read_scalar(count_op)?
             .to_machine_usize(&*this.tcx)?
-            .min(1 << (ptr_size - 1));
+            .min(1 << (ptr_size - 1))
+            .min(isize::max_value() as u64);
         // Writing zero bytes should not change `buf`.
         if count == 0 {
             return Ok(0);
