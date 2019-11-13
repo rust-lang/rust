@@ -181,8 +181,6 @@ impl BodyCache<'tcx> {
         ReadOnlyBodyCache::new(&self.cache, &self.body)
     }
 
-    pub fn cache(&self) -> &Cache { &self.cache }
-
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         self.cache.basic_blocks_mut(&mut self.body)
     }
@@ -234,14 +232,6 @@ impl ReadOnlyBodyCache<'a, 'tcx> {
         assert!(
             cache.predecessors.is_some(),
             "Cannot construct ReadOnlyBodyCache without computed predecessors");
-        Self {
-            cache,
-            body,
-        }
-    }
-
-    pub fn from_external_cache(cache: &'a mut Cache, body: &'a Body<'tcx>) -> Self {
-        cache.ensure_predecessors(body);
         Self {
             cache,
             body,

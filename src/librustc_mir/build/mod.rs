@@ -196,7 +196,9 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyCache<'_> {
 
         lints::check(tcx, &body, def_id);
 
-        BodyCache::new(body)
+        let mut body = BodyCache::new(body);
+        body.ensure_predecessors();
+        body
     })
 }
 
