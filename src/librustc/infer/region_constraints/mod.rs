@@ -151,7 +151,7 @@ impl Constraint<'_> {
 /// ```
 /// R0 member of [O1..On]
 /// ```
-#[derive(Debug, Clone, HashStable)]
+#[derive(Debug, Clone, HashStable, TypeFoldable)]
 pub struct MemberConstraint<'tcx> {
     /// The `DefId` of the opaque type causing this constraint: used for error reporting.
     pub opaque_type_def_id: DefId,
@@ -167,12 +167,6 @@ pub struct MemberConstraint<'tcx> {
 
     /// The options `O1..On`.
     pub choice_regions: Lrc<Vec<Region<'tcx>>>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for MemberConstraint<'tcx> {
-        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
-    }
 }
 
 BraceStructLiftImpl! {
@@ -195,17 +189,10 @@ pub struct Verify<'tcx> {
     pub bound: VerifyBound<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Projection(ty::ProjectionTy<'tcx>),
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for GenericKind<'tcx> {
-        (GenericKind::Param)(a),
-        (GenericKind::Projection)(a),
-    }
 }
 
 /// Describes the things that some `GenericKind` value `G` is known to

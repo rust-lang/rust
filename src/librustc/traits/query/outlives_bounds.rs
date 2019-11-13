@@ -17,7 +17,7 @@ use std::mem;
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
@@ -27,14 +27,6 @@ pub enum OutlivesBound<'tcx> {
 EnumLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for self::OutlivesBound<'a> {
         type Lifted = self::OutlivesBound<'tcx>;
-        (self::OutlivesBound::RegionSubRegion)(a, b),
-        (self::OutlivesBound::RegionSubParam)(a, b),
-        (self::OutlivesBound::RegionSubProjection)(a, b),
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for self::OutlivesBound<'tcx> {
         (self::OutlivesBound::RegionSubRegion)(a, b),
         (self::OutlivesBound::RegionSubParam)(a, b),
         (self::OutlivesBound::RegionSubProjection)(a, b),

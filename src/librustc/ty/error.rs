@@ -10,14 +10,14 @@ use syntax_pos::Span;
 
 use crate::hir;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),

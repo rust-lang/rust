@@ -4,7 +4,7 @@ use crate::traits::query::Fallible;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable)]
 pub struct Normalize<T> {
     pub value: T,
 }
@@ -81,12 +81,6 @@ impl Normalizable<'tcx> for ty::FnSig<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>> {
         tcx.type_op_normalize_fn_sig(canonicalized)
     }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, T> TypeFoldable<'tcx> for Normalize<T> {
-        value,
-    } where T: TypeFoldable<'tcx>,
 }
 
 BraceStructLiftImpl! {

@@ -778,122 +778,8 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     }
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableImplData<'tcx, N> {
-        impl_def_id, substs, nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableGeneratorData<'tcx, N> {
-        generator_def_id, substs, nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableClosureData<'tcx, N> {
-        closure_def_id, substs, nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableAutoImplData<N> {
-        trait_def_id, nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableBuiltinData<N> {
-        nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx, N> {
-        upcast_trait_ref, vtable_base, nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableFnPointerData<'tcx, N> {
-        fn_ty,
-        nested
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableTraitAliasData<'tcx, N> {
-        alias_def_id, substs, nested
-    } where N: TypeFoldable<'tcx>
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx, N> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
-        (traits::VtableImpl)(a),
-        (traits::VtableAutoImpl)(a),
-        (traits::VtableGenerator)(a),
-        (traits::VtableClosure)(a),
-        (traits::VtableFnPointer)(a),
-        (traits::VtableParam)(a),
-        (traits::VtableBuiltin)(a),
-        (traits::VtableObject)(a),
-        (traits::VtableTraitAlias)(a),
-    } where N: TypeFoldable<'tcx>
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, T> TypeFoldable<'tcx> for Normalized<'tcx, T> {
-        value,
-        obligations
-    } where T: TypeFoldable<'tcx>
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::WhereClause<'tcx> {
-        (traits::WhereClause::Implemented)(trait_ref),
-        (traits::WhereClause::ProjectionEq)(projection),
-        (traits::WhereClause::TypeOutlives)(ty_outlives),
-        (traits::WhereClause::RegionOutlives)(region_outlives),
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::WellFormed<'tcx> {
-        (traits::WellFormed::Trait)(trait_ref),
-        (traits::WellFormed::Ty)(ty),
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::FromEnv<'tcx> {
-        (traits::FromEnv::Trait)(trait_ref),
-        (traits::FromEnv::Ty)(ty),
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::DomainGoal<'tcx> {
-        (traits::DomainGoal::Holds)(wc),
-        (traits::DomainGoal::WellFormed)(wf),
-        (traits::DomainGoal::FromEnv)(from_env),
-        (traits::DomainGoal::Normalize)(projection),
-    }
-}
-
 CloneTypeFoldableAndLiftImpls! {
     traits::QuantifierKind,
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::GoalKind<'tcx> {
-        (traits::GoalKind::Implies)(hypotheses, goal),
-        (traits::GoalKind::And)(goal1, goal2),
-        (traits::GoalKind::Not)(goal),
-        (traits::GoalKind::DomainGoal)(domain_goal),
-        (traits::GoalKind::Quantified)(qkind, goal),
-        (traits::GoalKind::Subtype)(a, b),
-        (traits::GoalKind::CannotProve),
-    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<traits::Goal<'tcx>> {
@@ -920,34 +806,8 @@ impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
     }
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::ProgramClause<'tcx> {
-        goal,
-        hypotheses,
-        category,
-    }
-}
-
 CloneTypeFoldableAndLiftImpls! {
     traits::ProgramClauseCategory,
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::Clause<'tcx> {
-        (traits::Clause::Implies)(clause),
-        (traits::Clause::ForAll)(clause),
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::Environment<'tcx> { clauses }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx, G> TypeFoldable<'tcx> for traits::InEnvironment<'tcx, G> {
-        environment,
-        goal
-    } where G: TypeFoldable<'tcx>
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::Clauses<'tcx> {
