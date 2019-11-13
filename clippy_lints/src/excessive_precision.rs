@@ -86,7 +86,7 @@ impl ExcessivePrecision {
             if sym_str == s {
                 None
             } else {
-                let di = super::literal_representation::DigitInfo::new(&s, true);
+                let di = super::literal_representation::DigitInfo::new(&s, None, true);
                 Some(di.grouping_hint())
             }
         } else {

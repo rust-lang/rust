@@ -138,13 +138,21 @@ pub(super) struct DigitInfo<'a> {
 
     /// The type suffix, including preceding underscore if present.
     crate suffix: Option<&'a str>,
-    /// True for floating-point literals.
-    crate float: bool,
 }
 
 impl<'a> DigitInfo<'a> {
+    fn from_lit(src: &'a str, lit: &Lit) -> Option<DigitInfo<'a>> {
+        if lit.kind.is_numeric() && src.chars().next().map_or(false, |c| c.is_digit(10)) {
+            let (unsuffixed, suffix) = split_suffix(&src, &lit.kind);
+            let float = if let LitKind::Float(..) = lit.kind { true } else { false };
+            Some(DigitInfo::new(unsuffixed, suffix, float))
+        } else {
+            None
+        }
+    }
+
     #[must_use]
-    crate fn new(lit: &'a str, float: bool) -> Self {
+    crate fn new(lit: &'a str, suffix: Option<&'a str>, float: bool) -> Self {
         // Determine delimiter for radix prefix, if present, and radix.
         let radix = if lit.starts_with("0x") {
             Radix::Hexadecimal
@@ -157,35 +165,19 @@ impl<'a> DigitInfo<'a> {
         };
 
         // Grab part of the literal after prefix, if present.
-        let (prefix, sans_prefix) = if let Radix::Decimal = radix {
+        let (prefix, mut sans_prefix) = if let Radix::Decimal = radix {
             (None, lit)
         } else {
             let (p, s) = lit.split_at(2);
             (Some(p), s)
         };
 
-        let mut digits = sans_prefix;
-        let mut suffix = None;
-
-        let len = sans_prefix.len();
-        let mut last_d = '\0';
-        for (d_idx, d) in sans_prefix.char_indices() {
-            let suffix_start = if last_d == '_' { d_idx - 1 } else { d_idx };
-            if float
-                && (d == 'f'
-                    || is_possible_float_suffix_index(&sans_prefix, suffix_start, len)
-                    || ((d == 'E' || d == 'e') && !has_possible_float_suffix(&sans_prefix)))
-                || !float && (d == 'i' || d == 'u' || is_possible_suffix_index(&sans_prefix, suffix_start, len))
-            {
-                let (d, s) = sans_prefix.split_at(suffix_start);
-                digits = d;
-                suffix = Some(s);
-                break;
-            }
-            last_d = d
+        if suffix.is_some() && sans_prefix.ends_with('_') {
+            // The '_' before the suffix isn't part of the digits
+            sans_prefix = &sans_prefix[..sans_prefix.len() - 1];
         }
 
-        let (integer, fraction, exponent) = Self::split_digit_parts(digits, float);
+        let (integer, fraction, exponent) = Self::split_digit_parts(sans_prefix, float);
 
         Self {
             radix,
@@ -194,7 +186,6 @@ impl<'a> DigitInfo<'a> {
             fraction,
             exponent,
             suffix,
-            float,
         }
     }
 
@@ -256,15 +247,8 @@ impl<'a> DigitInfo<'a> {
         }
 
         if let Some(suffix) = self.suffix {
-            if self.float && is_mistyped_float_suffix(suffix) {
-                output.push_str("_f");
-                output.push_str(&suffix[1..]);
-            } else if is_mistyped_suffix(suffix) {
-                output.push_str("_i");
-                output.push_str(&suffix[1..]);
-            } else {
-                output.push_str(suffix);
-            }
+            output.push('_');
+            output.push_str(suffix);
         }
 
         output
@@ -301,6 +285,34 @@ impl<'a> DigitInfo<'a> {
             output.push(c);
         }
     }
+}
+
+fn split_suffix<'a>(src: &'a str, lit_kind: &LitKind) -> (&'a str, Option<&'a str>) {
+    debug_assert!(lit_kind.is_numeric());
+    if let Some(suffix_length) = lit_suffix_length(lit_kind) {
+        let (unsuffixed, suffix) = src.split_at(src.len() - suffix_length);
+        (unsuffixed, Some(suffix))
+    } else {
+        (src, None)
+    }
+}
+
+fn lit_suffix_length(lit_kind: &LitKind) -> Option<usize> {
+    debug_assert!(lit_kind.is_numeric());
+    let suffix = match lit_kind {
+        LitKind::Int(_, int_lit_kind) => match int_lit_kind {
+            LitIntType::Signed(int_ty) => Some(int_ty.name_str()),
+            LitIntType::Unsigned(uint_ty) => Some(uint_ty.name_str()),
+            LitIntType::Unsuffixed => None,
+        },
+        LitKind::Float(_, float_lit_kind) => match float_lit_kind {
+            LitFloatType::Suffixed(float_ty) => Some(float_ty.name_str()),
+            LitFloatType::Unsuffixed => None,
+        },
+        _ => None,
+    };
+
+    suffix.map(str::len)
 }
 
 enum WarningType {
@@ -388,22 +400,13 @@ impl LiteralDigitGrouping {
 
         if_chain! {
             if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(firstch) = src.chars().next();
-            if char::is_digit(firstch, 10);
+            if let Some(mut digit_info) = DigitInfo::from_lit(&src, &lit);
             then {
-
-                let digit_info = match lit.kind {
-                        LitKind::Int(..) => DigitInfo::new(&src, false),
-                        LitKind::Float(..) => DigitInfo::new(&src, true),
-                        _ => return,
-                };
+                if !Self::check_for_mistyped_suffix(cx, lit.span, &mut digit_info) {
+                    return;
+                }
 
                 let result = (|| {
-                    if let Some(suffix) = digit_info.suffix {
-                        if is_mistyped_suffix(suffix) {
-                            return Err(WarningType::MistypedLiteralSuffix);
-                        }
-                    }
 
                     let integral_group_size = Self::get_group_size(digit_info.integer.split('_'), in_macro)?;
                     if let Some(fraction) = digit_info.fraction {
@@ -425,6 +428,39 @@ impl LiteralDigitGrouping {
                     warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                 }
             }
+        }
+    }
+
+    // Returns `false` if the check fails
+    fn check_for_mistyped_suffix(
+        cx: &EarlyContext<'_>,
+        span: syntax_pos::Span,
+        digit_info: &mut DigitInfo<'_>,
+    ) -> bool {
+        if digit_info.suffix.is_some() {
+            return true;
+        }
+
+        let (part, mistyped_suffixes, missing_char) = if let Some((_, exponent)) = &mut digit_info.exponent {
+            (exponent, &["32", "64"][..], 'f')
+        } else if let Some(fraction) = &mut digit_info.fraction {
+            (fraction, &["32", "64"][..], 'f')
+        } else {
+            (&mut digit_info.integer, &["8", "16", "32", "64"][..], 'i')
+        };
+
+        let mut split = part.rsplit('_');
+        let last_group = split.next().expect("At least one group");
+        if split.next().is_some() && mistyped_suffixes.contains(&last_group) {
+            *part = &part[..part.len() - last_group.len()];
+            let mut hint = digit_info.grouping_hint();
+            hint.push('_');
+            hint.push(missing_char);
+            hint.push_str(last_group);
+            WarningType::MistypedLiteralSuffix.display(&hint, cx, span);
+            false
+        } else {
+            true
         }
     }
 
@@ -503,14 +539,12 @@ impl DecimalLiteralRepresentation {
         if_chain! {
             if let LitKind::Int(val, _) = lit.kind;
             if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(firstch) = src.chars().next();
-            if char::is_digit(firstch, 10);
-            let digit_info = DigitInfo::new(&src, false);
+            if let Some(digit_info) = DigitInfo::from_lit(&src, &lit);
             if digit_info.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
             then {
                 let hex = format!("{:#X}", val);
-                let digit_info = DigitInfo::new(&hex, false);
+                let digit_info = DigitInfo::new(&hex, None, false);
                 let _ = Self::do_lint(digit_info.integer).map_err(|warning_type| {
                     warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                 });
@@ -562,29 +596,4 @@ impl DecimalLiteralRepresentation {
 
         Ok(())
     }
-}
-
-#[must_use]
-fn is_mistyped_suffix(suffix: &str) -> bool {
-    ["_8", "_16", "_32", "_64"].contains(&suffix)
-}
-
-#[must_use]
-fn is_possible_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
-    ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) && is_mistyped_suffix(lit.split_at(idx).1)
-}
-
-#[must_use]
-fn is_mistyped_float_suffix(suffix: &str) -> bool {
-    ["_32", "_64"].contains(&suffix)
-}
-
-#[must_use]
-fn is_possible_float_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
-    (len > 3 && idx == len - 3) && is_mistyped_float_suffix(lit.split_at(idx).1)
-}
-
-#[must_use]
-fn has_possible_float_suffix(lit: &str) -> bool {
-    lit.ends_with("_32") || lit.ends_with("_64")
 }
