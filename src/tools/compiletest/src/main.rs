@@ -731,7 +731,8 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
                     && config.target.contains("emscripten"))
                 || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
                 || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb())
-                || !is_outdated(
+                // Ignore tests that already run and are up to date with respect to inputs.
+                || is_up_to_date(
                     config,
                     testpaths,
                     &early_props,
@@ -756,7 +757,7 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
-fn is_outdated(
+fn is_up_to_date(
     config: &Config,
     testpaths: &TestPaths,
     props: &EarlyProps,
@@ -768,11 +769,11 @@ fn is_outdated(
     let contents = match fs::read_to_string(&stamp_name) {
         Ok(f) => f,
         Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
-        Err(_) => return true,
+        Err(_) => return false,
     };
     let expected_hash = runtest::compute_stamp_hash(config);
     if contents != expected_hash {
-        return true;
+        return false;
     }
 
     // Check timestamps.
@@ -793,7 +794,7 @@ fn is_outdated(
         inputs.add_path(path);
     }
 
-    inputs > Stamp::from_path(&stamp_name)
+    inputs < Stamp::from_path(&stamp_name)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
