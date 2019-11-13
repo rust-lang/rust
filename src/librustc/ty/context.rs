@@ -75,6 +75,7 @@ use syntax::source_map::MultiSpan;
 use syntax::feature_gate;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
+use syntax::expand::allocator::AllocatorKind;
 
 pub struct AllArenas {
     pub interner: SyncDroplessArena,
@@ -1336,6 +1337,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn crates(self) -> &'tcx [CrateNum] {
         self.all_crate_nums(LOCAL_CRATE)
+    }
+
+    pub fn injected_panic_runtime(self) -> Option<CrateNum> {
+        self.cstore.injected_panic_runtime()
+    }
+
+    pub fn allocator_kind(self) -> Option<AllocatorKind> {
+        self.cstore.allocator_kind()
     }
 
     pub fn features(self) -> &'tcx feature_gate::Features {
