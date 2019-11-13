@@ -124,12 +124,18 @@ impl Radix {
 
 #[derive(Debug)]
 pub(super) struct DigitInfo<'a> {
-    /// Characters of a literal between the radix prefix and type suffix.
-    crate digits: &'a str,
     /// Which radix the literal was represented in.
     crate radix: Radix,
     /// The radix prefix, if present.
     crate prefix: Option<&'a str>,
+
+    /// The integer part of the number.
+    integer: &'a str,
+    /// The fraction part of the number.
+    fraction: Option<&'a str>,
+    /// The character used as exponent seperator (b'e' or b'E') and the exponent part.
+    exponent: Option<(char, &'a str)>,
+
     /// The type suffix, including preceding underscore if present.
     crate suffix: Option<&'a str>,
     /// True for floating-point literals.
@@ -158,6 +164,9 @@ impl<'a> DigitInfo<'a> {
             (Some(p), s)
         };
 
+        let mut digits = sans_prefix;
+        let mut suffix = None;
+
         let len = sans_prefix.len();
         let mut last_d = '\0';
         for (d_idx, d) in sans_prefix.char_indices() {
@@ -168,36 +177,33 @@ impl<'a> DigitInfo<'a> {
                     || ((d == 'E' || d == 'e') && !has_possible_float_suffix(&sans_prefix)))
                 || !float && (d == 'i' || d == 'u' || is_possible_suffix_index(&sans_prefix, suffix_start, len))
             {
-                let (digits, suffix) = sans_prefix.split_at(suffix_start);
-                return Self {
-                    digits,
-                    radix,
-                    prefix,
-                    suffix: Some(suffix),
-                    float,
-                };
+                let (d, s) = sans_prefix.split_at(suffix_start);
+                digits = d;
+                suffix = Some(s);
+                break;
             }
             last_d = d
         }
 
-        // No suffix found
+        let (integer, fraction, exponent) = Self::split_digit_parts(digits, float);
+
         Self {
-            digits: sans_prefix,
             radix,
             prefix,
-            suffix: None,
+            integer,
+            fraction,
+            exponent,
+            suffix,
             float,
         }
     }
 
-    fn split_digit_parts(&self) -> (&str, Option<&str>, Option<(char, &str)>) {
-        let digits = self.digits;
-
+    fn split_digit_parts(digits: &str, float: bool) -> (&str, Option<&str>, Option<(char, &str)>) {
         let mut integer = digits;
         let mut fraction = None;
         let mut exponent = None;
 
-        if self.float {
+        if float {
             for (i, c) in digits.char_indices() {
                 match c {
                     '.' => {
@@ -231,17 +237,21 @@ impl<'a> DigitInfo<'a> {
 
         let group_size = self.radix.suggest_grouping();
 
-        let (integer, fraction, exponent) = &self.split_digit_parts();
+        Self::group_digits(
+            &mut output,
+            self.integer,
+            group_size,
+            true,
+            self.radix == Radix::Hexadecimal,
+        );
 
-        Self::group_digits(&mut output, integer, group_size, true, self.radix == Radix::Hexadecimal);
-
-        if let Some(fraction) = fraction {
+        if let Some(fraction) = self.fraction {
             output.push('.');
             Self::group_digits(&mut output, fraction, group_size, false, false);
         }
 
-        if let Some((separator, exponent)) = exponent {
-            output.push(*separator);
+        if let Some((separator, exponent)) = self.exponent {
+            output.push(separator);
             Self::group_digits(&mut output, exponent, group_size, true, false);
         }
 
@@ -395,15 +405,13 @@ impl LiteralDigitGrouping {
                         }
                     }
 
-                    let (integer, fraction, _) = digit_info.split_digit_parts();
-
-                    let integral_group_size = Self::get_group_size(integer.split('_'), in_macro)?;
-                    if let Some(fraction) = fraction {
+                    let integral_group_size = Self::get_group_size(digit_info.integer.split('_'), in_macro)?;
+                    if let Some(fraction) = digit_info.fraction {
                         let fractional_group_size = Self::get_group_size(fraction.rsplit('_'), in_macro)?;
 
                         let consistent = Self::parts_consistent(integral_group_size,
                                                                 fractional_group_size,
-                                                                integer.len(),
+                                                                digit_info.integer.len(),
                                                                 fraction.len());
                         if !consistent {
                             return Err(WarningType::InconsistentDigitGrouping);
@@ -503,7 +511,7 @@ impl DecimalLiteralRepresentation {
             then {
                 let hex = format!("{:#X}", val);
                 let digit_info = DigitInfo::new(&hex, false);
-                let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
+                let _ = Self::do_lint(digit_info.integer).map_err(|warning_type| {
                     warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                 });
             }
