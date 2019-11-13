@@ -2,18 +2,16 @@
 
 pub mod codegen;
 
+use anyhow::Context;
+pub use anyhow::Result;
 use std::{
-    env,
-    error::Error,
-    fs,
+    env, fs,
     io::{Error as IoError, ErrorKind},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
 };
 
 use crate::codegen::Mode;
-
-pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 const TOOLCHAIN: &str = "stable";
 
@@ -69,7 +67,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
         .status()
     {
         Ok(status) if status.success() => (),
-        _ => install_rustfmt()?,
+        _ => install_rustfmt().context("install rustfmt")?,
     };
 
     if mode == Mode::Verify {
@@ -112,7 +110,7 @@ pub fn run_clippy() -> Result<()> {
         .status()
     {
         Ok(status) if status.success() => (),
-        _ => install_clippy()?,
+        _ => install_clippy().context("install clippy")?,
     };
 
     let allowed_lints = [
@@ -162,9 +160,9 @@ where
     let exec = args.next().unwrap();
     let mut cmd = Command::new(exec);
     f(cmd.args(args).current_dir(proj_dir).stderr(Stdio::inherit()));
-    let output = cmd.output()?;
+    let output = cmd.output().with_context(|| format!("running `{}`", cmdline))?;
     if !output.status.success() {
-        Err(format!("`{}` exited with {}", cmdline, output.status))?;
+        anyhow::bail!("`{}` exited with {}", cmdline, output.status);
     }
     Ok(output)
 }

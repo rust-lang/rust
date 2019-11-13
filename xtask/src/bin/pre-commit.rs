@@ -19,10 +19,10 @@ fn update_staged() -> Result<()> {
         .current_dir(&root)
         .output()?;
     if !output.status.success() {
-        Err(format!(
+        anyhow::bail!(
             "`git diff --diff-filter=MAR --name-only --cached` exited with {}",
             output.status
-        ))?;
+        );
     }
     for line in String::from_utf8(output.stdout)?.lines() {
         run(&format!("git update-index --add {}", root.join(line).to_string_lossy()), ".")?;
