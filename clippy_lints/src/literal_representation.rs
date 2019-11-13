@@ -365,54 +365,50 @@ impl LiteralDigitGrouping {
             if char::is_digit(firstch, 10);
             then {
 
+                let digit_info = match lit.kind {
+                        LitKind::Int(..) => DigitInfo::new(&src, false),
+                        LitKind::Float(..) => DigitInfo::new(&src, true),
+                        _ => return,
+                };
 
-        match lit.kind {
-            LitKind::Int(..) => {
-                // Lint integral literals.
-                let digit_info = DigitInfo::new(&src, false);
-                let _ = Self::do_lint(digit_info.digits, digit_info.suffix, in_macro).map_err(|warning_type| {
+                let result = (|| {
+                    match lit.kind {
+                        LitKind::Int(..) => {
+                            Self::do_lint(digit_info.digits, digit_info.suffix, in_macro)?;
+                        },
+                        LitKind::Float(..) => {
+                            // Separate digits into integral and fractional parts.
+                            let parts: Vec<&str> = digit_info
+                                .digits
+                                .split_terminator('.')
+                                .collect();
+
+                            // Lint integral and fractional parts separately, and then check consistency of digit
+                            // groups if both pass.
+                            let integral_group_size = Self::do_lint(parts[0], digit_info.suffix, in_macro)?;
+                            if parts.len() > 1 {
+                                // Lint the fractional part of literal just like integral part, but reversed.
+                                let fractional_part = &parts[1].chars().rev().collect::<String>();
+                                let fractional_group_size = Self::do_lint(fractional_part, None, in_macro)?;
+                                let consistent = Self::parts_consistent(integral_group_size,
+                                                                        fractional_group_size,
+                                                                        parts[0].len(),
+                                                                        parts[1].len());
+                                if !consistent {
+                                    return Err(WarningType::InconsistentDigitGrouping);
+                                };
+                            };
+                        },
+                        _ => (),
+                    }
+
+                    Ok(())
+                })();
+
+
+                if let Err(warning_type) = result {
                     warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
-                });
-            },
-            LitKind::Float(..) => {
-                // Lint floating-point literals.
-                let digit_info = DigitInfo::new(&src, true);
-                // Separate digits into integral and fractional parts.
-                let parts: Vec<&str> = digit_info
-                    .digits
-                    .split_terminator('.')
-                    .collect();
-
-                // Lint integral and fractional parts separately, and then check consistency of digit
-                // groups if both pass.
-                let _ = Self::do_lint(parts[0], digit_info.suffix, in_macro)
-                    .map(|integral_group_size| {
-                        if parts.len() > 1 {
-                            // Lint the fractional part of literal just like integral part, but reversed.
-                            let fractional_part = &parts[1].chars().rev().collect::<String>();
-                            let _ = Self::do_lint(fractional_part, None, in_macro)
-                                .map(|fractional_group_size| {
-                                    let consistent = Self::parts_consistent(integral_group_size,
-                                                                            fractional_group_size,
-                                                                            parts[0].len(),
-                                                                            parts[1].len());
-                                        if !consistent {
-                                            WarningType::InconsistentDigitGrouping.display(
-                                                &digit_info.grouping_hint(),
-                                                cx,
-                                                lit.span,
-                                            );
-                                        }
-                                })
-                            .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(),
-                            cx,
-                            lit.span));
-                        }
-                    })
-                .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, lit.span));
-            },
-            _ => (),
-        }
+                }
             }
         }
     }
