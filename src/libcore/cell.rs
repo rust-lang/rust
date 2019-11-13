@@ -1545,7 +1545,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]
+        // #[repr(transparent)]. This exploits libstd's special status, there is
+        // no guarantee for user code that this will work in future versions of the compiler!
         self as *const UnsafeCell<T> as *const T as *mut T
     }
 
@@ -1572,10 +1573,11 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(uc.into_inner(), 5);
     /// ```
     #[inline]
-    #[unstable(feature = "unsafe_cell_raw_get", issue = "0")]
+    #[unstable(feature = "unsafe_cell_raw_get", issue = "66358")]
     pub const fn raw_get(self: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]
+        // #[repr(transparent)]. This exploits libstd's special status, there is
+        // no guarantee for user code that this will work in future versions of the compiler!
         self as *const T as *mut T
     }
 }
