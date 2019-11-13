@@ -397,10 +397,9 @@ impl LiteralDigitGrouping {
 
                     let (integer, fraction, _) = digit_info.split_digit_parts();
 
-                    let integral_group_size = Self::do_lint(integer, in_macro)?;
+                    let integral_group_size = Self::get_group_size(integer.split('_'), in_macro)?;
                     if let Some(fraction) = fraction {
-                        let fractional_part = fraction.chars().rev().collect::<String>();
-                        let fractional_group_size = Self::do_lint(&fractional_part, in_macro)?;
+                        let fractional_group_size = Self::get_group_size(fraction.rsplit('_'), in_macro)?;
 
                         let consistent = Self::parts_consistent(integral_group_size,
                                                                 fractional_group_size,
@@ -425,53 +424,43 @@ impl LiteralDigitGrouping {
     /// parts, and the length
     /// of both parts, determine if the digits have been grouped consistently.
     #[must_use]
-    fn parts_consistent(int_group_size: usize, frac_group_size: usize, int_size: usize, frac_size: usize) -> bool {
+    fn parts_consistent(
+        int_group_size: Option<usize>,
+        frac_group_size: Option<usize>,
+        int_size: usize,
+        frac_size: usize,
+    ) -> bool {
         match (int_group_size, frac_group_size) {
             // No groups on either side of decimal point - trivially consistent.
-            (0, 0) => true,
+            (None, None) => true,
             // Integral part has grouped digits, fractional part does not.
-            (_, 0) => frac_size <= int_group_size,
+            (Some(int_group_size), None) => frac_size <= int_group_size,
             // Fractional part has grouped digits, integral part does not.
-            (0, _) => int_size <= frac_group_size,
+            (None, Some(frac_group_size)) => int_size <= frac_group_size,
             // Both parts have grouped digits. Groups should be the same size.
-            (_, _) => int_group_size == frac_group_size,
+            (Some(int_group_size), Some(frac_group_size)) => int_group_size == frac_group_size,
         }
     }
 
-    /// Performs lint on `digits` (no decimal point) and returns the group
-    /// size on success or `WarningType` when emitting a warning.
-    fn do_lint(digits: &str, in_macro: bool) -> Result<usize, WarningType> {
-        // Grab underscore indices with respect to the units digit.
-        let underscore_positions: Vec<usize> = digits
-            .chars()
-            .rev()
-            .enumerate()
-            .filter_map(|(idx, digit)| if digit == '_' { Some(idx) } else { None })
-            .collect();
+    /// Returns the size of the digit groups (or None if ungrouped) if successful,
+    /// otherwise returns a `WarningType` for linting.
+    fn get_group_size<'a>(groups: impl Iterator<Item = &'a str>, in_macro: bool) -> Result<Option<usize>, WarningType> {
+        let mut groups = groups.map(str::len);
 
-        if underscore_positions.is_empty() {
-            // Check if literal needs underscores.
-            if !in_macro && digits.len() > 5 {
-                Err(WarningType::UnreadableLiteral)
+        let first = groups.next().expect("At least one group");
+
+        if let Some(second) = groups.next() {
+            if !groups.all(|x| x == second) || first > second {
+                Err(WarningType::InconsistentDigitGrouping)
+            } else if second > 4 {
+                Err(WarningType::LargeDigitGroups)
             } else {
-                Ok(0)
+                Ok(Some(second))
             }
+        } else if first > 5 && !in_macro {
+            Err(WarningType::UnreadableLiteral)
         } else {
-            // Check consistency and the sizes of the groups.
-            let group_size = underscore_positions[0];
-            let consistent = underscore_positions
-                .windows(2)
-                .all(|ps| ps[1] - ps[0] == group_size + 1)
-                // number of digits to the left of the last group cannot be bigger than group size.
-                && (digits.len() - underscore_positions.last()
-                                                       .expect("there's at least one element") <= group_size + 1);
-
-            if !consistent {
-                return Err(WarningType::InconsistentDigitGrouping);
-            } else if group_size > 4 {
-                return Err(WarningType::LargeDigitGroups);
-            }
-            Ok(group_size)
+            Ok(None)
         }
     }
 }
