@@ -103,28 +103,6 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     }
         
     return mp[tup] = reverseBlocks[BB];
-
-#if 0
-
-    assert(lc.latchMerge);
-
-    // if this is a branch into the loop, this certainly should go to the merged
-    //  block as this represents starting the loop
-    if (!inLoopContext || !isParentOrSameContext(branchingContext, lc) ) {
-        //llvm::errs() << "LC BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
-        return lc.latchMerge;
-    }
-
-    // if we branch from inside the loop, we only need to go to the merged loop
-    //   if the original branch is to the header (otherwise its an internal branch in the loop)
-    if (branchingBlock == lc.header) {
-        //llvm::errs() << "LH BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
-        return lc.latchMerge;
-    }
-
-    llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
-    return reverseBlocks[BB];
-#endif
   }
 
   void GradientUtils::forceContexts(bool setupMerge) {
@@ -132,136 +110,6 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
         LoopContext lc;
         getContext(BB, lc);
     }
-
-	if (setupMerge) {
-        for(auto pair : loopContexts) {
-			auto &lc = pair.second;
-            assert(lc.exitBlocks.size() > 0);
-#if 0
-            lc.latchMerge = BasicBlock::Create(newFunc->getContext(), "loopMerge", newFunc);
-
-            auto enterReverse = BasicBlock::Create(newFunc->getContext(), "", newFunc);{
-                IRBuilder<> tbuild(enterReverse);
-                Value* lim = nullptr;
-                if (lc.dynamic) {
-                    lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
-                } else {
-                    lim = lookupM(lc.limit, tbuild);
-                }
-                tbuild.CreateStore(lim, lc.antivaralloc);
-            }
-
-            loopContexts[pair.first].latchMerge = lc.latchMerge;
-            {
-                LoopContext bar;
-                getContext(lc.header, bar);
-                assert(bar.latchMerge == lc.latchMerge);
-            }
-            lc.latchMerge->getInstList().push_front(lc.antivar);
-
-			IRBuilder<> mergeBuilder(lc.latchMerge);
-            PHINode* firstiter = mergeBuilder.CreatePHI(Type::getInt1Ty(mergeBuilder.getContext()), 1);
-			Instruction* sub = cast<Instruction>(mergeBuilder.CreateSub(lc.antivar, ConstantInt::get(lc.antivar->getType(), 1)));
-
-            auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(lc.header), lc.exitBlocks);
-            
-            for(BasicBlock* exit : lc.exitBlocks) {
-                IRBuilder<> tbuild(reverseBlocks[exit]);
-                Value* lim = nullptr;
-                if (lc.dynamic) {
-                    lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
-                } else {
-                    lim = lookupM(lc.limit, tbuild);
-                }
-                lc.antivar->addIncoming(lim, reverseBlocks[exit]);
-                firstiter->addIncoming(ConstantInt::getTrue(mergeBuilder.getContext()), reverseBlocks[exit]);
-            }            
-
-			lc.antivar->addIncoming(sub, reverseBlocks[lc.header]);
-            firstiter->addIncoming(ConstantInt::getFalse(mergeBuilder.getContext()), reverseBlocks[lc.header]);
-
-			if (latches.size() == 1) {
-                lc.latchMerge->takeName(reverseBlocks[latches[0]]);
-                reverseBlocks[latches[0]]->setName(lc.latchMerge->getName()+"_exit");
-                lc.latchMerge->moveBefore(reverseBlocks[latches[0]]);
-            }
-
-            std::map<BasicBlock*,std::vector<std::pair</*pred*/BasicBlock*,/*succ*/BasicBlock*>>> targetToPreds;
-
-            for(BasicBlock* exit : lc.exitBlocks) {
-                for(auto pred : predecessors(exit)) {
-                    if (std::find(latches.begin(), latches.end(), pred) != latches.end()) {
-                        BasicBlock* target = nullptr;
-                        target = reverseBlocks[pred];
-                        //target = getReverseOrLatchMerge(pred, exit);
-                        targetToPreds[target].push_back(std::make_pair(pred, exit));
-                    }
-                }
-            }
-            assert(targetToPreds.size() > 0);
-
-            BasicBlock* backlatch = nullptr;
-            for(auto blk : predecessors(lc.header)) {
-               if (blk == lc.preheader) continue;
-               assert(backlatch == nullptr);
-               backlatch = blk;
-            }
-            assert(backlatch != nullptr);
- 
-            this->branchToCorrespondingTarget(lc.preheader, mergeBuilder, targetToPreds);
-            Instruction* termInst = lc.latchMerge->getTerminator();
-            SmallVector<BasicBlock*, 4> succ;
-            for(BasicBlock* suc : successors(lc.latchMerge)) {
-              succ.push_back(suc);
-            }
-            assert(termInst);
-            mergeBuilder.SetInsertPoint(termInst);
-
-            // ensure we only start at the correct exiting block on the first reverse iteration, otherwise
-            //  we want to branch to the backlatch edge
-
-            // Case 1: The correct exiting block terminator unconditionally branches to the backlatch we need to do for all other iterations, no modification
-            if(succ.size() == 1 && (reverseBlocks[backlatch] == succ[0]) ) {
-                //Do nothing here, remove helper firstiter
-                firstiter->eraseFromParent();
-                
-            // Case 2: The correct exiting block terminator unconditionally branches a different block, change to a conditional branch depending on if we are the first iteration
-            } else if (succ.size() == 1) {
-                lc.latchMerge->getTerminator()->eraseFromParent();
-                mergeBuilder.SetInsertPoint(lc.latchMerge);
-                
-                assert(mergeBuilder.GetInsertBlock()->size() == 0 || !isa<BranchInst>(mergeBuilder.GetInsertBlock()->back()));
-
-                // If first iteration, branch to the exiting block, otherwise the backlatch
-                mergeBuilder.CreateCondBr(firstiter, succ[0], reverseBlocks[backlatch]);
-                
-            // Case 3: The correct exiting block terminator conditionally branches to the backlatch different block, change to a conditional branch depending on if we are the first iteration
-            } else if(succ.size() == 2 && (reverseBlocks[backlatch] == succ[0] || reverseBlocks[backlatch] == succ[1]) ) {
-                auto branch = cast<BranchInst>(termInst);
-                if (reverseBlocks[backlatch] == succ[0]) {
-                    // if we branch to backlatch on true, modify condition to branch if usual condition or not the first iteration
-                    branch->setCondition(mergeBuilder.CreateOr(branch->getCondition(), mergeBuilder.CreateNot(firstiter)));
-                } else {
-                    assert(reverseBlocks[backlatch] == succ[1]);
-                    // if we branch to backlatch on false (ie go to special exit on true), modify condition to only go to special exit if usual condition and first iteration
-                    branch->setCondition(mergeBuilder.CreateAnd(branch->getCondition(), firstiter));
-                }
-            
-            // Case 4 (default fallback): First branch depending on first iteration or not, then branch on the special exit
-            } else {
-                BasicBlock* splitBlock = lc.latchMerge->splitBasicBlock(sub->getNextNode());
-                assert(cast<BranchInst>(lc.latchMerge->getTerminator())->getNumSuccessors() == 1);
-
-                lc.latchMerge->getTerminator()->eraseFromParent();
-                mergeBuilder.SetInsertPoint(lc.latchMerge);
-                
-                assert(mergeBuilder.GetInsertBlock()->size() == 0 || !isa<BranchInst>(mergeBuilder.GetInsertBlock()->back()));
-                mergeBuilder.CreateCondBr(firstiter, splitBlock, reverseBlocks[backlatch]);
-
-            }
-#endif
-        }
-	}
   }
 
 bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
@@ -794,7 +642,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
             llvm::errs() << "L: " << *L << "\n";
         }
-        assert(loopContexts[L].exitBlocks.size() > 0);
+        //assert(loopContexts[L].exitBlocks.size() > 0);
 
         auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
         PHINode* CanonicalIV = pair.first;

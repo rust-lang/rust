@@ -61,13 +61,13 @@ int main(int argc, char** argv) {
 
     for(int o=0; o<OUT; o++)
     for(int i=0; i<IN; i++) {
-        APPROX_EQ( Wp(i, o), -8, 1e-10);
+        APPROX_EQ( Wp(i, o), -8., 1e-10);
         fprintf(stderr, "Wp(o=%d, i=%d)=%f\n", i, o, Wp(i, o));
     }
      
     for(int o=0; o<OUT; o++)
     for(int i=0; i<IN; i++) {
-        APPROX_EQ( Mp(i, o), 8, 1e-10);
+        APPROX_EQ( Mp(i, o), 8., 1e-10);
         fprintf(stderr, "Mp(o=%d, i=%d)=%f\n", i, o, Mp(i, o));
     }
 }

@@ -1217,7 +1217,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
     for (SelectInst* select : selects) {
         if (BinaryOperator* bo = dyn_cast<BinaryOperator>(select->getCondition())) {
             if (bo->getOpcode() == BinaryOperator::Xor) {
-                llvm::errs() << " considering " << *select << " " << *bo << "\n";
+                //llvm::errs() << " considering " << *select << " " << *bo << "\n";
                 if (isa<ConstantInt>(bo->getOperand(0)) && cast<ConstantInt>(bo->getOperand(0))->isOne()) {
                     select->setCondition(bo->getOperand(1));
                     auto tmp = select->getTrueValue();

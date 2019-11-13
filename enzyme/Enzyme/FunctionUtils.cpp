@@ -130,7 +130,7 @@ void forceRecursiveInlining(Function *NewF, const Function* F) {
             llvm::errs() << "can't inline recursive " << call->getCalledFunction()->getName() << "\n";
             continue;
         }
-        llvm::errs() << "inlining " << call->getCalledFunction()->getName() << "\n";
+        //llvm::errs() << "inlining " << call->getCalledFunction()->getName() << "\n";
         InlineFunctionInfo IFI;
         InlineFunction(call, IFI);
         count++;
@@ -203,7 +203,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  if (enzyme_preopt) {
 
   if(autodiff_inline) {
-      llvm::errs() << "running inlining process\n";
+      //llvm::errs() << "running inlining process\n";
       forceRecursiveInlining(NewF, F);
 
       {
@@ -471,6 +471,10 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  AssumptionCache* AC = new AssumptionCache(*NewF);
  TargetLibraryInfo* TLI = new TargetLibraryInfo(AM.getResult<TargetLibraryAnalysis>(*NewF));
  DominatorTree* DTL = new DominatorTree(*NewF);
+ LoopInfo* LI = new LoopInfo(*DTL);
+ #if LLVM_VERSION_MAJOR > 6
+ PhiValues* PV = new PhiValues(*F);
+ #endif
  auto baa = new BasicAAResult(NewF->getParent()->getDataLayout(),
 #if LLVM_VERSION_MAJOR > 6
                         *NewF,
@@ -478,9 +482,9 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                         *TLI,
                         *AC,
                         DTL/*&AM.getResult<DominatorTreeAnalysis>(*NewF)*/,
-                        AM.getCachedResult<LoopAnalysis>(*NewF)
+                        LI
 #if LLVM_VERSION_MAJOR > 6
-                        ,AM.getCachedResult<PhiValuesAnalysis>(*NewF)
+                        ,PV
 #endif
                         );
  cache_AA[F] = baa;
