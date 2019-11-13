@@ -35,7 +35,6 @@ use crate::util::common::time;
 use errors::DiagnosticBuilder;
 use std::slice;
 use rustc_data_structures::sync::{self, ParallelIterator, join, par_iter};
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
@@ -71,7 +70,7 @@ pub struct LintStore {
 
 /// Lints that are buffered up early on in the `Session` before the
 /// `LintLevels` is calculated
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct BufferedEarlyLint {
     pub lint_id: LintId,
     pub ast_id: ast::NodeId,
@@ -1572,29 +1571,5 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                 sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
             }
         }
-    }
-}
-
-impl Encodable for LintId {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.lint.name.to_lowercase())
-    }
-}
-
-impl Decodable for LintId {
-    #[inline]
-    fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
-        let s = d.read_str()?;
-        ty::tls::with(|tcx| {
-            match tcx.lint_store.find_lints(&s) {
-                Ok(ids) => {
-                    if ids.len() != 0 {
-                        panic!("invalid lint-id `{}`", s);
-                    }
-                    Ok(ids[0])
-                }
-                Err(_) => panic!("invalid lint-id `{}`", s),
-            }
-        })
     }
 }
