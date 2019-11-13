@@ -3120,6 +3120,7 @@ dependencies = [
  "graphviz",
  "jobserver",
  "log",
+ "measureme",
  "num_cpus",
  "parking_lot 0.9.0",
  "polonius-engine",

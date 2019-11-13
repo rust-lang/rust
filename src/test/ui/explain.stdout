@@ -1,4 +1,4 @@
-er [RFC 401][rfc401], if you have a function declaration `foo`:
+Per [RFC 401][rfc401], if you have a function declaration `foo`:
 
 ```
 // For the purposes of this explanation, all of these
