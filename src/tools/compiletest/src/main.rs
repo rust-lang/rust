@@ -581,7 +581,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
         &config.src_base,
         &PathBuf::new(),
         &mut tests,
-    ).unwrap();
+    ).expect(&format!("Could not read tests from {}", config.src_base.display()));
     tests
 }
 
