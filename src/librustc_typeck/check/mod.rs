@@ -705,9 +705,14 @@ impl Inherited<'a, 'tcx> {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}",
                       obligation);
         }
-        self.fulfillment_cx
-            .borrow_mut()
-            .register_predicate_obligation(self, obligation);
+        let _ = self.fulfillment_cx
+            .try_borrow_mut()
+            .map_err(|e| self.tcx.sess.delay_span_bug(obligation.cause.span, &format!(
+                "fullfillment context already borrowed: {:?} - {:?}",
+                e,
+                obligation,
+            )))
+            .map(|mut cx| cx.register_predicate_obligation(self, obligation));
     }
 
     fn register_predicates<I>(&self, obligations: I)
