@@ -32,8 +32,8 @@ error[E0308]: mismatched types
 LL | impl                    Drop for N<'static>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `N<'n>`
-              found type `N<'static>`
+   = note: expected struct `N<'n>`
+              found struct `N<'static>`
 note: the lifetime `'n` as defined on the struct at 8:10...
   --> $DIR/reject-specialized-drops-8142.rs:8:10
    |

@@ -6,8 +6,8 @@ LL |   let t = if true { s[..2] } else { s };
    |                     |
    |                     expected because of this
    |
-   = note: expected type `str`
-              found type `&str`
+   = note:   expected type `str`
+           found reference `&str`
 
 error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:5:27
@@ -18,8 +18,8 @@ LL |   let u: &str = if true { s[..2] } else { s };
    |                           expected &str, found str
    |                           help: consider borrowing here: `&s[..2]`
    |
-   = note: expected type `&str`
-              found type `str`
+   = note: expected reference `&str`
+                   found type `str`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-array-assignment.rs:7:7
@@ -43,8 +43,8 @@ LL |   let w: &str = s[..2];
    |                 expected &str, found str
    |                 help: consider borrowing here: `&s[..2]`
    |
-   = note: expected type `&str`
-              found type `str`
+   = note: expected reference `&str`
+                   found type `str`
 
 error: aborting due to 4 previous errors
 

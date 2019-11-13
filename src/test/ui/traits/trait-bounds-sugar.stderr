@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     a(x);
    |       ^ expected trait `Foo + std::marker::Send`, found trait `Foo + std::marker::Sync`
    |
-   = note: expected type `std::boxed::Box<(dyn Foo + std::marker::Send + 'static)>`
-              found type `std::boxed::Box<(dyn Foo + std::marker::Sync + 'static)>`
+   = note: expected struct `std::boxed::Box<(dyn Foo + std::marker::Send + 'static)>`
+              found struct `std::boxed::Box<(dyn Foo + std::marker::Sync + 'static)>`
 
 error: aborting due to previous error
 

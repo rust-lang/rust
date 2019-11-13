@@ -21,8 +21,8 @@ error[E0308]: mismatched types
 LL |     let x = f == g;
    |                  ^ expected fn item, found a different fn item
    |
-   = note: expected type `fn() {main::f}`
-              found type `fn() {main::g}`
+   = note: expected fn item `fn() {main::f}`
+              found fn item `fn() {main::g}`
 
 error: aborting due to 2 previous errors
 

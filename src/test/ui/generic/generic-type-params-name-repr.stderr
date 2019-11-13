@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let _: Foo<isize> = ();
    |                         ^^ expected struct `Foo`, found ()
    |
-   = note: expected type `Foo<isize>`
-              found type `()`
+   = note: expected struct `Foo<isize>`
+                found type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:20:31
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     let _: Foo<isize, B, C> = ();
    |                               ^^ expected struct `Foo`, found ()
    |
-   = note: expected type `Foo<isize>`
-              found type `()`
+   = note: expected struct `Foo<isize>`
+                found type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:27:37
@@ -22,8 +22,8 @@ error[E0308]: mismatched types
 LL |     let _: HashMap<String, isize> = ();
    |                                     ^^ expected struct `HashMap`, found ()
    |
-   = note: expected type `HashMap<std::string::String, isize>`
-              found type `()`
+   = note: expected struct `HashMap<std::string::String, isize>`
+                found type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:32:51
@@ -31,8 +31,8 @@ error[E0308]: mismatched types
 LL |     let _: HashMap<String, isize, Hash<String>> = ();
    |                                                   ^^ expected struct `HashMap`, found ()
    |
-   = note: expected type `HashMap<std::string::String, isize>`
-              found type `()`
+   = note: expected struct `HashMap<std::string::String, isize>`
+                found type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:39:31
@@ -40,8 +40,8 @@ error[E0308]: mismatched types
 LL |     let _: Foo<A, isize, C> = ();
    |                               ^^ expected struct `Foo`, found ()
    |
-   = note: expected type `Foo<A, isize>`
-              found type `()`
+   = note: expected struct `Foo<A, isize>`
+                found type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:46:27
@@ -49,8 +49,8 @@ error[E0308]: mismatched types
 LL |     let _: Foo<A, B, C> = ();
    |                           ^^ expected struct `Foo`, found ()
    |
-   = note: expected type `Foo`
-              found type `()`
+   = note: expected struct `Foo`
+                found type `()`
 
 error: aborting due to 6 previous errors
 

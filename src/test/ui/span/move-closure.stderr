@@ -5,7 +5,7 @@ LL |     let x: () = move || ();
    |                 ^^^^^^^^^^ expected (), found closure
    |
    = note: expected type `()`
-              found type `[closure@$DIR/move-closure.rs:5:17: 5:27]`
+           found closure `[closure@$DIR/move-closure.rs:5:17: 5:27]`
 
 error: aborting due to previous error
 

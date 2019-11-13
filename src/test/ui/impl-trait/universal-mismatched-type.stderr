@@ -8,8 +8,8 @@ LL | fn foo(x: impl Debug) -> String {
 LL |     x
    |     ^ expected struct `std::string::String`, found type parameter `impl Debug`
    |
-   = note: expected type `std::string::String`
-              found type `impl Debug`
+   = note:      expected struct `std::string::String`
+           found type parameter `impl Debug`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

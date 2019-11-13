@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     &panic!()
    |     ^^^^^^^^^ expected (), found reference
    |
-   = note: expected type `()`
-              found type `&_`
+   = note:   expected type `()`
+           found reference `&_`
 help: try adding a return type
    |
 LL | fn g() -> &_ {
@@ -24,7 +24,7 @@ LL |     (return 1, return 2)
    |     ^^^^^^^^^^^^^^^^^^^^ expected isize, found tuple
    |
    = note: expected type `isize`
-              found type `(!, !)`
+             found tuple `(!, !)`
 
 error: aborting due to 2 previous errors
 

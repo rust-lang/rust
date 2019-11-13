@@ -19,8 +19,8 @@ error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::op
 LL |         ""
    |         ^^ expected i32, found &str
    |
-   = note: expected type `i32`
-              found type `&str`
+   = note:   expected type `i32`
+           found reference `&str`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == ()`
   --> $DIR/try-block-bad-type.rs:15:39

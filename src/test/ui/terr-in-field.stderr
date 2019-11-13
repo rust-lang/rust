@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     want_foo(b);
    |              ^ expected struct `Foo`, found struct `Bar`
    |
-   = note: expected type `Foo`
-              found type `Bar`
+   = note: expected struct `Foo`
+              found struct `Bar`
 
 error: aborting due to previous error
 

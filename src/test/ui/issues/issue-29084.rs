@@ -5,7 +5,7 @@ macro_rules! foo {
         //~^ ERROR mismatched types
         //~| expected u8, found &mut u8
         //~| expected type `u8`
-        //~| found type `&mut u8`
+        //~| found mutable reference `&mut u8`
     }}
 }
 

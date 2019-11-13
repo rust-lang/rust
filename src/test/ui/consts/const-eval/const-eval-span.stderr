@@ -5,7 +5,7 @@ LL |     V = CONSTANT,
    |         ^^^^^^^^ expected isize, found struct `S`
    |
    = note: expected type `isize`
-              found type `S`
+            found struct `S`
 
 error: aborting due to previous error
 

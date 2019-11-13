@@ -195,37 +195,44 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    forward!(pub fn note_expected_found(&mut self,
-                                        label: &dyn fmt::Display,
-                                        expected: DiagnosticStyledString,
-                                        found: DiagnosticStyledString,
-                                        ) -> &mut Self);
+    forward!(pub fn note_expected_found(
+        &mut self,
+        expected_label: &dyn fmt::Display,
+        expected: DiagnosticStyledString,
+        found_label: &dyn fmt::Display,
+        found: DiagnosticStyledString,
+    ) -> &mut Self);
 
-    forward!(pub fn note_expected_found_extra(&mut self,
-                                              label: &dyn fmt::Display,
-                                              expected: DiagnosticStyledString,
-                                              found: DiagnosticStyledString,
-                                              expected_extra: &dyn fmt::Display,
-                                              found_extra: &dyn fmt::Display,
-                                              ) -> &mut Self);
+    forward!(pub fn note_expected_found_extra(
+        &mut self,
+        expected_label: &dyn fmt::Display,
+        expected: DiagnosticStyledString,
+        found_label: &dyn fmt::Display,
+        found: DiagnosticStyledString,
+        expected_extra: &dyn fmt::Display,
+        found_extra: &dyn fmt::Display,
+    ) -> &mut Self);
 
-    forward!(pub fn note_unsuccessfull_coercion(&mut self,
-                                                expected: DiagnosticStyledString,
-                                                found: DiagnosticStyledString,
-                                                ) -> &mut Self);
+    forward!(pub fn note_unsuccessfull_coercion(
+        &mut self,
+        expected: DiagnosticStyledString,
+        found: DiagnosticStyledString,
+    ) -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
-    forward!(pub fn span_note<S: Into<MultiSpan>>(&mut self,
-                                                  sp: S,
-                                                  msg: &str,
-                                                  ) -> &mut Self);
+    forward!(pub fn span_note<S: Into<MultiSpan>>(
+        &mut self,
+        sp: S,
+        msg: &str,
+    ) -> &mut Self);
     forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
     forward!(pub fn help(&mut self, msg: &str) -> &mut Self);
-    forward!(pub fn span_help<S: Into<MultiSpan>>(&mut self,
-                                                  sp: S,
-                                                  msg: &str,
-                                                  ) -> &mut Self);
+    forward!(pub fn span_help<S: Into<MultiSpan>>(
+        &mut self,
+        sp: S,
+        msg: &str,
+    ) -> &mut Self);
 
     pub fn multipart_suggestion(
         &mut self,

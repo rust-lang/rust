@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let x: *mut isize = x;
    |                         ^ types differ in mutability
    |
-   = note: expected type `*mut isize`
-              found type `*const isize`
+   = note: expected raw pointer `*mut isize`
+              found raw pointer `*const isize`
 
 error[E0308]: mismatched types
   --> $DIR/ptr-coercion.rs:13:25
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     let x: *mut isize = &42;
    |                         ^^^ types differ in mutability
    |
-   = note: expected type `*mut isize`
-              found type `&isize`
+   = note: expected raw pointer `*mut isize`
+                found reference `&isize`
 
 error[E0308]: mismatched types
   --> $DIR/ptr-coercion.rs:19:25
@@ -22,8 +22,8 @@ error[E0308]: mismatched types
 LL |     let x: *mut isize = x;
    |                         ^ types differ in mutability
    |
-   = note: expected type `*mut isize`
-              found type `*const isize`
+   = note: expected raw pointer `*mut isize`
+              found raw pointer `*const isize`
 
 error: aborting due to 3 previous errors
 

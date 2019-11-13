@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     ss.t = t;
    |            ^ lifetime mismatch
    |
-   = note: expected type `&'a MyBox<(dyn Test + 'static)>`
-              found type `&'a MyBox<(dyn Test + 'a)>`
+   = note: expected reference `&'a MyBox<(dyn Test + 'static)>`
+              found reference `&'a MyBox<(dyn Test + 'a)>`
 note: the lifetime `'a` as defined on the function body at 20:6...
   --> $DIR/object-lifetime-default-from-rptr-struct-error.rs:20:6
    |

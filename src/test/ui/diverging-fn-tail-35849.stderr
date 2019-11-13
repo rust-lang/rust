@@ -8,7 +8,7 @@ LL |         ::std::mem::transmute::<f64, [u8; 8]>(panic!())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected !, found array of 8 elements
    |
    = note: expected type `!`
-              found type `[u8; 8]`
+             found array `[u8; 8]`
 
 error: aborting due to previous error
 

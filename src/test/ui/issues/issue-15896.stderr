@@ -7,8 +7,8 @@ LL |         E::B(
 LL |           Tau{t: x},
    |           ^^^^^^^^^ expected enum `main::R`, found struct `main::Tau`
    |
-   = note: expected type `main::R`
-              found type `main::Tau`
+   = note: expected enum `main::R`
+            found struct `main::Tau`
 
 error: aborting due to previous error
 

@@ -5,7 +5,7 @@ LL |     let bar = 5;
    |         ^^^ expected integer, found struct `foo::bar`
    |
    = note: expected type `{integer}`
-              found type `foo::bar`
+            found struct `foo::bar`
 
 error: aborting due to previous error
 

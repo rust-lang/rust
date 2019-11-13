@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     r
    |     ^ expected extern type `B`, found extern type `A`
    |
-   = note: expected type `&B`
-              found type `&A`
+   = note: expected reference `&B`
+              found reference `&A`
 
 error: aborting due to previous error
 

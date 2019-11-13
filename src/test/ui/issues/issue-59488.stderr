@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     foo > 12;
    |           ^^ expected fn item, found integer
    |
-   = note: expected type `fn() -> i32 {foo}`
-              found type `i32`
+   = note: expected fn item `fn() -> i32 {foo}`
+                 found type `i32`
 
 error[E0369]: binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}`
   --> $DIR/issue-59488.rs:18:9
@@ -31,8 +31,8 @@ error[E0308]: mismatched types
 LL |     bar > 13;
    |           ^^ expected fn item, found integer
    |
-   = note: expected type `fn(i64) -> i64 {bar}`
-              found type `i64`
+   = note: expected fn item `fn(i64) -> i64 {bar}`
+                 found type `i64`
 
 error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
   --> $DIR/issue-59488.rs:22:9
@@ -67,8 +67,8 @@ error[E0308]: mismatched types
 LL |     foo > bar;
    |           ^^^ expected fn item, found a different fn item
    |
-   = note: expected type `fn() -> i32 {foo}`
-              found type `fn(i64) -> i64 {bar}`
+   = note: expected fn item `fn() -> i32 {foo}`
+              found fn item `fn(i64) -> i64 {bar}`
 
 error[E0369]: binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}`
   --> $DIR/issue-59488.rs:30:5

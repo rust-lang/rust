@@ -9,8 +9,8 @@ LL |     let mut a = x;
 LL |     a = y;
    |         ^ expected type parameter `impl Debug`, found a different type parameter `impl Debug`
    |
-   = note: expected type `impl Debug` (type parameter `impl Debug`)
-              found type `impl Debug` (type parameter `impl Debug`)
+   = note: expected type parameter `impl Debug` (type parameter `impl Debug`)
+              found type parameter `impl Debug` (type parameter `impl Debug`)
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

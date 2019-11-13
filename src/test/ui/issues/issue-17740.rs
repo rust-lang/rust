@@ -5,12 +5,12 @@ struct Foo<'a> {
 impl <'a> Foo<'a>{
     fn bar(self: &mut Foo) {
     //~^ mismatched `self` parameter type
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
+    //~| expected struct `Foo<'a>`
+    //~| found struct `Foo<'_>`
     //~| lifetime mismatch
     //~| mismatched `self` parameter type
-    //~| expected type `Foo<'a>`
-    //~| found type `Foo<'_>`
+    //~| expected struct `Foo<'a>`
+    //~| found struct `Foo<'_>`
     //~| lifetime mismatch
     }
 }

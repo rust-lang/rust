@@ -49,8 +49,8 @@ error[E0308]: mismatched types
 LL |     let x: [!; 2] = [return, 22];
    |                     ^^^^^^^^^^^^ expected !, found integer
    |
-   = note: expected type `[!; 2]`
-              found type `[{integer}; 2]`
+   = note: expected array `[!; 2]`
+              found array `[{integer}; 2]`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:55:22

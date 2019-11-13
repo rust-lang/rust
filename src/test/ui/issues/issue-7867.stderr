@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |         A::B => (),
    |         ^^^^ expected tuple, found enum `A`
    |
-   = note: expected type `(bool, bool)`
-              found type `A`
+   = note: expected tuple `(bool, bool)`
+               found enum `A`
 
 error: aborting due to previous error
 

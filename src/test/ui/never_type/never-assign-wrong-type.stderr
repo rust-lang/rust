@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let x: ! = "hello";
    |                ^^^^^^^ expected !, found reference
    |
-   = note: expected type `!`
-              found type `&'static str`
+   = note:   expected type `!`
+           found reference `&'static str`
 
 error: aborting due to previous error
 

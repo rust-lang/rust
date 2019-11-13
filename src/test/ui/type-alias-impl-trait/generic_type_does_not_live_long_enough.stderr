@@ -10,8 +10,8 @@ error[E0308]: mismatched types
 LL |     let z: i32 = x;
    |                  ^ expected i32, found opaque type
    |
-   = note: expected type `i32`
-              found type `WrongGeneric::<&{integer}>`
+   = note:     expected type `i32`
+           found opaque type `WrongGeneric::<&{integer}>`
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/generic_type_does_not_live_long_enough.rs:9:1

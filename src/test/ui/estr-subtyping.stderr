@@ -7,8 +7,8 @@ LL |    wants_uniq(x);
    |               expected struct `std::string::String`, found &str
    |               help: try using a conversion method: `x.to_string()`
    |
-   = note: expected type `std::string::String`
-              found type `&str`
+   = note: expected struct `std::string::String`
+           found reference `&str`
 
 error: aborting due to previous error
 

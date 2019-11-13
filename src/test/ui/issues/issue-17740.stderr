@@ -4,8 +4,8 @@ error[E0308]: mismatched `self` parameter type
 LL |     fn bar(self: &mut Foo) {
    |                  ^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Foo<'a>`
-              found type `Foo<'_>`
+   = note: expected struct `Foo<'a>`
+              found struct `Foo<'_>`
 note: the anonymous lifetime #2 defined on the method body at 6:5...
   --> $DIR/issue-17740.rs:6:5
    |
@@ -29,8 +29,8 @@ error[E0308]: mismatched `self` parameter type
 LL |     fn bar(self: &mut Foo) {
    |                  ^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Foo<'a>`
-              found type `Foo<'_>`
+   = note: expected struct `Foo<'a>`
+              found struct `Foo<'_>`
 note: the lifetime `'a` as defined on the impl at 5:7...
   --> $DIR/issue-17740.rs:5:7
    |

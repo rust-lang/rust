@@ -5,7 +5,7 @@ LL |     if f { }
    |        ^ expected bool, found fn item
    |
    = note: expected type `bool`
-              found type `fn() {f}`
+           found fn item `fn() {f}`
 
 error: aborting due to previous error
 

@@ -45,8 +45,8 @@ error[E0308]: mismatched types
 LL |     let a: usize = "";
    |                    ^^ expected usize, found reference
    |
-   = note: expected type `usize`
-              found type `&'static str`
+   = note:   expected type `usize`
+           found reference `&'static str`
 
 error[E0277]: can't compare `&str` with `char`
   --> $DIR/lex-bad-char-literals-6.rs:12:10

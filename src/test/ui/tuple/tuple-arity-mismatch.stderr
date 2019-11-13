@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let y = first ((1,2.0,3));
    |                    ^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
    |
-   = note: expected type `(isize, f64)`
-              found type `(isize, f64, {integer})`
+   = note: expected tuple `(isize, f64)`
+              found tuple `(isize, f64, {integer})`
 
 error[E0308]: mismatched types
   --> $DIR/tuple-arity-mismatch.rs:12:20
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     let y = first ((1,));
    |                    ^^^^ expected a tuple with 2 elements, found one with 1 element
    |
-   = note: expected type `(isize, f64)`
-              found type `(isize,)`
+   = note: expected tuple `(isize, f64)`
+              found tuple `(isize,)`
 
 error: aborting due to 2 previous errors
 

@@ -6,7 +6,7 @@ LL | fn bar(x: usize) -> Option<usize> {
 LL |     return x;
    |            ^ expected enum `std::option::Option`, found usize
    |
-   = note: expected type `std::option::Option<usize>`
+   = note: expected enum `std::option::Option<usize>`
               found type `usize`
 
 error: aborting due to previous error

@@ -7,8 +7,8 @@ LL |     c.read_to(v);
    |               expected &mut [u8], found struct `std::vec::Vec`
    |               help: consider mutably borrowing here: `&mut v`
    |
-   = note: expected type `&mut [u8]`
-              found type `std::vec::Vec<_>`
+   = note: expected mutable reference `&mut [u8]`
+                         found struct `std::vec::Vec<_>`
 
 error: aborting due to previous error
 

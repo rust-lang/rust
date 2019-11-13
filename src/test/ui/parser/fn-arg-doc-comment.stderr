@@ -22,8 +22,8 @@ error[E0308]: mismatched types
 LL |     f("", "");
    |       ^^ expected u8, found reference
    |
-   = note: expected type `u8`
-              found type `&'static str`
+   = note:   expected type `u8`
+           found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/fn-arg-doc-comment.rs:18:11
@@ -31,8 +31,8 @@ error[E0308]: mismatched types
 LL |     f("", "");
    |           ^^ expected u8, found reference
    |
-   = note: expected type `u8`
-              found type `&'static str`
+   = note:   expected type `u8`
+           found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/fn-arg-doc-comment.rs:25:9
@@ -40,8 +40,8 @@ error[E0308]: mismatched types
 LL |     bar("");
    |         ^^ expected i32, found reference
    |
-   = note: expected type `i32`
-              found type `&'static str`
+   = note:   expected type `i32`
+           found reference `&'static str`
 
 error: aborting due to 6 previous errors
 

@@ -4,8 +4,8 @@ error[E0308]: start function has wrong type
 LL | fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected type `fn(isize, *const *const u8) -> isize`
-              found type `fn(isize, *const *const u8, *const u8) -> isize`
+   = note: expected fn pointer `fn(isize, *const *const u8) -> isize`
+              found fn pointer `fn(isize, *const *const u8, *const u8) -> isize`
 
 error: aborting due to previous error
 

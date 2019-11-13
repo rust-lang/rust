@@ -10,7 +10,7 @@ LL | fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
 LL |     is_iterator_of::<Option<T>, _>(&adapter);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `std::option::Option`, found type parameter `T`
    |
-   = note: expected type `std::option::Option<T>`
+   = note: expected enum `std::option::Option<T>`
               found type `T`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters

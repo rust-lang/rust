@@ -7,8 +7,8 @@ LL |     (*p)(())
    |          expected &mut (), found ()
    |          help: consider mutably borrowing here: `&mut ()`
    |
-   = note: expected type `&mut ()`
-              found type `()`
+   = note: expected mutable reference `&mut ()`
+                           found type `()`
 
 error: aborting due to previous error
 

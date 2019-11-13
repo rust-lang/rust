@@ -7,8 +7,8 @@ LL |     fn visit() {}
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected (), found &()
    |
-   = note: expected type `()`
-              found type `&()`
+   = note:   expected type `()`
+           found reference `&()`
    = note: required because of the requirements on the impl of `Visit` for `()`
 
 error: aborting due to previous error

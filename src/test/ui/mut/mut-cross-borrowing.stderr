@@ -7,8 +7,8 @@ LL |     f(x)
    |       expected &mut isize, found struct `std::boxed::Box`
    |       help: consider mutably borrowing here: `&mut x`
    |
-   = note: expected type `&mut isize`
-              found type `std::boxed::Box<{integer}>`
+   = note: expected mutable reference `&mut isize`
+                         found struct `std::boxed::Box<{integer}>`
 
 error: aborting due to previous error
 

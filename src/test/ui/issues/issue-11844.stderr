@@ -6,8 +6,8 @@ LL |     match a {
 LL |         Ok(a) =>
    |         ^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |
-   = note: expected type `std::option::Option<std::boxed::Box<{integer}>>`
-              found type `std::result::Result<_, _>`
+   = note: expected enum `std::option::Option<std::boxed::Box<{integer}>>`
+              found enum `std::result::Result<_, _>`
 
 error: aborting due to previous error
 

@@ -9,8 +9,8 @@ LL | fn foo<Foo, Bar>(x: Foo) -> Bar {
 LL |     x
    |     ^ expected type parameter `Bar`, found type parameter `Foo`
    |
-   = note: expected type `Bar`
-              found type `Foo`
+   = note: expected type parameter `Bar`
+              found type parameter `Foo`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

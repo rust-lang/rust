@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     ref_obj(x)
    |             ^ lifetime mismatch
    |
-   = note: expected type `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
-              found type `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
+   = note: expected reference `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
+              found reference `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
 note: the lifetime `'a` as defined on the function body at 32:10...
   --> $DIR/lifetime-bound-will-change-warning.rs:32:10
    |
@@ -19,8 +19,8 @@ error[E0308]: mismatched types
 LL |     lib::ref_obj(x)
    |                  ^ lifetime mismatch
    |
-   = note: expected type `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
-              found type `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
+   = note: expected reference `&std::boxed::Box<(dyn std::ops::Fn() + 'static)>`
+              found reference `&std::boxed::Box<(dyn std::ops::Fn() + 'a)>`
 note: the lifetime `'a` as defined on the function body at 37:12...
   --> $DIR/lifetime-bound-will-change-warning.rs:37:12
    |

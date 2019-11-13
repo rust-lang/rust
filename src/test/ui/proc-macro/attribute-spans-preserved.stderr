@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL | #[ foo ( let y: u32 = "z"; ) ]
    |                       ^^^ expected u32, found reference
    |
-   = note: expected type `u32`
-              found type `&'static str`
+   = note:   expected type `u32`
+           found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/attribute-spans-preserved.rs:8:23
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL | #[ bar { let x: u32 = "y"; } ]
    |                       ^^^ expected u32, found reference
    |
-   = note: expected type `u32`
-              found type `&'static str`
+   = note:   expected type `u32`
+           found reference `&'static str`
 
 error: aborting due to 2 previous errors
 

@@ -12,8 +12,8 @@ error[E0308]: mismatched types
 LL |     let _: Const<{15 as *const _}> = Const::<{10 as *const _}>;
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{pointer}`, found `{pointer}`
    |
-   = note: expected type `Const<{pointer}>`
-              found type `Const<{pointer}>`
+   = note: expected struct `Const<{pointer}>`
+              found struct `Const<{pointer}>`
 
 error: aborting due to previous error
 

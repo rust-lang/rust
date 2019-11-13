@@ -16,35 +16,35 @@ fn foo<'z>() where &'z (): Sized {
     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
     //[verbose]~^ ERROR mismatched types
     //[verbose]~| expected type `()`
-    //[verbose]~| found type `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>}`
+    //[verbose]~| found fn item `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>}`
     //[normal]~^^^^ ERROR mismatched types
     //[normal]~| expected type `()`
-    //[normal]~| found type `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+    //[normal]~| found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 
 
     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
     //[verbose]~^ ERROR mismatched types
     //[verbose]~| expected type `()`
-    //[verbose]~| found type `fn() {<i8 as Foo<ReStatic, ReStatic>>::bar::<ReStatic, char>}`
+    //[verbose]~| found fn item `fn() {<i8 as Foo<ReStatic, ReStatic>>::bar::<ReStatic, char>}`
     //[normal]~^^^^ ERROR mismatched types
     //[normal]~| expected type `()`
-    //[normal]~| found type `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
+    //[normal]~| found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
 
     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
     //[verbose]~^ ERROR mismatched types
     //[verbose]~| expected type `()`
-    //[verbose]~| found type `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::baz}`
+    //[verbose]~| found fn item `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::baz}`
     //[normal]~^^^^ ERROR mismatched types
     //[normal]~| expected type `()`
-    //[normal]~| found type `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
+    //[normal]~| found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
 
     let x: () = foo::<'static>;
     //[verbose]~^ ERROR mismatched types
     //[verbose]~| expected type `()`
-    //[verbose]~| found type `fn() {foo::<ReStatic>}`
+    //[verbose]~| found fn item `fn() {foo::<ReStatic>}`
     //[normal]~^^^^ ERROR mismatched types
     //[normal]~| expected type `()`
-    //[normal]~| found type `fn() {foo::<'static>}`
+    //[normal]~| found fn item `fn() {foo::<'static>}`
 
     <str as Foo<u8>>::bar;
     //[verbose]~^ ERROR the size for values of type

@@ -5,7 +5,7 @@ LL |     let Slice { data: data, len: len } = "foo";
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected str, found struct `Slice`
    |
    = note: expected type `str`
-              found type `Slice<_>`
+            found struct `Slice<_>`
 
 error: aborting due to previous error
 

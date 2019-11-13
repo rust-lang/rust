@@ -21,8 +21,8 @@ LL |     match (0, 1) {
 LL |         (PAT ..) => {}
    |          ^^^^^^ expected tuple, found u8
    |
-   = note: expected type `({integer}, {integer})`
-              found type `u8`
+   = note: expected tuple `({integer}, {integer})`
+               found type `u8`
 
 error: aborting due to 3 previous errors
 

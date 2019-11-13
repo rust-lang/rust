@@ -5,7 +5,7 @@ LL |         FOO => {},
    |         ^^^ expected &Foo, found struct `Foo`
    |
    = note: expected type `&Foo`
-              found type `Foo`
+            found struct `Foo`
 
 error: aborting due to previous error
 

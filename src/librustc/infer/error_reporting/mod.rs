@@ -1197,18 +1197,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         if let Some((expected, found)) = expected_found {
+            let expected_label = exp_found.map(|ef| ef.expected.prefix_string())
+                .unwrap_or("type".into());
+            let found_label = exp_found.map(|ef| ef.found.prefix_string())
+                .unwrap_or("type".into());
             match (terr, is_simple_error, expected == found) {
-                (&TypeError::Sorts(ref values), false, true) => {
-                    let sort_string = | a_type: Ty<'tcx> |
-                        if let ty::Opaque(def_id, _) = a_type.kind {
-                            format!(" (opaque type at {})", self.tcx.sess.source_map()
-                                .mk_substr_filename(self.tcx.def_span(def_id)))
-                        } else {
-                            format!(" ({})", a_type.sort_string(self.tcx))
-                        };
+                (&TypeError::Sorts(ref values), false, extra) => {
+                    let sort_string = |ty: Ty<'tcx>| match (extra, &ty.kind) {
+                        (true, ty::Opaque(def_id, _)) => format!(
+                            " (opaque type at {})",
+                            self.tcx.sess.source_map()
+                                .mk_substr_filename(self.tcx.def_span(*def_id)),
+                        ),
+                        (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
+                        (false, _) => "".to_string(),
+                    };
                     diag.note_expected_found_extra(
-                        &"type",
+                        &expected_label,
                         expected,
+                        &found_label,
                         found,
                         &sort_string(values.expected),
                         &sort_string(values.found),
@@ -1222,14 +1229,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         "note_type_err: exp_found={:?}, expected={:?} found={:?}",
                         exp_found, expected, found
                     );
-                    if let Some(exp_found) = exp_found {
-                        self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
-                    }
-
-                    diag.note_expected_found(&"type", expected, found);
+                    diag.note_expected_found(&expected_label, expected, &found_label, found);
                 }
                 _ => (),
             }
+        }
+        if let Some(exp_found) = exp_found {
+            self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
         }
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases

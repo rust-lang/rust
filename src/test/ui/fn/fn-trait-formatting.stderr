@@ -5,7 +5,7 @@ LL |     let _: () = (box |_: isize| {}) as Box<dyn FnOnce(isize)>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
    |
    = note: expected type `()`
-              found type `std::boxed::Box<dyn std::ops::FnOnce(isize)>`
+            found struct `std::boxed::Box<dyn std::ops::FnOnce(isize)>`
 
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:10:17
@@ -14,7 +14,7 @@ LL |     let _: () = (box |_: isize, isize| {}) as Box<dyn Fn(isize, isize)>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
    |
    = note: expected type `()`
-              found type `std::boxed::Box<dyn std::ops::Fn(isize, isize)>`
+            found struct `std::boxed::Box<dyn std::ops::Fn(isize, isize)>`
 
 error[E0308]: mismatched types
   --> $DIR/fn-trait-formatting.rs:14:17
@@ -23,7 +23,7 @@ LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<dyn FnMut() -
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `std::boxed::Box`
    |
    = note: expected type `()`
-              found type `std::boxed::Box<dyn std::ops::FnMut() -> isize>`
+            found struct `std::boxed::Box<dyn std::ops::FnMut() -> isize>`
 
 error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `{integer}`
   --> $DIR/fn-trait-formatting.rs:19:14

@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let f3: &mut Fat<[isize]> = f2;
    |                                 ^^ types differ in mutability
    |
-   = note: expected type `&mut Fat<[isize]>`
-              found type `&Fat<[isize; 3]>`
+   = note: expected mutable reference `&mut Fat<[isize]>`
+                      found reference `&Fat<[isize; 3]>`
 
 error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce2.rs:20:33
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     let f3: &mut Fat<dyn Bar> = f2;
    |                                 ^^ types differ in mutability
    |
-   = note: expected type `&mut Fat<dyn Bar>`
-              found type `&Fat<Foo>`
+   = note: expected mutable reference `&mut Fat<dyn Bar>`
+                      found reference `&Fat<Foo>`
 
 error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce2.rs:25:31
@@ -22,8 +22,8 @@ error[E0308]: mismatched types
 LL |     let f3: &mut ([isize],) = f2;
    |                               ^^ types differ in mutability
    |
-   = note: expected type `&mut ([isize],)`
-              found type `&([isize; 3],)`
+   = note: expected mutable reference `&mut ([isize],)`
+                      found reference `&([isize; 3],)`
 
 error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce2.rs:30:31
@@ -31,8 +31,8 @@ error[E0308]: mismatched types
 LL |     let f3: &mut (dyn Bar,) = f2;
    |                               ^^ types differ in mutability
    |
-   = note: expected type `&mut (dyn Bar,)`
-              found type `&(Foo,)`
+   = note: expected mutable reference `&mut (dyn Bar,)`
+                      found reference `&(Foo,)`
 
 error: aborting due to 4 previous errors
 

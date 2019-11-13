@@ -5,7 +5,7 @@ LL |     [0; ..10];
    |         ^^^^ expected usize, found struct `std::ops::RangeTo`
    |
    = note: expected type `usize`
-              found type `std::ops::RangeTo<{integer}>`
+            found struct `std::ops::RangeTo<{integer}>`
 
 error: aborting due to previous error
 

@@ -8,8 +8,8 @@ LL | / check! { bound_contra_a_contra_b_ret_co_a: (for<'a,'b> fn(Contra<'a>, Con
 LL | |                                             for<'a>    fn(Contra<'a>, Contra<'a>) -> Co<'a>) }
    | |______________________________________________________________________________________________- in this macro invocation
    |
-   = note: expected type `std::option::Option<for<'a, 'b> fn(Contra<'a>, Contra<'b>) -> Co<'a>>`
-              found type `std::option::Option<for<'a> fn(Contra<'a>, Contra<'a>) -> Co<'a>>`
+   = note: expected enum `std::option::Option<for<'a, 'b> fn(Contra<'a>, Contra<'b>) -> Co<'a>>`
+              found enum `std::option::Option<for<'a> fn(Contra<'a>, Contra<'a>) -> Co<'a>>`
 
 error: aborting due to previous error
 

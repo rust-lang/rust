@@ -6,22 +6,22 @@ fn main() {
     //~^ ERROR attempt to use a non-constant value in a constant [E0435]
     let b = [0; ()];
     //~^ ERROR mismatched types
+    //~| expected usize, found ()
     //~| expected type `usize`
     //~| found type `()`
-    //~| expected usize, found ()
     let c = [0; true];
     //~^ ERROR mismatched types
     //~| expected usize, found bool
     let d = [0; 0.5];
     //~^ ERROR mismatched types
+    //~| expected usize, found floating-point number
     //~| expected type `usize`
     //~| found type `{float}`
-    //~| expected usize, found floating-point number
     let e = [0; "foo"];
     //~^ ERROR mismatched types
-    //~| expected type `usize`
-    //~| found type `&'static str`
     //~| expected usize, found reference
+    //~| expected type `usize`
+    //~| found reference `&'static str`
     let f = [0; -4_isize];
     //~^ ERROR mismatched types
     //~| expected usize, found isize
@@ -33,7 +33,7 @@ fn main() {
     }
     let g = [0; G { g: () }];
     //~^ ERROR mismatched types
-    //~| expected type `usize`
-    //~| found type `main::G`
     //~| expected usize, found struct `main::G`
+    //~| expected type `usize`
+    //~| found struct `main::G`
 }

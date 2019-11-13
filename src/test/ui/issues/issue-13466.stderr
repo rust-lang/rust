@@ -6,8 +6,8 @@ LL |     let _x: usize = match Some(1) {
 LL |         Ok(u) => u,
    |         ^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |
-   = note: expected type `std::option::Option<{integer}>`
-              found type `std::result::Result<_, _>`
+   = note: expected enum `std::option::Option<{integer}>`
+              found enum `std::result::Result<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-13466.rs:14:9
@@ -18,8 +18,8 @@ LL |     let _x: usize = match Some(1) {
 LL |         Err(e) => panic!(e)
    |         ^^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |
-   = note: expected type `std::option::Option<{integer}>`
-              found type `std::result::Result<_, _>`
+   = note: expected enum `std::option::Option<{integer}>`
+              found enum `std::result::Result<_, _>`
 
 error: aborting due to 2 previous errors
 

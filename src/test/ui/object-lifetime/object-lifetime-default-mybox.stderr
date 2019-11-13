@@ -16,8 +16,8 @@ error[E0308]: mismatched types
 LL |     load0(ss)
    |           ^^ lifetime mismatch
    |
-   = note: expected type `&MyBox<(dyn SomeTrait + 'static)>`
-              found type `&MyBox<(dyn SomeTrait + 'a)>`
+   = note: expected reference `&MyBox<(dyn SomeTrait + 'static)>`
+              found reference `&MyBox<(dyn SomeTrait + 'a)>`
 note: the lifetime `'a` as defined on the function body at 30:10...
   --> $DIR/object-lifetime-default-mybox.rs:30:10
    |

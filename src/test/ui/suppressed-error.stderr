@@ -5,7 +5,7 @@ LL |     let (x, y) = ();
    |         ^^^^^^ expected (), found tuple
    |
    = note: expected type `()`
-              found type `(_, _)`
+             found tuple `(_, _)`
 
 error: aborting due to previous error
 

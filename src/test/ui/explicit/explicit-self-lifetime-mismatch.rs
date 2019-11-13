@@ -7,12 +7,12 @@ impl<'a,'b> Foo<'a,'b> {
     fn bar(self:
            Foo<'b,'a>
     //~^ ERROR mismatched `self` parameter type
-    //~| expected type `Foo<'a, 'b>`
-    //~| found type `Foo<'b, 'a>`
+    //~| expected struct `Foo<'a, 'b>`
+    //~| found struct `Foo<'b, 'a>`
     //~| lifetime mismatch
     //~| ERROR mismatched `self` parameter type
-    //~| expected type `Foo<'a, 'b>`
-    //~| found type `Foo<'b, 'a>`
+    //~| expected struct `Foo<'a, 'b>`
+    //~| found struct `Foo<'b, 'a>`
     //~| lifetime mismatch
            ) {}
 }

@@ -6,8 +6,8 @@ LL |     fn foo(&'a mut self) -> Box<BarStruct> { self }
    |                             |
    |                             expected `std::boxed::Box<BarStruct>` because of return type
    |
-   = note: expected type `std::boxed::Box<BarStruct>`
-              found type `&'a mut BarStruct`
+   = note:         expected struct `std::boxed::Box<BarStruct>`
+           found mutable reference `&'a mut BarStruct`
 
 error: aborting due to previous error
 

@@ -8,8 +8,8 @@ LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
    |
-   = note: expected type `std::option::Option<fn(Inv<'y>)>`
-              found type `std::option::Option<fn(Inv<'x>)>`
+   = note: expected enum `std::option::Option<fn(Inv<'y>)>`
+              found enum `std::option::Option<fn(Inv<'x>)>`
 note: the lifetime `'x` as defined on the function body at 32:20...
   --> $DIR/hr-subtype.rs:32:20
    |
@@ -39,8 +39,8 @@ LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
    |
-   = note: expected type `std::option::Option<fn(Inv<'x>)>`
-              found type `std::option::Option<fn(Inv<'y>)>`
+   = note: expected enum `std::option::Option<fn(Inv<'x>)>`
+              found enum `std::option::Option<fn(Inv<'y>)>`
 note: the lifetime `'x` as defined on the function body at 38:22...
   --> $DIR/hr-subtype.rs:38:22
    |

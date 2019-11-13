@@ -9,8 +9,8 @@ LL |     &panic!()
    |     expected (), found reference
    |     help: consider removing the borrow: `panic!()`
    |
-   = note: expected type `()`
-              found type `&_`
+   = note:   expected type `()`
+           found reference `&_`
 
 error: aborting due to previous error
 

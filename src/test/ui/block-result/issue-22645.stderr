@@ -18,7 +18,7 @@ LL |   b + 3
    |   ^^^^^ expected (), found struct `Bob`
    |
    = note: expected type `()`
-              found type `Bob`
+            found struct `Bob`
 
 error: aborting due to 2 previous errors
 

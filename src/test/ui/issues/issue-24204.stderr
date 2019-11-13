@@ -7,8 +7,8 @@ LL | trait Trait: Sized {
 LL | fn test<T: Trait<B=i32>>(b: i32) -> T where T::A: MultiDispatch<i32> { T::new(b) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found associated type
    |
-   = note: expected type `T`
-              found type `<<T as Trait>::A as MultiDispatch<i32>>::O`
+   = note: expected type parameter `T`
+             found associated type `<<T as Trait>::A as MultiDispatch<i32>>::O`
    = note: you might be missing a type parameter or trait bound
 
 error: aborting due to previous error

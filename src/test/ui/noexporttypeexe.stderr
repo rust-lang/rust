@@ -5,7 +5,7 @@ LL |   let x: isize = noexporttypelib::foo();
    |                  ^^^^^^^^^^^^^^^^^^^^^^ expected isize, found enum `std::option::Option`
    |
    = note: expected type `isize`
-              found type `std::option::Option<isize>`
+              found enum `std::option::Option<isize>`
 
 error: aborting due to previous error
 

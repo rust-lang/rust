@@ -7,8 +7,8 @@ LL |     foo(x.clone());
    |         expected &str, found struct `std::string::String`
    |         help: consider borrowing here: `&x`
    |
-   = note: expected type `&str`
-              found type `std::string::String`
+   = note: expected reference `&str`
+                 found struct `std::string::String`
 
 error: aborting due to previous error
 

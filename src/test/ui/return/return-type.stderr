@@ -5,7 +5,7 @@ LL |     foo(4 as usize)
    |     ^^^^^^^^^^^^^^^ expected (), found struct `S`
    |
    = note: expected type `()`
-              found type `S<usize>`
+            found struct `S<usize>`
 help: try adding a semicolon
    |
 LL |     foo(4 as usize);

@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     let v: Vec(&str) = vec!['1', '2'];
    |                             ^^^ expected &str, found char
    |
-   = note: expected type `&str`
-              found type `char`
+   = note: expected reference `&str`
+                   found type `char`
 
 error: aborting due to 2 previous errors
 

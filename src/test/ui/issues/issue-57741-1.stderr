@@ -6,8 +6,8 @@ LL |     let y = match x {
 LL |         S::A { a } | S::B { b: a } => a,
    |         ^^^^^^^^^^ expected struct `std::boxed::Box`, found enum `S`
    |
-   = note: expected type `std::boxed::Box<u32>`
-              found type `S`
+   = note: expected struct `std::boxed::Box<u32>`
+                found enum `S`
 
 error[E0308]: mismatched types
   --> $DIR/issue-57741-1.rs:14:22
@@ -17,8 +17,8 @@ LL |     let y = match x {
 LL |         S::A { a } | S::B { b: a } => a,
    |                      ^^^^^^^^^^^^^ expected struct `std::boxed::Box`, found enum `S`
    |
-   = note: expected type `std::boxed::Box<u32>`
-              found type `S`
+   = note: expected struct `std::boxed::Box<u32>`
+                found enum `S`
 
 error: aborting due to 2 previous errors
 

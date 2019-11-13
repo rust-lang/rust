@@ -10,7 +10,7 @@ LL |     std::cell::Cell::new(0)
    |     expected (), found struct `std::cell::Cell`
    |
    = note: expected type `()`
-              found type `std::cell::Cell<{integer}>`
+            found struct `std::cell::Cell<{integer}>`
 
 error: aborting due to previous error
 

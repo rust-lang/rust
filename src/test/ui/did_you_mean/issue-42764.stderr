@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     this_function_expects_a_double_option(n);
    |                                           ^ expected enum `DoubleOption`, found usize
    |
-   = note: expected type `DoubleOption<_>`
+   = note: expected enum `DoubleOption<_>`
               found type `usize`
 help: try using a variant of the expected enum
    |
@@ -19,8 +19,8 @@ error[E0308]: mismatched types
 LL |     let _c = Context { wrapper: Payload{} };
    |                                 ^^^^^^^^^ expected struct `Wrapper`, found struct `Payload`
    |
-   = note: expected type `Wrapper`
-              found type `Payload`
+   = note: expected struct `Wrapper`
+              found struct `Payload`
 
 error: aborting due to 2 previous errors
 

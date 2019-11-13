@@ -34,8 +34,8 @@ error[E0308]: mismatched types
 LL |     let e = [0; "foo"];
    |                 ^^^^^ expected usize, found reference
    |
-   = note: expected type `usize`
-              found type `&'static str`
+   = note:   expected type `usize`
+           found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:25:17
@@ -66,7 +66,7 @@ LL |     let g = [0; G { g: () }];
    |                 ^^^^^^^^^^^ expected usize, found struct `main::G`
    |
    = note: expected type `usize`
-              found type `main::G`
+            found struct `main::G`
 
 error: aborting due to 8 previous errors
 

@@ -21,7 +21,7 @@ LL | fn foo() -> Result<u8, u64> {
 LL |     Ok(1);
    |          - help: consider removing this semicolon
    |
-   = note: expected type `std::result::Result<u8, u64>`
+   = note: expected enum `std::result::Result<u8, u64>`
               found type `()`
 
 error: aborting due to 2 previous errors

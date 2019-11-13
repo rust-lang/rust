@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL | fn bar(x: isize) { }
    | ^^^^^^^^^^^^^^^^^^^^ expected isize, found mutable reference
    |
-   = note: expected type `isize`
-              found type `&mut test::Bencher`
+   = note:           expected type `isize`
+           found mutable reference `&mut test::Bencher`
 
 error: aborting due to previous error
 

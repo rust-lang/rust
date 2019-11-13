@@ -14,7 +14,7 @@ LL |     let _: u8 = <E2>::V;
    |                 ^^^^^^^ expected u8, found enum `E2`
    |
    = note: expected type `u8`
-              found type `E2`
+              found enum `E2`
 
 error: aborting due to 2 previous errors
 

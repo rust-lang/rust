@@ -246,6 +246,37 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Error => "type error".into(),
         }
     }
+
+    pub fn prefix_string(&self) -> Cow<'static, str> {
+        debug!("prefix_string {:?} {} {:?}", self, self, self.kind);
+        match self.kind {
+            ty::Infer(_) | ty::Error | ty::Bool | ty::Char | ty::Int(_) |
+            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => "type".into(),
+            ty::Tuple(ref tys) if tys.is_empty() => "type".into(),
+            ty::Adt(def, _) => def.descr().into(),
+            ty::Foreign(_) => "extern type".into(),
+            ty::Array(..) => "array".into(),
+            ty::Slice(_) => "slice".into(),
+            ty::RawPtr(_) => "raw pointer".into(),
+            ty::Ref(.., mutbl) => match mutbl {
+                hir::Mutability::Mutable => "mutable reference",
+                _ => "reference"
+            }.into(),
+            ty::FnDef(..) => "fn item".into(),
+            ty::FnPtr(_) => "fn pointer".into(),
+            ty::Dynamic(..) => "trait".into(),
+            ty::Closure(..) => "closure".into(),
+            ty::Generator(..) => "generator".into(),
+            ty::GeneratorWitness(..) => "generator witness".into(),
+            ty::Tuple(..) => "tuple".into(),
+            ty::Placeholder(..) => "placeholder type".into(),
+            ty::Bound(..) => "bound type".into(),
+            ty::Projection(_) => "associated type".into(),
+            ty::UnnormalizedProjection(_) => "associated type".into(),
+            ty::Param(_) => "type parameter".into(),
+            ty::Opaque(..) => "opaque type".into(),
+        }
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {

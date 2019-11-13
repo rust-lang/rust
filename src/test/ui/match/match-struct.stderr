@@ -6,8 +6,8 @@ LL |     match (S { a: 1 }) {
 LL |         E::C(_) => (),
    |         ^^^^^^^ expected struct `S`, found enum `E`
    |
-   = note: expected type `S`
-              found type `E`
+   = note: expected struct `S`
+                found enum `E`
 
 error: aborting due to previous error
 

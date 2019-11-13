@@ -2,6 +2,6 @@ fn main() {
     &panic!()
     //~^ ERROR mismatched types
     //~| expected type `()`
-    //~| found type `&_`
+    //~| found reference `&_`
     //~| expected (), found reference
 }

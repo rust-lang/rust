@@ -5,7 +5,7 @@ LL | fn main() { while main { } }
    |                   ^^^^ expected bool, found fn item
    |
    = note: expected type `bool`
-              found type `fn() {main}`
+           found fn item `fn() {main}`
 
 error: aborting due to previous error
 

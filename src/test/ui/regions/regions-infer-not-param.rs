@@ -17,10 +17,10 @@ fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched ty
 fn take_indirect1(p: Indirect1) -> Indirect1 { p }
 
 fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
-//~| expected type `Indirect2<'b>`
-//~| found type `Indirect2<'a>`
+//~| expected struct `Indirect2<'b>`
+//~| found struct `Indirect2<'a>`
 //~| ERROR mismatched types
-//~| expected type `Indirect2<'b>`
-//~| found type `Indirect2<'a>`
+//~| expected struct `Indirect2<'b>`
+//~| found struct `Indirect2<'a>`
 
 fn main() {}

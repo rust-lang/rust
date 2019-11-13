@@ -12,8 +12,8 @@ LL | fn foo() {
 LL |     "bar            boo"
    |     ^^^^^^^^^^^^^^^^^^^^ expected (), found reference
    |
-   = note: expected type `()`
-              found type `&'static str`
+   = note:   expected type `()`
+           found reference `&'static str`
 
 error: aborting due to 2 previous errors
 

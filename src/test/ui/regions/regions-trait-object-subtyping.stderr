@@ -46,8 +46,8 @@ error[E0308]: mismatched types
 LL |     x
    |     ^ lifetime mismatch
    |
-   = note: expected type `Wrapper<&'b mut (dyn Dummy + 'b)>`
-              found type `Wrapper<&'a mut (dyn Dummy + 'a)>`
+   = note: expected struct `Wrapper<&'b mut (dyn Dummy + 'b)>`
+              found struct `Wrapper<&'a mut (dyn Dummy + 'a)>`
 note: the lifetime `'b` as defined on the function body at 20:15...
   --> $DIR/regions-trait-object-subtyping.rs:20:15
    |

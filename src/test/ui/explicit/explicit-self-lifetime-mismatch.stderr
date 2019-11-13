@@ -4,8 +4,8 @@ error[E0308]: mismatched `self` parameter type
 LL |            Foo<'b,'a>
    |            ^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Foo<'a, 'b>`
-              found type `Foo<'b, 'a>`
+   = note: expected struct `Foo<'a, 'b>`
+              found struct `Foo<'b, 'a>`
 note: the lifetime `'b` as defined on the impl at 6:9...
   --> $DIR/explicit-self-lifetime-mismatch.rs:6:9
    |
@@ -23,8 +23,8 @@ error[E0308]: mismatched `self` parameter type
 LL |            Foo<'b,'a>
    |            ^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Foo<'a, 'b>`
-              found type `Foo<'b, 'a>`
+   = note: expected struct `Foo<'a, 'b>`
+              found struct `Foo<'b, 'a>`
 note: the lifetime `'a` as defined on the impl at 6:6...
   --> $DIR/explicit-self-lifetime-mismatch.rs:6:6
    |

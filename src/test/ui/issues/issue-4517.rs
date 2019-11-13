@@ -5,6 +5,6 @@ fn main() {
     bar(foo);
     //~^ ERROR mismatched types
     //~| expected type `usize`
-    //~| found type `[u8; 4]`
+    //~| found array `[u8; 4]`
     //~| expected usize, found array of 4 elements
 }

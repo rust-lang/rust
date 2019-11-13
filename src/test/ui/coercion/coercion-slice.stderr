@@ -7,8 +7,8 @@ LL |     let _: &[i32] = [0];
    |                     expected &[i32], found array of 1 element
    |                     help: consider borrowing here: `&[0]`
    |
-   = note: expected type `&[i32]`
-              found type `[{integer}; 1]`
+   = note: expected reference `&[i32]`
+                  found array `[{integer}; 1]`
 
 error: aborting due to previous error
 

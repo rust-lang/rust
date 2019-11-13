@@ -8,7 +8,7 @@ LL | fn foo(b: bool) -> Result<bool,String> {
 LL |     Err("bar".to_string());
    |                           - help: consider removing this semicolon
    |
-   = note: expected type `std::result::Result<bool, std::string::String>`
+   = note: expected enum `std::result::Result<bool, std::string::String>`
               found type `()`
 
 error: aborting due to previous error

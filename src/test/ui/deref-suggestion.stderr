@@ -7,8 +7,8 @@ LL |     foo(s);
    |         expected struct `std::string::String`, found reference
    |         help: try using a conversion method: `s.to_string()`
    |
-   = note: expected type `std::string::String`
-              found type `&std::string::String`
+   = note: expected struct `std::string::String`
+           found reference `&std::string::String`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:14:10
@@ -19,8 +19,8 @@ LL |     foo3(u);
    |          expected u32, found &u32
    |          help: consider dereferencing the borrow: `*u`
    |
-   = note: expected type `u32`
-              found type `&u32`
+   = note:   expected type `u32`
+           found reference `&u32`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:30:9
@@ -31,8 +31,8 @@ LL |     foo(&"aaa".to_owned());
    |         expected struct `std::string::String`, found reference
    |         help: consider removing the borrow: `"aaa".to_owned()`
    |
-   = note: expected type `std::string::String`
-              found type `&std::string::String`
+   = note: expected struct `std::string::String`
+           found reference `&std::string::String`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:32:9
@@ -43,8 +43,8 @@ LL |     foo(&mut "aaa".to_owned());
    |         expected struct `std::string::String`, found mutable reference
    |         help: consider removing the borrow: `"aaa".to_owned()`
    |
-   = note: expected type `std::string::String`
-              found type `&mut std::string::String`
+   = note:         expected struct `std::string::String`
+           found mutable reference `&mut std::string::String`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:2:20
@@ -55,8 +55,8 @@ LL |     ($x:expr) => { &$x }
 LL |     foo3(borrow!(0));
    |          ---------- in this macro invocation
    |
-   = note: expected type `u32`
-              found type `&{integer}`
+   = note:   expected type `u32`
+           found reference `&{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:36:5
@@ -64,8 +64,8 @@ error[E0308]: mismatched types
 LL |     assert_eq!(3i32, &3i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ expected i32, found &i32
    |
-   = note: expected type `i32`
-              found type `&i32`
+   = note:   expected type `i32`
+           found reference `&i32`
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -77,8 +77,8 @@ LL |     let s = S { u };
    |                 expected &u32, found integer
    |                 help: consider borrowing here: `u: &u`
    |
-   = note: expected type `&u32`
-              found type `{integer}`
+   = note: expected reference `&u32`
+                   found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:41:20
@@ -89,8 +89,8 @@ LL |     let s = S { u: u };
    |                    expected &u32, found integer
    |                    help: consider borrowing here: `&u`
    |
-   = note: expected type `&u32`
-              found type `{integer}`
+   = note: expected reference `&u32`
+                   found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:44:17
@@ -101,8 +101,8 @@ LL |     let r = R { i };
    |                 expected u32, found &{integer}
    |                 help: consider dereferencing the borrow: `i: *i`
    |
-   = note: expected type `u32`
-              found type `&{integer}`
+   = note:   expected type `u32`
+           found reference `&{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:46:20
@@ -113,8 +113,8 @@ LL |     let r = R { i: i };
    |                    expected u32, found &{integer}
    |                    help: consider dereferencing the borrow: `*i`
    |
-   = note: expected type `u32`
-              found type `&{integer}`
+   = note:   expected type `u32`
+           found reference `&{integer}`
 
 error: aborting due to 10 previous errors
 

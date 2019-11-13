@@ -4,8 +4,8 @@ error[E0053]: method `fmt` has an incompatible type for trait
 LL |    fn fmt(&self, x: &str) -> () { }
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
-   = note: expected type `fn(&MyType, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
-              found type `fn(&MyType, &str)`
+   = note: expected fn pointer `fn(&MyType, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
+              found fn pointer `fn(&MyType, &str)`
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
   --> $DIR/trait_type.rs:12:11

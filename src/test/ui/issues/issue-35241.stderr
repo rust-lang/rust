@@ -11,8 +11,8 @@ LL | fn test() -> Foo { Foo }
    |              |     help: use parentheses to instantiate this tuple struct: `Foo(_)`
    |              expected `Foo` because of return type
    |
-   = note: expected type `Foo`
-              found type `fn(u32) -> Foo {Foo}`
+   = note: expected struct `Foo`
+             found fn item `fn(u32) -> Foo {Foo}`
 
 error: aborting due to previous error
 
