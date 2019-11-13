@@ -77,6 +77,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   for(unsigned i=1; i<CI->getNumArgOperands(); i++) {
     Value* res = CI->getArgOperand(i);
 
+    assert(truei < FT->getNumParams());
     auto PTy = FT->getParamType(truei);
     DIFFE_TYPE ty = DIFFE_TYPE::CONSTANT;
 

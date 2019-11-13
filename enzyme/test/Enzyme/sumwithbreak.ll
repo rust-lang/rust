@@ -50,7 +50,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %if.end ], [ 0, %entry ]
 ; CHECK-NEXT:   %data.016 = phi double [ %add5, %if.end ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %cmp2 = fcmp fast ogt double %data.016, 1.000000e+01
-; CHECK-NEXT:   br i1 %cmp2, label %[[invertifthen:.+]], label %if.end
+; CHECK-NEXT:   br i1 %cmp2, label %invertif.then, label %if.end
 
 ; CHECK: if.end:                                           ; preds = %for.body
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
@@ -58,36 +58,33 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %0 = load double, double* %arrayidx4, align 8
 ; CHECK-NEXT:   %add5 = fadd fast double %0, %data.016
 ; CHECK-NEXT:   %cmp = icmp ult i64 %iv, %n
-; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertif.end.peel
+; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertif.end
 
 ; CHECK: invertentry: 
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: [[invertifthen]]:
+; CHECK: invertfor.body:
+; CHECK-NEXT:   %[[ivp0:.+]] = phi i64 [ %iv, %invertif.then ], [ %[[ivp1:.+]], %invertif.end ]
+; CHECK-NEXT:   %[[icmp:.+]] = icmp eq i64 %[[ivp0]], 0
+; CHECK-NEXT:   br i1 %[[icmp]], label %invertentry, label %incinvertfor.body
+
+; CHECK: incinvertfor.body:
+; CHECK-NEXT:   %[[ivp0m1:.+]] = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   br label %invertif.end
+
+; CHECK: invertif.then:
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double, double* %"x'", i64 %n
 ; CHECK-NEXT:   %[[loadit:.+]] = load double, double* %"arrayidx'ipg", align 8
 ; CHECK-NEXT:   %[[tostoreit:.+]] = fadd fast double %[[loadit]], %differeturn
 ; CHECK-NEXT:   store double %[[tostoreit]], double* %"arrayidx'ipg", align 8
-; CHECK-NEXT:   br label %invertfor.body.peel
+; CHECK-NEXT:   br label %invertfor.body
 
-; CHECK: invertif.end.peel:  
-; CHECK-NEXT:   %"arrayidx4'ipg.peel" = getelementptr double, double* %"x'", i64 %iv
-; CHECK-NEXT:   %[[loaditp:.+]] = load double, double* %"arrayidx4'ipg.peel", align 8
+; CHECK: invertif.end:  
+; CHECK-NEXT:   %[[ivp1]] = phi i64 [ %[[ivp0m1]], %incinvertfor.body ], [ %iv, %if.end ]
+; CHECK-NEXT:   %"arrayidx4'ipg" = getelementptr double, double* %"x'", i64 %[[ivp1]]
+; CHECK-NEXT:   %[[loaditp:.+]] = load double, double* %"arrayidx4'ipg", align 8
 ; CHECK-NEXT:   %[[tostoreitp:.+]] = fadd fast double %[[loaditp]], %differeturn
-; CHECK-NEXT:   store double %[[tostoreitp]], double* %"arrayidx4'ipg.peel", align 8
-; CHECK-NEXT:   br label %invertfor.body.peel
+; CHECK-NEXT:   store double %[[tostoreitp]], double* %"arrayidx4'ipg", align 8
+; CHECK-NEXT:   br label %invertfor.body
 
-; CHECK: invertfor.body.peel:
-; CHECK-NEXT:   %[[donecmp:.+]] = icmp eq i64 %iv, 0
-; CHECK-NEXT:   br i1 %[[donecmp]], label %invertentry, label %loopMerge
-
-; CHECK: loopMerge:
-; CHECK-NEXT:   %"iv'phi.in" = phi i64 [ %"iv'phi", %loopMerge ], [ %iv, %invertfor.body.peel ]
-; CHECK-NEXT:   %"iv'phi" = add i64 %"iv'phi.in", -1
-; CHECK-NEXT:   %"arrayidx4'ipg" = getelementptr double, double* %"x'", i64 %"iv'phi"
-; CHECK-NEXT:   %[[ldhere:.+]] = load double, double* %"arrayidx4'ipg", align 8
-; CHECK-NEXT:   %[[tshere:.+]] = fadd fast double %[[ldhere]], %differeturn
-; CHECK-NEXT:   store double %[[tshere]], double* %"arrayidx4'ipg", align 8
-; CHECK-NEXT:   %[[icmp:.+]] = icmp eq i64 %"iv'phi", 0
-; CHECK-NEXT:   br i1 %[[icmp]], label %invertentry, label %loopMerge
 ; CHECK-NEXT: }

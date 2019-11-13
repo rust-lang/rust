@@ -90,27 +90,33 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: invertfor.cond3.preheader:                        ; preds = %invertfor.body7
+; CHECK: invertfor.cond3.preheader: 
 ; CHECK-NEXT:   %[[innerdatai8:.+]] = bitcast double* %[[innerdata:.+]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[innerdatai8]])
-; CHECK-NEXT:   %[[done1:.+]] = icmp eq i64 %"iv'phi", 0
-; CHECK-NEXT:   br i1 %[[done1]], label %invertentry, label %invertfor.cond.cleanup6
+; CHECK-NEXT:   %[[done1:.+]] = icmp eq i64 %[[iv:.+]], 0
+; CHECK-NEXT:   br i1 %[[done1]], label %invertentry, label %incinvertfor.cond3.preheader
 
-; CHECK: invertfor.body7:                                  ; preds = %invertfor.cond.cleanup6, %invertfor.body7
-; CHECK-NEXT:   %"iv1'phi" = phi i64 [ %"iv'phi", %invertfor.cond.cleanup6 ], [ %[[subinner:.+]], %invertfor.body7 ]
-; CHECK-NEXT:   %[[subinner]] = sub i64 %"iv1'phi", 1
-; CHECK-NEXT:   %[[invertedgep2:.+]] = getelementptr double, double* %[[innerdata]], i64 %"iv1'phi"
+; CHECK: incinvertfor.cond3.preheader:
+; CHECK-NEXT:   %[[subouter:.+]] = sub nuw nsw i64 %[[iv]], 1
+; CHECK-NEXT:   br label %invertfor.cond.cleanup6
+
+; CHECK: invertfor.body7:
+; CHECK-NEXT:   %[[iv1:.+]] = phi i64 [ %[[iv]], %invertfor.cond.cleanup6 ], [ %[[subinner:.+]], %incinvertfor.body7 ]
+; CHECK-NEXT:   %[[invertedgep2:.+]] = getelementptr double, double* %[[innerdata]], i64 %[[iv1]]
 ; CHECK-NEXT:   %[[cached:.+]] = load double, double* %[[invertedgep2]], !invariant.load !0
 ; CHECK-NEXT:   %m0diffecall = fmul fast double %differeturn, %[[cached]]
 ; CHECK-NEXT:   %[[innerdiffe:.+]] = fadd fast double %m0diffecall, %m0diffecall
-; CHECK-NEXT:   %[[dcall:.+]] = call {} @diffeget(double* %x, double* %"x'", i64 undef, i64 %"iv1'phi", double %[[innerdiffe]], {} undef)
-; CHECK-NEXT:   %[[done2:.+]] = icmp eq i64 %"iv1'phi", 0
-; CHECK-NEXT:   br i1 %[[done2]], label %invertfor.cond3.preheader, label %invertfor.body7
+; CHECK-NEXT:   %[[dcall:.+]] = call {} @diffeget(double* %x, double* %"x'", i64 undef, i64 %[[iv1]], double %[[innerdiffe]], {} undef)
+; CHECK-NEXT:   %[[done2:.+]] = icmp eq i64 %[[iv1]], 0
+; CHECK-NEXT:   br i1 %[[done2]], label %invertfor.cond3.preheader, label %incinvertfor.body7
 
-; CHECK: invertfor.cond.cleanup6:                          ; preds = %for.cond.cleanup6, %invertfor.cond3.preheader
-; CHECK-NEXT:   %"iv'phi" = phi i64 [ %[[subouter:.+]], %invertfor.cond3.preheader ], [ %n, %for.cond.cleanup6 ]
-; CHECK-NEXT:   %[[subouter]] = sub i64 %"iv'phi", 1
-; CHECK-NEXT:   %[[invertedgep1:.+]] = getelementptr double*, double** %call_malloccache, i64 %"iv'phi"
+; CHECK: incinvertfor.body7:
+; CHECK-NEXT:   %[[subinner]] = sub nuw nsw i64 %[[iv1]], 1
+; CHECK-NEXT:   br label %invertfor.body7
+
+; CHECK: invertfor.cond.cleanup6:
+; CHECK-NEXT:   %[[iv]] = phi i64 [ %[[subouter]], %incinvertfor.cond3.preheader ], [ %n, %for.cond.cleanup6 ]
+; CHECK-NEXT:   %[[invertedgep1:.+]] = getelementptr double*, double** %call_malloccache, i64 %[[iv]]
 ; CHECK-NEXT:   %[[innerdata]] = load double*, double** %[[invertedgep1]]
 ; CHECK-NEXT:   br label %invertfor.body7
 ; CHECK-NEXT: }

@@ -38,9 +38,9 @@ attributes #2 = { nounwind }
 ; CHECK: define dso_local void @dsumsquare(double* %x, double* %xp, i64 %n) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %invertfor.body.i
-; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body.i, %entry
-; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %n, %entry ], [ %[[antiivnext:.+]], %invertfor.body.i ]
-; CHECK-NEXT:   %[[antiivnext]] = sub i64 %[[antiiv]], 1
+
+; CHECK: invertfor.body.i:
+; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %n, %entry ], [ %[[antiivnext:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[ptr:.+]] = getelementptr double, double* %x, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[prev:.+]] = load double, double* %[[ptr]]
 ; CHECK-NEXT:   %[[times2:.+]] = fadd fast double %[[prev]], %[[prev]]
@@ -49,7 +49,12 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded:.+]], %[[times2]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antiiv]], 0
-; CHECK-NEXT:   br i1 %[[cmp]], label %diffesumsquare.exit, label %invertfor.body.i
+; CHECK-NEXT:   br i1 %[[cmp]], label %diffesumsquare.exit, label %incinvertfor.body.i
+
+; CHECK: incinvertfor.body.i:
+; CHECK-NEXT:   %[[antiivnext]] = sub nuw nsw i64 %[[antiiv]], 1
+; CHECK-NEXT:   br label %invertfor.body.i
+
 ; CHECK: diffesumsquare.exit:                                    ; preds = %invertfor.body.i
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

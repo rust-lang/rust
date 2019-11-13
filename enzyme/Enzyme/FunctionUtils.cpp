@@ -406,6 +406,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  }
  }
 
+ /*
  //! Loop rotation now necessary to ensure that the condition of a loop is at the end
  {
     FunctionAnalysisManager AM;
@@ -439,6 +440,8 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
     }
     AM.clear();
   }
+ */
+ 
 
  {
     FunctionAnalysisManager AM;

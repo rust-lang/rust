@@ -98,6 +98,7 @@ static inline std::string tostring(DIFFE_TYPE t) {
 
 //note this doesn't handle recursive types!
 static inline DIFFE_TYPE whatType(llvm::Type* arg) {
+  assert(arg);
   if (arg->isPointerTy()) {
     switch(whatType(llvm::cast<llvm::PointerType>(arg)->getElementType())) {
       case DIFFE_TYPE::OUT_DIFF:

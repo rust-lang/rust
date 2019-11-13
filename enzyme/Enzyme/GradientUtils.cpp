@@ -52,13 +52,59 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     assert(reverseBlocks.find(BB) != reverseBlocks.end());
     LoopContext lc;
     bool inLoop = getContext(BB, lc);
-    if (!inLoop) return reverseBlocks[BB];
     
-    auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB), lc.exitBlocks);
-    if (std::find(latches.begin(), latches.end(), BB) == latches.end()) return reverseBlocks[BB];
-
     LoopContext branchingContext;
     bool inLoopContext = getContext(branchingBlock, branchingContext);
+    
+    if (!inLoop) return reverseBlocks[BB];
+
+    static std::map<std::tuple<GradientUtils*, BasicBlock*, BasicBlock*>, BasicBlock*> mp;
+    auto tup = std::make_tuple(this, BB, branchingBlock);
+    if (mp.find(tup) != mp.end()) return mp[tup];
+
+    if (inLoop && inLoopContext && branchingBlock == lc.header && lc.header == branchingContext.header) {
+        BasicBlock* incB = BasicBlock::Create(BB->getContext(), "inc" + reverseBlocks[lc.header]->getName(), BB->getParent());
+        incB->moveAfter(reverseBlocks[lc.header]);
+        
+        IRBuilder<> tbuild(incB);
+		
+        Value* av = tbuild.CreateLoad(lc.antivaralloc);
+        //Value* sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1));
+        //Value* sub = tbuild.CreateNUWAdd(av, ConstantInt::get(av->getType(), -1));
+        //Value* sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1), "", true, true);
+        Value* sub = tbuild.CreateSub(av, ConstantInt::get(av->getType(), 1), "", true, true);
+        tbuild.CreateStore(sub, lc.antivaralloc);
+        tbuild.CreateBr(reverseBlocks[BB]);
+        return mp[tup] = incB;
+    }
+    
+    if (inLoop) {
+        auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB), lc.exitBlocks);
+
+        if (std::find(latches.begin(), latches.end(), BB) != latches.end() && std::find(lc.exitBlocks.begin(), lc.exitBlocks.end(), branchingBlock) != lc.exitBlocks.end()) {
+            BasicBlock* incB = BasicBlock::Create(BB->getContext(), "merge" + reverseBlocks[lc.header]->getName()+"_" + branchingBlock->getName(), BB->getParent());
+            incB->moveAfter(reverseBlocks[branchingBlock]);
+            
+            IRBuilder<> tbuild(reverseBlocks[branchingBlock]);
+            
+            Value* lim = nullptr;
+            if (lc.dynamic) {
+                lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
+            } else {
+                lim = lookupM(lc.limit, tbuild);
+            }
+            
+            tbuild.SetInsertPoint(incB);
+            tbuild.CreateStore(lim, lc.antivaralloc);
+            tbuild.CreateBr(reverseBlocks[BB]);
+
+            return mp[tup] = incB;
+        }
+    }
+        
+    return mp[tup] = reverseBlocks[BB];
+
+#if 0
 
     assert(lc.latchMerge);
 
@@ -78,6 +124,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 
     llvm::errs() << " BB:" << BB->getName() << " branchingBlock:" << branchingBlock->getName() << "\n";
     return reverseBlocks[BB];
+#endif
   }
 
   void GradientUtils::forceContexts(bool setupMerge) {
@@ -90,8 +137,20 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
         for(auto pair : loopContexts) {
 			auto &lc = pair.second;
             assert(lc.exitBlocks.size() > 0);
-
+#if 0
             lc.latchMerge = BasicBlock::Create(newFunc->getContext(), "loopMerge", newFunc);
+
+            auto enterReverse = BasicBlock::Create(newFunc->getContext(), "", newFunc);{
+                IRBuilder<> tbuild(enterReverse);
+                Value* lim = nullptr;
+                if (lc.dynamic) {
+                    lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
+                } else {
+                    lim = lookupM(lc.limit, tbuild);
+                }
+                tbuild.CreateStore(lim, lc.antivaralloc);
+            }
+
             loopContexts[pair.first].latchMerge = lc.latchMerge;
             {
                 LoopContext bar;
@@ -200,6 +259,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
                 mergeBuilder.CreateCondBr(firstiter, splitBlock, reverseBlocks[backlatch]);
 
             }
+#endif
         }
 	}
   }
@@ -741,7 +801,8 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         assert(CanonicalIV);
         removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].var = CanonicalIV;
-        loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
+        loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
+        //loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
       
         PredicatedScalarEvolution PSE(SE, *L);
         //predicate.addPredicate(SE.getWrapPredicate(SE.getSCEV(CanonicalIV), SCEVWrapPredicate::IncrementNoWrapMask));
@@ -853,7 +914,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     if (inLoop) {
         for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx)) {
           if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
-            available[idx.var] = idx.antivar;
+            available[idx.var] = BuilderM.CreateLoad(idx.antivaralloc);
           } else {
             available[idx.var] = idx.var;
           }
@@ -1104,9 +1165,11 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   assert(targets.size() > 0);
 
   for(const auto &pair: storing) {
-      assert(pair.first->getTerminator());
-      assert(cast<Instruction>(pair.first->getTerminator()));
-      IRBuilder<> pbuilder(pair.first->getTerminator());
+      IRBuilder<> pbuilder(pair.first);
+
+      if (pair.first->getTerminator())
+          pbuilder.SetInsertPoint(pair.first->getTerminator());
+
       pbuilder.setFastMathFlags(getFast());
 
       Value* tostore = ConstantInt::get(T, 0);

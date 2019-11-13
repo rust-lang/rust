@@ -53,7 +53,7 @@ using namespace llvm;
 
 typedef struct {
   PHINode* var;
-  PHINode* antivar;
+  AllocaInst* antivaralloc;
   BasicBlock* latchMerge;
   BasicBlock* header;
   BasicBlock* preheader;
@@ -1003,14 +1003,9 @@ endCheck:
         auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));
 
         Value* storeInto = alloc;
-        ValueToValueMapTy antimap;
 
         for(int i=sublimits.size()-1; i>=0; i--) {
             const auto& containedloops = sublimits[i].second;
-            for(auto riter = containedloops.rbegin(), rend = containedloops.rend(); riter != rend; riter++) {
-                const auto& idx = riter->first;
-                antimap[idx.var] = idx.antivar;
-            }
 
             Value* size = sublimits[i].first;
             Type* myType = types[i];
@@ -1070,6 +1065,16 @@ endCheck:
                 if (tbuild.GetInsertBlock()->size()) {
                       tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getFirstNonPHI());
                 }
+
+                ValueToValueMapTy antimap;
+                for(int j = sublimits.size()-1; j>=i; j--) {
+                    auto& innercontainedloops = sublimits[j].second;
+                    for(auto riter = innercontainedloops.rbegin(), rend = innercontainedloops.rend(); riter != rend; riter++) {
+                        const auto& idx = riter->first;
+                        antimap[idx.var] = tbuild.CreateLoad(idx.antivaralloc);
+                    }
+                }
+
                 auto forfree = cast<LoadInst>(tbuild.CreateLoad(unwrapM(storeInto, tbuild, antimap, /*lookup*/false)));
                 forfree->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(forfree->getContext(), {}));
                 auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(forfree, Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
@@ -1116,8 +1121,9 @@ endCheck:
 
               const auto &idx = riter->first;
               if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
-                indices.push_back(idx.antivar);
-                available[idx.var] = idx.antivar;
+                Value* av = BuilderM.CreateLoad(idx.antivaralloc);
+                indices.push_back(av);
+                available[idx.var] = av;
               } else {
                 indices.push_back(idx.var);
                 available[idx.var] = idx.var;

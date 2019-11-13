@@ -1171,7 +1171,8 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
 
         assert(targetToPreds.size() && "only loops with one backedge are presently supported");
 
-        Value* phi = phibuilder.CreateICmpEQ(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
+        Value* av = phibuilder.CreateLoad(loopContext.antivaralloc);
+        Value* phi = phibuilder.CreateICmpEQ(av, Constant::getNullValue(av->getType()));
         Value* nphi = phibuilder.CreateNot(phi);
 
         for (auto pair : replacePHIs) {

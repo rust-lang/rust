@@ -202,9 +202,8 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %[[endcomp]], label %[[invertdelete:.+]], label %for.body.i
 
 ; CHECK: invertfor.body.i:                                
-; CHECK-NEXT:   %"x'de.0.i" = phi double [ 0.000000e+00, %[[invertdelete:.+]] ], [ %[[xadd:.+]], %invertfor.body.i ]
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %[[invertdelete]] ], [ %[[isub:.+]], %invertfor.body.i ]
-; CHECK-NEXT:   %[[isub]] = add i64 %[[antivar]], -1
+; CHECK-NEXT:   %"x'de.0.i" = phi double [ 0.000000e+00, %[[invertdelete:.+]] ], [ %[[xadd:.+]], %incinvertfor.body.i ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %[[invertdelete]] ], [ %[[isub:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[gepiv:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[antivar]]
 ; CHECK-NEXT:   %[[metaload:.+]] = load i8*, i8** %[[gepiv]]
 ; CHECK-NEXT:   %[[bcast:.+]] = bitcast i8* %[[metaload]] to double*
@@ -218,7 +217,12 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[callload2free:.+]] = load i8*, i8** %[[heregep]]
 ; CHECK-NEXT:   call void @_ZdlPv(i8* %[[callload2free]]) #5
 ; CHECK-NEXT:   %[[cmpinst:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmpinst]], label %diffe_Z12list_creatordm.exit, label %invertfor.body.i 
+; CHECK-NEXT:   br i1 %[[cmpinst]], label %diffe_Z12list_creatordm.exit, label %incinvertfor.body.i 
+
+; CHECK: incinvertfor.body.i:                                
+; CHECK-NEXT:   %[[isub]] = add nsw i64 %[[antivar]], -1
+; CHECK-NEXT:   br label %invertfor.body.i
+
 ; CHECK: [[invertdelete]]:                               ; preds = %for.body.i
 ; CHECK-NEXT:   %[[dsum:.+]] = call {} @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)
 ; CHECK-NEXT:   br label %invertfor.body.i
@@ -262,8 +266,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: [[antiloop]]:
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %[[antiloop]] ], [ %[[preidx]], %for.body ]
-; CHECK-NEXT:   %[[subidx]] = add i64 %[[antivar]], -1
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr %class.node*, %class.node** %[[reallocbc]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %class.node*, %class.node** %[[structptr]]
 ; CHECK-NEXT:   %"value'ipg" = getelementptr %class.node, %class.node* %[[struct]], i64 0, i32 0
@@ -271,6 +274,10 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[addval:.+]] = fadd fast double %[[val0]], %[[differet]]
 ; CHECK-NEXT:   store double %[[addval]], double* %"value'ipg"
 ; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body.preheader, label %[[antiloop]]
+; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body.preheader, label %incinvertfor.body
+
+; CHECK: incinvertfor.body:
+; CHECK-NEXT:   %[[subidx]] = add nsw i64 %[[antivar]], -1
+; CHECK-NEXT:   br label %[[antiloop]]
 
 ; CHECK-NEXT: }

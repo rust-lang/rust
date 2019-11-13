@@ -60,14 +60,17 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %tobool.i, label %for.cond.i, label %[[antiloop:.+]]
 
 ; CHECK: [[antiloop]]:
-; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %[[antiivnext:.+]], %[[antiloop]] ], [ %[[iv]], %for.cond.i ]
-; CHECK-NEXT:   %[[antiivnext]] = sub i64 %[[antiiv]], 1
+; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %[[antiivnext:.+]], %[[incantiloop:.+]] ], [ %[[iv]], %for.cond.i ]
 ; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[load]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[fadd]], double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antiiv]], 0
-; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[antiloop]] 
+; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[incantiloop]] 
+
+; CHECK: [[incantiloop]]:
+; CHECK-NEXT:   %[[antiivnext]] = sub nuw nsw i64 %[[antiiv]], 1
+; CHECK-NEXT:   br label %[[antiloop]]
 
 ; CHECK: diffeunknowniters.exit:
 ; CHECK-NEXT:   ret void

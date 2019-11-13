@@ -133,16 +133,15 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[output:.+]] = fadd fast double %[[lastload]], %[[decarry:.+]]
 ; CHECK-NEXT:   store double %[[output]], double* %"x'"
 ; CHECK-NEXT:   %[[printer:.+]] = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i64 0, i64 0), double 0.000000e+00)
-; CHECK-NEXT:   ret
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %for.body.for.body_crit_edge
 ; CHECK-NEXT:   %[[nm210:.+]] = add i64 %n, -2
 ; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 
-; CHECK: invertfor.body.for.body_crit_edge:                ; preds = %invertfor.body.for.body_crit_edge, %invertfor.cond.cleanup
-; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %invertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %invertfor.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[subd]] = sub i64 %[[antivar]], 1
+; CHECK: invertfor.body.for.body_crit_edge: 
+; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %incinvertfor.body.for.body_crit_edge ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %incinvertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[gep1:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[reload:.+]] = load i1, i1* %[[gep1]]
 ; CHECK-NEXT:   %[[diffecond]] = select i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
@@ -154,5 +153,9 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx9.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[lcond:.+]] = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   %[[decarry]] = fadd fast double 1.000000e+00, %[[diffecond]]
-; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %invertfor.body.for.body_crit_edge
+; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %incinvertfor.body.for.body_crit_edge
+
+; CHECK: incinvertfor.body.for.body_crit_edge:
+; CHECK-NEXT:   %[[subd]] = sub nuw nsw i64 %[[antivar]], 1
+; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT: }
