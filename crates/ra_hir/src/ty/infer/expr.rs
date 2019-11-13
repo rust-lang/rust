@@ -3,7 +3,10 @@
 use std::iter::{repeat, repeat_with};
 use std::sync::Arc;
 
-use hir_def::path::{GenericArg, GenericArgs};
+use hir_def::{
+    builtin_type::Signedness,
+    path::{GenericArg, GenericArgs},
+};
 use hir_expand::name;
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
@@ -12,8 +15,9 @@ use crate::{
     expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
     ty::{
-        autoderef, method_resolution, op, primitive, CallableDef, InferTy, Mutability, Namespace,
+        autoderef, method_resolution, op, CallableDef, InferTy, IntTy, Mutability, Namespace,
         Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
+        Uncertain,
     },
     Adt, Name,
 };
@@ -337,13 +341,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     UnaryOp::Neg => {
                         match &inner_ty {
                             Ty::Apply(a_ty) => match a_ty.ctor {
-                                TypeCtor::Int(primitive::UncertainIntTy::Unknown)
-                                | TypeCtor::Int(primitive::UncertainIntTy::Known(
-                                    primitive::IntTy {
-                                        signedness: primitive::Signedness::Signed,
-                                        ..
-                                    },
-                                ))
+                                TypeCtor::Int(Uncertain::Unknown)
+                                | TypeCtor::Int(Uncertain::Known(IntTy {
+                                    signedness: Signedness::Signed,
+                                    ..
+                                }))
                                 | TypeCtor::Float(..) => inner_ty,
                                 _ => Ty::Unknown,
                             },
@@ -428,9 +430,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         );
                         self.infer_expr(
                             *repeat,
-                            &Expectation::has_type(Ty::simple(TypeCtor::Int(
-                                primitive::UncertainIntTy::Known(primitive::IntTy::usize()),
-                            ))),
+                            &Expectation::has_type(Ty::simple(TypeCtor::Int(Uncertain::Known(
+                                IntTy::usize(),
+                            )))),
                         );
                     }
                 }
@@ -443,9 +445,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), Ty::simple(TypeCtor::Str))
                 }
                 Literal::ByteString(..) => {
-                    let byte_type = Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(
-                        primitive::IntTy::u8(),
-                    )));
+                    let byte_type = Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::u8())));
                     let slice_type = Ty::apply_one(TypeCtor::Slice, byte_type);
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), slice_type)
                 }
