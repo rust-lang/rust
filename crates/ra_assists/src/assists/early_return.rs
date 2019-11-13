@@ -45,12 +45,12 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
     let cond = if_expr.condition()?;
 
     // Check if there is an IfLet that we can handle.
-    let if_let_ident = match cond.pat() {
+    let bound_ident = match cond.pat() {
         None => None, // No IfLet, supported.
         Some(TupleStructPat(pat)) if pat.args().count() == 1 => {
             let path = pat.path()?;
             match path.qualifier() {
-                None => Some(path.syntax().to_string()),
+                None => Some(path.segment()?.name_ref()?),
                 Some(_) => return None,
             }
         }
@@ -94,7 +94,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
     ctx.add_assist(AssistId("convert_to_guarded_return"), "convert to guarded return", |edit| {
         let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
-        let new_block = match if_let_ident {
+        let new_block = match bound_ident {
             None => {
                 // If.
                 let early_expression = &(early_expression.to_owned() + ";");
@@ -102,11 +102,11 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                     if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
-            Some(if_let_ident) => {
+            Some(bound_ident) => {
                 // If-let.
                 let new_expr = if_indent_level.increase_indent(make::let_match_early(
                     expr,
-                    &if_let_ident,
+                    &bound_ident.syntax().to_string(),
                     early_expression,
                 ));
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
