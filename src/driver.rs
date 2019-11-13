@@ -268,14 +268,14 @@ pub fn main() {
 
             // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
             // We're invoking the compiler programmatically, so we ignore this/
-            let wrapper_mode = Path::new(&orig_args[1]).file_stem() == Some("rustc".as_ref());
+            let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
 
             if wrapper_mode {
                 // we still want to be able to invoke it normally though
                 orig_args.remove(1);
             }
 
-            if !wrapper_mode && std::env::args().any(|a| a == "--help" || a == "-h") {
+            if !wrapper_mode && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1) {
                 display_help();
                 exit(0);
             }
