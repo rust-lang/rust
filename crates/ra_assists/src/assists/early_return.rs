@@ -38,27 +38,27 @@ use crate::{
 // ```
 pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
+    if if_expr.else_branch().is_some() {
+        return None;
+    }
+
     let cond = if_expr.condition()?;
-    let mut if_let_ident: Option<String> = None;
 
     // Check if there is an IfLet that we can handle.
-    match cond.pat() {
-        None => {} // No IfLet, supported.
-        Some(TupleStructPat(ref pat)) if pat.args().count() == 1usize => match &pat.path() {
-            Some(p) => match p.qualifier() {
-                None => if_let_ident = Some(p.syntax().text().to_string()),
-                _ => return None,
-            },
-            _ => return None,
-        },
-        _ => return None, // Unsupported IfLet.
+    let if_let_ident = match cond.pat() {
+        None => None, // No IfLet, supported.
+        Some(TupleStructPat(pat)) if pat.args().count() == 1 => {
+            let path = pat.path()?;
+            match path.qualifier() {
+                None => Some(path.syntax().to_string()),
+                Some(_) => return None,
+            }
+        }
+        Some(_) => return None, // Unsupported IfLet.
     };
 
     let expr = cond.expr()?;
     let then_block = if_expr.then_branch()?.block()?;
-    if if_expr.else_branch().is_some() {
-        return None;
-    }
 
     let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::Block::cast)?;
 
@@ -100,7 +100,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                 let early_expression = &(early_expression.to_owned() + ";");
                 let new_expr =
                     if_indent_level.increase_indent(make::if_expression(&expr, early_expression));
-                replace(new_expr, &then_block, &parent_block, &if_expr)
+                replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
             Some(if_let_ident) => {
                 // If-let.
@@ -109,7 +109,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                     &if_let_ident,
                     early_expression,
                 ));
-                replace(new_expr, &then_block, &parent_block, &if_expr)
+                replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
             }
         };
         edit.target(if_expr.syntax().text_range());
@@ -117,7 +117,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
         edit.set_cursor(cursor_position);
 
         fn replace(
-            new_expr: impl AstNode,
+            new_expr: &SyntaxNode,
             then_block: &Block,
             parent_block: &Block,
             if_expr: &ast::IfExpr,
@@ -130,7 +130,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
                 } else {
                     end_of_then
                 };
-            let mut then_statements = new_expr.syntax().children_with_tokens().chain(
+            let mut then_statements = new_expr.children_with_tokens().chain(
                 then_block_items
                     .syntax()
                     .children_with_tokens()
@@ -151,8 +151,9 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx<impl HirDatabase>) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn convert_inside_fn() {
