@@ -21,7 +21,7 @@ use crate::{
     expr::ExprId,
     generics::{GenericParams, HasGenericParams},
     util::make_mut_slice,
-    Adt, Crate, DefWithBody, Mutability, Name, Trait, TypeAlias,
+    Adt, Crate, DefWithBody, FloatTy, IntTy, Mutability, Name, Trait, TypeAlias, Uncertain,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -47,10 +47,10 @@ pub enum TypeCtor {
     Char,
 
     /// A primitive integer type. For example, `i32`.
-    Int(primitive::UncertainIntTy),
+    Int(Uncertain<IntTy>),
 
     /// A primitive floating-point type. For example, `f64`.
-    Float(primitive::UncertainFloatTy),
+    Float(Uncertain<FloatTy>),
 
     /// Structures, enumerations and unions.
     Adt(Adt),

@@ -8,15 +8,16 @@ use arrayvec::ArrayVec;
 use hir_def::CrateModuleId;
 use rustc_hash::FxHashMap;
 
-use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 use crate::{
     db::HirDatabase,
     impl_block::{ImplBlock, ImplId},
     resolve::Resolver,
-    ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
+    ty::primitive::{FloatBitness, Uncertain},
     ty::{Ty, TypeCtor},
     AssocItem, Crate, Function, Module, Mutability, Name, Trait,
 };
+
+use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -140,14 +141,12 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
             TypeCtor::Adt(def_id) => Some(std::iter::once(def_id.krate(db)?).collect()),
             TypeCtor::Bool => lang_item_crate!(db, cur_crate, "bool"),
             TypeCtor::Char => lang_item_crate!(db, cur_crate, "char"),
-            TypeCtor::Float(UncertainFloatTy::Known(f)) => match f.bitness {
+            TypeCtor::Float(Uncertain::Known(f)) => match f.bitness {
                 // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
                 FloatBitness::X32 => lang_item_crate!(db, cur_crate, "f32", "f32_runtime"),
                 FloatBitness::X64 => lang_item_crate!(db, cur_crate, "f64", "f64_runtime"),
             },
-            TypeCtor::Int(UncertainIntTy::Known(i)) => {
-                lang_item_crate!(db, cur_crate, i.ty_to_string())
-            }
+            TypeCtor::Int(Uncertain::Known(i)) => lang_item_crate!(db, cur_crate, i.ty_to_string()),
             TypeCtor::Str => lang_item_crate!(db, cur_crate, "str_alloc", "str"),
             TypeCtor::Slice => lang_item_crate!(db, cur_crate, "slice_alloc", "slice"),
             TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!(db, cur_crate, "const_ptr"),
