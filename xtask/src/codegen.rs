@@ -52,7 +52,7 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
         _ => (),
     }
     if mode == Mode::Verify {
-        Err(format!("`{}` is not up-to-date", path.display()))?;
+        anyhow::bail!("`{}` is not up-to-date", path.display());
     }
     eprintln!("updating {}", path.display());
     fs::write(path, contents)?;
@@ -101,10 +101,8 @@ fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lins: bool) -> 
         let is_comment = line.starts_with(prefix);
         if is_comment {
             block.push(line[prefix.len()..].to_string());
-        } else {
-            if !block.is_empty() {
-                res.push(mem::replace(&mut block, Vec::new()))
-            }
+        } else if !block.is_empty() {
+            res.push(mem::replace(&mut block, Vec::new()));
         }
     }
     if !block.is_empty() {

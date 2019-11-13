@@ -9,6 +9,7 @@
 //! `.cargo/config`.
 mod help;
 
+use anyhow::Context;
 use autocfg;
 use core::fmt::Write;
 use core::str;
@@ -114,21 +115,21 @@ fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
             write!(&mut invalid_flags, "{}, ", flag)?;
         }
         let (invalid_flags, _) = invalid_flags.split_at(invalid_flags.len() - 2);
-        Err(format!("Invalid flags: {}", invalid_flags).into())
+        anyhow::bail!("Invalid flags: {}", invalid_flags)
     } else {
-        Err(e.to_string().into())
+        anyhow::bail!(e.to_string())
     }
 }
 
 fn install(opts: InstallOpt) -> Result<()> {
     if cfg!(target_os = "macos") {
-        fix_path_for_mac()?
+        fix_path_for_mac().context("Fix path for mac")?
     }
     if let Some(server) = opts.server {
-        install_server(server)?;
+        install_server(server).context("install server")?;
     }
     if let Some(client) = opts.client {
-        install_client(client)?;
+        install_client(client).context("install client")?;
     }
     Ok(())
 }
@@ -140,7 +141,7 @@ fn fix_path_for_mac() -> Result<()> {
         const ROOT_DIR: &str = "";
         let home_dir = match env::var("HOME") {
             Ok(home) => home,
-            Err(e) => Err(format!("Failed getting HOME from environment with error: {}.", e))?,
+            Err(e) => anyhow::bail!("Failed getting HOME from environment with error: {}.", e),
         };
 
         [ROOT_DIR, &home_dir]
@@ -154,12 +155,12 @@ fn fix_path_for_mac() -> Result<()> {
     if !vscode_path.is_empty() {
         let vars = match env::var_os("PATH") {
             Some(path) => path,
-            None => Err("Could not get PATH variable from env.")?,
+            None => anyhow::bail!("Could not get PATH variable from env."),
         };
 
         let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
         paths.append(&mut vscode_path);
-        let new_paths = env::join_paths(paths)?;
+        let new_paths = env::join_paths(paths).context("build env PATH")?;
         env::set_var("PATH", &new_paths);
     }
 
@@ -198,7 +199,7 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
     let code_binary = match code_binary {
         Some(it) => it,
-        None => Err("Can't execute `code --version`. Perhaps it is not in $PATH?")?,
+        None => anyhow::bail!("Can't execute `code --version`. Perhaps it is not in $PATH?"),
     };
 
     Cmd {
@@ -219,8 +220,10 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
     .run_with_output()?;
 
     if !str::from_utf8(&output.stdout)?.contains("ra-lsp") {
-        Err("Could not install the Visual Studio Code extension. \
-             Please make sure you have at least NodeJS 10.x installed and try again.")?;
+        anyhow::bail!(
+            "Could not install the Visual Studio Code extension. \
+             Please make sure you have at least NodeJS 10.x installed and try again."
+        );
     }
 
     Ok(())
