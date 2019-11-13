@@ -108,6 +108,10 @@ pub fn create_session(
         process_configure_mod,
     );
 
+    sess.prof.register_queries(|profiler| {
+        rustc::ty::query::QueryName::register_with_profiler(&profiler);
+    });
+
     let codegen_backend = get_codegen_backend(&sess);
 
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
