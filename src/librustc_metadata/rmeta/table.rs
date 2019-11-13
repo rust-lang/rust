@@ -1,6 +1,6 @@
 use crate::rmeta::*;
 
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc_index::vec::Idx;
 use rustc_serialize::{Encodable, opaque::Encoder};
 use std::convert::TryInto;
 use std::marker::PhantomData;
@@ -125,14 +125,16 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
 // FIXME(eddyb) replace `Vec` with `[_]` here, such that `Box<Table<T>>` would be used
 // when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
 // (not sure if that is possible given that the `Vec` is being resized now)
-pub(super) struct Table<T> where Option<T>: FixedSizeEncoding {
-    // FIXME(eddyb) store `[u8; <Option<T>>::BYTE_LEN]` instead of `u8` in `Vec`,
-    // once that starts being allowed by the compiler (i.e. lazy normalization).
+pub(super) struct Table<I: Idx, T> where Option<T>: FixedSizeEncoding {
+    // FIXME(eddyb) use `IndexVec<I, [u8; <Option<T>>::BYTE_LEN]>` instead of
+    // `Vec<u8>`, once that starts working (i.e. lazy normalization).
+    // Then again, that has the downside of not allowing `Table::encode` to
+    // obtain a `&[u8]` entirely in safe code, for writing the bytes out.
     bytes: Vec<u8>,
-    _marker: PhantomData<T>,
+    _marker: PhantomData<(fn(&I), T)>,
 }
 
-impl<T> Default for Table<T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> Default for Table<I, T> where Option<T>: FixedSizeEncoding {
     fn default() -> Self {
         Table {
             bytes: vec![],
@@ -141,13 +143,14 @@ impl<T> Default for Table<T> where Option<T>: FixedSizeEncoding {
     }
 }
 
-impl<T> Table<T> where Option<T>: FixedSizeEncoding {
-    fn set(&mut self, i: usize, value: T) {
+impl<I: Idx, T> Table<I, T> where Option<T>: FixedSizeEncoding {
+    pub(super) fn set(&mut self, i: I, value: T) {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
         // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
         // > trick (i.e. divide things into buckets of 32 or 64 items and then
         // > store bit-masks of which item in each bucket is actually serialized).
+        let i = i.index();
         let needed = (i + 1) * <Option<T>>::BYTE_LEN;
         if self.bytes.len() < needed {
             self.bytes.resize(needed, 0);
@@ -156,7 +159,7 @@ impl<T> Table<T> where Option<T>: FixedSizeEncoding {
         Some(value).write_to_bytes_at(&mut self.bytes, i);
     }
 
-    fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
+    pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.bytes);
         Lazy::from_position_and_meta(
@@ -166,7 +169,7 @@ impl<T> Table<T> where Option<T>: FixedSizeEncoding {
     }
 }
 
-impl<T> LazyMeta for Table<T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> LazyMeta for Table<I, T> where Option<T>: FixedSizeEncoding {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
@@ -174,65 +177,18 @@ impl<T> LazyMeta for Table<T> where Option<T>: FixedSizeEncoding {
     }
 }
 
-impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> Lazy<Table<I, T>> where Option<T>: FixedSizeEncoding {
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
-    fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
         &self,
         metadata: M,
-        i: usize,
+        i: I,
     ) -> Option<T> {
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
         let start = self.position.get();
         let bytes = &metadata.raw_bytes()[start..start + self.meta];
-        <Option<T>>::maybe_read_from_bytes_at(bytes, i)?
-    }
-}
-
-/// Like a `Table` but using `DefIndex` instead of `usize` as keys.
-// FIXME(eddyb) replace by making `Table` behave like `IndexVec`,
-// and by using `newtype_index!` to define `DefIndex`.
-pub(super) struct PerDefTable<T>(Table<T>) where Option<T>: FixedSizeEncoding;
-
-impl<T> Default for PerDefTable<T> where Option<T>: FixedSizeEncoding {
-    fn default() -> Self {
-        PerDefTable(Table::default())
-    }
-}
-
-impl<T> PerDefTable<T> where Option<T>: FixedSizeEncoding {
-    pub(super) fn set(&mut self, def_id: DefId, value: T) {
-        assert!(def_id.is_local());
-        self.0.set(def_id.index.index(), value);
-    }
-
-    pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
-        let lazy = self.0.encode(buf);
-        Lazy::from_position_and_meta(lazy.position, lazy.meta)
-    }
-}
-
-impl<T> LazyMeta for PerDefTable<T> where Option<T>: FixedSizeEncoding {
-    type Meta = <Table<T> as LazyMeta>::Meta;
-
-    fn min_size(meta: Self::Meta) -> usize {
-        Table::<T>::min_size(meta)
-    }
-}
-
-impl<T> Lazy<PerDefTable<T>> where Option<T>: FixedSizeEncoding {
-    fn as_table(&self) -> Lazy<Table<T>> {
-        Lazy::from_position_and_meta(self.position, self.meta)
-    }
-
-    /// Given the metadata, extract out the value at a particular DefIndex (if any).
-    #[inline(never)]
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
-        &self,
-        metadata: M,
-        def_index: DefIndex,
-    ) -> Option<T> {
-        self.as_table().get(metadata, def_index.index())
+        <Option<T>>::maybe_read_from_bytes_at(bytes, i.index())?
     }
 }

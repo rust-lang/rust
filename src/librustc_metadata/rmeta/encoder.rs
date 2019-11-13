@@ -1,5 +1,5 @@
 use crate::rmeta::*;
-use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
+use crate::rmeta::table::{FixedSizeEncoding, Table};
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -8,7 +8,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId,
 use rustc::hir::{GenericParamKind, AnonConst};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};
@@ -62,26 +62,26 @@ struct EncodeContext<'tcx> {
 
 #[derive(Default)]
 struct PerDefTables<'tcx> {
-    kind: PerDefTable<Lazy<EntryKind<'tcx>>>,
-    visibility: PerDefTable<Lazy<ty::Visibility>>,
-    span: PerDefTable<Lazy<Span>>,
-    attributes: PerDefTable<Lazy<[ast::Attribute]>>,
-    children: PerDefTable<Lazy<[DefIndex]>>,
-    stability: PerDefTable<Lazy<attr::Stability>>,
-    deprecation: PerDefTable<Lazy<attr::Deprecation>>,
+    kind: Table<DefIndex, Lazy<EntryKind<'tcx>>>,
+    visibility: Table<DefIndex, Lazy<ty::Visibility>>,
+    span: Table<DefIndex, Lazy<Span>>,
+    attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
+    children: Table<DefIndex, Lazy<[DefIndex]>>,
+    stability: Table<DefIndex, Lazy<attr::Stability>>,
+    deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
 
-    ty: PerDefTable<Lazy<Ty<'tcx>>>,
-    fn_sig: PerDefTable<Lazy<ty::PolyFnSig<'tcx>>>,
-    impl_trait_ref: PerDefTable<Lazy<ty::TraitRef<'tcx>>>,
-    inherent_impls: PerDefTable<Lazy<[DefIndex]>>,
-    variances: PerDefTable<Lazy<[ty::Variance]>>,
-    generics: PerDefTable<Lazy<ty::Generics>>,
-    explicit_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
-    inferred_outlives: PerDefTable<Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
-    super_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
+    ty: Table<DefIndex, Lazy<Ty<'tcx>>>,
+    fn_sig: Table<DefIndex, Lazy<ty::PolyFnSig<'tcx>>>,
+    impl_trait_ref: Table<DefIndex, Lazy<ty::TraitRef<'tcx>>>,
+    inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
+    variances: Table<DefIndex, Lazy<[ty::Variance]>>,
+    generics: Table<DefIndex, Lazy<ty::Generics>>,
+    explicit_predicates: Table<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
+    inferred_outlives: Table<DefIndex, Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
+    super_predicates: Table<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
 
-    mir: PerDefTable<Lazy<mir::Body<'tcx>>>,
-    promoted_mir: PerDefTable<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
+    mir: Table<DefIndex, Lazy<mir::Body<'tcx>>>,
+    promoted_mir: Table<DefIndex, Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 macro_rules! encoder_methods {
@@ -138,10 +138,10 @@ impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<PerDefTable<T>>> for EncodeContext<'tcx>
+impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>>> for EncodeContext<'tcx>
     where Option<T>: FixedSizeEncoding,
 {
-    fn specialized_encode(&mut self, lazy: &Lazy<PerDefTable<T>>) -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, lazy: &Lazy<Table<I, T>>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         self.emit_lazy_distance(*lazy)
     }
@@ -307,14 +307,14 @@ impl<I, T: Encodable> EncodeContentsForLazy<[T]> for I
     }
 }
 
-// Shorthand for `$self.$tables.$table.set($key, $self.lazy($value))`, which would
+// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
-    ($self:ident.$tables:ident.$table:ident[$key:expr] <- $value:expr) => {{
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.set($key, lazy);
+            $self.$tables.$table.set($def_id.index, lazy);
         }
     }}
 }

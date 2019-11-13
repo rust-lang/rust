@@ -1,9 +1,9 @@
 // Decoding metadata from a single crate's metadata
 
 use crate::rmeta::*;
-use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
+use crate::rmeta::table::{FixedSizeEncoding, Table};
 
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir::map::definitions::DefPathTable;
@@ -341,10 +341,10 @@ impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a,
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<PerDefTable<T>>> for DecodeContext<'a, 'tcx>
+impl<'a, 'tcx, I: Idx, T> SpecializedDecoder<Lazy<Table<I, T>>> for DecodeContext<'a, 'tcx>
     where Option<T>: FixedSizeEncoding,
 {
-    fn specialized_decode(&mut self) -> Result<Lazy<PerDefTable<T>>, Self::Error> {
+    fn specialized_decode(&mut self) -> Result<Lazy<Table<I, T>>, Self::Error> {
         let len = self.read_usize()?;
         self.read_lazy_with_meta(len)
     }

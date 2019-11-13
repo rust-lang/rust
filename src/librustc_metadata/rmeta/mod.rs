@@ -1,5 +1,5 @@
 use decoder::Metadata;
-use table::PerDefTable;
+use table::Table;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -166,8 +166,7 @@ enum LazyState {
 // manually, instead of relying on the default, to get the correct variance.
 // Only needed when `T` itself contains a parameter (e.g. `'tcx`).
 macro_rules! Lazy {
-    (Table<$T:ty>) => {Lazy<Table<$T>, usize>};
-    (PerDefTable<$T:ty>) => {Lazy<PerDefTable<$T>, usize>};
+    (Table<$I:ty, $T:ty>) => {Lazy<Table<$I, $T>, usize>};
     ([$T:ty]) => {Lazy<[$T], usize>};
     ($T:ty) => {Lazy<$T, ()>};
 }
@@ -234,29 +233,29 @@ crate struct TraitImpls {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct LazyPerDefTables<'tcx> {
-    kind: Lazy!(PerDefTable<Lazy!(EntryKind<'tcx>)>),
-    visibility: Lazy!(PerDefTable<Lazy<ty::Visibility>>),
-    span: Lazy!(PerDefTable<Lazy<Span>>),
-    attributes: Lazy!(PerDefTable<Lazy<[ast::Attribute]>>),
-    children: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
-    stability: Lazy!(PerDefTable<Lazy<attr::Stability>>),
-    deprecation: Lazy!(PerDefTable<Lazy<attr::Deprecation>>),
-    ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
-    fn_sig: Lazy!(PerDefTable<Lazy!(ty::PolyFnSig<'tcx>)>),
-    impl_trait_ref: Lazy!(PerDefTable<Lazy!(ty::TraitRef<'tcx>)>),
-    inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
-    variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
-    generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
-    explicit_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    kind: Lazy!(Table<DefIndex, Lazy!(EntryKind<'tcx>)>),
+    visibility: Lazy!(Table<DefIndex, Lazy<ty::Visibility>>),
+    span: Lazy!(Table<DefIndex, Lazy<Span>>),
+    attributes: Lazy!(Table<DefIndex, Lazy<[ast::Attribute]>>),
+    children: Lazy!(Table<DefIndex, Lazy<[DefIndex]>>),
+    stability: Lazy!(Table<DefIndex, Lazy<attr::Stability>>),
+    deprecation: Lazy!(Table<DefIndex, Lazy<attr::Deprecation>>),
+    ty: Lazy!(Table<DefIndex, Lazy!(Ty<'tcx>)>),
+    fn_sig: Lazy!(Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>),
+    impl_trait_ref: Lazy!(Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>),
+    inherent_impls: Lazy!(Table<DefIndex, Lazy<[DefIndex]>>),
+    variances: Lazy!(Table<DefIndex, Lazy<[ty::Variance]>>),
+    generics: Lazy!(Table<DefIndex, Lazy<ty::Generics>>),
+    explicit_predicates: Lazy!(Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>),
     // FIXME(eddyb) this would ideally be `Lazy<[...]>` but `ty::Predicate`
     // doesn't handle shorthands in its own (de)serialization impls,
     // as it's an `enum` for which we want to derive (de)serialization,
     // so the `ty::codec` APIs handle the whole `&'tcx [...]` at once.
     // Also, as an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives: Lazy!(PerDefTable<Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>),
-    super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
-    mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),
-    promoted_mir: Lazy!(PerDefTable<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
+    inferred_outlives: Lazy!(Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>),
+    super_predicates: Lazy!(Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>),
+    mir: Lazy!(Table<DefIndex, Lazy!(mir::Body<'tcx>)>),
+    promoted_mir: Lazy!(Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
