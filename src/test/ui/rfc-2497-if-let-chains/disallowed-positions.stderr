@@ -1,5 +1,5 @@
 error: expected one of `,` or `>`, found `&&`
-  --> $DIR/disallowed-positions.rs:242:14
+  --> $DIR/disallowed-positions.rs:239:14
    |
 LL |         true && let 1 = 1
    |              ^^ expected one of `,` or `>`
@@ -482,7 +482,7 @@ LL |         true && let 1 = 1
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/disallowed-positions.rs:224:17
+  --> $DIR/disallowed-positions.rs:223:17
    |
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
@@ -491,7 +491,7 @@ LL |         true && let 1 = 1
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/disallowed-positions.rs:230:17
+  --> $DIR/disallowed-positions.rs:228:17
    |
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
@@ -512,6 +512,24 @@ warning: the feature `let_chains` is incomplete and may cause the compiler to cr
    |
 LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
    |            ^^^^^^^^^^
+
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/disallowed-positions.rs:218:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
+
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/disallowed-positions.rs:223:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
+
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/disallowed-positions.rs:228:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:32:8
@@ -953,43 +971,7 @@ LL |         let 0 = 0?;
    = help: the trait `std::ops::Try` is not implemented for `{integer}`
    = note: required by `std::ops::Try::into_result`
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/disallowed-positions.rs:218:25
-   |
-LL |         true && let 1 = 1
-   |                         ^
+error: aborting due to 106 previous errors
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/disallowed-positions.rs:218:21
-   |
-LL |         true && let 1 = 1
-   |                     ^
-
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/disallowed-positions.rs:224:25
-   |
-LL |         true && let 1 = 1
-   |                         ^
-
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/disallowed-positions.rs:224:21
-   |
-LL |         true && let 1 = 1
-   |                     ^
-
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/disallowed-positions.rs:230:25
-   |
-LL |         true && let 1 = 1
-   |                         ^
-
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/disallowed-positions.rs:230:21
-   |
-LL |         true && let 1 = 1
-   |                     ^
-
-error: aborting due to 109 previous errors
-
-Some errors have detailed explanations: E0019, E0277, E0308, E0600, E0614.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0277, E0308, E0600, E0614, E0744.
+For more information about an error, try `rustc --explain E0277`.

@@ -626,6 +626,28 @@ async fn foo() {}
 Switch to the Rust 2018 edition to use `async fn`.
 "##,
 
+E0744: r##"
+Control-flow expressions are not allowed inside a const context.
+
+At the moment, `if` and `match`, as well as the looping constructs `for`,
+`while`, and `loop`, are forbidden inside a `const`, `static`, or `const fn`.
+
+```compile_fail,E0744
+const _: i32 = {
+    let mut x = 0;
+    loop {
+        x += 1;
+        if x == 4 {
+            break;
+        }
+    }
+
+    x
+};
+```
+
+"##,
+
 ;
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target

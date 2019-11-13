@@ -1,27 +1,22 @@
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-match-pattern-arm.rs:3:23
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/const-match-pattern-arm.rs:3:17
    |
-LL | const x: bool = match Some(true) {
-   |                       ^^^^^^^^^^
+LL |   const x: bool = match Some(true) {
+   |  _________________^
+LL | |     Some(value) => true,
+LL | |     _ => false
+LL | | };
+   | |_^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-match-pattern-arm.rs:5:5
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/const-match-pattern-arm.rs:9:5
    |
-LL |     Some(value) => true,
-   |     ^^^^^^^^^^^
+LL | /     match Some(true) {
+LL | |         Some(value) => true,
+LL | |         _ => false
+LL | |     }
+   | |_____^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-match-pattern-arm.rs:11:11
-   |
-LL |     match Some(true) {
-   |           ^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-match-pattern-arm.rs:13:9
-   |
-LL |         Some(value) => true,
-   |         ^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0744`.

@@ -1,3 +1,15 @@
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/match-test-ptr-null.rs:6:9
+   |
+LL | /         match &1 as *const i32 as usize {
+LL | |
+LL | |
+LL | |
+LL | |             0 => 42,
+LL | |             n => n,
+LL | |         }
+   | |_________^
+
 error[E0658]: casting pointers to integers in constants is unstable
   --> $DIR/match-test-ptr-null.rs:6:15
    |
@@ -7,25 +19,13 @@ LL |         match &1 as *const i32 as usize {
    = note: for more information, see https://github.com/rust-lang/rust/issues/51910
    = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/match-test-ptr-null.rs:6:15
-   |
-LL |         match &1 as *const i32 as usize {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/match-test-ptr-null.rs:10:13
-   |
-LL |             0 => 42,
-   |             ^
-
 error[E0080]: evaluation of constant value failed
   --> $DIR/match-test-ptr-null.rs:6:15
    |
 LL |         match &1 as *const i32 as usize {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0019, E0080, E0658.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0080, E0658, E0744.
+For more information about an error, try `rustc --explain E0080`.

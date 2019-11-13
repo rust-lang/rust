@@ -875,6 +875,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 tcx.ensure().check_mod_loops(local_def_id);
                 tcx.ensure().check_mod_attrs(local_def_id);
                 tcx.ensure().check_mod_unstable_api_usage(local_def_id);
+                tcx.ensure().check_mod_const_bodies(local_def_id);
             });
         });
     });

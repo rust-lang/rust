@@ -329,6 +329,11 @@ rustc_queries! {
             desc { |tcx| "checking for unstable API usage in {}", key.describe_as_module(tcx) }
         }
 
+        /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
+        query check_mod_const_bodies(key: DefId) -> () {
+            desc { |tcx| "checking consts in {}", key.describe_as_module(tcx) }
+        }
+
         /// Checks the loops in the module.
         query check_mod_loops(key: DefId) -> () {
             desc { |tcx| "checking loops in {}", key.describe_as_module(tcx) }
