@@ -372,9 +372,15 @@ impl LiteralDigitGrouping {
                 };
 
                 let result = (|| {
+                    if let Some(suffix) = digit_info.suffix {
+                        if is_mistyped_suffix(suffix) {
+                            return Err(WarningType::MistypedLiteralSuffix);
+                        }
+                    }
+
                     match lit.kind {
                         LitKind::Int(..) => {
-                            Self::do_lint(digit_info.digits, digit_info.suffix, in_macro)?;
+                            Self::do_lint(digit_info.digits, in_macro)?;
                         },
                         LitKind::Float(..) => {
                             // Separate digits into integral and fractional parts.
@@ -385,11 +391,11 @@ impl LiteralDigitGrouping {
 
                             // Lint integral and fractional parts separately, and then check consistency of digit
                             // groups if both pass.
-                            let integral_group_size = Self::do_lint(parts[0], digit_info.suffix, in_macro)?;
+                            let integral_group_size = Self::do_lint(parts[0], in_macro)?;
                             if parts.len() > 1 {
                                 // Lint the fractional part of literal just like integral part, but reversed.
                                 let fractional_part = &parts[1].chars().rev().collect::<String>();
-                                let fractional_group_size = Self::do_lint(fractional_part, None, in_macro)?;
+                                let fractional_group_size = Self::do_lint(fractional_part, in_macro)?;
                                 let consistent = Self::parts_consistent(integral_group_size,
                                                                         fractional_group_size,
                                                                         parts[0].len(),
@@ -432,12 +438,7 @@ impl LiteralDigitGrouping {
 
     /// Performs lint on `digits` (no decimal point) and returns the group
     /// size on success or `WarningType` when emitting a warning.
-    fn do_lint(digits: &str, suffix: Option<&str>, in_macro: bool) -> Result<usize, WarningType> {
-        if let Some(suffix) = suffix {
-            if is_mistyped_suffix(suffix) {
-                return Err(WarningType::MistypedLiteralSuffix);
-            }
-        }
+    fn do_lint(digits: &str, in_macro: bool) -> Result<usize, WarningType> {
         // Grab underscore indices with respect to the units digit.
         let underscore_positions: Vec<usize> = digits
             .chars()
