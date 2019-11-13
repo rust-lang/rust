@@ -17,6 +17,7 @@ use rustc::ty::query::Providers;
 use syntax::ast::Mutability;
 use syntax::span_err;
 use syntax_pos::Span;
+use rustc_error_codes::*;
 
 use std::fmt;
 
