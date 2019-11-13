@@ -14,6 +14,7 @@ use rustc_data_structures::svh::Svh;
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax_expand::base::SyntaxExtension;
+use syntax::expand::allocator::AllocatorKind;
 use syntax_pos;
 use proc_macro::bridge::client::ProcMacro;
 
@@ -101,6 +102,8 @@ crate struct CrateMetadata {
 #[derive(Clone)]
 pub struct CStore {
     metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
+    pub(crate) injected_panic_runtime: Option<CrateNum>,
+    pub(crate) allocator_kind: Option<AllocatorKind>,
 }
 
 pub enum LoadedMacro {
@@ -116,6 +119,8 @@ impl Default for CStore {
             // corresponding `CrateNum`. This first entry will always remain
             // `None`.
             metas: IndexVec::from_elem_n(None, 1),
+            injected_panic_runtime: None,
+            allocator_kind: None,
         }
     }
 }

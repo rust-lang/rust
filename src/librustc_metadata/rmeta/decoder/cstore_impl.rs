@@ -31,6 +31,7 @@ use syntax::attr;
 use syntax::source_map;
 use syntax::source_map::Spanned;
 use syntax::symbol::Symbol;
+use syntax::expand::allocator::AllocatorKind;
 use syntax_pos::{Span, FileName};
 
 macro_rules! provide {
@@ -526,5 +527,13 @@ impl CrateStore for cstore::CStore {
     fn metadata_encoding_version(&self) -> &[u8]
     {
         rmeta::METADATA_HEADER
+    }
+
+    fn injected_panic_runtime(&self) -> Option<CrateNum> {
+        self.injected_panic_runtime
+    }
+
+    fn allocator_kind(&self) -> Option<AllocatorKind> {
+        self.allocator_kind
     }
 }
