@@ -570,6 +570,12 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				assert(inst != gep->getPointerOperand());
 				continue;
 			}
+            if (isa<AllocaInst>(a)) {
+               if (printconst)
+			     llvm::errs() << "found constant(" << (int)directions << ")  allocainst use:" << *inst << " user " << *a << "\n";
+               continue;
+            }
+
 			if (auto call = dyn_cast<CallInst>(a)) {
                 if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, retvals, originalInstructions, DOWN)) {
                     continue;
@@ -777,6 +783,11 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
                     continue;
                 }
 			}
+            if (isa<AllocaInst>(a)) {
+               if (printconst)
+			     llvm::errs() << "Value found constant allocainst use:" << *val << " user " << *a << "\n";
+               continue;
+            }
             
 		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals, originalInstructions, DOWN)) {
     			if (printconst)

@@ -131,10 +131,11 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
 
             for(BasicBlock* exit : lc.exitBlocks) {
                 for(auto pred : predecessors(exit)) {
-                    auto fd = std::find(latches.begin(), latches.end(), pred);
-                    if ( fd != latches.end()) {
-                        targetToPreds[reverseBlocks[pred]].push_back(std::make_pair(pred, exit));
-                        //targetToPreds[getReverseOrLatchMerge(pred, exit)].push_back(std::make_pair(pred, exit));
+                    if (std::find(latches.begin(), latches.end(), pred) != latches.end()) {
+                        BasicBlock* target = nullptr;
+                        target = reverseBlocks[pred];
+                        //target = getReverseOrLatchMerge(pred, exit);
+                        targetToPreds[target].push_back(std::make_pair(pred, exit));
                     }
                 }
             }

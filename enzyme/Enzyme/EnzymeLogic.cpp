@@ -1172,6 +1172,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         assert(targetToPreds.size() && "only loops with one backedge are presently supported");
 
         Value* phi = phibuilder.CreateICmpEQ(loopContext.antivar, Constant::getNullValue(loopContext.antivar->getType()));
+        Value* nphi = phibuilder.CreateNot(phi);
 
         for (auto pair : replacePHIs) {
             Value* replaceWith = nullptr;
@@ -1179,7 +1180,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
             if (pair.first == loopContext.preheader) {
                 replaceWith = phi;
             } else {
-                replaceWith = phibuilder.CreateNot(phi);
+                replaceWith = nphi;
             }
 
             pair.second->replaceAllUsesWith(replaceWith);
@@ -2462,7 +2463,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
       //TODO const
        //TODO IF OP IS POINTER
-      if (! ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !isIntASecretFloat(op->getValueOperand()) ) ) ) {
+      if (! ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && !isIntASecretFloat(op->getValueOperand()) ) ) ) {
           StoreInst* ts;
           if (!gutils->isConstantValue(op->getValueOperand())) {
             auto dif1 = Builder2.CreateLoad(invertPointer(op->getPointerOperand()));
