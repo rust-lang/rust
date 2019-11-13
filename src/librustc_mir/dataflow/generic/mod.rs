@@ -307,3 +307,6 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
         self.remove(elem);
     }
 }
+
+#[cfg(test)]
+mod tests;
