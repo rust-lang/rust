@@ -106,11 +106,11 @@ item, it will be accompanied by a banner explaining that the item is only availa
 platforms.
 
 For Rustdoc to document an item, it needs to see it, regardless of what platform it's currently
-running on. To aid this, Rustdoc sets the flag `#[cfg(rustdoc)]` when running on your crate.
+running on. To aid this, Rustdoc sets the flag `#[cfg(doc)]` when running on your crate.
 Combining this with the target platform of a given item allows it to appear when building your crate
 normally on that platform, as well as when building documentation anywhere.
 
-For example, `#[cfg(any(windows, rustdoc))]` will preserve the item either on Windows or during the
+For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during the
 documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
 the item is supposed to be used on Windows. For example:
 
@@ -118,12 +118,12 @@ the item is supposed to be used on Windows. For example:
 #![feature(doc_cfg)]
 
 /// Token struct that can only be used on Windows.
-#[cfg(any(windows, rustdoc))]
+#[cfg(any(windows, doc))]
 #[doc(cfg(windows))]
 pub struct WindowsToken;
 
 /// Token struct that can only be used on Unix.
-#[cfg(any(unix, rustdoc))]
+#[cfg(any(unix, doc))]
 #[doc(cfg(unix))]
 pub struct UnixToken;
 ```
