@@ -1133,8 +1133,8 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
           BuilderM.CreateCondBr(which, /*true*/targets[1], /*false*/targets[0]);
       } else {
           assert(targets.size() > 0);
-          llvm::errs() << "which: " << *which << "\n";
-          llvm::errs() << "targets.back(): " << *targets.back() << "\n";
+          //llvm::errs() << "which: " << *which << "\n";
+          //llvm::errs() << "targets.back(): " << *targets.back() << "\n";
           auto swit = BuilderM.CreateSwitch(which, targets.back(), targets.size()-1);
           for(unsigned i=0; i<targets.size()-1; i++) {
             swit->addCase(ConstantInt::get(T, i), targets[i]);

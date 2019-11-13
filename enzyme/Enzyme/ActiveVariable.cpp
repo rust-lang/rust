@@ -117,7 +117,7 @@ bool isIntASecretFloat(Value* val) {
                         } 
                         break;
                     } while(1);
-                    llvm::errs() << " for val " << *v  << *et << "\n";
+                    //llvm::errs() << " for val " << *v  << *et << "\n";
 
                     if (et->isFloatingPointTy()) {
                         floatingUse = true;
@@ -247,7 +247,7 @@ Type* isIntPointerASecretFloat(Value* val) {
                         } 
                         break;
                     } while(1);
-                    llvm::errs() << " for val " << *v  << *et << "\n";
+                    //llvm::errs() << " for val " << *v  << *et << "\n";
 
                     if (et->isFloatingPointTy()) {
                         if (floatingUse == nullptr) {
@@ -291,19 +291,113 @@ cl::opt<bool> ipoconst(
             "enzyme_ipoconst", cl::init(false), cl::Hidden,
             cl::desc("Interprocedural constant detection"));
 
-/*
-bool isFunctionArgumentConstant(CallInst* CI, Value* arg, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions) {
+
+#include <set>
+#include <map>
+#include "llvm/IR/InstIterator.h"
+
+bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, const SmallPtrSetImpl<Value*> &retvals, const SmallPtrSetImpl<Instruction*> &originalInstructions, int directions) {
     Function* F = CI->getCalledFunction();
     if (F == nullptr) return false;
-    if (F->isEmpty()) return false;
+    
+    auto fn = F->getName();
+    // todo realloc consider?
+    // For known library functions, special case how derivatives flow to allow for more aggressive active variable detection
+    if (fn == "malloc" || fn == "free" || fn == "_Znwm" || fn == "__cxa_guard_acquire" || fn == "__cxa_guard_release" || fn == "__cxa_guard_abort")
+        return true;
+    if (F->getIntrinsicID() == Intrinsic::memset && CI->getArgOperand(0) != val && CI->getArgOperand(1) != val)
+        return true;
+    if (F->getIntrinsicID() == Intrinsic::memcpy && CI->getArgOperand(0) != val && CI->getArgOperand(1) != val)
+        return true;
+    if (F->getIntrinsicID() == Intrinsic::memmove && CI->getArgOperand(0) != val && CI->getArgOperand(1) != val)
+        return true;
 
-    for(unsigned i=0; i<CI->getArgOperands(); i++) {
+    if (F->empty()) return false;
 
+
+    SmallPtrSet<Value*, 20> constants2;
+    constants2.insert(constants.begin(), constants.end());
+    SmallPtrSet<Value*, 20> nonconstant2;
+    nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+
+    //Ask the question, even if is this is active, are all its uses inactive (meaning this use does not impact its activity)
+    nonconstant2.insert(val);
+    //constants2.insert(val);
+
+    if (printconst)
+        llvm::errs() << " < SUBFN " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
+    
+
+    auto a = F->arg_begin();
+    
+    std::set<int> arg_constants;
+    std::set<int> idx_findifactive;
+    SmallPtrSet<Argument*, 20> arg_findifactive;
+    
+    SmallPtrSet<Value*, 20> newconstants;
+    SmallPtrSet<Value*, 20> newnonconstant;
+    
+    for(unsigned i=0; i<CI->getNumArgOperands(); i++) {
+        if (CI->getArgOperand(i) == val) {
+            arg_findifactive.insert(a);
+            idx_findifactive.insert(i);
+            newnonconstant.insert(a);
+            a++;
+            continue;
+        }
+
+        if (isconstantValueM(CI->getArgOperand(i), constants2, nonconstant2, retvals, originalInstructions), directions) {
+            newconstants.insert(a);
+            arg_constants.insert(i);
+        } else {
+            newnonconstant.insert(a);
+        }
+        a++;
     }
 
-    assert(ipoconst);
+    bool constret = isconstantValueM(CI, constants2, nonconstant2, retvals, originalInstructions, directions);
+    
+    if (constret) arg_constants.insert(-1);
+
+    static std::map<std::tuple<std::set<int>, Function*, std::set<int> >, bool> cache;
+
+    auto tuple = std::make_tuple(arg_constants, F, idx_findifactive);
+    if (cache.find(tuple) != cache.end()) return cache[tuple];
+    
+    //! inductively assume that it is constant, it should be deduced nonconstant elsewhere if this is not the case
+    if (printconst)
+       llvm::errs() << " < INDUCTIVE SUBFN const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
+    cache[tuple] = true;
+    
+    SmallPtrSet<Instruction*,4> newinsts;
+    SmallPtrSet<Value*,4> newretvals;
+    for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
+        newinsts.insert(&*I);
+        if (!constret) {
+            if (auto ri = dyn_cast<ReturnInst>(&*I)) {
+                newretvals.insert(ri->getReturnValue());
+            }
+        }
+    }
+    
+    
+    for(auto specialarg : arg_findifactive) {
+        for(auto user : specialarg->users()) {
+            if (!isconstantValueM(user, newconstants, newnonconstant, newretvals, newinsts, 3)) {
+                if (printconst)
+                    llvm::errs() << " < SUBFN nonconst " << F->getName() << "> arg: " << *val << " ci:" << *CI << "  from sf: " << *user << "\n";
+                return cache[tuple] = false;
+            }
+        }
+    }
+
+    constants.insert(constants2.begin(), constants2.end());
+    nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+    if (printconst)
+        llvm::errs() << " < SUBFN const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
+    return cache[tuple] = true;
 }
-*/
+
 
 // TODO separate if the instruction is constant (i.e. could change things)
 //    from if the value is constant (the value is something that could be differentiated)
@@ -335,7 +429,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 	
     if (auto op = dyn_cast<CallInst>(inst)) {
 		if(auto called = op->getCalledFunction()) {
-			if (called->getName() == "__assert_fail" || called->getName() == "free" || called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm") {
+			if (called->getName() == "__assert_fail" || called->getName() == "free" || called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm"
+                    || called->getName() == "__cxa_guard_acquire" || called->getName() == "__cxa_guard_release" || called->getName() == "__cxa_guard_abort") {
 				constants.insert(inst);
 				return true;
 			}
@@ -346,7 +441,6 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		switch(op->getIntrinsicID()) {
 			case Intrinsic::assume:
 			case Intrinsic::stacksave:
-                        case Intrinsic::prefetch:
 			case Intrinsic::stackrestore:
 			case Intrinsic::lifetime_start:
 			case Intrinsic::lifetime_end:
@@ -477,20 +571,8 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				continue;
 			}
 			if (auto call = dyn_cast<CallInst>(a)) {
-                auto fnp = call->getCalledFunction();
-                // For known library functions, special case how derivatives flow to allow for more aggressive active variable detection
-                if (fnp) {
-                    auto fn = fnp->getName();
-                    // todo realloc consider?
-                    if (fn == "malloc" || fn == "_Znwm")
-				        continue;
-                    if (fnp->getIntrinsicID() == Intrinsic::memset && call->getArgOperand(0) != inst && call->getArgOperand(1) != inst)
-                        continue;
-                    if (fnp->getIntrinsicID() == Intrinsic::memcpy && call->getArgOperand(0) != inst && call->getArgOperand(1) != inst)
-                        continue;
-                    if (fnp->getIntrinsicID() == Intrinsic::memmove && call->getArgOperand(0) != inst && call->getArgOperand(1) != inst)
-                        continue;
-
+                if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, retvals, originalInstructions, DOWN)) {
+                    continue;
                 }
 			}
 
@@ -558,6 +640,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 }
             }
             
+            //! TODO consider calling interprocedural here
             //! TODO: Really need an attribute that determines whether a function can access a global (not even necessarily read)
             //if (ci->hasFnAttr(Attribute::ReadNone) || ci->hasFnAttr(Attribute::ArgMemOnly)) 
             {
@@ -690,18 +773,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 				continue;
 			}
 			if (auto call = dyn_cast<CallInst>(a)) {
-                auto fnp = call->getCalledFunction();
-                if (fnp) {
-                    auto fn = fnp->getName();
-                    // todo realloc consider?
-                    if (fn == "malloc" || fn == "_Znwm")
-				        continue;
-                    if (fnp->getIntrinsicID() == Intrinsic::memset && call->getArgOperand(0) != val && call->getArgOperand(1) != val)
-                        continue;
-                    if (fnp->getIntrinsicID() == Intrinsic::memcpy && call->getArgOperand(0) != val && call->getArgOperand(1) != val)
-                        continue;
-                    if (fnp->getIntrinsicID() == Intrinsic::memmove && call->getArgOperand(0) != val && call->getArgOperand(1) != val)
-                        continue;
+                if (isFunctionArgumentConstant(call, val, constants, nonconstant, retvals, originalInstructions, DOWN)) {
+                    continue;
                 }
 			}
             

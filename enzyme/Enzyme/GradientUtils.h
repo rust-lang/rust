@@ -20,6 +20,7 @@
 #define ENZYME_GUTILS_H_
 
 #include <deque>
+#include <map>
 
 #include <llvm/Config/llvm-config.h>
 
@@ -779,7 +780,7 @@ public:
             if (op0 == nullptr) goto endCheck;
             auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
             if (op1 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1);
+            auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
             if (
                     (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
                     (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
@@ -938,7 +939,12 @@ endCheck:
                     limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
                 }
                 assert(limitMinus1 != nullptr);
-                limits[i] = allocationBuilder.CreateNUWAdd(limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
+                static std::map<std::pair<Value*, BasicBlock*>, Value*> limitCache;
+                auto cidx = std::make_pair(limitMinus1, allocationPreheaders[i]);
+                if (limitCache.find(cidx) == limitCache.end()) {
+                    limitCache[cidx] = allocationBuilder.CreateNUWAdd(limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
+                }
+                limits[i] = limitCache[cidx];
             }
         }
         
@@ -952,7 +958,12 @@ endCheck:
           if (size == nullptr) {
               size = limits[i];
           } else {
-              size = allocationBuilder.CreateNUWMul(size, limits[i]);
+              static std::map<std::pair<Value*, BasicBlock*>, Value*> sizeCache;
+              auto cidx = std::make_pair(size, allocationPreheaders[i]);
+              if (sizeCache.find(cidx) == sizeCache.end()) {
+                    sizeCache[cidx] = allocationBuilder.CreateNUWMul(size, limits[i]);
+              }
+              size = sizeCache[cidx];
           }
 
           // We are now starting a new allocation context

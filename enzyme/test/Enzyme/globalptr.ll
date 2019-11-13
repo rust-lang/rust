@@ -41,4 +41,4 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:    %arrayidx = getelementptr inbounds double, double* %call, i64 2
 ; CHECK-NEXT:    %0 = load double, double* %arrayidx, align 8
 ; CHECK-NEXT:    %[[tmul:.+]] = fmul fast double %0, %x
-; CHECK-NEXT:    %[[tcall.+]] = call {} @diffemyglobal(double %x)
+; CHECK-NEXT:    %[[tcall:.+]] = call {} @diffemyglobal(double %x)

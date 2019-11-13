@@ -532,6 +532,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             }
             case Intrinsic::memset: {
                 if (gutils->isConstantInstruction(inst)) continue;
+                //llvm_unreachable("didn't finish implementing memset");
+                //TODO this doesn't seem complete
                 /*
                 if (!gutils->isConstantValue(op->getOperand(1))) {
                     assert(inst);
@@ -635,6 +637,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 }
                 continue;
             }
+            //llvm::errs() << "creating augmented func call for " << *op << "\n";
 
             if (called == nullptr) {
               llvm::errs() << gutils->newFunc << "\n";
@@ -1674,7 +1677,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
   bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
-  llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
+  //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
     newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/retUsed, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args);//, LI, DT);
   } else {
