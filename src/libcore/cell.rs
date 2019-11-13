@@ -1551,15 +1551,20 @@ impl<T: ?Sized> UnsafeCell<T> {
     }
 
     /// Gets a mutable pointer to the wrapped value.
+    /// The difference to [`get`] is that this function accepts a raw pointer,
+    /// which is useful to avoid the creation of temporary references.
     ///
-    /// This can be cast to a pointer of any kind.
+    /// The result can be cast to a pointer of any kind.
     /// Ensure that the access is unique (no active references, mutable or not)
     /// when casting to `&mut T`, and ensure that there are no mutations
     /// or mutable aliases going on when casting to `&T`.
     ///
+    /// [`get`]: #method.get
+    ///
     /// # Examples
     ///
-    /// Gradual initialization of an `UnsafeCell`:
+    /// Gradual initialization of an `UnsafeCell` requires `raw_get`, as
+    /// calling `get` would require creating a reference to uninitialized data:
     ///
     /// ```
     /// #![feature(unsafe_cell_raw_get)]
