@@ -25,4 +25,16 @@ fn main() {
     assert_eq!(std::f64::NAN.max(-9.0), -9.0);
     assert_eq!((9.0 as f64).min(std::f64::NAN), 9.0);
     assert_eq!((-9.0 as f64).max(std::f64::NAN), -9.0);
+
+    assert_eq!(3.5_f32.copysign(0.42), 3.5_f32);
+    assert_eq!(3.5_f32.copysign(-0.42), -3.5_f32);
+    assert_eq!((-3.5_f32).copysign(0.42), 3.5_f32);
+    assert_eq!((-3.5_f32).copysign(-0.42), -3.5_f32);
+    assert!(std::f32::NAN.copysign(1.0).is_nan());
+
+    assert_eq!(3.5_f64.copysign(0.42), 3.5_f64);
+    assert_eq!(3.5_f64.copysign(-0.42), -3.5_f64);
+    assert_eq!((-3.5_f64).copysign(0.42), 3.5_f64);
+    assert_eq!((-3.5_f64).copysign(-0.42), -3.5_f64);
+    assert!(std::f64::NAN.copysign(1.0).is_nan());
 }

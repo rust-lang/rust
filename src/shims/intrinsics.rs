@@ -291,24 +291,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.binop_ignore_overflow(op, a, b, dest)?;
             }
 
-            "minnumf32" | "maxnumf32" => {
+            "minnumf32" | "maxnumf32" | "copysignf32" => {
                 let a = this.read_scalar(args[0])?.to_f32()?;
                 let b = this.read_scalar(args[1])?.to_f32()?;
-                let res = if intrinsic_name.starts_with("min") {
-                    a.min(b)
-                } else {
-                    a.max(b)
+                let res = match intrinsic_name {
+                    "minnumf32" => a.min(b),
+                    "maxnumf32" => a.max(b),
+                    "copysignf32" => a.copy_sign(b),
+                    _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_f32(res), dest)?;
             }
 
-            "minnumf64" | "maxnumf64" => {
+            "minnumf64" | "maxnumf64" | "copysignf64" => {
                 let a = this.read_scalar(args[0])?.to_f64()?;
                 let b = this.read_scalar(args[1])?.to_f64()?;
-                let res = if intrinsic_name.starts_with("min") {
-                    a.min(b)
-                } else {
-                    a.max(b)
+                let res = match intrinsic_name {
+                    "minnumf64" => a.min(b),
+                    "maxnumf64" => a.max(b),
+                    "copysignf64" => a.copy_sign(b),
+                    _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
