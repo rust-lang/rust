@@ -227,7 +227,8 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 }
 
 fn install_server(opts: ServerOpt) -> Result<()> {
-    let ac = autocfg::AutoCfg::with_dir("target")?;
+    let target_dir = env::var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into());
+    let ac = autocfg::AutoCfg::with_dir(target_dir)?;
 
     let old_rust = !ac.probe_rustc_version(REQUIRED_RUST_VERSION.0, REQUIRED_RUST_VERSION.1);
 
