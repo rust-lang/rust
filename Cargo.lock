@@ -480,7 +480,7 @@ dependencies = [
  "itertools 0.8.0",
  "lazy_static 1.3.0",
  "matches",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -1972,7 +1972,7 @@ dependencies = [
  "log",
  "memchr",
  "open",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark",
  "regex",
  "serde",
  "serde_derive",
@@ -1999,7 +1999,7 @@ dependencies = [
  "log",
  "mdbook",
  "percent-encoding 2.1.0",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark",
  "rayon",
  "regex",
  "reqwest",
@@ -2639,17 +2639,6 @@ dependencies = [
  "lazy_static 1.3.0",
  "regex",
  "url 2.1.0",
-]
-
-[[package]]
-name = "pulldown-cmark"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77043da1282374688ee212dc44b3f37ff929431de9c9adc3053bd3cee5630357"
-dependencies = [
- "bitflags",
- "memchr",
- "unicase",
 ]
 
 [[package]]
@@ -3902,7 +3891,7 @@ name = "rustdoc"
 version = "0.0.0"
 dependencies = [
  "minifier",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark",
  "rustc-rayon 0.3.0",
  "tempfile",
 ]

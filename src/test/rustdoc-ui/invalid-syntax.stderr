@@ -115,7 +115,8 @@ warning: could not parse code block as Rust code
 LL |   ///     code with bad syntax
    |  _________^
 LL | | ///     \_
-   | |__________^
+LL | | ///
+   | |_
 
 error: unknown start of token: `
  --> <doctest>:1:1

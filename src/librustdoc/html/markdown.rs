@@ -554,9 +554,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
 pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes,
                                            enable_per_target_ignores: bool) {
     let mut parser = Parser::new(doc).into_offset_iter();
-    let mut nb_lines = 0;
     let mut register_header = None;
-    let mut prev_offset = 0;
     while let Some((event, offset)) = parser.next() {
         match event {
             Event::Start(Tag::CodeBlock(s)) => {
@@ -578,10 +576,10 @@ pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes
                     .map(|l| map_line(l).for_code())
                     .collect::<Vec<Cow<'_, str>>>()
                     .join("\n");
-                nb_lines += doc[prev_offset..offset.end].lines().count();
+                // "+ 1" is to take into account the start of the code block
+                let nb_lines = doc[..offset.start].lines().count() + 1;
                 let line = tests.get_line() + nb_lines;
                 tests.add_test(text, block_info, line);
-                prev_offset = offset.start;
             }
             Event::Start(Tag::Heading(level)) => {
                 register_header = Some(level as u32);
@@ -927,8 +925,8 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
     let mut code_block = None;
     let mut code_start = 0;
     let mut is_fenced = false;
-    let mut previous_offset = Range { start: 0, end: 0 };
     let mut in_rust_code_block = false;
+    let mut previous_offset = Range { start: 0, end: 0 };
     while let Some((event, offset_range)) = p.next() {
         match event {
             Event::Start(Tag::CodeBlock(syntax)) => {
@@ -942,35 +940,31 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                     in_rust_code_block = true;
                     code_block = Some(offset_range.clone());
 
-                    code_start = match md[offset_range.clone()].find("```") {
-                        Some(_) => {
-                            is_fenced = true;
-                            offset_range.start + md[offset_range.clone()]
-                                .lines()
-                                .next()
-                                .map_or(0, |x| x.len() + 1)
-                        }
-                        None => {
-                            is_fenced = false;
-                            offset_range.start
-                        }
+                    code_start = if !md[previous_offset.end..offset_range.start].ends_with("    ") {
+                        is_fenced = true;
+                        offset_range.start + md[offset_range.clone()]
+                            .lines()
+                            .next()
+                            .map_or(0, |x| x.len() + 1)
+                    } else {
+                        is_fenced = false;
+                        offset_range.start
                     };
-                    previous_offset = Range { start: code_start, end: offset_range.end };
                 }
             }
             Event::End(Tag::CodeBlock(syntax)) if in_rust_code_block => {
                 in_rust_code_block = false;
 
                 let code_end = if is_fenced {
-                    let last_len = md[previous_offset.clone()]
+                    let last_len = md[offset_range.clone()]
                         .lines()
                         .last()
+                        .filter(|l| l.ends_with("```"))
                         .map_or(0, |l| l.len());
-                    previous_offset.end - last_len
+                    offset_range.end - last_len
                 } else {
-                    previous_offset.end
+                    offset_range.end
                 };
-
                 code_blocks.push(RustCodeBlock {
                     is_fenced,
                     range: code_block.clone().unwrap(),
@@ -987,6 +981,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
             }
             _ => (),
         }
+        previous_offset = offset_range;
     }
 
     code_blocks
